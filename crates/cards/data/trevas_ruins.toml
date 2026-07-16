@@ -2,8 +2,11 @@
 # owner's hand.
 # {T}: Add {G}, {W}, or {U}.
 name = "Treva's Ruins"
+otags = ["activated-ability", "cycle-pls-lair", "namesake-spell", "triggered-ability"]
+set = "dmr"
+id = "7b2c7758-2b89-49ff-8838-8dc9880c7209"
+default_print = "4f39366c-00df-4528-a324-6a89d0c53f0a"
 oracle = "When this land enters, sacrifice it unless you return a non-Lair land you control to its owner's hand.\n{T}: Add {G}, {W}, or {U}."
-set = "soc"
 identity = ["green", "white", "blue"]
 
 [kind]

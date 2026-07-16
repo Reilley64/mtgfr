@@ -2,8 +2,11 @@
 # {1}, {T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card, put it onto the
 # battlefield tapped, then shuffle.
 name = "Bant Panorama"
+otags = ["activated-ability", "cycle-ala-panorama", "tutor-land-basic-forest", "tutor-land-basic-island", "tutor-land-basic-plains"]
+set = "ncc"
+id = "0a1d817d-dce8-4e83-a380-909f7c9eee46"
+default_print = "dc506497-4ecd-41d3-9042-f92f498251b0"
 oracle = "{T}: Add {C}.\n{1}, {T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle."
-set = "ala"
 
 # {T}: Add {C}.
 [kind]

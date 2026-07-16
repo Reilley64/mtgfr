@@ -2,10 +2,12 @@
 # Enchanted creature can't attack or block, and its activated abilities can't be activated.
 # Whenever a creature an opponent controls enters, you may attach this Aura to that creature.
 name = "Prison Term"
-otags = ["pacifism-effect", "removal-aura"]
-oracle = "Enchant creature\nEnchanted creature can't attack or block, and its activated abilities can't be activated.\nWhenever a creature an opponent controls enters, you may attach this Aura to that creature."
-set = "vow"
+otags = ["creaturefall", "pacifism", "prevent-activation", "prevent-attack", "prevent-blocker", "transferrable-aura", "triggered-ability"]
+set = "cmd"
 subtypes = ["Aura"]
+id = "31caa417-12f7-468b-9f3a-ccfb80e5bc2f"
+default_print = "b9effd90-c774-4bcd-87b4-6536aff4f825"
+oracle = "Enchant creature\nEnchanted creature can't attack or block, and its activated abilities can't be activated.\nWhenever a creature an opponent controls enters, you may attach this Aura to that creature."
 
 [cost]
 generic = 1

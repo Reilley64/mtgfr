@@ -2,9 +2,12 @@
 # Islandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand,
 # then shuffle.)
 name = "Shoreline Ranger"
-oracle = "Flying\nIslandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand, then shuffle.)"
-set = "scg"
+otags = ["activate-from-hand", "cheaper-than-mv", "cycle-scg-5m-landcycler", "evasion", "french-vanilla", "tutor-land-island", "tutor-to-hand", "type-errata", "unique-type-line"]
+set = "a25"
 subtypes = ["Bird", "Soldier", "Ranger"]
+id = "606fbf99-d3e3-4131-b991-3cb71c003834"
+default_print = "a9957cbe-da88-41fe-a4aa-e32ec9e7aa38"
+oracle = "Flying\nIslandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand, then shuffle.)"
 keywords = ["flying"]
 
 [cost]

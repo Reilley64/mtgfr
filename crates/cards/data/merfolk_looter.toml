@@ -1,8 +1,11 @@
 # {T}: Draw a card, then discard a card.
 name = "Merfolk Looter"
-oracle = "{T}: Draw a card, then discard a card."
-set = "exo"
+otags = ["activated-ability", "hand-neutral", "type-errata", "repeatable-loot"]
+set = "afc"
 subtypes = ["Merfolk", "Rogue"]
+id = "67362406-b1ca-49e2-800d-9050bfe8742a"
+default_print = "6d740928-bf61-4420-a403-63097538b97d"
+oracle = "{T}: Draw a card, then discard a card."
 
 [cost]
 generic = 1

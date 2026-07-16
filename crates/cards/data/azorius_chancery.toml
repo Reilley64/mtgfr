@@ -2,8 +2,11 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {W}{U}.
 name = "Azorius Chancery"
+otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
+set = "dsc"
+id = "189fc8f4-17ac-4f1d-82c8-8401445bdaf4"
+default_print = "50ef0ac3-e911-4d67-a751-8d86160ae843"
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {W}{U}."
-set = "dis"
 enters_tapped = true
 
 [kind]

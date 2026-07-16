@@ -1,8 +1,11 @@
 # Prevent all combat damage that would be dealt this turn.
 # Flashback {2}{G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)
 name = "Moment's Peace"
+otags = ["castable-from-graveyard", "exile-self", "fog", "more-expensive-than-mv", "protects-planeswalker", "symmetrical"]
+set = "ody"
+id = "b6d22228-a45e-4296-9ae2-1649e04b1c53"
+default_print = "40ebe935-ccf9-435e-8fe8-53bcbf3526e7"
 oracle = "Prevent all combat damage that would be dealt this turn.\nFlashback {2}{G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
-set = "soc"
 
 [cost]
 generic = 1

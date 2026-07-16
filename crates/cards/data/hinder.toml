@@ -1,9 +1,11 @@
 # Counter target spell. If that spell is countered this way, put that card on your choice of the top or bottom of
 # its owner's library instead of into that player's graveyard.
 name = "Hinder"
-otags = ["counterspell-hard", "removal-tuck", "single-target-instant-sorcery"]
+otags = ["counterspell-tuck", "self-replacement-effect", "single-english-word-name", "single-target-instant-sorcery"]
+set = "2xm"
+id = "c9db6b94-a7b1-4b93-b454-4dead8f85e34"
+default_print = "6ebaedfd-3f65-4867-bb59-df548a6eb113"
 oracle = "Counter target spell. If that spell is countered this way, put that card on your choice of the top or bottom of its owner's library instead of into that player's graveyard."
-set = "soc"
 
 [cost]
 generic = 1

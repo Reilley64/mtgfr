@@ -1,8 +1,10 @@
 # Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.
 name = "Rhystic Study"
-otags = ["cast-trigger-other", "card-draw", "tax", "rhystic"]
+otags = ["cast-tax", "cast-trigger-other", "draw-engine", "meme", "repeatable-pure-draw", "rhystic"]
+set = "j22"
+id = "53236dd7-845a-444c-96d5-f41ed7325d8f"
+default_print = "9f37c5b6-a59c-45cd-9a99-e9357fe9ea1b"
 oracle = "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}."
-set = "pcy"
 
 [cost]
 generic = 2

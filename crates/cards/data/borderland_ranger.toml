@@ -1,9 +1,12 @@
 # When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand,
 # then shuffle.
 name = "Borderland Ranger"
-oracle = "When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle."
-set = "m10"
+otags = ["triggered-ability", "tutor-land-basic", "tutor-to-hand", "type-errata", "virtual-vanilla"]
+set = "avr"
 subtypes = ["Human", "Scout", "Ranger"]
+id = "ffe25048-0bd4-49b5-aecb-2b1b57fb8d8b"
+default_print = "8f067c26-c51d-44d0-a0af-106b5778f06a"
+oracle = "When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle."
 
 [cost]
 generic = 2

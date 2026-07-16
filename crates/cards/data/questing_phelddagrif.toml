@@ -2,10 +2,12 @@
 # {W}: This creature gains protection from black and from red until end of turn. Target opponent gains 2 life.
 # {U}: This creature gains flying until end of turn. Target opponent may draw a card.
 name = "Questing Phelddagrif"
-otags = ["activated-ability", "downside-upside", "opponent-benefit", "phelddagrif"]
-oracle = "{G}: This creature gets +1/+1 until end of turn. Target opponent creates a 1/1 green Hippo creature token.\n{W}: This creature gains protection from black and from red until end of turn. Target opponent gains 2 life.\n{U}: This creature gains flying until end of turn. Target opponent may draw a card."
-set = "tsb"
+otags = ["activated-ability", "bottomless-mana-sink", "cycle-pls-r-tricolor", "donate-token", "drawback", "gains-flying", "gains-protection", "hate-black", "hate-red", "jump", "opponent-lifegain", "repeatable-crime"]
+set = "pls"
 subtypes = ["Phelddagrif"]
+id = "97f3afdb-dcee-44da-b210-c8d20030baff"
+default_print = "cea4cfef-6736-42a5-9f3e-10de8d0cd8d3"
+oracle = "{G}: This creature gets +1/+1 until end of turn. Target opponent creates a 1/1 green Hippo creature token.\n{W}: This creature gains protection from black and from red until end of turn. Target opponent gains 2 life.\n{U}: This creature gains flying until end of turn. Target opponent may draw a card."
 
 [cost]
 generic = 1

@@ -2,8 +2,11 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {G}{W}.
 name = "Selesnya Sanctuary"
+otags = ["activated-ability", "alliteration", "cycle-rav-bounceland", "drawback", "triggered-ability"]
+set = "clu"
+id = "00ef1c55-dea1-4564-bd57-66de86cba4df"
+default_print = "fdc53c6a-8e28-4314-9bcf-b31b6c6f56d7"
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {G}{W}."
-set = "rav"
 enters_tapped = true
 
 [kind]

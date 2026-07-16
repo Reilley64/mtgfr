@@ -1,7 +1,10 @@
 # Return target creature card from your graveyard to the battlefield.
 name = "Resurrection"
+otags = ["reanimate-creature", "single-english-word-name", "single-target-instant-sorcery"]
+set = "uma"
+id = "837417d8-8260-486d-a3ed-3b5711eaf34a"
+default_print = "a176b295-9406-4d6b-b15c-e81a72e66874"
 oracle = "Return target creature card from your graveyard to the battlefield."
-set = "lea"
 
 [cost]
 generic = 2

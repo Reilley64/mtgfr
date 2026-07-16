@@ -1,8 +1,11 @@
 # When this creature enters, you may return target enchantment card from your graveyard to your hand.
 name = "Auramancer"
-oracle = "When this creature enters, you may return target enchantment card from your graveyard to your hand."
-set = "ody"
+otags = ["cycle-ody-retriever", "regrowth-enchantment", "triggered-ability", "type-addition-human", "virtual-vanilla"]
+set = "dsc"
 subtypes = ["Human", "Wizard"]
+id = "bd5eb181-6a69-4dc2-93a0-fa000291bc3d"
+default_print = "d0957032-6d98-4cac-889b-890e9bfe1f86"
+oracle = "When this creature enters, you may return target enchantment card from your graveyard to your hand."
 
 [cost]
 generic = 2

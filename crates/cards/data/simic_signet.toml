@@ -1,7 +1,10 @@
 # {1}, {T}: Add {G}{U}.
 name = "Simic Signet"
+otags = ["activated-ability", "alliteration", "cycle-rav-signet", "mana-rock", "refund"]
+set = "dsc"
+id = "44503105-3e13-408d-a44f-37d503c61d72"
+default_print = "bf222c78-f12e-4857-93da-fade99c740b8"
 oracle = "{1}, {T}: Add {G}{U}."
-set = "dis"
 
 [cost]
 generic = 2

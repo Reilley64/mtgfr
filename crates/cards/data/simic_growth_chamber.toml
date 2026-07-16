@@ -2,8 +2,11 @@
 # When this land enters, return a land you control to its owner's hand.
 # {T}: Add {G}{U}.
 name = "Simic Growth Chamber"
+otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
+set = "dsc"
+id = "046f5783-cc7b-416a-8cf6-2bcef9c2cc1a"
+default_print = "212d97c5-c144-483b-b42e-00623477e928"
 oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {G}{U}."
-set = "rav"
 enters_tapped = true
 
 [kind]

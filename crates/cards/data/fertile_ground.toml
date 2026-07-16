@@ -1,9 +1,12 @@
 # Enchant land
 # Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.
 name = "Fertile Ground"
-oracle = "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional one mana of any color."
-set = "m19"
+otags = ["mana-increaser", "refund", "triggered-ability", "uninspired", "usg-storyline-in-cards"]
+set = "ecc"
 subtypes = ["Aura"]
+id = "cf14d4e5-5965-45ad-97f7-26facf2884b5"
+default_print = "83778d03-6196-4994-8f78-4db6cec823fb"
+oracle = "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional one mana of any color."
 
 # Enchant land
 enchant = { types = "land" }

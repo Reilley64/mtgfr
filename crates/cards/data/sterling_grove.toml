@@ -2,8 +2,11 @@
 # {1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then shuffle and put that
 # card on top.
 name = "Sterling Grove"
+otags = ["activated-ability", "cycle-inv-sac-enchantment", "gives-shroud", "keyword-anthem", "protects-all", "protects-enchantment", "sacrifice-self", "synergy-enchantment", "tutor-enchantment", "tutor-to-top"]
+set = "mh2"
+id = "2c275a85-5a15-46cd-a6e7-add63f9b853d"
+default_print = "ba03e105-a76c-4769-a35a-d780448890ec"
 oracle = "Other enchantments you control have shroud. (They can't be the targets of spells or abilities.)\n{1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then shuffle and put that card on top."
-set = "jud"
 
 [cost]
 green = 1

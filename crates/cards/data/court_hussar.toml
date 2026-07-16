@@ -3,9 +3,12 @@
 # into your hand and the rest on the bottom of your library in any order.
 # When this creature enters, sacrifice it unless {W} was spent to cast it.
 name = "Court Hussar"
-oracle = "Vigilance\nWhen this creature enters, look at the top three cards of your library, then put one of them into your hand and the rest on the bottom of your library in any order.\nWhen this creature enters, sacrifice it unless {W} was spent to cast it."
-set = "frf"
+otags = ["color-spent-matters", "cycle-a25-allied-enhanced", "cycle-rav-backward-boost", "hand-neutral", "impulse", "triggered-ability", "virtual-french-vanilla"]
+set = "a25"
 subtypes = ["Vedalken", "Knight"]
+id = "74fedfc4-3eb7-4845-9d3e-9d5243a0062a"
+default_print = "f3843e98-192c-44a2-be54-9ba79e51657c"
+oracle = "Vigilance\nWhen this creature enters, look at the top three cards of your library, then put one of them into your hand and the rest on the bottom of your library in any order.\nWhen this creature enters, sacrifice it unless {W} was spent to cast it."
 keywords = ["vigilance"]
 
 [cost]

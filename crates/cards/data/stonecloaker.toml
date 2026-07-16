@@ -3,9 +3,12 @@
 # When this creature enters, return a creature you control to its owner's hand.
 # When this creature enters, exile target card from a graveyard.
 name = "Stonecloaker"
-oracle = "Flash\nFlying\nWhen this creature enters, return a creature you control to its owner's hand.\nWhen this creature enters, exile target card from a graveyard."
-set = "tsp"
+otags = ["bounce-self", "cycle-plc-rescue-vertical", "evasion", "hate-graveyard", "mana-sink", "repeatable-crime", "rescue-creature", "triggered-ability", "virtual-french-vanilla"]
+set = "tsr"
 subtypes = ["Gargoyle"]
+id = "b2d597f4-162f-4adc-9dc9-6d44815b7a68"
+default_print = "ad0997f0-865f-422b-b34e-485ff8178625"
+oracle = "Flash\nFlying\nWhen this creature enters, return a creature you control to its owner's hand.\nWhen this creature enters, exile target card from a graveyard."
 keywords = ["flash", "flying"]
 
 [cost]

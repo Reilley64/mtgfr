@@ -2,9 +2,12 @@
 # When you cycle this card, you may search your library for a basic land card, reveal that card, put it into your
 # hand, then shuffle. (Do this before you draw.)
 name = "Krosan Tusker"
-oracle = "Cycling {2}{G} ({2}{G}, Discard this card: Draw a card.)\nWhen you cycle this card, you may search your library for a basic land card, reveal that card, put it into your hand, then shuffle. (Do this before you draw.)"
+otags = ["activate-from-hand", "cheaper-than-mv", "cycle-ons-c-cycle-effect", "hand-positive", "pure-draw", "triggered-ability", "tutor-land-basic", "tutor-to-hand", "type-errata"]
 set = "cmm"
 subtypes = ["Boar", "Beast"]
+id = "82406175-63b3-4972-be8b-db0e70c908cb"
+default_print = "0a368f72-cc88-4f32-aad4-22d92c4d032d"
+oracle = "Cycling {2}{G} ({2}{G}, Discard this card: Draw a card.)\nWhen you cycle this card, you may search your library for a basic land card, reveal that card, put it into your hand, then shuffle. (Do this before you draw.)"
 cycling = { generic = 2, green = 1 }
 
 [cost]

@@ -1,9 +1,11 @@
 # Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its
 # toughness.
 name = "Condemn"
-otags = ["lifegain-rider", "removal-tuck", "single-target-instant-sorcery", "spot-removal"]
+otags = ["hate-attacker", "lifegain", "opponent-lifegain", "removal-creature", "removal-tuck", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
+set = "rvr"
+id = "377d31b5-0a48-4d5b-91bd-b5a62d4f7899"
+default_print = "0c93201b-7664-4bfd-a462-f1c684ebedf6"
 oracle = "Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness."
-set = "soc"
 
 [cost]
 white = 1

@@ -1,9 +1,12 @@
 # {2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning
 # of the next end step.
 name = "Mistmeadow Witch"
-oracle = "{2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning of the next end step."
-set = "soc"
+otags = ["activated-ability", "cycle-2x2-draft-signpost", "cycle-mm3-draft-signpost", "cycle-shm-witch", "delayed-trigger", "flicker-creature", "flicker-slow", "homeward-effect", "mana-sink", "protects-creature", "removal-creature", "repeatable-crime"]
+set = "2x2"
 subtypes = ["Kithkin", "Wizard"]
+id = "38e274e2-bd04-48de-a1df-44f0ee987ba8"
+default_print = "c0119777-70da-4cba-8104-a7e78604d515"
+oracle = "{2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning of the next end step."
 
 [cost]
 generic = 1

@@ -1,8 +1,10 @@
 # Put target permanent on top of its owner's library.
 name = "Temporal Spring"
-otags = ["removal-tuck", "single-target-instant-sorcery", "spot-removal"]
+otags = ["cycle-apc-c-two-color", "removal-permanent", "removal-tuck", "single-target-instant-sorcery", "spot-removal"]
+set = "apc"
+id = "1d7a4e9c-b3c9-421e-b5f4-82d51d7d5125"
+default_print = "b584dfd1-a56c-406e-8504-47ea136dc102"
 oracle = "Put target permanent on top of its owner's library."
-set = "soc"
 
 [cost]
 generic = 1

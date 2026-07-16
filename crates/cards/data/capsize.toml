@@ -2,9 +2,11 @@
 # resolves.)
 # Return target permanent to its owner's hand.
 name = "Capsize"
-otags = ["removal-bounce", "single-target-instant-sorcery", "recurring-value", "buyback"]
+otags = ["bottomless-mana-sink", "more-expensive-than-mv", "removal-bounce", "removal-permanent", "repeatable-crime", "repeatable-removal", "single-english-word-name", "single-target-instant-sorcery", "spot-removal", "tmp-storyline-in-cards"]
+set = "tpr"
+id = "77637eff-2963-4402-88f3-ca346f762fc8"
+default_print = "f36f6545-e4e0-4dc8-acea-e527e43f3e14"
 oracle = "Buyback {3} (You may pay an additional {3} as you cast this spell. If you do, put this card into your hand as it resolves.)\nReturn target permanent to its owner's hand."
-set = "soc"
 
 [cost]
 generic = 1

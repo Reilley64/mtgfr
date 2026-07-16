@@ -1,7 +1,10 @@
 # Counter target creature spell. Draw cards equal to that spell's mana value.
 name = "Overwhelming Intellect"
+otags = ["burst-draw", "counterspell-creature", "hand-positive", "mana-value-matters", "pure-draw", "single-target-instant-sorcery"]
+set = "ddj"
+id = "8038337b-aff9-49aa-800c-0e12d2688765"
+default_print = "9624bbf9-15b0-40f9-9f02-f2af3f1220f8"
 oracle = "Counter target creature spell. Draw cards equal to that spell's mana value."
-set = "mmq"
 
 [cost]
 generic = 4

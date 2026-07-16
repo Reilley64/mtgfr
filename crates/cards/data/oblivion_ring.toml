@@ -1,8 +1,11 @@
 # When this enchantment enters, exile another target nonland permanent.
 # When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.
 name = "Oblivion Ring"
+otags = ["banish", "leaves-trigger-self", "old-banish-templating", "removal-nonland", "spot-removal"]
+set = "mm2"
+id = "bd9b9772-f5f9-4c6b-913e-7193bea5d0a7"
+default_print = "bff31eba-8ab3-403e-8d82-37a18b279bec"
 oracle = "When this enchantment enters, exile another target nonland permanent.\nWhen this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control."
-set = "lrw"
 
 [cost]
 generic = 2

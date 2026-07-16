@@ -1,7 +1,10 @@
 # Sacrifice this enchantment: Destroy target artifact or enchantment.
 name = "Seal of Cleansing"
+otags = ["activated-ability", "cycle-nem-seal", "disenchant-naturalize", "removal-destroy", "sacrifice-self", "spot-removal"]
+set = "mkc"
+id = "a75dbe70-7e3e-446f-9a76-9fbb414f2e7c"
+default_print = "22a6673b-1528-4e0f-b316-bd482c7ed8aa"
 oracle = "Sacrifice this enchantment: Destroy target artifact or enchantment."
-set = "nem"
 
 [cost]
 generic = 1
