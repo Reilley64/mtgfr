@@ -26,8 +26,8 @@ mod tests {
     }
 
     /// `test_app()`, with `settings` in place of the plain test defaults — for the handful of
-    /// tests that exercise deploy-flag-dependent behavior (cookie `Secure`/`Domain`, the admin
-    /// token) rather than the happy-path flows every other test in this module covers.
+    /// tests that exercise deploy-flag-dependent behavior (cookie `Secure`/`Domain`) rather than
+    /// the happy-path flows every other test in this module covers.
     async fn test_app_with_settings(settings: Settings) -> axum::Router {
         let db = db::connect("sqlite::memory:").await.expect("sqlite");
         app(AppState::new(db, Arc::new(settings)))
@@ -242,65 +242,6 @@ mod tests {
             session_set_cookie.contains("Domain=example.com"),
             "the session cookie is shared across subdomains: {session_set_cookie}"
         );
-    }
-
-    /// Deploy PRD: once `admin_token` is configured, `/health/drain` rejects requests without a
-    /// matching credential and accepts either `Authorization: Bearer` or `X-Admin-Token`.
-    #[tokio::test]
-    async fn health_drain_requires_the_configured_admin_token_once_set() {
-        let settings = Settings {
-            admin_token: "topsecret".to_string(),
-            ..settings::for_test()
-        };
-        let router = test_app_with_settings(settings).await;
-
-        let no_credential = router
-            .clone()
-            .oneshot(get("/health/drain", ""))
-            .await
-            .unwrap();
-        assert_eq!(no_credential.status(), StatusCode::UNAUTHORIZED);
-
-        let wrong_bearer = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("GET")
-                    .uri("/health/drain")
-                    .header("authorization", "Bearer nope")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(wrong_bearer.status(), StatusCode::UNAUTHORIZED);
-
-        let right_bearer = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("GET")
-                    .uri("/health/drain")
-                    .header("authorization", "Bearer topsecret")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(right_bearer.status(), StatusCode::OK);
-
-        let right_plain_header = router
-            .oneshot(
-                Request::builder()
-                    .method("GET")
-                    .uri("/health/drain")
-                    .header("x-admin-token", "topsecret")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(right_plain_header.status(), StatusCode::OK);
     }
 
     /// Deploy PRD §Drain: a draining instance still serves games it already owns (stream/intent),

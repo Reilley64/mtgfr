@@ -1,5 +1,5 @@
 //! `/health/live` + `/health/ready` stay 200 while draining (owned tables keep traffic).
-//! `/health/drain` reports `{active_tables, draining}` for observation (SIGTERM sets draining).
+//! `/health/drain` reports `{active_tables, draining}` (SIGTERM sets draining).
 
 use std::sync::atomic::Ordering;
 
@@ -8,7 +8,6 @@ use axum::extract::State;
 use serde::Serialize;
 
 use crate::AppState;
-use crate::admin::AdminAuth;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LiveStatus {
@@ -38,7 +37,7 @@ pub(crate) fn drain_status(state: &AppState) -> DrainStatus {
     }
 }
 
-pub async fn drain(_auth: AdminAuth, State(state): State<AppState>) -> Json<DrainStatus> {
+pub async fn drain(State(state): State<AppState>) -> Json<DrainStatus> {
     Json(drain_status(&state))
 }
 
@@ -69,7 +68,7 @@ mod tests {
     #[tokio::test]
     async fn drain_status_reports_zero_active_tables_for_a_fresh_registry() {
         let state = test_state().await;
-        let Json(status) = drain(crate::admin::AdminAuth, State(state)).await;
+        let Json(status) = drain(State(state)).await;
         assert_eq!(status.active_tables, 0);
         assert!(!status.draining);
     }

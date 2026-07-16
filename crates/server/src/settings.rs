@@ -5,7 +5,7 @@ use axum::http::HeaderValue;
 use serde::Deserialize;
 
 /// Runtime settings. Env mapping: `HOST`, `PORT`, `DATABASE_URL`, `INSTANCE_ID`, `DRAIN`,
-/// `COOKIE_SECURE`, `COOKIE_DOMAIN`, `CORS_ORIGIN`, `ADMIN_TOKEN`, `VERSION`, `POD_DNS`.
+/// `COOKIE_SECURE`, `COOKIE_DOMAIN`, `CORS_ORIGIN`, `VERSION`, `POD_DNS`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
     /// Default `127.0.0.1`; prod `0.0.0.0`.
@@ -30,8 +30,6 @@ pub struct Settings {
     pub cors_origin: String,
     /// Surfaced on `/health/live`. Default: crate version.
     pub version: String,
-    /// Guards `/health/drain`. Empty = open (NetworkPolicy still applies).
-    pub admin_token: String,
 }
 
 impl Settings {
@@ -50,7 +48,6 @@ impl Settings {
             .set_default("cookie_domain", "")?
             .set_default("cors_origin", "")?
             .set_default("version", env!("CARGO_PKG_VERSION"))?
-            .set_default("admin_token", "")?
             .add_source(config::File::with_name(config_path).required(false))
             .add_source(config::Environment::default().separator("__"))
             .build()?
@@ -88,7 +85,6 @@ pub(crate) fn for_test() -> Settings {
         cookie_domain: String::new(),
         cors_origin: String::new(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        admin_token: String::new(),
     }
 }
 
@@ -149,7 +145,6 @@ mod tests {
         assert_eq!(settings.cookie_domain, "");
         assert_eq!(settings.cors_origin, "");
         assert_eq!(settings.version, env!("CARGO_PKG_VERSION"));
-        assert_eq!(settings.admin_token, "");
         assert_eq!(settings.listen_addr(), "127.0.0.1:8080");
 
         if let Some(v) = saved {

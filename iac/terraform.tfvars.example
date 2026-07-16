@@ -31,9 +31,6 @@ mtgfr_db_password = "e5db11cd56bb69063d88f6434463198837d33f9cadd5d8fb70f20ccbd2a
 # Reserved — session signing if added later; leave empty until the server consumes it.
 auth_secret = ""
 
-# Bearer token for GET /health/drain (empty = unauthenticated, matching the server's default).
-admin_token = ""
-
 # Pin cloudflared to an explicit release — never "latest". Check
 # https://github.com/cloudflare/cloudflared/releases for the current stable tag.
 cloudflared_image = "cloudflare/cloudflared:2026.6.0"

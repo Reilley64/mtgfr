@@ -147,13 +147,6 @@ variable "auth_secret" {
   default     = ""
 }
 
-variable "admin_token" {
-  description = "Bearer token guarding GET /health/drain. Defense in depth on top of the NetworkPolicy that already keeps the route cluster-internal; matches the server's admin_token Settings default so an unset token behaves the same on both sides. Empty leaves it unauthenticated."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "log_level" {
   description = "RUST_LOG value for all API instances."
   type        = string

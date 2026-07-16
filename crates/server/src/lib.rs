@@ -30,7 +30,6 @@ use serde::Deserialize;
 use utoipa::OpenApi;
 
 mod action_log;
-pub mod admin;
 pub mod auth;
 pub mod catalog_search;
 pub mod db;

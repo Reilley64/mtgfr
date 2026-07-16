@@ -45,7 +45,6 @@ resource "kubernetes_manifest" "edh_application" {
             { name = "corsOrigin", value = var.cors_origin },
             { name = "logLevel", value = var.log_level },
             { name = "dbSecretName", value = kubernetes_secret_v1.mtgfr_db.metadata[0].name },
-            { name = "adminSecretName", value = kubernetes_secret_v1.mtgfr_admin.metadata[0].name },
           ]
         }
       }
@@ -72,6 +71,5 @@ resource "kubernetes_manifest" "edh_application" {
     kubernetes_job_v1.postgres_create_web_db,
     kubernetes_job_v1.edh_web_migrate,
     kubernetes_secret_v1.mtgfr_db,
-    kubernetes_secret_v1.mtgfr_admin,
   ]
 }

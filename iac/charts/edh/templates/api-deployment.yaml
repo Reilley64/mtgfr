@@ -64,11 +64,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.dbSecretName }}
                   key: DATABASE_URL
-            - name: ADMIN_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.adminSecretName }}
-                  key: ADMIN_TOKEN
           livenessProbe:
             httpGet:
               path: /health/live

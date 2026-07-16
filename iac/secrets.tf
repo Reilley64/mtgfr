@@ -35,22 +35,6 @@ resource "kubernetes_secret_v1" "mtgfr_auth" {
   type = "Opaque"
 }
 
-# Shared secret for GET /health/drain (`ADMIN_TOKEN`). Empty = unauthenticated (matches server default).
-resource "kubernetes_secret_v1" "mtgfr_admin" {
-  wait_for_service_account_token = false
-
-  metadata {
-    name      = "mtgfr-admin"
-    namespace = local.namespace
-  }
-
-  data = {
-    ADMIN_TOKEN = var.admin_token
-  }
-
-  type = "Opaque"
-}
-
 # Cloudflare Tunnel credentials — the token cloudflared authenticates with. Generated from the
 # tunnel resources in tunnel.tf; stored here so all Secret objects have one home.
 resource "kubernetes_secret_v1" "cloudflared_token" {

@@ -376,7 +376,6 @@ No secrets in the TOML file — production credentials come only from Terraform-
 | `cookie_secure` | `COOKIE_SECURE` | `true` |
 | `cookie_domain` | `COOKIE_DOMAIN` | empty (host-only session cookie on edh) |
 | `cors_origin` | `CORS_ORIGIN` | empty (browser is same-origin via BFF) |
-| `admin_token` | `ADMIN_TOKEN` | shared secret guarding `/health/drain`; empty leaves it unauthenticated behind the NetworkPolicy |
 | `version` | `VERSION` | image release tag |
 | `pod_dns` | `POD_DNS` | Downward API + headless DNS; returned by seed |
 
