@@ -2,6 +2,8 @@
 # that permanent instead.
 # {T}: Add X mana of any one color, where X is this creature's power.
 name = "Kami of Whispered Hopes"
+id = "f122624f-f30d-444e-a62a-939829241045"
+default_print = "0be4e5f6-a1fc-4a91-aafe-f963878cd1b3"
 otags = ["activated-ability", "adds-multiple-mana", "counter-increaser", "mana-dork", "power-matters-self", "pp-counters-matter"]
 oracle = "If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on that permanent instead.\n{T}: Add X mana of any one color, where X is this creature's power."
 set = "soc"

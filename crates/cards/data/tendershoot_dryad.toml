@@ -1,4 +1,6 @@
 name = "Tendershoot Dryad"
+id = "a336c10a-b5bd-47ff-ba2d-31e27af1e15a"
+default_print = "def3571c-01dd-4eee-8f60-0ac4d1928d33"
 otags = ["anthem", "per-player", "power-boost-to-all", "repeatable-creature-tokens", "toughness-boost-to-all", "triggered-ability", "typal-saproling"]
 oracle = "Ascend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nAt the beginning of each upkeep, create a 1/1 green Saproling creature token.\nSaprolings you control get +2/+2 as long as you have the city's blessing."
 set = "soc"

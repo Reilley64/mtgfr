@@ -2,6 +2,8 @@
 # from a graveyard, you may copy this spell and may choose a new target for the copy.
 # Flashback {4}{W} (You may cast this card from your graveyard for its flashback cost. Then exile it.)
 name = "Sevinne's Reclamation"
+id = "1b9f9f5b-8712-4f00-90cb-1b7b9970eccc"
+default_print = "8deab1ef-4219-4767-a3c4-b61250d0ebe0"
 otags = ["castable-from-graveyard", "copy-self", "cycle-c19-signature-spell", "exile-self", "mana-value-matters", "more-expensive-than-mv", "multi-land-ramp", "namesake-spell", "reanimate-permanent", "single-target-instant-sorcery", "synergy-graveyard-cast"]
 oracle = "Return target permanent card with mana value 3 or less from your graveyard to the battlefield. If this spell was cast from a graveyard, you may copy this spell and may choose a new target for the copy.\nFlashback {4}{W} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
 set = "soc"

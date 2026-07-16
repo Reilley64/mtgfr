@@ -11,6 +11,8 @@
 #   ceases to exist on resolve, so it's functionally identical to a copy here — unobservable for the
 #   pool. (The prepared copy also doesn't fire cast-spell/magecraft triggers; no prepare card cares.)
 name = "Kirol, History Buff"
+id = "df1c0d06-2109-4297-9271-8a003fc892bc"
+default_print = "676ba521-66e4-42cf-a315-70d03cb7334e"
 otags = ["alliteration", "cycle-sos-student", "gives-castable-from-exile", "gives-pp-counters", "gives-trample", "leaves-graveyard-trigger", "mill-self", "repeatable-crime", "repeatable-pp-counters", "single-target-instant-sorcery"]
 oracle = "Whenever one or more cards leave your graveyard, Kirol becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Mill a card. Put two +1/+1 counters on target creature. It gains trample until end of turn."
 set = "sos"

@@ -2,6 +2,8 @@
 # Whenever a creature you control deals combat damage to a player, you gain 1 life.
 # At the beginning of your end step, each opponent loses X life, where X is the amount of life you gained this turn.
 name = "Defiling Daemogoth"
+id = "d3f7095a-b287-4858-9d08-242cf18e87cb"
+default_print = "2cde79eb-91c3-4a42-a2d3-e733e3b56846"
 otags = ["alliteration", "evasion", "group-slug", "lifegain-to-damage", "opponent-loses-life", "repeatable-lifegain", "saboteur", "triggered-ability", "unnoted-tracked-information"]
 oracle = "Menace\nWhenever a creature you control deals combat damage to a player, you gain 1 life.\nAt the beginning of your end step, each opponent loses X life, where X is the amount of life you gained this turn."
 set = "soc"

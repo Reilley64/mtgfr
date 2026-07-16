@@ -6,8 +6,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use tokio::net::TcpListener;
 use toasty_cli::{Config, ToastyCli};
+use tokio::net::TcpListener;
 
 #[derive(Parser)]
 #[command(name = "mtgfr", about = "mtgfr server CLI")]
@@ -137,10 +137,8 @@ async fn run_static() {
     let root = static_root();
     let index = root.join("index.html");
     // `.fallback` keeps client routes at 200 (unlike `.not_found_service`).
-    let serve_dir =
-        tower_http::services::ServeDir::new(&root).fallback(tower_http::services::ServeFile::new(
-            &index,
-        ));
+    let serve_dir = tower_http::services::ServeDir::new(&root)
+        .fallback(tower_http::services::ServeFile::new(&index));
 
     let app = axum::Router::new()
         .route("/health/live", axum::routing::get(static_health_live))

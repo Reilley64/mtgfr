@@ -3,6 +3,8 @@
 # Vernal Fen (soc): Land — Swamp Forest. "({T}: Add {B} or {G}.) This land enters tapped unless
 # you control two or more basic lands."
 name = "Vernal Fen"
+id = "40544d12-0391-4a61-af95-9b8ec01ed8fc"
+default_print = "0466cf57-bb3e-4359-8fe8-d6cc1288fdc6"
 otags = ["activated-ability", "cycle-tangoland", "lands-matter", "nonbasic-basic-land-type", "synergy-basic"]
 oracle = "({T}: Add {B} or {G}.)\nThis land enters tapped unless you control two or more basic lands."
 set = "soc"

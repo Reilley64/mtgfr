@@ -3,6 +3,8 @@
 # 1 life."
 # Pay 10 life: Untap all lands you control. Activate only once each turn.
 name = "Beledros Witherbloom"
+id = "90194ff1-db61-463f-b5a3-15cd85311d0e"
+default_print = "144c2886-3d37-4a8a-8e37-99ccff66599e"
 otags = ["activated-ability", "cycle-stx-dragon-founder", "evasion", "extra-untap", "full-refund", "life-payment", "per-player", "ramp", "repeatable-creature-tokens", "repeatable-lifegain", "triggered-ability", "untapper-land"]
 oracle = "Flying\nAt the beginning of each upkeep, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\"\nPay 10 life: Untap all lands you control. Activate only once each turn."
 set = "soc"

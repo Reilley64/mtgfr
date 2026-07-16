@@ -1,5 +1,7 @@
 # (no rules text — vanilla creature; printed card is "Grizzly Bears")
 name = "Grizzly Bear"
+id = "14c8f55d-d177-4c25-a931-ebeb9e6062a0"
+default_print = "409f9b88-f03e-40b6-9883-68c14c37c0de"
 otags = ["magic-term-name", "meme", "real-life-animal-name", "type-errata-summon-creature"]
 set = "10e"
 subtypes = ["Bear"]

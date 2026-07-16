@@ -1,6 +1,8 @@
 # The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a
 # permanent card, they put it onto the battlefield.
 name = "Chaos Warp"
+id = "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8"
+default_print = "57f61970-382e-415c-868b-6bbb6c78825d"
 otags = ["color-break", "cost-ignorer", "drawback", "polymorph", "removal-permanent", "removal-tuck", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
 oracle = "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield."
 set = "msc"

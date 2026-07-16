@@ -4,6 +4,8 @@
 # • Return target nonland permanent to its owner's hand.
 # Prismari Charm {U}{R} — a modal "choose one" instant (CR 700.2).
 name = "Prismari Charm"
+id = "c3c25a2c-f71c-4cb7-9117-0bcda9248bfd"
+default_print = "8f6c2a5e-fe13-407c-aadd-c9caf2884ff1"
 otags = ["burn-any", "cantrip", "cycle-sos-charm", "hand-neutral", "multi-removal", "multiple-targets", "removal-bounce", "removal-nonland", "single-target-instant-sorcery", "spot-removal", "surveil"]
 oracle = "Choose one —\n• Surveil 2, then draw a card.\n• Prismari Charm deals 1 damage to each of one or two targets.\n• Return target nonland permanent to its owner's hand."
 set = "sos"

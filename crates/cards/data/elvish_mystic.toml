@@ -1,6 +1,8 @@
 # {T}: Add {G}.
 # Elvish Mystic: "{T}: Add {G}." A {G} 1/1 Elf Druid mana dork.
 name = "Elvish Mystic"
+id = "3f3b2c10-21f8-4e13-be83-4ef3fa36e123"
+default_print = "eb654a76-62ee-4fd8-83d4-cb912211a9a0"
 otags = ["activated-ability", "mana-dork"]
 oracle = "{T}: Add {G}."
 set = "soc"

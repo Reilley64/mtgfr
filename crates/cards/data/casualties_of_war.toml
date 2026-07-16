@@ -5,6 +5,8 @@
 # • Destroy target land.
 # • Destroy target planeswalker.
 name = "Casualties of War"
+id = "5c6c8fe7-3520-423b-a224-1c0af516871a"
+default_print = "2467f50a-bf45-4046-9086-1bfcf3438af4"
 otags = ["cycle-war-r-two-color", "modal", "multi-removal", "multiple-targets", "removal-artifact", "removal-creature", "removal-destroy", "removal-enchantment", "removal-land", "removal-planeswalker", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Choose one or more —\n• Destroy target artifact.\n• Destroy target creature.\n• Destroy target enchantment.\n• Destroy target land.\n• Destroy target planeswalker."
 set = "soc"

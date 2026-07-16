@@ -3,6 +3,8 @@
 # At the beginning of your upkeep, if this creature has one or more +1/+1 counters on it, you may remove a +1/+1 counter
 # from it. If you do, draw a card.
 name = "Ingenious Prodigy"
+id = "6f498ff7-38c9-44ea-9cb5-994a003825ee"
+default_print = "8d242dc2-5117-4bd6-a0c9-813d36d01e11"
 otags = ["counter-fuel-pp", "draw-engine", "gains-pp-counters", "intervening-if-clause", "repeatable-pure-draw", "skulk"]
 oracle = "Skulk (This creature can't be blocked by creatures with greater power.)\nThis creature enters with X +1/+1 counters on it.\nAt the beginning of your upkeep, if this creature has one or more +1/+1 counters on it, you may remove a +1/+1 counter from it. If you do, draw a card."
 set = "soc"

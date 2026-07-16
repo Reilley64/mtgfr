@@ -3,6 +3,8 @@
 # • You gain 5 life.
 # • Destroy target nonland permanent with mana value 2 or less.
 name = "Witherbloom Charm"
+id = "ee1db746-f5c1-4dce-82eb-24b273cc9507"
+default_print = "254437f7-7a8a-4b11-9cea-e8e7ea23c59e"
 otags = ["cycle-sos-charm", "hand-positive", "lifegain", "mana-value-matters", "plunder", "removal-destroy", "removal-nonland", "sacrifice-outlet-permanent", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Choose one —\n• You may sacrifice a permanent. If you do, draw two cards.\n• You gain 5 life.\n• Destroy target nonland permanent with mana value 2 or less."
 set = "sos"

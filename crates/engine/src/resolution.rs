@@ -87,6 +87,8 @@ mod tests {
 
     const TEST_LAND: CardDef = CardDef {
         name: "Test Land",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Land {
             produces: None,

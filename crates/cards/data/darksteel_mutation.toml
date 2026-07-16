@@ -2,6 +2,8 @@
 # Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has indestructible, and it
 # loses all other abilities, card types, and creature types.
 name = "Darksteel Mutation"
+id = "05a4f8ff-49da-42af-add5-6248c4b0644b"
+default_print = "6e776a1e-266d-4b30-83da-be4721a55ed2"
 otags = ["gives-indestructible", "humble", "removal-creature", "spot-removal", "type-change"]
 oracle = "Enchant creature\nEnchanted creature is an Insect artifact creature with base power and toughness 0/1 and has indestructible, and it loses all other abilities, card types, and creature types."
 set = "soc"

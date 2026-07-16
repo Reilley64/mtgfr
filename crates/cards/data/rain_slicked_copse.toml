@@ -4,6 +4,8 @@
 # Rain-Slicked Copse (SOC): Land — Forest Island. "{T}: Add {G} or {U}. This land enters
 # tapped. Cycling {2}."
 name = "Rain-Slicked Copse"
+id = "633a41f0-3889-49a0-b2fc-9baf59f4ddc2"
+default_print = "3f967dee-1c2e-423a-823b-9fc74e8053bc"
 otags = ["activate-from-hand", "cycle-dual-cycling-land", "hand-neutral", "nonbasic-basic-land-type", "pure-draw", "utility-land"]
 oracle = "({T}: Add {G} or {U}.)\nThis land enters tapped.\nCycling {2} ({2}, Discard this card: Draw a card.)"
 set = "soc"

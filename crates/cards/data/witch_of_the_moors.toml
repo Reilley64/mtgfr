@@ -2,6 +2,8 @@
 # At the beginning of your end step, if you gained life this turn, each opponent sacrifices a creature of their choice
 # and you return up to one target creature card from your graveyard to your hand.
 name = "Witch of the Moors"
+id = "7ad97dd9-1342-4ed4-bea9-1bb21d748e04"
+default_print = "d9367aa0-2da2-4ed5-b52a-c52e40a00adf"
 otags = ["infusion", "intervening-if-clause", "inverted-effects", "multi-removal", "regrowth-creature", "removal-creature", "removal-sacrifice", "repeatable-card-advantage", "repeatable-removal", "spot-removal"]
 oracle = "Deathtouch\nAt the beginning of your end step, if you gained life this turn, each opponent sacrifices a creature of their choice and you return up to one target creature card from your graveyard to your hand."
 set = "soc"

@@ -1,5 +1,7 @@
 # Whenever an opponent casts their second spell each turn, you create a Treasure token.
 name = "Monologue Tax"
+id = "ace8e88e-ca6a-4bdf-8c6d-1b914fc00259"
+default_print = "ee68d390-11cb-4617-a9ee-6e8cf7ff0e55"
 otags = ["cast-trigger-other", "ramp", "repeatable-treasures", "toll"]
 oracle = "Whenever an opponent casts their second spell each turn, you create a Treasure token."
 set = "msc"

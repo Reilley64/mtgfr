@@ -5,7 +5,6 @@ import * as Effect from "effect/Effect";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import type { ModifierSourceView } from "~/api/generated";
-import { client } from "~/effect/client";
 import { cn } from "~/lib/cn";
 import {
   type InspectFace,
@@ -16,16 +15,15 @@ import {
   pushInspectSource,
   shownName,
 } from "~/lib/inspect";
+import { lookupCardsByIds } from "~/lib/lookupCards";
 import { splitOracleText } from "~/lib/oracleText";
-import { imageUrlByName } from "~/lib/scryfall";
+import { imageUrlByPrint } from "~/lib/scryfall";
 import { Button } from "~/ui";
 
-const cardTextFamily = Atom.family((name: string) =>
-  Atom.make(
-    name === ""
-      ? Effect.succeed(null)
-      : client.lookupCards({ params: { names: [name] } }).pipe(Effect.map((cards) => cards[0] ?? null)),
-  ),
+// Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
+// the fetch rather than looking anything up by name; there is no name-based lookup anymore.
+const cardTextFamily = Atom.family((id: string) =>
+  Atom.make(id === "" ? Effect.succeed(null) : lookupCardsByIds([id]).pipe(Effect.map((cards) => cards[0] ?? null))),
 );
 
 const W = 320;
@@ -89,7 +87,10 @@ function TextPanel(props: {
   );
 }
 
-function ModifierLedger(props: { modifiers: ModifierSourceView[]; onSource: (name: string) => void }) {
+function ModifierLedger(props: {
+  modifiers: ModifierSourceView[];
+  onSource: (source: { name: string; cardId?: string }) => void;
+}) {
   return (
     <For each={props.modifiers}>
       {(group) => (
@@ -97,7 +98,12 @@ function ModifierLedger(props: { modifiers: ModifierSourceView[]; onSource: (nam
           <button
             type="button"
             class="cursor-pointer underline decoration-white/40 underline-offset-2 hover:decoration-white"
-            onClick={() => props.onSource(group.source_name)}
+            onClick={() =>
+              props.onSource({
+                name: group.source_name,
+                cardId: group.source_card_id || undefined,
+              })
+            }
           >
             {group.source_name}
           </button>
@@ -108,9 +114,11 @@ function ModifierLedger(props: { modifiers: ModifierSourceView[]; onSource: (nam
   );
 }
 
-/** Deck-builder / list hover: large face follows the cursor. */
-export function HoverPreview(props: { name: string | null; x: number; y: number }) {
-  const [card] = useAtomResource(() => cardTextFamily(props.name ?? ""));
+/** Deck-builder / list hover: large face follows the cursor. `id` is the Card (oracle) id;
+ * `print` (a Printing UUID) picks the art when known, else falls back to the catalog's
+ * `default_print` once the oracle-text fetch resolves it. */
+export function HoverPreview(props: { id: string | null; print?: string | null; x: number; y: number }) {
+  const [card] = useAtomResource(() => cardTextFamily(props.id ?? ""));
   const oracle = () => card()?.oracle;
   const approximates = () => card()?.approximates;
   const hasText = () => !!(oracle() || approximates());
@@ -118,9 +126,10 @@ export function HoverPreview(props: { name: string | null; x: number; y: number 
   const flipped = () => props.x + GAP + width() > window.innerWidth;
   const left = () => (flipped() ? Math.max(GAP, props.x - GAP - width()) : props.x + GAP);
   const top = () => Math.min(Math.max(GAP, props.y - H / 2), window.innerHeight - H - GAP);
+  const print = () => props.print || card()?.default_print || "";
   return (
-    <Show when={props.name}>
-      {(name) => (
+    <Show when={props.id}>
+      {(_id) => (
         <div
           style={{ "--x": `${left()}px`, "--y": `${top()}px` }}
           class={cn(
@@ -129,8 +138,8 @@ export function HoverPreview(props: { name: string | null; x: number; y: number 
           )}
         >
           <img
-            src={imageUrlByName(name(), "large")}
-            alt={name()}
+            src={imageUrlByPrint(print())}
+            alt={card()?.name ?? ""}
             style={{ "--w": `${W}px` }}
             class="w-(--w) flex-none rounded-[14px] shadow-table"
           />
@@ -155,7 +164,7 @@ export function InspectDock(props: {
     if (stack.length === 0) return null;
     return stack[stack.length - 1] ?? null;
   });
-  const [card] = useAtomResource(() => cardTextFamily(current()?.name ?? ""));
+  const [card] = useAtomResource(() => cardTextFamily(current()?.cardId ?? ""));
   const back = () => card()?.back ?? null;
   const hasBack = () => !!back()?.name;
   const [face, setFace] = createSignal<InspectFace>("front");
@@ -203,9 +212,10 @@ export function InspectDock(props: {
   });
   const canGoBack = () => history().length > 1;
   const goBack = () => setHistory(popInspectHistory);
-  const openSource = (name: string) => setHistory((h) => pushInspectSource(h, name));
+  const openSource = (source: { name: string; cardId?: string }) => setHistory((h) => pushInspectSource(h, source));
   const hasOracle = () => !!(oracle() || approximates());
   const hasMods = () => modifiers().length > 0;
+  const artPrint = () => current()?.print || card()?.default_print || "";
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape dismisses via showModal() → onClose.
@@ -270,7 +280,7 @@ export function InspectDock(props: {
               }
             >
               <img
-                src={imageUrlByName(displayName(), "large")}
+                src={imageUrlByPrint(artPrint(), "large", face())}
                 alt={displayName()}
                 style={{ "--w": `${W}px` }}
                 class="w-(--w) flex-none rounded-[14px] shadow-table"

@@ -3,6 +3,8 @@
 # Pest Infestation {X}{X}{G} — "Destroy up to X target artifacts and/or enchantments. Create twice
 # X 1/1 black and green Pest creature tokens with 'When this token dies, you gain 1 life.'"
 name = "Pest Infestation"
+id = "1b704798-0c69-4c18-ac7e-42933ce90028"
+default_print = "c9b8626d-d3d8-4460-9adf-112f48f173f6"
 otags = ["disenchant-naturalize", "lifegain", "multi-removal", "multiple-bodies", "multiple-targets", "out-of-color-token", "removal-destroy", "single-target-instant-sorcery", "spot-removal", "triggered-ability"]
 oracle = "Destroy up to X target artifacts and/or enchantments. Create twice X 1/1 black and green Pest creature tokens with \"When this token dies, you gain 1 life.\""
 set = "soc"

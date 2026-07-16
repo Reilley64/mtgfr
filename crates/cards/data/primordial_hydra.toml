@@ -6,6 +6,8 @@
 #    At the beginning of your upkeep, double the number of +1/+1 counters on this creature.
 #    This creature has trample as long as it has ten or more +1/+1 counters on it."
 name = "Primordial Hydra"
+id = "1c36ed3a-c806-47e5-83f9-e44999c67fe5"
+default_print = "29515c55-3b48-4c1d-a10b-b27fd1eb7a93"
 otags = ["counter-doubler", "exponential", "gains-pp-counters", "gains-trample", "pp-counters-matter", "repeatable-pp-counters", "triggered-ability"]
 oracle = "This creature enters with X +1/+1 counters on it.\nAt the beginning of your upkeep, double the number of +1/+1 counters on this creature.\nThis creature has trample as long as it has ten or more +1/+1 counters on it."
 set = "soc"

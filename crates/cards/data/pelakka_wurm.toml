@@ -2,6 +2,8 @@
 # When this creature enters, you gain 7 life.
 # When this creature dies, draw a card.
 name = "Pelakka Wurm"
+id = "d36075c2-de66-4202-9217-b1102a2bc14b"
+default_print = "304c635c-de4d-46ee-8ab0-e5c4d55b61b3"
 otags = ["death-trigger-self", "lifegain", "pure-draw"]
 oracle = "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nWhen this creature enters, you gain 7 life.\nWhen this creature dies, draw a card."
 set = "fdn"

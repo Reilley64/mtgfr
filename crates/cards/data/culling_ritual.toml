@@ -1,5 +1,7 @@
 # Destroy each nonland permanent with mana value 2 or less. Add {B} or {G} for each permanent destroyed this way.
 name = "Culling Ritual"
+id = "15e5136e-ed15-49a8-b027-e09436673fb4"
+default_print = "abaad8c5-763d-4276-9b19-623cd19f59b9"
 otags = ["adds-multiple-mana", "full-refund", "mana-value-matters", "removal-destroy", "removal-nonland", "ritual", "sweeper"]
 oracle = "Destroy each nonland permanent with mana value 2 or less. Add {B} or {G} for each permanent destroyed this way."
 set = "soc"

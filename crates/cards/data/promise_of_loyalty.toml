@@ -3,6 +3,8 @@
 # ponytail: the "or planeswalkers you control" clause is unobservable while every attack target is
 # a player (planeswalker defenders unmodeled).
 name = "Promise of Loyalty"
+id = "e1d294e8-67b1-4a4a-86b8-f98f28a327d9"
+default_print = "dcca54de-3b2e-4801-bb66-3809382d6f01"
 otags = ["fun-ruling", "functional-reminder-counter", "prevent-attack", "removal-creature", "removal-sacrifice", "sweeper", "synergy-planeswalker", "unique-counter"]
 oracle = "Each player puts a vow counter on a creature they control and sacrifices the rest. Each of those creatures can't attack you or planeswalkers you control for as long as it has a vow counter on it."
 set = "msc"

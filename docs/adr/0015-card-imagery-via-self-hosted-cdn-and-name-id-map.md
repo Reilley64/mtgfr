@@ -1,12 +1,12 @@
 # 0015 — Card imagery via self-hosted CDN
 
-Status: **Accepted**; backfill tooling superseded by [0017](0017-deck-builder-search-over-projected-pool.md).
+Status: **Accepted**; identity map superseded by [0031](0031-card-id-and-printing-art-preference.md).
 
 ## Decision
 
-- Optional art CDN (bake `VITE_CARD_CDN` at web image build) serving large webp. `client/src/lib/card-ids.json` maps name → Scryfall id.
-- Single `imageUrlByName()` used by builder, hand, board. Unmapped names, or builds without a CDN, fall back to Scryfall `named`.
+- Optional art CDN (bake `VITE_CARD_CDN` at web image build) serving large webp by Scryfall **Printing** UUID.
+- `imageUrlByPrint()` used by builder, hand, board. Missing CDN art is a broken image (no Scryfall image-host fallback).
 
 ## Consequences
 
-- Regenerate `card-ids.json` when pool changes (`tooling/backfill-card-meta.mjs` per 0017).
+- Print UUIDs live on deck lines and ObjectViews (ADR 0031). Pool cards bake `default_print`; precons stamp explicit SoC prints.

@@ -1,5 +1,7 @@
 # Lightning Bolt deals 3 damage to any target.
 name = "Lightning Bolt"
+id = "4457ed35-7c10-48c8-9776-456485fdf070"
+default_print = "7673784e-db4b-43a1-8d55-1bb9fc1e284f"
 otags = ["cycle-lea-boon", "meme", "single-target-instant-sorcery", "spot-removal", "burn-any"]
 oracle = "Lightning Bolt deals 3 damage to any target."
 set = "msc"

@@ -3,6 +3,8 @@
 # creature, except it's a Spirit in addition to its other types and it has "When this token leaves the battlefield,
 # return the exiled card to its owner's graveyard."
 name = "Hofri Ghostforge"
+id = "663d451b-f848-41cc-b541-0c6fe37d3d54"
+default_print = "bc03cdb6-5ad0-452d-a698-bd19f5ebac83"
 otags = ["anthem", "cheat-death", "copy-creature", "cycle-stx-m-college-spell", "death-trigger", "gives-haste", "gives-trample", "keyword-anthem", "power-boost-to-all", "repeatable-creature-tokens", "toughness-boost-to-all", "typal-spirit"]
 oracle = "Spirits you control get +1/+1 and have trample and haste.\nWhenever another nontoken creature you control dies, exile it. If you do, create a token that's a copy of that creature, except it's a Spirit in addition to its other types and it has \"When this token leaves the battlefield, return the exiled card to its owner's graveyard.\""
 set = "soc"

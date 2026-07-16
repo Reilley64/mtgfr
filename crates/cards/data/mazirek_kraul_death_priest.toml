@@ -5,6 +5,8 @@
 #    Whenever a player sacrifices another permanent, put a +1/+1 counter on each creature you
 #    control."
 name = "Mazirek, Kraul Death Priest"
+id = "e0420f2c-d578-421e-ae75-e7dc5f70661a"
+default_print = "940ae3c2-7ac2-412b-afd0-c8b0099bc3aa"
 otags = ["cycle-2xm-r-two-color", "cycle-c15-alt-commander", "evasion", "gains-pp-counters", "gives-pp-counters-to-all", "hate-sacrifice", "repeatable-pp-counters", "synergy-sacrifice", "triggered-ability"]
 oracle = "Flying\nWhenever a player sacrifices another permanent, put a +1/+1 counter on each creature you control."
 set = "soc"

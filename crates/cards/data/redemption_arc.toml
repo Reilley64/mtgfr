@@ -6,6 +6,8 @@
 #   "Enchant creature. Enchanted creature has indestructible and is goaded.
 #   {1}{W}: Exile enchanted creature."
 name = "Redemption Arc"
+id = "c22e5fc6-9b4e-4197-b472-70d168eb4330"
+default_print = "49326de1-d3b0-4f2b-95bc-5f2878e14a89"
 otags = ["activated-ability", "force-attacker", "gives-indestructible", "protects-creature", "removal-creature", "removal-exile", "spot-removal"]
 oracle = "Enchant creature\nEnchanted creature has indestructible and is goaded. (It attacks each combat if able and attacks a player other than you if able.)\n{1}{W}: Exile enchanted creature."
 set = "soc"

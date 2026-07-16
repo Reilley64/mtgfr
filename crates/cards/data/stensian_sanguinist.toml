@@ -5,6 +5,8 @@
 # [Exsanguinate]
 # Each opponent loses X life. You gain life equal to the life lost this way.
 name = "Stensian Sanguinist"
+id = "25877c41-39a4-4cc3-ac4b-8f3dd06d579b"
+default_print = "909a52bc-53f6-4654-9db7-e8f48333d765"
 otags = ["alliteration", "attack-trigger", "attacking-matters", "cycle-soc-guest-lecturer", "delayed-trigger", "drain-life", "gives-castable-from-exile", "gives-deathtouch", "group-slug", "opponent-loses-life", "per-player", "repeatable-crime"]
 oracle = "Whenever you attack, target creature gains deathtouch until end of turn. Whenever that creature deals combat damage to a player this combat, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Each opponent loses X life. You gain life equal to the life lost this way."
 set = "soc"

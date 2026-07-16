@@ -2,6 +2,8 @@
 # Whenever a nontoken creature you control dies, create a 1/1 black and green Pest creature token with "When this token
 # dies, you gain 1 life."
 name = "Blight Mound"
+id = "c4fe854e-8783-492e-bb2e-9f242ada8a5b"
+default_print = "dc060028-e01c-4bc7-8b52-7d0e2a350061"
 otags = ["attacking-matters", "death-trigger", "gives-menace", "keyword-anthem", "out-of-color-token", "power-boost-to-all", "repeatable-creature-tokens", "repeatable-lifegain", "typal-pest"]
 oracle = "Attacking Pests you control get +1/+0 and have menace.\nWhenever a nontoken creature you control dies, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\""
 set = "soc"

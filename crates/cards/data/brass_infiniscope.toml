@@ -2,6 +2,8 @@
 # rounded down.
 # Brass Infiniscope (SOC): {4} Artifact.
 name = "Brass Infiniscope"
+id = "f74d8f53-a239-4641-90f1-bf786d57e253"
+default_print = "7dbab676-0bc4-47a8-9fd2-1f58c6bd71bd"
 otags = ["activated-ability", "adds-multiple-mana", "cast-trigger-you", "delayed-trigger", "draw-engine", "refund", "repeatable-lifegain", "repeatable-pure-draw", "utility-mana-rock", "x-cost-matters"]
 oracle = "{T}: Add {C}{C}. When you next cast a spell with {X} in its mana cost this turn, you draw a card and gain half X life, rounded down."
 set = "soc"

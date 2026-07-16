@@ -3,6 +3,8 @@
 # Turbulent Springs (soc): Land — Island Mountain. "{T}: Add {U} or {R}. This land enters tapped
 # unless your opponents control eight or more lands."
 name = "Turbulent Springs"
+id = "9aef7510-9f06-4939-8cae-f71330d1105e"
+default_print = "a25cb813-aa6d-469c-aa29-61ffa32267f2"
 otags = ["activated-ability", "cycle-soc-octoland", "multiplayer", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped unless your opponents control eight or more lands."
 set = "soc"

@@ -2,6 +2,8 @@
 # Kami of Ancient Law (soc): {1}{W} 2/2 Spirit.
 # "Sacrifice this creature: Destroy target enchantment."
 name = "Kami of Ancient Law"
+id = "e937e0f5-ca35-4dce-9f05-8f2075731628"
+default_print = "4edbce98-bfc1-4c66-bd04-16100d9e22d3"
 otags = ["activated-ability", "martyr", "removal-destroy", "removal-enchantment", "spot-removal"]
 oracle = "Sacrifice this creature: Destroy target enchantment."
 set = "soc"

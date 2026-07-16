@@ -3,6 +3,8 @@
 # Mono-red goad sorcery (Conspiracy: Take the Crown). A staple used here to exercise
 # Effect::UntapTarget/GoadTarget/GainControlUntilEndOfTurn directly at sorcery speed.
 name = "Besmirch"
+id = "fc80380c-7d75-4556-aaf2-bf7b2c757e75"
+default_print = "534c652a-2345-48d5-bd78-33f91ed914b4"
 otags = ["force-attacker", "gives-haste", "single-english-word-name", "single-target-instant-sorcery", "threaten-with-set-s-mechanic", "untapper-creature"]
 oracle = "Until end of turn, gain control of target creature and it gains haste. Untap and goad that creature. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)"
 set = "cn2"

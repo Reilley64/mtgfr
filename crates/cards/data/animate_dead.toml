@@ -9,6 +9,8 @@
 # the creature it reanimates and stays (CR 303.4 — nothing ever detaches it, so the rewrite has
 # no observable effect).
 name = "Animate Dead"
+id = "c0d8fef4-65f4-4769-982d-b397d2b7e977"
+default_print = "cc0c2bab-4392-4e7b-9d14-2901f4ffbae8"
 otags = ["animate-dead-like", "delayed-trigger", "intervening-if-clause", "meme", "reanimate-creature", "reanimate-from-any", "rules-nightmare", "notorious-templating"]
 oracle = "Enchant creature card in a graveyard\nWhen this Aura enters, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with this Aura.\" Return enchanted creature card to the battlefield under your control and attach this Aura to it. When this Aura leaves the battlefield, that creature's controller sacrifices it.\nEnchanted creature gets -1/-0."
 set = "soc"

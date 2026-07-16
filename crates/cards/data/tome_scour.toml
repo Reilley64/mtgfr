@@ -1,5 +1,7 @@
 # Target player mills five cards.
 name = "Tome Scour"
+id = "446a9d7e-9c1a-4e83-8342-2ed5acae2eed"
+default_print = "aed4cfec-5cea-4987-890e-825b2802e9f9"
 otags = ["mill-any", "single-target-instant-sorcery"]
 oracle = "Target player mills five cards."
 set = "m14"

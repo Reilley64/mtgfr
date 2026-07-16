@@ -1,6 +1,8 @@
 # Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature
 # token.
 name = "Rapid Hybridization"
+id = "06692cd9-ac2f-4a32-8fd1-043ba3c0fe71"
+default_print = "ccda5bda-5afd-4548-bd48-12c780bfa68b"
 otags = ["color-break", "donate-token", "hate-regenerate", "out-of-color-token", "removal-creature", "removal-destroy", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
 oracle = "Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature token."
 set = "soc"

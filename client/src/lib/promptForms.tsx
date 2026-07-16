@@ -14,10 +14,11 @@ import { modeAvailable } from "~/lib/modal";
 import { openModalWhenReady } from "~/lib/modalDialog";
 import { chooseTargetIsCardPick } from "~/lib/promptChoice";
 import { cardPickIsSearchable, filterChoiceItems, searchableChoiceItems } from "~/lib/promptForm";
-import { imageUrlByName } from "~/lib/scryfall";
+import { imageUrlByPrint } from "~/lib/scryfall";
 import {
   mayYesNoTitle,
   objectName,
+  objectPrint,
   payCostTitle,
   payEchoTitle,
   payOrCounterTitle,
@@ -135,7 +136,7 @@ const ChooseTargetForm: Component<FormProps> = (props) => {
                       when={it.player != null ? { seat: it.player as number } : null}
                       fallback={
                         <img
-                          src={imageUrlByName(it.label, "normal")}
+                          src={imageUrlByPrint(objectPrint(props.state, it.id))}
                           alt={it.label}
                           draggable={false}
                           width={150}
@@ -161,6 +162,7 @@ const ChooseTargetForm: Component<FormProps> = (props) => {
       }
     >
       <CardPickPrompt
+        print={(id) => objectPrint(props.state, id)}
         title={pc().label}
         hint={hint() ? `From ${hint()}` : undefined}
         submitLabel="Choose"
@@ -184,6 +186,7 @@ const ChooseSpellTargetsForm: Component<FormProps> = (props) => {
         : `Select ${pc().min}–${pc().max} distinct targets`;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={title()}
       hint={hint()}
       submitLabel="Choose targets"
@@ -257,6 +260,7 @@ const PutLandForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"put_land_from_hand">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title="Put a land onto the battlefield?"
       submitLabel="Put onto the battlefield"
       declineLabel="Decline"
@@ -278,6 +282,7 @@ const ChooseExiledForm: Component<FormProps> = (props) => {
   };
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={title()}
       submitLabel="Put into graveyard"
       declineLabel="Decline"
@@ -349,6 +354,7 @@ const ArrangeTopForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"scry" | "surveil">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={pc().kind === "scry" ? `Scry ${pc().items.length}` : `Surveil ${pc().items.length}`}
       hint={`Click cards to keep on top, in that order — the rest go to ${pc().kind === "scry" ? "the bottom of your library" : "your graveyard"}.`}
       submitLabel="Done"
@@ -372,6 +378,7 @@ const SearchLibraryForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"search_library">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title="Search your library"
       submitLabel="Choose"
       declineLabel="Fail to find"
@@ -390,6 +397,7 @@ const SacrificeForm: Component<FormProps> = (props) => {
   const count = () => (keepOne() ? Math.max(0, pc().items.length - 1) : 1);
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={keepOne() ? "Choose permanents to sacrifice (keep one)" : "Choose a permanent to sacrifice"}
       submitLabel="Sacrifice"
       items={pc().items}
@@ -403,6 +411,7 @@ const DiscardForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"discard">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`Discard ${pc().count} card${pc().count === 1 ? "" : "s"}`}
       submitLabel="Discard"
       items={pc().items}
@@ -417,6 +426,7 @@ const SelectFromTopForm: Component<FormProps> = (props) => {
   const upTo = () => pc().up_to;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`Select up to ${upTo()} from the top`}
       hint="Click cards to take — the rest go to the bottom."
       submitLabel="Done"
@@ -516,6 +526,8 @@ export function TargetPickPrompt(props: {
   targets: WireTarget[];
   /** Name an object target; the board joins against `state.objects`. */
   name: (id: number) => string;
+  /** Printing UUID for an object target; empty renders a broken image (ADR 0031). */
+  print: (id: number) => string;
   /** Name a player target; defaults to P{n}. */
   playerName?: (seat: number) => string;
   onPick: (target: WireTarget) => void;
@@ -553,7 +565,7 @@ export function TargetPickPrompt(props: {
                 >
                   {(obj) => (
                     <img
-                      src={imageUrlByName(props.name(obj().id), "normal")}
+                      src={imageUrlByPrint(props.print(obj().id))}
                       alt=""
                       draggable={false}
                       class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"
@@ -655,6 +667,8 @@ export function CardPickPrompt(props: {
   hint?: string;
   submitLabel: string;
   items: ChoiceItem[];
+  /** Printing UUID for an item's art (ADR 0031); omitted or empty renders a broken image. */
+  print?: (id: number) => string;
   count: number | null;
   /** When `count` is null, the minimum picks required before Submit unlocks. */
   minCount?: number;
@@ -774,7 +788,7 @@ export function CardPickPrompt(props: {
                   {/* Fixed aspect ratio + card-back slate behind the loading image, so the row never
                       reflows and a still-loading card reads as a card, not a hole. */}
                   <img
-                    src={imageUrlByName(it.label, "normal")}
+                    src={imageUrlByPrint(props.print?.(it.id) ?? "")}
                     alt=""
                     draggable={false}
                     class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"
@@ -828,6 +842,7 @@ const ProliferateForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"proliferate">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title="Proliferate — choose any number"
       submitLabel="Proliferate"
       items={pc().items}
@@ -842,6 +857,7 @@ const PhaseOutForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"phase_out">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`${objectName(props.state, pc().source)}: phase out any number of creatures`}
       submitLabel="Phase out"
       items={pc().items}
@@ -856,6 +872,7 @@ const ChooseOwnSacrificesForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"choose_own_sacrifices">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`Choose ${pc().count} to sacrifice`}
       submitLabel="Sacrifice"
       items={pc().items}
@@ -871,6 +888,7 @@ const DevourForm: Component<FormProps> = (props) => {
   const n = () => pc().multiplier;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`${objectName(props.state, pc().source)}: Devour ${n()} — sacrifice any number`}
       hint={`Each sacrificed creature puts ${n()} +1/+1 counter${n() === 1 ? "" : "s"} on it.`}
       submitLabel="Devour"
@@ -888,6 +906,7 @@ const CasterKeepForm: Component<FormProps> = (props) => {
   const who = () => seat() || `P${pc().target_player}`;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`${objectName(props.state, pc().source)}: choose ${who()}'s permanents to keep`}
       hint="Keep up to one artifact, one creature, and one enchantment. The rest are sacrificed."
       submitLabel="Keep these"
@@ -904,6 +923,7 @@ const ExileFromGraveyardForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"exile_from_graveyard">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title="Exile a card from your graveyard"
       submitLabel="Exile"
       items={pc().items}
@@ -922,6 +942,7 @@ const mayOneCardForm =
     const pc = () => props.pc as Narrow<"may_sacrifice">; // every variant here carries `items`
     return (
       <CardPickPrompt
+        print={(id) => objectPrint(props.state, id)}
         title={title(props)}
         submitLabel="Choose"
         declineLabel="Decline"
@@ -1110,6 +1131,7 @@ const ShuffleFromGraveyardForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"shuffle_from_graveyard">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title="Shuffle cards from your graveyard into your library"
       submitLabel="Shuffle in"
       items={pc().items}
@@ -1127,6 +1149,7 @@ const chooseExiledCastForm =
     const pc = () => props.pc as Narrow<"choose_exiled_with_card_to_cast">;
     return (
       <CardPickPrompt
+        print={(id) => objectPrint(props.state, id)}
         title={titleOf(props)}
         submitLabel="Cast for free"
         declineLabel="Decline"
@@ -1289,6 +1312,7 @@ const OpponentChoosesExiledNonlandForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"opponent_chooses_exiled_nonland">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`${objectName(props.state, pc().source)}: choose an exiled nonland`}
       submitLabel="Choose"
       items={pc().items}
@@ -1304,6 +1328,7 @@ const ChooseExiledToCastFreeForm: Component<FormProps> = (props) => {
   const count = () => pc().count;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`${objectName(props.state, pc().source)}: cast up to ${count()} for free`}
       submitLabel="Cast for free"
       items={pc().items}
@@ -1341,6 +1366,7 @@ const ChooseAttachHostForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"choose_attach_host">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`Attach ${objectName(props.state, pc().attachment)} to…`}
       submitLabel="Attach"
       declineLabel={pc().optional ? "Leave unattached" : undefined}
@@ -1358,6 +1384,7 @@ const ChooseCopyTargetForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"choose_copy_target">;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`Have ${objectName(props.state, pc().source)} enter as a copy of…?`}
       submitLabel="Enter as a copy"
       declineLabel="Enter as itself"
@@ -1378,6 +1405,7 @@ const ChooseCounterTargetForForm: Component<FormProps> = (props) => {
     props.state.players.find((p) => p.player === pc().target_player)?.username?.trim() || `P${pc().target_player}`;
   return (
     <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
       title={`${objectName(props.state, pc().source)}: put a +1/+1 counter on one of ${who()}'s creatures?`}
       submitLabel="Add counter"
       declineLabel="Decline"
@@ -1419,7 +1447,7 @@ const DistributeTopForm: Component<FormProps> = (props) => {
             {(it) => (
               <div class="flex flex-col items-center gap-xs">
                 <img
-                  src={imageUrlByName(it.label, "normal")}
+                  src={imageUrlByPrint(objectPrint(props.state, it.id))}
                   alt={it.label}
                   draggable={false}
                   class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"

@@ -8,6 +8,8 @@
 # Warlock with deathtouch whose front-face trigger makes it become prepared; while prepared, its
 # controller may cast a copy of the {1}{W}{B} Vandal's Edit instant below, which unprepares it.
 name = "Defacing Duskmage"
+id = "27c366cf-00d7-47d4-9577-736bfc4a3b81"
+default_print = "c35a1c6f-1656-4619-9ab8-40044c857a7f"
 otags = ["alliteration", "cycle-soc-two-color-prepare", "draw-engine", "draw-hate", "gives-castable-from-exile", "group-slug", "hand-positive", "life-for-cards", "opponent-loses-life", "repeatable-pure-draw", "second-draw-matters", "triggered-ability"]
 oracle = "Deathtouch\nWhenever an opponent draws their second card each turn, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Draw two cards. Each player loses 2 life."
 set = "soc"

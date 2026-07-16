@@ -9,14 +9,31 @@ use schema::DeckCardEntry;
 
 #[cfg(test)]
 pub(crate) fn seat_deck() -> SeatDeck {
+    let commander = cards::get_by_name("Tajic, Legion's Edge").unwrap();
+    let plains = cards::get_by_name("Plains").unwrap();
+    let mut prints = std::collections::HashMap::new();
+    prints.insert(
+        commander.id.to_string(),
+        commander.default_print.to_string(),
+    );
+    prints.insert(plains.id.to_string(), plains.default_print.to_string());
     SeatDeck {
-        commander: cards::get("Tajic, Legion's Edge").unwrap(),
-        cards: vec![(cards::get("Plains").unwrap(), 99)],
+        commander,
+        cards: vec![(plains, 99)],
+        prints,
     }
 }
 
 #[cfg(test)]
 fn legal_deck_json() -> String {
+    let entry = |name: &str, count: u32| {
+        let def = cards::get_by_name(name).unwrap();
+        DeckCardEntry {
+            id: def.id.to_string(),
+            count,
+            print: def.default_print.to_string(),
+        }
+    };
     let mut cards: Vec<DeckCardEntry> = [
         "Savannah Lions",
         "Goblin Guide",
@@ -26,15 +43,9 @@ fn legal_deck_json() -> String {
         "Brute Force",
     ]
     .iter()
-    .map(|n| DeckCardEntry {
-        name: n.to_string(),
-        count: 1,
-    })
+    .map(|n| entry(n, 1))
     .collect();
-    cards.push(DeckCardEntry {
-        name: "Plains".to_string(),
-        count: 93,
-    });
+    cards.push(entry("Plains", 93));
     serde_json::to_string(&cards).unwrap()
 }
 
@@ -51,7 +62,12 @@ pub(crate) async fn user_with_deck(state: &crate::AppState, email: &str) -> i64 
     Deck::create()
         .user_id(u.id)
         .name("deck")
-        .commander("Tajic, Legion's Edge")
+        .commander(cards::get_by_name("Tajic, Legion's Edge").unwrap().id)
+        .commander_print(
+            cards::get_by_name("Tajic, Legion's Edge")
+                .unwrap()
+                .default_print,
+        )
         .cards(legal_deck_json())
         .exec(&mut db)
         .await

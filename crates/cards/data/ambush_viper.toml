@@ -2,6 +2,8 @@
 # Deathtouch
 # Ambush Viper (inr): {1}{G} 2/1 with flash and deathtouch.
 name = "Ambush Viper"
+id = "8957f7c2-040c-4048-9f21-efa7c97682b7"
+default_print = "37f9be6b-ae6e-4708-9749-83bebd351102"
 otags = ["color-break", "french-vanilla"]
 oracle = "Flash\nDeathtouch"
 set = "inr"

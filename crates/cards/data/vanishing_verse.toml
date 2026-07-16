@@ -1,5 +1,7 @@
 # Exile target monocolored permanent.
 name = "Vanishing Verse"
+id = "5b8f0cdf-572d-4025-b930-79291f7c35be"
+default_print = "8a475868-a335-45e7-9d59-9dc4c2cea1ae"
 otags = ["alliteration", "hate-monocolor", "removal-exile", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Exile target monocolored permanent."
 set = "soc"

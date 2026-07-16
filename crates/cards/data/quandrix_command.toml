@@ -6,6 +6,8 @@
 # Quandrix Command {1}{G}{U} — a modal "choose two" instant (CR 700.2). Its spell-timed abilities
 # are its modes; the caster picks two distinct ones at cast (`modal = true`, `choose = 2`).
 name = "Quandrix Command"
+id = "9c0f7cdc-9095-40ae-bf83-75a5ffda72b9"
+default_print = "b673dfb7-e384-4586-8326-ae6f23edfe78"
 otags = ["counterspell-artifact", "counterspell-enchantment", "cycle-stx-command", "giant-growth", "gives-pp-counters", "hate-graveyard", "multiple-targets", "removal-bounce", "removal-creature", "removal-planeswalker", "restock-any", "single-target-instant-sorcery"]
 oracle = "Choose two —\n• Return target creature or planeswalker to its owner's hand.\n• Counter target artifact or enchantment spell.\n• Put two +1/+1 counters on target creature.\n• Target player shuffles up to three target cards from their graveyard into their library."
 set = "soc"

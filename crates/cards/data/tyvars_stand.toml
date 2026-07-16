@@ -4,6 +4,8 @@
 #   "Target creature you control gets +X/+X and gains hexproof and indestructible until end of
 #    turn."
 name = "Tyvar's Stand"
+id = "4247b667-a0a8-4995-97c7-622d20132f7d"
+default_print = "b6ab0855-782a-498c-a885-b3ab3d1bb362"
 otags = ["enlarge", "giant-growth", "gives-hexproof", "gives-indestructible", "namesake-spell", "protects-creature", "single-target-instant-sorcery"]
 oracle = "Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn. (It can't be the target of spells or abilities your opponents control. Damage and effects that say \"destroy\" don't destroy it.)"
 set = "soc"

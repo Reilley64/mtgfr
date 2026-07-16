@@ -4,6 +4,8 @@
 # cost.)
 # Aura from Silverquill Influence (soc).
 name = "Sentinel's Eyes"
+id = "0a7d6489-b239-4ce8-aea3-7b5d0e436f70"
+default_print = "9f50278a-06fc-4b11-a1d2-d28cd213ff8f"
 otags = ["castable-from-graveyard", "gives-vigilance", "graveyard-fuel", "reanimate-cast", "reanimate-self", "repeatable-crime"]
 oracle = "Enchant creature\nEnchanted creature gets +1/+1 and has vigilance.\nEscape—{W}, Exile two other cards from your graveyard. (You may cast this card from your graveyard for its escape cost.)"
 set = "soc"

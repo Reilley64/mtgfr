@@ -159,9 +159,11 @@ pub async fn stream(
                     &table.turn_yields,
                     &table.seats,
                     table.stack_hold_remaining_ms(),
+                    &table.prints,
                 );
                 let state = complete_visible(game, viewer, &extras);
                 let seats = table.seats.clone();
+                let prints = table.prints.clone();
                 let hold_ms = table.stack_hold_remaining_ms();
                 let broadcast_seq = table.broadcast_seq;
                 Ok((
@@ -170,6 +172,7 @@ pub async fn stream(
                     state,
                     viewer,
                     seats,
+                    prints,
                     hold_ms,
                     broadcast_seq,
                 ))
@@ -177,7 +180,7 @@ pub async fn stream(
             _ => Err(StatusCode::NOT_FOUND),
         }
     };
-    let (mut rx, snapshot_seq, state_view, viewer, seats, _hold_ms, snapshot_broadcast_seq) =
+    let (mut rx, snapshot_seq, state_view, viewer, seats, prints, _hold_ms, snapshot_broadcast_seq) =
         match subscription {
             Ok(sub) => sub,
             Err(code) => return code.into_response(),
@@ -212,6 +215,7 @@ pub async fn stream(
                         &msg.turn_yields,
                         &seats,
                         msg.stack_hold_remaining_ms,
+                        &prints,
                     ));
                 }
                 _ = heartbeat.tick() => {
@@ -274,21 +278,20 @@ pub async fn search_cards(
     Json(cards)
 }
 
-/// Query params for `/cards/lookup`: exact card names as a repeated param (?names=a&names=b) —
-/// no delimiter to collide with names like "Breena, the Demagogue".
+/// Query params for `/cards/lookup`: Card ids as a repeated param (?ids=a&ids=b).
 #[derive(Debug, Clone, Deserialize)]
 pub struct LookupParams {
     #[serde(default)]
-    pub names: Vec<String>,
+    pub ids: Vec<String>,
 }
 
-/// Fetch specific pool cards by exact name — lets the deck builder hydrate a saved decklist and
+/// Fetch specific pool cards by Card id — lets the deck builder hydrate a saved decklist and
 /// commander without pulling the whole pool. Public and best-effort like `/cards/search/v1`.
 #[utoipa::path(
     get,
     path = "/cards/lookup/v1",
-    params(("names" = Vec<String>, Query, description = "exact card names (repeated param)")),
-    responses((status = 200, description = "The named pool cards", body = [CatalogCard])),
+    params(("ids" = Vec<String>, Query, description = "Card ids / Scryfall oracle ids (repeated param)")),
+    responses((status = 200, description = "The pool cards", body = [CatalogCard])),
 )]
 pub async fn lookup_cards(
     State(state): State<AppState>,
@@ -297,7 +300,7 @@ pub async fn lookup_cards(
 ) -> Json<Vec<CatalogCard>> {
     let mut db = state.db.clone();
     Json(
-        catalog_search::lookup(&mut db, &params.names)
+        catalog_search::lookup(&mut db, &params.ids)
             .await
             .unwrap_or_default(),
     )

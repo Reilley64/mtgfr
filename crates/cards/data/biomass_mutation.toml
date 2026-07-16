@@ -1,6 +1,8 @@
 # Creatures you control have base power and toughness X/X until end of turn.
 # Biomass Mutation {X}{G/U}{G/U} — Instant.
 name = "Biomass Mutation"
+id = "2dbe8aaa-2e34-4552-8da7-cf8ecbbaa7b6"
+default_print = "9894bed2-c5dc-4569-9ed9-1d40df906f58"
 otags = ["cycle-block-rtr-r-hybrid", "cycle-gtc-x-spell", "power-boost-to-all", "toughness-boost-to-all", "shapechange"]
 oracle = "Creatures you control have base power and toughness X/X until end of turn."
 set = "soc"

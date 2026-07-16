@@ -2,6 +2,8 @@
 # Whenever you attack with two or more creatures, draw a card.
 # Whenever another player attacks with two or more creatures, they draw a card if none of those creatures attacked you.
 name = "Firemane Commando"
+id = "ac675899-25bb-4f06-9c8c-bf188024495f"
+default_print = "c86269cc-bf4d-44b4-ad4b-8356857c532f"
 otags = ["attack-trigger", "attacking-matters", "commander-set-booster-cards", "draw-engine", "evasion", "multiplayer", "repeatable-pure-draw"]
 oracle = "Flying\nWhenever you attack with two or more creatures, draw a card.\nWhenever another player attacks with two or more creatures, they draw a card if none of those creatures attacked you."
 set = "soc"

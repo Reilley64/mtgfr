@@ -3,6 +3,8 @@
 # War Room (SOC): "{T}: Add {C}. {3}, {T}, Pay life equal to the number of colors in your
 # commanders' color identity: Draw a card."
 name = "War Room"
+id = "71c52bf5-2a5d-488e-8b15-7ef290e4b77d"
+default_print = "0775b4be-881c-4832-8954-d961064315b6"
 otags = ["activated-ability", "commander-identity-matters", "draw-engine", "life-for-cards", "mana-sink", "repeatable-pure-draw", "synergy-commander", "utility-land"]
 oracle = "{T}: Add {C}.\n{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card."
 set = "soc"

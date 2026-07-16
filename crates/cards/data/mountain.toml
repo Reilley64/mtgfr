@@ -1,5 +1,7 @@
 # ({T}: Add {R}.)
 name = "Mountain"
+id = "a3fb7228-e76b-4e96-a40e-20b5fed75685"
+default_print = "426b0211-3d5d-4e53-bcf6-21823c655ffd"
 otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "single-english-word-name", "unique-type-line"]
 oracle = "({T}: Add {R}.)"
 set = "msc"

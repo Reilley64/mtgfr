@@ -8,6 +8,8 @@
 #   At the beginning of your upkeep, if this enchantment has no charge counters on it, return it to
 #   its owner's hand."
 name = "Mana Bloom"
+id = "7c699180-d18e-4599-acd1-27b951d82136"
+default_print = "03a40bf7-5eb9-4b36-9388-48b482a6fcf2"
 otags = ["activated-ability", "bounce-self", "counter-fuel-charge", "intervening-if-clause", "mana-storage", "ramp"]
 oracle = "This enchantment enters with X charge counters on it.\nRemove a charge counter from this enchantment: Add one mana of any color. Activate only once each turn.\nAt the beginning of your upkeep, if this enchantment has no charge counters on it, return it to its owner's hand."
 set = "soc"

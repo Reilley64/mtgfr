@@ -4,6 +4,8 @@
 #   "Flying
 #    Aura spells you cast cost {1} less to cast."
 name = "Transcendent Envoy"
+id = "f08f7814-4585-41dd-b82e-ed2ef5e24242"
+default_print = "363a88de-c9ae-41b8-a8d8-321a1b95a427"
 otags = ["cost-reducer-aura", "evasion", "synergy-aura", "unique-type-line"]
 oracle = "Flying\nAura spells you cast cost {1} less to cast."
 set = "soc"

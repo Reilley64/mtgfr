@@ -3,6 +3,8 @@
 # Whenever Tanazir Quandrix attacks, you may have the base power and toughness of other creatures you control become
 # equal to Tanazir Quandrix's power and toughness until end of turn.
 name = "Tanazir Quandrix"
+id = "73c44cf5-a601-4625-9550-e722fba2ec0b"
+default_print = "194d29be-a145-41f2-a55a-a071816b5551"
 otags = ["attack-trigger", "attacking-matters-self", "counter-doubler", "cycle-stx-dragon-founder", "evasion", "gives-pp-counters", "power-matters-self", "pp-counters-matter", "shapechange", "toughness-matters-self"]
 oracle = "Flying, trample\nWhen Tanazir Quandrix enters, double the number of +1/+1 counters on target creature you control.\nWhenever Tanazir Quandrix attacks, you may have the base power and toughness of other creatures you control become equal to Tanazir Quandrix's power and toughness until end of turn."
 set = "soc"

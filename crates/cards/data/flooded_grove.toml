@@ -3,6 +3,8 @@
 # A filter land: feed it one mana and tap it for two {G}/{U} mana (a net +1). The two outputs
 # are {G/U} dual credits, so they can be spent as GG, GU, or UU.
 name = "Flooded Grove"
+id = "dc974eb4-72b9-4213-887b-8ee684b93420"
+default_print = "df797e0d-8ae2-4fdb-a33d-4ba7852b0172"
 otags = ["activated-ability", "cycle-eve-filterland"]
 oracle = "{T}: Add {C}.\n{G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}."
 set = "soc"

@@ -3,6 +3,8 @@
 # Cultivate {2}{G} — sorcery. "Search your library for up to two basic land cards, reveal
 # those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
 name = "Cultivate"
+id = "8b755881-a72d-4e21-a369-d2924eb4585a"
+default_print = "e60deb92-f7dd-4f4e-9036-e47dd586f985"
 otags = ["land-ramp", "single-english-word-name", "tutor-land-basic", "tutor-land-to-battlefield", "tutor-to-hand"]
 oracle = "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
 set = "msc"

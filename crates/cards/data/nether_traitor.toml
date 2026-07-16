@@ -3,6 +3,8 @@
 # Whenever another creature is put into your graveyard from the battlefield, you may pay {B}. If you do, return this
 # card from your graveyard to the battlefield.
 name = "Nether Traitor"
+id = "6f16c3ac-a9b8-47e6-b18b-ae37c74d44a0"
+default_print = "fae5d1cb-ead9-41e1-84ce-2f06dc8cf6ba"
 otags = ["death-trigger", "evasion", "reanimate-self", "restricted-blocker", "trigger-from-graveyard"]
 oracle = "Haste\nShadow (This creature can block or be blocked by only creatures with shadow.)\nWhenever another creature is put into your graveyard from the battlefield, you may pay {B}. If you do, return this card from your graveyard to the battlefield."
 set = "soc"

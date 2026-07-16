@@ -6,6 +6,8 @@
 #    Whenever an enchantment you control is put into a graveyard from the battlefield, put a
 #    +1/+1 counter on this creature."
 name = "Starfield Mystic"
+id = "2975590d-6a5b-41e5-8a3b-e9325e71226a"
+default_print = "e8f2fcb4-8d06-49ac-9c70-9c54d77c6d86"
 otags = ["cost-reducer-enchantment", "death-trigger", "gains-pp-counters", "repeatable-pp-counters"]
 oracle = "Enchantment spells you cast cost {1} less to cast.\nWhenever an enchantment you control is put into a graveyard from the battlefield, put a +1/+1 counter on this creature."
 set = "soc"

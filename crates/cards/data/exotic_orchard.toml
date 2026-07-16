@@ -2,6 +2,8 @@
 # Exotic Orchard (msc): "{T}: Add one mana of any color that a land an opponent controls could
 # produce." Resolved at tap time to the exact union of colors any opponent's lands could produce.
 name = "Exotic Orchard"
+id = "27b047e3-0d41-45e2-98e9-9391d7923a1e"
+default_print = "8853ff94-bf44-4cfd-9d3a-0743c361fb0d"
 otags = ["activated-ability", "rainbow-land"]
 oracle = "{T}: Add one mana of any color that a land an opponent controls could produce."
 set = "msc"

@@ -2,6 +2,8 @@
 # At the beginning of your end step, each opponent loses X life and you gain X life, where X is the number of Auras you
 # control.
 name = "Eriette of the Charmed Apple"
+id = "f43f5855-f297-4433-984b-18263b734cfc"
+default_print = "baf256c5-1b4c-4fbe-94e4-1538d2577f8f"
 otags = ["drain-life", "group-slug", "opponent-loses-life", "prevent-attack", "repeatable-lifegain", "synergy-aura", "synergy-planeswalker", "triggered-ability"]
 oracle = "Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.\nAt the beginning of your end step, each opponent loses X life and you gain X life, where X is the number of Auras you control."
 set = "soc"

@@ -4,6 +4,8 @@
 # Big Score {3}{R} — instant. "As an additional cost to cast this spell, discard a card. Draw two
 # cards and create two Treasure tokens."
 name = "Big Score"
+id = "a5cbd257-c836-493e-bb1a-76242619dea2"
+default_print = "3383a939-4ab3-4546-9995-6c65cd3f4441"
 otags = ["hand-neutral", "mini-refund", "pillage-effect", "ramp", "shares-name-with-a-set", "tormenting-voice"]
 oracle = "As an additional cost to cast this spell, discard a card.\nDraw two cards and create two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")"
 set = "msc"

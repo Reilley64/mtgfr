@@ -1,6 +1,8 @@
 # {T}: Add {C}.
 # {T}: Add {B} or {G}. This land deals 1 damage to you.
 name = "Llanowar Wastes"
+id = "32116127-cf96-4a1b-8896-a1ebc087b597"
+default_print = "266316d3-3bbc-4283-aab8-69629855909f"
 otags = ["activated-ability", "burn-you", "cycle-apc-painland", "mana-ability-with-extra-effect"]
 oracle = "{T}: Add {C}.\n{T}: Add {B} or {G}. This land deals 1 damage to you."
 set = "soc"

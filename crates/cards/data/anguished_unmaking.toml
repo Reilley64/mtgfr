@@ -2,6 +2,8 @@
 # Anguished Unmaking (soc). Real oracle text:
 #   "Exile target nonland permanent. You lose 3 life."
 name = "Anguished Unmaking"
+id = "ad09b3c3-c8e7-481c-8c45-e7f234935117"
+default_print = "407183c6-c962-4f8c-867e-abc309b6c573"
 otags = ["cycle-soi-r-two-color", "life-payment", "removal-exile", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Exile target nonland permanent. You lose 3 life."
 set = "soc"

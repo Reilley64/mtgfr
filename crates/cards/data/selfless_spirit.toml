@@ -5,6 +5,8 @@
 #   "Flying
 #    Sacrifice this creature: Creatures you control gain indestructible until end of turn."
 name = "Selfless Spirit"
+id = "71d785a9-ddc8-472e-a778-a551b444a4bd"
+default_print = "9cd16dac-3bf9-4a71-a906-0cfbf98cdca5"
 otags = ["activated-ability", "alliteration", "evasion", "gives-indestructible", "martyr", "protects-all", "protects-creature"]
 oracle = "Flying\nSacrifice this creature: Creatures you control gain indestructible until end of turn."
 set = "soc"

@@ -11,6 +11,8 @@
 #   • Target creature gets -3/-1 until end of turn.
 #   • Target opponent loses 2 life and you gain 2 life.
 name = "Witherbloom Command"
+id = "7cc81fb3-495c-47cd-8c56-96197d87e9e0"
+default_print = "0d68dee5-56ff-45bb-a37e-9e2dfc07c5a7"
 otags = ["cycle-stx-command", "drain-life", "hand-neutral", "mill-any", "multi-removal", "multiple-targets", "opponent-loses-life", "regrowth-land", "removal-artifact", "removal-battle", "removal-destroy", "removal-enchantment"]
 oracle = "Choose two —\n• Target player mills three cards, then you return a land card from your graveyard to your hand.\n• Destroy target noncreature, nonland permanent with mana value 2 or less.\n• Target creature gets -3/-1 until end of turn.\n• Target opponent loses 2 life and you gain 2 life."
 set = "soc"

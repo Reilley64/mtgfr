@@ -3,6 +3,8 @@
 # Retrace (You may cast this card from your graveyard by discarding a land card in addition to paying its other costs.)
 # Throes of Chaos (SOC): {3}{R} sorcery with Cascade and Retrace.
 name = "Throes of Chaos"
+id = "e3444fcf-70ed-4d6e-aea9-030af15cad56"
+default_print = "af0fd1ff-3398-45df-b934-07a6b6497998"
 otags = ["cast-trigger-self", "castable-from-graveyard", "consult-cast", "discard-outlet-land", "free-cast-another", "fun-ruling", "gives-castable-from-exile", "mix-and-match", "repeatable-card-advantage", "noncreature-french-vanilla"]
 oracle = "Cascade (When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.)\nRetrace (You may cast this card from your graveyard by discarding a land card in addition to paying its other costs.)"
 set = "soc"

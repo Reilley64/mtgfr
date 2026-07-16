@@ -2,6 +2,8 @@
 # Whenever Laelia attacks, exile the top card of your library. You may play that card this turn.
 # Whenever one or more cards are put into exile from your library and/or your graveyard, put a +1/+1 counter on Laelia.
 name = "Laelia, the Blade Reforged"
+id = "a0be9bb2-3234-4c6c-b8ce-0879b1f43003"
+default_print = "2cb16354-1211-4230-90e2-4858ba68f348"
 otags = ["attack-trigger", "attacking-matters-self", "cycle-c21-mono-legend", "gains-pp-counters", "repeatable-impulsive-draw", "repeatable-pp-counters", "synergy-exiling"]
 oracle = "Haste\nWhenever Laelia attacks, exile the top card of your library. You may play that card this turn.\nWhenever one or more cards are put into exile from your library and/or your graveyard, put a +1/+1 counter on Laelia."
 set = "soc"

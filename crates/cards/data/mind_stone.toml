@@ -2,6 +2,8 @@
 # {1}, {T}, Sacrifice this artifact: Draw a card.
 # Mind Stone {2} — Artifact. "{T}: Add {C}.  {1}, {T}, Sacrifice this artifact: Draw a card."
 name = "Mind Stone"
+id = "c97361b5-af16-4a7b-af85-a429dbaf4ad2"
+default_print = "ad881aa0-decc-447b-8c8a-983546a9a55a"
 otags = ["activated-ability", "egg", "hand-neutral", "pure-draw", "refund", "utility-mana-rock"]
 oracle = "{T}: Add {C}.\n{1}, {T}, Sacrifice this artifact: Draw a card."
 set = "soc"

@@ -4,6 +4,8 @@
 # less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.
 # • Put two +1/+1 counters on each permanent you control that's a creature or Vehicle.
 name = "Ao, the Dawn Sky"
+id = "697ac261-263b-4879-bf45-6d10d23312ae"
+default_print = "e002d351-3795-4cd9-b389-9ed81077845e"
 otags = ["cycle-neo-dragon", "death-trigger-self", "evasion", "gives-pp-counters-to-all", "impulse-nonland", "impulse-onto-battlefield", "modal", "synergy-vehicle"]
 oracle = "Flying, vigilance\nWhen Ao dies, choose one —\n• Look at the top seven cards of your library. Put any number of nonland permanent cards with total mana value 4 or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.\n• Put two +1/+1 counters on each permanent you control that's a creature or Vehicle."
 set = "soc"

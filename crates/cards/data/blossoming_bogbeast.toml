@@ -1,6 +1,8 @@
 # Whenever this creature attacks, you gain 2 life. Then creatures you control gain trample and get +X/+X until end of
 # turn, where X is the amount of life you gained this turn.
 name = "Blossoming Bogbeast"
+id = "30f3c3be-0fe9-463d-a245-e44701aec7f2"
+default_print = "764054f1-e848-4cee-b623-4861ce15c370"
 otags = ["alliteration", "attack-trigger", "attacking-matters-self", "lifegain-matters", "overrun", "repeatable-lifegain", "toughness-boost-to-all", "unnoted-tracked-information"]
 oracle = "Whenever this creature attacks, you gain 2 life. Then creatures you control gain trample and get +X/+X until end of turn, where X is the amount of life you gained this turn."
 set = "soc"

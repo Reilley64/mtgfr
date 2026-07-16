@@ -5,6 +5,8 @@
 # "Whenever this creature enters or attacks, you may return target permanent card with mana
 #  value 3 or less from your graveyard to the battlefield."
 name = "Sun Titan"
+id = "b2e950fb-cb7e-40a0-a311-5bbdd0477b29"
+default_print = "3d6eacf2-f6c7-4ede-b5a5-7463602699ae"
 otags = ["attacking-matters-self", "cycle-m11-titan", "land-ramp", "mana-value-matters", "reanimate-permanent", "titan-trigger"]
 oracle = "Vigilance\nWhenever this creature enters or attacks, you may return target permanent card with mana value 3 or less from your graveyard to the battlefield."
 set = "soc"

@@ -3,6 +3,8 @@
 # {2}{G}{U}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)
 # Paradox Gardens (SOS): "This land enters tapped. {T}: Add {G} or {U}. {2}{G}{U}, {T}: Surveil 1."
 name = "Paradox Gardens"
+id = "638ff242-63d5-457d-a7a6-40ad51052e2e"
+default_print = "dbc3447e-1329-4ea1-b4ca-b321b0ffec8f"
 otags = ["activated-ability", "cycle-sos-surveil-dual", "mana-sink", "surveil", "utility-land", "virtual-legendary"]
 oracle = "This land enters tapped.\n{T}: Add {G} or {U}.\n{2}{G}{U}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
 set = "sos"

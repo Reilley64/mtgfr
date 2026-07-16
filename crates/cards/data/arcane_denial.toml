@@ -7,6 +7,8 @@
 # mandatory draw two — no optional/declinable-draw machinery exists, and drawing is strictly
 # beneficial everywhere in this pool, so nothing is lost by not offering the decline.
 name = "Arcane Denial"
+id = "ab1cc360-b9de-48d9-9983-4dfe4a7d2a37"
+default_print = "5eb843ef-b223-40d0-a461-54b16d188d0e"
 otags = ["counterspell-with-set-mechanic", "delayed-cantrip", "drawback", "hand-neutral", "interrupt", "single-target-instant-sorcery"]
 oracle = "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.\nYou draw a card at the beginning of the next turn's upkeep."
 set = "msc"

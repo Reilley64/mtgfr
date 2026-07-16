@@ -7,6 +7,8 @@
 # If you control no creature token, the populate trigger has no legal choice and does nothing
 # (CR 603.3c).
 name = "Determined Iteration"
+id = "e4ed7935-0263-4cde-8118-ac18fffce3ef"
+default_print = "d95490fe-44f2-4f83-b587-b0df402d38ed"
 otags = ["copy-token", "delayed-trigger", "repeatable-creature-tokens", "synergy-token-creature", "temporary-token"]
 oracle = "At the beginning of combat on your turn, populate. The token created this way gains haste. Sacrifice it at the beginning of the next end step. (To populate, create a token that's a copy of a creature token you control.)"
 set = "soc"

@@ -3,6 +3,8 @@
 # ponytail: the copy takes the chosen card's printed `CardDef` copyable values (CR 707.2), not a
 # full read of any copy-layer modifications already on it — exact for this pool.
 name = "Spirit of Resilience"
+id = "ddc85b23-113a-46e9-ab09-fae9312c72fa"
+default_print = "60584e5b-4138-405b-bd02-612cf175184e"
 otags = ["copy-artifact", "copy-creature", "gains-pp-counters", "leaves-graveyard-trigger", "repeatable-pp-counters"]
 oracle = "Whenever one or more cards leave your graveyard, put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn."
 set = "soc"

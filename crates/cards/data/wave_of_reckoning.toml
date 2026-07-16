@@ -2,6 +2,8 @@
 # Wave of Reckoning {4}{W} — sorcery. Real oracle text:
 #   "Each creature deals damage to itself equal to its power."
 name = "Wave of Reckoning"
+id = "24f7143c-d43a-4120-baa0-0235b15d8186"
+default_print = "7be0c25a-5e65-48e1-9560-9391111bb912"
 otags = ["aikido", "burn-self", "scales-with-power", "sweeper"]
 oracle = "Each creature deals damage to itself equal to its power."
 set = "soc"

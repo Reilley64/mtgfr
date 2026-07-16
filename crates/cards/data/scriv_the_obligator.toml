@@ -9,6 +9,8 @@
 #    'Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one
 #    of your opponents. Otherwise, its controller loses 2 life.'"
 name = "Scriv, the Obligator"
+id = "64c986f0-e786-419c-9b51-8c316c8fae0e"
+default_print = "c133a860-7b8d-485d-b9a2-bf8ae3a68f47"
 otags = ["attacking-matters-self", "attacking-opponents-matters", "cycle-soc-alt-commander", "evasion", "hate-attacker", "opponent-loses-life", "repeatable-enchantment-tokens", "repeatable-noncreature-tokens", "titan-trigger", "unique-type-line"]
 oracle = "Flying, deathtouch\nWhenever Scriv enters or attacks, create a white Aura enchantment token named Contract attached to target creature an opponent controls. The token has enchant creature and \"Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its controller loses 2 life.\""
 set = "soc"

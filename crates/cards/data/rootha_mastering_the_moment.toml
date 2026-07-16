@@ -2,6 +2,8 @@
 # red Elemental creature token with flying and haste, where X is the greatest mana value among instant and sorcery
 # spells you've cast this turn.
 name = "Rootha, Mastering the Moment"
+id = "348c67ef-9ccc-4651-9038-efdf1ad1b36a"
+default_print = "a5b3dbb2-c090-4118-9e47-56c16202572c"
 otags = ["alliteration", "cycle-soc-face-commander", "evasion", "intervening-if-clause", "mana-value-matters", "repeatable-creature-tokens", "synergy-instant", "synergy-sorcery", "unique-type-line", "unnoted-tracked-information"]
 oracle = "At the beginning of combat on your turn, if you've cast an instant or sorcery spell this turn, create an X/X blue and red Elemental creature token with flying and haste, where X is the greatest mana value among instant and sorcery spells you've cast this turn."
 set = "soc"

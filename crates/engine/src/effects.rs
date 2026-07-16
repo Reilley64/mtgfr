@@ -3792,7 +3792,7 @@ impl Game {
                 vec![Event::CountersPlaced {
                     object: source,
                     count: -1,
-                    source_name: source_name,
+                    source_name,
                 }]
             }
             // Alchemist's Refuge: "You may cast spells this turn as though they had flash." (CR 702.8, CR 601, CR 500)
@@ -4098,7 +4098,7 @@ impl Game {
                             power: 0,
                             toughness: 0,
                             keywords: HASTE,
-                            source_name: source_name,
+                            source_name,
                         });
                     }
                     // Determined Iteration: "Sacrifice it at the beginning of the next end step"

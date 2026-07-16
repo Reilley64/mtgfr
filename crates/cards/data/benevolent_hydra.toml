@@ -3,6 +3,8 @@
 # on it instead.
 # {T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature you control.
 name = "Benevolent Hydra"
+id = "01dbf1bc-ca62-4fb6-959c-ef7c0dc03bb0"
+default_print = "064595cb-089e-4cf2-afe3-223235ce3f92"
 otags = ["activated-ability", "counter-fuel-pp", "counter-increaser", "gains-pp-counters", "gives-pp-counters", "repeatable-pp-counters"]
 oracle = "This creature enters with X +1/+1 counters on it.\nIf one or more +1/+1 counters would be put on another creature you control, that many plus one +1/+1 counters are put on it instead.\n{T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature you control."
 set = "soc"

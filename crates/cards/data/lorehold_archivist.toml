@@ -5,6 +5,8 @@
 # [Restore Relic]
 # Exile target artifact or creature card from your graveyard. Create a token that's a copy of it.
 name = "Lorehold Archivist"
+id = "a371d035-488e-4b3d-81de-ee7859452c0e"
+default_print = "cb535433-f062-4c35-977e-2f896251b1d8"
 otags = ["cards-in-graveyard-matter", "copy-artifact", "copy-creature", "cycle-soc-two-color-prepare", "gives-castable-from-exile", "graveyard-fuel-artifact", "graveyard-fuel-creature", "intervening-if-clause", "reanimate-copy", "repeatable-artifact-tokens", "repeatable-creature-tokens", "single-target-instant-sorcery"]
 oracle = "First strike\nAt the beginning of your upkeep, if there are three or more artifact and/or creature cards in your graveyard, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Exile target artifact or creature card from your graveyard. Create a token that's a copy of it."
 set = "soc"

@@ -1,5 +1,7 @@
 # {1}, {T}: Add {W}{B}.
 name = "Desolate Mire"
+id = "3edf9201-265f-4cd9-b27b-8073bf1a4cf2"
+default_print = "6a261c7d-38a4-4000-97b2-76e7ab9989c5"
 otags = ["activated-ability", "cycle-pip-enemy-filterland"]
 oracle = "{1}, {T}: Add {W}{B}."
 set = "soc"

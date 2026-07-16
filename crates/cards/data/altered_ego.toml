@@ -3,6 +3,8 @@
 # +1/+1 counters on it.
 # Altered Ego (SOC): {X}{2}{G}{U} 0/0 Creature — Shapeshifter.
 name = "Altered Ego"
+id = "7c35f3fd-c64e-4944-a4d5-37ce916d23c3"
+default_print = "d51e076a-be33-4b2b-b52f-fe7b5bc56206"
 otags = ["clone", "copy-creature", "cycle-inr-r-two-color", "cycle-soi-r-two-color", "gains-pp-counters", "hate-counterspell", "punny-name", "unique-mana-cost"]
 oracle = "This spell can't be countered.\nYou may have this creature enter as a copy of any creature on the battlefield, except it enters with X additional +1/+1 counters on it."
 set = "soc"

@@ -2,6 +2,8 @@
 # Enchanted creature gets +10/+10 and has trample and annihilator 2. (Whenever it attacks, defending player sacrifices
 # two permanents of their choice.)
 name = "Eldrazi Conscription"
+id = "3635e4e5-e655-45f4-a444-39756f55129a"
+default_print = "33965c48-a7ce-4a04-8251-8eeb2d908c0b"
 otags = ["attack-trigger", "attacking-matters", "enlarge", "gives-annihilator", "gives-trample", "mixed-subtypes", "removal-permanent", "removal-sacrifice", "repeatable-removal", "spot-removal", "unique-type-line"]
 oracle = "Enchant creature\nEnchanted creature gets +10/+10 and has trample and annihilator 2. (Whenever it attacks, defending player sacrifices two permanents of their choice.)"
 set = "soc"

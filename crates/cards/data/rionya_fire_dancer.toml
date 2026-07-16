@@ -2,6 +2,8 @@
 # X is one plus the number of instant and sorcery spells you've cast this turn. They gain haste. Exile them at the
 # beginning of the next end step.
 name = "Rionya, Fire Dancer"
+id = "be4f47e9-1bd2-4aa9-bc85-3f203ad21639"
+default_print = "086e68b5-0f89-46d0-9a04-7f8658a9ab53"
 otags = ["copy-creature", "cycle-c21-mono-legend", "delayed-trigger", "repeatable-creature-tokens", "storm-count-matters", "synergy-instant", "synergy-sorcery", "temporary-token"]
 oracle = "At the beginning of combat on your turn, create X tokens that are copies of another target creature you control, where X is one plus the number of instant and sorcery spells you've cast this turn. They gain haste. Exile them at the beginning of the next end step."
 set = "soc"

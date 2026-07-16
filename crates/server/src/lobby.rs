@@ -221,17 +221,22 @@ pub async fn start_game(
     // exact shuffle.
     let seed = OsRng.next_u64();
     table.seed = seed;
+    for (player, deck) in &resolved {
+        table.prints[player.0 as usize] = deck.prints.clone();
+    }
     table.game = Some(seed_game(&resolved, seed));
     Json(lobby_view(table, &req.table_id, Some(uid), None))
 }
 
 /// Load a stored deck and resolve it to its commander + cards, re-checking legality.
 async fn resolve_deck(state: &AppState, deck_id: i64) -> Result<SeatDeck, &'static str> {
-    // A precon resolves from static data; a saved deck from the store. Both share the legality
-    // re-check and name→card resolution below.
-    let (commander_name, entries): (String, Vec<DeckCardEntry>) =
+    let (commander_id, commander_print, entries): (String, String, Vec<DeckCardEntry>) =
         if let Some(precon) = precons::get(deck_id) {
-            (precon.commander.clone(), precon.cards.clone())
+            (
+                precon.commander.clone(),
+                precon.commander_print.clone(),
+                precon.cards.clone(),
+            )
         } else {
             let mut db = state.db.clone();
             let deck = Deck::filter_by_id(deck_id)
@@ -239,15 +244,23 @@ async fn resolve_deck(state: &AppState, deck_id: i64) -> Result<SeatDeck, &'stat
                 .await
                 .map_err(|_| "UnknownDeck")?;
             let entries = serde_json::from_str(&deck.cards).map_err(|_| "CorruptDeck")?;
-            (deck.commander, entries)
+            (deck.commander, deck.commander_print, entries)
         };
-    legality::validate(&commander_name, &entries).map_err(|_| "IllegalDeck")?;
-    let commander = cards::get(&commander_name).ok_or("UnknownCard")?;
+    legality::validate(&commander_id, &commander_print, &entries).map_err(|_| "IllegalDeck")?;
+    let commander = cards::get(&commander_id).ok_or("UnknownCard")?;
+    let mut prints = std::collections::HashMap::new();
+    prints.insert(commander.id.to_string(), commander_print);
     let mut cards = Vec::with_capacity(entries.len());
     for e in &entries {
-        cards.push((cards::get(&e.name).ok_or("UnknownCard")?, e.count as usize));
+        let def = cards::get(&e.id).ok_or("UnknownCard")?;
+        prints.insert(def.id.to_string(), e.print.clone());
+        cards.push((def, e.count as usize));
     }
-    Ok(SeatDeck { commander, cards })
+    Ok(SeatDeck {
+        commander,
+        cards,
+        prints,
+    })
 }
 
 /// A lobby view carrying an error, re-reading the table under the lock (used from async paths).

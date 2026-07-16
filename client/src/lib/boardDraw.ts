@@ -6,7 +6,7 @@ import { type Camera, worldToScreen } from "~/lib/camera";
 import { abilityGlyph, hiddenKeywordCount, keywordBadges, showsSummoningSick, TAP_GLYPH } from "~/lib/cardBadges";
 import type { ImageCache } from "~/lib/imageCache";
 import { LETHAL_COMMANDER_DAMAGE, worstCommanderDamage } from "~/lib/outcome";
-import { cardBackUrl, imageUrlByName } from "~/lib/scryfall";
+import { cardBackUrl, imageUrlByPrint } from "~/lib/scryfall";
 
 type Vec = { x: number; y: number };
 
@@ -518,7 +518,7 @@ function drawCard(
       );
     }
   } else {
-    const img = cache.get(imageUrlByName(card.name, "small"));
+    const img = cache.get(imageUrlByPrint(card.print));
     if (img) {
       ctx.save();
       roundRect(ctx, tl.x, tl.y, w, h, r);

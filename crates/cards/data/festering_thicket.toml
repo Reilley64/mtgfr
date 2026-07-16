@@ -3,6 +3,8 @@
 # Cycling {2} ({2}, Discard this card: Draw a card.)
 # Festering Thicket (soc): "({T}: Add {B} or {G}.) This land enters tapped. Cycling {2}."
 name = "Festering Thicket"
+id = "bdb9b2ce-342c-4935-8943-d0c3971b1e38"
+default_print = "f71c87db-54ea-4611-8692-096d9714d854"
 otags = ["activate-from-hand", "cycle-dual-cycling-land", "hand-neutral", "nonbasic-basic-land-type", "pure-draw", "utility-land"]
 oracle = "({T}: Add {B} or {G}.)\nThis land enters tapped.\nCycling {2} ({2}, Discard this card: Draw a card.)"
 set = "soc"

@@ -2,6 +2,8 @@
 # Flashback—{1}{U}, Pay 3 life. (You may cast this card from your graveyard for its flashback cost. Then exile it.)
 # Deep Analysis: {3}{U} Sorcery. "Target player draws two cards. Flashback—{1}{U}, Pay 3 life."
 name = "Deep Analysis"
+id = "579cbd92-797f-4cdf-91ed-fca7a523eae5"
+default_print = "1a297bae-f259-4fc7-b76a-285f972d69e3"
 otags = ["castable-from-graveyard", "cheaper-than-mv", "cycle-tor-c-flashback", "exile-self", "force-draw", "hand-positive", "life-for-cards", "pure-draw", "repeatable-crime", "single-target-instant-sorcery"]
 oracle = "Target player draws two cards.\nFlashback—{1}{U}, Pay 3 life. (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
 set = "msc"

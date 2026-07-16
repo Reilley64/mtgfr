@@ -2,6 +2,8 @@
 # of the cards exiled this way is 13 or less, you may cast any number of spells from among those cards without paying
 # their mana costs.
 name = "Dance with Calamity"
+id = "615b4189-e800-408b-99e0-71ae7089b937"
+default_print = "69f34a40-30f8-4fdd-bb21-79171ba2f00d"
 otags = ["cast-on-resolution", "consult-cast", "free-cast-another", "fun-ruling", "gives-castable-from-exile", "minigame"]
 oracle = "Shuffle your library. As many times as you choose, you may exile the top card of your library. If the total mana value of the cards exiled this way is 13 or less, you may cast any number of spells from among those cards without paying their mana costs."
 set = "soc"

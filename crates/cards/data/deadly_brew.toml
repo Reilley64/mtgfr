@@ -1,6 +1,8 @@
 # Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent this way, you may
 # return another permanent card from your graveyard to your hand.
 name = "Deadly Brew"
+id = "b831d3f8-07ce-4172-ba29-213cac414c9a"
+default_print = "3e5493c3-0be2-467c-82f0-3ee1ca909d0c"
 otags = ["hand-neutral", "multi-removal", "mutual-sacrifice", "regrowth-permanent", "removal-creature", "removal-planeswalker", "sacrifice-outlet-creature", "sacrifice-outlet-planeswalker", "spot-removal"]
 oracle = "Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent this way, you may return another permanent card from your graveyard to your hand."
 set = "soc"

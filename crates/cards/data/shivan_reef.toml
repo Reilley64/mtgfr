@@ -1,6 +1,8 @@
 # {T}: Add {C}.
 # {T}: Add {U} or {R}. This land deals 1 damage to you.
 name = "Shivan Reef"
+id = "0fe16212-66c3-4e45-a641-7391e9b2e304"
+default_print = "e13d0982-2542-4770-8e93-637478a0f84a"
 otags = ["activated-ability", "burn-you", "cycle-apc-painland", "mana-ability-with-extra-effect"]
 oracle = "{T}: Add {C}.\n{T}: Add {U} or {R}. This land deals 1 damage to you."
 set = "soc"

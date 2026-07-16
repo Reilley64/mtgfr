@@ -3,6 +3,8 @@
 # A filter land: feed it one mana and tap it for two {R}/{W} mana (a net +1). The two outputs
 # are {R/W} dual credits, so they can be spent as RR, RW, or WW.
 name = "Rugged Prairie"
+id = "8e7641e1-e814-4d5a-9cb3-71ad2f4ceee8"
+default_print = "6bd21c9e-de16-4ee9-ae16-6e82b490109d"
 otags = ["activated-ability", "cycle-eve-filterland"]
 oracle = "{T}: Add {C}.\n{R/W}, {T}: Add {R}{R}, {R}{W}, or {W}{W}."
 set = "soc"

@@ -16,5 +16,7 @@ pub enum ModifierContribution {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModifierSourceGroup {
     pub source_name: &'static str,
+    /// Card id when a matching battlefield permanent is still present; empty for synthetic labels.
+    pub source_card_id: &'static str,
     pub contributions: Vec<ModifierContribution>,
 }

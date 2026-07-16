@@ -1,6 +1,8 @@
 # At the beginning of your upkeep, you may create a 0/1 colorless Eldrazi Spawn creature token. It has "Sacrifice this
 # token: Add {C}."
 name = "Awakening Zone"
+id = "f955bc96-d602-4142-a9a2-87009cc7028c"
+default_print = "13724768-83d3-4da2-82d7-35787c4f9877"
 otags = ["ramp", "repeatable-creature-tokens", "triggered-ability"]
 oracle = "At the beginning of your upkeep, you may create a 0/1 colorless Eldrazi Spawn creature token. It has \"Sacrifice this token: Add {C}.\""
 set = "soc"

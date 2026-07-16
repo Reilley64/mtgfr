@@ -3,6 +3,8 @@
 # has haste.
 # Cursed Mirror: {2}{R} Artifact.
 name = "Cursed Mirror"
+id = "4d67e2a7-4aa7-44cc-853b-500d7aac046d"
+default_print = "077392b3-6b06-46c8-8737-51e85f690448"
 otags = ["activated-ability", "copy-creature", "gains-haste", "mini-refund", "utility-mana-rock"]
 oracle = "{T}: Add {R}.\nAs this artifact enters, you may have it become a copy of any creature on the battlefield until end of turn, except it has haste."
 set = "soc"

@@ -3,6 +3,8 @@
 # {2}{R}{W}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)
 # Fields of Strife: R/W land with enters-tapped and {2}{R}{W}, {T}: Surveil 1 activated ability.
 name = "Fields of Strife"
+id = "a32e08fa-bea4-4ba9-a126-9bf0a91f67e2"
+default_print = "3dc7a4c3-c356-4fba-bea0-e8788da3eb57"
 otags = ["activated-ability", "cycle-sos-surveil-dual", "mana-sink", "surveil", "utility-land", "virtual-legendary"]
 oracle = "This land enters tapped.\n{T}: Add {R} or {W}.\n{2}{R}{W}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
 set = "sos"

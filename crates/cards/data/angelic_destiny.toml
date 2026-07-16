@@ -2,6 +2,8 @@
 # Enchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its other types.
 # When enchanted creature dies, return this card to its owner's hand.
 name = "Angelic Destiny"
+id = "8ba36878-0816-44c7-b543-8ebfc28c2ecd"
+default_print = "a588b610-86bb-4a18-b54e-a12f7d7d15c8"
 otags = ["enlarge", "gives-first-strike", "gives-flying", "perpetual-aura", "regrowth-self", "triggered-ability", "type-change"]
 oracle = "Enchant creature\nEnchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its other types.\nWhen enchanted creature dies, return this card to its owner's hand."
 set = "soc"

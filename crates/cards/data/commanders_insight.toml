@@ -3,6 +3,8 @@
 # Commander's Insight {X}{U}{U}{U} — "Target player draws X cards plus an additional card
 # for each time they've cast a commander from the command zone this game."
 name = "Commander's Insight"
+id = "54d7d7f8-22cd-4859-b203-924d248b422b"
+default_print = "1a40e4da-a631-4423-b70f-701b27b09f79"
 otags = ["burst-draw", "force-draw", "hand-positive", "pure-draw", "recasting-commander-matters", "single-target-instant-sorcery", "synergy-commander"]
 oracle = "Target player draws X cards plus an additional card for each time they've cast a commander from the command zone this game."
 set = "soc"

@@ -87,6 +87,10 @@ export interface RenderCard {
   w: number;
   h: number;
   name: string;
+  /** Card (oracle) id, when known — drives Alt-pin inspect's oracle-text lookup (ADR 0031). */
+  cardId: string;
+  /** Printing UUID for this object's art (ADR 0031); empty renders a broken image. */
+  print: string;
   pt: string;
   tapped: boolean;
   counters: number;
@@ -257,6 +261,8 @@ function toCard(o: ObjectView): RenderCard {
     w: CARD_W,
     h: CARD_H,
     name: o.name,
+    cardId: o.card_id ?? "",
+    print: o.print ?? "",
     pt: pt(o),
     tapped: o.tapped,
     counters: o.plus_counters,
@@ -304,6 +310,8 @@ function deckCard(owner: number, count: number): RenderCard | null {
     w: COL_W,
     h: COL_H,
     name: "Library",
+    cardId: "",
+    print: "",
     pt: "",
     tapped: false,
     counters: 0,

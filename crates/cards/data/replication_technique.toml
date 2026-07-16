@@ -4,6 +4,8 @@
 # Replication Technique: {4}{U} Sorcery. "Demonstrate. Create a token that's a copy of target
 # permanent you control." Exercises Effect::CreateTokenCopy directly.
 name = "Replication Technique"
+id = "163baf58-b35d-4f2b-aa53-8384b8b5800a"
+default_print = "b3149976-2811-4bbd-af1e-d59016bb0754"
 otags = ["cast-trigger-self", "copy-aura", "copy-equipment", "copy-permanent", "cycle-c21-technique", "multi-land-ramp", "selective-group-hug", "single-target-instant-sorcery"]
 oracle = "Demonstrate (When you cast this spell, you may copy it. If you do, choose an opponent to also copy it. Players may choose new targets for their copies.)\nCreate a token that's a copy of target permanent you control."
 set = "soc"

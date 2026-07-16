@@ -2,6 +2,8 @@
 # {4}, {T}: Target creature can't be blocked this turn.
 # Rogue's Passage (SOC): "{T}: Add {C}. {4}, {T}: Target creature can't be blocked this turn."
 name = "Rogue's Passage"
+id = "f29dc596-2121-4421-8463-15f6c2e8b9b3"
+default_print = "335444f0-0848-4c17-b056-56d4fc876a58"
 otags = ["activated-ability", "gives-unblockable", "mana-sink", "repeatable-crime", "utility-land"]
 oracle = "{T}: Add {C}.\n{4}, {T}: Target creature can't be blocked this turn."
 set = "soc"

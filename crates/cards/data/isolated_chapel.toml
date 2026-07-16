@@ -1,6 +1,8 @@
 # This land enters tapped unless you control a Plains or a Swamp.
 # {T}: Add {W} or {B}.
 name = "Isolated Chapel"
+id = "7e5d9efe-48a9-434b-bb09-056e0e09cc9a"
+default_print = "78814c92-b52c-462a-866f-3e7da9db9f70"
 otags = ["activated-ability", "cycle-isd-checkland", "synergy-plains", "synergy-swamp"]
 oracle = "This land enters tapped unless you control a Plains or a Swamp.\n{T}: Add {W} or {B}."
 set = "soc"

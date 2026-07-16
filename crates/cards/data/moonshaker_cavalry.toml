@@ -6,6 +6,8 @@
 #    When this creature enters, creatures you control gain flying and get +X/+X until end of turn,
 #    where X is the number of creatures you control."
 name = "Moonshaker Cavalry"
+id = "b3f16f34-d78c-4b61-821b-05fc6bd0da37"
+default_print = "ca90d382-7e13-4637-a624-2a1b82abe56c"
 otags = ["creature-count-matters", "evasion", "gives-flying", "power-boost-to-all", "quadratic", "toughness-boost-to-all", "triggered-ability", "virtual-french-vanilla"]
 oracle = "Flying\nWhen this creature enters, creatures you control gain flying and get +X/+X until end of turn, where X is the number of creatures you control."
 set = "soc"

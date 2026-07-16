@@ -1,5 +1,7 @@
 # Sacrifice a creature: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)
 name = "Viscera Seer"
+id = "f82a4e85-526d-4456-b700-7760043a31be"
+default_print = "f511830b-1c1f-4d30-aa5d-4314726d142e"
 otags = ["activated-ability", "free-sacrifice-outlet", "martyr", "sacrifice-outlet-creature", "scry"]
 oracle = "Sacrifice a creature: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
 set = "soc"

@@ -3,6 +3,8 @@
 # this creature.
 # {1}, {T}: Put a +1/+1 counter on this creature.
 name = "Hangarback Walker"
+id = "dde55256-5259-44e7-a267-fca45a7f0d04"
+default_print = "cc387ccf-f746-4855-81e5-64f5a5e0fdda"
 otags = ["activated-ability", "evasion", "gains-pp-counters", "pp-counters-matter", "repeatable-pp-counters", "splits-on-death", "virtual-legendary"]
 oracle = "This creature enters with X +1/+1 counters on it.\nWhen this creature dies, create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter on this creature.\n{1}, {T}: Put a +1/+1 counter on this creature."
 set = "soc"

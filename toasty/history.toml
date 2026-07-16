@@ -4,3 +4,13 @@ version = 1
 id = 6792122746885683487
 name = "0000_initial.sql"
 snapshot_name = "0000_snapshot.toml"
+
+[[migrations]]
+id = 2217343831142306680
+name = "0001_card_id_and_print.sql"
+snapshot_name = "0001_snapshot.toml"
+
+[[migrations]]
+id = 2217343831142306681
+name = "0002_catalog_cards_by_id.sql"
+snapshot_name = "0002_snapshot.toml"

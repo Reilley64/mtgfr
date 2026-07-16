@@ -4,6 +4,8 @@
 # Silverquill Campus (soc): "This land enters tapped. {T}: Add {W} or {B}. {4}, {T}: Scry 1."
 # Silverquill Campus has no printed land type (a plain "Land"), so there's no subtype to model.
 name = "Silverquill Campus"
+id = "2b65eb80-6fb7-429f-81f2-2fe125eba634"
+default_print = "354efff0-aea5-4274-94d6-9fce02430255"
 otags = ["activated-ability", "cycle-stx-campus", "mana-sink", "scry", "utility-land"]
 oracle = "This land enters tapped.\n{T}: Add {W} or {B}.\n{4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
 set = "soc"

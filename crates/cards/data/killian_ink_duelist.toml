@@ -4,6 +4,8 @@
 # "Spells you cast that target a creature cost {2} less to cast." — the targets-a-creature
 # reducer (Killian, Ink Duelist, Silverquill's warlock).
 name = "Killian, Ink Duelist"
+id = "e233cb5b-7237-4271-8157-9179cc897b6c"
+default_print = "9f51c115-dc9b-40a4-849d-3fc0c26e5a39"
 otags = ["cost-reducer", "cycle-stx-student", "evasion", "repeatable-lifegain", "synergy-target"]
 oracle = "Lifelink\nMenace (This creature can't be blocked except by two or more creatures.)\nSpells you cast that target a creature cost {2} less to cast."
 set = "soc"

@@ -6,6 +6,8 @@
 # counter on target creature. Activate only as a sorcery and only if you've cast an instant
 # or sorcery spell this turn."
 name = "Hall of Oracles"
+id = "0bb896ba-e15e-43a9-9120-e674d7ba003c"
+default_print = "c29b896e-eee0-4f40-89b8-89262dae44e1"
 otags = ["activated-ability", "filterland", "gives-pp-counters", "repeatable-crime", "repeatable-pp-counters", "synergy-instant", "synergy-sorcery", "utility-land"]
 oracle = "{T}: Add {C}.\n{1}, {T}: Add one mana of any color.\n{T}: Put a +1/+1 counter on target creature. Activate only as a sorcery and only if you've cast an instant or sorcery spell this turn."
 set = "soc"

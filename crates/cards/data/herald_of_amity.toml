@@ -1,5 +1,7 @@
 # Flying
 name = "Herald of Amity"
+id = "6c25c6b5-d98c-4eb4-aacd-b6960a8779a9"
+default_print = "0a36fe06-225f-44c6-b608-452344e3585a"
 otags = ["attack-trigger", "attacking-matters-self", "evasion", "free-cast-another", "gives-castable-from-exile", "impulse-cast", "impulse-enchantment-aura", "synergy-aura"]
 oracle = "Flying\nWhen this creature enters, exile the top eight cards of your library. You may cast an Aura spell from among them without paying its mana cost. Then put the rest on the bottom of your library in a random order.\nWhenever this creature attacks, it gets +X/+X until end of turn, where X is the number of Auras you control."
 set = "soc"

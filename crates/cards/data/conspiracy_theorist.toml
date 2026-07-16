@@ -1,4 +1,6 @@
 name = "Conspiracy Theorist"
+id = "fa81e7ff-0f2c-40df-9169-c0a22f00cd76"
+default_print = "dd6797f7-ecc4-4c45-b1e4-26963a1614dc"
 otags = ["attack-trigger", "attacking-matters-self", "discarded-type-matters", "impulsive-recursion", "repeatable-rummage", "self-discard-matters"]
 oracle = "Whenever this creature attacks, you may pay {1} and discard a card. If you do, draw a card.\nWhenever you discard one or more nonland cards, you may exile one of them from your graveyard. If you do, you may cast it this turn."
 set = "soc"

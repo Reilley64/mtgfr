@@ -13,7 +13,7 @@ import type { ActionView, ObjectView } from "~/api/generated";
 import { ZONE } from "~/layout";
 import { byObject, bySection, handExtras } from "~/lib/actions";
 import { cn } from "~/lib/cn";
-import { imageUrlByName } from "~/lib/scryfall";
+import { imageUrlByPrint } from "~/lib/scryfall";
 import { game } from "~/store";
 
 export interface ActionDrop {
@@ -41,7 +41,7 @@ export default function Hand(props: {
   viewer: number;
   hiddenId: number | null; // the staged card, dimmed in place while it awaits a target
   /** Current face-up bar card under the cursor (for Alt-pin inspect owned by Board). */
-  onHoverName?: (name: string | null) => void;
+  onHoverCard?: (card: { name: string; cardId?: string; print?: string } | null) => void;
   /** Action under the cursor (or being dragged) — Board paints its `auto_tap` preview. */
   onHoverAction?: (action: ActionView | null) => void;
   onDrop: (d: ActionDrop) => void;
@@ -51,6 +51,10 @@ export default function Hand(props: {
     game.state ? game.state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === props.viewer) : [],
   );
   const handActionByObject = createMemo(() => byObject(grouped().hand));
+  const objectMeta = (id: number | undefined | null): { print: string; cardId?: string } => {
+    const obj = id != null ? game.state?.objects.find((o) => o.id === id) : undefined;
+    return { print: obj?.print ?? "", cardId: obj?.card_id || undefined };
+  };
   // Hand cards plus overshadowed alternative-action tiles (cycle / suspend / discard-ability) share
   // one fan so extras sit in the same arc.
   const handSlots = createMemo(() => {
@@ -72,15 +76,21 @@ export default function Hand(props: {
   // The engine folds it into the cast, but until now the bar never said what you were about to pay.
   const commanderTax = createMemo(() => game.state?.players.find((p) => p.player === props.viewer)?.commander_tax ?? 0);
 
-  // The drag rides an action + the image name to draw its ghost. Driven from window listeners (not
-  // per-card handlers) so a stream delta arriving mid-drag — which re-renders the `<For>` and would
-  // destroy the grabbed element, losing its pointer capture — can't strand the drag.
-  const [drag, setDrag] = createSignal<{ action: ActionView; name: string; x: number; y: number } | null>(null);
+  // The drag rides an action + the image name/print to draw its ghost. Driven from window listeners
+  // (not per-card handlers) so a stream delta arriving mid-drag — which re-renders the `<For>` and
+  // would destroy the grabbed element, losing its pointer capture — can't strand the drag.
+  const [drag, setDrag] = createSignal<{
+    action: ActionView;
+    name: string;
+    print: string;
+    x: number;
+    y: number;
+  } | null>(null);
   // Track which bar card is under the cursor so Board can Alt-pin inspect it.
   const [hover, setHover] = createSignal<string | null>(null);
-  const setHoverName = (name: string | null) => {
-    setHover(name);
-    props.onHoverName?.(name);
+  const setHoverCard = (card: { name: string; cardId?: string; print?: string } | null) => {
+    setHover(card?.name ?? null);
+    props.onHoverCard?.(card);
   };
   const setHoverAction = (action: ActionView | null) => {
     props.onHoverAction?.(action);
@@ -101,14 +111,14 @@ export default function Hand(props: {
     teardown();
     // StackOverlay clears aux hover on unmount; do the same so a sticky hand name can't
     // steal Alt-inspect after Hand is torn down (eliminate / spectate).
-    setHoverName(null);
+    setHoverCard(null);
     setHoverAction(null);
   });
 
-  const onDown = (action: ActionView, name: string, e: PointerEvent) => {
+  const onDown = (action: ActionView, name: string, print: string, e: PointerEvent) => {
     e.preventDefault();
     teardown(); // clear any listeners from a drag whose pointerup was missed
-    setDrag({ action, name, x: e.clientX, y: e.clientY });
+    setDrag({ action, name, print, x: e.clientX, y: e.clientY });
     setHoverAction(action);
     move = (ev) => setDrag((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY } : d));
     up = (ev) => {
@@ -142,6 +152,8 @@ export default function Hand(props: {
     cn("opacity-100", p.dimmed && "opacity-55", p.action && drag()?.action.id === p.action.id && "opacity-25");
   const BarCard = (p: {
     name: string;
+    print: string;
+    cardId?: string;
     action: ActionView | null;
     dimmed?: boolean;
     caption?: string;
@@ -167,16 +179,16 @@ export default function Hand(props: {
       class="pointer-events-auto relative origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)]"
     >
       <img
-        src={imageUrlByName(p.name, "normal")}
+        src={imageUrlByPrint(p.print)}
         alt={p.name}
         draggable={false}
-        onPointerDown={(e) => p.action && onDown(p.action, p.name, e)}
+        onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, e)}
         onPointerMove={() => {
-          setHoverName(p.name);
+          setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
           setHoverAction(p.action);
         }}
         onPointerLeave={() => {
-          setHoverName(hover() === p.name ? null : hover());
+          if (hover() === p.name) setHoverCard(null);
           if (!drag()) setHoverAction(null);
         }}
         class={cn(
@@ -207,9 +219,12 @@ export default function Hand(props: {
               if (slot.kind === "extra") {
                 // Alternative-action labels are "Cycle: name" / "Suspend: name" / "Discard: name":
                 // the prefix is the caption, the rest is the card image name.
+                const meta = objectMeta(slot.action.object);
                 return (
                   <BarCard
                     name={slot.action.label.replace(/^[^:]+:\s*/, "")}
+                    print={meta.print}
+                    cardId={meta.cardId}
                     action={slot.action}
                     caption={actionCaption(slot.action.kind)}
                     fan={fanTransform(i(), count())}
@@ -222,6 +237,8 @@ export default function Hand(props: {
               return (
                 <BarCard
                   name={slot.card.name}
+                  print={slot.card.print ?? ""}
+                  cardId={slot.card.card_id || undefined}
                   action={action()}
                   dimmed={dimmed()}
                   caption={caption()}
@@ -239,6 +256,8 @@ export default function Hand(props: {
                 return (
                   <BarCard
                     name={card.name}
+                    print={card.print ?? ""}
+                    cardId={card.card_id || undefined}
                     action={action()}
                     dimmed={!action()}
                     caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
@@ -255,7 +274,7 @@ export default function Hand(props: {
       <Show when={drag()}>
         {(d) => (
           <img
-            src={imageUrlByName(d().name, "normal")}
+            src={imageUrlByPrint(d().print)}
             alt={d().name}
             draggable={false}
             style={{ "--x": `${d().x}px`, "--y": `${d().y}px` }}
@@ -282,14 +301,19 @@ export default function Hand(props: {
       <Show when={p.actions.length > 0}>
         <Section label={p.label} divider>
           <For each={p.actions}>
-            {(a, i) => (
-              <BarCard
-                name={p.name(a)}
-                action={a}
-                caption={p.caption ? a.label : undefined}
-                fan={fanTransform(i(), p.actions.length)}
-              />
-            )}
+            {(a, i) => {
+              const meta = objectMeta(a.object);
+              return (
+                <BarCard
+                  name={p.name(a)}
+                  print={meta.print}
+                  cardId={meta.cardId}
+                  action={a}
+                  caption={p.caption ? a.label : undefined}
+                  fan={fanTransform(i(), p.actions.length)}
+                />
+              );
+            }}
           </For>
         </Section>
       </Show>

@@ -6,6 +6,8 @@
 # rather than a real choice — revealing is strictly better with no downside, so there's nothing to
 # decide.
 name = "Shineshadow Snarl"
+id = "c9fc13d6-bd10-47bc-b2b6-7f67a1f3371e"
+default_print = "7a198106-4d31-4e10-884a-bdf2316f8088"
 otags = ["activated-ability", "alliteration", "cycle-stx-reveal-land", "synergy-plains", "synergy-swamp"]
 oracle = "As this land enters, you may reveal a Plains or Swamp card from your hand. If you don't, this land enters tapped.\n{T}: Add {W} or {B}."
 set = "soc"

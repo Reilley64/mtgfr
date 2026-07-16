@@ -7,6 +7,8 @@
 #    Enchanted creature gets +1/+1 and is goaded.
 #    Whenever enchanted creature attacks, you draw a card and lose 1 life."
 name = "Coercive Impetus"
+id = "dbb8a3d9-6b1b-4ad1-b8b9-f92ead03d1d9"
+default_print = "f98ca390-d2ea-41c8-93ed-57fcd22737d8"
 otags = ["attack-trigger", "attacking-matters", "force-attacker", "life-for-cards", "repeatable-pure-draw"]
 oracle = "Enchant creature\nEnchanted creature gets +1/+1 and is goaded. (It attacks each combat if able and attacks a player other than you if able.)\nWhenever enchanted creature attacks, you draw a card and lose 1 life."
 set = "soc"

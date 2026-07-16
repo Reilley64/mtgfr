@@ -4,6 +4,8 @@
 # {1}{G}, {T}: Create a Food token.
 # {T}, Sacrifice a Food: Add one mana of any color.
 name = "Gilded Goose"
+id = "f2f09757-1931-47c0-a5f0-39280445489d"
+default_print = "5ea59511-24b1-4925-9948-9d4c0d27d1c5"
 otags = ["activated-ability", "alliteration", "evasion", "mana-dork", "repeatable-food", "repeatable-sacrifice-outlet", "sacrifice-outlet-artifact", "synergy-food", "triggered-ability"]
 oracle = "Flying\nWhen this creature enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n{1}{G}, {T}: Create a Food token.\n{T}, Sacrifice a Food: Add one mana of any color."
 set = "soc"

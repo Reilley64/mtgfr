@@ -1,5 +1,7 @@
 # ({T}: Add {G}.)
 name = "Forest"
+id = "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6"
+default_print = "22463284-2478-4b1e-9a37-6dd2383266cf"
 otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "single-english-word-name", "tutored-by-name", "unique-type-line"]
 oracle = "({T}: Add {G}.)"
 set = "msh"

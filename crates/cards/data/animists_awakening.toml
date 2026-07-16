@@ -1,4 +1,6 @@
 name = "Animist's Awakening"
+id = "6f1bfe50-b61a-4fdd-963c-40d59117bdf4"
+default_print = "d5ace571-0644-40d6-a05f-15f2e47d8861"
 otags = ["alliteration", "cycle-ori-r-spell-mastery", "extra-land", "impulse-land", "impulse-onto-battlefield", "multi-land-ramp", "namesake-spell", "synergy-instant", "synergy-sorcery"]
 oracle = "Reveal the top X cards of your library. Put all land cards from among them onto the battlefield tapped and the rest on the bottom of your library in a random order.\nSpell mastery — If there are two or more instant and/or sorcery cards in your graveyard, untap those lands."
 set = "soc"
