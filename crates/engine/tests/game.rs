@@ -14884,6 +14884,146 @@ fn enter_as_copy_no_battlefield_creature_no_pause() {
     assert!(!game.effective_types(mirror).intersects(TypeSet::CREATURE));
 }
 
+// ── enter-as-copy of an enchantment (#158: Copy Enchantment) ─────────────────────────
+
+/// Cast Copy Enchantment, resolving until it pauses on the enter-as-copy choice. Returns the
+/// entered permanent's id. Panics if it never pauses.
+fn cast_copy_enchantment(game: &mut Game) -> ObjectId {
+    game.fund_mana(PlayerId(0));
+    let copier = game.spawn_in_hand(PlayerId(0), card("Copy Enchantment"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: copier,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // Copy Enchantment resolves and enters; pauses on the copy choice.
+    game.current_id(copier)
+}
+
+#[test]
+fn copy_enchantment_enters_as_copy_of_enchantment() {
+    // Copy Enchantment: "You may have this enchantment enter as a copy of any enchantment on the
+    // battlefield." Copying Glorious Anthem ("Creatures you control get +1/+1") makes the copy a
+    // static anthem for its own controller (not the original Anthem's) — the copier's own Bear
+    // gets +1/+1 (CR 707.2, the copy's abilities function as the copy's own).
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Glorious Anthem"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    let copier = cast_copy_enchantment(&mut game);
+    let anthem = battlefield_permanent_named(&game, PlayerId(1), "Glorious Anthem");
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseCopyTarget {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "Copy Enchantment pauses on a copy choice for its controller, got {:?}",
+        game.pending_choice()
+    );
+
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(anthem),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.def_of(copier).name,
+        "Glorious Anthem",
+        "copies the Anthem's def"
+    );
+    assert_eq!(
+        game.power(bear),
+        3,
+        "the copy's own anthem static boosts its controller's Bear"
+    );
+    assert_eq!(game.toughness(bear), 3);
+}
+
+#[test]
+fn copy_enchantment_declines_stays_itself() {
+    // "You may" — declining leaves Copy Enchantment its printed self, which does nothing on its
+    // own; the Bear stays a vanilla 2/2.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Glorious Anthem"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    let copier = cast_copy_enchantment(&mut game);
+
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: None,
+    })
+    .unwrap();
+
+    assert_eq!(game.def_of(copier).name, "Copy Enchantment", "declined");
+    assert_eq!(game.power(bear), 2, "declined — no anthem effect");
+    assert_eq!(game.toughness(bear), 2);
+}
+
+#[test]
+fn copy_enchantment_copies_an_aura_and_enters_attached_after_a_host_pick() {
+    // A copied Aura must enter attached (CR 707.2 read with CR 303.4f — an Aura not attached to
+    // anything is illegal, CR 704.5m): Copy Enchantment becoming a copy of Empyrial Armor pauses
+    // to choose a host among legal enchant targets (reusing the deployed-Aura attach path), then
+    // attaches to the chosen creature — its `grant_to_attached` static then applies there.
+    let mut game = Game::new();
+    let original_host = game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    let armor = game.spawn_in_hand(PlayerId(0), card("Empyrial Armor"));
+    cast_and_resolve(&mut game, armor, Some(Target::Object(original_host)));
+    let armor = game.current_id(armor);
+    let new_host = game.spawn_on_battlefield(PlayerId(1), creature("Ox", 2, 2, &[]));
+
+    let copier = cast_copy_enchantment(&mut game);
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(armor),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.def_of(copier).name,
+        "Empyrial Armor",
+        "copies the Aura's def"
+    );
+    let Some(PendingChoice::ChooseAttachHost {
+        player: PlayerId(0),
+        candidates,
+        optional,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "a copied Aura pauses to choose a host, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(!optional, "an Aura's host choice is mandatory");
+    assert!(candidates.contains(&new_host));
+
+    game.submit(Intent::ChooseAttachHost {
+        player: PlayerId(0),
+        host: Some(new_host),
+    })
+    .unwrap();
+
+    assert_eq!(game.attached_to(copier), Some(new_host));
+    assert_eq!(game.zone_of(copier), Zone::Battlefield);
+}
+
 /// Brudiclad's begin-combat ability: mint a 2/1 Myr, then "you may choose a token you control;
 /// if you do, each other token you control becomes a copy of that token." The 2/1 Myr and the
 /// mass token conversion, in one begin-combat `Sequence`.
@@ -22671,6 +22811,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
     effects: &[Effect::PumpSelfUntilEndOfTurn {
         power: Amount::Fixed(2),
         toughness: Amount::Fixed(1),
+        keywords: &[],
     }],
 };
 
@@ -33564,6 +33705,192 @@ fn prison_term_bans_all_activated_abilities() {
 }
 
 #[test]
+fn prison_term_reattaches_to_entering_opponent_creature() {
+    // Prison Term: "Whenever a creature an opponent controls enters, you may attach this Aura
+    // to that creature." Accepting moves the Aura — and its "activated abilities can't be
+    // activated" restriction — off its original host and onto the newly entering one.
+    let mut game = Game::new();
+    let host_a = game.spawn_on_battlefield(PlayerId(1), card("Troyan, Gutsy Explorer"));
+    let mut test = TestGame { game };
+    let prison_term = test.spawn_in_hand(PlayerId(0), card("Prison Term"));
+    test.cast(prison_term).at(Target::Object(host_a)).resolve();
+    let aura = test.attachments(host_a)[0];
+    let mut game = test.game;
+
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(1),
+            object: host_a,
+            ability_index: 0, // {T}: Add {G}{U}. (a mana ability — still banned under Prison Term)
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "host A starts banned under Prison Term"
+    );
+
+    // P1 — an opponent of Prison Term's controller P0 — casts a second Troyan on their own
+    // turn (creature spells are sorcery-speed).
+    game.stack_library(PlayerId(1), &[card("Forest")]); // so P1's draw step doesn't deck out.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    let host_b_card = game.spawn_in_hand(PlayerId(1), card("Troyan, Gutsy Explorer"));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: host_b_card,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // host_b enters, pausing the "may attach" trigger for P0.
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "P0 (Prison Term's controller) is offered the re-attach, got {:?}",
+        game.pending_choice()
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the accepted re-attach resolves.
+
+    let host_b = battlefield_named(&game, PlayerId(1), "Troyan, Gutsy Explorer")
+        .into_iter()
+        .find(|&id| id != host_a)
+        .expect("the second Troyan entered the battlefield");
+    assert_eq!(
+        game.attached_to(aura),
+        Some(host_b),
+        "Prison Term moved to the newly entering opponent creature"
+    );
+    assert!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(1),
+            object: host_a,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        })
+        .is_ok(),
+        "host A regained its activated ability once Prison Term left"
+    );
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(1),
+            object: host_b,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "host B is now banned under the moved Prison Term"
+    );
+}
+
+/// A test-only Aura shaped like Prison Term's re-attach trigger, but with an `enchant` filter
+/// narrower than its own entering-trigger's watch filter — isolates the re-attach legality
+/// re-check from the trigger filter, which every real pool Aura happens to share.
+const NARROW_REATTACH: CardDef = CardDef {
+    name: "Narrow Reattach (test)",
+    enchant: Some(PermanentFilter {
+        power_max: Some(2),
+        ..PermanentFilter::of(TypeSet::CREATURE)
+    }),
+    abilities: &[Ability {
+        timing: Timing::Triggered(Trigger::PermanentEnters {
+            filter: PermanentFilter::of(TypeSet::CREATURE),
+            controller: EnterController::Opponent,
+        }),
+        effect: Effect::AttachSelfToEntering { entering: None },
+        optional: true,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..FLIGHT
+};
+
+#[test]
+fn reattach_effect_rechecks_the_auras_enchant_filter_at_the_move() {
+    // The widened `attach_self_to_entering` re-checks the Aura's own `enchant` filter against
+    // the newly entering permanent before moving it (CR 303.4f-style legality), not just the
+    // trigger's own watch filter — Prison Term itself can't exercise this (its `enchant` and
+    // trigger filter are both a plain "creature"), so this is a control case against a
+    // deliberately mismatched test Aura.
+    let mut game = Game::new();
+    let small_host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let mut test = TestGame { game };
+    let aura_card = test.spawn_in_hand(PlayerId(0), NARROW_REATTACH);
+    test.cast(aura_card)
+        .at(Target::Object(small_host))
+        .resolve();
+    let aura = test.attachments(small_host)[0];
+    let mut game = test.game;
+
+    // A power-4 opponent creature enters: it matches the trigger's broad "creature" filter but
+    // fails the Aura's own "power 2 or less" enchant filter.
+    game.stack_library(PlayerId(1), &[card("Forest")]); // so P1's draw step doesn't deck out.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    let big = game.spawn_in_hand(PlayerId(1), card("Serra Angel")); // 4/4
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: big,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the Angel enters, pausing the "may attach" trigger for P0.
+
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.attached_to(aura),
+        Some(small_host),
+        "an illegal enchant host doesn't move the Aura, even though the \"may\" was accepted"
+    );
+}
+
+#[test]
 fn pacifism_restriction_lifts_when_aura_leaves() {
     // Destroying Faith's Fetters restores the host's ability to attack, block, and activate.
     let mut game = Game::new();
@@ -41927,6 +42254,201 @@ fn cycling_rejected_for_a_card_without_cycling() {
         }),
         Err(Reject::CannotActivate),
         "a card with no printed cycling ability can't be cycled",
+    );
+}
+
+#[test]
+fn krosan_tusker_cycle_triggers_land_search_above_the_draw() {
+    // Krosan Tusker: "Cycling {2}{G} ... When you cycle this card, you may search your library
+    // for a basic land card, reveal that card, put it into your hand, then shuffle. (Do this
+    // before you draw.)" — CR 702.29e: the cycled trigger stacks above cycling's own draw.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let tusker = game.spawn_in_hand(PlayerId(0), card("Krosan Tusker"));
+    let lib = game.stack_library(PlayerId(0), &[card("Island"), card("Forest")]);
+    let island = lib[0];
+    let forest = lib[1];
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: tusker,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(tusker),
+        Zone::Graveyard,
+        "the cycled card is discarded immediately, paying cycling's cost",
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before - 1,
+        "discarded, but the draw hasn't resolved yet — it's queued beneath the cycled trigger",
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the cycled trigger's optional search pauses before the draw resolves, got {:?}",
+        game.pending_choice(),
+    );
+
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the search ability resolves off the top of the stack
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "accepting the cycled trigger pauses on the library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand);
+    assert!(
+        matches.contains(&island) && matches.contains(&forest),
+        "both basics match"
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(forest),
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Hand,
+        "the found land went to hand"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "discard (-1) + search find (+1) — the draw still hasn't resolved",
+    );
+
+    resolve_top_of_stack(&mut game); // the draw, queued underneath the cycled trigger, resolves last
+    assert_eq!(
+        game.zone_of(island),
+        Zone::Hand,
+        "the queued draw resolves only after the cycled trigger clears",
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before + 1,
+        "discard (-1) + search find (+1) + draw (+1)",
+    );
+}
+
+#[test]
+fn krosan_tusker_cycle_declining_the_search_still_draws() {
+    // Declining the optional search still lets cycling's own draw resolve — the "may" only
+    // gates the rider, never the fixed draw itself.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let tusker = game.spawn_in_hand(PlayerId(0), card("Krosan Tusker"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: tusker,
+    })
+    .unwrap();
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the queued draw resolves
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "discard (-1) + draw (+1), net zero — the search rider was declined",
+    );
+}
+
+#[test]
+fn decree_of_justice_cycle_pays_x_for_soldiers() {
+    // Decree of Justice: "Cycling {2}{W} ... When you cycle this card, you may pay {X}. If you
+    // do, create X 1/1 white Soldier creature tokens." — the paid X is chosen when accepting
+    // the cycled trigger, independent of the spell's own {X}{X} casting cost.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let decree = game.spawn_in_hand(PlayerId(0), card("Decree of Justice"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: decree,
+    })
+    .unwrap();
+
+    let Some(PendingChoice::PayCost { cost, .. }) = game.pending_choice() else {
+        panic!(
+            "the cycled trigger's pay-{{X}} rider pauses on a pay-or-decline, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(cost.x, 1, "a single {{X}} symbol in the rider's own cost");
+
+    game.submit(Intent::PayOptionalCostX {
+        player: PlayerId(0),
+        pay: true,
+        x: 3,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the paid trigger creates the Soldiers
+    resolve_top_of_stack(&mut game); // the queued draw, underneath, resolves last
+
+    let soldiers: Vec<ObjectId> = game
+        .live_object_ids()
+        .into_iter()
+        .filter(|&id| {
+            game.zone_of(id) == Zone::Battlefield
+                && game.controller_of(id) == PlayerId(0)
+                && game.def_of(id).name == "Soldier"
+        })
+        .collect();
+    assert_eq!(soldiers.len(), 3, "paid X=3 creates three Soldier tokens");
+    for soldier in soldiers {
+        assert_eq!(game.power(soldier), 1);
+        assert_eq!(game.toughness(soldier), 1);
+    }
+}
+
+#[test]
+fn decree_of_justice_cycle_declining_the_pay_creates_no_soldiers() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let decree = game.spawn_in_hand(PlayerId(0), card("Decree of Justice"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: decree,
+    })
+    .unwrap();
+    game.submit(Intent::PayOptionalCostX {
+        player: PlayerId(0),
+        pay: false,
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the queued draw resolves
+
+    assert!(
+        game.live_object_ids()
+            .into_iter()
+            .all(|id| game.zone_of(id) != Zone::Battlefield || game.def_of(id).name != "Soldier"),
+        "declining the pay creates nothing",
     );
 }
 
@@ -65227,8 +65749,8 @@ fn enlightened_tutor_reveals_and_puts_an_artifact_or_enchantment_card_on_top() {
 #[test]
 fn sterling_grove_tutors_an_enchantment_to_the_top() {
     // Sterling Grove: "{1}, Sacrifice this enchantment: Search your library for an enchantment
-    // card, reveal it, then shuffle and put that card on top." (The shroud anthem half is #139's
-    // job, not modeled here.)
+    // card, reveal it, then shuffle and put that card on top." (The shroud anthem half is
+    // `sterling_grove_grants_shroud_to_other_enchantments`.)
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let lib = game.stack_library(
@@ -65245,7 +65767,7 @@ fn sterling_grove_tutors_an_enchantment_to_the_top() {
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
         object: grove,
-        ability_index: 0,
+        ability_index: 1, // index 0 is the static shroud grant; 1 is the sac-search activated ability
         target: None,
         sacrifice: vec![],
         x: 0,
@@ -65294,6 +65816,31 @@ fn sterling_grove_tutors_an_enchantment_to_the_top() {
         game.zone_of(anthem),
         Zone::Hand,
         "the tutored enchantment was drawn first — it was on top of the library"
+    );
+}
+
+#[test]
+fn sterling_grove_grants_shroud_to_other_enchantments() {
+    // Sterling Grove: "Other enchantments you control have shroud." (CR 702.18) — a static,
+    // continuously-read grant (#139), distinct from the until-end-of-turn one-shot.
+    let mut game = Game::new();
+    let grove = game.spawn_on_battlefield(PlayerId(0), card("Sterling Grove"));
+    let own_anthem = game.spawn_on_battlefield(PlayerId(0), card("Glorious Anthem"));
+    let opponents_anthem = game.spawn_on_battlefield(PlayerId(1), card("Glorious Anthem"));
+    let opponents_destroy = game.spawn_in_hand(PlayerId(1), DESTROY_ANY_PERMANENT);
+
+    let targets = game.legal_targets(opponents_destroy, None);
+    assert!(
+        !targets.contains(&Target::Object(own_anthem)),
+        "shroud reaches another enchantment you control",
+    );
+    assert!(
+        targets.contains(&Target::Object(grove)),
+        "\"other\" enchantments excludes Sterling Grove itself",
+    );
+    assert!(
+        targets.contains(&Target::Object(opponents_anthem)),
+        "the grant is scoped to enchantments Sterling Grove's controller controls",
     );
 }
 
@@ -65414,4 +65961,286 @@ fn court_hussar_looks_at_top_three_and_puts_one_in_hand() {
         2,
         "one of the top three went to hand, the other two stayed in the library (moved to the bottom)"
     );
+}
+
+// ── Armadillo Cloak (fidelity backlog #151, attached-host damage watch) ───────────────
+
+/// [`cast_and_resolve`], but for a game seated with more than two players: passes priority once
+/// per seated player rather than [`resolve_top_of_stack`]'s hardcoded two, which only carries a
+/// cast all the way to resolution in a two-player game — with more players, a stack item only
+/// resolves once *every* seat has passed in succession (CR 405.5, CR 117.4).
+fn cast_and_resolve_seated(
+    game: &mut Game,
+    caster: PlayerId,
+    seats: u8,
+    object: ObjectId,
+    target: Option<Target>,
+) {
+    game.fund_mana(caster);
+    game.submit(Intent::Cast {
+        player: caster,
+        object,
+        target,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("the spell is castable");
+    for _ in 0..seats {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
+}
+
+#[test]
+fn armadillo_cloak_gains_life_on_combat_damage() {
+    // Impetus-style: the cloak (P0's Aura) enchants an OPPONENT's creature (P1's). "You" in
+    // "you gain that much life" is the cloak's own controller (P0) — distinct from both the
+    // enchanted creature's controller (P1) and the player it attacks (P2).
+    let mut game = Game::with_players(4, 0);
+    for seat in 0..4 {
+        game.stack_library(PlayerId(seat), &[card("Forest"); 20]); // enough to survive P1's draw
+    }
+    let host = game.spawn_on_battlefield(PlayerId(1), VANILLA); // 2/2, becomes 4/4 trample enchanted
+    let cloak = game.spawn_in_hand(PlayerId(0), card("Armadillo Cloak"));
+    cast_and_resolve_seated(&mut game, PlayerId(0), 4, cloak, Some(Target::Object(host)));
+    assert_eq!(
+        game.attachments(host).len(),
+        1,
+        "the cloak entered attached to host"
+    );
+
+    let p0_life_before = game.life(PlayerId(0));
+    pass_until_next_turn(&mut game); // now P1 (the host's controller) is active
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(host, PlayerId(2))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(2)),
+        20 - 4,
+        "P2 took 4 combat damage from the enchanted host"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        p0_life_before + 4,
+        "the cloak's controller (P0) gains 4 life, not the host's own controller (P1)"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "the enchanted creature's own controller (P1) gains nothing"
+    );
+}
+
+#[test]
+fn armadillo_cloak_gains_life_on_noncombat_damage() {
+    // "Whenever enchanted creature deals damage" fires on noncombat damage too (here, a fight) —
+    // not just combat damage. Two players are enough: no attribution ambiguity to isolate here
+    // (that's the combat test's job), just that the trigger fires at all off noncombat damage.
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(1), creature("Host 3/3", 3, 3, &[]));
+    let mine = game.spawn_on_battlefield(PlayerId(0), creature("Mine 2/2", 2, 2, &[]));
+    let cloak = game.spawn_in_hand(PlayerId(0), card("Armadillo Cloak"));
+    cast_and_resolve(&mut game, cloak, Some(Target::Object(host)));
+    assert_eq!(
+        game.attachments(host).len(),
+        1,
+        "the cloak entered attached to host"
+    );
+
+    let p0_life_before = game.life(PlayerId(0));
+    let spell = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL);
+    cast_and_resolve(&mut game, spell, Some(Target::Object(host)));
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mine)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the cloak's EnchantedCreatureDealsDamage trigger resolves
+
+    // Host is 3+2=5 power (the cloak's +2/+2) — its noncombat fight damage still gains the
+    // cloak's controller (P0) that much life.
+    assert_eq!(
+        game.life(PlayerId(0)),
+        p0_life_before + 5,
+        "the cloak's controller gains life from the enchanted host's noncombat fight damage too"
+    );
+}
+
+/// Questing Phelddagrif (tsb): "{G}: This creature gets +1/+1 until end of turn. Target opponent
+/// creates a 1/1 green Hippo creature token." The self-pump and the opponent's compensation both
+/// land off one activation — `Effect::PumpSelfUntilEndOfTurn` (no target of its own) shares the
+/// ability's one chosen target with `create_token`'s opponent-restricted `TokenController::TargetOpponent`.
+#[test]
+fn questing_phelddagrif_green_gives_opponent_hippo() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let phelddagrif = game.spawn_on_battlefield(PlayerId(0), card("Questing Phelddagrif"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: phelddagrif,
+        ability_index: 0, // {G}: +1/+1; target opponent creates a 1/1 green Hippo.
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.power(phelddagrif),
+        4,
+        "+1/+1 until end of turn on the activator's own creature"
+    );
+    assert_eq!(game.toughness(phelddagrif), 4);
+
+    let hippo = game
+        .live_object_ids()
+        .into_iter()
+        .find(|&id| game.zone_of(id) == Zone::Battlefield && game.def_of(id).name == "Hippo")
+        .expect("the targeted opponent creates a Hippo token");
+    assert_eq!(
+        game.controller_of(hippo),
+        PlayerId(1),
+        "the Hippo belongs to the targeted opponent, not the activator"
+    );
+    assert_eq!(game.power(hippo), 1);
+    assert_eq!(game.toughness(hippo), 1);
+    assert!(
+        game.colors_of(hippo)[Color::Green.index()],
+        "the Hippo token is green"
+    );
+}
+
+/// Questing Phelddagrif's white rider: "{W}: This creature gains protection from black and from
+/// red until end of turn. Target opponent gains 2 life." The self-pump's `keywords` axis and a
+/// new `target_player_gains_life` effect, both sharing the one chosen opponent target.
+#[test]
+fn questing_phelddagrif_white_gives_opponent_two_life() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let phelddagrif = game.spawn_on_battlefield(PlayerId(0), card("Questing Phelddagrif"));
+    let opponent_life_before = game.life(PlayerId(1));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: phelddagrif,
+        ability_index: 1, // {W}: protection from black and red; target opponent gains 2 life.
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.has_keyword(
+            phelddagrif,
+            Keyword::ProtectionFrom(ProtectionScope::Color(Color::Black))
+        ),
+        "gains protection from black"
+    );
+    assert!(
+        game.has_keyword(
+            phelddagrif,
+            Keyword::ProtectionFrom(ProtectionScope::Color(Color::Red))
+        ),
+        "gains protection from red"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        opponent_life_before + 2,
+        "the targeted opponent gains 2 life"
+    );
+}
+
+/// Questing Phelddagrif's blue rider: "{U}: This creature gains flying until end of turn. Target
+/// opponent may draw a card." The new `target_player_may_draw` effect pauses the *targeted
+/// opponent* — not the activator — on a `MayYesNo`; declining draws nothing, accepting draws them
+/// a card.
+#[test]
+fn questing_phelddagrif_blue_lets_opponent_may_draw() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let phelddagrif = game.spawn_on_battlefield(PlayerId(0), card("Questing Phelddagrif"));
+    let lib = game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: phelddagrif,
+        ability_index: 2, // {U}: flying; target opponent may draw a card.
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.has_keyword(phelddagrif, Keyword::Flying),
+        "gains flying until end of turn"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(1),
+                ..
+            })
+        ),
+        "the *targeted opponent* (not the activator) is paused on whether to draw, got {:?}",
+        game.pending_choice()
+    );
+
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: false,
+    })
+    .unwrap();
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        0,
+        "declining draws nothing"
+    );
+
+    // A second activation: this time the opponent accepts.
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: phelddagrif,
+        ability_index: 2,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: true,
+    })
+    .unwrap();
+
+    let hand = hand_ids(&game, PlayerId(1));
+    assert_eq!(
+        hand.len(),
+        1,
+        "accepting draws the targeted opponent a card"
+    );
+    assert!(hand.contains(&game.current_id(lib[0])));
 }

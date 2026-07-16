@@ -1330,13 +1330,18 @@ Fully faithful: concordant_crossroads (keyword-only haste anthem). Still blocked
 supertype uniqueness rule (CR 704.5k) — no World axis in the DSL; carried as a `ponytail:` note on
 the card, unblocks when a second World card lands.
 
-### 139. `noncreature-keyword-anthem` — 1 card, S/M
+### 139. `noncreature-keyword-anthem` — 1 card, S/M — **LANDED (2026-07-16)**
 Depends on: nothing.
 A continuous keyword grant to matching noncreature permanents you control — "Other enchantments
 you control have shroud." *Sketch:* the static twin of
 `grant_keywords_to_permanents_you_control_until_end_of_turn` (same `filter` + `keywords` shape,
 read at the keyword recompute like `anthem_static` instead of resolved once); `other = true` via
 the filter's existing axis. Consulted by `untargetable_by` for shroud. *Cards:* sterling_grove.
+
+**Landed:** new `Effect::KeywordAnthemStatic { keywords, filter }` — same shape as
+`GrantKeywordsToPermanentsYouControlUntilEndOfTurn` but read fresh on every keyword recompute via
+`Game::keyword_anthem_static_grants`, unioned in `compute_effective_keywords_uncached` alongside
+`anthem_keywords`. sterling_grove is now fully faithful (both abilities), no note.
 
 ### 140. `library-top-search` — 2 cards, S — **LANDED (2026-07-16)**
 Depends on: nothing.
@@ -1415,7 +1420,7 @@ resolution-time choice for the affected player: discard one land, or two cards. 
 a 1-card land answer or a `count`-card answer; hand with no land collapses to the plain discard.
 *Cards:* compulsive_research.
 
-### 145. `cycling-triggers` — 2 cards, M
+### 145. `cycling-triggers` — 2 cards, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 "When you cycle this card" triggered abilities (CR 702.29e — triggers from the hand-discard zone
 change, stacking above cycling's draw). *Sketch:* scan the cycled card's own abilities for a new
@@ -1424,6 +1429,23 @@ battlefield watcher); Krosan Tusker's search rides directly; Decree of Justice a
 pay-`{X}` rider (`optional = true` + a cost carrying `x = true` — the first X "may" cost; clamp to
 the existing optional-trigger pay shape with a chosen X). *Cards:* decree_of_justice,
 krosan_tusker.
+
+**Landed:** `Trigger::Cycled` (`timing = "cycled"`), scanned off the cycled card's own `def` at
+`Game::cycle`'s discard via the ordinary `queue_trigger_group` (the `Trigger::YouCastThis`
+self-scan idiom). To make it land genuinely *above* cycling's own fixed draw (not just queued
+after it) — a card with a `cycled` ability defers that draw into a second fabricated
+`TriggerGroup` (`Effect::DrawCards`, mirroring how `Game::enqueue_triggers` queues evoke's
+sacrifice underneath its ETB), queued *before* the cycled trigger so APNAP placement pushes it
+onto the stack first (bottom) and the cycled trigger second (top) — a card with no `cycled`
+ability keeps the plain immediate draw untouched. Krosan Tusker's search rides the existing
+`search_library` effect unmodified (optional = true, free cost). Decree of Justice's "you may pay
+{X}" needed one new wire shape: `Intent::PayOptionalCostX { pay, x }` (a sibling of
+`PayOptionalCost`, not a widened version of it — the existing bare-bool intent has ~30 call
+sites and no other `PayCost` answerer needs an `{X}`), whose handler
+(`Game::pay_optional_cost_with_x`) pays `cost.with_x(x)` and threads the chosen `x` onto the
+placed ability's stack item via `push_ability_group_with_x`, the same mechanism an activated
+ability's own `{X}` cost already uses — so `Amount::X` in "create X 1/1 white Soldier creature
+tokens" resolves it with no new `Amount` variant. Both cards fully faithful, no `approximates`.
 
 ### 146. `counter-activated-ability` — 1 card, L
 Depends on: #145 (cycling as a real stack object makes the counter observable).
@@ -1501,13 +1523,26 @@ Depends on: #130 (landed slice 1 — this is its named slice-3 scope generalizat
 table-wide all-combat-damage shield consulted at both `damage_player` and `damage_creature`
 combat chokes, no token mint. Flashback on the card is already landed. *Cards:* moments_peace.
 
-### 151. `enchanted-deals-damage-lifegain` — 1 card, M
+### 151. `enchanted-deals-damage-lifegain` — 1 card, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 Armadillo Cloak's "Whenever enchanted creature deals damage, you gain that much life" — a new
 attached-host damage watch (`timing = "enchanted_creature_deals_damage"`, any damage: combat and
 noncombat creature damage both route through the two damage chokes) with the dealt amount in
 trigger context (`Amount::TriggeringDamageDealt`, the `combat_damage_dealt` LKI shape). NOT
 modeled as lifelink — separate trigger, stacks with real lifelink. *Cards:* armadillo_cloak.
+
+**Landed:** `Trigger::EnchantedCreatureDealsDamage` (`timing = "enchanted_creature_deals_damage"`),
+mirroring `EnchantedCreatureAttacks`'s `self.attachments(host)` shape — fired for each Aura/
+Equipment attached to the damage's source, controlled by *that attachment's own controller*.
+Hooked at the general trigger-batch scan (`Game::enqueue_triggers`) on `Event::DamageMarked`
+(covers both combat-to-creature and noncombat/fight, since `Game::deal_creature_damage` is the
+shared choke behind both) and `Event::CombatDamageDealtToPlayer` (combat-to-player, including
+trample overflow via `Game::damage_player`) — broader than just the two named chokes, since any
+other creature-dealt `DamageMarked`/`CombatDamageDealtToPlayer` emitter is equally faithful to
+catch. `TriggerContext::triggering_damage_dealt` (`Amount::TriggeringDamageDealt`, CR 603.10a
+last-known information) carries the dealt amount into the queued `GainLife` effect. Distinct from
+lifelink (a static replacement bundled into the damage event) — a separate stack-going triggered
+ability, so it stacks additively rather than doubling. Fully faithful (no note): armadillo_cloak.
 
 ### 152. `tapped-for-mana-triggers` — 2 cards, L
 Depends on: nothing.
@@ -1537,7 +1572,7 @@ raises the triggering opponent on the new `PendingChoice::PayOrControllerDraws`/
 `Intent::PayOptionalCost`, mirroring `PayOrCounter`'s "declining does something" polarity but
 drawing instead of countering.
 
-### 154. `opponent-gift-riders` — 1 card, M
+### 154. `opponent-gift-riders` — 1 card, M — **LANDED (2026-07-17)**
 Depends on: nothing.
 Questing Phelddagrif's three opponent compensations: "target opponent creates a 1/1 green Hippo
 token" (an opponent-restricted `target_player` on `create_token`), "target opponent gains 2 life"
@@ -1545,6 +1580,17 @@ token" (an opponent-restricted `target_player` on `create_token`), "target oppon
 twin, pausing the targeted opponent on a yes/no). The pump halves are already expressible
 (`pump_self`, `pump_until_end_of_turn` `target = "this"` with `{ protection = … }` keywords).
 *Cards:* questing_phelddagrif.
+
+**Landed:** `pump_until_end_of_turn target = "this"` turned out to conflict with a Sequence's
+one-shared-target model (`ThisPermanent` would win `Effect::target`'s "first non-None step"
+lookup and swallow the ability's real opponent target) — `pump_self_until_end_of_turn` gained the
+`keywords` axis instead (no target of its own, so it never competes for the shared target),
+covering the protection/flying halves. New `TokenController::TargetOpponent` (mirrors
+`TargetPlayer`, narrowed to `TargetSpec::OpponentPlayer`) for the Hippo; new
+`Effect::TargetPlayerGainsLife` (`DrainTarget`'s gain-only twin) for the 2 life; new
+`Effect::TargetPlayerMayDraw` for the may-draw, reusing `PendingChoice::MayYesNo` addressed to the
+*targeted opponent* rather than the ability's controller (its `player` field was already
+generic — no schema change needed). Fully faithful (no `approximates`): questing_phelddagrif.
 
 ### 155. `attached-cant-attack-block` — 2 cards, M — **LANDED (2026-07-16)**
 Depends on: nothing.
@@ -1567,13 +1613,25 @@ Prison Term's restriction half is faithful; `approximates` is trimmed to exactly
 creature an opponent controls enters, you may attach this Aura to that creature" re-attach
 trigger — #156, now unblocked.
 
-### 156. `aura-reattach` — 1 card, M
-Depends on: #155 (Prison Term's other half — **landed 2026-07-16, unblocked**).
+### 156. `aura-reattach` — 1 card, M — **LANDED (2026-07)**
+Depends on: #155 (Prison Term's other half — landed 2026-07-16, unblocked).
 Prison Term's "Whenever a creature an opponent controls enters, you may attach this Aura to that
 creature" — the first pool Aura that re-attaches while already attached (falsified claim at
 `types/card.rs`: re-attach legality never consults `enchant`). *Sketch:* widen
 `attach_self_to_entering` to move an already-attached Aura (emit `AttachedTo` with a detach from
 the old host) and re-check the `enchant` filter at the move. *Cards:* prison_term.
+
+**Landed:** the "move" half was already covered by `Event::AttachedTo` unconditionally overwriting
+`attached_to` (`apply.rs`) — no card in the pool exercised it against an *already-attached* Aura
+until Prison Term's re-attach ability. Added the trigger to `prison_term.toml`
+(`permanent_enters`, `controller = "opponent"`, `optional = true`,
+`attach_self_to_entering`) and widened `Effect::AttachSelfToEntering`'s resolution
+(`effects.rs`) to re-check `attachment_host_legal` (the #155-and-earlier Equip/cast-time helper)
+against the entering permanent before attaching — a no-op if it isn't a legal host, even if the
+"you may" was accepted. Prison Term fully faithful (no `approximates`). No pool Aura's own
+`enchant` differs from its entering-trigger's watch filter, so the legality re-check itself is
+covered by a control-case test against a bespoke mismatched test Aura, not a pool card.
+*Cards:* prison_term.
 
 ### 157. `mana-spent-tracking` — 1 card, M — **LANDED (2026-07)**
 Depends on: nothing.
@@ -1595,12 +1653,21 @@ projection) — the mana you spent isn't secret, but no client UI reads it yet. 
 `approximates`): court_hussar (vigilance, the mandatory look-top-3 ETB, and the {W}-spent
 self-sacrifice ETB all land in the same pass — authored fresh, not previously on disk).
 
-### 158. `enter-as-copy-enchantment` — 1 card, S/M
+### 158. `enter-as-copy-enchantment` — 1 card, S/M — **LANDED (2026-07-17)**
 Depends on: #127 (landed).
 A type axis on `enter_as_copy` (`of = "enchantment"`, default `"creature"`): Copy Enchantment may
 enter as a copy of any enchantment on the battlefield. Same printed-`CardDef` copy snapshot as
 the creature arm; an Aura copy needs the deploy-time choose-host pause (the Armored Skyhunter
 attach path) since a copied Aura must enter attached. *Cards:* copy_enchantment.
+
+**Landed:** `CopyTargetKind` (`Creature` default, `Enchantment`) on `EnterAsCopy::of`;
+`Game::begin_enter_as_copy`'s candidate filter branches on it via the new
+`Game::is_enchantment_on_battlefield` (mirrors `is_creature_on_battlefield`, CR 613.4 type layer,
+includes an Aura per CR 303.2). Copying an Aura reuses the existing deployed-Aura attach path
+(`Game::maybe_pause_attach_deployed_aura`, the Armored Skyhunter/reanimated-Aura machinery) right
+after the `BecameCopy` overwrite, so the copy enters unattached and pauses on `ChooseAttachHost`
+before it counts as validly on the battlefield — fully faithful, no residual. Fully faithful (no
+`approximates`): copy_enchantment (authored fresh).
 
 ### 159. `phantom-prevention` — 1 card, M
 Depends on: #130 (prevention substrate).

@@ -764,6 +764,12 @@ pub enum TokenController {
     /// every other `TokenController` variant (which take their recipient from context, not a
     /// target of their own).
     TargetPlayer,
+    /// The ability's own chosen Player target, restricted to an opponent (CR "target opponent" —
+    /// Questing Phelddagrif's "Target opponent creates a 1/1 ... Hippo ... token", CR 111.4). The
+    /// opponent-restricted twin of [`TargetPlayer`](Self::TargetPlayer): same [`Target::Player`]
+    /// resolution, narrower [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer)
+    /// legal-target set.
+    TargetOpponent,
 }
 
 /// Who acts when a [`Effect::ScheduleAtNextUpkeep`] delayed trigger fires (CR 603.7).

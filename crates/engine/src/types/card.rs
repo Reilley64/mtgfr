@@ -652,10 +652,12 @@ pub struct CardDef {
     pub suspend: Option<Suspend>,
     /// Enter-as-a-copy replacement (CR 706/707.2), carried as a rules-keyword marker rather than a
     /// `[[abilities]]` (like [`Self::devour`]): as this permanent enters, its controller may have
-    /// it enter as a copy of any creature on the battlefield, with the riders in [`EnterAsCopy`]
-    /// (Altered Ego's X extra +1/+1 counters; Cursed Mirror's until-end-of-turn duration + haste).
-    /// The pause fires at the enter event, before ETB triggers (see `Game::begin_enter_as_copy`).
-    /// `None` for a card without the replacement. `enter_as_copy = { .. }` in TOML.
+    /// it enter as a copy of any object of the [`EnterAsCopy::of`] type on the battlefield, with
+    /// the riders in [`EnterAsCopy`] (Altered Ego's X extra +1/+1 counters; Cursed Mirror's
+    /// until-end-of-turn duration + haste; Copy Enchantment's `of = "enchantment"`, which may copy
+    /// an Aura and then pause to choose a host). The pause fires at the enter event, before ETB
+    /// triggers (see `Game::begin_enter_as_copy`). `None` for a card without the replacement.
+    /// `enter_as_copy = { .. }` in TOML.
     pub enter_as_copy: Option<EnterAsCopy>,
     /// Encore [cost] (CR 702.140 — Angel of Indemnity): "[cost], Exile this card from your
     /// graveyard: For each opponent, create a token copy of this card that attacks that opponent
@@ -677,7 +679,8 @@ pub struct CardDef {
 /// no `Vec` — so [`CardDef`] stays `Copy`. `until_eot` reverts the copy at cleanup (Cursed Mirror,
 /// [`Permanent::reverts_to_def_eot`]); `extra_counters` are additional +1/+1 counters the copy
 /// enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's "except it
-/// has haste").
+/// has haste"); `of` is the copyable type axis (Copy Enchantment's "any enchantment", CR 707.2,
+/// vs. the default "any creature").
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -691,6 +694,23 @@ pub struct EnterAsCopy {
     pub extra_counters: Amount,
     #[cfg_attr(feature = "card-dsl", serde(default))]
     pub gains_haste: bool,
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub of: CopyTargetKind,
+}
+
+/// The candidate-object type [`CardDef::enter_as_copy`] may copy (CR 706/707.2): `Creature` (the
+/// default — Altered Ego, Cursed Mirror) or `Enchantment` (Copy Enchantment, which includes Auras
+/// — CR 303.2). `enter_as_copy = { of = "enchantment" }` in TOML; absent means `Creature`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CopyTargetKind {
+    #[default]
+    Creature,
+    Enchantment,
 }
 
 /// Suspend N—[cost] (CR 702.62), carried by [`CardDef::suspend`]. `counters` is the N time

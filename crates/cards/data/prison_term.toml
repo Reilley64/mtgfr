@@ -1,15 +1,11 @@
 # Enchant creature
 # Enchanted creature can't attack or block, and its activated abilities can't be activated.
 # Whenever a creature an opponent controls enters, you may attach this Aura to that creature.
-# ponytail: the re-attach trigger ("Whenever a creature an opponent controls enters, you may
-# attach this Aura to that creature") isn't modeled yet — re-attach legality never consults
-# `enchant` (docs/FIDELITY_BACKLOG.md #156, unblocked by this increment).
 name = "Prison Term"
 otags = ["pacifism-effect", "removal-aura"]
 oracle = "Enchant creature\nEnchanted creature can't attack or block, and its activated abilities can't be activated.\nWhenever a creature an opponent controls enters, you may attach this Aura to that creature."
 set = "vow"
 subtypes = ["Aura"]
-approximates = "does not re-attach itself to a newly entering opponent creature (\"Whenever a creature an opponent controls enters, you may attach this Aura to that creature\") — see FIDELITY_BACKLOG #156"
 
 [cost]
 generic = 1
@@ -28,3 +24,14 @@ type = "grant_to_attached"
 cant_attack = true
 cant_block = true
 activated_abilities = "none"
+
+# Whenever a creature an opponent controls enters, you may attach this Aura to that creature.
+[[abilities]]
+timing = "permanent_enters"
+filter = "creature"
+controller = "opponent"
+optional = true
+
+# attach this Aura to that creature
+[[abilities.effects]]
+type = "attach_self_to_entering"

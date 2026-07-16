@@ -284,6 +284,20 @@ impl Game {
         !p.phased_out && self.effective_types(object).intersects(TypeSet::CREATURE)
     }
 
+    /// Whether `object` is an enchantment currently on the battlefield (CR 303 — includes an
+    /// Aura, CR 303.2). A phased-out permanent doesn't count, mirroring
+    /// [`Self::is_creature_on_battlefield`]. Used by Copy Enchantment's `enter_as_copy` (`of =
+    /// "enchantment"`, CR 706/707.2) to enumerate its copyable candidates.
+    pub(crate) fn is_enchantment_on_battlefield(&self, object: ObjectId) -> bool {
+        let Some(p) = self.as_permanent(object) else {
+            return false;
+        };
+        !p.phased_out
+            && self
+                .effective_types(object)
+                .intersects(TypeSet::ENCHANTMENT)
+    }
+
     /// The mana `player` could produce right now: their pool plus free taps, then a fixed-point
     /// over paid tap-for-mana abilities (filter lands, karoos, signets) — each unused permanent's
     /// paid ability is included only when the running estimate can pay its activation cost, via

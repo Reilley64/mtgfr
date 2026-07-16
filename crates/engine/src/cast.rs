@@ -866,8 +866,46 @@ impl Game {
                 from: card,
             },
         );
-        for event in self.draw_events(player, 1) {
-            self.push_apply(&mut events, event);
+        // CR 702.29e: "when you cycle this card" triggers off the discard above, stacking above
+        // the fixed draw below (Krosan Tusker's "(Do this before you draw.)"). Scanned off the
+        // cycled card's own def (not a battlefield watcher), mirroring `Trigger::YouCastThis`'s
+        // self-scan. `card` still resolves through the `MovedToGraveyard` move's lineage (like
+        // any other post-move last-known-information source).
+        let cycled_trigger = c
+            .def
+            .abilities
+            .iter()
+            .any(|a| a.timing == Timing::Triggered(Trigger::Cycled));
+        if cycled_trigger {
+            // Queue the draw *first* so it lands underneath the cycled trigger once both are
+            // placed onto the stack (the ordinary APNAP placement in `Game::place_pending_triggers`
+            // pushes queued groups in order, so the first-pushed sits at the bottom) — the same
+            // "queue the thing that must resolve *after*" idiom `Game::enqueue_triggers` uses to
+            // place evoke's sacrifice underneath its ETB.
+            self.pending_trigger_groups.push(TriggerGroup {
+                expanded: false,
+                controller: player,
+                source: card,
+                // ponytail: `timing` is an inert placeholder here (like `fire_delayed_triggers`'s
+                // fabricated groups) — `place_pending_triggers` only reads `effect`/`optional`/
+                // `cost`/`once_each_turn` off a queued ability, never its `timing`.
+                abilities: vec![Ability {
+                    timing: Timing::Triggered(Trigger::Cycled),
+                    effect: Effect::DrawCards {
+                        count: Amount::Fixed(1),
+                    },
+                    optional: false,
+                    min_level: 0,
+                    cost: Cost::FREE,
+                    condition: None,
+                    once_each_turn: false,
+                }],
+            });
+            self.queue_trigger_group(TriggerContext::of(player), card, c.def, Trigger::Cycled);
+        } else {
+            for event in self.draw_events(player, 1) {
+                self.push_apply(&mut events, event);
+            }
         }
         // An action resets the pass count; the cycler keeps priority (CR 117.3c).
         self.consecutive_passes = 0;

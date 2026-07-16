@@ -415,8 +415,20 @@ impl Game {
                 // only emits `LifeChanged`, and never combat damage to a *creature*, which (CR 510, CR 120.3, CR 506)
                 // emits `DamageMarked` instead.
                 Event::CombatDamageDealtToPlayer { source, amount, .. } => {
-                    self.queue_combat_damage_triggers(source, amount)
+                    self.queue_combat_damage_triggers(source, amount);
+                    // Armadillo Cloak's attached-host damage watch: this creature dealt combat
+                    // damage to a player. See `queue_enchanted_creature_deals_damage_triggers`.
+                    self.queue_enchanted_creature_deals_damage_triggers(source, amount);
                 }
+                // Damage marked on a creature (CR 120.3/506) — `Game::deal_creature_damage` is the
+                // shared choke behind both combat damage to a blocker/attacker and noncombat
+                // creature damage (fight, CR 701.12), so this one event arm covers both for
+                // Armadillo Cloak's attached-host damage watch.
+                Event::DamageMarked {
+                    source: Some(source),
+                    amount,
+                    ..
+                } => self.queue_enchanted_creature_deals_damage_triggers(source, amount),
                 _ => {}
             }
         }
@@ -1119,6 +1131,7 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
+                triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
                 triggering_spell: None,
                 source_power: None,
@@ -1248,6 +1261,7 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
+                triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
                 triggering_spell: None,
                 source_power: None,
@@ -1262,6 +1276,40 @@ impl Game {
                 aura,
                 self.def_of(aura),
                 Trigger::EnchantedCreatureAttacks,
+            );
+        }
+    }
+
+    /// Queue attached-host damage-watch triggers (CR 609.7/702, Armadillo Cloak: "Whenever
+    /// enchanted creature deals damage, you gain that much life"): `source` (a creature) just
+    /// dealt `amount` damage — combat or noncombat, to a creature or a player alike, since both
+    /// [`Game::deal_creature_damage`](Self::deal_creature_damage) and
+    /// [`Game::damage_player`](Self::damage_player) reach here off the events they emit. Each
+    /// permanent attached to `source` (Auras, mirroring
+    /// [`queue_enchanted_creature_attacks_triggers`](Self::queue_enchanted_creature_attacks_triggers))
+    /// fires its `EnchantedCreatureDealsDamage` ability, controlled by *that Aura's own
+    /// controller* — not the host's. `amount` rides in `ctx.triggering_damage_dealt`
+    /// (`Amount::TriggeringDamageDealt`). A prevented or zero-amount hit never reaches here — both
+    /// callers guard-return before emitting the underlying event — so no zero-life-gain fire.
+    /// ponytail: fires once per damage *event* (per blocker, plus trample overflow separately),
+    /// not once per CR 609.7 simultaneous-combat-damage event summed. Net life is identical for
+    /// Armadillo Cloak (the summed amount is the same either way); revisit if a payoff ever counts
+    /// the number of triggers rather than the total (e.g. a per-fire "draw a card").
+    pub(crate) fn queue_enchanted_creature_deals_damage_triggers(
+        &mut self,
+        source: ObjectId,
+        amount: i32,
+    ) {
+        for aura in self.attachments(source) {
+            let ctx = TriggerContext {
+                triggering_damage_dealt: Some(amount),
+                ..TriggerContext::of(self.controller_of(aura))
+            };
+            self.queue_trigger_group(
+                ctx,
+                aura,
+                self.def_of(aura),
+                Trigger::EnchantedCreatureDealsDamage,
             );
         }
     }
@@ -1440,6 +1488,7 @@ impl Game {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
+            triggering_damage_dealt: None,
             dying_enchanted_creature: None,
             triggering_spell: None,
             source_power: None,
@@ -2346,6 +2395,7 @@ impl Game {
                     effect: Effect::PumpSelfUntilEndOfTurn {
                         power: Amount::Fixed(1),
                         toughness: Amount::Fixed(1),
+                        keywords: &[],
                     },
                     optional: false,
                     min_level: 0,
@@ -2978,6 +3028,12 @@ impl Game {
             // so a live read here never happens for the pool. The arm exists only so this match
             // stays exhaustive.
             Amount::CombatDamageDealt => 0,
+            // ponytail: same placeholder shape as `CombatDamageDealt` above — `fill_triggering_damage_dealt`
+            // must have already rewritten it to `Fixed` with the dealt amount before an
+            // `EnchantedCreatureDealsDamage` watch's ability reaches the stack (see
+            // `queue_enchanted_creature_deals_damage_triggers`), so a live read here never happens
+            // for the pool. The arm exists only so this match stays exhaustive.
+            Amount::TriggeringDamageDealt => 0,
         }
     }
 

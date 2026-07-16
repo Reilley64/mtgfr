@@ -104,6 +104,7 @@ fn amount_label(amount: Amount) -> String {
             "1 per instant or sorcery card in your graveyard".to_string()
         }
         Amount::CombatDamageDealt => "the damage dealt".to_string(),
+        Amount::TriggeringDamageDealt => "that much".to_string(),
     }
 }
 
@@ -369,12 +370,20 @@ impl Effect {
                     )
                 }
             }
-            Effect::PumpSelfUntilEndOfTurn { power, toughness } => {
-                format!(
-                    "+{}/+{} until end of turn",
-                    amount_label(power),
-                    amount_label(toughness)
-                )
+            Effect::PumpSelfUntilEndOfTurn {
+                power,
+                toughness,
+                keywords,
+            } => {
+                let (power, toughness) = (amount_label(power), amount_label(toughness));
+                if keywords.is_empty() {
+                    format!("+{power}/+{toughness} until end of turn")
+                } else {
+                    format!(
+                        "+{power}/+{toughness} and gains {} until end of turn",
+                        keyword_list_label(keywords)
+                    )
+                }
             }
             Effect::PumpCreaturesYouControlUntilEndOfTurn {
                 power,
@@ -402,6 +411,14 @@ impl Effect {
                     "Permanents you control gain {} until end of turn",
                     keyword_list_label(keywords)
                 )
+            }
+            Effect::KeywordAnthemStatic { keywords, filter } => {
+                let scope = if filter.other {
+                    "Other permanents you control have"
+                } else {
+                    "Permanents you control have"
+                };
+                format!("{scope} {}", keyword_list_label(keywords))
             }
             Effect::SetBasePtCreaturesYouControlUntilEndOfTurn {
                 power,
@@ -924,6 +941,12 @@ impl Effect {
             Effect::ExileAllGraveyards => "Exile all graveyards".to_string(),
             Effect::DrainTarget { amount, .. } => {
                 format!("Target player loses {amount}, you gain {amount}")
+            }
+            Effect::TargetPlayerGainsLife { amount, .. } => {
+                format!("Target player gains {amount} life")
+            }
+            Effect::TargetPlayerMayDraw { count, .. } => {
+                format!("Target player may draw {}", amount_label(count))
             }
             Effect::EachOpponentDrain { amount, sum_gain } => {
                 let amount_str = amount_label(amount);

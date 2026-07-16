@@ -993,7 +993,8 @@ keywords = ["flying"]
                 steps: [
                     Effect::PumpSelfUntilEndOfTurn {
                         power: Amount::Fixed(1),
-                        toughness: Amount::Fixed(1)
+                        toughness: Amount::Fixed(1),
+                        ..
                     },
                     Effect::GainLife {
                         amount: Amount::Fixed(1)

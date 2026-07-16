@@ -1,0 +1,15 @@
+# You may have this enchantment enter as a copy of any enchantment on the battlefield.
+name = "Copy Enchantment"
+otags = ["clone", "copy-enchantment"]
+oracle = "You may have this enchantment enter as a copy of any enchantment on the battlefield."
+set = "soc"
+
+# You may have this enchantment enter as a copy of any enchantment on the battlefield.
+enter_as_copy = { of = "enchantment" }
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "enchantment"

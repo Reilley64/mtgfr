@@ -235,6 +235,12 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
                 game.pay_optional_cost(player, pay)
             }
         }
+        // Decree of Justice's cycling rider "you may pay {X}" — the only `PayCost` whose cost
+        // carries a chosen `{X}` (CR 107.3), so it gets its own wire shape rather than widening
+        // `PayOptionalCost`'s bare bool.
+        Intent::PayOptionalCostX { player, pay, x } => {
+            game.pay_optional_cost_with_x(player, pay, x)
+        }
         Intent::AssignDamage { player, assignment } => {
             if matches!(
                 game.pending_choice,

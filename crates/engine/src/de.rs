@@ -924,6 +924,7 @@ impl<'de> Deserialize<'de> for Amount {
             "one_plus_instants_and_sorceries_cast_this_turn",
             "instant_or_sorcery_cards_in_your_graveyard",
             "combat_damage_dealt",
+            "triggering_damage_dealt",
         ];
 
         impl<'de> Visitor<'de> for AmountVisitor {
@@ -989,6 +990,7 @@ impl<'de> Deserialize<'de> for Amount {
                         Amount::InstantOrSorceryCardsInYourGraveyard
                     }
                     "combat_damage_dealt" => Amount::CombatDamageDealt,
+                    "triggering_damage_dealt" => Amount::TriggeringDamageDealt,
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
@@ -1490,6 +1492,9 @@ enum TriggerTag {
     #[serde(alias = "equipped_creature_attacks")]
     EnchantedCreatureAttacks,
     EnchantedCreatureDies,
+    /// Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's "you gain
+    /// that much life"). See [`Trigger::EnchantedCreatureDealsDamage`].
+    EnchantedCreatureDealsDamage,
     AnEnchantedCreatureDies,
     CreatureEnchantedByYourAuraAttacks,
     YouSacrifice,
@@ -1518,6 +1523,7 @@ enum TriggerTag {
     ZeroBasePowerCreaturesYouControlDealCombatDamage,
     SpendManaToCast,
     YouLoseLifeFirstTimeEachTurn,
+    Cycled,
 }
 
 /// An `[[abilities]]` table is flat in TOML: the timing is a string, and an activated
@@ -1725,6 +1731,7 @@ impl<'de> Deserialize<'de> for Ability {
                 }
                 TriggerTag::EnchantedCreatureAttacks => Trigger::EnchantedCreatureAttacks,
                 TriggerTag::EnchantedCreatureDies => Trigger::EnchantedCreatureDies,
+                TriggerTag::EnchantedCreatureDealsDamage => Trigger::EnchantedCreatureDealsDamage,
                 TriggerTag::AnEnchantedCreatureDies => Trigger::AnEnchantedCreatureDies,
                 TriggerTag::CreatureEnchantedByYourAuraAttacks => {
                     Trigger::CreatureEnchantedByYourAuraAttacks {
@@ -1785,6 +1792,7 @@ impl<'de> Deserialize<'de> for Ability {
                     predicate: flat.spend_predicate,
                 },
                 TriggerTag::YouLoseLifeFirstTimeEachTurn => Trigger::YouLoseLifeFirstTimeEachTurn,
+                TriggerTag::Cycled => Trigger::Cycled,
             }),
             TimingName::Special(SpecialTiming::Spell) => Timing::Spell,
             TimingName::Special(SpecialTiming::Static) => Timing::Static,

@@ -1080,6 +1080,22 @@ impl Game {
                     },
                 );
             }
+            // Questing Phelddagrif's blue rider: "Target opponent may draw a card." Unlike
+            // `MayDrawUnlessPays` above, the *targeted* player answers (no pay window rides
+            // behind it) — see `Game::answer_may`.
+            Effect::TargetPlayerMayDraw { count, opponent } => {
+                let Some(Target::Player(player)) = target else {
+                    panic!("target-player-may-draw resolves with a chosen player target");
+                };
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::MayYesNo {
+                        player,
+                        source,
+                        effect: Effect::TargetPlayerMayDraw { count, opponent },
+                    },
+                );
+            }
             // Hinder's destination rider (CR 701.5b — `countered_dest`): pause this ability's
             // controller on a top/bottom pick before the countered card moves, unless it's not
             // going to a graveyard anyway — already left the stack / uncounterable (CR 608.2b /
@@ -2681,7 +2697,11 @@ impl Game {
             }
             // Self-pump: the ability's own source, no target (prowess). The source is already
             // known at resolution, so there's nothing to choose.
-            Effect::PumpSelfUntilEndOfTurn { power, toughness } => {
+            Effect::PumpSelfUntilEndOfTurn {
+                power,
+                toughness,
+                keywords,
+            } => {
                 // CR 608.2c: nothing to boost if the source has already left the battlefield —
                 // e.g. it paid its own "Sacrifice a creature" cost (Fallen Ideal's granted
                 // ability, where the host may sacrifice itself).
@@ -2692,7 +2712,7 @@ impl Game {
                     object: source,
                     power: self.resolve_amount(power, controller, source, target, x),
                     toughness: self.resolve_amount(toughness, controller, source, target, x),
-                    keywords: &[],
+                    keywords,
                     source_name,
                 }]
             }
@@ -2882,6 +2902,7 @@ impl Game {
                 .collect(),
             // Static abilities are read during recompute, never resolved from the stack.
             Effect::AnthemStatic { .. }
+            | Effect::KeywordAnthemStatic { .. }
             | Effect::PreventNoncombatDamageToOtherCreaturesYouControl
             | Effect::TriggerDoublingStatic { .. }
             | Effect::GrantManaAbility { .. }
@@ -2910,11 +2931,18 @@ impl Game {
                     host: Some(host),
                 }]
             }
-            // Shielded by Faith: attach this Aura (the ability's source) to the entering
-            // creature. `entering` is filled at trigger placement; `None` only in an unplaced
-            // card template, which never reaches resolution.
+            // Shielded by Faith / Prison Term: attach this Aura (the ability's source) to the
+            // entering creature — moving it off any host it's already attached to (CR 704.5n
+            // simply drops the old attachment once `apply` overwrites `attached_to`). `entering`
+            // is filled at trigger placement; `None` only in an unplaced card template, which
+            // never reaches resolution. Re-checks the Aura's own `enchant` filter against the
+            // entering permanent (CR 303.4f-style legality) — a no-op if it isn't a legal host,
+            // even though the "you may" was accepted (FIDELITY_BACKLOG #156).
             Effect::AttachSelfToEntering { entering } => {
                 let host = entering.expect("filled in from the entering trigger at placement");
+                if !self.attachment_host_legal(source, host) {
+                    return Vec::new();
+                }
                 vec![Event::AttachedTo {
                     object: source,
                     host: Some(host),
@@ -3579,6 +3607,17 @@ impl Game {
                     },
                 ]
             }
+            // Questing Phelddagrif: the target player gains life, with no matching loss.
+            Effect::TargetPlayerGainsLife { amount, .. } => {
+                let Some(Target::Player(gainer)) = target else {
+                    panic!("target-player-gains-life resolves with a chosen player target");
+                };
+                vec![Event::LifeChanged {
+                    player: gainer,
+                    amount: self.life_gain_after_replacements(gainer, amount),
+                    source: Some(source),
+                }]
+            }
             // Zulaport Cutthroat: each opponent loses life; the controller gains a flat
             // `amount` — or, for Exsanguinate's "life lost this way", the summed total.
             Effect::EachOpponentDrain { amount, sum_gain } => {
@@ -3859,6 +3898,9 @@ impl Game {
             // Needs `&mut self` to pause on the MayYesNo/PayOrControllerDraws chain — only
             // resolves via `Game::run`, never this pure path.
             | Effect::MayDrawUnlessPays { .. }
+            // Needs `&mut self` to pause the targeted player on a MayYesNo — only resolves via
+            // `Game::run`, never this pure path.
+            | Effect::TargetPlayerMayDraw { .. }
             | Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. }
             | Effect::Discard { .. }
             | Effect::PutLandFromHand { .. }
@@ -4276,7 +4318,10 @@ impl Game {
                             .filter(|&p| p != controller)
                             .map(|opponent| (controller, must_attack_defender.then_some(opponent)))
                             .collect(),
-                        TokenController::TargetPlayer => {
+                        // Questing Phelddagrif's green rider: "Target opponent creates a 1/1 ...
+                        // Hippo ... token" — same `Target::Player` resolution as `TargetPlayer`
+                        // above, just narrowed to an opponent by `Effect::target`'s `TargetSpec`.
+                        TokenController::TargetPlayer | TokenController::TargetOpponent => {
                             let Some(Target::Player(player)) = target else {
                                 panic!("a token's target-player recipient resolves with a chosen player target");
                             };

@@ -572,6 +572,15 @@ impl Game {
                         optional: false,
                     },
                 );
+            } else if let Effect::TargetPlayerMayDraw { count, .. } = effect {
+                // Questing Phelddagrif's blue rider: `player` here is the *targeted* opponent who
+                // just answered "yes" (not the ability's own controller, unlike every other arm
+                // in this function) — draw them `count` cards directly, no further pause (CR
+                // 601.2c: no pay window rides behind this rider).
+                let n = self.resolve_count(count, player, source, None, 0);
+                let evs = self.draw_events(player, n);
+                self.apply_all(&evs);
+                events.extend(evs);
             } else if let Effect::MayDrawUnlessPays { cost, caster } = effect {
                 // Rhystic Study: `player` (the controller) said they want to draw, so now
                 // `caster` (the triggering opponent, baked in by `contextualize_effect`) gets a
@@ -629,6 +638,45 @@ impl Game {
         self.finish_answer();
         // A targeted paid trigger pauses to choose its target; a targetless one goes on the stack.
         self.place_targeted_ability(player, source, effect, &mut events);
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::PayCost`] whose `cost` carries a chosen `{X}` (CR 107.3 —
+    /// Decree of Justice's "When you cycle this card, you may pay {X}."): pay `cost.with_x(x)`
+    /// to get the optional trigger, threading `x` onto the placed ability the same way an
+    /// activated ability's own `{X}` cost does (see [`Game::push_ability_group_with_x`]), so its
+    /// `Amount::X` reads the chosen value — or decline (`x` ignored). An unaffordable "pay"
+    /// leaves the choice pending so the player can still decline, mirroring
+    /// [`Game::pay_optional_cost`].
+    /// ponytail: targetless only (`push_ability_group_with_x` skips the target-choice dance in
+    /// [`Game::place_targeted_ability`]) — no pool card pairs an `{X}`-cost optional trigger with
+    /// a target; route through `place_targeted_ability`'s own X-threading path if one ever does.
+    pub(crate) fn pay_optional_cost_with_x(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+        x: u32,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PayCost {
+            source,
+            cost,
+            effect,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+
+        let mut events = Vec::new();
+        if !pay {
+            self.finish_answer();
+            return Ok(events);
+        }
+        // Settle the mana (auto-tapping lands for a pool shortfall, folding the chosen `{X}`
+        // into generic per CR 107.3); unaffordable leaves the choice pending with nothing tapped.
+        self.settle_payment(player, cost.with_x(x), None, None, &mut events)?;
+        self.finish_answer();
+        self.push_ability_group_with_x(player, source, &[(effect, None)], x, &mut events);
         Ok(events)
     }
 
@@ -3006,10 +3054,11 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin an enter-as-copy replacement (CR 706/707.2 — Altered Ego, Cursed Mirror): as
-    /// `source` enters, its controller may have it become a copy of any *other* creature on the
-    /// battlefield. With no other creature to copy there's no real decision — skip straight past
-    /// (the printed permanent stands), the same "nothing to choose" treatment
+    /// Begin an enter-as-copy replacement (CR 706/707.2 — Altered Ego, Cursed Mirror, Copy
+    /// Enchantment): as `source` enters, its controller may have it become a copy of any *other*
+    /// object on the battlefield matching `marker.of` (a creature by default; an enchantment,
+    /// including an Aura, for Copy Enchantment). With no candidate there's no real decision — skip
+    /// straight past (the printed permanent stands), the same "nothing to choose" treatment
     /// [`Game::begin_devour`] gives an empty board.
     pub(crate) fn begin_enter_as_copy(
         &mut self,
@@ -3021,7 +3070,13 @@ impl Game {
             .permanent_ids(|_| true)
             .collect::<Vec<_>>()
             .into_iter()
-            .filter(|&id| id != source && self.is_creature_on_battlefield(id))
+            .filter(|&id| {
+                id != source
+                    && match marker.of {
+                        CopyTargetKind::Creature => self.is_creature_on_battlefield(id),
+                        CopyTargetKind::Enchantment => self.is_enchantment_on_battlefield(id),
+                    }
+            })
             .collect();
         if candidates.is_empty() {
             return;
@@ -3114,6 +3169,13 @@ impl Game {
                     source_name,
                 },
             );
+        }
+        // Copy Enchantment copying an Aura (CR 707.2 read with CR 303.4f): the copy entered
+        // unattached above (`BecameCopy` only overwrites `def`), so it must now pause to choose a
+        // host among legal enchant targets — the same deployed-Aura attach path a searched-out or
+        // reanimated Aura uses.
+        if def.kind == CardKind::Aura {
+            self.maybe_pause_attach_deployed_aura(source, player);
         }
         Ok(events)
     }

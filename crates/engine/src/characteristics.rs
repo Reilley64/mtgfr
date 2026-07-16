@@ -1112,6 +1112,7 @@ impl Game {
         }
         keywords.extend(self.chosen_color_protection_grants(object));
         keywords.extend(self.anthem_keywords(object));
+        keywords.extend(self.keyword_anthem_static_grants(object));
         // "Lose ... and can't have" (CR 702.11e/702.18d — arcane_lighthouse): strip these off
         // the fully-unioned set last, so a keyword granted by any source above — including one
         // applied *after* the strip landed this turn — is filtered right back out.
@@ -1299,6 +1300,49 @@ impl Game {
                 _ => Vec::new(),
             })
             .collect()
+    }
+
+    /// Every keyword a static [`Effect::KeywordAnthemStatic`] elsewhere on the battlefield grants
+    /// to `candidate` (Sterling Grove's "Other enchantments you control have shroud"). The
+    /// bare-`PermanentFilter` static twin of
+    /// [`Effect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn`]'s one-shot grant — same "you
+    /// control" scan and filter shape (`filter.other` reaches "**other** enchantments"), but read
+    /// fresh here on every recompute instead of resolved once onto `temp_keywords`. Not folded
+    /// into [`Game::matching_anthems`]/[`Game::anthem_keywords`]: those destructure
+    /// [`Effect::AnthemStatic`] specifically for its P/T + subtype/color/etc axes, which this
+    /// effect has none of.
+    fn keyword_anthem_static_grants(&self, candidate: ObjectId) -> Vec<Keyword> {
+        if self.as_permanent(candidate).is_none() {
+            return Vec::new();
+        }
+        let candidate_controller = self.controller_of(candidate);
+        let mut keywords = Vec::new();
+        for (source, object) in self.objects.iter().enumerate() {
+            if !matches!(object, Object::Permanent(_)) {
+                continue;
+            }
+            let source = source as ObjectId;
+            if self.controller_of(source) != candidate_controller {
+                continue;
+            }
+            for ability in self.functional_abilities(source) {
+                let (
+                    Timing::Static,
+                    Effect::KeywordAnthemStatic {
+                        keywords: granted,
+                        filter,
+                    },
+                ) = (ability.timing, ability.effect)
+                else {
+                    continue;
+                };
+                if !self.permanent_matches(&filter, candidate, candidate_controller, Some(source)) {
+                    continue;
+                }
+                keywords.extend_from_slice(granted);
+            }
+        }
+        keywords
     }
 
     /// Every activated mana ability granted to `candidate` by a live static

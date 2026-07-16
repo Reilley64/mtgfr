@@ -1,0 +1,29 @@
+# Cycling {2}{G} ({2}{G}, Discard this card: Draw a card.)
+# When you cycle this card, you may search your library for a basic land card, reveal that card, put it into your
+# hand, then shuffle. (Do this before you draw.)
+name = "Krosan Tusker"
+oracle = "Cycling {2}{G} ({2}{G}, Discard this card: Draw a card.)\nWhen you cycle this card, you may search your library for a basic land card, reveal that card, put it into your hand, then shuffle. (Do this before you draw.)"
+set = "cmm"
+subtypes = ["Boar", "Beast"]
+cycling = { generic = 2, green = 1 }
+
+[cost]
+generic = 5
+green = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 5
+
+# When you cycle this card, you may search your library for a basic land card, reveal that card, put it into your
+# hand, then shuffle. (Do this before you draw.)
+[[abilities]]
+timing = "cycled"
+optional = true
+
+# search your library for a basic land card, reveal that card, put it into your hand, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "hand"

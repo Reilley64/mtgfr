@@ -244,6 +244,14 @@ pub enum Amount {
     /// damage when the watch's ability is placed on the stack — resolving this variant directly
     /// never happens (see [`Game::resolve_amount`]'s fallback).
     CombatDamageDealt,
+    /// The amount of damage — combat or noncombat alike — the enchanted host of a
+    /// [`Trigger::EnchantedCreatureDealsDamage`] watch just dealt (CR 609.7, Armadillo Cloak:
+    /// "you gain that much life"). A placeholder, like [`CombatDamageDealt`](Self::CombatDamageDealt)
+    /// above: [`fill_triggering_damage_dealt`] rewrites it to [`Fixed`](Self::Fixed) with the dealt
+    /// amount when the watch's ability is placed on the stack — resolving this variant directly
+    /// never happens (see [`Game::resolve_amount`]'s fallback). Distinct from `CombatDamageDealt`,
+    /// which is specifically the summed *combat* damage a base-power-0 batch dealt *a player*.
+    TriggeringDamageDealt,
 }
 
 impl Default for Amount {
@@ -441,11 +449,22 @@ pub enum Effect {
         )]
         keywords: &'static [Keyword],
     },
-    /// The ability's own source gets +power/+toughness until end of turn, no target (prowess's
-    /// "this creature gets +1/+1 until end of turn", CR 702.108). Distinct from
-    /// [`PumpUntilEndOfTurn`](Self::PumpUntilEndOfTurn), which targets a chosen creature — a
-    /// self-pump has no target to choose, the source is already known at resolution.
-    PumpSelfUntilEndOfTurn { power: Amount, toughness: Amount },
+    /// The ability's own source gets +power/+toughness and gains `keywords` until end of turn, no
+    /// target (prowess's "this creature gets +1/+1 until end of turn", CR 702.108; Questing
+    /// Phelddagrif's "This creature gains protection from black and from red until end of turn").
+    /// Distinct from [`PumpUntilEndOfTurn`](Self::PumpUntilEndOfTurn), which targets a chosen
+    /// creature — a self-pump has no target to choose (and so can share a `Sequence` with a
+    /// step that *does* target, unlike `PumpUntilEndOfTurn`'s own `target = "this"`, which would
+    /// claim the whole ability's shared target for itself).
+    PumpSelfUntilEndOfTurn {
+        power: Amount,
+        toughness: Amount,
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        keywords: &'static [Keyword],
+    },
     /// A mass version of [`PumpUntilEndOfTurn`]: every creature the ability's controller
     /// controls gets +power/+toughness and gains `keywords`, until end of turn (Selfless
     /// Spirit's "creatures you control gain indestructible"; Moonshaker Cavalry's "creatures you
@@ -475,6 +494,23 @@ pub enum Effect {
     /// pump) and no creature gate, so `filter = { subtypes = ["Aura", "Equipment"] }` reaches
     /// noncreature permanents that clause has no way to touch.
     GrantKeywordsToPermanentsYouControlUntilEndOfTurn {
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        keywords: &'static [Keyword],
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        filter: PermanentFilter,
+    },
+    /// A static keyword-only grant to every permanent — creature or not — the ability's
+    /// controller controls matching `filter` (Sterling Grove's "Other enchantments you control
+    /// have shroud"). The static twin of
+    /// [`GrantKeywordsToPermanentsYouControlUntilEndOfTurn`](Self::GrantKeywordsToPermanentsYouControlUntilEndOfTurn) —
+    /// same `keywords` + `filter` shape (`filter.other` reaches "**other** enchantments"), but
+    /// read fresh on every keyword recompute (`Game::compute_effective_keywords_uncached`, see
+    /// `Game::keyword_anthem_grants`) rather than resolved once onto `temp_keywords`. No P/T —
+    /// noncreature permanents have none to pump.
+    KeywordAnthemStatic {
         #[cfg_attr(
             feature = "card-dsl",
             serde(default, deserialize_with = "de::static_slice")
@@ -1809,6 +1845,28 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         opponent: bool,
     },
+    /// The target player gains `amount` life, with no matching loss (Questing Phelddagrif's white
+    /// rider: "Target opponent gains 2 life") — the gain-only twin of
+    /// [`DrainTarget`](Self::DrainTarget), which always pairs a loss with a matching controller
+    /// gain. Uses [`TargetSpec::Player`], or [`TargetSpec::OpponentPlayer`] when `opponent` is set.
+    TargetPlayerGainsLife {
+        amount: i32,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        opponent: bool,
+    },
+    /// The target player may draw `count` cards (Questing Phelddagrif's blue rider: "Target
+    /// opponent may draw a card") — the optional twin of
+    /// [`TargetPlayerDraws`](Self::TargetPlayerDraws). Resolution pauses the *targeted* player
+    /// (not the ability's controller, unlike every other [`PendingChoice::MayYesNo`]-answering
+    /// effect) on a [`PendingChoice::MayYesNo`](crate::PendingChoice::MayYesNo); a "yes" draws
+    /// them `count` cards directly, no further pause (no pay window on this rider — CR 601.2c
+    /// treats the target's choice as the whole ability, not a cost). Uses [`TargetSpec::Player`],
+    /// or [`TargetSpec::OpponentPlayer`] when `opponent` is set.
+    TargetPlayerMayDraw {
+        count: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        opponent: bool,
+    },
     /// Exile every card in the target player's graveyard (CR 406 zone move) — Bojuka Bog's ETB,
     /// Remorseful Cleric's sacrifice ability. Fieldless: the target is intrinsic, like
     /// [`CounterTargetSpell`](Self::CounterTargetSpell). Uses [`TargetSpec::Player`].
@@ -3108,9 +3166,17 @@ impl Effect {
             } => TargetSpec::None,
             Effect::TargetPlayerDraws { opponent: true, .. }
             | Effect::DrainTarget { opponent: true, .. }
-            | Effect::RevealTopAndDrainMutual => TargetSpec::OpponentPlayer,
+            | Effect::RevealTopAndDrainMutual
+            | Effect::TargetPlayerGainsLife { opponent: true, .. }
+            | Effect::TargetPlayerMayDraw { opponent: true, .. }
+            | Effect::CreateToken {
+                controller: TokenController::TargetOpponent,
+                ..
+            } => TargetSpec::OpponentPlayer,
             Effect::TargetPlayerDraws { opponent: false, .. }
             | Effect::DrainTarget { opponent: false, .. }
+            | Effect::TargetPlayerGainsLife { opponent: false, .. }
+            | Effect::TargetPlayerMayDraw { opponent: false, .. }
             | Effect::ExileGraveyard
             | Effect::TargetPlayerLosesLife { .. }
             | Effect::Discard {
@@ -3239,6 +3305,7 @@ impl Effect {
             | Effect::ExileSelfWithTimeCounters { .. }
             | Effect::ExileRandomFromGraveyardMayPlay
             | Effect::AnthemStatic { .. }
+            | Effect::KeywordAnthemStatic { .. }
             | Effect::TriggerDoublingStatic { .. }
             | Effect::GrantManaAbility { .. }
             | Effect::ScheduleAtNextUpkeep { .. }
@@ -3957,6 +4024,13 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
         Some(count) => fill_auras_attached_to_dying_creature(effect, count),
         None => effect,
     };
+    // CR 609.7: an `EnchantedCreatureDealsDamage` trigger's `Amount::TriggeringDamageDealt` reads
+    // resolve against the damage the enchanted host just dealt, locked in when the trigger goes on
+    // the stack — same last-known-information shape as `dying_source_stats` above.
+    let effect = match ctx.triggering_damage_dealt {
+        Some(damage) => fill_triggering_damage_dealt(effect, damage),
+        None => effect,
+    };
     // CR 603.4/202.3: a `CastSpell` (magecraft) trigger's `Amount::TriggeringSpellManaValue`
     // reads and `Condition::TriggeringSpellManaValueAtLeast` gates both resolve against the
     // triggering spell's mana value, locked in when the trigger goes on the stack — same
@@ -4446,6 +4520,17 @@ fn fill_auras_attached_to_dying_creature(effect: Effect, auras: u32) -> Effect {
     })
 }
 
+/// Rewrite an `EnchantedCreatureDealsDamage` watch's `Amount::TriggeringDamageDealt` placeholder to
+/// the enchanted host's just-dealt damage (CR 609.7, Armadillo Cloak's "you gain that much life")
+/// — mirrors [`fill_auras_attached_to_dying_creature`] above, one `Amount` variant only
+/// (flag-don't-force: no other pool card reads this amount).
+fn fill_triggering_damage_dealt(effect: Effect, damage: i32) -> Effect {
+    map_effect_amounts(effect, &|amount| match amount {
+        Amount::TriggeringDamageDealt => Amount::Fixed(damage),
+        other => other,
+    })
+}
+
 /// Rewrite a `CastSpell` (magecraft) trigger's `Amount::TriggeringSpellManaValue` placeholders to
 /// the triggering spell's mana value (Renegade Bull's "+X/+0 … where X is that spell's mana
 /// value"), and resolve its `Condition::TriggeringSpellManaValueAtLeast` gates against the same
@@ -4669,9 +4754,11 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughne
         Effect::PumpSelfUntilEndOfTurn {
             power: p,
             toughness,
+            keywords,
         } => Effect::PumpSelfUntilEndOfTurn {
             power: fill(p),
             toughness: fill(toughness),
+            keywords,
         },
         Effect::GainLife { amount } => Effect::GainLife {
             amount: fill(amount),

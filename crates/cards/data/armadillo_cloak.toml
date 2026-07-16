@@ -1,0 +1,36 @@
+# Enchant creature
+# Enchanted creature gets +2/+2 and has trample.
+# Whenever enchanted creature deals damage, you gain that much life.
+name = "Armadillo Cloak"
+otags = ["enlarge", "gives-trample", "perpetual-aura", "repeatable-lifegain", "triggered-ability"]
+oracle = "Enchant creature\nEnchanted creature gets +2/+2 and has trample.\nWhenever enchanted creature deals damage, you gain that much life."
+set = "usg"
+subtypes = ["Aura"]
+
+[cost]
+generic = 1
+green = 1
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +2/+2 and has trample.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +2/+2 and has trample
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 2
+toughness = 2
+keywords = ["trample"]
+
+# Whenever enchanted creature deals damage, you gain that much life.
+[[abilities]]
+timing = "enchanted_creature_deals_damage"
+
+# you gain that much life
+[[abilities.effects]]
+type = "gain_life"
+amount = "triggering_damage_dealt"

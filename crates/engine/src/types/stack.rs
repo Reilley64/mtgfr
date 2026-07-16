@@ -179,6 +179,14 @@ pub enum Intent {
     },
     /// Answer a [`PendingChoice::PayCost`]: pay the cost (getting the effect) or decline.
     PayOptionalCost { player: PlayerId, pay: bool },
+    /// Answer a [`PendingChoice::PayCost`] whose `cost` carries a chosen `{X}` (CR 107.3 — Decree
+    /// of Justice's cycling rider "you may pay {X}. If you do, create X 1/1 white Soldier
+    /// creature tokens."): pay `cost.with_x(x)` and thread `x` onto the placed ability so its own
+    /// `Amount::X` reads it, or decline (`x` ignored). A distinct variant from
+    /// [`Self::PayOptionalCost`] rather than widening its `x`-less shape — no other `PayCost`
+    /// answerer in the pool needs an `{X}`, and this keeps every existing plain pay/decline call
+    /// site untouched. See [`Game::pay_optional_cost_with_x`](crate::Game::pay_optional_cost_with_x).
+    PayOptionalCostX { player: PlayerId, pay: bool, x: u32 },
     /// Answer a [`PendingChoice::AssignCombatDamage`] with `(blocker, amount)` assignments.
     AssignDamage {
         player: PlayerId,
@@ -478,6 +486,7 @@ impl Intent {
             | Intent::ChooseTargetPlayers { .. }
             | Intent::AnswerMay { .. }
             | Intent::PayOptionalCost { .. }
+            | Intent::PayOptionalCostX { .. }
             | Intent::ChooseMode { .. }
             | Intent::ChooseOpponentPile { .. }
             | Intent::ChooseManaColor { .. }
@@ -513,6 +522,7 @@ impl Intent {
             | Intent::ChooseTargetPlayers { player, .. }
             | Intent::AnswerMay { player, .. }
             | Intent::PayOptionalCost { player, .. }
+            | Intent::PayOptionalCostX { player, .. }
             | Intent::AssignDamage { player, .. }
             | Intent::DivideSpellDamage { player, .. }
             | Intent::DeclineUntap { player, .. }
@@ -558,6 +568,7 @@ impl Intent {
             | Intent::ChooseTargetPlayers { .. }
             | Intent::AnswerMay { .. }
             | Intent::PayOptionalCost { .. }
+            | Intent::PayOptionalCostX { .. }
             | Intent::AssignDamage { .. }
             | Intent::DivideSpellDamage { .. }
             | Intent::DeclineUntap { .. }
@@ -1207,8 +1218,10 @@ pub enum PendingChoice {
     /// [`Intent::ChooseColor`], which sets `source`'s [`Permanent::chosen_color`].
     ChooseColor { player: PlayerId, source: ObjectId },
     /// `player` (an entering permanent's controller) may have `source` enter as a copy of one of
-    /// `candidates` (every other creature on the battlefield — CR 706/707.2, Altered Ego, Cursed
-    /// Mirror). Answered by [`Intent::ChooseCopyTarget`]: `Some(creature)` copies it (overwriting
+    /// `candidates` (every other object of the marker's [`EnterAsCopy::of`] type on the
+    /// battlefield — CR 706/707.2: a creature for Altered Ego/Cursed Mirror, an enchantment
+    /// (including an Aura) for Copy Enchantment). Answered by [`Intent::ChooseCopyTarget`]:
+    /// `Some(object)` copies it (overwriting
     /// `source`'s `def` and applying the [`EnterAsCopy`] riders carried here), `None` declines
     /// ("you may" — `source` stays its printed self). Only raised when at least one candidate
     /// exists ([`Game::begin_enter_as_copy`]). `until_eot`/`extra_counters`/`gains_haste` are the

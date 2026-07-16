@@ -4,7 +4,6 @@
 name = "Sterling Grove"
 oracle = "Other enchantments you control have shroud. (They can't be the targets of spells or abilities.)\n{1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then shuffle and put that card on top."
 set = "jud"
-approximates = "Other enchantments you control have shroud (#139)."
 
 [cost]
 green = 1
@@ -12,6 +11,16 @@ white = 1
 
 [kind]
 type = "enchantment"
+
+# Other enchantments you control have shroud.
+[[abilities]]
+timing = "static"
+
+# Other enchantments you control have shroud.
+[[abilities.effects]]
+type = "keyword_anthem_static"
+keywords = ["shroud"]
+filter = { types = ["enchantment"], other = true }
 
 # {1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then
 # shuffle and put that card on top.
