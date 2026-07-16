@@ -941,7 +941,6 @@ function StackOverlay(props: {
 }) {
   const names = createMemo(() => new Map(props.state.objects.map((o) => [o.id, o.name])));
   const name = (id: number) => names().get(id) ?? `#${id}`;
-  // Printing UUID / Card id for stack art and Alt-inspect (ADR 0031).
   const byId = createMemo(
     () => new Map(props.state.objects.map((o) => [o.id, { print: o.print ?? "", cardId: o.card_id || undefined }])),
   );
@@ -1102,15 +1101,13 @@ function StackOverlay(props: {
               return identity;
             });
             const imageName = () => (entry().kind === "spell" ? entry().label : (names().get(entry().source) ?? null));
-            // Spell `source` is the stack object id; ability `source` is the permanent — both live in
-            // `objects` with a Printing (ADR 0031).
-            const meta = () => byId().get(entry().source) ?? { print: "", cardId: undefined };
+            const meta = byId().get(entry().source) ?? { print: "", cardId: undefined };
             const isTop = () => row === props.state.stack.length - 1 && !(props.staged && props.showPileStaged);
             return stackFace({
               row,
               imageName: imageName(),
-              print: meta().print,
-              cardId: meta().cardId,
+              print: meta.print,
+              cardId: meta.cardId,
               label: entry().label,
               isTop: isTop(),
               style: {

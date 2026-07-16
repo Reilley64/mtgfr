@@ -261,8 +261,7 @@ impl Game {
         groups
     }
 
-    /// Best-effort Card id for an inspect-ledger source name: the first battlefield permanent
-    /// whose def name matches. Empty for synthetic labels or when the source has left play.
+    /// First battlefield permanent whose def name matches `name`, else `""`.
     fn card_id_for_source_name(&self, name: &'static str) -> &'static str {
         if name.is_empty() {
             return "";

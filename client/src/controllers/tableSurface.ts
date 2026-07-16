@@ -506,24 +506,14 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   };
 
   const tryPinInspect = (): InspectPin | null => {
-    // Hand (and stack) DOM overlays sit above the canvas; prefer their hover so Alt-inspect
-    // doesn't pin a battlefield card that peeks under the hand bar.
-    if (handHover) {
+    // Hand/stack DOM overlays sit above the canvas — prefer their hover over a battlefield hit.
+    const aux = handHover ?? stackHover;
+    if (aux) {
       const pin: InspectPin = {
-        name: handHover.name,
+        name: aux.name,
         prepared: false,
-        ...(handHover.cardId ? { cardId: handHover.cardId } : {}),
-        ...(handHover.print ? { print: handHover.print } : {}),
-      };
-      setInspectPin(pin);
-      return pin;
-    }
-    if (stackHover) {
-      const pin: InspectPin = {
-        name: stackHover.name,
-        prepared: false,
-        ...(stackHover.cardId ? { cardId: stackHover.cardId } : {}),
-        ...(stackHover.print ? { print: stackHover.print } : {}),
+        ...(aux.cardId ? { cardId: aux.cardId } : {}),
+        ...(aux.print ? { print: aux.print } : {}),
       };
       setInspectPin(pin);
       return pin;

@@ -137,7 +137,7 @@ export default function DeckBuilder() {
 
   // Fold each arriving page into the grid. Accept it only if it's for the current query AND the
   // offset it was fetched for is still the one we want — this drops pages that resolve late for a
-  // superseded query/offset (the reset above bumps both). Dedup by id is belt-and-suspenders.
+  // superseded query/offset (the reset above bumps both).
   createEffect(() => {
     const page = results();
     if (!page || page.q !== debouncedQuery() || page.offset !== offset()) return;
@@ -206,8 +206,7 @@ export default function DeckBuilder() {
 
   createEffect(() => remember(results()?.cards));
 
-  // Prefill when editing an existing deck, and hydrate its cards' data for identity/preview.
-  // Seed sticky print preferences from the saved deck so pool adds match what the list already uses.
+  // Prefill when editing an existing deck, hydrate card data, and seed sticky prints from the list.
   createEffect(() => {
     const deck = existing();
     if (!deck) return;
@@ -596,9 +595,7 @@ export default function DeckBuilder() {
   );
 }
 
-/** Picker for a Card id's Scryfall printings — thumbs from `searchPrints`, art from the CDN by
- * print UUID. Selecting a printing hands its id to the caller and closes. Uses `createResource`
- * (not a cached Atom) so a failed Scryfall fetch retries when the picker reopens. */
+/** Scryfall print picker; `createResource` so a failed fetch retries on reopen. */
 function PrintPicker(props: { oracleId: string; onPick: (printId: string) => void; onClose: () => void }) {
   const [prints] = createResource(
     () => props.oracleId,

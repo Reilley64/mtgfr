@@ -18,9 +18,9 @@ export type InspectPin = {
   prepared: boolean;
   /** Battlefield object id when Alt-pinning a permanent; absent for hand/stack/catalog history. */
   objectId?: number;
-  /** Card (oracle) id, when known — drives the oracle-text lookup (ADR 0031). */
+  /** Card (oracle) id when known — drives the catalog lookup. */
   cardId?: string;
-  /** Printing UUID for this pin's art (ADR 0031); absent falls back to catalog `default_print`. */
+  /** Printing UUID; absent falls back to catalog `default_print`. */
   print?: string;
 };
 

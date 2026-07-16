@@ -19,8 +19,7 @@ import { Button, Felt, ListRow } from "~/ui";
 
 const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id), {})));
 const logoutFn = Atom.fn(() => succeeded(client.logout({})));
-// Commander catalog lookup, by Card id — the deck summary carries only the id (ADR 0031); we
-// hydrate names once the deck list is in. Art for hover comes from `commander_print` on the summary.
+// Commander catalog lookup by Card id; hover art uses `commander_print` on the summary.
 const lookupCommandersFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 
 export default function Decks() {

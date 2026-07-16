@@ -215,9 +215,7 @@ export function InspectDock(props: {
   const openSource = (source: { name: string; cardId?: string }) => setHistory((h) => pushInspectSource(h, source));
   const hasOracle = () => !!(oracle() || approximates());
   const hasMods = () => modifiers().length > 0;
-  // Pin print wins; otherwise the catalog's baked default once hydrated (modifier sources, etc.).
   const artPrint = () => current()?.print || card()?.default_print || "";
-  const artFace = () => (face() === "back" ? "back" : "front");
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape dismisses via showModal() → onClose.
@@ -282,7 +280,7 @@ export function InspectDock(props: {
               }
             >
               <img
-                src={imageUrlByPrint(artPrint(), "large", artFace())}
+                src={imageUrlByPrint(artPrint(), "large", face())}
                 alt={displayName()}
                 style={{ "--w": `${W}px` }}
                 class="w-(--w) flex-none rounded-[14px] shadow-table"

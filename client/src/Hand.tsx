@@ -51,7 +51,6 @@ export default function Hand(props: {
     game.state ? game.state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === props.viewer) : [],
   );
   const handActionByObject = createMemo(() => byObject(grouped().hand));
-  // Printing UUID / Card id for a battlefield/hand/command object (ADR 0031).
   const objectMeta = (id: number | undefined | null): { print: string; cardId?: string } => {
     const obj = id != null ? game.state?.objects.find((o) => o.id === id) : undefined;
     return { print: obj?.print ?? "", cardId: obj?.card_id || undefined };
@@ -220,11 +219,12 @@ export default function Hand(props: {
               if (slot.kind === "extra") {
                 // Alternative-action labels are "Cycle: name" / "Suspend: name" / "Discard: name":
                 // the prefix is the caption, the rest is the card image name.
+                const meta = objectMeta(slot.action.object);
                 return (
                   <BarCard
                     name={slot.action.label.replace(/^[^:]+:\s*/, "")}
-                    print={objectMeta(slot.action.object).print}
-                    cardId={objectMeta(slot.action.object).cardId}
+                    print={meta.print}
+                    cardId={meta.cardId}
                     action={slot.action}
                     caption={actionCaption(slot.action.kind)}
                     fan={fanTransform(i(), count())}
@@ -301,16 +301,19 @@ export default function Hand(props: {
       <Show when={p.actions.length > 0}>
         <Section label={p.label} divider>
           <For each={p.actions}>
-            {(a, i) => (
-              <BarCard
-                name={p.name(a)}
-                print={objectMeta(a.object).print}
-                cardId={objectMeta(a.object).cardId}
-                action={a}
-                caption={p.caption ? a.label : undefined}
-                fan={fanTransform(i(), p.actions.length)}
-              />
-            )}
+            {(a, i) => {
+              const meta = objectMeta(a.object);
+              return (
+                <BarCard
+                  name={p.name(a)}
+                  print={meta.print}
+                  cardId={meta.cardId}
+                  action={a}
+                  caption={p.caption ? a.label : undefined}
+                  fan={fanTransform(i(), p.actions.length)}
+                />
+              );
+            }}
           </For>
         </Section>
       </Show>

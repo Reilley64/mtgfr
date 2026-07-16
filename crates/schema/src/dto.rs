@@ -225,8 +225,7 @@ pub struct ObjectView {
 pub struct ModifierSourceView {
     /// Card def name — clicking inspects this catalog card.
     pub source_name: String,
-    /// Card id when resolvable (so inspect can load oracle text / default art). Empty when the
-    /// source is a synthetic label (e.g. "Goad") or the permanent has left the board.
+    /// Card id when a matching battlefield permanent is still present; empty for synthetic labels.
     #[serde(default)]
     pub source_card_id: String,
     /// Display crumbs: `"+1/+1"`, `"Flying"`, `"goaded"`, `"controls"`, `"mana ability"`, …

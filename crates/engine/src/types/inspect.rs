@@ -16,8 +16,7 @@ pub enum ModifierContribution {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModifierSourceGroup {
     pub source_name: &'static str,
-    /// Scryfall oracle id when a battlefield permanent with this name is still present; empty for
-    /// synthetic labels (`"Goad"`) or when the source has left the board.
+    /// Card id when a matching battlefield permanent is still present; empty for synthetic labels.
     pub source_card_id: &'static str,
     pub contributions: Vec<ModifierContribution>,
 }
