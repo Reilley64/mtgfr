@@ -4,7 +4,7 @@ Deploy mtgfr to a **Kubernetes cluster** reached via a **Cloudflare Tunnel** (no
 
 ## Goals
 
-1. **Reachable by friends** — client at `https://edh.example.com`, API at `https://api.edh.example.com`; stable share links on the client host.
+1. **Reachable by friends** — single public origin `https://edh.example.com` (SolidStart BFF: SPA + `/api` proxy); stable share links on that host.
 2. **Reproducible infra** — Terraform in **this repo** (`iac/`) owns the edh namespace workloads, Postgres, Cloudflare Tunnel/DNS, and deploy config. `terraform apply` is the deploy path.
 3. **Zero-downtime for active games** — during a release, players at a live table stay on the old server binary until that table is empty (game over or everyone left).
 4. **Traceable releases** — every merge to `main`/`master` runs [semantic-release](https://semantic-release.org/) (default config) on green verify; container images build when the resulting `v*` tag is pushed (`docker.yml`).
@@ -24,7 +24,7 @@ Deploy mtgfr to a **Kubernetes cluster** reached via a **Cloudflare Tunnel** (no
 | Live games | In-memory `Registry` per process (ADR 0021) | Two server pods during a roll **must not share** a table; need **table/instance affinity**. |
 | Fan-out | `tokio::broadcast` in-process (ADR 0005) | SSE streams are tied to the pod that owns the table. |
 | Durable data | Postgres: users, sessions, decks (ADR 0010) | In-cluster Postgres (dedicated `mtgfr` database); `DATABASE_URL` on both API pods. |
-| Client | Vite static bundle; dev uses `/api` Vite proxy | **Prod:** static on `edh.example.com`; API calls go to `https://api.edh.example.com` (build-time origin). **Dev:** unchanged `/api` → local server. SPA is global: a refresh always loads the current `edh-web` image, while mid-game API stays sticky on the draining binary — so **do not roll `edh-web` until API drain empties**. Gzip for the SPA is owned by `mtgfr static` — see [Compression](#compression-required) under `mtgfr-web`. |
+| Client | SolidStart 1.3 (Vinxi, `ssr: false`); same-origin `/api` BFF | **Prod + dev:** browser always calls `/api`; Start proxies to Axum (`API_UPSTREAM`), stripping `/api`. SPA is global: a refresh always loads the current `edh-web` image, while mid-game API stays sticky on the draining binary — so **do not roll `edh-web` until API drain empties**. |
 | Dev DB bootstrap | `push_schema()` at boot (`db.rs`) | **Toasty migrations** in prod/CI; `push_schema` only for in-memory SQLite tests (per [Toasty schema guide](https://tokio-rs.github.io/toasty/nightly/guide/schema-management.html)). |
 | Bind address | `127.0.0.1:8080` hard-coded | Load listen host/port from a `Settings` struct via the [`config`](https://docs.rs/config) crate. |
 | Public edge | Was Traefik on homelab LAN | **Cloudflare Tunnel** (`cloudflared`) in-cluster; no public NodePort / LoadBalancer required for edh. |
@@ -43,7 +43,7 @@ Home k3s host (separate machine)
     │
     ├─ Namespace: terraform          (tfstate Secret + lock Lease)
     ├─ Namespace: edh
-    │     ├─ Deployment edh-web          (mtgfr static, distroless)
+    │     ├─ Deployment edh-web          (SolidStart Node BFF, distroless)
     │     ├─ Deployment edh-api          (serve; active)
     │     ├─ Deployment edh-api-drain    (serve; during rolls only)
     │     ├─ Deployment edh-api-proxy    (nginx; cookie sticky on mtgfr-instance)
@@ -53,8 +53,11 @@ Home k3s host (separate machine)
     │
 Internet ── Cloudflare (DNS + Tunnel) ──► cloudflared ──► ClusterIP Services
            edh.example.com  ──────────────► edh-web:8080
-           api.edh.example.com ───────────► edh-api-proxy:8080
-                                                    │
+                    │                         │
+                    │              /api/* → API_UPSTREAM
+                    │                         ▼
+                    │                   edh-api-proxy:8080
+                    │                         │
                                     nginx sticky on mtgfr-instance
                                                     │
                                           ┌─────────┴─────────┐
@@ -64,16 +67,15 @@ Internet ── Cloudflare (DNS + Tunnel) ──► cloudflared ──► Cluste
 
 **Apply machine vs cluster host:** `terraform` / `kubectl` always run on the apply machine. That machine needs network reachability to the k3s API server (LAN, VPN, or Tailscale — whatever you already use for remote kubeconfig). Do **not** install or run Terraform on the k3s node for this stack. Drain orchestration uses `kubectl port-forward` from the apply machine to in-cluster Services (still not via the public tunnel).
 
-**Hostnames** (both in Cloudflare `example.com` zone):
+**Hostname** (Cloudflare `example.com` zone):
 
 | Host | Serves | Tunnel ingress |
 |------|--------|----------------|
-| `edh.example.com` | Static client (distroless static server) | `http://edh-web.edh.svc:8080` |
-| `api.edh.example.com` | Axum API + SSE (`/intent/v1`, `/tables/{table}/stream/v1`, …) | `http://edh-api-proxy.edh.svc:8080` |
+| `edh.example.com` | SolidStart SPA + `/api` BFF → `edh-api-proxy` | `http://edh-web.edh.svc:8080` |
 
-Cloudflare Tunnel maps each hostname to **one** origin URL. It does **not** do cookie-based sticky load balancing. Affinity lives in-cluster: **nginx** (`edh-api-proxy`) routes on `mtgfr-instance` to `edh-api` / `edh-api-drain`. Tunnel → `edh-api-proxy` only.
+Cloudflare Tunnel maps the hostname to **one** origin URL. Cookie sticky load balancing lives in-cluster: **nginx** (`edh-api-proxy`) routes on `mtgfr-instance` to `edh-api` / `edh-api-drain`. Browser → tunnel → `edh-web` → (ClusterIP) `edh-api-proxy` → API pods. NetworkPolicy allows `edh-web` (and not the public internet) to reach the proxy.
 
-No `/api` path prefix in production — the client calls the API origin directly. Dev keeps the Vite `/api` proxy (ADR 0018 local ergonomics).
+Browser paths keep the `/api` prefix; the BFF strips it before Axum (routes are `/auth/...`, `/tables/...`, not `/api/auth/...`).
 
 TLS terminates at **Cloudflare** (tunnel). In-cluster traffic is HTTP to ClusterIP Services (no mTLS between `cloudflared` and apps — accepted for friend-group v1). Pods do not need ACME or Traefik.
 
@@ -137,9 +139,9 @@ mtgfr Terraform **fully owns** the Zero Trust tunnel, public hostname routes, DN
 | Resource | Notes |
 |----------|-------|
 | Cloudflare Tunnel | Created/managed in Terraform |
-| Tunnel config / ingress rules | `edh` → web Service; `api.edh` → `edh-api-proxy` Service |
+| Tunnel config / ingress rules | `edh` → `edh-web` Service only (BFF proxies `/api` in-cluster) |
 | Tunnel token / credentials | K8s Secret consumed by `cloudflared` |
-| `cloudflare_dns_record` | `edh` + `api.edh` → `<tunnel-id>.cfargotunnel.com`, **proxied** |
+| `cloudflare_dns_record` | `edh` → `<tunnel-id>.cfargotunnel.com`, **proxied** |
 
 `cloudflared` runs in-cluster (Deployment, 2 replicas for connector HA). It authenticates with the tunnel token and forwards Cloudflare edge traffic to ClusterIP Services. The cluster needs **egress** to Cloudflare; it does **not** need inbound public ports for edh.
 
@@ -197,16 +199,15 @@ Optional `just deploy` recipe wrapping apply + image tag from latest GitHub Rele
 
 ## DNS & Cloudflare
 
-DNS for both hosts is **owned by mtgfr Terraform** (with the tunnel resources in `tunnel.tf`):
+DNS for the public host is **owned by mtgfr Terraform** (with the tunnel resources in `tunnel.tf`):
 
 | Record | FQDN | Type | Target |
 |--------|------|------|--------|
 | `edh` | `edh.example.com` | CNAME | `<tunnel-id>.cfargotunnel.com` |
-| `api.edh` | `api.edh.example.com` | CNAME | `<tunnel-id>.cfargotunnel.com` |
 
 **Proxy mode:** Tunnel hostnames are **proxied (orange cloud)** — that is how Cloudflare Tunnel works. TLS is at the edge; origin is the in-cluster `cloudflared` connector.
 
-**SSE through Cloudflare (required):** Tunnel hostnames are orange-clouded, so Cloudflare's ~100s HTTP idle timeout applies. The server **must** send periodic SSE comments / keepalive events (e.g. every 15–30s) on `GET /tables/{table}/stream/v1` before phase 5 exit. Also confirm tunnel / hostname settings do not aggressively buffer the API host. If keepalives still drop streams in playtests, revisit (WebSocket upgrade or Cloudflare settings).
+**SSE through Cloudflare (required):** Tunnel hostnames are orange-clouded, so Cloudflare's ~100s HTTP idle timeout applies. The server **must** send periodic SSE comments / keepalive events (e.g. every 15–30s) on `GET /tables/{table}/stream/v1` before phase 5 exit. Configuration Rules disable response buffering on `edh.example.com` so the BFF stream is not held at the edge. If keepalives still drop streams in playtests, revisit (WebSocket upgrade or Cloudflare settings).
 
 **Table share links** use `https://edh.example.com/play/XXXXXX` — stable across deploys. Legacy `?table=` query links still parse on join.
 
@@ -273,16 +274,16 @@ This doc is an implementation deliverable of the deploy work, not optional follo
 ADR 0005 assumes a single instance. Rolling deploy requires a minimal routing contract:
 
 1. Each server process has a **stable** `instance_id` set once per Deployment (`INSTANCE_ID=edh-api` / `INSTANCE_ID=edh-api-drain`). **Not** the pod name — pod names change on restart/reschedule and would invalidate sticky cookies.
-2. On `POST /tables/v1`, `POST /tables/join/v1`, and any response that binds a user to a table, the server sets a **host-only** affinity cookie (no `Domain` attribute — scoped to `api.edh.example.com` only):
+2. On `POST /tables/v1`, `POST /tables/join/v1`, and any response that binds a user to a table, the server sets a **host-only** affinity cookie (no `Domain` attribute — scoped to `edh.example.com` via the same-origin BFF):
    ```
    Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
    ```
-3. **`edh-api-proxy` (nginx)** routes on `mtgfr-instance` to the matching API Service, with **fallback to the non-draining** instance when the cookie is absent. Cloudflare Tunnel points `api.edh.example.com` only at this proxy Service.
+3. **`edh-api-proxy` (nginx)** routes on `mtgfr-instance` to the matching API Service, with **fallback to the non-draining** instance when the cookie is absent. `edh-web` sets `API_UPSTREAM` to this proxy Service (not exposed on the public tunnel).
 4. If a request hits the wrong instance (cookie points at a peer that no longer has the table), the server returns `404` / `410` and the client reconnects without the stale cookie (existing stream reconnect path).
 
 This avoids reshaping the wire API (no `table_id` in every path). Document the decision in a new ADR when implemented.
 
-**Session cookies** (auth), if shared across `edh.example.com` and `api.edh.example.com`, must use `Domain=.example.com` — **not** `.edh.example.com` (that domain does not include sibling host `api.edh.example.com`). Affinity stays host-only on the API.
+**Session cookies** (auth) are host-only on `edh.example.com` (`COOKIE_DOMAIN` empty) — same origin as the SPA and the BFF. Affinity `mtgfr-instance` is also host-only; nginx still sees it on the ClusterIP hop because the BFF forwards `Cookie`.
 
 ### Graceful shutdown
 
@@ -371,14 +372,14 @@ No secrets in the TOML file — production credentials come only from Terraform-
 | `instance_id` | `INSTANCE_ID` | stable Deployment id: `edh-api` or `edh-api-drain` |
 | `drain` | `DRAIN` | startup default `false`; live drain via admin API, not Deployment env churn |
 | `cookie_secure` | `COOKIE_SECURE` | `true` |
-| `cookie_domain` | `COOKIE_DOMAIN` | `.example.com` (auth session cookie only) |
-| `cors_origin` | `CORS_ORIGIN` | `https://edh.example.com` |
+| `cookie_domain` | `COOKIE_DOMAIN` | empty (host-only session cookie on edh) |
+| `cors_origin` | `CORS_ORIGIN` | empty (browser is same-origin via BFF) |
 | `admin_token` | `ADMIN_TOKEN` | shared secret guarding `/admin/drain` + `/health/drain`; empty leaves them unauthenticated behind the NetworkPolicy |
 | `version` | `VERSION` | image release tag |
 
 `RUST_LOG` stays a standard tracing env var (not part of `Settings`) — set alongside the above in Terraform.
 
-Affinity cookie value comes from `settings.instance_id` and is **host-only** (ignore `cookie_domain` for `mtgfr-instance`). Auth session cookies use `cookie_domain=.example.com`. Health endpoints expose `settings.version` and `settings.drain`.
+Affinity cookie value comes from `settings.instance_id` and is **host-only** (ignore `cookie_domain` for `mtgfr-instance`). Auth session cookies are also host-only when `cookie_domain` is empty. Health endpoints expose `settings.version` and `settings.drain`.
 
 ## Database migrations
 
@@ -504,19 +505,20 @@ cargo run -p server
 
 CI: Postgres service → `just migrate` → `just check`.
 
-- Server enables **CORS** for `cors_origin` with `credentials: true` on all API routes including SSE (`GET /tables/{table}/stream/v1`).
-- Auth **session** cookies use `Domain=.example.com` so `fetch(..., { credentials: "include" })` from `edh.example.com` sends them to `api.edh.example.com`.
-- Affinity cookie `mtgfr-instance` is host-only on `api.edh.example.com` (no `Domain`); the sticky proxy reads it on the API hop.
+- Server may enable **CORS** for `cors_origin` when set; same-origin BFF leaves it empty (browser does not need CORS).
+- Auth **session** cookies are host-only on `edh.example.com` so `fetch(..., { credentials: "include" })` to `/api` sends them.
+- Affinity cookie `mtgfr-instance` is host-only on `edh.example.com`; the BFF forwards it to nginx on the ClusterIP hop.
 
 ### Client (production build)
 
-Bake the API origin at image build time:
+Same-origin `/api` always — no separate API hostname bake:
 
-| Env | Dev (`bun run dev`) | Prod (image build) |
-|-----|---------------------|---------------------|
-| `VITE_API_ORIGIN` | unset → use `/api` (Vite proxy) | `https://api.edh.example.com` |
+| Env | Dev (`bun run dev`) | Prod (runtime) |
+|-----|---------------------|----------------|
+| (API origin) | `/api` → BFF → `API_UPSTREAM` (default `http://127.0.0.1:8080`) | `/api` → BFF → `API_UPSTREAM=http://edh-api-proxy…:8080` |
+| `VITE_CARD_CDN` | optional | optional build-arg |
 
-`client/src/effect/client.ts` prepends `VITE_API_ORIGIN` when set, otherwise `/api` for local dev. SSE stream URL follows the same origin.
+`client/src/effect/client.ts` always prepends `/api`. SSE stream URL follows the same origin.
 
 ### Other server work
 
@@ -524,7 +526,7 @@ Bake the API origin at image build time:
 |------|--------|
 | `Settings::load()` | Called once in `mtgfr serve`; bind `settings.listen_addr()`. |
 | CORS middleware | Axum layer: allow `cors_origin`, credentials, needed methods/headers. |
-| Cookie `Domain` | Auth session: `cookie_domain=.example.com`. Affinity `mtgfr-instance`: host-only on API. |
+| Cookie `Domain` | Auth session: empty `cookie_domain` (host-only on edh). Affinity `mtgfr-instance`: host-only. |
 | `POST /admin/drain` | Live drain toggle — must not restart the pod. **Not on the public tunnel hostname.** NetworkPolicy blocks ingress from `cloudflared` / public paths. The apply machine reaches it via `kubectl port-forward` (through the k3s API), not by opening NodePorts on the k3s host. |
 | `GET /health/live` | `200` if process is up; body includes `version`. |
 | `GET /health/ready` | `200` if accepting traffic (not draining, or draining with tables — still "ready" for those tables). |
@@ -557,25 +559,21 @@ Card pool and engine are compiled in — no runtime volume for `crates/cards/dat
 
 ### `mtgfr-web`
 
-nginx has no maintained distroless image. Serve the Vite `dist/` with a **minimal Rust static-file binary** on distroless instead of nginx.
+SolidStart (Vinxi / Nitro `node_server`) on distroless Node — SPA (`ssr: false`) plus same-origin `/api` BFF.
 
 Multi-stage `docker/web/Dockerfile`:
 
-1. **Build (assets):** `oven/bun` — `VITE_API_ORIGIN=https://api.edh.example.com bun run build`.
-2. **Build (server):** same `rust:1-bookworm` stage — `cargo build -p server --release` (`server static`: Axum + `tower_http::ServeDir` + **`CompressionLayer` (gzip)** for text assets, SPA fallback `index.html` for extensionless paths).
-3. **Runtime:** `gcr.io/distroless/cc-debian12:nonroot` — copy `server` + `dist/`; listen `:8080`; `CMD ["/server", "static"]`.
+1. **Deps:** `oven/bun` — `bun install --frozen-lockfile`.
+2. **Build:** `node:22-bookworm` — `vinxi build` → `.output/` (optional `VITE_CARD_CDN` build-arg).
+3. **Runtime:** `gcr.io/distroless/nodejs22-debian12:nonroot` — copy `.output`; `ENV HOST=0.0.0.0 PORT=8080 API_UPSTREAM=…`; `CMD [".output/server/index.mjs"]`.
 
-`server static` reads `PORT` (default `8080`) and `STATIC_ROOT` (default `/dist`) from env if needed; no config files required in the image.
-
-#### Compression (required)
+#### Compression / streaming
 
 | Hop | What |
 |-----|------|
-| Origin (`mtgfr static` → `cloudflared`) | **gzip** via `tower_http::CompressionLayer` on compressible types (`text/html`, `text/css`, `application/javascript`, `application/json`, SVG, WASM, source maps). Shrinks tunnel payload for the SPA bundle. |
-| Edge (Cloudflare → browser) | Cloudflare may re-encode with **gzip or brotli** on the orange-cloud hostname — expected; do not disable. |
-| API (`serve`) | Optional gzip on JSON responses is fine later; **never** gzip `text/event-stream` (SSE) — buffering breaks keepalives through the tunnel. |
-
-Client class strings are sorted for gzip-friendly repetition (ADR 0023 `useSortedClasses`); that only pays off when the wire actually compresses — hence gzip on `mtgfr static`, not only at the edge.
+| Edge (Cloudflare → browser) | Cloudflare may encode with **gzip or brotli** on the orange-cloud hostname — expected. |
+| BFF → API | Do **not** buffer `text/event-stream` (SSE); Configuration Rules disable response buffering on `edh`. |
+| API (`serve`) | Optional gzip on JSON later; **never** gzip SSE. |
 
 OpenAPI codegen in the client build must use the **committed** `openapi.json` at the image tag being built (release workflow checks they match).
 
@@ -583,9 +581,9 @@ OpenAPI codegen in the client build must use the **committed** `openapi.json` at
 
 | Avoid | Use instead |
 |-------|-------------|
-| `debian:bookworm-slim`, `alpine` runtime | `gcr.io/distroless/cc-debian12:nonroot` |
-| `nginx:alpine` for static SPA | `mtgfr static` on distroless |
-| Shell-based entrypoint scripts | single `server` binary + subcommand (`serve` / `static` / `migration`) via Job/Deployment `command` |
+| `debian:bookworm-slim`, `alpine` runtime | distroless (`cc` for Rust API; `nodejs22` for web) |
+| `nginx:alpine` or Rust `server static` for the SPA | SolidStart Node BFF on distroless |
+| Shell-based entrypoint scripts | Node `.output/server/index.mjs` / `server` binary subcommands |
 
 ## Terraform layout
 
@@ -626,10 +624,20 @@ env = [
   { name = "INSTANCE_ID", value = "edh-api" },  # or "edh-api-drain" on the peer
   { name = "DRAIN", value = "false" },          # startup only; live drain via POST /admin/drain
   { name = "COOKIE_SECURE", value = "true" },
-  { name = "COOKIE_DOMAIN", value = ".example.com" },
-  { name = "CORS_ORIGIN", value = "https://edh.example.com" },
+  { name = "COOKIE_DOMAIN", value = "" },
+  { name = "CORS_ORIGIN", value = "" },
   { name = "VERSION", value = var.server_image_tag },
   { name = "RUST_LOG", value = "info" },
+]
+```
+
+**Web Deployment env (illustrative):**
+
+```hcl
+env = [
+  { name = "HOST", value = "0.0.0.0" },
+  { name = "PORT", value = "8080" },
+  { name = "API_UPSTREAM", value = "http://edh-api-proxy.edh.svc:8080" },
 ]
 ```
 
@@ -824,7 +832,7 @@ Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-api-proxy`. Image 
 |-------|-------------|---------------|
 | **0 — Bootstrap** | History squash, `v0.1.0` tag, conventional-commit note in AGENTS.md | Tag exists; CI green |
 | **1 — Migrations** | `toasty-cli`, `Toasty.toml`, initial `migration generate`, `server migration` subcommand, drop prod `push_schema` | `just migrate` + tests green against Postgres |
-| **2 — Containerize** | Distroless Dockerfiles, `mtgfr static` (**gzip** `CompressionLayer`), `config` crate + `Settings` | Local image smoke test (compose or kind); `Accept-Encoding: gzip` on a JS/CSS asset returns `Content-Encoding: gzip` |
+| **2 — Containerize** | Distroless Dockerfiles (API `cc`, web `nodejs22` SolidStart), `config` crate + `Settings` | Local image smoke test (compose or kind) |
 | **3 — CI** | `.github/workflows/ci.yml` (migrate + `just check`) | PRs and `main` run migrate then `just check` |
 | **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json`, `RELEASE_TOKEN` | Merge to `main` → semantic-release (default) → `v*` tag push → GHCR images |
 | **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres StatefulSet, nginx sticky, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
@@ -847,7 +855,7 @@ Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-api-proxy`. Image 
 | Admin / drain endpoints | **Not public** (NetworkPolicy blocks tunnel); apply machine uses `kubectl port-forward` |
 | Client vs API roll order | **API (+ drain) first; `edh-web` only after `active_tables=0`** — avoids new SPA ↔ draining old API on refresh |
 | Wire backwards compatibility | **Documented rules required** (expand-only across N↔N+1 drain window; `/v2` for hard breaks) — see [Wire backwards compatibility](#wire-backwards-compatibility-required-doc) |
-| Static asset compression | **`mtgfr static` gzip** (`tower_http::CompressionLayer`); Cloudflare edge gzip/brotli OK; **no SSE gzip** on the API |
+| Static asset compression | Cloudflare edge gzip/brotli OK; **no SSE buffering/gzip** through the BFF |
 
 ## Open questions
 
@@ -855,10 +863,9 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 
 ## Success criteria
 
-- [ ] `https://edh.example.com/` loads the client; API calls reach `https://api.edh.example.com`; auth, deck builder, and lobby work against prod Postgres.
-- [ ] Origin `mtgfr static` (port-forward or in-cluster probe — not only the public Cloudflare URL) returns `Content-Encoding: gzip` for a JS/CSS/HTML asset when sent `Accept-Encoding: gzip`. Edge brotli/gzip alone does not satisfy this.
+- [ ] `https://edh.example.com/` loads the client; `/api` reaches Axum via the BFF; auth, deck builder, and lobby work against prod Postgres.
 - [ ] Traffic reaches the cluster via Cloudflare Tunnel only (no public NodePort/LB required for edh).
-- [ ] Auth session cookies use `Domain=.example.com`; affinity cookie is host-only on the API; sticky proxy routes `mtgfr-instance`.
+- [ ] Auth + affinity cookies are host-only on edh; sticky proxy still routes `mtgfr-instance` behind the BFF.
 - [ ] SSE keepalives keep streams alive through the tunnel under idle play (≥2 min without user actions).
 - [x] `just migrate` runs Toasty `migration apply` on dev Postgres; server starts without `push_schema`.
 - [ ] `terraform apply` from the apply machine (not the k3s host) uses the kubernetes backend on home k3s and reproduces the edh stack; plan fails clearly if the cluster/tunnel prerequisites are missing.
@@ -882,7 +889,7 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 - ADR 0005 — in-process fan-out (affinity extends this)
 - ADR 0010 — Postgres via Toasty (`push_schema` dev-only; migrations in prod)
 - [Toasty schema management](https://tokio-rs.github.io/toasty/nightly/guide/schema-management.html) — `migration generate` / `migration apply`
-- ADR 0018 — Effect client + SSE stream; dev `/api` proxy, prod `VITE_API_ORIGIN`
+- ADR 0018 — Effect client + SSE stream; same-origin `/api` (SolidStart BFF)
 - ADR 0021 — live games in-memory (motivates drain deploy)
 - `docker-compose.yml` — dev Postgres defaults
 - [`config`](https://docs.rs/config) — layered server `Settings` (TOML + env)

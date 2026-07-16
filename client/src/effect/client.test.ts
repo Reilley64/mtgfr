@@ -12,12 +12,20 @@ import { json, networkError, recordingFetch, respondWith, status, stubLocation }
 beforeAll(stubLocation);
 
 describe("makeClient", () => {
-  it("sends credentials: include so cross-origin session cookies work in prod", async () => {
+  it("sends credentials: include so session cookies work on the same-origin BFF", async () => {
     const { fetch, calls } = recordingFetch(json({ table_id: "ABCD" }));
     const client = makeClient(fetch);
     await Effect.runPromise(client.createTable({}));
     expect(calls).toHaveLength(1);
     expect(calls[0][1]?.credentials).toBe("include");
+  });
+  it("prepends the same-origin /api BFF prefix", async () => {
+    const { fetch, calls } = recordingFetch(json({ table_id: "ABCD" }));
+    const client = makeClient(fetch);
+    await Effect.runPromise(client.createTable({}));
+    expect(calls).toHaveLength(1);
+    const url = calls[0][0];
+    expect(url.pathname.startsWith("/api/")).toBe(true);
   });
 });
 

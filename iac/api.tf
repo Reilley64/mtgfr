@@ -19,7 +19,9 @@ locals {
   }
 }
 
-resource "kubernetes_deployment" "edh_api" {
+resource "kubernetes_deployment_v1" "edh_api" {
+  wait_for_rollout = true
+
   metadata {
     name      = "edh-api"
     namespace = local.namespace
@@ -40,8 +42,9 @@ resource "kubernetes_deployment" "edh_api" {
 
       spec {
         container {
-          name  = "edh-api"
-          image = var.server_image
+          name              = "edh-api"
+          image             = var.server_image
+          image_pull_policy = "Always"
 
           port {
             container_port = 8080
@@ -63,7 +66,7 @@ resource "kubernetes_deployment" "edh_api" {
             name = "DATABASE_URL"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.mtgfr_db.metadata[0].name
+                name = kubernetes_secret_v1.mtgfr_db.metadata[0].name
                 key  = "DATABASE_URL"
               }
             }
@@ -73,7 +76,7 @@ resource "kubernetes_deployment" "edh_api" {
             name = "ADMIN_TOKEN"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.mtgfr_admin.metadata[0].name
+                name = kubernetes_secret_v1.mtgfr_admin.metadata[0].name
                 key  = "ADMIN_TOKEN"
               }
             }
@@ -104,10 +107,12 @@ resource "kubernetes_deployment" "edh_api" {
     }
   }
 
-  depends_on = [kubernetes_job.edh_migrate]
+  depends_on = [kubernetes_job_v1.edh_migrate]
 }
 
-resource "kubernetes_service" "edh_api" {
+resource "kubernetes_service_v1" "edh_api" {
+  wait_for_load_balancer = false
+
   metadata {
     name      = "edh-api"
     namespace = local.namespace
@@ -129,8 +134,10 @@ resource "kubernetes_service" "edh_api" {
 # the outgoing release; tear down (api_drain_enabled = false) once GET /health/drain on this peer
 # reports active_tables = 0 (scripts/wait-drain.sh via kubectl port-forward — never the public
 # tunnel URL).
-resource "kubernetes_deployment" "edh_api_drain" {
+resource "kubernetes_deployment_v1" "edh_api_drain" {
   count = var.api_drain_enabled ? 1 : 0
+
+  wait_for_rollout = true
 
   metadata {
     name      = "edh-api-drain"
@@ -152,8 +159,9 @@ resource "kubernetes_deployment" "edh_api_drain" {
 
       spec {
         container {
-          name  = "edh-api-drain"
-          image = var.server_image_drain
+          name              = "edh-api-drain"
+          image             = var.server_image_drain
+          image_pull_policy = "Always"
 
           port {
             container_port = 8080
@@ -175,7 +183,7 @@ resource "kubernetes_deployment" "edh_api_drain" {
             name = "DATABASE_URL"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.mtgfr_db.metadata[0].name
+                name = kubernetes_secret_v1.mtgfr_db.metadata[0].name
                 key  = "DATABASE_URL"
               }
             }
@@ -185,7 +193,7 @@ resource "kubernetes_deployment" "edh_api_drain" {
             name = "ADMIN_TOKEN"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.mtgfr_admin.metadata[0].name
+                name = kubernetes_secret_v1.mtgfr_admin.metadata[0].name
                 key  = "ADMIN_TOKEN"
               }
             }
@@ -214,8 +222,10 @@ resource "kubernetes_deployment" "edh_api_drain" {
   }
 }
 
-resource "kubernetes_service" "edh_api_drain" {
+resource "kubernetes_service_v1" "edh_api_drain" {
   count = var.api_drain_enabled ? 1 : 0
+
+  wait_for_load_balancer = false
 
   metadata {
     name      = "edh-api-drain"

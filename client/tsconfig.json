@@ -1,12 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "types": ["vite/client", "node"],
+    "types": ["vinxi/types/client", "node"],
     "strict": true,
+    "noEmit": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "skipLibCheck": true,
@@ -16,5 +19,5 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "app.config.ts"]
 }

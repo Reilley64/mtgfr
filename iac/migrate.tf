@@ -9,17 +9,22 @@
 # after the schema is current. `ttl_seconds_after_finished` lets the completed Job/Pod get garbage
 # collected instead of accumulating one per release forever.
 
-resource "kubernetes_job" "edh_migrate" {
+resource "kubernetes_job_v1" "edh_migrate" {
+  wait_for_completion = true
+
   metadata {
     name      = "edh-migrate-${substr(sha256(var.server_image), 0, 8)}"
     namespace = local.namespace
     labels    = local.common_labels
   }
 
-  wait_for_completion = true
-
   timeouts {
     create = "10m"
+  }
+
+  # Job controller owns the selector; importing into v1 otherwise tries to write match_labels = {}.
+  lifecycle {
+    ignore_changes = [spec[0].selector]
   }
 
   spec {
@@ -46,15 +51,16 @@ resource "kubernetes_job" "edh_migrate" {
         }
 
         container {
-          name    = "migrate"
-          image   = var.server_image
-          command = ["/server", "migration", "apply"]
+          name              = "migrate"
+          image             = var.server_image
+          image_pull_policy = "Always"
+          command           = ["/server", "migration", "apply"]
 
           env {
             name = "DATABASE_URL"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.mtgfr_db.metadata[0].name
+                name = kubernetes_secret_v1.mtgfr_db.metadata[0].name
                 key  = "DATABASE_URL"
               }
             }
@@ -64,5 +70,5 @@ resource "kubernetes_job" "edh_migrate" {
     }
   }
 
-  depends_on = [kubernetes_stateful_set.postgres]
+  depends_on = [kubernetes_stateful_set_v1.postgres]
 }

@@ -5,7 +5,9 @@
 # on the first (API-roll) apply, then passes the new tag on the second apply once drain empties.
 # Never bump both images in one apply — see deploy.sh.
 
-resource "kubernetes_deployment" "edh_web" {
+resource "kubernetes_deployment_v1" "edh_web" {
+  wait_for_rollout = true
+
   metadata {
     name      = "edh-web"
     namespace = local.namespace
@@ -26,8 +28,10 @@ resource "kubernetes_deployment" "edh_web" {
 
       spec {
         container {
-          name  = "edh-web"
-          image = var.web_image
+          name              = "edh-web"
+          image             = var.web_image
+          # Tags like :1.2.2 are rebuilt in place; IfNotPresent keeps the old digest forever.
+          image_pull_policy = "Always"
 
           port {
             container_port = 8080
@@ -42,13 +46,21 @@ resource "kubernetes_deployment" "edh_web" {
             name  = "PORT"
             value = "8080"
           }
+
+          # SolidStart BFF proxies same-origin `/api/*` to the sticky nginx (strip `/api`).
+          env {
+            name  = "API_UPSTREAM"
+            value = "http://${kubernetes_service_v1.edh_api_proxy.metadata[0].name}.${local.namespace}.svc:8080"
+          }
         }
       }
     }
   }
 }
 
-resource "kubernetes_service" "edh_web" {
+resource "kubernetes_service_v1" "edh_web" {
+  wait_for_load_balancer = false
+
   metadata {
     name      = "edh-web"
     namespace = local.namespace

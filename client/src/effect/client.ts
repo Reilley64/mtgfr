@@ -14,10 +14,10 @@ import * as HttpClient from "effect/unstable/http/HttpClient";
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest";
 import { make } from "~/api/generated";
 
-/** Dev: unset → `/api` (Vite proxy). Prod: bake `VITE_API_ORIGIN` (e.g. `https://api.edh.example.com`). */
-const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || "/api";
+/** Same-origin BFF prefix — SolidStart proxies `/api/*` to `API_UPSTREAM` (strip `/api`). */
+const API_ORIGIN = "/api";
 
-/** Fetch defaults to `same-origin`; prod is cross-origin and needs cookies on every request. */
+/** Include cookies on every request (session + sticky affinity). */
 function withCredentials(fetchImpl: typeof globalThis.fetch): typeof globalThis.fetch {
   return ((input: RequestInfo | URL, init?: RequestInit) =>
     fetchImpl(input, { ...init, credentials: "include" })) as typeof globalThis.fetch;

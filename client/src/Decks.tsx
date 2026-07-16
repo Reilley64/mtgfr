@@ -70,7 +70,7 @@ export default function Decks() {
   };
 
   return (
-    // `#root` is fixed to the viewport with `body { overflow: hidden }` (for the board), so page
+    // `#app` is fixed to the viewport with `body { overflow: hidden }` (for the board), so page
     // scroll is off — this screen must scroll itself, hence `h-full` + `overflow-y-auto`.
     // Landscape-first: keep the horizontal list layout; portrait phones hit the rotate gate.
     <Felt

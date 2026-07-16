@@ -17,20 +17,20 @@ ADR 0005's single-instance assumption doesn't say how a client finds the *right*
   Deployment via `INSTANCE_ID=edh-api` / `INSTANCE_ID=edh-api-drain` — **not** the pod name. Pod
   names change on restart/reschedule and would invalidate a cookie bound to one.
 - On `POST /tables/v1`, `POST /tables/join/v1`, and any response that binds a user to a table, the
-  server sets a **host-only** affinity cookie scoped to the API host only (no `Domain` attribute):
+  server sets a **host-only** affinity cookie (no `Domain` attribute) on the public origin
+  (`edh.example.com` via the SolidStart `/api` BFF):
   ```
   Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
   ```
 - `edh-api-proxy` (nginx, `iac/api-proxy.tf`) reads `mtgfr-instance` and routes to the matching
   Service, defaulting to the **active** instance (`edh-api`) when the cookie is absent or names a
-  peer that no longer exists.
+  peer that no longer exists. Public traffic reaches the proxy only through `edh-web` (`API_UPSTREAM`).
 - If a request lands on the wrong instance (cookie points at a peer that doesn't have the table),
   the server returns `404`/`410`; the client's existing stream-reconnect path drops the stale
   cookie and retries.
-- The affinity cookie is independent of the **auth session** cookie: session cookies use
-  `Domain=.example.com` (shared across `edh.example.com` and `api.edh.example.com`);
-  `mtgfr-instance` stays host-only on the API and ignores `cookie_domain`.
-- Terraform models the outgoing peer as a second Deployment/Service (`edh-api-drain`), gated by a
+- The affinity cookie is independent of the **auth session** cookie: both are host-only on edh
+  when `COOKIE_DOMAIN` is empty; `mtgfr-instance` ignores `cookie_domain` either way. The BFF
+  forwards `Cookie` / `Set-Cookie` on the ClusterIP hop to nginx.- Terraform models the outgoing peer as a second Deployment/Service (`edh-api-drain`), gated by a
   variable (`api_drain_enabled`) rather than always present — it exists only for the duration of a
   roll (`iac/api.tf`).
 

@@ -2,15 +2,16 @@
 # tunnel); apply machine uses kubectl port-forward". NetworkPolicy filters by pod/port (L3/L4), not
 # HTTP path, so the effective control here is narrower and stronger than just /admin* + drain: the
 # `cloudflared` pods (the only route from the public internet) are only ever allowed to reach
-# `edh-web` and `edh-api-proxy` — never `edh-api` / `edh-api-drain` directly. The L7 half (nginx
-# 404s `/admin/*` and `/health/drain`) lives in api-proxy.tf.
+# `edh-web` — never `edh-api` / `edh-api-drain` / `edh-api-proxy` directly. `edh-web` may reach
+# `edh-api-proxy` for the SolidStart `/api` BFF. The L7 half (nginx 404s `/admin/*` and
+# `/health/drain`) lives in api-proxy.tf.
 #
 # `kubectl port-forward` from the apply machine goes through the kubelet directly into the pod's
 # network namespace rather than over the pod's normal CNI-managed ingress path, so it is not
 # subject to these Ingress NetworkPolicies on most CNIs — consistent with the deploy PRD's
 # assumption that port-forward is the one path allowed to reach /admin and /health/drain.
 
-resource "kubernetes_network_policy" "edh_api_ingress" {
+resource "kubernetes_network_policy_v1" "edh_api_ingress" {
   metadata {
     name      = "edh-api-ingress"
     namespace = local.namespace
@@ -42,7 +43,7 @@ resource "kubernetes_network_policy" "edh_api_ingress" {
   }
 }
 
-resource "kubernetes_network_policy" "edh_api_proxy_ingress" {
+resource "kubernetes_network_policy_v1" "edh_api_proxy_ingress" {
   metadata {
     name      = "edh-api-proxy-ingress"
     namespace = local.namespace
@@ -53,10 +54,16 @@ resource "kubernetes_network_policy" "edh_api_proxy_ingress" {
       match_labels = { app = "edh-api-proxy" }
     }
 
+    # Public traffic reaches the API only via edh-web's `/api` BFF (or historically via
+    # cloudflared→api hostname; that public hostname is gone). Drain/admin stay on port-forward.
     ingress {
       from {
         pod_selector {
-          match_labels = { app = "cloudflared" }
+          match_expressions {
+            key      = "app"
+            operator = "In"
+            values   = ["cloudflared", "edh-web"]
+          }
         }
       }
 
@@ -70,7 +77,7 @@ resource "kubernetes_network_policy" "edh_api_proxy_ingress" {
   }
 }
 
-resource "kubernetes_network_policy" "edh_web_ingress" {
+resource "kubernetes_network_policy_v1" "edh_web_ingress" {
   metadata {
     name      = "edh-web-ingress"
     namespace = local.namespace
@@ -102,7 +109,7 @@ resource "kubernetes_network_policy" "edh_web_ingress" {
 # DATABASE_URL may reach it: edh-api, edh-api-drain (api.tf), and edh-migrate (migrate.tf). Egress
 # from those pods is unrestricted (no NetworkPolicy selects them for egress), so this ingress-only
 # rule is the full control.
-resource "kubernetes_network_policy" "postgres_ingress" {
+resource "kubernetes_network_policy_v1" "postgres_ingress" {
   metadata {
     name      = "postgres-ingress"
     namespace = local.namespace

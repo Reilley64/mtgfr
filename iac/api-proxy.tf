@@ -1,8 +1,8 @@
-# Sticky proxy for api.edh: cookie `mtgfr-instance` → edh-api / edh-api-drain.
+# Sticky proxy for the API host: cookie `mtgfr-instance` → edh-api / edh-api-drain.
 # When api_drain_enabled is false, map drain cookie → edh-api (stale cookies after teardown).
 # 404 /admin/* and /health/drain on the public path (NetworkPolicy is L3/L4 only).
 
-resource "kubernetes_config_map" "edh_api_proxy" {
+resource "kubernetes_config_map_v1" "edh_api_proxy" {
   metadata {
     name      = "edh-api-proxy-nginx"
     namespace = local.namespace
@@ -53,7 +53,9 @@ resource "kubernetes_config_map" "edh_api_proxy" {
   }
 }
 
-resource "kubernetes_deployment" "edh_api_proxy" {
+resource "kubernetes_deployment_v1" "edh_api_proxy" {
+  wait_for_rollout = true
+
   metadata {
     name      = "edh-api-proxy"
     namespace = local.namespace
@@ -92,7 +94,7 @@ resource "kubernetes_deployment" "edh_api_proxy" {
           name = "nginx-conf"
 
           config_map {
-            name = kubernetes_config_map.edh_api_proxy.metadata[0].name
+            name = kubernetes_config_map_v1.edh_api_proxy.metadata[0].name
           }
         }
       }
@@ -100,7 +102,9 @@ resource "kubernetes_deployment" "edh_api_proxy" {
   }
 }
 
-resource "kubernetes_service" "edh_api_proxy" {
+resource "kubernetes_service_v1" "edh_api_proxy" {
+  wait_for_load_balancer = false
+
   metadata {
     name      = "edh-api-proxy"
     namespace = local.namespace

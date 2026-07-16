@@ -5,10 +5,11 @@
   "scripts": {
     "gen": "sh scripts/gen.sh",
     "predev": "bun run gen",
-    "dev": "vite",
+    "dev": "vinxi dev",
     "prebuild": "bun run gen",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "build": "tsc --noEmit && vinxi build",
+    "start": "vinxi start",
+    "preview": "vinxi preview",
     "pretest": "bun run gen",
     "test": "vitest run",
     "lint": "biome check --formatter-enabled=false",
@@ -18,13 +19,16 @@
   },
   "dependencies": {
     "@effect/atom-solid": "4.0.0-beta.94",
+    "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.16.1",
+    "@solidjs/start": "1.3.2",
     "clsx": "2.1.1",
     "cva": "1.0.0-beta.7",
     "effect": "4.0.0-beta.94",
     "mana-font": "1.18.0",
     "solid-js": "^1.9.14",
-    "tailwind-merge": "3.6.0"
+    "tailwind-merge": "3.6.0",
+    "vinxi": "^0.5.7"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
@@ -35,8 +39,11 @@
     "happy-dom": "15",
     "tailwindcss": "4.3.2",
     "typescript": "^6.0.3",
-    "vite": "^8.1.3",
+    "vite": "^6.3.3",
     "vite-plugin-solid": "^2.11.12",
     "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

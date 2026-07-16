@@ -40,7 +40,7 @@ variable "cloudflare_account_id" {
 }
 
 variable "cloudflare_zone_id" {
-  description = "Cloudflare zone ID for example.com (DNS records for edh + api.edh live here)."
+  description = "Cloudflare zone ID for example.com (DNS record for edh lives here)."
   type        = string
 }
 
@@ -51,15 +51,9 @@ variable "dns_zone" {
 }
 
 variable "edh_hostname" {
-  description = "Public hostname for the static client (deploy PRD §Target topology)."
+  description = "Single public hostname for the SolidStart BFF (SPA + `/api` proxy)."
   type        = string
   default     = "edh.example.com"
-}
-
-variable "api_hostname" {
-  description = "Public hostname for the API + SSE, proxied through edh-api-proxy."
-  type        = string
-  default     = "api.edh.example.com"
 }
 
 variable "tunnel_name" {
@@ -131,15 +125,15 @@ variable "postgres_storage_class" {
 # ── Server runtime (Settings — deploy PRD §Configuration) ──────────────────────────────────────
 
 variable "cookie_domain" {
-  description = "Domain attribute for the auth session cookie. NOT used for the mtgfr-instance affinity cookie, which stays host-only on the API regardless of this value."
+  description = "Domain attribute for the auth session cookie. Empty = host-only on edh (same-origin BFF). NOT used for mtgfr-instance affinity (also host-only)."
   type        = string
-  default     = ".example.com"
+  default     = ""
 }
 
 variable "cors_origin" {
-  description = "Allowed CORS origin for the API."
+  description = "Allowed CORS origin for the API. Empty when the browser is same-origin via the SolidStart BFF (no browser CORS)."
   type        = string
-  default     = "https://edh.example.com"
+  default     = ""
 }
 
 variable "auth_secret" {

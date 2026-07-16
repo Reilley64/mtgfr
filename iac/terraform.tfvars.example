@@ -10,10 +10,10 @@ cloudflare_api_token  = "REPLACE_WITH_CLOUDFLARE_API_TOKEN"
 
 dns_zone     = "example.com"
 edh_hostname = "edh.example.com"
-api_hostname = "api.edh.example.com"
 
-cookie_domain = ".example.com"
-cors_origin   = "https://edh.example.com"
+# Same-origin BFF: host-only session cookie; CORS unused for the browser.
+cookie_domain = ""
+cors_origin   = ""
 
 # Public GHCR tags — pin explicit release versions, never "latest". `just deploy`
 # (iac/scripts/deploy.sh) manages server_image/web_image/server_image_drain/api_drain_enabled

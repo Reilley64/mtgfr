@@ -1,7 +1,7 @@
 # Shared computed values referenced from multiple files below.
 
 locals {
-  namespace = kubernetes_namespace.edh.metadata[0].name
+  namespace = kubernetes_namespace_v1.edh.metadata[0].name
 
   # Service / StatefulSet name in postgres.tf — must match DATABASE_URL host.
   postgres_service = "postgres"
