@@ -1,6 +1,8 @@
 # This land enters tapped unless you control an Island or a Mountain.
 # {T}: Add {U} or {R}.
 name = "Sulfur Falls"
+id = "6a6c5e17-6465-4a1f-9d63-8a3ce2edc522"
+default_print = "c762f475-7e58-4477-839b-b3c55434b88f"
 otags = ["activated-ability", "cycle-isd-checkland", "synergy-island", "synergy-mountain"]
 oracle = "This land enters tapped unless you control an Island or a Mountain.\n{T}: Add {U} or {R}."
 set = "msc"

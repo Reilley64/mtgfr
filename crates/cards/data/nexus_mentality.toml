@@ -3,6 +3,8 @@
 # • Remove all counters from target nonland permanent you control. Draw a card for each counter removed this way.
 # Nexus Mentality {3}{U} — a modal instant (soc).
 name = "Nexus Mentality"
+id = "6bdbe36f-b46d-4746-baf2-04f0977bb532"
+default_print = "d9ed2ef7-9433-4f2f-957b-b58d2ec391fe"
 otags = ["burst-draw", "counter-fuel-any", "hand-positive", "modal", "move-counters", "multiple-targets", "pure-draw", "single-target-instant-sorcery", "synergy-commander"]
 oracle = "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Move all counters from target nonland permanent you control onto another target nonland permanent you control.\n• Remove all counters from target nonland permanent you control. Draw a card for each counter removed this way."
 set = "soc"

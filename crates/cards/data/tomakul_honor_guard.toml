@@ -3,6 +3,8 @@
 # Tomakul Honor Guard: {1}{G} 3/1 with Ward {2}. Modeled as a cast-time targeting tax
 # (see engine::Game::cast) — an opponent pays {2} more to target it.
 name = "Tomakul Honor Guard"
+id = "b68cf4e6-205e-40b6-b28b-f4b7d8af7017"
+default_print = "c7745439-f40b-4647-8bff-53751d511bbd"
 otags = ["french-vanilla", "rhystic", "triggered-ability"]
 oracle = "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)"
 set = "bro"

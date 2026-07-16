@@ -1,6 +1,8 @@
 # This land enters tapped unless you control a Forest or an Island.
 # {T}: Add {G} or {U}.
 name = "Hinterland Harbor"
+id = "fb5a3403-7f0b-406c-8c4f-d693be010ca6"
+default_print = "892451a1-5527-4857-84f8-62028d147489"
 otags = ["activated-ability", "alliteration", "cycle-isd-checkland", "synergy-forest", "synergy-island"]
 oracle = "This land enters tapped unless you control a Forest or an Island.\n{T}: Add {G} or {U}."
 set = "msc"

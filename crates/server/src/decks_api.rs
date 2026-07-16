@@ -46,6 +46,7 @@ fn detail_of(deck: Deck) -> Result<DeckDetail, Response> {
         id: deck.id,
         name: deck.name,
         commander: deck.commander,
+        commander_print: deck.commander_print,
         cards,
     })
 }
@@ -75,6 +76,7 @@ pub async fn create_deck(
         .user_id(user.0.id)
         .name(&req.name)
         .commander(&req.commander)
+        .commander_print(&req.commander_print)
         .cards(&cards)
         .exec(&mut db)
         .await
@@ -151,6 +153,7 @@ pub async fn update_deck(
     deck.update()
         .name(&req.name)
         .commander(&req.commander)
+        .commander_print(&req.commander_print)
         .cards(&cards)
         .exec(&mut db)
         .await
@@ -212,20 +215,21 @@ mod tests {
             "Shock",
             "Brute Force",
         ];
-        let mut cards: Vec<DeckCardEntry> = nonbasics
-            .iter()
-            .map(|n| DeckCardEntry {
-                name: n.to_string(),
-                count: 1,
-            })
-            .collect();
-        cards.push(DeckCardEntry {
-            name: "Plains".to_string(),
-            count: 99 - nonbasics.len() as u32,
-        });
+        let entry = |name: &str, count: u32| {
+            let def = cards::get_by_name(name).expect("pool card");
+            DeckCardEntry {
+                id: def.id.to_string(),
+                count,
+                print: def.default_print.to_string(),
+            }
+        };
+        let mut cards: Vec<DeckCardEntry> = nonbasics.iter().map(|n| entry(n, 1)).collect();
+        cards.push(entry("Plains", 99 - nonbasics.len() as u32));
+        let tajic = cards::get_by_name("Tajic, Legion's Edge").expect("pool card");
         SaveDeckRequest {
             name: "My Deck".to_string(),
-            commander: "Tajic, Legion's Edge".to_string(),
+            commander: tajic.id.to_string(),
+            commander_print: tajic.default_print.to_string(),
             cards,
         }
     }
@@ -252,7 +256,10 @@ mod tests {
             .await
             .expect("get")
             .0;
-        assert_eq!(got.commander, "Tajic, Legion's Edge");
+        assert_eq!(
+            got.commander,
+            cards::get_by_name("Tajic, Legion's Edge").unwrap().id
+        );
         assert_eq!(got.cards.iter().map(|c| c.count).sum::<u32>(), 99);
     }
 
@@ -279,7 +286,12 @@ mod tests {
 
         let mut revised = legal_deck();
         revised.name = "Renamed".to_string();
-        revised.cards[0].name = "Lightning Bolt".to_string();
+        let bolt = cards::get_by_name("Lightning Bolt").expect("pool");
+        revised.cards[0] = DeckCardEntry {
+            id: bolt.id.to_string(),
+            count: 1,
+            print: bolt.default_print.to_string(),
+        };
 
         let alice = user2(&state, "a@b.c").await;
         let updated = update_deck(
@@ -293,7 +305,7 @@ mod tests {
         .0;
         assert_eq!(updated.name, "Renamed");
         assert!(
-            updated.cards.iter().any(|c| c.name == "Lightning Bolt"),
+            updated.cards.iter().any(|c| c.id == bolt.id),
             "got {:?}",
             updated.cards,
         );

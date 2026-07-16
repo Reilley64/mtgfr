@@ -528,6 +528,8 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
             prepared: card.prepared,
             id: card.id,
             zone: card.zone,
+            cardId: card.cardId,
+            print: card.print,
           }
         : null,
       ZONE.Battlefield,

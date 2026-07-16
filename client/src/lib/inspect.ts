@@ -18,6 +18,10 @@ export type InspectPin = {
   prepared: boolean;
   /** Battlefield object id when Alt-pinning a permanent; absent for hand/stack/catalog history. */
   objectId?: number;
+  /** Card (oracle) id, when known — drives the oracle-text lookup (ADR 0031). */
+  cardId?: string;
+  /** Printing UUID for this pin's art (ADR 0031); absent renders a broken image. */
+  print?: string;
 };
 
 /** True when a new Alt-pin should replace the inspect history root (not merely refresh the same pin). */
@@ -39,7 +43,15 @@ export function popInspectHistory(history: InspectPin[]): InspectPin[] {
 /** Pin on Alt-down over a face-up named card; otherwise null. */
 export function pinFromHit(
   altDown: boolean,
-  hit: { name: string; faceDown?: boolean; prepared?: boolean; id?: number; zone?: number } | null,
+  hit: {
+    name: string;
+    faceDown?: boolean;
+    prepared?: boolean;
+    id?: number;
+    zone?: number;
+    cardId?: string;
+    print?: string;
+  } | null,
   battlefieldZone: number,
 ): InspectPin | null {
   if (!altDown || !hit || hit.faceDown || !hit.name) return null;
@@ -48,5 +60,7 @@ export function pinFromHit(
     name: hit.name,
     prepared: hit.prepared ?? false,
     ...(onBattlefield ? { objectId: hit.id } : {}),
+    ...(hit.cardId ? { cardId: hit.cardId } : {}),
+    ...(hit.print ? { print: hit.print } : {}),
   };
 }

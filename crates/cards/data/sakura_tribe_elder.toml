@@ -4,6 +4,8 @@
 #   "Sacrifice this creature: Search your library for a basic land card, put that card onto
 #    the battlefield tapped, then shuffle."
 name = "Sakura-Tribe Elder"
+id = "e3afc704-220f-498f-9eaa-0821b17dc24c"
+default_print = "7a8b1c49-8594-426d-b585-41140235bb0e"
 otags = ["activated-ability", "land-ramp", "martyr", "tutor-land-basic", "tutor-land-to-battlefield"]
 oracle = "Sacrifice this creature: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."
 set = "soc"

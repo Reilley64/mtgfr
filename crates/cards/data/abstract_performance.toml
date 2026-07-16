@@ -2,6 +2,8 @@
 # face-up pile. An opponent chooses one of those piles. Put that pile into your graveyard. Look at the cards in the
 # other pile. You may cast a spell from among them without paying its mana cost. Put the rest into your hand.
 name = "Abstract Performance"
+id = "3e0e3676-e634-4e64-bdfd-4aaa5885461f"
+default_print = "2795c812-0850-4405-b968-b624deaccd55"
 otags = ["fact-or-fiction", "free-cast-another", "gives-castable-from-exile", "hand-positive", "minigame"]
 oracle = "Exile the top four cards of your library in a face-down pile, then exile the top four cards of your library in a face-up pile. An opponent chooses one of those piles. Put that pile into your graveyard. Look at the cards in the other pile. You may cast a spell from among them without paying its mana cost. Put the rest into your hand."
 set = "soc"

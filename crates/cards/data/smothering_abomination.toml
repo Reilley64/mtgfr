@@ -5,6 +5,8 @@
 # ponytail: Devoid (making the card colorless despite its black mana cost) is flavor — no pool
 # card cares whether a permanent is colorless vs. its casting-cost colors.
 name = "Smothering Abomination"
+id = "c3db28e5-6162-4642-a1c9-a7ace0737950"
+default_print = "aac33238-e4bd-4c72-aecc-9905232c3ab4"
 otags = ["cda-color", "draw-engine", "evasion", "repeatable-pure-draw", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "synergy-sacrifice", "triggered-ability", "upkeep-cost"]
 oracle = "Devoid (This card has no color.)\nFlying\nAt the beginning of your upkeep, sacrifice a creature.\nWhenever you sacrifice a creature, draw a card."
 set = "soc"

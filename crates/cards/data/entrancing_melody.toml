@@ -1,6 +1,8 @@
 # Gain control of target creature with mana value X.
 # Entrancing Melody {X}{U}{U} — sorcery (soc).
 name = "Entrancing Melody"
+id = "f9f82958-a7c6-4161-b0d8-fdbf7a3dd911"
+default_print = "0b6bce62-87d2-458f-bc77-6fe032dacbd0"
 otags = ["single-target-instant-sorcery", "theft-creature", "untracked-indefinite-effect"]
 oracle = "Gain control of target creature with mana value X."
 set = "soc"

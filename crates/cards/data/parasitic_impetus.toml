@@ -5,6 +5,8 @@
 # Parasitic Impetus (soc): "Enchant creature. Enchanted creature gets +2/+2 and is goaded.
 # Whenever enchanted creature attacks, its controller loses 2 life and you gain 2 life."
 name = "Parasitic Impetus"
+id = "ff3de07d-86c3-49e1-9de0-97c85301ff93"
+default_print = "1d312b2e-c529-42ac-ad9e-73573e5f1c34"
 otags = ["attack-trigger", "cycle-c20-impetus", "drain-life", "force-attacker", "hate-attacker", "opponent-loses-life", "parasitic-aura", "repeatable-lifegain", "toll"]
 oracle = "Enchant creature\nEnchanted creature gets +2/+2 and is goaded. (It attacks each combat if able and attacks a player other than you if able.)\nWhenever enchanted creature attacks, its controller loses 2 life and you gain 2 life."
 set = "soc"

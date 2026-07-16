@@ -14,6 +14,8 @@
 # counters" is dropped — that's counters on the player (poison/energy/experience/etc.), and this
 # pool tracks no player-level counters.
 name = "Final Act"
+id = "335a6c6a-030f-45d4-806c-467a22962eed"
+default_print = "a86671d1-4f4b-486e-a0b3-671608974a82"
 otags = ["modal", "removal-battle", "removal-creature", "removal-destroy", "removal-planeswalker", "remove-counters-other", "remove-counters-player", "sweeper", "sweeper-graveyard"]
 oracle = "Choose one or more —\n• Destroy all creatures.\n• Destroy all planeswalkers.\n• Destroy all battles.\n• Exile all graveyards.\n• Each opponent loses all counters."
 set = "soc"

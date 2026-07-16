@@ -1,6 +1,8 @@
 # {T}: Add {C}.
 # {T}: Add {R} or {W}. This land deals 1 damage to you.
 name = "Battlefield Forge"
+id = "6b75b94e-83b7-457e-ac41-7ca90b5a59aa"
+default_print = "c47c1bf5-f11e-4f86-b20b-5d899a11dc56"
 otags = ["activated-ability", "burn-you", "cycle-apc-painland", "mana-ability-with-extra-effect"]
 oracle = "{T}: Add {C}.\n{T}: Add {R} or {W}. This land deals 1 damage to you."
 set = "soc"

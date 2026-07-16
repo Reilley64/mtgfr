@@ -2,6 +2,8 @@
 # Whenever this creature deals combat damage to a player, you may return target creature card with mana value X or less
 # from your graveyard to the battlefield, where X is the amount of damage this creature dealt to that player.
 name = "Venerable Warsinger"
+id = "e286d1aa-bb74-4568-98b5-a693ac7a369d"
+default_print = "cdd0062f-6b2a-49c4-bf47-9b05f16ca6eb"
 otags = ["reanimate-creature", "saboteur", "triggered-ability"]
 oracle = "Vigilance, trample\nWhenever this creature deals combat damage to a player, you may return target creature card with mana value X or less from your graveyard to the battlefield, where X is the amount of damage this creature dealt to that player."
 set = "soc"

@@ -1,5 +1,7 @@
 # Whenever this creature or another creature you control dies, each opponent loses 1 life and you gain 1 life.
 name = "Zulaport Cutthroat"
+id = "76b003e0-15af-4f22-bdf2-1ade5430964a"
+default_print = "c43609fb-3cee-44e0-98d0-3ecaba1d5767"
 otags = ["blood-artist-ability", "group-slug", "opponent-loses-life"]
 oracle = "Whenever this creature or another creature you control dies, each opponent loses 1 life and you gain 1 life."
 set = "soc"

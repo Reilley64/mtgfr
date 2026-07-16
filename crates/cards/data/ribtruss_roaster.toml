@@ -3,6 +3,8 @@
 # At the beginning of your end step, create a number of 1/1 black and green Pest creature tokens equal to the number of
 # +1/+1 counters on this creature. They have "When this token dies, you gain 1 life."
 name = "Ribtruss Roaster"
+id = "86c55fe5-98b5-4e53-8828-a7f04ee3e985"
+default_print = "8217100d-8244-4565-97bd-6c0f38c3e2f0"
 otags = ["alliteration", "devour", "pp-counters-matter", "repeatable-creature-tokens", "repeatable-lifegain", "sacrifice-outlet-creature", "triggered-ability"]
 oracle = "Devour 1 (As this creature enters, you may sacrifice any number of creatures. This creature enters with that many +1/+1 counters on it.)\nAt the beginning of your end step, create a number of 1/1 black and green Pest creature tokens equal to the number of +1/+1 counters on this creature. They have \"When this token dies, you gain 1 life.\""
 set = "soc"

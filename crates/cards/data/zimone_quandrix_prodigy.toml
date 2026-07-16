@@ -4,6 +4,8 @@
 #   "{1}, {T}: You may put a land card from your hand onto the battlefield tapped.
 #    {4}, {T}: Draw a card. If you control eight or more lands, draw two cards instead."
 name = "Zimone, Quandrix Prodigy"
+id = "ee2ef1e0-6803-4eb5-8664-605438c67505"
+default_print = "5a9a9f44-479e-47ca-afc4-d8372a11c9b3"
 otags = ["activated-ability", "cycle-stx-student", "draw-engine", "land-ramp", "lands-matter", "repeatable-pure-draw", "self-replacement-effect", "sneak-land"]
 oracle = "{1}, {T}: You may put a land card from your hand onto the battlefield tapped.\n{4}, {T}: Draw a card. If you control eight or more lands, draw two cards instead."
 set = "soc"

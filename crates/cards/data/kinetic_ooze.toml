@@ -4,6 +4,8 @@
 #    or less. If X is 5 or more, you draw a card. If X is 10 or more, double the number of +1/+1
 #    counters on any number of other target creatures."
 name = "Kinetic Ooze"
+id = "ab74c6b1-2099-4429-94b7-a5656ac04db3"
+default_print = "f18ee3a2-997e-47e6-96b9-7438307f4bc5"
 otags = ["cantrip", "counter-doubler", "disenchant-naturalize", "gains-pp-counters", "hand-neutral", "high-x-matters", "pp-counters-matter", "removal-destroy", "spot-removal", "triggered-ability", "virtual-vanilla"]
 oracle = "This creature enters with X +1/+1 counters on it.\nWhen this creature enters, destroy up to one target artifact or enchantment with mana value X or less. If X is 5 or more, you draw a card. If X is 10 or more, double the number of +1/+1 counters on any number of other target creatures."
 set = "soc"

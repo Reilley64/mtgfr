@@ -329,6 +329,8 @@ export function useActionExecution(deps: ActionExecutionDeps) {
   };
 
   const objectName = (id: number): string => deps.getState()?.objects.find((o) => o.id === id)?.name ?? `#${id}`;
+  // Printing UUID for a target's art (ADR 0031); empty renders a broken image.
+  const objectPrint = (id: number): string => deps.getState()?.objects.find((o) => o.id === id)?.print ?? "";
 
   const runAction = (action: ActionView, card: ObjectView | null, picks: CostPicks, dropSeed: Vec) => {
     const plan = planRunAction(action, card, picks, deps.getState());
@@ -451,6 +453,7 @@ export function useActionExecution(deps: ActionExecutionDeps) {
     pendingMode,
     answerMode,
     objectName,
+    objectPrint,
     runAction,
     continueAfterCostPick,
     onHandDrop,

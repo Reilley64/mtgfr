@@ -2,6 +2,8 @@
 # card. An opponent chooses a nonland card exiled this way. You may cast up to two spells from among the other cards
 # exiled this way without paying their mana costs.
 name = "Plargg and Nassari"
+id = "9e769a65-7aa5-484d-9493-badb485b5964"
+default_print = "e66ee7c6-23bc-4fef-a566-35aee2064bd9"
 otags = ["cast-on-resolution", "consult-cast", "free-cast-another", "gives-castable-from-exile", "legendary-team-up", "mill-exile", "multiple-species-types", "opponent-chooses", "per-player", "repeatable-card-advantage", "theft-cast", "triggered-ability"]
 oracle = "At the beginning of your upkeep, each player exiles cards from the top of their library until they exile a nonland card. An opponent chooses a nonland card exiled this way. You may cast up to two spells from among the other cards exiled this way without paying their mana costs."
 set = "soc"

@@ -2,6 +2,8 @@
 # Flying, trample
 # This creature enters with X +1/+1 counters on it.
 name = "Hydroid Krasis"
+id = "6bd872b2-5c40-4e11-9a7f-0136a51b0642"
+default_print = "52e5d3fe-46bc-4014-9819-5aa7c7e64838"
 otags = ["burst-draw", "cast-trigger-self", "cycle-rna-m-guild-spell", "division", "evasion", "gains-pp-counters", "hand-positive", "lifegain", "pure-draw", "unique-type-line", "virtual-french-vanilla"]
 oracle = "When you cast this spell, you gain half X life and draw half X cards. Round down each time.\nFlying, trample\nThis creature enters with X +1/+1 counters on it."
 set = "soc"

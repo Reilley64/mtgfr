@@ -1,6 +1,8 @@
 # At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black Zombie creature token
 # with decayed. (It can't block. When it attacks, sacrifice it at end of combat.)
 name = "Jadar, Ghoulcaller of Nephalia"
+id = "fb3defc0-c93a-4423-9ff9-c399f8a8ef1f"
+default_print = "49d5d62b-72ed-446a-b280-ad04c38bdd0c"
 otags = ["intervening-if-clause", "repeatable-creature-tokens"]
 oracle = "At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black Zombie creature token with decayed. (It can't block. When it attacks, sacrifice it at end of combat.)"
 set = "soc"

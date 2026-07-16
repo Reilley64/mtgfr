@@ -1,6 +1,8 @@
 # {T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature of their
 # choice. You add {B}{B} and draw a card.
 name = "Priest of Forgotten Gods"
+id = "2ad8ff62-d090-4835-9274-3b755ba0f8e6"
+default_print = "363f8761-91a7-47e8-9e15-3b73d59bc020"
 otags = ["activated-ability", "adds-multiple-mana", "draw-engine", "mana-dork", "multiple-targets", "non-mana-ability-mana", "opponent-loses-life", "removal-creature", "removal-sacrifice", "repeatable-crime", "repeatable-plunder", "repeatable-removal"]
 oracle = "{T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature of their choice. You add {B}{B} and draw a card."
 set = "soc"

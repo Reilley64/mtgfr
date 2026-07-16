@@ -27,6 +27,8 @@ function card(over: Partial<RenderCard> = {}): RenderCard {
     w: 96,
     h: 134,
     name: "c",
+    cardId: "",
+    print: "",
     pt: "",
     tapped: false,
     counters: 0,

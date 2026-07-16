@@ -3,6 +3,8 @@
 # Whenever an opponent attacks with creatures, if two or more of those creatures are attacking you and/or planeswalkers
 # you control, that opponent loses 3 life and you draw a card.
 name = "Tomik, Wielder of Law"
+id = "2ef0961a-0543-4371-8c2a-333881b735e5"
+default_print = "8a7fc460-fc49-480f-8ee2-28a173509f0b"
 otags = ["attack-trigger", "draw-engine", "evasion", "hate-attacker", "intervening-if-clause", "opponent-loses-life", "repeatable-pure-draw", "synergy-planeswalker", "toll"]
 oracle = "Affinity for planeswalkers (This spell costs {1} less to cast for each planeswalker you control.)\nFlying, vigilance\nWhenever an opponent attacks with creatures, if two or more of those creatures are attacking you and/or planeswalkers you control, that opponent loses 3 life and you draw a card."
 set = "soc"

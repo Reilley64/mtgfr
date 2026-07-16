@@ -538,14 +538,14 @@ mod tests {
     fn answering_a_choice_that_emits_no_events_still_broadcasts() {
         use engine::{Game, Intent, Step};
 
-        let bear = || cards::get("Grizzly Bear").expect("Grizzly Bear in pool");
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
 
         let mut game = Game::new();
         let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
         let b1 = game.spawn_on_battlefield(PlayerId(1), bear());
         let b2 = game.spawn_on_battlefield(PlayerId(1), bear());
-        game.spawn_on_battlefield(PlayerId(0), cards::get("Mountain").unwrap());
-        game.spawn_in_hand(PlayerId(0), cards::get("Shock").unwrap());
+        game.spawn_on_battlefield(PlayerId(0), cards::get_by_name("Mountain").unwrap());
+        game.spawn_in_hand(PlayerId(0), cards::get_by_name("Shock").unwrap());
 
         let advance_to = |g: &mut Game, step: Step| {
             while g.current_step() != step {
@@ -644,6 +644,8 @@ mod tests {
 
     const FORCED_PINGER: engine::CardDef = engine::CardDef {
         name: "Test Forced Pinger",
+        id: "",
+        default_print: "",
         cost: engine::Cost::FREE,
         kind: engine::CardKind::Creature {
             power: 3,
@@ -737,7 +739,7 @@ mod tests {
         let mut table = Table::new_lobby();
         let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
         game.fund_mana(PlayerId(0));
-        let bear = game.spawn_in_hand(PlayerId(0), cards::get("Grizzly Bear").unwrap());
+        let bear = game.spawn_in_hand(PlayerId(0), cards::get_by_name("Grizzly Bear").unwrap());
         table.game = Some(game);
         (table, bear)
     }
@@ -773,7 +775,10 @@ mod tests {
     fn a_genuine_two_target_choice_does_not_auto_resolve() {
         let mut table = Table::new_lobby();
         let mut game = engine::Game::new();
-        game.spawn_on_battlefield(PlayerId(1), cards::get("Grizzly Bear").expect("pool card"));
+        game.spawn_on_battlefield(
+            PlayerId(1),
+            cards::get_by_name("Grizzly Bear").expect("pool card"),
+        );
         let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER);
         table.game = Some(game);
         let mut rx = table.tx.subscribe();
@@ -819,8 +824,8 @@ mod tests {
         let (mut table, bear) = bear_table();
         {
             let game = table.game.as_mut().unwrap();
-            game.spawn_on_battlefield(PlayerId(1), cards::get("Mountain").unwrap());
-            game.spawn_in_hand(PlayerId(1), cards::get("Shock").unwrap());
+            game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+            game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         }
 
         let (result, disp) = cast(&mut table, PlayerId(0), bear);
@@ -845,8 +850,8 @@ mod tests {
         let (mut table, bear) = bear_table();
         {
             let game = table.game.as_mut().unwrap();
-            game.spawn_on_battlefield(PlayerId(1), cards::get("Mountain").unwrap());
-            game.spawn_in_hand(PlayerId(1), cards::get("Shock").unwrap());
+            game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+            game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         }
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
         let (result, disp) = TableSession::new(&mut table).set_turn_yield(PlayerId(1), true);
@@ -866,8 +871,8 @@ mod tests {
         let (mut table, bear) = bear_table();
         {
             let game = table.game.as_mut().unwrap();
-            game.spawn_on_battlefield(PlayerId(1), cards::get("Mountain").unwrap());
-            game.spawn_in_hand(PlayerId(1), cards::get("Shock").unwrap());
+            game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+            game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         }
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
         assert_eq!(table.game.as_ref().unwrap().priority_holder(), PlayerId(1));
@@ -887,8 +892,8 @@ mod tests {
         let (mut table, bear) = bear_table();
         {
             let game = table.game.as_mut().unwrap();
-            game.spawn_on_battlefield(PlayerId(1), cards::get("Mountain").unwrap());
-            game.spawn_in_hand(PlayerId(1), cards::get("Shock").unwrap());
+            game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+            game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         }
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
         let (_result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(1), true);
@@ -929,8 +934,8 @@ mod tests {
         let (mut table, bear) = bear_table();
         {
             let game = table.game.as_mut().unwrap();
-            game.spawn_on_battlefield(PlayerId(1), cards::get("Mountain").unwrap());
-            game.spawn_in_hand(PlayerId(1), cards::get("Shock").unwrap());
+            game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+            game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         }
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
         let (result, _) = TableSession::new(&mut table).set_yield(PlayerId(1), true);
@@ -950,8 +955,8 @@ mod tests {
         let (mut table, bear) = bear_table();
         {
             let game = table.game.as_mut().unwrap();
-            game.spawn_on_battlefield(PlayerId(1), cards::get("Mountain").unwrap());
-            game.spawn_in_hand(PlayerId(1), cards::get("Shock").unwrap());
+            game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+            game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         }
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
         // Clear any auto-arm from hold path, then arm via the session verb.
@@ -984,8 +989,8 @@ mod tests {
         let (mut table, bear) = bear_table();
         {
             let game = table.game.as_mut().unwrap();
-            game.spawn_on_battlefield(PlayerId(1), cards::get("Mountain").unwrap());
-            game.spawn_in_hand(PlayerId(1), cards::get("Shock").unwrap());
+            game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+            game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         }
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
 
@@ -1262,12 +1267,14 @@ mod tests {
 
         let mut game = Game::new();
         game.fund_mana(PlayerId(0));
-        let bear = game.spawn_on_battlefield(PlayerId(0), cards::get("Grizzly Bear").unwrap());
-        let eyes = game.spawn_in_graveyard(PlayerId(0), cards::get("Sentinel's Eyes").unwrap());
+        let bear =
+            game.spawn_on_battlefield(PlayerId(0), cards::get_by_name("Grizzly Bear").unwrap());
+        let eyes =
+            game.spawn_in_graveyard(PlayerId(0), cards::get_by_name("Sentinel's Eyes").unwrap());
         let fodder: Vec<_> = (0..2)
-            .map(|_| game.spawn_in_graveyard(PlayerId(0), cards::get("Plains").unwrap()))
+            .map(|_| game.spawn_in_graveyard(PlayerId(0), cards::get_by_name("Plains").unwrap()))
             .collect();
-        let plains = game.spawn_on_battlefield(PlayerId(0), cards::get("Plains").unwrap());
+        let plains = game.spawn_on_battlefield(PlayerId(0), cards::get_by_name("Plains").unwrap());
         game.submit(Intent::TapForMana {
             player: PlayerId(0),
             object: plains,

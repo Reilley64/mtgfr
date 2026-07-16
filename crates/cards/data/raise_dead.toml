@@ -1,5 +1,7 @@
 # Return target creature card from your graveyard to your hand.
 name = "Raise Dead"
+id = "cbc9c731-181a-4f00-a7b0-eb7e56eac2ea"
+default_print = "4950c3c2-80c1-4447-ac38-cf40f76b9545"
 otags = ["hand-neutral", "regrowth-creature", "single-target-instant-sorcery"]
 oracle = "Return target creature card from your graveyard to your hand."
 set = "w17"

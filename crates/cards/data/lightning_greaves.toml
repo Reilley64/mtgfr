@@ -2,6 +2,8 @@
 # Equip {0}
 # Lightning Greaves: {2} Artifact — Equipment. "Equipped creature has haste and shroud. Equip {0}."
 name = "Lightning Greaves"
+id = "ca204b66-8d0c-431a-8d34-282f7c2d17da"
+default_print = "b61634ae-05be-4b56-8ebb-9d4ade902e42"
 otags = ["activated-ability", "french-vanilla-equipment", "gives-haste", "gives-shroud", "protects-creature"]
 oracle = "Equipped creature has haste and shroud. (It can't be the target of spells or abilities.)\nEquip {0}"
 set = "msc"

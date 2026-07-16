@@ -3,6 +3,8 @@
 # Scorched Geyser (msc): Land — Island Mountain. "{T}: Add {U} or {R}. This land enters tapped
 # unless you control two or more basic lands."
 name = "Scorched Geyser"
+id = "f808b510-907a-4c3c-aea1-efb825c8e13e"
+default_print = "43abdfba-0a55-4b8a-858e-3372ee40a579"
 otags = ["activated-ability", "cycle-tangoland", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped unless you control two or more basic lands."
 set = "msc"

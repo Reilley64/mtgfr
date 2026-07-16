@@ -1,4 +1,6 @@
 name = "Karmic Guide"
+id = "8c31fec9-e4b3-4761-990e-7be38eb05604"
+default_print = "b26d50dd-54a1-43ce-9884-3999f698d97b"
 otags = ["drawback", "evasion", "hate-black", "intervening-if-clause", "reanimate-creature", "type-errata", "virtual-french-vanilla"]
 oracle = "Flying, protection from black\nEcho {3}{W}{W} (At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay its echo cost.)\nWhen this creature enters, return target creature card from your graveyard to the battlefield."
 set = "soc"

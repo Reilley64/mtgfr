@@ -1,4 +1,6 @@
 name = "Furygale Flocking"
+id = "943fc88d-c281-46bb-9dc7-1052f789362b"
+default_print = "a967af7a-03ed-4858-9c26-66f2cb706b02"
 otags = ["affinity-for-spells", "alliteration", "multiple-bodies", "per-player"]
 oracle = "This spell costs {1} less to cast for each instant and sorcery card in your graveyard.\nFor each opponent, create two 3/3 blue and red Elemental creature tokens with flying that attack that opponent this turn if able. They gain haste until end of turn."
 set = "soc"

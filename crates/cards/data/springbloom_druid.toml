@@ -1,6 +1,8 @@
 # When this creature enters, you may sacrifice a land. If you do, search your library for up to two basic land cards,
 # put them onto the battlefield tapped, then shuffle.
 name = "Springbloom Druid"
+id = "788a4896-3414-40bf-b391-d2efea2fb5f9"
+default_print = "17d67b88-3f76-401f-b04a-f2bcaab4aa97"
 otags = ["land-ramp", "sacrifice-outlet-land", "triggered-ability", "tutor-land-basic", "tutor-land-to-battlefield", "virtual-vanilla"]
 oracle = "When this creature enters, you may sacrifice a land. If you do, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle."
 set = "fdn"

@@ -5,6 +5,8 @@
 # • Target player draws a card and loses 1 life.
 # • Target player puts a +1/+1 counter on each creature they control.
 name = "Shadrix Silverquill"
+id = "2143f413-7baa-4fd6-a7ca-32f52bfa553f"
+default_print = "214a695b-208e-4fd5-9ceb-23c882eadcf7"
 otags = ["alliteration", "cycle-stx-dragon-founder", "donate-token", "draw-engine", "evasion", "force-draw", "gains-pp-counters", "gives-pp-counters-to-all", "modal", "opponent-loses-life", "repeatable-creature-tokens", "repeatable-crime"]
 oracle = "Flying, double strike\nAt the beginning of combat on your turn, you may choose two. Each mode must target a different player.\n• Target player creates a 2/1 white and black Inkling creature token with flying.\n• Target player draws a card and loses 1 life.\n• Target player puts a +1/+1 counter on each creature they control."
 set = "soc"

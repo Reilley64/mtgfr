@@ -2,6 +2,8 @@
 # creature again if it's not attached.)
 # This creature and enchanted creature each get +1/+1 for each creature you control and +1/+1 for each Aura you control.
 name = "Eidolon of Countless Battles"
+id = "441b51b0-ecd0-466d-9ca8-e754eb563aec"
+default_print = "4ad6fcb1-7c35-4111-8f1e-d18a2fae5638"
 otags = ["auraify", "deanimate-self", "ethereal-armor", "more-expensive-than-mv", "synergy-aura", "warlord"]
 oracle = "Bestow {2}{W}{W} (If you cast this card for its bestow cost, it's an Aura spell with enchant creature. It becomes a creature again if it's not attached.)\nThis creature and enchanted creature each get +1/+1 for each creature you control and +1/+1 for each Aura you control."
 set = "soc"

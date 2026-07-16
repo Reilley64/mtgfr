@@ -2,6 +2,8 @@
 # Sram, Senior Edificer (soc). Real oracle text:
 #   "Whenever you cast an Aura, Equipment, or Vehicle spell, draw a card."
 name = "Sram, Senior Edificer"
+id = "7e00b0cd-d212-4604-ba07-da21f4fe00b0"
+default_print = "8fbd18ce-0ac3-4b52-9cd0-0af7e0244207"
 otags = ["alliteration", "cast-trigger-you", "color-break", "cycle-aer-legend", "draw-engine", "enchantment-engine", "repeatable-pure-draw", "synergy-aura", "synergy-equipment", "synergy-vehicle"]
 oracle = "Whenever you cast an Aura, Equipment, or Vehicle spell, draw a card."
 set = "soc"

@@ -2,6 +2,8 @@
 # creature token with "When this token dies, you gain 1 life."
 # If you would gain life, you gain that much life plus 1 instead.
 name = "Pest Rescuer"
+id = "02be0b99-d40b-4287-989b-12eb2701115c"
+default_print = "1f2a066a-7bcd-4e9d-8e52-0769cd6c8124"
 otags = ["intervening-if-clause", "lifegain-increaser", "repeatable-creature-tokens", "repeatable-lifegain"]
 oracle = "At the beginning of each upkeep, if you don't control a Pest creature token, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\"\nIf you would gain life, you gain that much life plus 1 instead."
 set = "soc"

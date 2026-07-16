@@ -3,6 +3,8 @@
 # A filter land: feed it one mana and tap it for two {W}/{B} mana (a net +1). The two outputs
 # are {W/B} dual credits, so they can be spent as WW, WB, or BB.
 name = "Fetid Heath"
+id = "42bf259d-4bb9-49c3-b4ec-223dca62f4d6"
+default_print = "f465ded8-0d38-42ac-bafc-a12185013c5d"
 otags = ["activated-ability", "cycle-eve-filterland"]
 oracle = "{T}: Add {C}.\n{W/B}, {T}: Add {W}{W}, {W}{B}, or {B}{B}."
 set = "soc"

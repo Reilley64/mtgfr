@@ -1,4 +1,6 @@
 name = "Nev, the Practical Dean"
+id = "42750e30-d022-4623-a290-d91fa80721c9"
+default_print = "94cf1461-5e4f-4980-8ef9-293421af621f"
 otags = ["cast-trigger-you", "counters-matter", "gains-pp-counters", "gives-trample", "keyword-anthem", "repeatable-pp-counters", "x-cost-matters"]
 oracle = "Creatures you control with counters on them have trample.\nWhenever you cast your first spell with {X} in its mana cost each turn, put X +1/+1 counters on Nev."
 set = "soc"

@@ -2,7 +2,7 @@
 //! registry of `engine::CardDef`. The engine's `card-dsl` feature deserializes a card's
 //! TOML directly into `CardDef` (interning owned strings and slices to `&'static` at
 //! load, so `CardDef` stays `Copy` — a bounded, load-once pool that lives for the
-//! program's lifetime anyway); this crate is just the file I/O and the name-keyed
+//! program's lifetime anyway); this crate is just the file I/O and the id-keyed
 //! registry, keeping the engine free of I/O (`CLAUDE.md`).
 
 use std::collections::HashMap;
@@ -10,23 +10,41 @@ use std::sync::OnceLock;
 
 use engine::CardDef;
 
-/// The loaded card registry, keyed by card name. Reads `data/*.toml` on first access.
+struct Pool {
+    /// Primary key: Scryfall oracle id ([`CardDef::id`]).
+    by_id: HashMap<String, CardDef>,
+    /// Secondary: printed name → CardDef (authoring, tests, fuzzy display).
+    by_name: HashMap<String, CardDef>,
+}
+
+static POOL: OnceLock<Pool> = OnceLock::new();
+
+fn pool() -> &'static Pool {
+    POOL.get_or_init(load_from_data_dir)
+}
+
+/// The loaded card registry, keyed by Card id (Scryfall oracle id).
 pub fn registry() -> &'static HashMap<String, CardDef> {
-    static REGISTRY: OnceLock<HashMap<String, CardDef>> = OnceLock::new();
-    REGISTRY.get_or_init(load_from_data_dir)
+    &pool().by_id
 }
 
-/// The card with the given name, if it exists in the pool.
-pub fn get(name: &str) -> Option<CardDef> {
-    registry().get(name).copied()
+/// The card with the given Card id, if it exists in the pool.
+pub fn get(id: &str) -> Option<CardDef> {
+    pool().by_id.get(id).copied()
 }
 
-fn load_from_data_dir() -> HashMap<String, CardDef> {
+/// The card with the given printed name, if it exists in the pool.
+pub fn get_by_name(name: &str) -> Option<CardDef> {
+    pool().by_name.get(name).copied()
+}
+
+fn load_from_data_dir() -> Pool {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/data");
     let entries =
         std::fs::read_dir(dir).unwrap_or_else(|e| panic!("reading card data dir {dir}: {e}"));
 
-    let mut cards = HashMap::new();
+    let mut by_id = HashMap::new();
+    let mut by_name = HashMap::new();
     for entry in entries {
         let path = entry.expect("card data dir entry").path();
         if path.extension().and_then(|e| e.to_str()) != Some("toml") {
@@ -36,9 +54,26 @@ fn load_from_data_dir() -> HashMap<String, CardDef> {
             .unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
         let def: CardDef =
             toml::from_str(&text).unwrap_or_else(|e| panic!("parsing {}: {e}", path.display()));
-        cards.insert(def.name.to_string(), def);
+        if def.id.is_empty() {
+            panic!(
+                "{}: CardDef.id (Scryfall oracle id) is required",
+                path.display()
+            );
+        }
+        if def.default_print.is_empty() {
+            panic!(
+                "{}: CardDef.default_print (Scryfall card UUID) is required",
+                path.display()
+            );
+        }
+        if by_id.insert(def.id.to_string(), def).is_some() {
+            panic!("{}: duplicate Card id {}", path.display(), def.id);
+        }
+        if by_name.insert(def.name.to_string(), def).is_some() {
+            panic!("{}: duplicate card name {}", path.display(), def.name);
+        }
     }
-    cards
+    Pool { by_id, by_name }
 }
 
 #[cfg(test)]
@@ -71,6 +106,8 @@ mod tests {
         // Catalog metadata for deck-builder search: a set code and printed subtypes, both
         // optional. Present:
         let card = r#"name = "Goblin Test"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
 set = "soc"
 subtypes = ["Goblin", "Wizard"]
 
@@ -84,7 +121,7 @@ toughness = 1
         assert_eq!(def.subtypes, ["Goblin", "Wizard"]);
 
         // Omitted: both default empty, so every not-yet-backfilled card still loads.
-        let bare = "name = \"Bare\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
+        let bare = "name = \"Bare\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
         let def: CardDef = toml::from_str(bare).expect("a card without the keys still parses");
         assert_eq!(def.set, "");
         assert!(def.subtypes.is_empty());
@@ -94,19 +131,36 @@ toughness = 1
     fn misspelled_toml_keys_are_load_errors() {
         // deny_unknown_fields: a typo'd key fails the parse instead of silently defaulting
         // (e.g. `legendery` would otherwise load as a non-legendary card).
-        let card = "name = \"Typo\"\nlegendery = true\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
+        let card = "name = \"Typo\"
+id = \"00000000-0000-0000-0000-000000000001\"
+default_print = \"00000000-0000-0000-0000-000000000002\"
+legendery = true\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
         assert!(toml::from_str::<CardDef>(card).is_err());
 
         // The same guard inside an ability table: `tap_self` (missing s) must not
         // quietly produce a cost-free activated ability.
-        let card = "name = \"Typo\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n\n[[abilities]]\ntiming = \"activated\"\ntap_self = true\n\n[[abilities.effects]]\ntype = \"gain_life\"\namount = 1\n";
+        let card = "name = \"Typo\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n\n[[abilities]]\ntiming = \"activated\"\ntap_self = true\n\n[[abilities.effects]]\ntype = \"gain_life\"\namount = 1\n";
         assert!(toml::from_str::<CardDef>(card).is_err());
     }
 
     #[test]
     fn dual_mana_spellings_parse_and_bad_ones_are_load_errors() {
         // A dual in an `add_mana` batch is a nested two-color array (one credit).
-        let card = "name = \"Test Talisman\"\n\n[kind]\ntype = \"artifact\"\n\n[[abilities]]\ntiming = \"activated\"\ntaps_self = true\n\n[[abilities.effects]]\ntype = \"add_mana\"\nmana = [[\"black\", \"green\"]]\n";
+        let card = r#"name = "Test Talisman"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
+
+[kind]
+type = "artifact"
+
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[[abilities.effects]]
+type = "add_mana"
+mana = [["black", "green"]]
+"#;
         let def: CardDef = toml::from_str(card).expect("a dual add_mana batch parses");
         let Effect::AddMana { mana: produced, .. } = def.abilities[0].effect else {
             panic!("expected an add_mana effect");
@@ -124,7 +178,7 @@ toughness = 1
         // A same-color "dual" and a three-color array are both load errors.
         for produces in ["[\"green\", \"green\"]", "[\"white\", \"blue\", \"black\"]"] {
             let card = format!(
-                "name = \"Test Bad Dual\"\n\n[kind]\ntype = \"land\"\nproduces = {produces}\n"
+                "name = \"Test Bad Dual\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"land\"\nproduces = {produces}\n"
             );
             assert!(
                 toml::from_str::<CardDef>(&card).is_err(),
@@ -141,6 +195,8 @@ toughness = 1
 
         // Pest: a 1/1 creature token with "When this token dies, you gain 1 life."
         let pest = r#"name = "Make Pest (test)"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
 
 [kind]
 type = "sorcery"
@@ -191,6 +247,8 @@ amount = 1
 
         // Food: an *artifact* token with "{2}, {T}, Sacrifice this token: You gain 3 life."
         let food = r#"name = "Make Food (test)"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
 
 [kind]
 type = "sorcery"
@@ -238,6 +296,8 @@ amount = 3
 
         // The minimal creature sugar (no `kind` table) still parses as base P/T + keywords.
         let inkling = r#"name = "Make Inkling (test)"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
 
 [kind]
 type = "sorcery"
@@ -273,7 +333,7 @@ keywords = ["flying"]
 
     #[test]
     fn the_pool_loads_with_expected_card_shapes() {
-        let bear = get("Grizzly Bear").expect("Grizzly Bear is in the pool");
+        let bear = get_by_name("Grizzly Bear").expect("Grizzly Bear is in the pool");
         assert_eq!(
             bear.kind,
             CardKind::Creature {
@@ -285,7 +345,7 @@ keywords = ["flying"]
         assert_eq!(bear.cost.generic, 1);
         assert_eq!(bear.cost.colored[Color::Green.index()], 1);
 
-        let shock = get("Shock").expect("Shock is in the pool");
+        let shock = get_by_name("Shock").expect("Shock is in the pool");
         assert!(matches!(
             shock.abilities[0].effect,
             Effect::DealDamage {
@@ -300,18 +360,18 @@ keywords = ["flying"]
             !bear.set.is_empty(),
             "every backfilled card carries a set code"
         );
-        let viper = get("Ambush Viper").expect("Ambush Viper is in the pool");
+        let viper = get_by_name("Ambush Viper").expect("Ambush Viper is in the pool");
         assert_eq!(viper.set, "inr");
         assert_eq!(viper.subtypes, ["Snake"]);
 
-        let starfield = get("Starfield Mystic").expect("Starfield Mystic is in the pool");
+        let starfield = get_by_name("Starfield Mystic").expect("Starfield Mystic is in the pool");
         assert!(
             starfield.otags.contains(&"cost-reducer-enchantment"),
             "otags backfilled from Scryfall: {:?}",
             starfield.otags
         );
 
-        let elf = get("Llanowar Elves").expect("Llanowar Elves is in the pool");
+        let elf = get_by_name("Llanowar Elves").expect("Llanowar Elves is in the pool");
         assert!(matches!(elf.abilities[0].timing, Timing::Activated(_)));
         let Effect::AddMana { mana: produced, .. } = elf.abilities[0].effect else {
             panic!("Llanowar Elves has a mana ability");
@@ -319,7 +379,7 @@ keywords = ["flying"]
         assert_eq!(produced.colored[Color::Green.index()], 1);
 
         // Sol Ring's {T}: Add {C}{C} — colorless (not a color) and a multi-mana batch.
-        let sol_ring = get("Sol Ring").expect("Sol Ring is in the pool");
+        let sol_ring = get_by_name("Sol Ring").expect("Sol Ring is in the pool");
         let Effect::AddMana { mana: sol, .. } = sol_ring.abilities[0].effect else {
             panic!("Sol Ring taps for mana");
         };
@@ -327,7 +387,7 @@ keywords = ["flying"]
         assert_eq!(sol.colored, [0; Color::COUNT], "colorless is not a color");
 
         // Command Tower is a land that taps for one mana of the commander's color identity.
-        let tower = get("Command Tower").expect("Command Tower is in the pool");
+        let tower = get_by_name("Command Tower").expect("Command Tower is in the pool");
         assert_eq!(
             tower.kind,
             CardKind::Land {
@@ -341,7 +401,7 @@ keywords = ["flying"]
         // "blue"]` in oracle order and normalized to WUBRG order at load. Land — Forest Island,
         // but nonbasic: it does not carry the "Basic" supertype despite sharing both basic
         // land types with Forest and Island.
-        let islet = get("Tangled Islet").expect("Tangled Islet is in the pool");
+        let islet = get_by_name("Tangled Islet").expect("Tangled Islet is in the pool");
         assert_eq!(
             islet.kind,
             CardKind::Land {
@@ -352,11 +412,11 @@ keywords = ["flying"]
         );
         assert!(islet.enters_tapped, "Tangled Islet enters tapped");
 
-        let serra = get("Serra Angel").expect("Serra Angel is in the pool");
+        let serra = get_by_name("Serra Angel").expect("Serra Angel is in the pool");
         assert!(serra.keywords.contains(&Keyword::Flying));
         assert!(serra.keywords.contains(&Keyword::Vigilance));
 
-        let forest = get("Forest").expect("Forest is in the pool");
+        let forest = get_by_name("Forest").expect("Forest is in the pool");
         assert_eq!(
             forest.kind,
             CardKind::Land {
@@ -367,14 +427,14 @@ keywords = ["flying"]
         );
         assert!(!forest.legendary, "a basic land is not legendary");
 
-        let tajic = get("Tajic, Legion's Edge").expect("Tajic is in the pool");
+        let tajic = get_by_name("Tajic, Legion's Edge").expect("Tajic is in the pool");
         assert!(
             tajic.legendary,
             "Tajic is a legendary creature (a commander)"
         );
 
         // Lightning Bolt: "3 damage to any target" — the modern any-target spec.
-        let bolt = get("Lightning Bolt").expect("Lightning Bolt is in the pool");
+        let bolt = get_by_name("Lightning Bolt").expect("Lightning Bolt is in the pool");
         assert!(matches!(
             bolt.abilities[0].effect,
             Effect::DealDamage {
@@ -385,7 +445,7 @@ keywords = ["flying"]
         ));
 
         // Laelia: an attack trigger that impulse-exiles the top card (play it until end of turn).
-        let laelia = get("Laelia, the Blade Reforged").expect("Laelia is in the pool");
+        let laelia = get_by_name("Laelia, the Blade Reforged").expect("Laelia is in the pool");
         assert!(laelia.keywords.contains(&Keyword::Haste));
         assert_eq!(
             laelia.abilities[0].timing,
@@ -400,7 +460,8 @@ keywords = ["flying"]
         ));
 
         // Expressive Iteration: look at the top three, route one each to hand/bottom/exile.
-        let iteration = get("Expressive Iteration").expect("Expressive Iteration is in the pool");
+        let iteration =
+            get_by_name("Expressive Iteration").expect("Expressive Iteration is in the pool");
         assert!(matches!(
             iteration.abilities[0].effect,
             Effect::DistributeTop {
@@ -412,7 +473,8 @@ keywords = ["flying"]
         ));
 
         // Containment Construct: a body-only 2/1 (its discard trigger is dropped).
-        let construct = get("Containment Construct").expect("Containment Construct is in the pool");
+        let construct =
+            get_by_name("Containment Construct").expect("Containment Construct is in the pool");
         assert_eq!(
             construct.kind,
             CardKind::Creature {
@@ -423,7 +485,7 @@ keywords = ["flying"]
         );
 
         // Ancestral Recall: "target player draws three cards" — a targeted-player draw.
-        let recall = get("Ancestral Recall").expect("Ancestral Recall is in the pool");
+        let recall = get_by_name("Ancestral Recall").expect("Ancestral Recall is in the pool");
         assert!(matches!(
             recall.abilities[0].effect,
             Effect::TargetPlayerDraws {
@@ -433,7 +495,7 @@ keywords = ["flying"]
         ));
 
         // Sentinel's Eyes: an Aura granting +1/+1 and vigilance to the enchanted creature.
-        let eyes = get("Sentinel's Eyes").expect("Sentinel's Eyes is in the pool");
+        let eyes = get_by_name("Sentinel's Eyes").expect("Sentinel's Eyes is in the pool");
         assert_eq!(eyes.kind, CardKind::Aura);
         let Effect::GrantToAttached {
             power,
@@ -448,7 +510,7 @@ keywords = ["flying"]
         assert_eq!(keywords, &[Keyword::Vigilance]);
 
         // Bonesplitter: an Equipment (+2/+0) with an Equip {1} activated ability.
-        let bonesplitter = get("Bonesplitter").expect("Bonesplitter is in the pool");
+        let bonesplitter = get_by_name("Bonesplitter").expect("Bonesplitter is in the pool");
         assert_eq!(bonesplitter.kind, CardKind::Artifact);
         assert!(matches!(
             bonesplitter.abilities[0].effect,
@@ -467,7 +529,8 @@ keywords = ["flying"]
 
         // Swords to Plowshares: "Exile target creature. Its controller gains life equal to its
         // power." — a life-gain rider then a zone-change removal.
-        let swords = get("Swords to Plowshares").expect("Swords to Plowshares is in the pool");
+        let swords =
+            get_by_name("Swords to Plowshares").expect("Swords to Plowshares is in the pool");
         let Effect::Sequence { steps } = swords.abilities[0].effect else {
             panic!("expected a two-step sequence");
         };
@@ -486,7 +549,7 @@ keywords = ["flying"]
         ));
 
         // Unsummon: "Return target creature to its owner's hand" — a bounce.
-        let unsummon = get("Unsummon").expect("Unsummon is in the pool");
+        let unsummon = get_by_name("Unsummon").expect("Unsummon is in the pool");
         assert!(matches!(
             unsummon.abilities[0].effect,
             Effect::ReturnToHand {
@@ -496,7 +559,7 @@ keywords = ["flying"]
         ));
 
         // Tome Scour: "Target player mills five cards" — a targeted mill.
-        let tome = get("Tome Scour").expect("Tome Scour is in the pool");
+        let tome = get_by_name("Tome Scour").expect("Tome Scour is in the pool");
         assert!(matches!(
             tome.abilities[0].effect,
             Effect::Mill {
@@ -507,7 +570,7 @@ keywords = ["flying"]
 
         // Blood Artist: "Whenever this creature or another creature dies, target player loses
         // 1 / you gain 1."
-        let blood_artist = get("Blood Artist").expect("Blood Artist is in the pool");
+        let blood_artist = get_by_name("Blood Artist").expect("Blood Artist is in the pool");
         assert_eq!(
             blood_artist.abilities[0].timing,
             Timing::Triggered(Trigger::CreatureDiesIncludingThis),
@@ -522,7 +585,8 @@ keywords = ["flying"]
 
         // Zulaport Cutthroat: "Whenever this creature or another creature you control dies,
         // each opponent loses 1 / you gain 1."
-        let zulaport = get("Zulaport Cutthroat").expect("Zulaport Cutthroat is in the pool");
+        let zulaport =
+            get_by_name("Zulaport Cutthroat").expect("Zulaport Cutthroat is in the pool");
         assert_eq!(
             zulaport.abilities[0].timing,
             Timing::Triggered(Trigger::CreatureYouControlDiesIncludingThis),
@@ -537,7 +601,7 @@ keywords = ["flying"]
 
         // High Market: "{T}, Sacrifice a creature: You gain 1 life" — a sac-a-creature outlet
         // whose activation cost carries a `SacrificeCost::Creature`.
-        let high_market = get("High Market").expect("High Market is in the pool");
+        let high_market = get_by_name("High Market").expect("High Market is in the pool");
         let Timing::Activated(sac_outlet) = high_market.abilities[1].timing else {
             panic!("High Market's second ability is activated");
         };
@@ -555,7 +619,7 @@ keywords = ["flying"]
 
         // Mogg Fanatic: "Sacrifice this creature: It deals 1 damage to any target" — a
         // self-sacrifice cost (`SacrificeCost::This`).
-        let mogg = get("Mogg Fanatic").expect("Mogg Fanatic is in the pool");
+        let mogg = get_by_name("Mogg Fanatic").expect("Mogg Fanatic is in the pool");
         let Timing::Activated(self_sac) = mogg.abilities[0].timing else {
             panic!("Mogg Fanatic's ability is activated");
         };
@@ -570,7 +634,7 @@ keywords = ["flying"]
         ));
 
         // Blaze: "{X}{R}. Blaze deals X damage to any target." — a variable-cost X burn.
-        let blaze = get("Blaze").expect("Blaze is in the pool");
+        let blaze = get_by_name("Blaze").expect("Blaze is in the pool");
         assert!(blaze.cost.x > 0, "Blaze's cost includes {{X}}");
         assert_eq!(blaze.cost.colored[Color::Red.index()], 1, "…and one red");
         assert!(matches!(
@@ -583,7 +647,7 @@ keywords = ["flying"]
         ));
 
         // Raise Dead: "Return target creature card from your graveyard to your hand."
-        let raise_dead = get("Raise Dead").expect("Raise Dead is in the pool");
+        let raise_dead = get_by_name("Raise Dead").expect("Raise Dead is in the pool");
         assert_eq!(raise_dead.cost.colored[Color::Black.index()], 1);
         assert!(matches!(
             raise_dead.abilities[0].effect,
@@ -595,7 +659,7 @@ keywords = ["flying"]
         // Reanimate: "Put target creature card from a graveyard onto the battlefield under your
         // control. You lose life equal to that card's mana value." — reanimation from any
         // graveyard, then the mana-value life-loss rider.
-        let reanimate = get("Reanimate").expect("Reanimate is in the pool");
+        let reanimate = get_by_name("Reanimate").expect("Reanimate is in the pool");
         assert_eq!(reanimate.cost.colored[Color::Black.index()], 1);
         let Effect::Sequence { steps } = reanimate.abilities[0].effect else {
             panic!("expected a two-step sequence");
@@ -615,7 +679,7 @@ keywords = ["flying"]
         ));
 
         // Stroke of Genius: "{X}{2}{U}. Target player draws X cards." — a variable-cost draw.
-        let stroke = get("Stroke of Genius").expect("Stroke of Genius is in the pool");
+        let stroke = get_by_name("Stroke of Genius").expect("Stroke of Genius is in the pool");
         assert!(stroke.cost.x > 0, "Stroke of Genius's cost includes {{X}}");
         assert_eq!(stroke.cost.generic, 2);
         assert_eq!(stroke.cost.colored[Color::Blue.index()], 1);
@@ -628,7 +692,7 @@ keywords = ["flying"]
         ));
 
         // Augury Owl: "When this creature enters, scry 3." — an ETB scry.
-        let owl = get("Augury Owl").expect("Augury Owl is in the pool");
+        let owl = get_by_name("Augury Owl").expect("Augury Owl is in the pool");
         assert_eq!(owl.abilities[0].timing, Timing::Triggered(Trigger::Etb));
         assert!(matches!(
             owl.abilities[0].effect,
@@ -638,7 +702,7 @@ keywords = ["flying"]
         ));
 
         // Dimir Informant: "When this creature enters, surveil 2." — an ETB surveil.
-        let informant = get("Dimir Informant").expect("Dimir Informant is in the pool");
+        let informant = get_by_name("Dimir Informant").expect("Dimir Informant is in the pool");
         assert_eq!(
             informant.abilities[0].timing,
             Timing::Triggered(Trigger::Etb)
@@ -650,7 +714,7 @@ keywords = ["flying"]
 
         // Marauding Raptor: "Creature spells you cast cost {1} less to cast." — a static,
         // color-agnostic creature-spell reducer.
-        let raptor = get("Marauding Raptor").expect("Marauding Raptor is in the pool");
+        let raptor = get_by_name("Marauding Raptor").expect("Marauding Raptor is in the pool");
         assert_eq!(raptor.abilities[0].timing, Timing::Static);
         assert!(matches!(
             raptor.abilities[0].effect,
@@ -662,7 +726,7 @@ keywords = ["flying"]
         ));
 
         // Killian, Ink Duelist: "Spells you cast that target a creature cost {2} less to cast."
-        let killian = get("Killian, Ink Duelist").expect("Killian is in the pool");
+        let killian = get_by_name("Killian, Ink Duelist").expect("Killian is in the pool");
         assert!(killian.legendary);
         assert!(killian.keywords.contains(&Keyword::Lifelink));
         assert!(killian.keywords.contains(&Keyword::Menace));
@@ -677,7 +741,7 @@ keywords = ["flying"]
 
         // Temple of Malady: a scry land whose ETB scries 1 (its enters-tapped / dual-mana
         // clauses are simplified — see the card's TOML).
-        let temple = get("Temple of Malady").expect("Temple of Malady is in the pool");
+        let temple = get_by_name("Temple of Malady").expect("Temple of Malady is in the pool");
         assert!(matches!(temple.kind, CardKind::Land { .. }));
         assert_eq!(temple.abilities[0].timing, Timing::Triggered(Trigger::Etb));
         assert!(matches!(
@@ -689,7 +753,7 @@ keywords = ["flying"]
 
         // Besmirch: a sorcery that steals target creature until end of turn (with haste),
         // untaps it, and goads it.
-        let besmirch = get("Besmirch").expect("Besmirch is in the pool");
+        let besmirch = get_by_name("Besmirch").expect("Besmirch is in the pool");
         assert!(matches!(
             besmirch.kind,
             CardKind::Spell {
@@ -720,7 +784,7 @@ keywords = ["flying"]
 
         // Silverquill Charm: a modal "choose one" instant (CR 700.2). Its three spell-timed
         // abilities are its modes — two target a creature, one takes no target.
-        let charm = get("Silverquill Charm").expect("Silverquill Charm is in the pool");
+        let charm = get_by_name("Silverquill Charm").expect("Silverquill Charm is in the pool");
         assert!(charm.modal, "Silverquill Charm is a modal choose-one spell");
         assert!(matches!(
             charm.kind,
@@ -761,7 +825,7 @@ keywords = ["flying"]
 
         // Quandrix Charm: a modal "choose one" instant — counter, destroy-enchantment, and
         // set-base-P/T-5/5 modes.
-        let qcharm = get("Quandrix Charm").expect("Quandrix Charm is in the pool");
+        let qcharm = get_by_name("Quandrix Charm").expect("Quandrix Charm is in the pool");
         assert!(qcharm.modal && qcharm.modal_choose == 1);
         assert_eq!(qcharm.abilities.len(), 3, "three modeled modes");
         assert!(matches!(
@@ -791,7 +855,7 @@ keywords = ["flying"]
         ));
 
         // Prismari Command: a modal "choose two" instant — four modes, pick two distinct.
-        let prismari = get("Prismari Command").expect("Prismari Command is in the pool");
+        let prismari = get_by_name("Prismari Command").expect("Prismari Command is in the pool");
         assert!(prismari.modal && prismari.modal_choose == 2);
         assert_eq!(prismari.abilities.len(), 4, "four modes");
         assert!(prismari.abilities.iter().all(|a| a.timing == Timing::Spell));
@@ -838,7 +902,8 @@ keywords = ["flying"]
         ));
 
         // Witherbloom Command: a modal "choose two" sorcery — four modes, pick two distinct.
-        let wither = get("Witherbloom Command").expect("Witherbloom Command is in the pool");
+        let wither =
+            get_by_name("Witherbloom Command").expect("Witherbloom Command is in the pool");
         assert!(wither.modal && wither.modal_choose == 2);
         assert_eq!(wither.abilities.len(), 4, "four modes");
         assert!(matches!(
@@ -886,7 +951,7 @@ keywords = ["flying"]
         ));
 
         // Quandrix Command: a modal "choose two" instant, all four printed modes modeled.
-        let quandrix = get("Quandrix Command").expect("Quandrix Command is in the pool");
+        let quandrix = get_by_name("Quandrix Command").expect("Quandrix Command is in the pool");
         assert!(quandrix.modal && quandrix.modal_choose == 2);
         assert_eq!(quandrix.abilities.len(), 4, "four modeled modes");
         match quandrix.abilities[0].effect {
@@ -923,7 +988,7 @@ keywords = ["flying"]
 
         // Killian, Decisive Mentor: the tap-and-goad half of the commander, on a watch for an
         // enchantment you control entering.
-        let killian = get("Killian, Decisive Mentor").expect("Killian is in the pool");
+        let killian = get_by_name("Killian, Decisive Mentor").expect("Killian is in the pool");
         assert!(killian.legendary);
         assert!(matches!(
             killian.abilities[0].timing,
@@ -952,7 +1017,7 @@ keywords = ["flying"]
 
         // Leonin Vanguard: an intervening-if trigger — "if you control three or more creatures"
         // gates a begin-combat self-pump + life gain.
-        let leonin = get("Leonin Vanguard").expect("Leonin Vanguard is in the pool");
+        let leonin = get_by_name("Leonin Vanguard").expect("Leonin Vanguard is in the pool");
         assert_eq!(
             leonin.abilities[0].timing,
             Timing::Triggered(Trigger::BeginCombat)
@@ -978,7 +1043,7 @@ keywords = ["flying"]
 
         // Breena, the Demagogue: a watch-others attack trigger with an intervening-if condition
         // and the composite "attacking player draws / you put two counters" effect.
-        let breena = get("Breena, the Demagogue").expect("Breena is in the pool");
+        let breena = get_by_name("Breena, the Demagogue").expect("Breena is in the pool");
         assert!(breena.legendary);
         assert!(breena.keywords.contains(&Keyword::Flying));
         assert_eq!(
@@ -999,7 +1064,8 @@ keywords = ["flying"]
 
         // Quintorius, History Chaser: a Lorehold planeswalker commander — starting loyalty 5, with
         // a +1 loyalty ability that may discard a card to draw two and mill one.
-        let quintorius = get("Quintorius, History Chaser").expect("Quintorius is in the pool");
+        let quintorius =
+            get_by_name("Quintorius, History Chaser").expect("Quintorius is in the pool");
         assert!(quintorius.legendary);
         assert_eq!(quintorius.kind, CardKind::Planeswalker { loyalty: 5 });
         let Timing::Activated(plus_one) = quintorius.abilities[0].timing else {
@@ -1026,7 +1092,7 @@ keywords = ["flying"]
 
         // Rite of Replication: "Kicker {5} ... Create a token that's a copy of target creature.
         // If this spell was kicked, create five of those tokens instead." {2}{U}{U} sorcery.
-        let rite = get("Rite of Replication").expect("Rite of Replication is in the pool");
+        let rite = get_by_name("Rite of Replication").expect("Rite of Replication is in the pool");
         assert_eq!(rite.cost.generic, 2);
         assert_eq!(rite.cost.colored[Color::Blue.index()], 2);
         assert!(matches!(rite.cost.additional.kicker, Some(k) if k.generic == 5));
@@ -1044,7 +1110,7 @@ keywords = ["flying"]
 
         // Twincast: "Copy target instant or sorcery spell." — {U}{U} instant, targets a spell
         // on the stack (the "choose new targets" clause is simplified to same-targets).
-        let twincast = get("Twincast").expect("Twincast is in the pool");
+        let twincast = get_by_name("Twincast").expect("Twincast is in the pool");
         assert_eq!(twincast.cost.colored[Color::Blue.index()], 2);
         assert!(matches!(
             twincast.kind,
@@ -1059,7 +1125,7 @@ keywords = ["flying"]
         ));
 
         // Hardened Scales: "…that many plus one." — a static +1 counter-replacement.
-        let scales = get("Hardened Scales").expect("Hardened Scales is in the pool");
+        let scales = get_by_name("Hardened Scales").expect("Hardened Scales is in the pool");
         assert_eq!(scales.kind, CardKind::Enchantment);
         assert_eq!(scales.abilities[0].timing, Timing::Static);
         assert!(matches!(
@@ -1074,7 +1140,7 @@ keywords = ["flying"]
         // Doubling Season: "…twice that many." — a static x2 token-creation replacement plus a
         // static x2 counter-replacement (times defaults to 1, so an adder can omit it; the doubler
         // sets it).
-        let doubling = get("Doubling Season").expect("Doubling Season is in the pool");
+        let doubling = get_by_name("Doubling Season").expect("Doubling Season is in the pool");
         assert!(matches!(
             doubling.abilities[0].effect,
             Effect::TokenReplacement { times: 2 }
@@ -1089,7 +1155,7 @@ keywords = ["flying"]
         ));
 
         // Diabolic Tutor: "Search your library for a card, put it into your hand, then shuffle."
-        let tutor = get("Diabolic Tutor").expect("Diabolic Tutor is in the pool");
+        let tutor = get_by_name("Diabolic Tutor").expect("Diabolic Tutor is in the pool");
         assert_eq!(tutor.cost.generic, 2);
         assert_eq!(tutor.cost.colored[Color::Black.index()], 2);
         assert!(matches!(
@@ -1104,7 +1170,7 @@ keywords = ["flying"]
 
         // Rampant Growth: "Search your library for a basic land card, put it onto the battlefield
         // tapped, then shuffle." — basic-land ramp.
-        let ramp = get("Rampant Growth").expect("Rampant Growth is in the pool");
+        let ramp = get_by_name("Rampant Growth").expect("Rampant Growth is in the pool");
         assert!(matches!(
             ramp.abilities[0].effect,
             Effect::SearchLibrary {
@@ -1118,7 +1184,7 @@ keywords = ["flying"]
         // Terramorphic Expanse: "{T}, Sacrifice this land: search a basic land onto the
         // battlefield tapped, then shuffle." — a fetchland (no life cost).
         let terramorphic =
-            get("Terramorphic Expanse").expect("Terramorphic Expanse is in the pool");
+            get_by_name("Terramorphic Expanse").expect("Terramorphic Expanse is in the pool");
         assert!(matches!(terramorphic.kind, CardKind::Land { .. }));
         let Timing::Activated(fetch) = terramorphic.abilities[0].timing else {
             panic!("Terramorphic Expanse's fetch is an activated ability");
@@ -1141,7 +1207,7 @@ keywords = ["flying"]
         ));
 
         // Fabled Passage: same as Terramorphic (its "untap that land" rider is deferred).
-        let fabled = get("Fabled Passage").expect("Fabled Passage is in the pool");
+        let fabled = get_by_name("Fabled Passage").expect("Fabled Passage is in the pool");
         let Timing::Activated(fabled_fetch) = fabled.abilities[0].timing else {
             panic!("Fabled Passage's fetch is an activated ability");
         };
@@ -1150,7 +1216,7 @@ keywords = ["flying"]
 
         // Prismatic Vista: "{T}, Pay 1 life, Sacrifice this land: search a basic land onto the
         // battlefield (untapped), then shuffle." — the pay-life fetchland.
-        let vista = get("Prismatic Vista").expect("Prismatic Vista is in the pool");
+        let vista = get_by_name("Prismatic Vista").expect("Prismatic Vista is in the pool");
         let Timing::Activated(vista_fetch) = vista.abilities[0].timing else {
             panic!("Prismatic Vista's fetch is an activated ability");
         };
@@ -1173,7 +1239,7 @@ keywords = ["flying"]
 
         // Goldvein Hydra: {X}{G} 0/0 that "enters with X +1/+1 counters", with vigilance/trample/
         // haste (its death -> Treasure rider is deferred).
-        let hydra = get("Goldvein Hydra").expect("Goldvein Hydra is in the pool");
+        let hydra = get_by_name("Goldvein Hydra").expect("Goldvein Hydra is in the pool");
         assert!(hydra.cost.x > 0, "the hydra's cost includes {{X}}");
         assert_eq!(
             hydra.kind,
@@ -1194,7 +1260,7 @@ keywords = ["flying"]
         ));
 
         // Blasphemous Act: "13 damage to each creature." — a fixed mass-damage wipe.
-        let blasphemous = get("Blasphemous Act").expect("Blasphemous Act is in the pool");
+        let blasphemous = get_by_name("Blasphemous Act").expect("Blasphemous Act is in the pool");
         assert!(matches!(
             blasphemous.abilities[0].effect,
             Effect::DamageEachCreature {
@@ -1205,7 +1271,7 @@ keywords = ["flying"]
 
         // Chain Reaction: "X damage to each creature, X = creatures on the battlefield." — a
         // board-derived mass-damage wipe.
-        let chain = get("Chain Reaction").expect("Chain Reaction is in the pool");
+        let chain = get_by_name("Chain Reaction").expect("Chain Reaction is in the pool");
         assert!(matches!(
             chain.abilities[0].effect,
             Effect::DamageEachCreature {
@@ -1215,7 +1281,7 @@ keywords = ["flying"]
         ));
 
         // Toxic Deluge: "pay X life, all creatures get -X/-X." — {X} models the life (see TOML).
-        let deluge = get("Toxic Deluge").expect("Toxic Deluge is in the pool");
+        let deluge = get_by_name("Toxic Deluge").expect("Toxic Deluge is in the pool");
         assert!(deluge.cost.x > 0, "Toxic Deluge's X is the pay-X source");
         assert!(matches!(
             deluge.abilities[0].effect,
@@ -1227,7 +1293,7 @@ keywords = ["flying"]
         ));
 
         // Winds of Rath: "destroy all creatures that aren't enchanted."
-        let winds = get("Winds of Rath").expect("Winds of Rath is in the pool");
+        let winds = get_by_name("Winds of Rath").expect("Winds of Rath is in the pool");
         assert!(matches!(
             winds.abilities[0].effect,
             Effect::DestroyAll {
@@ -1242,7 +1308,7 @@ keywords = ["flying"]
         // Culling Ritual: "destroy each nonland permanent with mana value 2 or less. Add {B} or
         // {G} for each permanent destroyed this way." — a `Sequence` of the wipe, then the
         // count-derived mana rider.
-        let culling = get("Culling Ritual").expect("Culling Ritual is in the pool");
+        let culling = get_by_name("Culling Ritual").expect("Culling Ritual is in the pool");
         let Effect::Sequence {
             steps: [wipe, rider],
         } = culling.abilities[0].effect
@@ -1268,7 +1334,7 @@ keywords = ["flying"]
         ));
 
         // Fracture: "destroy target artifact, enchantment, or planeswalker." — noncreature removal.
-        let fracture = get("Fracture").expect("Fracture is in the pool");
+        let fracture = get_by_name("Fracture").expect("Fracture is in the pool");
         assert!(matches!(
             fracture.abilities[0].effect,
             Effect::DestroyTarget {
@@ -1279,7 +1345,8 @@ keywords = ["flying"]
 
         // Storm-Kiln Artist: "This creature gets +1/+0 for each artifact you control. Magecraft —
         // Whenever you cast or copy an instant or sorcery, create a Treasure token."
-        let storm_kiln = get("Storm-Kiln Artist").expect("Storm-Kiln Artist is in the pool");
+        let storm_kiln =
+            get_by_name("Storm-Kiln Artist").expect("Storm-Kiln Artist is in the pool");
         assert_eq!(storm_kiln.abilities[0].timing, Timing::Static);
         assert!(matches!(
             storm_kiln.abilities[0].effect,
@@ -1303,7 +1370,7 @@ keywords = ["flying"]
 
         // Big Score: "Draw two cards and create two Treasure tokens." — a non-modal instant with two
         // spell halves (its "discard a card" additional cost is deferred — see its TOML).
-        let big_score = get("Big Score").expect("Big Score is in the pool");
+        let big_score = get_by_name("Big Score").expect("Big Score is in the pool");
         assert!(matches!(
             big_score.kind,
             CardKind::Spell {
@@ -1326,20 +1393,20 @@ keywords = ["flying"]
         ));
 
         // Darksteel Myr: a {3} 0/1 artifact creature with intrinsic indestructible.
-        let myr = get("Darksteel Myr").expect("Darksteel Myr is in the pool");
+        let myr = get_by_name("Darksteel Myr").expect("Darksteel Myr is in the pool");
         assert!(myr.keywords.contains(&Keyword::Indestructible));
 
         // Ambush Viper: {1}{G} 2/1 with flash and deathtouch.
-        let viper = get("Ambush Viper").expect("Ambush Viper is in the pool");
+        let viper = get_by_name("Ambush Viper").expect("Ambush Viper is in the pool");
         assert!(viper.keywords.contains(&Keyword::Flash));
         assert!(viper.keywords.contains(&Keyword::Deathtouch));
 
         // Tomakul Honor Guard: {1}{G} 3/1 with Ward {2} (a parametrized keyword from a table).
-        let guard = get("Tomakul Honor Guard").expect("Tomakul Honor Guard is in the pool");
+        let guard = get_by_name("Tomakul Honor Guard").expect("Tomakul Honor Guard is in the pool");
         assert!(guard.keywords.contains(&Keyword::Ward(2)));
 
         // White Knight: {W}{W} 2/2 with first strike and protection from black.
-        let knight = get("White Knight").expect("White Knight is in the pool");
+        let knight = get_by_name("White Knight").expect("White Knight is in the pool");
         assert!(knight.keywords.contains(&Keyword::FirstStrike));
         assert!(
             knight
@@ -1350,7 +1417,7 @@ keywords = ["flying"]
         );
 
         // Shielded by Faith: an Aura granting indestructible to the enchanted creature.
-        let shielded = get("Shielded by Faith").expect("Shielded by Faith is in the pool");
+        let shielded = get_by_name("Shielded by Faith").expect("Shielded by Faith is in the pool");
         assert_eq!(shielded.kind, CardKind::Aura);
         let Effect::GrantToAttached { keywords, .. } = shielded.abilities[0].effect else {
             panic!("Shielded by Faith grants a static keyword to its host");
@@ -1361,7 +1428,7 @@ keywords = ["flying"]
         // dies, you gain 1 life") — a token profile that's a full inline card, not just P/T.
         // abilities[0] is the "attacking Pests get +1/+0 and menace" anthem; abilities[1] is the
         // death-trigger token maker.
-        let blight = get("Blight Mound").expect("Blight Mound is in the pool");
+        let blight = get_by_name("Blight Mound").expect("Blight Mound is in the pool");
         let Effect::CreateToken { token: pest, .. } = blight.abilities[1].effect else {
             panic!("Blight Mound creates a Pest token");
         };
@@ -1376,7 +1443,7 @@ keywords = ["flying"]
 
         // Gilded Goose's ETB makes a Food — an *artifact* token whose own activated ability
         // sacrifices it ("{2}, {T}, Sacrifice this token: You gain 3 life").
-        let goose = get("Gilded Goose").expect("Gilded Goose is in the pool");
+        let goose = get_by_name("Gilded Goose").expect("Gilded Goose is in the pool");
         let Effect::CreateToken { token: food, .. } = goose.abilities[0].effect else {
             panic!("Gilded Goose's ETB creates a Food token");
         };
@@ -1404,14 +1471,17 @@ keywords = ["flying"]
 
         // Skyclave Apparition is a {1}{W}{W} 2/2 (mana value 3); its only ability (index 0) is the
         // ETB exile with the composable permanent filter.
-        let skyclave = get("Skyclave Apparition").expect("Skyclave Apparition is in the pool");
+        let skyclave =
+            get_by_name("Skyclave Apparition").expect("Skyclave Apparition is in the pool");
         let source = game.spawn_on_battlefield(P0, skyclave);
 
         // An opponent's mana-value-3 nontoken permanent — inside the gate, a legal target.
         let in_gate = game.spawn_on_battlefield(P1, skyclave);
         // An opponent's Sun Titan (mana value 6) — filtered out by the "4 or less" gate.
-        let over_gate =
-            game.spawn_on_battlefield(P1, get("Sun Titan").expect("Sun Titan is in the pool"));
+        let over_gate = game.spawn_on_battlefield(
+            P1,
+            get_by_name("Sun Titan").expect("Sun Titan is in the pool"),
+        );
 
         let targets = game.legal_targets(source, Some(0));
 
@@ -1433,7 +1503,7 @@ keywords = ["flying"]
     fn an_effects_list_parses_into_an_ordered_sequence() {
         // Faithless Looting: "Draw two cards, then discard two cards" is one ability whose
         // `effects = [..]` list becomes an ordered Effect::Sequence.
-        let loot = get("Faithless Looting").expect("Faithless Looting is in the pool");
+        let loot = get_by_name("Faithless Looting").expect("Faithless Looting is in the pool");
         let Effect::Sequence { steps } = loot.abilities[0].effect else {
             panic!("an `effects` list is an Effect::Sequence");
         };
@@ -1453,7 +1523,7 @@ keywords = ["flying"]
 
         // A one-element `effects` list stays a bare effect (not wrapped in a Sequence): Shock's
         // lone ability stays a bare DealDamage.
-        let shock = get("Shock").expect("Shock is in the pool");
+        let shock = get_by_name("Shock").expect("Shock is in the pool");
         assert!(matches!(
             shock.abilities[0].effect,
             Effect::DealDamage { .. }
@@ -1461,12 +1531,16 @@ keywords = ["flying"]
 
         // The singular `effect` sugar was removed: only `effects` is accepted, so a lone `effect`
         // key is now an unknown-field load error.
-        let bad = "name = \"Singular\"\n\n[kind]\ntype = \"sorcery\"\n\n[[abilities]]\ntiming = \"spell\"\neffect = { type = \"draw_cards\", count = 1 }\n";
+        let bad = "name = \"Singular\"
+id = \"00000000-0000-0000-0000-000000000001\"
+default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"sorcery\"\n\n[[abilities]]\ntiming = \"spell\"\neffect = { type = \"draw_cards\", count = 1 }\n";
         assert!(toml::from_str::<CardDef>(bad).is_err());
 
         // An ability with no effects at all is likewise a load error.
         let empty =
-            "name = \"Empty\"\n\n[kind]\ntype = \"sorcery\"\n\n[[abilities]]\ntiming = \"spell\"\n";
+            "name = \"Empty\"
+id = \"00000000-0000-0000-0000-000000000001\"
+default_print = \"00000000-0000-0000-0000-000000000002\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"sorcery\"\n\n[[abilities]]\ntiming = \"spell\"\n";
         assert!(toml::from_str::<CardDef>(empty).is_err());
     }
 }

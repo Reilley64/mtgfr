@@ -13,11 +13,13 @@ use schema::{
 use crate::decks::Seat;
 
 /// Map Table-owned policy into the schema DTO that finishes a [`schema::VisibleState`].
+#[allow(clippy::too_many_arguments)]
 pub fn view_extras(
     yields: &[bool; 4],
     turn_yields: &[bool; 4],
     seats: &[Seat; 4],
     stack_hold_remaining_ms: u32,
+    prints: &[std::collections::HashMap<String, String>; 4],
 ) -> ViewExtras {
     ViewExtras {
         yields: *yields,
@@ -29,6 +31,7 @@ pub fn view_extras(
                 .and_then(|s| s.username.clone())
                 .unwrap_or_default()
         }),
+        prints: prints.clone(),
     }
 }
 
@@ -49,6 +52,7 @@ pub fn should_deliver(broadcast_seq: u64, snapshot_broadcast_seq: u64) -> bool {
 ///
 /// Thin wrapper: redact events, build [`ViewExtras`] from Table facts, call
 /// [`complete_visible`]. Redaction stays separate from completeness (ADR 0006).
+#[allow(clippy::too_many_arguments)]
 pub fn frame_for(
     viewer: Option<PlayerId>,
     seq: u64,
@@ -59,6 +63,7 @@ pub fn frame_for(
     turn_yields: &[bool; 4],
     seats: &[Seat; 4],
     stack_hold_remaining_ms: u32,
+    prints: &[std::collections::HashMap<String, String>; 4],
 ) -> StreamFrame {
     let visible: Vec<VisibleEvent> = events
         .iter()
@@ -67,7 +72,7 @@ pub fn frame_for(
             None => spectator_redact(e),
         })
         .collect();
-    let extras = view_extras(yields, turn_yields, seats, stack_hold_remaining_ms);
+    let extras = view_extras(yields, turn_yields, seats, stack_hold_remaining_ms, prints);
     let state = complete_visible(game, viewer, &extras);
     StreamFrame::Delta(DeltaEnvelope {
         seq,
@@ -82,7 +87,7 @@ mod tests {
     use super::*;
 
     fn def(name: &str) -> engine::CardDef {
-        cards::get(name).unwrap_or_else(|| panic!("unknown card {name:?}"))
+        cards::get_by_name(name).unwrap_or_else(|| panic!("unknown card {name:?}"))
     }
 
     /// A `CardDrawn` event is the sharpest fixture for redaction: its `card`/`from` fields are
@@ -111,6 +116,7 @@ mod tests {
             &[false; 4],
             &std::array::from_fn(|_| Seat::default()),
             0,
+            &Default::default(),
         );
 
         let StreamFrame::Delta(DeltaEnvelope { seq, events, .. }) = frame else {
@@ -142,6 +148,7 @@ mod tests {
             &[false; 4],
             &std::array::from_fn(|_| Seat::default()),
             0,
+            &Default::default(),
         );
 
         let StreamFrame::Delta(DeltaEnvelope { events, .. }) = frame else {
@@ -178,6 +185,7 @@ mod tests {
             &turn_yields,
             &seats,
             900,
+            &Default::default(),
         ) else {
             panic!("expected a delta frame");
         };
@@ -198,6 +206,7 @@ mod tests {
             &turn_yields,
             &seats,
             900,
+            &Default::default(),
         ) else {
             panic!("expected a delta frame");
         };

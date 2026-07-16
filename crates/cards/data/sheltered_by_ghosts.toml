@@ -5,6 +5,8 @@
 # nonland permanent an opponent controls until this Aura leaves the battlefield. Enchanted
 # creature gets +1/+0 and has lifelink and ward {2}."
 name = "Sheltered by Ghosts"
+id = "d13fc657-c6fc-4394-bc70-691050550226"
+default_print = "8e8a5cfe-1b3f-4414-b9a4-078bdb4072a7"
 otags = ["banish", "gives-lifelink", "gives-ward", "protects-creature", "removal-nonland", "repeatable-lifegain", "spot-removal", "triggered-ability"]
 oracle = "Enchant creature you control\nWhen this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield.\nEnchanted creature gets +1/+0 and has lifelink and ward {2}."
 set = "soc"

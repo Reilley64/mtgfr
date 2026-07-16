@@ -1,6 +1,8 @@
 # Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to that card's
 # mana value.
 name = "Reanimate"
+id = "a044474a-cd72-4e9d-bd8d-a08f2de9cdc0"
+default_print = "368b6903-5fc4-43e7-bd44-46b8107c8bb4"
 otags = ["life-payment", "mana-value-matters", "reanimate-creature", "reanimate-from-any", "single-english-word-name", "single-target-instant-sorcery"]
 oracle = "Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to that card's mana value."
 set = "dsc"

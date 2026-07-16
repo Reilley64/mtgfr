@@ -8,6 +8,8 @@
 # Druid with trample whose front-face trigger makes it become prepared; while prepared, its
 # controller may cast a copy of the {B}{G} Turn Stones sorcery below, which unprepares it.
 name = "Eccentric Pestfinder"
+id = "dfaa02d4-4f3c-4e5d-b9e5-283a45395a53"
+default_print = "508e1dd7-edbd-4b76-90bc-ff58c55b58a3"
 otags = ["cycle-soc-two-color-prepare", "gives-castable-from-exile", "infusion", "intervening-if-clause", "per-player", "repeatable-creature-tokens", "repeatable-lifegain"]
 oracle = "Trample\nAt the beginning of each end step, if you gained life this turn, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // For each opponent, you create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\""
 set = "soc"

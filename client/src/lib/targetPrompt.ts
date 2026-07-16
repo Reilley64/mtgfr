@@ -5,6 +5,13 @@ export function objectName(state: VisibleState, id: number): string {
   return state.objects.find((o) => o.id === id)?.name ?? `#${id}`;
 }
 
+/** Printing UUID for an object id, when the viewer's visible state carries one (ADR 0031).
+ * Empty when the object isn't found or has no print — callers render a broken image, not a
+ * name-keyed fallback (there is no name-based art source anymore). */
+export function objectPrint(state: VisibleState, id: number): string {
+  return state.objects.find((o) => o.id === id)?.print ?? "";
+}
+
 /** A short subtitle naming the source permanent when it differs from the effect label. */
 export function sourceHint(state: VisibleState, sourceId: number, effectLabel: string): string | undefined {
   const name = objectName(state, sourceId);

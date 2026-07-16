@@ -62,6 +62,7 @@ export function useActionSession(deps: ActionExecutionDeps): ActionSession {
     answerMode: execution.answerMode,
     continueAfterCostPick: execution.continueAfterCostPick,
     objectName: execution.objectName,
+    objectPrint: execution.objectPrint,
     aim: (target) => execution.completeTarget(target),
   };
 

@@ -1,5 +1,7 @@
 # {T}: Add one mana of any color in your commander's color identity.
 name = "Command Tower"
+id = "0895c9b7-ae7d-4bb3-af17-3b75deb50a25"
+default_print = "0548fb60-c843-4f8f-a029-6f10efc63a41"
 otags = ["activated-ability", "rainbow-land", "synergy-color-share", "synergy-commander", "tutored-by-name", "virtual-legendary", "commander-identity-matters"]
 oracle = "{T}: Add one mana of any color in your commander's color identity."
 set = "msc"

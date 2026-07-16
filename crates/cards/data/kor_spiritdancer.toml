@@ -4,6 +4,8 @@
 #   "This creature gets +2/+2 for each Aura attached to it.
 #    Whenever you cast an Aura spell, you may draw a card."
 name = "Kor Spiritdancer"
+id = "2bfc7467-1316-43d3-9ca6-ff36cc2de607"
+default_print = "48da45bd-ed72-4239-af02-e848703a1d02"
 otags = ["cast-trigger-you", "color-break", "draw-engine", "enchantment-engine", "repeatable-pure-draw", "uril-ability"]
 oracle = "This creature gets +2/+2 for each Aura attached to it.\nWhenever you cast an Aura spell, you may draw a card."
 set = "soc"

@@ -9,6 +9,8 @@
 # combat damage to a player) make it become prepared; while prepared, its controller may cast a
 # copy of the {3}{U}{R} Maestro's Gift sorcery below, which unprepares it.
 name = "Inspired Skypainter"
+id = "d751580b-bb72-4d1d-be27-d0410f883b2a"
+default_print = "7fddd17b-8282-408e-a319-7f0bb437c52e"
 otags = ["bottomless-mana-sink", "copy-creature", "cycle-soc-two-color-prepare", "evasion", "gives-castable-from-exile", "gives-haste", "repeatable-creature-tokens", "saboteur", "single-target-instant-sorcery", "synergy-token-creature", "triggered-ability"]
 oracle = "Flying\nWhen this creature enters and whenever one or more creature tokens you control deal combat damage to a player, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Create a token that's a copy of target creature you control. That token gains haste until end of turn."
 set = "soc"

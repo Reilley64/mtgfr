@@ -3,6 +3,8 @@
 # enter the battlefield under your control this turn.
 # {1}, Sacrifice a Food: Target creature gains indestructible until end of turn. Tap it.
 name = "Gyome, Master Chef"
+id = "0f1b5cea-2035-444c-9f63-87dcb9782c74"
+default_print = "8279d421-dd86-49d1-93f7-65f6046c542d"
 otags = ["activated-ability", "combat-trick", "creaturefall", "cycle-c21-alt-commander", "fun-ruling", "gives-indestructible", "neo-regenerate", "protects-creature", "repeatable-crime", "repeatable-food", "synergy-food", "tapper-creature"]
 oracle = "Trample\nAt the beginning of your end step, create a number of Food tokens equal to the number of nontoken creatures you had enter the battlefield under your control this turn.\n{1}, Sacrifice a Food: Target creature gains indestructible until end of turn. Tap it."
 set = "soc"

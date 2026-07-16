@@ -17,14 +17,16 @@ import {
   shownName,
 } from "~/lib/inspect";
 import { splitOracleText } from "~/lib/oracleText";
-import { imageUrlByName } from "~/lib/scryfall";
+import { imageUrlByPrint } from "~/lib/scryfall";
 import { Button } from "~/ui";
 
-const cardTextFamily = Atom.family((name: string) =>
+// Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
+// the fetch rather than looking anything up by name; there is no name-based lookup anymore.
+const cardTextFamily = Atom.family((id: string) =>
   Atom.make(
-    name === ""
+    id === ""
       ? Effect.succeed(null)
-      : client.lookupCards({ params: { names: [name] } }).pipe(Effect.map((cards) => cards[0] ?? null)),
+      : client.lookupCards({ params: { ids: [id] } }).pipe(Effect.map((cards) => cards[0] ?? null)),
   ),
 );
 
@@ -108,9 +110,11 @@ function ModifierLedger(props: { modifiers: ModifierSourceView[]; onSource: (nam
   );
 }
 
-/** Deck-builder / list hover: large face follows the cursor. */
-export function HoverPreview(props: { name: string | null; x: number; y: number }) {
-  const [card] = useAtomResource(() => cardTextFamily(props.name ?? ""));
+/** Deck-builder / list hover: large face follows the cursor. `id` is the Card (oracle) id;
+ * `print` (a Printing UUID) picks the art when known, else falls back to the catalog's
+ * `default_print` once the oracle-text fetch resolves it. */
+export function HoverPreview(props: { id: string | null; print?: string | null; x: number; y: number }) {
+  const [card] = useAtomResource(() => cardTextFamily(props.id ?? ""));
   const oracle = () => card()?.oracle;
   const approximates = () => card()?.approximates;
   const hasText = () => !!(oracle() || approximates());
@@ -118,9 +122,10 @@ export function HoverPreview(props: { name: string | null; x: number; y: number 
   const flipped = () => props.x + GAP + width() > window.innerWidth;
   const left = () => (flipped() ? Math.max(GAP, props.x - GAP - width()) : props.x + GAP);
   const top = () => Math.min(Math.max(GAP, props.y - H / 2), window.innerHeight - H - GAP);
+  const print = () => props.print || card()?.default_print || "";
   return (
-    <Show when={props.name}>
-      {(name) => (
+    <Show when={props.id}>
+      {(_id) => (
         <div
           style={{ "--x": `${left()}px`, "--y": `${top()}px` }}
           class={cn(
@@ -129,8 +134,8 @@ export function HoverPreview(props: { name: string | null; x: number; y: number 
           )}
         >
           <img
-            src={imageUrlByName(name(), "large")}
-            alt={name()}
+            src={imageUrlByPrint(print())}
+            alt={card()?.name ?? ""}
             style={{ "--w": `${W}px` }}
             class="w-(--w) flex-none rounded-[14px] shadow-table"
           />
@@ -155,7 +160,7 @@ export function InspectDock(props: {
     if (stack.length === 0) return null;
     return stack[stack.length - 1] ?? null;
   });
-  const [card] = useAtomResource(() => cardTextFamily(current()?.name ?? ""));
+  const [card] = useAtomResource(() => cardTextFamily(current()?.cardId ?? ""));
   const back = () => card()?.back ?? null;
   const hasBack = () => !!back()?.name;
   const [face, setFace] = createSignal<InspectFace>("front");
@@ -270,7 +275,7 @@ export function InspectDock(props: {
               }
             >
               <img
-                src={imageUrlByName(displayName(), "large")}
+                src={imageUrlByPrint(current()?.print ?? "")}
                 alt={displayName()}
                 style={{ "--w": `${W}px` }}
                 class="w-(--w) flex-none rounded-[14px] shadow-table"

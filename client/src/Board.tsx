@@ -52,7 +52,7 @@ import { type Outcome, outcome } from "~/lib/outcome";
 import { playerLabel } from "~/lib/players";
 import { PROMPT_ROW, PROMPT_TITLE } from "~/lib/promptForms";
 import { type RadialOption, radialOptions } from "~/lib/radial";
-import { imageUrlByName } from "~/lib/scryfall";
+import { imageUrlByPrint } from "~/lib/scryfall";
 import { stackChrome } from "~/lib/stackResponse";
 import { stagedTargetHint } from "~/lib/targetPrompt";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
@@ -941,6 +941,9 @@ function StackOverlay(props: {
 }) {
   const names = createMemo(() => new Map(props.state.objects.map((o) => [o.id, o.name])));
   const name = (id: number) => names().get(id) ?? `#${id}`;
+  // Printing UUID for an ability's source permanent (ADR 0031); a pure spell label has no backing
+  // object, so it falls through to "" (broken image) — there's no name-based art fallback anymore.
+  const prints = createMemo(() => new Map(props.state.objects.map((o) => [o.id, o.print ?? ""])));
   const [holdMs, setHoldMs] = createSignal(props.state.stack_hold_remaining_ms ?? 0);
   const [holdTotal, setHoldTotal] = createSignal(0);
   const [stackHover, setStackHover] = createSignal(false);
@@ -1049,6 +1052,7 @@ function StackOverlay(props: {
   const stackFace = (opts: {
     row: number;
     imageName: string | null;
+    print: string;
     label: string;
     isTop: boolean;
     staged?: boolean;
@@ -1075,7 +1079,7 @@ function StackOverlay(props: {
           </div>
         }
       >
-        {(n) => <img src={imageUrlByName(n(), "normal")} alt={n()} width={STACK_CARD_W} class="block rounded-game" />}
+        {(n) => <img src={imageUrlByPrint(opts.print)} alt={n()} width={STACK_CARD_W} class="block rounded-game" />}
       </Show>
     </div>
   );
@@ -1096,10 +1100,14 @@ function StackOverlay(props: {
               return identity;
             });
             const imageName = () => (entry().kind === "spell" ? entry().label : (names().get(entry().source) ?? null));
+            // A spell on the stack has no backing permanent object (no print); an ability names its
+            // source permanent, which does.
+            const print = () => (entry().kind === "spell" ? "" : (prints().get(entry().source) ?? ""));
             const isTop = () => row === props.state.stack.length - 1 && !(props.staged && props.showPileStaged);
             return stackFace({
               row,
               imageName: imageName(),
+              print: print(),
               label: entry().label,
               isTop: isTop(),
               style: {
@@ -1117,6 +1125,7 @@ function StackOverlay(props: {
             stackFace({
               row: props.state.stack.length,
               imageName: card().name,
+              print: card().print ?? "",
               label: card().name,
               isTop: true,
               staged: true,
@@ -1186,6 +1195,7 @@ function StackOverlay(props: {
       const list = props.state.stack.map((entry, row) => ({
         row,
         imageName: entry.kind === "spell" ? entry.label : (names().get(entry.source) ?? null),
+        print: entry.kind === "spell" ? "" : (prints().get(entry.source) ?? ""),
         label: entry.label,
         staged: false as boolean,
       }));
@@ -1193,6 +1203,7 @@ function StackOverlay(props: {
         list.push({
           row: props.state.stack.length,
           imageName: props.staged.name,
+          print: props.staged.print ?? "",
           label: props.staged.name,
           staged: true,
         });
@@ -1253,6 +1264,7 @@ function StackOverlay(props: {
               return stackFace({
                 row: item.row,
                 imageName: item.imageName,
+                print: item.print,
                 label: item.label,
                 isTop: isTop(),
                 staged: item.staged,
@@ -1404,7 +1416,7 @@ function PileOverlay(props: { cards: ObjectView[]; onClose: () => void }) {
         <div class={PROMPT_TITLE}>Pile ({props.cards.length})</div>
         <div class="flex flex-wrap gap-xs">
           <For each={props.cards}>
-            {(c) => <img src={imageUrlByName(c.name, "small")} alt={c.name} width={90} class="rounded-md" />}
+            {(c) => <img src={imageUrlByPrint(c.print ?? "")} alt={c.name} width={90} class="rounded-md" />}
           </For>
         </div>
         <div class={cn(PROMPT_ROW, "mt-sm")}>

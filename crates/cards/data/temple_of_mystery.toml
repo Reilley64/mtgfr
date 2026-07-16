@@ -4,6 +4,8 @@
 # Temple of Mystery (SOC): "This land enters tapped. When this land enters, scry 1.
 # {T}: Add {G} or {U}."
 name = "Temple of Mystery"
+id = "7e26f0b7-20e6-46d5-8130-d98c14d6aa29"
+default_print = "258077cf-edef-40fe-ab46-03c965ebe990"
 otags = ["activated-ability", "cycle-block-ths-scry-land", "scry", "triggered-ability", "utility-land"]
 oracle = "This land enters tapped.\nWhen this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n{T}: Add {G} or {U}."
 set = "soc"

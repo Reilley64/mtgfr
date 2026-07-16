@@ -3,6 +3,8 @@
 # A filter land: feed it one mana and tap it for two {U}/{R} mana (a net +1). The two outputs
 # are {U/R} dual credits, so they can be spent as UU, UR, or RR.
 name = "Cascade Bluffs"
+id = "f1603384-4361-49c9-98aa-7785fc3504c4"
+default_print = "22acccd2-4e9d-46de-a060-863b08152e50"
 otags = ["activated-ability", "cycle-eve-filterland"]
 oracle = "{T}: Add {C}.\n{U/R}, {T}: Add {U}{U}, {U}{R}, or {R}{R}."
 set = "soc"

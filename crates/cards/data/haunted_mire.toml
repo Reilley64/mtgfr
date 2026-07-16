@@ -2,6 +2,8 @@
 # This land enters tapped.
 # Haunted Mire (soc): "({T}: Add {B} or {G}.) This land enters tapped."
 name = "Haunted Mire"
+id = "b0b58a03-462c-4964-97c7-42bc777ec23e"
+default_print = "3e041aef-5771-4a3f-af07-e85a66c48979"
 otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {B} or {G}.)\nThis land enters tapped."
 set = "soc"

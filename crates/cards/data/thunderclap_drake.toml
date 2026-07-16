@@ -3,6 +3,8 @@
 # {2}{U}, Sacrifice this creature: When you next cast an instant or sorcery spell this turn, copy it for each time
 # you've cast your commander from the command zone this game. You may choose new targets for the copies.
 name = "Thunderclap Drake"
+id = "88d0a394-79e2-42ac-9a37-1a7b78231941"
+default_print = "313fed71-cfbe-4c83-9437-ac14b2cb159b"
 otags = ["activated-ability", "cast-trigger-you", "copy-instant", "copy-sorcery", "copy-spell", "cost-reducer-instant-sorcery", "day-zero-errata", "delayed-trigger", "evasion", "martyr", "recasting-commander-matters", "storm-like"]
 oracle = "Flying\nInstant and sorcery spells you cast cost {1} less to cast.\n{2}{U}, Sacrifice this creature: When you next cast an instant or sorcery spell this turn, copy it for each time you've cast your commander from the command zone this game. You may choose new targets for the copies."
 set = "soc"

@@ -6,6 +6,8 @@
 # "Flash. Flying. Whenever an opponent draws their second card each turn, you draw a card.
 # {3}{U}: Each player draws a card."
 name = "Faerie Mastermind"
+id = "a984db23-40ea-428d-829f-e944267280f8"
+default_print = "bc9a7599-3c7d-4b83-bff3-e3d1f20f1b0f"
 otags = ["activated-ability", "bottomless-mana-sink", "draw-engine", "draw-hate", "draw-matters", "evasion", "force-draw", "group-hug", "player-spotlight", "repeatable-pure-draw", "toll", "triggered-ability"]
 oracle = "Flash\nFlying\nWhenever an opponent draws their second card each turn, you draw a card.\n{3}{U}: Each player draws a card."
 set = "soc"

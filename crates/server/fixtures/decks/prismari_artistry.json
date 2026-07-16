@@ -1,349 +1,436 @@
 {
- "commander": "Rootha, Mastering the Moment",
+ "commander": "348c67ef-9ccc-4651-9038-efdf1ad1b36a",
+ "commander_print": "a5b3dbb2-c090-4118-9e47-56c16202572c",
  "cards": [
   {
-   "name": "Archmage Emeritus",
-   "count": 1
+   "id": "8305d576-21d8-4ce7-8eda-a7cd9793aca5",
+   "count": 1,
+   "print": "dd547601-d650-4a02-a3a4-890bcef03a7c"
   },
   {
-   "name": "Brazen Borrower",
-   "count": 1
+   "id": "c7b044c3-3cfa-407e-bf20-2875e8e04b7b",
+   "count": 1,
+   "print": "25d309d6-9e56-441e-bd29-5c903d5221bf"
   },
   {
-   "name": "Brudiclad, Telchor Engineer",
-   "count": 1
+   "id": "a7ac5d98-805e-4212-be94-333a0c0c44a7",
+   "count": 1,
+   "print": "d24bf1df-5087-4ad6-a1aa-4eda2340cd8b"
   },
   {
-   "name": "Curiosity Crafter",
-   "count": 1
+   "id": "0be907b2-54f9-4c8c-b6af-7c0093892e42",
+   "count": 1,
+   "print": "930d830b-5e6a-422a-806e-fd7275517deb"
   },
   {
-   "name": "Dirgur Focusmage",
-   "count": 1
+   "id": "655ee0db-1913-464f-bd06-072c6bf446bd",
+   "count": 1,
+   "print": "7bdabeba-0cfb-4953-b725-50a48164a044"
   },
   {
-   "name": "Faerie Mastermind",
-   "count": 1
+   "id": "a984db23-40ea-428d-829f-e944267280f8",
+   "count": 1,
+   "print": "bc9a7599-3c7d-4b83-bff3-e3d1f20f1b0f"
   },
   {
-   "name": "Galazeth Prismari",
-   "count": 1
+   "id": "f9217532-f7cf-4436-b476-72d97a3147dc",
+   "count": 1,
+   "print": "abdd3b41-6bdd-4b35-998c-0358ba72ca12"
   },
   {
-   "name": "Goldspan Dragon",
-   "count": 1
+   "id": "716b3ea2-45b7-4a8f-af72-de7f4e510eff",
+   "count": 1,
+   "print": "848c1951-90fa-4f01-9aed-76f1afcd9995"
   },
   {
-   "name": "Harmonic Prodigy",
-   "count": 1
+   "id": "2e2ace5b-4018-43af-8e72-ebafec1a7739",
+   "count": 1,
+   "print": "63a565e3-d7a8-469d-898f-49fef634c107"
   },
   {
-   "name": "Inspired Skypainter",
-   "count": 1
+   "id": "d751580b-bb72-4d1d-be27-d0410f883b2a",
+   "count": 1,
+   "print": "7fddd17b-8282-408e-a319-7f0bb437c52e"
   },
   {
-   "name": "Leitmotif Composer",
-   "count": 1
+   "id": "61816f98-9d1a-4b16-9194-cb7249880710",
+   "count": 1,
+   "print": "2511b281-f822-427c-ac5f-d376b64fa6cf"
   },
   {
-   "name": "Manaform Hellkite",
-   "count": 1
+   "id": "f426aa1a-e1dc-4563-b450-2e23d6bd980b",
+   "count": 1,
+   "print": "0a559655-0967-41b9-8248-170f95c05f84"
   },
   {
-   "name": "Mirrorwing Dragon",
-   "count": 1
+   "id": "9ea14a03-c6a2-49ec-953d-4249a2c27e1d",
+   "count": 1,
+   "print": "6ba557ab-9d80-4d0a-bddb-ec230cc4437d"
   },
   {
-   "name": "Muddle, the Ever-Changing",
-   "count": 1
+   "id": "9a8f6e5e-6cde-49df-861c-a26cb09c9b12",
+   "count": 1,
+   "print": "916d3e31-3243-47b3-b7d2-ce9a6dd47aba"
   },
   {
-   "name": "Plargg and Nassari",
-   "count": 1
+   "id": "9e769a65-7aa5-484d-9493-badb485b5964",
+   "count": 1,
+   "print": "e66ee7c6-23bc-4fef-a566-35aee2064bd9"
   },
   {
-   "name": "Prismari Pianist",
-   "count": 1
+   "id": "f58117e4-ba85-41b8-8fd5-4245716a84dc",
+   "count": 1,
+   "print": "7e3e5990-ad48-4be2-af8a-4ff77177758d"
   },
   {
-   "name": "Redoubled Stormsinger",
-   "count": 1
+   "id": "792c4d38-41e6-49eb-bd4e-de0a5ac8330f",
+   "count": 1,
+   "print": "fc5fcb5e-091e-4f47-9c74-9e187a9e0e5d"
   },
   {
-   "name": "Renegade Bull",
-   "count": 1
+   "id": "61747805-0c34-4beb-8cbf-97bac7a998d0",
+   "count": 1,
+   "print": "aa23e922-f44b-4af8-8ce0-bc1bc1e65bad"
   },
   {
-   "name": "Rionya, Fire Dancer",
-   "count": 1
+   "id": "be4f47e9-1bd2-4aa9-bc85-3f203ad21639",
+   "count": 1,
+   "print": "086e68b5-0f89-46d0-9a04-7f8658a9ab53"
   },
   {
-   "name": "Rootha, Mercurial Artist",
-   "count": 1
+   "id": "3735559f-efe5-43ad-9b3e-3ef127c0ceda",
+   "count": 1,
+   "print": "289abc0f-2ab9-48a7-a19b-a3630b014637"
   },
   {
-   "name": "Solemn Simulacrum",
-   "count": 1
+   "id": "00c0543c-2a1f-4425-8283-4062d74a1637",
+   "count": 1,
+   "print": "29fae212-b757-4e5f-ad9b-06cd09782f9f"
   },
   {
-   "name": "Stormcatch Mentor",
-   "count": 1
+   "id": "b2252471-01ca-4d58-aa99-4ab0aa5eae12",
+   "count": 1,
+   "print": "f1bbb5ad-a293-48f3-a3d0-7ac85a7b8467"
   },
   {
-   "name": "Storm-Kiln Artist",
-   "count": 1
+   "id": "a145ff8c-5812-4bcb-bd16-9839dc25121d",
+   "count": 1,
+   "print": "da7ae8e0-cb6b-4386-8a30-9527d1af9be5"
   },
   {
-   "name": "Thunderclap Drake",
-   "count": 1
+   "id": "88d0a394-79e2-42ac-9a37-1a7b78231941",
+   "count": 1,
+   "print": "313fed71-cfbe-4c83-9437-ac14b2cb159b"
   },
   {
-   "name": "Veyran, Voice of Duality",
-   "count": 1
+   "id": "d57a6b19-bd06-4b07-8ee1-0b45612ba9e4",
+   "count": 1,
+   "print": "1cb06c70-7ff2-4c88-9931-1bfe8a3226d9"
   },
   {
-   "name": "Abrade",
-   "count": 1
+   "id": "f9db72dc-9a5b-48a4-a86e-7464d9a2166a",
+   "count": 1,
+   "print": "1add1757-c1f8-448a-b279-c6940fb7ad5f"
   },
   {
-   "name": "Arcane Denial",
-   "count": 1
+   "id": "ab1cc360-b9de-48d9-9983-4dfe4a7d2a37",
+   "count": 1,
+   "print": "4931aa7c-b77b-4002-bfb1-b75a1bac1deb"
   },
   {
-   "name": "Big Score",
-   "count": 1
+   "id": "a5cbd257-c836-493e-bb1a-76242619dea2",
+   "count": 1,
+   "print": "8b2699d2-2057-4fbf-8e52-736fcfe2759d"
   },
   {
-   "name": "Chaos Warp",
-   "count": 1
+   "id": "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8",
+   "count": 1,
+   "print": "65ae241c-8955-4c97-8be6-7356fbee2195"
   },
   {
-   "name": "Dig Through Time",
-   "count": 1
+   "id": "f8b17b89-26ce-4208-874a-9e1d66514640",
+   "count": 1,
+   "print": "020939d6-72f0-4aa0-9ac2-d16cc896cd7f"
   },
   {
-   "name": "Magma Opus",
-   "count": 1
+   "id": "985f9dd7-e693-48ff-9dd6-a1a3cbaa236b",
+   "count": 1,
+   "print": "0fd4a0f7-ba03-4158-95cd-4effe798aec0"
   },
   {
-   "name": "Prismari Charm",
-   "count": 1
+   "id": "c3c25a2c-f71c-4cb7-9117-0bcda9248bfd",
+   "count": 1,
+   "print": "8f6c2a5e-fe13-407c-aadd-c9caf2884ff1"
   },
   {
-   "name": "Prismari Command",
-   "count": 1
+   "id": "fa3e28b1-131c-4223-81e0-18dfbab22c26",
+   "count": 1,
+   "print": "372d0c0b-439c-413f-aac4-5174c75aadb0"
   },
   {
-   "name": "Reality Shift",
-   "count": 1
+   "id": "70dc830e-d05b-4fc7-88dd-879e140b3fbf",
+   "count": 1,
+   "print": "920bb44e-aa7f-4ee9-ab19-30114f55ec9b"
   },
   {
-   "name": "Resculpt",
-   "count": 1
+   "id": "814e321d-16fd-4f7b-a8d8-2b089be76f2c",
+   "count": 1,
+   "print": "5443f46d-03f9-468e-a78d-a059529b1151"
   },
   {
-   "name": "Abstract Performance",
-   "count": 1
+   "id": "3e0e3676-e634-4e64-bdfd-4aaa5885461f",
+   "count": 1,
+   "print": "2795c812-0850-4405-b968-b624deaccd55"
   },
   {
-   "name": "Aether Gale",
-   "count": 1
+   "id": "b21d6482-1b3a-47e6-98a5-3067f5f3818b",
+   "count": 1,
+   "print": "4e336e87-e5af-46a0-8caf-5d9ad8d671fd"
   },
   {
-   "name": "Blasphemous Act",
-   "count": 1
+   "id": "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+   "count": 1,
+   "print": "175eb155-7262-4c2e-85c3-e0cc9be855e5"
   },
   {
-   "name": "Chain Reaction",
-   "count": 1
+   "id": "086b2564-9114-4ba2-94fd-b490f98f38a7",
+   "count": 1,
+   "print": "6f34d11e-8452-448f-be4f-838e0ace9904"
   },
   {
-   "name": "Creative Technique",
-   "count": 1
+   "id": "c336b735-3e6b-471e-be7a-84d7402ae2f5",
+   "count": 1,
+   "print": "c0b5ba5f-ac25-4134-91c1-9677ba86576c"
   },
   {
-   "name": "Dance with Calamity",
-   "count": 1
+   "id": "615b4189-e800-408b-99e0-71ae7089b937",
+   "count": 1,
+   "print": "69f34a40-30f8-4fdd-bb21-79171ba2f00d"
   },
   {
-   "name": "Deep Analysis",
-   "count": 1
+   "id": "579cbd92-797f-4cdf-91ed-fca7a523eae5",
+   "count": 1,
+   "print": "c3acd528-c46c-4fa5-9038-8f821ba49014"
   },
   {
-   "name": "Expressive Iteration",
-   "count": 1
+   "id": "c7aecca5-2f67-4245-ab2d-e723d8b23a67",
+   "count": 1,
+   "print": "db54cb6f-25e0-4d5f-876e-a6aa66042d63"
   },
   {
-   "name": "Furygale Flocking",
-   "count": 1
+   "id": "943fc88d-c281-46bb-9dc7-1052f789362b",
+   "count": 1,
+   "print": "a967af7a-03ed-4858-9c26-66f2cb706b02"
   },
   {
-   "name": "Mana Geyser",
-   "count": 1
+   "id": "a8dba58b-2956-492e-ae30-49db2ae68e53",
+   "count": 1,
+   "print": "dfbda387-3c7d-4c80-97c3-60c9d4757244"
   },
   {
-   "name": "Replication Technique",
-   "count": 1
+   "id": "163baf58-b35d-4f2b-aa53-8384b8b5800a",
+   "count": 1,
+   "print": "b3149976-2811-4bbd-af1e-d59016bb0754"
   },
   {
-   "name": "Rite of Replication",
-   "count": 1
+   "id": "fb60739e-1dc3-481d-a056-ad72e665c680",
+   "count": 1,
+   "print": "5032d71d-d9f8-498c-97d1-271c2e9c1c47"
   },
   {
-   "name": "Rousing Refrain",
-   "count": 1
+   "id": "515c522f-51d5-4f6d-b9b1-ea3c7f6a378e",
+   "count": 1,
+   "print": "2b3ec666-0e57-4c42-872c-51799e0b5c68"
   },
   {
-   "name": "Surge to Victory",
-   "count": 1
+   "id": "8ea414c1-88cf-46d4-9a54-6dee9847c537",
+   "count": 1,
+   "print": "b5345934-60eb-417c-9716-477882c4796d"
   },
   {
-   "name": "Throes of Chaos",
-   "count": 1
+   "id": "e3444fcf-70ed-4d6e-aea9-030af15cad56",
+   "count": 1,
+   "print": "af0fd1ff-3398-45df-b934-07a6b6497998"
   },
   {
-   "name": "Treasure Cruise",
-   "count": 1
+   "id": "5b6bdf5a-2742-4851-92cd-a857a3852836",
+   "count": 1,
+   "print": "42c45880-15c7-4259-8066-c04d031d8216"
   },
   {
-   "name": "Twinflame",
-   "count": 1
+   "id": "83cf1169-5853-4332-b897-7b17d72d76ab",
+   "count": 1,
+   "print": "85c863ef-b266-410d-87b3-ced791f99966"
   },
   {
-   "name": "Volcanic Salvo",
-   "count": 1
+   "id": "9c2fd3a3-96f2-4e84-85a9-77698c2f83aa",
+   "count": 1,
+   "print": "fdd9dda5-0386-45a4-aec1-853137281934"
   },
   {
-   "name": "Volcanic Torrent",
-   "count": 1
+   "id": "ec2968fb-163d-4907-862b-b84a1f167833",
+   "count": 1,
+   "print": "bddd4336-ef03-4c4e-9992-02a0548d2d6f"
   },
   {
-   "name": "Arcane Signet",
-   "count": 1
+   "id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+   "count": 1,
+   "print": "7811dd72-61b9-4067-ac20-cea153e625d2"
   },
   {
-   "name": "Cursed Mirror",
-   "count": 1
+   "id": "4d67e2a7-4aa7-44cc-853b-500d7aac046d",
+   "count": 1,
+   "print": "077392b3-6b06-46c8-8737-51e85f690448"
   },
   {
-   "name": "Fellwar Stone",
-   "count": 1
+   "id": "95560508-7ac9-4be9-8a3f-3c7d5b52807b",
+   "count": 1,
+   "print": "385b9f5e-81dd-49f6-a644-59d53245e3dc"
   },
   {
-   "name": "Lightning Greaves",
-   "count": 1
+   "id": "ca204b66-8d0c-431a-8d34-282f7c2d17da",
+   "count": 1,
+   "print": "08005be9-fbf4-43e6-a742-b1fb8196c4a5"
   },
   {
-   "name": "Sol Ring",
-   "count": 1
+   "id": "6ad8011d-3471-4369-9d68-b264cc027487",
+   "count": 1,
+   "print": "870ec754-a76c-40ea-9b81-81b3dca1f62c"
   },
   {
-   "name": "Talisman of Creativity",
-   "count": 1
+   "id": "14d2979d-5728-42d7-a027-0eb1f754655d",
+   "count": 1,
+   "print": "101e47ed-4afe-4d15-b6c3-4ab495965fde"
   },
   {
-   "name": "Determined Iteration",
-   "count": 1
+   "id": "e4ed7935-0263-4cde-8118-ac18fffce3ef",
+   "count": 1,
+   "print": "d95490fe-44f2-4f83-b587-b0df402d38ed"
   },
   {
-   "name": "Cascade Bluffs",
-   "count": 1
+   "id": "f1603384-4361-49c9-98aa-7785fc3504c4",
+   "count": 1,
+   "print": "22acccd2-4e9d-46de-a060-863b08152e50"
   },
   {
-   "name": "Coastal Peak",
-   "count": 1
+   "id": "0e25faa2-efb0-4ca5-b280-18c38faa860c",
+   "count": 1,
+   "print": "a8af6ded-de96-4095-8a5b-9f1c79adea1a"
   },
   {
-   "name": "Command Tower",
-   "count": 1
+   "id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+   "count": 1,
+   "print": "c46a217c-0ed2-4b3c-9a01-ee38d12d76f3"
   },
   {
-   "name": "Exotic Orchard",
-   "count": 1
+   "id": "27b047e3-0d41-45e2-98e9-9391d7923a1e",
+   "count": 1,
+   "print": "7db2934a-43a0-46ad-8380-ff6703f8fd6d"
   },
   {
-   "name": "Fabled Passage",
-   "count": 1
+   "id": "0c85b8f7-0bd0-4680-9ec5-d4b110460a54",
+   "count": 1,
+   "print": "8119d329-6ee5-433c-bd81-8579bb061162"
   },
   {
-   "name": "Ferrous Lake",
-   "count": 1
+   "id": "62c15af0-40e1-407d-b056-7a3d909e3fdb",
+   "count": 1,
+   "print": "92fa559c-a99b-4bc1-86c4-0c5eeeac9f4f"
   },
   {
-   "name": "Frostboil Snarl",
-   "count": 1
+   "id": "7137aae6-260d-41de-8b4e-42a8cf752697",
+   "count": 1,
+   "print": "3dbddf20-1b92-482e-bbd9-1597531913a8"
   },
   {
-   "name": "Hall of Oracles",
-   "count": 1
+   "id": "0bb896ba-e15e-43a9-9120-e674d7ba003c",
+   "count": 1,
+   "print": "c29b896e-eee0-4f40-89b8-89262dae44e1"
   },
   {
-   "name": "Molten Tributary",
-   "count": 1
+   "id": "58c592ed-20fc-481b-909b-2315567e5f20",
+   "count": 1,
+   "print": "9c6d0f64-b8e1-41bc-ab86-bd6783daf72a"
   },
   {
-   "name": "Mystic Sanctuary",
-   "count": 1
+   "id": "17b60106-a4c7-410a-8ac3-ec8e74e29a7c",
+   "count": 1,
+   "print": "4cd86997-d7b9-4b5b-9488-11f5c679e4d3"
   },
   {
-   "name": "Path of Ancestry",
-   "count": 1
+   "id": "b473e293-59e3-4e04-acf2-622604aeb25f",
+   "count": 1,
+   "print": "9335e773-4b45-4b91-8140-5159fe7e0395"
   },
   {
-   "name": "Prismari Campus",
-   "count": 1
+   "id": "3a3a1b35-ae4d-49d5-ae09-5a1693ad53ce",
+   "count": 1,
+   "print": "7c464dee-dd89-4955-ae40-8bb74e9ff42a"
   },
   {
-   "name": "Reliquary Tower",
-   "count": 1
+   "id": "c23e5b80-08d2-4e24-9908-fe2aa4f30f6f",
+   "count": 1,
+   "print": "e2a27742-08c1-4153-af7f-25a7a98f585e"
   },
   {
-   "name": "Restless Spire",
-   "count": 1
+   "id": "0ca4e80e-c19c-4b74-b531-c5a4dc5a8ba9",
+   "count": 1,
+   "print": "fbf4552a-643a-4dc7-a2ae-8e3af5c1ceef"
   },
   {
-   "name": "Scorched Geyser",
-   "count": 1
+   "id": "f808b510-907a-4c3c-aea1-efb825c8e13e",
+   "count": 1,
+   "print": "5abdcad7-3b7a-43f6-a0ad-3aa99ee55c91"
   },
   {
-   "name": "Shivan Reef",
-   "count": 1
+   "id": "0fe16212-66c3-4e45-a641-7391e9b2e304",
+   "count": 1,
+   "print": "e13d0982-2542-4770-8e93-637478a0f84a"
   },
   {
-   "name": "Spectacle Summit",
-   "count": 1
+   "id": "33a4e73d-d93a-4b6f-88ff-cd53f20d178c",
+   "count": 1,
+   "print": "a0a66f7b-eab4-45da-8895-c2c2c7eb05f8"
   },
   {
-   "name": "Study Hall",
-   "count": 1
+   "id": "eb735501-19e7-4910-aa6a-6667fff6f4e5",
+   "count": 1,
+   "print": "93f812bc-7663-4504-b566-79e2c0a0f845"
   },
   {
-   "name": "Sulfur Falls",
-   "count": 1
+   "id": "6a6c5e17-6465-4a1f-9d63-8a3ce2edc522",
+   "count": 1,
+   "print": "56a6df05-f4e4-40d9-a701-6d5adb7ce9fd"
   },
   {
-   "name": "Temple of Epiphany",
-   "count": 1
+   "id": "79f94050-d850-41ca-b1db-5ae0cf743f0a",
+   "count": 1,
+   "print": "cc63cd97-de9e-4d31-babb-aaad1277169e"
   },
   {
-   "name": "Temple of the False God",
-   "count": 1
+   "id": "cfdd5dc6-593e-495a-8cfe-3a56b3c4c7df",
+   "count": 1,
+   "print": "1024f555-e0d7-48ac-b86e-c87290eac832"
   },
   {
-   "name": "Terramorphic Expanse",
-   "count": 1
+   "id": "1bd3e453-aa21-4ee6-95c2-d6d920ee8e7a",
+   "count": 1,
+   "print": "a81f924b-0527-4311-8120-9bfff71524f6"
   },
   {
-   "name": "Turbulent Springs",
-   "count": 1
+   "id": "9aef7510-9f06-4939-8cae-f71330d1105e",
+   "count": 1,
+   "print": "a25cb813-aa6d-469c-aa29-61ffa32267f2"
   },
   {
-   "name": "Mountain",
-   "count": 7
+   "id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+   "count": 7,
+   "print": "426b0211-3d5d-4e53-bcf6-21823c655ffd"
   },
   {
-   "name": "Island",
-   "count": 8
+   "id": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+   "count": 8,
+   "print": "5a74175b-2418-4226-8435-1490532e644f"
   }
  ]
 }

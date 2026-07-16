@@ -1,6 +1,8 @@
 # Haste
 # As long as this card is in your graveyard and you control a Mountain, creatures you control have haste.
 name = "Anger"
+id = "eaabd151-2160-4bff-82c0-3fa88659be98"
+default_print = "e886a604-e3ce-4c6a-b63e-2c7f910a177a"
 otags = ["cycle-jud-incarnation", "gives-haste", "keyword-anthem", "single-english-word-name", "synergy-mountain"]
 oracle = "Haste\nAs long as this card is in your graveyard and you control a Mountain, creatures you control have haste."
 set = "soc"

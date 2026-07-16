@@ -2,6 +2,8 @@
 # Whenever you cast a historic spell, return target creature card with mana value 3 or less from your graveyard to the
 # battlefield. (Artifacts, legendaries, and Sagas are historic.)
 name = "Teshar, Ancestor's Apostle"
+id = "d4193f50-33b5-4201-ba03-eb135eced7ff"
+default_print = "6e80198c-cfae-46f9-84cb-584d091014c5"
 otags = ["alliteration", "cast-trigger-you", "evasion", "mana-value-matters", "reanimate-creature", "synergy-historic"]
 oracle = "Flying\nWhenever you cast a historic spell, return target creature card with mana value 3 or less from your graveyard to the battlefield. (Artifacts, legendaries, and Sagas are historic.)"
 set = "soc"

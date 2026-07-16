@@ -685,6 +685,8 @@ mod refresh_actions_tests {
     fn forest() -> CardDef {
         CardDef {
             name: "Forest",
+            id: "",
+            default_print: "",
             cost: Cost::FREE,
             kind: CardKind::Land {
                 produces: Some(LandProduces::Mana(Mana::Color(Color::Green))),
@@ -778,6 +780,8 @@ mod refresh_actions_tests {
             P0,
             CardDef {
                 name: "Bear",
+                id: "",
+                default_print: "",
                 cost: Cost {
                     generic: 2,
                     ..Cost::FREE

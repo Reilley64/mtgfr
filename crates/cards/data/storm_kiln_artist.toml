@@ -2,6 +2,8 @@
 # Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token. (It's an artifact with
 # "{T}, Sacrifice this token: Add one mana of any color.")
 name = "Storm-Kiln Artist"
+id = "a145ff8c-5812-4bcb-bd16-9839dc25121d"
+default_print = "da7ae8e0-cb6b-4386-8a30-9527d1af9be5"
 otags = ["artifact-matters", "cranial-plating", "cycle-stx-u-mono-magecraft", "magecraft", "ramp", "repeatable-treasures"]
 oracle = "This creature gets +1/+0 for each artifact you control.\nMagecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
 set = "soc"

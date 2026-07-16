@@ -2,6 +2,8 @@
 # Resculpt {1}{U} — instant. "Exile target artifact or creature. Its controller creates a 4/4 blue
 # and red Elemental creature token."
 name = "Resculpt"
+id = "814e321d-16fd-4f7b-a8d8-2b089be76f2c"
+default_print = "5443f46d-03f9-468e-a78d-a059529b1151"
 otags = ["color-break", "donate-token", "out-of-color-token", "removal-artifact", "removal-creature", "removal-exile", "single-english-word-name", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
 oracle = "Exile target artifact or creature. Its controller creates a 4/4 blue and red Elemental creature token."
 set = "soc"

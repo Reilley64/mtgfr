@@ -9,6 +9,8 @@
 #    Whenever a Spirit you control enters, you may pay {2}{W}. If you do, return this card from
 #    your graveyard to the battlefield."
 name = "Vanguard of the Restless"
+id = "5564c782-be40-49fc-abc0-6cdcbaaa575a"
+default_print = "91211c56-b562-4889-8c5c-110c42be62c8"
 otags = ["anthem", "creaturefall", "evasion", "noncreature-typal", "power-boost-to-all", "reanimate-self", "recasting-commander-matters", "synergy-commander", "toughness-boost-to-all", "trigger-from-graveyard", "typal-spirit"]
 oracle = "Flying\nSpirits you control get +1/+1 for each time you've cast your commander from the command zone this game.\nWhenever a Spirit you control enters, you may pay {2}{W}. If you do, return this card from your graveyard to the battlefield."
 set = "soc"

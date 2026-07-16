@@ -1,5 +1,7 @@
 # Target creature gets +3/+3 until end of turn.
 name = "Brute Force"
+id = "9880ba09-d5b8-4675-bfb4-2161d86d2d41"
+default_print = "89db7256-3bd0-4c1d-9c6f-de81f7d3c1a2"
 otags = ["enlarge", "giant-growth-with-set-mechanic", "single-target-instant-sorcery"]
 oracle = "Target creature gets +3/+3 until end of turn."
 set = "tsr"

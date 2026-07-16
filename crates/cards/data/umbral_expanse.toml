@@ -3,6 +3,8 @@
 # Cycling {2} ({2}, Discard this card: Draw a card.)
 # Umbral Expanse (SOC): "{T}: Add {W} or {B}. This land enters tapped. Cycling {2}."
 name = "Umbral Expanse"
+id = "5a1dfc60-645d-4bc0-8883-e06ed9c80706"
+default_print = "15848965-01a8-48bf-aa61-8a753339c761"
 otags = ["activate-from-hand", "cycle-dual-cycling-land", "hand-neutral", "nonbasic-basic-land-type", "pure-draw", "utility-land"]
 oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped.\nCycling {2} ({2}, Discard this card: Draw a card.)"
 set = "soc"

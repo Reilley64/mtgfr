@@ -7,6 +7,8 @@
 #    another of your opponents, that attacking player draws a card and you put two +1/+1
 #    counters on a creature you control."
 name = "Breena, the Demagogue"
+id = "d11e627b-8a48-411d-a261-2c9a02a758ba"
+default_print = "599f87c8-643e-4224-93a5-853c0bd4e497"
 otags = ["attack-trigger", "attacking-opponents-matters", "bribery", "cycle-c21-face-commander", "draw-engine", "evasion", "gives-pp-counters", "hand-positive", "intervening-if-clause", "multiplayer", "pseudo-dethrone", "repeatable-pp-counters"]
 oracle = "Flying\nWhenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature you control."
 set = "soc"

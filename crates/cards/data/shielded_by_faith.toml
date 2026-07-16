@@ -2,6 +2,8 @@
 # Enchanted creature has indestructible.
 # Whenever a creature enters, you may attach this Aura to that creature.
 name = "Shielded by Faith"
+id = "79085dea-8daa-41c0-a975-61e3e6da2e26"
+default_print = "681149f2-0802-4ab7-9521-3b3c7281f55d"
 otags = ["creaturefall", "gives-indestructible", "protects-creature", "transferrable-aura", "triggered-ability"]
 oracle = "Enchant creature\nEnchanted creature has indestructible.\nWhenever a creature enters, you may attach this Aura to that creature."
 set = "soc"

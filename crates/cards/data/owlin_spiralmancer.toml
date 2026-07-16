@@ -1,4 +1,6 @@
 name = "Owlin Spiralmancer"
+id = "36d6d6c0-721c-40c3-b81f-4f027fcf847e"
+default_print = "8e6266b5-9a02-4b06-b80c-048926a4eda7"
 otags = ["cast-trigger-you", "copy-spell", "evasion", "x-cost-matters"]
 oracle = "Flying, vigilance\nWhenever you cast your first spell with {X} in its mana cost each turn, you may copy it. You may choose new targets for the copy. (A copy of a permanent spell becomes a token.)"
 set = "soc"

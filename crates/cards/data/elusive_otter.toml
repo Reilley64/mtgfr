@@ -5,6 +5,8 @@
 # Distribute X +1/+1 counters among any number of target creatures you control. (Then exile this card. You may cast the
 # creature later from exile.)
 name = "Elusive Otter"
+id = "54175132-2c44-4749-8dfd-d08dcc63e4b3"
+default_print = "bdb79d68-c3af-4091-b7db-005247191da8"
 otags = ["cast-trigger-you", "castable-from-exile", "cycle-woe-r-2c-adventurer", "exile-self", "gives-pp-counters", "hate-low-power", "howlgeist-ability", "more-expensive-than-mv", "multiple-targets", "power-matters-self", "single-target-instant-sorcery", "synergy-noncreature"]
 oracle = "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nCreatures with power less than this creature's power can't block it. // Distribute X +1/+1 counters among any number of target creatures you control. (Then exile this card. You may cast the creature later from exile.)"
 set = "soc"

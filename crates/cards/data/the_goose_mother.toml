@@ -3,6 +3,8 @@
 # When The Goose Mother enters, create half X Food tokens, rounded up.
 # Whenever The Goose Mother attacks, you may sacrifice a Food. If you do, draw a card.
 name = "The Goose Mother"
+id = "de595f1b-3f7d-45e0-a31b-ed23e5d1ee48"
+default_print = "a094fa16-256f-4fb1-9738-3025085d1941"
 otags = ["attack-trigger", "attacking-matters-self", "cycle-woe-r-two-color", "division", "draw-engine", "evasion", "gains-pp-counters", "lifegain", "repeatable-plunder", "sacrifice-outlet-artifact", "synergy-food", "unique-type-line"]
 oracle = "Flying\nThe Goose Mother enters with X +1/+1 counters on it.\nWhen The Goose Mother enters, create half X Food tokens, rounded up.\nWhenever The Goose Mother attacks, you may sacrifice a Food. If you do, draw a card."
 set = "soc"

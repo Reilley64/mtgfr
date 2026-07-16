@@ -4,6 +4,8 @@
 # on it equal to the number of study counters on this enchantment.
 # Lattice Library (soc): {X}{G}{G} Enchantment.
 name = "Lattice Library"
+id = "0030578c-afaf-4072-a62b-2510bdceb64a"
+default_print = "51aa3511-e588-4b40-b98c-c5dc3a05bb2d"
 otags = ["aesthetic-counter", "alliteration", "cast-trigger-you", "gives-pp-counters", "repeatable-creature-tokens", "repeatable-pp-counters", "x-cost-matters"]
 oracle = "This enchantment enters with X study counters on it.\nWhen this enchantment enters and whenever you cast your first spell with {X} in its mana cost each turn, create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it equal to the number of study counters on this enchantment."
 set = "soc"

@@ -6,8 +6,10 @@
 
 import { useAtomRefresh, useAtomResource, useAtomSet } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
+import * as Effect from "effect/Effect";
 import * as Atom from "effect/unstable/reactivity/Atom";
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
+import type { CatalogCard } from "~/api/generated";
 import { decksAtom } from "~/atoms";
 import CardPreview from "~/CardPreview";
 import ConfirmDialog from "~/ConfirmDialog";
@@ -17,6 +19,11 @@ import { Button, Felt, ListRow } from "~/ui";
 
 const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id), {})));
 const logoutFn = Atom.fn(() => succeeded(client.logout({})));
+// Commander catalog lookup, by Card id — the deck summary carries only the id (ADR 0031); we
+// hydrate names (and a default print to preview) once the deck list is in.
+const lookupCommandersFn = Atom.fn((ids: string[]) =>
+  ids.length === 0 ? Effect.succeed([]) : client.lookupCards({ params: { ids } }),
+);
 
 export default function Decks() {
   const user = useAuthGuard();
@@ -27,13 +34,26 @@ export default function Decks() {
   const refreshDecks = useAtomRefresh(() => decksAtom);
   const deleteDeck = useAtomSet(() => deleteDeckFn, { mode: "promise" });
   const logout = useAtomSet(() => logoutFn, { mode: "promise" });
+  const lookupCommanders = useAtomSet(() => lookupCommandersFn, { mode: "promise" });
 
   // The deck whose delete confirmation is up, or null. One at a time — the dialog is modal.
   const [confirmingId, setConfirmingId] = createSignal<number | null>(null);
   const confirming = () => decks()?.find((d) => d.id === confirmingId());
 
-  // The commander name currently hovered, for the shared read-the-card preview.
-  const [hover, setHover] = createSignal<{ name: string; x: number; y: number } | null>(null);
+  // Commander catalog data by Card id, hydrated once the deck list resolves — the list shows each
+  // commander's id until its name arrives.
+  const [commanders, setCommanders] = createSignal<Record<string, CatalogCard>>({});
+  createEffect(() => {
+    const ids = [...new Set((decks() ?? []).map((d) => d.commander).filter(Boolean))];
+    if (ids.length === 0) return;
+    void lookupCommanders(ids).then((cards) => {
+      setCommanders(Object.fromEntries(cards.map((c) => [c.id, c])));
+    });
+  });
+  const commanderName = (id: string) => commanders()[id]?.name ?? id;
+
+  // The commander currently hovered, for the shared read-the-card preview.
+  const [hover, setHover] = createSignal<{ id: string; print?: string; x: number; y: number } | null>(null);
 
   // The last request that didn't land. Cleared on the next attempt.
   const [failed, setFailed] = createSignal<string | null>(null);
@@ -101,11 +121,18 @@ export default function Decks() {
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: hover only reveals the
                       commander's art; its name is right here as text. */}
                   <span
-                    onMouseMove={(e) => setHover({ name: d.commander, x: e.clientX, y: e.clientY })}
+                    onMouseMove={(e) =>
+                      setHover({
+                        id: d.commander,
+                        print: commanders()[d.commander]?.default_print,
+                        x: e.clientX,
+                        y: e.clientY,
+                      })
+                    }
                     onMouseLeave={() => setHover(null)}
                     class="text-label text-lichen"
                   >
-                    {d.commander}
+                    {commanderName(d.commander)}
                   </span>
                 </div>
                 <div class="flex flex-wrap gap-sm">
@@ -140,7 +167,7 @@ export default function Decks() {
         onCancel={() => setConfirmingId(null)}
       />
 
-      <CardPreview name={hover()?.name ?? null} x={hover()?.x ?? 0} y={hover()?.y ?? 0} />
+      <CardPreview id={hover()?.id ?? null} print={hover()?.print} x={hover()?.x ?? 0} y={hover()?.y ?? 0} />
     </Felt>
   );
 }

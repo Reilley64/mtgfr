@@ -2,6 +2,8 @@
 # This creature has haste as long as an opponent has 10 or less life.
 # Landfall — Whenever a land you control enters, you may return this card from your graveyard to the battlefield.
 name = "Bloodghast"
+id = "e97f9c2b-b41e-4f36-9245-77c0ac125647"
+default_print = "cee85485-598f-4dfc-aa0b-7b1de86c7788"
 otags = ["drawback", "gains-haste", "landfall", "manaless-value", "reanimate-self", "trigger-from-graveyard"]
 oracle = "This creature can't block.\nThis creature has haste as long as an opponent has 10 or less life.\nLandfall — Whenever a land you control enters, you may return this card from your graveyard to the battlefield."
 set = "soc"

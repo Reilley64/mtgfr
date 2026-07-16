@@ -2,6 +2,8 @@
 # {1}{G}: Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1 black and green Pest
 # creature token with "When this token dies, you gain 1 life."
 name = "Feral Appetite"
+id = "adf731a1-fc4d-4260-bb85-535edb1d82e9"
+default_print = "69dda877-c176-456c-8cd8-5a1ea288e4c9"
 otags = ["activated-ability", "anthem", "attacking-matters", "gives-deathtouch", "graveyard-fuel-creature", "hate-graveyard", "keyword-anthem", "power-boost-to-all", "repeatable-creature-tokens", "repeatable-lifegain", "typal-pest"]
 oracle = "Attacking Pests you control get +1/+0 and have deathtouch.\n{1}{G}: Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\""
 set = "soc"

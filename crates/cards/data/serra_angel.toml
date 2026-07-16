@@ -1,6 +1,8 @@
 # Flying
 # Vigilance (Attacking doesn't cause this creature to tap.)
 name = "Serra Angel"
+id = "4b7ac066-e5c7-43e6-9e7e-2739b24a905d"
+default_print = "b8c5e74c-96e7-4a1f-93b7-14d776fe4b2d"
 otags = ["cycle-w16-u", "evasion", "french-vanilla", "meme", "namesake-spell"]
 oracle = "Flying\nVigilance (Attacking doesn't cause this creature to tap.)"
 set = "fdn"

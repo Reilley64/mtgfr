@@ -1,6 +1,8 @@
 # {2}, Return Rootha to its owner's hand: Copy target instant or sorcery spell you control. You may choose new targets
 # for the copy.
 name = "Rootha, Mercurial Artist"
+id = "3735559f-efe5-43ad-9b3e-3ef127c0ceda"
+default_print = "289abc0f-2ab9-48a7-a19b-a3630b014637"
 otags = ["activated-ability", "bounce-self", "copy-instant", "copy-sorcery", "copy-spell", "cycle-stx-student", "mana-sink", "synergy-instant", "synergy-sorcery"]
 oracle = "{2}, Return Rootha to its owner's hand: Copy target instant or sorcery spell you control. You may choose new targets for the copy."
 set = "soc"

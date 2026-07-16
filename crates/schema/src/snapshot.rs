@@ -56,6 +56,9 @@ pub struct ViewExtras {
     pub turn_yields: [bool; 4],
     pub stack_hold_remaining_ms: u32,
     pub usernames: [String; 4],
+    /// Per-seat Card id → Printing UUID from the seat's deck (art preference). Empty maps mean
+    /// every object uses its CardDef `default_print`.
+    pub prints: [std::collections::HashMap<String, String>; 4],
 }
 
 /// One wire-complete [`VisibleState`] for `viewer` (`Some` = seated, `None` = spectator).
@@ -79,6 +82,19 @@ pub fn complete_visible(
     state.stack_hold_remaining_ms = extras.stack_hold_remaining_ms;
     for (i, player) in state.players.iter_mut().enumerate() {
         player.username = extras.usernames[i].clone();
+    }
+    // Overlay deck-chosen Printings onto objects (by owner seat + Card id).
+    for obj in &mut state.objects {
+        if obj.card_id.is_empty() {
+            continue;
+        }
+        let seat = obj.owner as usize;
+        if seat >= extras.prints.len() {
+            continue;
+        }
+        if let Some(print) = extras.prints[seat].get(&obj.card_id) {
+            obj.print = print.clone();
+        }
     }
     state
 }
@@ -467,10 +483,20 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 zone: game.zone_of(id) as u8,
                 owner: game.owner_of(id).0,
                 controller: game.controller_of(id).0,
+                card_id: if face_down {
+                    String::new()
+                } else {
+                    def.id.to_string()
+                },
                 name: if face_down {
                     String::new()
                 } else {
                     def.name.to_string()
+                },
+                print: if face_down {
+                    String::new()
+                } else {
+                    def.default_print.to_string()
                 },
                 kind: if face_down {
                     WireKind::Creature {
@@ -644,6 +670,7 @@ mod tests {
             turn_yields: [true, false, false, false],
             stack_hold_remaining_ms: 1500,
             usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            prints: Default::default(),
         };
 
         let seated = complete_visible(&game, Some(PlayerId(1)), &extras);
@@ -1304,6 +1331,8 @@ mod tests {
         ];
         CardDef {
             name: "Two Death Triggers (test)",
+            id: "",
+            default_print: "",
             cost: Cost::FREE,
             kind: CardKind::Enchantment,
             legendary: false,

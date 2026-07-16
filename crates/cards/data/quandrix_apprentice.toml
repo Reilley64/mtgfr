@@ -8,6 +8,8 @@
 # ponytail: "put the rest on the bottom of your library in any order" — the bottom of the library
 # is hidden, so the order among bottomed cards is unobservable; a fixed order stands in for it.
 name = "Quandrix Apprentice"
+id = "92116bbd-c7ad-4033-8d98-3ea09fea8ae7"
+default_print = "f9166814-8748-480a-b7a0-816f9f582420"
 otags = ["bear-with-set-s-mechanic", "cycle-stx-apprentice", "impulse-land", "magecraft", "repeatable-impulse"]
 oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, look at the top three cards of your library. You may reveal a land card from among them and put that card into your hand. Put the rest on the bottom of your library in any order."
 set = "soc"

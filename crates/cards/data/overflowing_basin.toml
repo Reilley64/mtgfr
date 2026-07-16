@@ -2,6 +2,8 @@
 # Overflowing Basin (SOC): "{1}, {T}: Add {G}{U}." No `produces` — a land with no free base tap;
 # the only mana ability is the scripted "{1}, {T}: Add {G}{U}".
 name = "Overflowing Basin"
+id = "5ac8e01c-b0a7-4855-a122-1cd26b07c4a5"
+default_print = "6357d665-2b28-4747-ab43-b90176d78d42"
 otags = ["activated-ability", "cycle-pip-enemy-filterland"]
 oracle = "{1}, {T}: Add {G}{U}."
 set = "soc"

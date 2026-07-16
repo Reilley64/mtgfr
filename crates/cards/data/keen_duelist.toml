@@ -1,6 +1,8 @@
 # At the beginning of your upkeep, you and target opponent each reveal the top card of your library. You each lose life
 # equal to the mana value of the card revealed by the other player. You each put the card you revealed into your hand.
 name = "Keen Duelist"
+id = "b8602f19-6fc2-43c4-b0c4-2cd11d5dbda2"
+default_print = "0446a3df-6f77-4b86-b694-ce99feb3d9ab"
 otags = ["clash-like", "opponent-loses-life", "repeatable-card-advantage", "repeatable-crime", "selective-group-hug", "triggered-ability", "wannabe-dark-confidant"]
 oracle = "At the beginning of your upkeep, you and target opponent each reveal the top card of your library. You each lose life equal to the mana value of the card revealed by the other player. You each put the card you revealed into your hand."
 set = "soc"

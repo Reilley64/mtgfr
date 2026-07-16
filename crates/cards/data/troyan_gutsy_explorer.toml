@@ -6,6 +6,8 @@
 #    with {X} in their mana costs.
 #    {U}, {T}: Draw a card, then discard a card."
 name = "Troyan, Gutsy Explorer"
+id = "1135ebc3-9537-4341-956b-6e22d8be5f20"
+default_print = "72968bfe-0fa4-432f-9599-4c32cb143716"
 otags = ["activated-ability", "adds-multiple-mana", "cycle-woe-draft-signpost", "mana-dork", "mana-value-matters", "repeatable-loot", "restricted-mana", "unique-type-line", "x-cost-matters"]
 oracle = "{T}: Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells with {X} in their mana costs.\n{U}, {T}: Draw a card, then discard a card."
 set = "soc"

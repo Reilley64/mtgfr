@@ -5,6 +5,8 @@
 # ponytail: the tax is auto-paid (pool first, then auto-tapped lands) at declare time rather than
 # offered as an explicit pay-or-decline choice — can't-afford makes the declaration illegal.
 name = "Ghostly Prison"
+id = "e828b189-0e8f-43b8-b909-4c23e742e028"
+default_print = "e1f723a8-0be9-4270-b451-a52d6b2fda4e"
 otags = ["tax-attack"]
 oracle = "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."
 set = "soc"

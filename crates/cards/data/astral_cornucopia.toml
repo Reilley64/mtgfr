@@ -6,6 +6,8 @@
 # Color choice is approximated as an any-color wildcard, matching every other "any color"
 # producer in the pool (a payment-time choice, not a targeting/mode choice).
 name = "Astral Cornucopia"
+id = "1bc42024-52da-4d93-8b47-544f0a4a72a1"
+default_print = "15175742-11ae-4819-a5bd-412084b0b686"
 otags = ["activated-ability", "adds-multiple-mana", "counters-matter", "mana-rock", "mini-refund", "unique-mana-cost"]
 oracle = "This artifact enters with X charge counters on it.\n{T}: Choose a color. Add one mana of that color for each charge counter on this artifact."
 set = "soc"

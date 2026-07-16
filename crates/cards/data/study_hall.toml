@@ -2,6 +2,8 @@
 # {1}, {T}: Add one mana of any color. When you spend this mana to cast your commander, scry X, where X is the number of
 # times it's been cast from the command zone this game.
 name = "Study Hall"
+id = "eb735501-19e7-4910-aa6a-6667fff6f4e5"
+default_print = "93f812bc-7663-4504-b566-79e2c0a0f845"
 otags = ["activated-ability", "buff-mana", "cast-trigger-you", "delayed-trigger", "filterland", "recasting-commander-matters", "school-name", "scry", "synergy-commander", "utility-land"]
 oracle = "{T}: Add {C}.\n{1}, {T}: Add one mana of any color. When you spend this mana to cast your commander, scry X, where X is the number of times it's been cast from the command zone this game."
 set = "soc"

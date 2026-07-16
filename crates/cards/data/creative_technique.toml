@@ -2,6 +2,8 @@
 # Shuffle your library, then reveal cards from the top of it until you reveal a nonland card. Exile that card and put
 # the rest on the bottom of your library in a random order. You may cast the exiled card without paying its mana cost.
 name = "Creative Technique"
+id = "c336b735-3e6b-471e-be7a-84d7402ae2f5"
+default_print = "c0b5ba5f-ac25-4134-91c1-9677ba86576c"
 otags = ["cast-on-resolution", "cast-trigger-self", "consult-cast", "copy-self", "cycle-c21-technique", "free-cast-another", "gives-castable-from-exile", "selective-group-hug"]
 oracle = "Demonstrate (When you cast this spell, you may copy it. If you do, choose an opponent to also copy it.)\nShuffle your library, then reveal cards from the top of it until you reveal a nonland card. Exile that card and put the rest on the bottom of your library in a random order. You may cast the exiled card without paying its mana cost."
 set = "soc"

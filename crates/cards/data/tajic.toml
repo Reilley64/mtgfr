@@ -1,4 +1,6 @@
 name = "Tajic, Legion's Edge"
+id = "ae6f21a2-e6b6-4793-8343-e27310c0bea1"
+default_print = "45c4c3b3-be18-4d74-99d8-f137498673d7"
 otags = ["activated-ability", "attack-trigger", "attacking-matters", "attacking-matters-self", "cycle-grn-guild-champion", "cycle-rvr-r-two-color-legend", "damage-prevention", "damage-prevention-creature", "gains-first-strike", "gives-pp-counters", "power-matters-self"]
 oracle = "Haste\nMentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature with lesser power.)\nPrevent all noncombat damage that would be dealt to other creatures you control.\n{R}{W}: Tajic gains first strike until end of turn."
 set = "rvr"

@@ -61,6 +61,8 @@ pub struct Table {
     pub stack_dwell: [bool; 4],
     /// Last join/ready/start for idle-lobby TTL (ignored once `game` is set).
     pub last_activity: Instant,
+    /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
+    pub prints: [std::collections::HashMap<String, String>; 4],
 }
 
 impl Table {
@@ -80,6 +82,7 @@ impl Table {
             stack_hold: None,
             stack_dwell: [false; 4],
             last_activity: Instant::now(),
+            prints: Default::default(),
         }
     }
 
@@ -143,12 +146,14 @@ impl Table {
 /// Opening hand size (no mulligan — Phase 3).
 const OPENING_HAND: u32 = 7;
 
-/// A seat's resolved deck: the commander and the 99 as `(card, copies)`. Names are resolved to
-/// `CardDef` (and legality-checked) by the caller before seeding.
+/// A seat's resolved deck: the commander, the 99 as `(card, copies)`, and Card-id→Printing
+/// for art (including the commander).
 #[derive(Debug, Clone)]
 pub struct SeatDeck {
     pub commander: CardDef,
     pub cards: Vec<(CardDef, usize)>,
+    /// Card id → Printing UUID chosen for this seat's deck.
+    pub prints: std::collections::HashMap<String, String>,
 }
 
 fn expand(list: &[(CardDef, usize)]) -> Vec<CardDef> {
@@ -188,15 +193,26 @@ mod tests {
     use super::*;
 
     fn card(name: &str) -> CardDef {
-        cards::get(name).expect("card in pool")
+        cards::get_by_name(name).expect("card in pool")
     }
 
     #[test]
     fn a_seeded_game_deals_seven_to_each_player_and_leaves_the_rest() {
         // A minimal legal-shaped deck: a commander plus 99 basics.
-        let deck = || SeatDeck {
-            commander: card("Tajic, Legion's Edge"),
-            cards: vec![(card("Plains"), 99)],
+        let deck = || {
+            let commander = card("Tajic, Legion's Edge");
+            let plains = card("Plains");
+            let mut prints = std::collections::HashMap::new();
+            prints.insert(
+                commander.id.to_string(),
+                commander.default_print.to_string(),
+            );
+            prints.insert(plains.id.to_string(), plains.default_print.to_string());
+            SeatDeck {
+                commander,
+                cards: vec![(plains, 99)],
+                prints,
+            }
         };
         let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
         let game = seed_game(&seats, 0);
@@ -225,6 +241,7 @@ mod soc_deck_tests {
     #[derive(Deserialize)]
     struct DeckFixture {
         commander: String,
+        commander_print: String,
         cards: Vec<DeckCardEntry>,
     }
 
@@ -247,14 +264,23 @@ mod soc_deck_tests {
 
     fn fixture_seat_deck(fixture: &str) -> SeatDeck {
         let deck = load(fixture);
-        let get = |n: &str| cards::get(n).unwrap_or_else(|| panic!("{n:?} not in pool"));
+        let commander = cards::get(&deck.commander)
+            .unwrap_or_else(|| panic!("{:?} not in pool", deck.commander));
+        let mut prints = std::collections::HashMap::new();
+        prints.insert(commander.id.to_string(), deck.commander_print.clone());
+        let cards = deck
+            .cards
+            .iter()
+            .map(|c| {
+                let def = cards::get(&c.id).unwrap_or_else(|| panic!("{:?} not in pool", c.id));
+                prints.insert(def.id.to_string(), c.print.clone());
+                (def, c.count as usize)
+            })
+            .collect();
         SeatDeck {
-            commander: get(&deck.commander),
-            cards: deck
-                .cards
-                .iter()
-                .map(|c| (get(&c.name), c.count as usize))
-                .collect(),
+            commander,
+            cards,
+            prints,
         }
     }
 

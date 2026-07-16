@@ -7,6 +7,8 @@
 #   • Target creature you control fights target creature you don't control.
 #   • Counter target noncreature spell unless its controller pays {3}.
 name = "Decisive Denial"
+id = "2d0bd780-b754-44a3-894c-a9c8aa711f05"
+default_print = "b1ad1949-1c8e-4566-9286-caf240c88fcc"
 otags = ["alliteration", "counterspell-noncreature", "counterspell-soft", "modal", "multiple-targets", "removal-fight", "single-target-instant-sorcery"]
 oracle = "Choose one —\n• Target creature you control fights target creature you don't control. (Each deals damage equal to its power to the other.)\n• Counter target noncreature spell unless its controller pays {3}."
 set = "soc"

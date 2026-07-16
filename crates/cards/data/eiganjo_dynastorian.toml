@@ -8,6 +8,8 @@
 # with vigilance whose front-face trigger makes it become prepared; while prepared, its
 # controller may cast a copy of the {3}{W} Replenish sorcery below, which unprepares it.
 name = "Eiganjo Dynastorian"
+id = "09b7ea91-2620-4c45-af3c-60bbeab89966"
+default_print = "09d1f048-f411-4677-a0dc-dbddd06fe694"
 otags = ["attack-trigger", "attacking-matters", "cycle-soc-guest-lecturer", "gives-castable-from-exile", "mass-reanimation", "reanimate-enchantment", "synergy-enchantment", "unique-type-line"]
 oracle = "Vigilance\nWhenever you attack with two or more creatures, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Return all enchantment cards from your graveyard to the battlefield."
 set = "soc"

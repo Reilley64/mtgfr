@@ -1,38 +1,59 @@
 // Card imagery from an optional self-hosted CDN (bake `VITE_CARD_CDN`), which mirrors Scryfall's
 // image folder path (`<size>/front/<a>/<b>/<id>.ext`) but serves only `large` and converts
-// everything to webp. Keyed by Scryfall id, so `imageUrlByName` resolves the pool's names through
-// the build-time `card-ids.json` map; a name not in the map (or when no CDN is configured) falls
-// back to Scryfall's `named` endpoint. See ADR 0015.
-//
-// The classic Magic card back (library piles, face-down cards) is a static asset under
-// `client/public/card-back.webp` — the CDN only mirrors front faces today.
-
-import cardIds from "~/lib/card-ids.json";
+// everything to webp. Keyed by Scryfall *Printing* UUID (ADR 0031). Missing art is a broken
+// image — no Scryfall image-host fallback. Without a CDN, resolve the same UUID via Scryfall's
+// card-id image endpoint so localdev still works.
 
 export type ImageSize = "small" | "normal" | "large" | "png" | "art_crop";
 
 const CDN = String(import.meta.env.VITE_CARD_CDN ?? "").replace(/\/$/, "");
-const NAME_TO_ID = cardIds as Record<string, string>;
 
 /** Classic Magic card back — library piles and any face-down card on the board. */
 export function cardBackUrl(): string {
   return "/card-back.webp";
 }
 
-// The CDN path for a Scryfall id: first two hex chars of the id fan out the folder tree. Only
-// `large` webp exists, so the requested size is ignored.
-function cdnUrl(scryfallId: string): string {
-  const a = scryfallId[0];
-  const b = scryfallId[1];
-  return `${CDN}/large/front/${a}/${b}/${scryfallId}.webp`;
+// The CDN path for a Scryfall Printing UUID: first two hex chars fan out the folder tree. Only
+// `large` webp exists, so the requested size is ignored when CDN is set.
+function cdnUrl(printId: string): string {
+  const a = printId[0];
+  const b = printId[1];
+  return `${CDN}/large/front/${a}/${b}/${printId}.webp`;
 }
 
-// Server snapshots carry a card's name, not its Scryfall id, so we resolve art by name through
-// the build-time `card-ids.json` map and serve it from the CDN when configured. Otherwise (and
-// for unmapped names) fall back to Scryfall's `named` image endpoint (a 302 to their CDN); `fuzzy`
-// so simplified/placeholder names still match (e.g. "Grizzly Bear" → "Grizzly Bears").
-export function imageUrlByName(name: string, size: ImageSize): string {
-  const id = NAME_TO_ID[name];
-  if (id && CDN) return cdnUrl(id);
-  return `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}&format=image&version=${size}`;
+/** Art URL for a Printing UUID. Empty print → empty URL (broken `<img>`). */
+export function imageUrlByPrint(printId: string, _size: ImageSize = "large"): string {
+  if (!printId) return "";
+  if (CDN) return cdnUrl(printId);
+  return `https://api.scryfall.com/cards/${printId}?format=image&version=large`;
+}
+
+/** Scryfall prints for a Card (oracle) id — picker metadata only; images still use CDN. */
+export async function searchPrints(
+  oracleId: string,
+): Promise<Array<{ id: string; set: string; set_name: string; collector_number: string }>> {
+  const q = encodeURIComponent(`oracleid:${oracleId}`);
+  const out: Array<{ id: string; set: string; set_name: string; collector_number: string }> = [];
+  let url: string | null = `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
+  while (url) {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json", "User-Agent": "mtgfr/0.1" },
+    });
+    if (!res.ok) break;
+    const body = (await res.json()) as {
+      data?: Array<{ id: string; set: string; set_name: string; collector_number: string }>;
+      next_page?: string | null;
+      has_more?: boolean;
+    };
+    for (const c of body.data ?? []) {
+      out.push({
+        id: c.id,
+        set: c.set,
+        set_name: c.set_name,
+        collector_number: c.collector_number,
+      });
+    }
+    url = body.has_more && body.next_page ? body.next_page : null;
+  }
+  return out;
 }

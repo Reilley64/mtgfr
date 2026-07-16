@@ -2,6 +2,8 @@
 # A well-known self-sacrifice creature (not in the Witherbloom Pestilence list) standing in to
 # exercise a "{cost}, Sacrifice this: <effect>" cost with an already-supported effect (damage).
 name = "Mogg Fanatic"
+id = "7efd5d62-6da2-428a-98e3-5b842f668656"
+default_print = "d479ca28-bdc2-4b87-abf7-5aeb229a3f1e"
 otags = ["activated-ability", "bombard-self", "burn-any", "martyr", "spot-removal"]
 oracle = "Sacrifice this creature: It deals 1 damage to any target."
 set = "ema"

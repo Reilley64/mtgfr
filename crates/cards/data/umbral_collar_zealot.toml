@@ -1,4 +1,6 @@
 name = "Umbral Collar Zealot"
+id = "12db6263-75c2-442f-a1a5-7af7915f8f9f"
+default_print = "98648b8a-2cf0-4c10-ab13-c88b2e03fc15"
 otags = ["activated-ability", "free-sacrifice-outlet", "sacrifice-outlet-artifact", "sacrifice-outlet-creature", "surveil", "synergy-artifact"]
 oracle = "Sacrifice another creature or artifact: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
 set = "soc"

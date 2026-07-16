@@ -6,6 +6,8 @@
 # rather than a real choice — revealing is strictly better with no downside, so there's nothing to
 # decide.
 name = "Frostboil Snarl"
+id = "7137aae6-260d-41de-8b4e-42a8cf752697"
+default_print = "ae705a26-5371-4236-904c-fe3e58b4721d"
 otags = ["activated-ability", "cycle-stx-reveal-land", "synergy-island", "synergy-mountain"]
 oracle = "As this land enters, you may reveal an Island or Mountain card from your hand. If you don't, this land enters tapped.\n{T}: Add {U} or {R}."
 set = "msc"

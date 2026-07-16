@@ -5,6 +5,8 @@
 #    creature gets +1/+1 until end of turn and you gain 1 life."
 # Exercises an intervening-if condition ("if you control three or more creatures") on a real card.
 name = "Leonin Vanguard"
+id = "de1e1352-adb2-4ac1-bb2a-ee654d5c727d"
+default_print = "724738ad-6a9b-4ef6-b637-558645cd8151"
 otags = ["creature-count-matters", "intervening-if-clause", "repeatable-lifegain"]
 oracle = "At the beginning of combat on your turn, if you control three or more creatures, this creature gets +1/+1 until end of turn and you gain 1 life."
 set = "m19"

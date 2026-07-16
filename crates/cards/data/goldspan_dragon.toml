@@ -9,6 +9,8 @@
 # independently-any credits (mana = ["any", "any"]) — a harmless over-permissiveness; no pool
 # card can tell the difference (nothing forces one Treasure's output to match colors).
 name = "Goldspan Dragon"
+id = "716b3ea2-45b7-4a8f-af72-de7f4e510eff"
+default_print = "848c1951-90fa-4f01-9aed-76f1afcd9995"
 otags = ["attacking-matters-self", "evasion", "firebend-like", "gives-mana-ability", "hate-target", "heroic", "refund", "repeatable-treasures", "synergy-treasure"]
 oracle = "Flying, haste\nWhenever this creature attacks or becomes the target of a spell, create a Treasure token.\nTreasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\""
 set = "soc"

@@ -326,7 +326,7 @@ impl Game {
         let temp_toughness: i32 = boosts.iter().map(|&(_, _, t, _, _)| t).sum();
         let temp_keywords: &'static [Keyword] = match boosts.as_slice() {
             [] => &[],
-            [(_, _, _, keywords, _)] => *keywords,
+            [(_, _, _, keywords, _)] => keywords,
             many => {
                 let mut union: Vec<Keyword> = Vec::new();
                 for &(_, _, _, keywords, _) in many {

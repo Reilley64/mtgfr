@@ -13,7 +13,7 @@ import type { ActionView, ObjectView } from "~/api/generated";
 import { ZONE } from "~/layout";
 import { byObject, bySection, handExtras } from "~/lib/actions";
 import { cn } from "~/lib/cn";
-import { imageUrlByName } from "~/lib/scryfall";
+import { imageUrlByPrint } from "~/lib/scryfall";
 import { game } from "~/store";
 
 export interface ActionDrop {
@@ -51,6 +51,10 @@ export default function Hand(props: {
     game.state ? game.state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === props.viewer) : [],
   );
   const handActionByObject = createMemo(() => byObject(grouped().hand));
+  // Printing UUID for a battlefield/hand/command object id (ADR 0031); "" renders a broken image —
+  // there is no name-based art source anymore, so an id without a print just shows no art.
+  const printForObject = (id: number | undefined | null): string =>
+    (id != null && game.state?.objects.find((o) => o.id === id)?.print) || "";
   // Hand cards plus overshadowed alternative-action tiles (cycle / suspend / discard-ability) share
   // one fan so extras sit in the same arc.
   const handSlots = createMemo(() => {
@@ -72,10 +76,16 @@ export default function Hand(props: {
   // The engine folds it into the cast, but until now the bar never said what you were about to pay.
   const commanderTax = createMemo(() => game.state?.players.find((p) => p.player === props.viewer)?.commander_tax ?? 0);
 
-  // The drag rides an action + the image name to draw its ghost. Driven from window listeners (not
-  // per-card handlers) so a stream delta arriving mid-drag — which re-renders the `<For>` and would
-  // destroy the grabbed element, losing its pointer capture — can't strand the drag.
-  const [drag, setDrag] = createSignal<{ action: ActionView; name: string; x: number; y: number } | null>(null);
+  // The drag rides an action + the image name/print to draw its ghost. Driven from window listeners
+  // (not per-card handlers) so a stream delta arriving mid-drag — which re-renders the `<For>` and
+  // would destroy the grabbed element, losing its pointer capture — can't strand the drag.
+  const [drag, setDrag] = createSignal<{
+    action: ActionView;
+    name: string;
+    print: string;
+    x: number;
+    y: number;
+  } | null>(null);
   // Track which bar card is under the cursor so Board can Alt-pin inspect it.
   const [hover, setHover] = createSignal<string | null>(null);
   const setHoverName = (name: string | null) => {
@@ -105,10 +115,10 @@ export default function Hand(props: {
     setHoverAction(null);
   });
 
-  const onDown = (action: ActionView, name: string, e: PointerEvent) => {
+  const onDown = (action: ActionView, name: string, print: string, e: PointerEvent) => {
     e.preventDefault();
     teardown(); // clear any listeners from a drag whose pointerup was missed
-    setDrag({ action, name, x: e.clientX, y: e.clientY });
+    setDrag({ action, name, print, x: e.clientX, y: e.clientY });
     setHoverAction(action);
     move = (ev) => setDrag((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY } : d));
     up = (ev) => {
@@ -142,6 +152,7 @@ export default function Hand(props: {
     cn("opacity-100", p.dimmed && "opacity-55", p.action && drag()?.action.id === p.action.id && "opacity-25");
   const BarCard = (p: {
     name: string;
+    print: string;
     action: ActionView | null;
     dimmed?: boolean;
     caption?: string;
@@ -167,10 +178,10 @@ export default function Hand(props: {
       class="pointer-events-auto relative origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)]"
     >
       <img
-        src={imageUrlByName(p.name, "normal")}
+        src={imageUrlByPrint(p.print)}
         alt={p.name}
         draggable={false}
-        onPointerDown={(e) => p.action && onDown(p.action, p.name, e)}
+        onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, e)}
         onPointerMove={() => {
           setHoverName(p.name);
           setHoverAction(p.action);
@@ -210,6 +221,7 @@ export default function Hand(props: {
                 return (
                   <BarCard
                     name={slot.action.label.replace(/^[^:]+:\s*/, "")}
+                    print={printForObject(slot.action.object)}
                     action={slot.action}
                     caption={actionCaption(slot.action.kind)}
                     fan={fanTransform(i(), count())}
@@ -222,6 +234,7 @@ export default function Hand(props: {
               return (
                 <BarCard
                   name={slot.card.name}
+                  print={slot.card.print ?? ""}
                   action={action()}
                   dimmed={dimmed()}
                   caption={caption()}
@@ -239,6 +252,7 @@ export default function Hand(props: {
                 return (
                   <BarCard
                     name={card.name}
+                    print={card.print ?? ""}
                     action={action()}
                     dimmed={!action()}
                     caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
@@ -255,7 +269,7 @@ export default function Hand(props: {
       <Show when={drag()}>
         {(d) => (
           <img
-            src={imageUrlByName(d().name, "normal")}
+            src={imageUrlByPrint(d().print)}
             alt={d().name}
             draggable={false}
             style={{ "--x": `${d().x}px`, "--y": `${d().y}px` }}
@@ -285,6 +299,7 @@ export default function Hand(props: {
             {(a, i) => (
               <BarCard
                 name={p.name(a)}
+                print={printForObject(a.object)}
                 action={a}
                 caption={p.caption ? a.label : undefined}
                 fan={fanTransform(i(), p.actions.length)}

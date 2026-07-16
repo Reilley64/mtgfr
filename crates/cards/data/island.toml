@@ -1,5 +1,7 @@
 # ({T}: Add {U}.)
 name = "Island"
+id = "b2c6aa39-2d2a-459c-a555-fb48ba993373"
+default_print = "5a74175b-2418-4226-8435-1490532e644f"
 otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "meme", "single-english-word-name", "unique-type-line"]
 oracle = "({T}: Add {U}.)"
 set = "msh"

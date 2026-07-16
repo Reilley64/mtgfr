@@ -3887,6 +3887,8 @@ mod tests {
             P0,
             CardDef {
                 name: "Source",
+                id: "",
+                default_print: "",
                 cost: Cost::FREE,
                 kind: CardKind::Creature {
                     power: 1,

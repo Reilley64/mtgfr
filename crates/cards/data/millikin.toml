@@ -1,5 +1,7 @@
 # {T}, Mill a card: Add {C}. (To mill a card, put the top card of your library into your graveyard.)
 name = "Millikin"
+id = "fa4dffda-6f04-4d0b-829d-28a1a5794dee"
+default_print = "c2073453-4108-4039-a8c2-0f94dd7bf237"
 otags = ["activated-ability", "mana-dork", "mill-self", "portmanteau", "punny-name", "type-addition-from-none"]
 oracle = "{T}, Mill a card: Add {C}. (To mill a card, put the top card of your library into your graveyard.)"
 set = "soc"

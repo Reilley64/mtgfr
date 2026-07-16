@@ -2,6 +2,8 @@
 # At the beginning of each end step, if a card left your graveyard this turn, create a Treasure token. (It's an artifact
 # with "{T}, Sacrifice this token: Add one mana of any color.")
 name = "Relic Retriever"
+id = "689c41e9-800a-4998-bb04-74bf90141035"
+default_print = "a016463d-a0aa-44a5-97ca-17ff70c4eb95"
 otags = ["alliteration", "intervening-if-clause", "leaving-graveyard-matters", "ramp", "repeatable-treasures"]
 oracle = "First strike\nAt the beginning of each end step, if a card left your graveyard this turn, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
 set = "soc"

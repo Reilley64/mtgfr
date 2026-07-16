@@ -2,6 +2,8 @@
 # This land enters tapped.
 # Sacred Peaks (SOC): Land. "{T}: Add {R} or {W}. This land enters tapped."
 name = "Sacred Peaks"
+id = "fb69bc57-f05a-41c2-9b7b-9a9761ef0cd3"
+default_print = "ee2d6798-b19d-4628-bb57-05663ab4af68"
 otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {R} or {W}.)\nThis land enters tapped."
 set = "soc"

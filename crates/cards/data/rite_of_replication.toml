@@ -1,4 +1,6 @@
 name = "Rite of Replication"
+id = "fb60739e-1dc3-481d-a056-ad72e665c680"
+default_print = "5032d71d-d9f8-498c-97d1-271c2e9c1c47"
 otags = ["alliteration", "copy-creature", "cycle-zen-strong-kicker", "more-expensive-than-mv", "multiple-bodies", "self-replacement-effect", "single-target-instant-sorcery"]
 oracle = "Kicker {5} (You may pay an additional {5} as you cast this spell.)\nCreate a token that's a copy of target creature. If this spell was kicked, create five of those tokens instead."
 set = "soc"

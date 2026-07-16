@@ -1,6 +1,8 @@
 # Enchant creature
 # Enchanted creature gets +1/+1 and has protection from creatures.
 name = "Spirit Mantle"
+id = "81a51328-b995-4f3b-90bc-a20ae21dd254"
+default_print = "8ac5a048-e8aa-48e8-b51b-b4e9a5b63ea6"
 otags = ["french-vanilla-aura", "gives-protection", "gives-unblockable"]
 oracle = "Enchant creature\nEnchanted creature gets +1/+1 and has protection from creatures."
 set = "soc"

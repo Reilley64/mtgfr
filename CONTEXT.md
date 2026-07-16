@@ -8,7 +8,9 @@ The ubiquitous language for the game engine and protocol. Terms only — no impl
 - **Player** — a seat at a table, identified by a stable id, with a life total.
 
 ## Cards & objects
-- **Card** — a data-driven script (identity + rules behavior). The north star is to support any card faithfully (ADR 0014); the implemented pool grows from real cards, one at a time.
+- **Card** — a data-driven script (identity + rules behavior). Canonical **id** is Scryfall's oracle id; **name** is the printed name for display and search. The north star is to support any card faithfully (ADR 0014); the implemented pool grows from real cards, one at a time.
+- **Printing** — a specific Scryfall card object (UUID). An art preference only — which face art to show — not rules identity. Many Printings map to one Card.
+- **Default print** — each Card's baked Scryfall-canonical Printing UUID; used when a deck line or object has no other print chosen.
 - **Card kind** — what a card fundamentally is: creature, spell (instant/sorcery), or land.
 - **Permanent** — a card that exists on the battlefield (e.g. a creature or land).
 - **Marked damage** — damage recorded on a permanent this turn; compared against toughness by a state-based action. Removed during cleanup.
@@ -122,8 +124,8 @@ The ubiquitous language for the game engine and protocol. Terms only — no impl
 - **Replacement effect** — a rule that replaces one event with another before it happens (e.g. a commander that would leave may go to the command zone instead).
 
 ## Accounts & decks
-- **Deck** — a user-authored, persisted list: a name, a **commander**, and 99 cards as `(card, count)`. Owned by an account; a lobby seat plays one of the owner's decks (replacing the old fixed precon choice).
+- **Deck** — a user-authored, persisted list: a name, a **commander** (Card id), and 99 cards as `(id, count, print)` with **print** required on every line. Owned by an account; a lobby seat plays one of the owner's decks (replacing the old fixed precon choice).
 - **Legendary** — a card supertype; only a legendary creature may be a deck's commander.
 - **Commander legality** — the rules a deck must satisfy to be saved or played: exactly one legendary-creature commander, 99 other cards, singleton except basic lands, and every card's **color identity** within the commander's.
-- **Deck builder** — the screen for assembling a deck from the pool: browse the **card catalog**, pick a commander, add cards, save (the server validates legality and returns every problem at once).
+- **Deck builder** — the screen for assembling a deck from the pool: browse the **card catalog**, pick a commander, add cards, choose **Printings**, save (the server validates legality and returns every problem at once).
 - **Card catalog** — the pool exposed for browsing, carrying each card's engine-true stats, keywords, and a plain-English ability summary (not Scryfall oracle text, which wouldn't match a simplified card).

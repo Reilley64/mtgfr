@@ -1,6 +1,8 @@
 # Add {R} for each tapped land your opponents control.
 # Mana Geyser {3}{R}{R} — sorcery. "Add {R} for each tapped land your opponents control."
 name = "Mana Geyser"
+id = "a8dba58b-2956-492e-ae30-49db2ae68e53"
+default_print = "dfbda387-3c7d-4c80-97c3-60c9d4757244"
 otags = ["adds-multiple-mana", "hate-tapped", "ritual"]
 oracle = "Add {R} for each tapped land your opponents control."
 set = "soc"

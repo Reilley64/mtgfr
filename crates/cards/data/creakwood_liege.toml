@@ -3,6 +3,8 @@
 # At the beginning of your upkeep, you may create a 1/1 black and green Worm creature token.
 # Creakwood Liege {1}{B/G}{B/G}{B/G} 2/2 Horror (soc).
 name = "Creakwood Liege"
+id = "1e67b4eb-e5d2-4368-8284-4ba5c4c42455"
+default_print = "9a05c8f9-e810-498d-ab51-632661dd000d"
 otags = ["anthem", "cycle-mm2-r-two-color", "cycle-shm-liege", "power-boost-to-all", "repeatable-creature-tokens", "synergy-black", "synergy-green", "toughness-boost-to-all", "triggered-ability", "unique-mana-cost"]
 oracle = "Other black creatures you control get +1/+1.\nOther green creatures you control get +1/+1.\nAt the beginning of your upkeep, you may create a 1/1 black and green Worm creature token."
 set = "soc"

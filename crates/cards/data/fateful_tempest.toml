@@ -2,6 +2,8 @@
 # Fateful Tempest deals damage to each opponent equal to the total mana value of cards milled this way. Exile the top
 # card of your library for each present vote. Until the end of your next turn, you may play the exiled cards.
 name = "Fateful Tempest"
+id = "9d2f02f7-adcd-4d23-a051-ebca70f22ba5"
+default_print = "96ab4d23-14d7-429f-b62e-868c13997fb8"
 otags = ["burn-player", "group-slug", "long-term-impulsive-draw", "mana-value-matters", "mill-self", "named-choice", "voting"]
 oracle = "Council's dilemma — Starting with you, each player votes for past or present. You mill a card for each past vote, then Fateful Tempest deals damage to each opponent equal to the total mana value of cards milled this way. Exile the top card of your library for each present vote. Until the end of your next turn, you may play the exiled cards."
 set = "soc"

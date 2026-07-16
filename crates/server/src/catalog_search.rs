@@ -72,7 +72,7 @@ pub async fn project(db: &mut toasty::Db) -> toasty::Result<()> {
     if !is_postgres {
         toasty::sql::statement(format!(
             "CREATE TABLE IF NOT EXISTS {TABLE} \
-             (name TEXT PRIMARY KEY, search_blob TEXT NOT NULL, card_json TEXT NOT NULL)"
+             (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, search_blob TEXT NOT NULL, card_json TEXT NOT NULL)"
         ))
         .exec(db)
         .await?;
@@ -81,8 +81,10 @@ pub async fn project(db: &mut toasty::Db) -> toasty::Result<()> {
     let p1 = placeholder(db, 1);
     let p2 = placeholder(db, 2);
     let p3 = placeholder(db, 3);
-    let insert =
-        format!("INSERT INTO {TABLE} (name, search_blob, card_json) VALUES ({p1}, {p2}, {p3})");
+    let p4 = placeholder(db, 4);
+    let insert = format!(
+        "INSERT INTO {TABLE} (id, name, search_blob, card_json) VALUES ({p1}, {p2}, {p3}, {p4})"
+    );
 
     let mut tx = db.transaction().await?;
     toasty::sql::statement(format!("DELETE FROM {TABLE}"))
@@ -92,6 +94,7 @@ pub async fn project(db: &mut toasty::Db) -> toasty::Result<()> {
         let card = catalog_card(def);
         let json = serde_json::to_string(&card).expect("a catalog card serializes");
         toasty::sql::statement(&insert)
+            .bind(card.id.clone())
             .bind(card.name.clone())
             .bind(search_blob(&card))
             .bind(json)
@@ -139,9 +142,29 @@ pub async fn search(
     rows_to_cards(query.exec(db).await?)
 }
 
-/// The cards with exactly these names (for hydrating a decklist/commander without fetching the
-/// whole pool). Order is unspecified; the caller keys by name. Empty input → empty result.
-pub async fn lookup(db: &mut toasty::Db, names: &[String]) -> toasty::Result<Vec<CatalogCard>> {
+/// The cards with exactly these Card ids (for hydrating a decklist/commander). Order is
+/// unspecified; the caller keys by id. Empty input → empty result.
+pub async fn lookup(db: &mut toasty::Db, ids: &[String]) -> toasty::Result<Vec<CatalogCard>> {
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let placeholders: Vec<String> = (1..=ids.len()).map(|i| placeholder(db, i)).collect();
+    let sql = format!(
+        "SELECT card_json FROM {TABLE} WHERE id IN ({})",
+        placeholders.join(", ")
+    );
+    let mut query = toasty::sql::query(sql);
+    for id in ids {
+        query = query.bind(id.clone());
+    }
+    rows_to_cards(query.exec(db).await?)
+}
+
+/// Exact printed-name lookup (display / legacy helpers). Prefer [`lookup`] by id for decks.
+pub async fn lookup_by_name(
+    db: &mut toasty::Db,
+    names: &[String],
+) -> toasty::Result<Vec<CatalogCard>> {
     if names.is_empty() {
         return Ok(vec![]);
     }
@@ -247,9 +270,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn lookup_hydrates_exact_names() {
+    async fn lookup_hydrates_exact_ids() {
         let mut db = projected().await;
-        let got = lookup(&mut db, &["Ambush Viper".to_string(), "Forest".to_string()])
+        let viper = cards::get_by_name("Ambush Viper").unwrap();
+        let forest = cards::get_by_name("Forest").unwrap();
+        let got = lookup(&mut db, &[viper.id.to_string(), forest.id.to_string()])
             .await
             .expect("lookup");
         let mut got = names(&got);
@@ -257,7 +282,7 @@ mod tests {
         assert_eq!(got, ["Ambush Viper", "Forest"]);
         assert!(
             lookup(&mut db, &[]).await.expect("lookup").is_empty(),
-            "no names → no rows"
+            "no ids → no rows"
         );
     }
 }

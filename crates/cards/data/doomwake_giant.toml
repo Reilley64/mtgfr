@@ -4,6 +4,8 @@
 #   "Constellation — Whenever this creature or another enchantment you control enters,
 #    creatures your opponents control get -1/-1 until end of turn."
 name = "Doomwake Giant"
+id = "ba069664-9f92-47c7-b556-9e5143a22579"
+default_print = "0be3f848-ba01-4890-a3a1-ed0dfb564632"
 otags = ["enchantmentfall", "removal-toughness", "repeatable-removal", "sweeper-one-sided", "triggered-ability"]
 oracle = "Constellation — Whenever this creature or another enchantment you control enters, creatures your opponents control get -1/-1 until end of turn."
 set = "soc"

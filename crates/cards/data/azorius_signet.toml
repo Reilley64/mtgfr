@@ -1,5 +1,7 @@
 # {1}, {T}: Add {W}{U}.
 name = "Azorius Signet"
+id = "e018773f-95b3-49a3-9674-6f04ddef2092"
+default_print = "41c50b99-4a29-4bef-8d41-c548c8a61dac"
 otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
 oracle = "{1}, {T}: Add {W}{U}."
 set = "tdc"
