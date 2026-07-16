@@ -25,8 +25,8 @@ resource "kubernetes_deployment_v1" "edh_web" {
 
       spec {
         container {
-          name              = "edh-web"
-          image             = var.web_image
+          name  = "edh-web"
+          image = var.web_image
           # Tags like :1.2.2 are rebuilt in place; IfNotPresent keeps the old digest forever.
           image_pull_policy = "Always"
 

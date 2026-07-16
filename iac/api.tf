@@ -48,9 +48,9 @@ resource "kubernetes_deployment_v1" "edh_api" {
     name      = each.key
     namespace = local.namespace
     labels = merge(local.common_labels, {
-      app                    = each.key
-      "mtgfr.io/component"   = "api"
-      "mtgfr.io/api-role"    = each.key == var.api_active_instance_id ? "active" : "drain"
+      app                  = each.key
+      "mtgfr.io/component" = "api"
+      "mtgfr.io/api-role"  = each.key == var.api_active_instance_id ? "active" : "drain"
     })
   }
 
