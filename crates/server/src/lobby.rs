@@ -28,13 +28,14 @@ use schema::{DeckCardEntry, SeedRequest, SeedResponse};
     request_body = SeedRequest,
     responses(
         (status = 200, description = "Seeded game location", body = SeedResponse),
-        (status = 400, description = "Duplicate table id, bad seat count, or unknown deck"),
+        (status = 400, description = "Duplicate table id, bad seat count, unknown deck, or host not seated"),
+        (status = 403, description = "Caller is not the host"),
         (status = 503, description = "Instance draining — retry against another instance"),
     ),
 )]
 pub async fn seed_table(
     State(state): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Json(req): Json<SeedRequest>,
 ) -> Result<Json<SeedResponse>, StatusCode> {
     if state.draining.load(Ordering::Relaxed) {
@@ -43,15 +44,22 @@ pub async fn seed_table(
     if !(2..=4).contains(&req.seats.len()) {
         return Err(StatusCode::BAD_REQUEST);
     }
+    // Caller must be the host and appear in the seat list (BFF is trusted but not blindly).
+    if user.0.id != req.host_user_id {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    if !req.seats.iter().any(|s| s.user_id == user.0.id) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
     if lock(&state.reg).tables.contains_key(&req.table_id) {
         return Err(StatusCode::BAD_REQUEST);
     }
 
     // Resolve every seat's deck before touching the registry — no DB await is held across the
-    // registry lock.
+    // registry lock. Non-precon decks must belong to that seat's user.
     let mut resolved: Vec<(PlayerId, SeatDeck)> = Vec::with_capacity(req.seats.len());
     for (i, seat) in req.seats.iter().enumerate() {
-        let deck = resolve_deck(&state, seat.deck_id)
+        let deck = resolve_deck(&state, seat.deck_id, seat.user_id)
             .await
             .map_err(|_| StatusCode::BAD_REQUEST)?;
         resolved.push((PlayerId(i as u8), deck));
@@ -87,7 +95,12 @@ pub async fn seed_table(
 }
 
 /// Load a stored deck and resolve it to its commander + cards, re-checking legality.
-async fn resolve_deck(state: &AppState, deck_id: i64) -> Result<SeatDeck, &'static str> {
+/// Non-precon decks must be owned by `seat_user_id`.
+async fn resolve_deck(
+    state: &AppState,
+    deck_id: i64,
+    seat_user_id: i64,
+) -> Result<SeatDeck, &'static str> {
     let (commander_id, commander_print, entries): (String, String, Vec<DeckCardEntry>) =
         if let Some(precon) = precons::get(deck_id) {
             (
@@ -101,6 +114,9 @@ async fn resolve_deck(state: &AppState, deck_id: i64) -> Result<SeatDeck, &'stat
                 .get(&mut db)
                 .await
                 .map_err(|_| "UnknownDeck")?;
+            if deck.user_id != seat_user_id {
+                return Err("NotOwner");
+            }
             let entries = serde_json::from_str(&deck.cards).map_err(|_| "CorruptDeck")?;
             (deck.commander, deck.commander_print, entries)
         };
@@ -265,5 +281,73 @@ mod tests {
         .await
         .expect_err("a single seat can't start a game");
         assert_eq!(err, StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn seed_table_rejects_a_non_host_caller() {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let host_seat = seed_seat(&state, "host@x.c", "host").await;
+        let guest_seat = seed_seat(&state, "guest@x.c", "guest").await;
+        let host_user_id = host_seat.user_id;
+
+        let err = seed_table(
+            State(state.clone()),
+            crate::test_support::as_user(&state, "guest@x.c").await,
+            Json(SeedRequest {
+                table_id: "tbl-spoof".to_string(),
+                host_user_id,
+                seats: vec![host_seat, guest_seat],
+            }),
+        )
+        .await
+        .expect_err("only the host may seed");
+        assert_eq!(err, StatusCode::FORBIDDEN);
+        assert!(!lock(&state.reg).tables.contains_key("tbl-spoof"));
+    }
+
+    #[tokio::test]
+    async fn seed_table_rejects_when_host_is_not_in_seats() {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let host_seat = seed_seat(&state, "host@x.c", "host").await;
+        let guest_a = seed_seat(&state, "a@x.c", "a").await;
+        let guest_b = seed_seat(&state, "b@x.c", "b").await;
+        let host_user_id = host_seat.user_id;
+
+        let err = seed_table(
+            State(state.clone()),
+            crate::test_support::as_user(&state, "host@x.c").await,
+            Json(SeedRequest {
+                table_id: "tbl-absent-host".to_string(),
+                host_user_id,
+                seats: vec![guest_a, guest_b],
+            }),
+        )
+        .await
+        .expect_err("host must be seated");
+        assert_eq!(err, StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn seed_table_rejects_a_deck_owned_by_another_user() {
+        let state = AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"));
+        let mut host_seat = seed_seat(&state, "host@x.c", "host").await;
+        let guest_seat = seed_seat(&state, "guest@x.c", "guest").await;
+        let host_user_id = host_seat.user_id;
+        // Host tries to play the guest's private deck.
+        host_seat.deck_id = guest_seat.deck_id;
+
+        let err = seed_table(
+            State(state.clone()),
+            crate::test_support::as_user(&state, "host@x.c").await,
+            Json(SeedRequest {
+                table_id: "tbl-stolen-deck".to_string(),
+                host_user_id,
+                seats: vec![host_seat, guest_seat],
+            }),
+        )
+        .await
+        .expect_err("deck must belong to the seated user");
+        assert_eq!(err, StatusCode::BAD_REQUEST);
+        assert!(!lock(&state.reg).tables.contains_key("tbl-stolen-deck"));
     }
 }

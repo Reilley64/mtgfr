@@ -170,7 +170,8 @@ Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-ca
 | `edh-web-migrate` Job | Drizzle migrate on `mtgfr_web` before web roll |
 | `postgres-create-web-db` Job | Idempotent `CREATE DATABASE mtgfr_web` |
 | StatefulSet `postgres` | Official `postgres` image; `mtgfr` + `mtgfr_web`; backups = k3s/PVC snapshots |
-| NetworkPolicy | tunnel→web; web→api; api+migrate→postgres |
+| NetworkPolicy | tunnel→web; web→api; api+migrate+web(+web-migrate)→postgres |
+
 | Secrets | `DATABASE_URL`, tunnel token, admin token, etc. |
 | `cloudflared` Deployment + Secret | Tunnel connector |
 

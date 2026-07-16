@@ -16,6 +16,8 @@ export function normalizePublicApiPath(path: string): string | null {
   if (segments.some((s) => s === "" || s === "." || s === "..")) return null;
   if (segments[0] === "admin") return null;
   if (segments[0] === "health" && segments[1] === "drain") return null;
+  // Seed is BFF→API only (server-side); browsers must not hit it via the public proxy.
+  if (segments[0] === "tables" && segments[1] === "seed") return null;
   return segments.join("/");
 }
 

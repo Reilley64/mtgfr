@@ -11,7 +11,8 @@ resource "kubernetes_secret_v1" "mtgfr_db" {
   }
 
   data = {
-    DATABASE_URL = local.database_url
+    DATABASE_URL     = local.database_url
+    WEB_DATABASE_URL = local.web_database_url
   }
 
   type = "Opaque"

@@ -7,13 +7,12 @@ import { createWebDb } from "~/db/client";
 import { normalizePublicApiPath, tableIdFromGamePath, upstreamFromPodDns } from "~/lib/apiUpstream";
 import { apiUpstream, fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "~/lib/apiUpstreamAuth";
 import {
+  commitStart,
   createLobby,
   deleteTableRoute,
   joinLobby,
   loadLobby,
   lookupTableRoute,
-  markStarted,
-  putTableRoute,
   setReady,
   startError,
   sweepWebDb,
@@ -35,12 +34,16 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
   const method = event.request.method;
   const cookie = getRequestHeader(event.nativeEvent, "cookie") ?? null;
 
+  if (method === "GET" && path === "meta/health/v1") {
+    return json({ ok: true });
+  }
+
   if (method === "GET" && path === "meta/version/v1") {
     const version = (await fetchApiVersion()) ?? "unknown";
     return json({ version });
   }
 
-  // Explicit route teardown (game over / leave) — seated player or host may clear routing.
+  // Explicit route teardown — seated player or host may clear routing.
   const routeDelete = method === "DELETE" && /^tables\/[^/]+\/route\/v1$/.test(path);
   const isCreate = method === "POST" && path === "tables/v1";
   const isJoin = method === "POST" && path === "tables/join/v1";
@@ -78,16 +81,30 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
   if (lobbyGet) {
     const tableId = path.split("/")[1]!;
     const snap = await loadLobby(db, tableId);
-    if (!snap) return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, "UnknownTable"));
+    if (!snap) {
+      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, "UnknownTable"), 404);
+    }
     return json(toLobbyView(snap, me.id));
   }
 
-  const body = (await event.request.json()) as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = (await event.request.json()) as Record<string, unknown>;
+  } catch {
+    return json({ error: "BadJson" }, 400);
+  }
 
   if (isJoin) {
     const tableId = String(body.table_id ?? "");
     const deckId = Number(body.deck_id);
-    const deckName = (await fetchDeckName(cookie, deckId)) ?? "Deck";
+    const deckName = await fetchDeckName(cookie, deckId);
+    if (!deckName) {
+      const snap = await loadLobby(db, tableId);
+      if (!snap) {
+        return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, "UnknownTable"), 404);
+      }
+      return json(toLobbyView(snap, me.id, "UnknownDeck"));
+    }
     const result = await joinLobby(db, {
       tableId,
       userId: me.id,
@@ -96,7 +113,7 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
       deckName,
     });
     if (!result.snap) {
-      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, result.error));
+      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, result.error), 404);
     }
     return json(toLobbyView(result.snap, me.id, result.error));
   }
@@ -106,7 +123,7 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
     const ready = Boolean(body.ready);
     const result = await setReady(db, tableId, me.id, ready);
     if (!result.snap) {
-      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, result.error));
+      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, result.error), 404);
     }
     return json(toLobbyView(result.snap, me.id, result.error));
   }
@@ -115,7 +132,7 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
     const tableId = String(body.table_id ?? "");
     const snap = await loadLobby(db, tableId);
     if (!snap) {
-      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, "UnknownTable"));
+      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, "UnknownTable"), 404);
     }
     const err = startError(snap, me.id);
     if (err) return json(toLobbyView(snap, me.id, err));
@@ -135,8 +152,11 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
     if (!seeded.ok) {
       return json(toLobbyView(snap, me.id, seeded.status === 503 ? "Draining" : "SeedFailed"));
     }
-    await putTableRoute(db, tableId, seeded.data.pod_dns);
-    await markStarted(db, tableId);
+    try {
+      await commitStart(db, tableId, seeded.data.pod_dns);
+    } catch {
+      return json(toLobbyView(snap, me.id, "SeedFailed"));
+    }
     const started = (await loadLobby(db, tableId))!;
     return json(toLobbyView(started, me.id));
   }

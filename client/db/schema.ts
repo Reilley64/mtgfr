@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 /** Pre-game lobby row — SolidStart / mtgfr_web only (not Axum Toasty). */
 export const lobbies = pgTable("lobbies", {
@@ -22,7 +22,10 @@ export const lobbySeats = pgTable(
     deckName: text("deck_name").notNull(),
     ready: boolean("ready").notNull().default(false),
   },
-  (t) => [primaryKey({ columns: [t.tableId, t.seat] })],
+  (t) => [
+    primaryKey({ columns: [t.tableId, t.seat] }),
+    uniqueIndex("lobby_seats_table_user_uidx").on(t.tableId, t.userId),
+  ],
 );
 
 /** In-game BFF routing: table → API pod DNS (TTL + explicit delete). */

@@ -3,14 +3,17 @@ import type { WebDb } from "~/db/client";
 import { lobbies, lobbySeats, tableRoutes } from "../../db/schema";
 
 const IDLE_LOBBY_MS = 30 * 60 * 1000;
+/** Matches default api_termination_grace_seconds; refreshed on in-game lookup. */
 const ROUTE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 export function randomTableCode(): string {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
   let out = "";
-  for (let i = 0; i < 6; i++) {
-    out += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]!;
+  for (const b of bytes) {
+    out += CODE_ALPHABET[b % CODE_ALPHABET.length]!;
   }
   return out;
 }
@@ -98,15 +101,23 @@ export async function joinLobby(
   if (snap.seats.length >= 4) return { error: "TableFull", snap };
 
   const seat = snap.seats.length;
-  await db.insert(lobbySeats).values({
-    tableId: opts.tableId,
-    seat,
-    userId: opts.userId,
-    username: opts.username,
-    deckId: opts.deckId,
-    deckName: opts.deckName,
-    ready: false,
-  });
+  try {
+    await db.insert(lobbySeats).values({
+      tableId: opts.tableId,
+      seat,
+      userId: opts.userId,
+      username: opts.username,
+      deckId: opts.deckId,
+      deckName: opts.deckName,
+      ready: false,
+    });
+  } catch {
+    // Unique (table_id, user_id) or (table_id, seat) race under pg-proxy (no transactions).
+    const again = await loadLobby(db, opts.tableId);
+    if (!again) return { error: "UnknownTable" };
+    if (again.seats.some((s) => s.userId === opts.userId)) return { snap: again };
+    return { error: "TableFull", snap: again };
+  }
   await touchLobby(db, opts.tableId);
   return { snap: (await loadLobby(db, opts.tableId))! };
 }
@@ -132,6 +143,7 @@ export async function setReady(
 export function startError(snap: LobbySnapshot, userId: number): string | null {
   if (snap.hostUserId !== userId) return "NotHost";
   if (snap.startedAt) return "AlreadyStarted";
+  if (!snap.seats.some((s) => s.userId === userId)) return "NotSeated";
   if (snap.seats.length < 2) return "NeedTwoPlayers";
   if (!snap.seats.every((s) => s.ready)) return "NotAllReady";
   return null;
@@ -152,6 +164,20 @@ export async function putTableRoute(db: WebDb, tableId: string, podDns: string):
     });
 }
 
+/**
+ * Write route then mark started. pg-proxy has no transactions — if markStarted fails,
+ * delete the route so Start can be retried (seed may still have created an orphan game).
+ */
+export async function commitStart(db: WebDb, tableId: string, podDns: string): Promise<void> {
+  await putTableRoute(db, tableId, podDns);
+  try {
+    await markStarted(db, tableId);
+  } catch (err) {
+    await deleteTableRoute(db, tableId);
+    throw err;
+  }
+}
+
 export async function lookupTableRoute(db: WebDb, tableId: string): Promise<string | null> {
   const [row] = await db.select().from(tableRoutes).where(eq(tableRoutes.tableId, tableId)).limit(1);
   if (!row) return null;
@@ -159,6 +185,9 @@ export async function lookupTableRoute(db: WebDb, tableId: string): Promise<stri
     await db.delete(tableRoutes).where(eq(tableRoutes.tableId, tableId));
     return null;
   }
+  // Refresh TTL while the table is still being dialed so long games outlive the initial window.
+  const expiresAt = new Date(Date.now() + ROUTE_TTL_MS);
+  await db.update(tableRoutes).set({ expiresAt }).where(eq(tableRoutes.tableId, tableId));
   return row.podDns;
 }
 

@@ -60,7 +60,15 @@ describe("startError", () => {
     expect(startError(snap, 1)).toBe("NotAllReady");
   });
 
-  it("allows starting once the host has two-plus ready seats", () => {
+  it("blocks starting until the host has claimed a seat", () => {
+    const snap = snapshot({
+      hostUserId: 1,
+      seats: [seat({ seat: 0, userId: 2, ready: true }), seat({ seat: 1, userId: 3, ready: true })],
+    });
+    expect(startError(snap, 1)).toBe("NotSeated");
+  });
+
+  it("allows starting once the host has two-plus ready seats including themselves", () => {
     const snap = snapshot({ seats: [seat({ ready: true }), seat({ seat: 1, userId: 2, ready: true })] });
     expect(startError(snap, 1)).toBeNull();
   });

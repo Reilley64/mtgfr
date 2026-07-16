@@ -126,13 +126,19 @@ resource "kubernetes_job_v1" "edh_web_migrate" {
             });
             CFG
             bun install --no-save
+            # Network fetch at apply time (oven/bun image); pin versions above for reproducibility.
             bunx drizzle-kit migrate
           EOT
           ]
 
           env {
-            name  = "WEB_DATABASE_URL"
-            value = local.web_database_url
+            name = "WEB_DATABASE_URL"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.mtgfr_db.metadata[0].name
+                key  = "WEB_DATABASE_URL"
+              }
+            }
           }
 
           volume_mount {
@@ -160,5 +166,6 @@ resource "kubernetes_job_v1" "edh_web_migrate" {
   depends_on = [
     kubernetes_job_v1.postgres_create_web_db,
     kubernetes_config_map_v1.edh_web_migrations,
+    kubernetes_secret_v1.mtgfr_db,
   ]
 }

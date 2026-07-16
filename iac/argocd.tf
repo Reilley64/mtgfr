@@ -1,6 +1,7 @@
 # Argo CD install. Workloads remain Terraform-managed in api.tf / web.tf so
 # `terraform apply` alone rolls images (SIGTERM drain). When `argocd_repo_url` is set,
 # an Application tracks iac/charts/edh for the same values (gitops mirror / future cutover).
+# Server TLS stays on (default); reach the UI via kubectl port-forward, not a public Service.
 
 resource "kubernetes_namespace_v1" "argocd" {
   metadata {
@@ -15,11 +16,6 @@ resource "helm_release" "argocd" {
   chart      = "argo-cd"
   version    = "7.8.28"
   namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
-
-  set {
-    name  = "configs.params.server\\.insecure"
-    value = "true"
-  }
 
   depends_on = [kubernetes_namespace_v1.argocd]
 }

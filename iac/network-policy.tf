@@ -66,8 +66,8 @@ resource "kubernetes_network_policy_v1" "edh_web_ingress" {
   }
 }
 
-# postgres.tf labels the primary pod `app=postgres`. API pods (`mtgfr.io/component=api`) and
-# edh-migrate may reach it. Egress from those pods is unrestricted.
+# postgres.tf labels the primary pod `app=postgres`. API, Toasty migrate, BFF, and web DB
+# jobs may reach it (mtgfr + mtgfr_web). Egress from those pods is unrestricted.
 resource "kubernetes_network_policy_v1" "postgres_ingress" {
   metadata {
     name      = "postgres-ingress"
@@ -100,6 +100,45 @@ resource "kubernetes_network_policy_v1" "postgres_ingress" {
       from {
         pod_selector {
           match_labels = { app = "edh-migrate" }
+        }
+      }
+
+      ports {
+        port     = "5432"
+        protocol = "TCP"
+      }
+    }
+
+    ingress {
+      from {
+        pod_selector {
+          match_labels = { app = "edh-web" }
+        }
+      }
+
+      ports {
+        port     = "5432"
+        protocol = "TCP"
+      }
+    }
+
+    ingress {
+      from {
+        pod_selector {
+          match_labels = { app = "edh-web-migrate" }
+        }
+      }
+
+      ports {
+        port     = "5432"
+        protocol = "TCP"
+      }
+    }
+
+    ingress {
+      from {
+        pod_selector {
+          match_labels = { app = "postgres-create-web-db" }
         }
       }
 

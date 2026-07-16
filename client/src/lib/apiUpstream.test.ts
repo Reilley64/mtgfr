@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { normalizePublicApiPath, tableIdFromGamePath, upstreamFromPodDns } from "~/lib/apiUpstream";
 
 describe("normalizePublicApiPath", () => {
-  it("rejects traversal, encoding tricks, and admin/drain", () => {
+  it("rejects traversal, encoding tricks, admin/drain, and public seed", () => {
     expect(normalizePublicApiPath("%2e%2e/admin/drain")).toBeNull();
     expect(normalizePublicApiPath("admin%2Fdrain")).toBeNull();
     expect(normalizePublicApiPath("x/../admin/drain")).toBeNull();
@@ -10,6 +10,7 @@ describe("normalizePublicApiPath", () => {
     expect(normalizePublicApiPath("admin")).toBeNull();
     expect(normalizePublicApiPath("health/drain")).toBeNull();
     expect(normalizePublicApiPath("health/drain/")).toBeNull();
+    expect(normalizePublicApiPath("tables/seed/v1")).toBeNull();
     expect(normalizePublicApiPath("/tables/join/v1")).toBe("tables/join/v1");
     expect(normalizePublicApiPath("tables/x/stream/v1")).toBe("tables/x/stream/v1");
   });

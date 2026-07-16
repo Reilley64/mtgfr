@@ -42,13 +42,36 @@ resource "kubernetes_deployment_v1" "edh_web" {
           }
 
           env {
-            name  = "WEB_DATABASE_URL"
-            value = local.web_database_url
+            name = "WEB_DATABASE_URL"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.mtgfr_db.metadata[0].name
+                key  = "WEB_DATABASE_URL"
+              }
+            }
           }
 
           env {
             name  = "API_UPSTREAM"
             value = "http://edh-api.${local.namespace}.svc:8080"
+          }
+
+          liveness_probe {
+            http_get {
+              path = "/api/meta/health/v1"
+              port = 8080
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 10
+          }
+
+          readiness_probe {
+            http_get {
+              path = "/api/meta/health/v1"
+              port = 8080
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 10
           }
         }
       }
@@ -59,6 +82,7 @@ resource "kubernetes_deployment_v1" "edh_web" {
     kubernetes_job_v1.postgres_create_web_db,
     kubernetes_job_v1.edh_web_migrate,
     kubernetes_service_v1.edh_api_active,
+    kubernetes_secret_v1.mtgfr_db,
   ]
 }
 
