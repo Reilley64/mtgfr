@@ -1,37 +1,30 @@
 # syntax=docker/dockerfile:1
-# mtgfr-web — Vite SPA + distroless `server static` with gzip (DEPLOYMENT.md).
+# mtgfr-web — SolidStart (Vinxi/Nitro) BFF on distroless Node (DEPLOYMENT.md).
 
-FROM oven/bun:1 AS assets
+FROM oven/bun:1 AS deps
 WORKDIR /client
 COPY client/package.json client/bun.lock* ./
 RUN bun install --frozen-lockfile
+
+FROM node:22-bookworm AS build
+WORKDIR /client
+COPY --from=deps /client/node_modules ./node_modules
 COPY client ./
 # `src/api/generated.ts` is produced on the host/CI via `just server-codegen` before
-# `docker build` (gitignored — not committed). `tsc`/`vite` need it in the build context.
-# Build-args (not just ENV) so `docker build --build-arg …` can target a different API/CDN
-# without editing this file. Empty `VITE_CARD_CDN` → Scryfall `named` fallback in the client.
-ARG VITE_API_ORIGIN=https://api.edh.example.com
+# `docker build` (gitignored — not committed).
+# Empty `VITE_CARD_CDN` → Scryfall `named` fallback in the client.
 ARG VITE_CARD_CDN=
-ENV VITE_API_ORIGIN=$VITE_API_ORIGIN
 ENV VITE_CARD_CDN=$VITE_CARD_CDN
-RUN bunx tsc --noEmit && bunx vite build
+# Vinxi needs a real Node for the production Nitro build.
+RUN npx tsc --noEmit && npx vinxi build
 
-FROM rust:1-bookworm AS server-build
-WORKDIR /src
-COPY Cargo.toml Cargo.lock ./
-COPY crates ./crates
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/target \
-    cargo build -p server --release \
-    && cp target/release/server /server
-
-FROM gcr.io/distroless/cc-debian12:nonroot
-WORKDIR /
-COPY --from=server-build /server /server
-COPY --from=assets /client/dist /dist
+FROM gcr.io/distroless/nodejs22-debian12:nonroot
+WORKDIR /app
+COPY --from=build /client/.output ./.output
 ENV HOST=0.0.0.0
 ENV PORT=8080
-ENV STATIC_ROOT=/dist
+# Runtime: web.tf sets `API_UPSTREAM` (active edh-api) + `WEB_DATABASE_URL` (mtgfr_web).
+# Game traffic is routed by BFF `table_routes` → pod DNS (ADR 0030).
 EXPOSE 8080
 USER nonroot:nonroot
-CMD ["/server", "static"]
+CMD [".output/server/index.mjs"]

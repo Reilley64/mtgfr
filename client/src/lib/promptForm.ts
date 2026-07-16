@@ -1,5 +1,5 @@
 // Pure prompt chrome / surface policy — importable from vitest without Solid.
-// Solid forms in promptForms.tsx remain the render adapters.
+// Solid forms in components/molecules/prompt-forms.tsx remain the render adapters.
 
 import type { ChoiceItem, PendingChoiceView } from "~/api/generated";
 
@@ -76,7 +76,7 @@ export function searchableChoiceItems(items: readonly ChoiceItem[], query: strin
 
 /**
  * Card-pick kinds that show a name filter and (for pick-one) dedupe by face.
- * Keep in sync with `searchable` on the matching form in promptForms.tsx.
+ * Keep in sync with `searchable` on the matching form in components/molecules/prompt-forms.tsx.
  */
 export function cardPickIsSearchable(kind: PendingChoiceView["kind"]): boolean {
   return kind === "search_library";

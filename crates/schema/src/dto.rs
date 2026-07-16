@@ -758,7 +758,7 @@ pub struct VisibleState {
     /// the server auto-passes when this is false, so the client rarely renders a can't-act turn.
     pub can_act: bool,
     /// Whether THIS viewer has yielded ("don't care") to the current stack — the server's
-    /// authoritative flag (set via `POST /yield/v1`, cleared whenever the stack empties), so
+    /// authoritative flag (set via `POST /tables/{table}/yield/v1`, cleared whenever the stack empties), so
     /// the client never has to mirror the clearing rules. Always false for a spectator.
     #[serde(default)]
     pub yielded: bool,
@@ -806,6 +806,40 @@ pub struct ReadyRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct StartRequest {
     pub table_id: String,
+}
+
+// ── Seed ─────────────────────────────────────────────────────────────────────────────
+// The pre-game lobby itself lives outside this crate's server (SolidStart's own Postgres,
+// mtgfr_web — Drizzle-managed). Once the host starts, the BFF calls `POST /tables/seed/v1`
+// once, handing over a fully-formed lobby (host + ordered seats + chosen decks) for this
+// instance to seed a running game from. `LobbyView`/`JoinRequest`/etc. above stay for now —
+// existing BFF JSON shapes reuse them even though the Axum-side create/join/ready/start/lobby
+// handlers are gone.
+
+/// One seat to seed, in seat-index order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub struct SeedSeat {
+    pub user_id: i64,
+    pub username: String,
+    pub deck_id: i64,
+}
+
+/// Seed a running game from a lobby the BFF already resolved. `seats` is ordered by seat index
+/// (2..=4 players — a Commander table, minimum two to start).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub struct SeedRequest {
+    pub table_id: String,
+    pub host_user_id: i64,
+    pub seats: Vec<SeedSeat>,
+}
+
+/// The seeded game's location: which pod owns it (`pod_dns`) and the API version running there,
+/// so the BFF can route later hops and detect a rolling deploy crossing versions mid-game.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub struct SeedResponse {
+    pub table_id: String,
+    pub pod_dns: String,
+    pub version: String,
 }
 
 /// One seat's lobby state.
@@ -860,9 +894,12 @@ pub struct SignupCredentials {
     pub username: String,
 }
 
-/// The signed-in user (the `GET /auth/me` reply).
+/// The signed-in user (the `GET /auth/me` reply). `id` is the durable-store user id — the BFF
+/// needs it verbatim to seed a table (`SeedSeat::user_id` is this same numeric id, not the
+/// email/username).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct Me {
+    pub id: i64,
     pub email: String,
     pub username: String,
 }

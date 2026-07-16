@@ -159,10 +159,10 @@ describe("choiceIntent", () => {
   });
 });
 
-// FORMS (client/src/lib/promptForms.tsx) maps every PendingChoiceView["kind"] to a form
+// FORMS (`client/src/components/molecules/prompt-forms.tsx`) maps every PendingChoiceView["kind"] to a form
 // component via `Record<PendingChoiceView["kind"], Component<FormProps>>` — that Record is
 // itself the exhaustiveness check (bun run build fails if a kind's form is missing). A runtime
 // re-check here isn't possible: this project's vitest config has no DOM (jsdom/happy-dom), and
 // importing *any* .tsx file crashes on solid-js/web's SSR guard the moment its module loads
-// (reproducible with the pre-existing Hand.tsx, unrelated to this change) — so promptForms.tsx
+// (reproducible with the pre-existing hand molecule, unrelated to this change) — so prompt-forms.tsx
 // can't be imported from a plain .test.ts here.

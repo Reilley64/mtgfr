@@ -21,7 +21,7 @@ const failureToReject = (failure: unknown): boolean => {
  * fail, so `useAtomSet(..., { mode: "promise" })` always resolves — callers `await` or fire-and-forget. */
 export const submitIntentFn = Atom.fn((intent: WireIntent) =>
   client
-    .submitIntent({ payload: buildIntentEnvelope(intent) })
+    .submitIntent(tableId(), { payload: buildIntentEnvelope(intent) })
     .pipe(Effect.match({ onSuccess: ackToReject, onFailure: failureToReject })),
 );
 
@@ -29,20 +29,20 @@ export const submitIntentFn = Atom.fn((intent: WireIntent) =>
  * stack resolves (and clears the flag once it empties). Resolves to whether it was accepted. */
 export const setYieldFn = Atom.fn((p: { enabled: boolean }) =>
   client
-    .setYield({ payload: { table_id: tableId(), enabled: p.enabled } })
+    .setYield(tableId(), { payload: { enabled: p.enabled } })
     .pipe(Effect.match({ onSuccess: ackToReject, onFailure: failureToReject })),
 );
 
 /** Toggle turn yield (ADR 0029): auto-pass until this seat's turn / until they act. */
 export const setTurnYieldFn = Atom.fn((p: { enabled: boolean }) =>
   client
-    .setTurnYield({ payload: { table_id: tableId(), enabled: p.enabled } })
+    .setTurnYield(tableId(), { payload: { enabled: p.enabled } })
     .pipe(Effect.match({ onSuccess: ackToReject, onFailure: failureToReject })),
 );
 
 /** Helpless stack dwell: pause the stack-hold while hovering, if the seat has no meaningful action. */
 export const setStackDwellFn = Atom.fn((p: { dwelling: boolean }) =>
-  client.setStackDwell({ payload: { table_id: tableId(), dwelling: p.dwelling } }).pipe(
+  client.setStackDwell(tableId(), { payload: { dwelling: p.dwelling } }).pipe(
     Effect.match({
       onSuccess: (ack) => ack.accepted,
       onFailure: () => false,

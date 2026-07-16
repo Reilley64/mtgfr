@@ -21,7 +21,7 @@ variable "namespace_terraform" {
 }
 
 variable "namespace_edh" {
-  description = "Namespace holding all edh workloads (web, api, api-drain, api-proxy, postgres, cloudflared)."
+  description = "Namespace holding all edh workloads (web, versioned API instances, postgres, cloudflared)."
   type        = string
   default     = "edh"
 }
@@ -40,7 +40,7 @@ variable "cloudflare_account_id" {
 }
 
 variable "cloudflare_zone_id" {
-  description = "Cloudflare zone ID for example.com (DNS records for edh + api.edh live here)."
+  description = "Cloudflare zone ID for example.com (DNS record for edh lives here)."
   type        = string
 }
 
@@ -51,15 +51,20 @@ variable "dns_zone" {
 }
 
 variable "edh_hostname" {
-  description = "Public hostname for the static client (deploy PRD §Target topology)."
+  description = "Single public hostname for the SolidStart BFF (SPA + `/api` proxy)."
   type        = string
   default     = "edh.example.com"
 }
 
-variable "api_hostname" {
-  description = "Public hostname for the API + SSE, proxied through edh-api-proxy."
+variable "argocd_repo_url" {
+  description = "Git repo URL for the Argo Application (iac/charts/edh). Required — Argo owns API/web Deployments."
   type        = string
-  default     = "api.edh.example.com"
+}
+
+variable "argocd_target_revision" {
+  description = "Git revision for the Argo Application."
+  type        = string
+  default     = "HEAD"
 }
 
 variable "tunnel_name" {
@@ -74,32 +79,25 @@ variable "cloudflared_replicas" {
   default     = 2
 }
 
-# ── Images ───────────────────────────────────────────────────────────────────────────────────────
+# ── Images / API instances ───────────────────────────────────────────────────────────────────────
 # Public GHCR packages (deploy PRD — no imagePullSecrets). Never a moving `latest` tag; pin
-# explicit release versions here.
+# explicit release versions. Operator sets only `server_image` (desired active) + `web_image`.
+# Rolls: terraform apply updates Deployments; Terminating API pods drain in-process (ADR 0030).
 
 variable "server_image" {
-  description = "mtgfr-server image for the active edh-api Deployment (and the migrate Job)."
+  description = "Desired active mtgfr-server image. INSTANCE_ID is derived as edh-api-<slug(tag)>."
   type        = string
 }
 
-variable "server_image_drain" {
-  description = "mtgfr-server image for the draining edh-api-drain Deployment. Only used while api_drain_enabled = true; typically the previous server_image value during a roll."
-  type        = string
-  default     = ""
+variable "api_termination_grace_seconds" {
+  description = "Max game length ceiling: SIGTERM drain wait before kube SIGKILL (default 24h)."
+  type        = number
+  default     = 86400
 }
 
 variable "web_image" {
-  description = "mtgfr-web (`mtgfr static`) image for the edh-web Deployment. Deploy PRD — bump this only after the drain window closes; `iac/scripts/deploy.sh` holds this at the previously-applied tag during the API roll and only passes the new tag once wait-drain.sh confirms active_tables=0."
+  description = "mtgfr-web (SolidStart BFF) image. May roll with server_image (expand-only wire across Terminating API pods)."
   type        = string
-}
-
-# ── Rolling deploy ───────────────────────────────────────────────────────────────────────────────
-
-variable "api_drain_enabled" {
-  description = "Whether the edh-api-drain Deployment/Service exist. True only during a roll (old instance kept alive on the previous image while edh-api serves the new one); false in steady state once drain empties and the peer is torn down."
-  type        = bool
-  default     = false
 }
 
 # ── Database ─────────────────────────────────────────────────────────────────────────────────────
@@ -131,15 +129,15 @@ variable "postgres_storage_class" {
 # ── Server runtime (Settings — deploy PRD §Configuration) ──────────────────────────────────────
 
 variable "cookie_domain" {
-  description = "Domain attribute for the auth session cookie. NOT used for the mtgfr-instance affinity cookie, which stays host-only on the API regardless of this value."
+  description = "Domain attribute for the auth session cookie. Empty = host-only on edh (same-origin BFF)."
   type        = string
-  default     = ".example.com"
+  default     = ""
 }
 
 variable "cors_origin" {
-  description = "Allowed CORS origin for the API."
+  description = "Allowed CORS origin for the API. Empty when the browser is same-origin via the SolidStart BFF (no browser CORS)."
   type        = string
-  default     = "https://edh.example.com"
+  default     = ""
 }
 
 variable "auth_secret" {
@@ -149,15 +147,8 @@ variable "auth_secret" {
   default     = ""
 }
 
-variable "admin_token" {
-  description = "Bearer token guarding POST /admin/drain and GET /health/drain (deploy PRD §Admin / drain endpoints). Defense in depth on top of the NetworkPolicy that already keeps these routes cluster-internal; matches the server's `admin_token` Settings default so an unset token behaves the same on both sides. Empty leaves them unauthenticated. Set a strong value and pass it back via MTGFR_ADMIN_TOKEN to scripts/wait-drain.sh."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "log_level" {
-  description = "RUST_LOG value for edh-api / edh-api-drain."
+  description = "RUST_LOG value for all API instances."
   type        = string
   default     = "info"
 }

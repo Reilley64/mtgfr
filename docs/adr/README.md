@@ -33,4 +33,4 @@ Point-in-time decisions. Follow status + related links; ignore superseded parts.
 | [0027](0027-stack-chrome-next-pass-and-yield.md) | Priority context bar; Next vs Pass vs one-shot stack yield | Current (amended; turn yield → 0029) |
 | [0028](0028-battlefield-row-packing-and-clusters.md) | Row packing + permanent clusters (no spill) | Current |
 | [0029](0029-turn-yield.md) | Turn yield until active / until intentional action | Current |
-| [0030](0030-table-instance-affinity-for-drain-rolls.md) | `mtgfr-instance` cookie + dual Deployment for drain rolls | Current (extends 0005) |
+| [0030](0030-table-instance-affinity-for-drain-rolls.md) | BFF lobby + `table_routes` → pod DNS; Argo-owned rolls + SIGTERM drain | Current (extends 0005) |

@@ -1,8 +1,4 @@
-// `orNull` is the one place a wire failure becomes a value. The lobby's actions answer every
-// *logical* failure (TableFull, NotHost, …) with a 200 `LobbyView` carrying an `error` field, so
-// the Effect only fails when the request never landed — a transport reject, a 5xx, a decode
-// failure. Callers want that as `null` to branch on, not as a rejected promise to try/catch
-// (ADR 0019: error folding lives in the pipeline, not the component).
+// `orNull` is the one place a wire failure becomes a value.
 
 import * as Effect from "effect/Effect";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -11,13 +7,30 @@ import { json, networkError, recordingFetch, respondWith, status, stubLocation }
 
 beforeAll(stubLocation);
 
+const seedBody = {
+  table_id: "ABCD",
+  host_user_id: 1,
+  seats: [
+    { user_id: 1, username: "a", deck_id: 1 },
+    { user_id: 2, username: "b", deck_id: 2 },
+  ],
+};
+
 describe("makeClient", () => {
-  it("sends credentials: include so cross-origin session cookies work in prod", async () => {
-    const { fetch, calls } = recordingFetch(json({ table_id: "ABCD" }));
+  it("sends credentials: include so session cookies work on the same-origin BFF", async () => {
+    const { fetch, calls } = recordingFetch(json({ table_id: "ABCD", pod_dns: "x", version: "v" }));
     const client = makeClient(fetch);
-    await Effect.runPromise(client.createTable({}));
+    await Effect.runPromise(client.seedTable({ payload: seedBody }));
     expect(calls).toHaveLength(1);
     expect(calls[0][1]?.credentials).toBe("include");
+  });
+  it("prepends the same-origin /api BFF prefix", async () => {
+    const { fetch, calls } = recordingFetch(json({ table_id: "ABCD", pod_dns: "x", version: "v" }));
+    const client = makeClient(fetch);
+    await Effect.runPromise(client.seedTable({ payload: seedBody }));
+    expect(calls).toHaveLength(1);
+    const url = calls[0][0];
+    expect(url.pathname.startsWith("/api/")).toBe(true);
   });
 });
 
@@ -32,21 +45,23 @@ describe("orNull", () => {
 
   it("folds an unreachable server (network error) to null", async () => {
     const client = makeClient(networkError);
-    expect(await Effect.runPromise(orNull(client.createTable({})))).toBeNull();
+    expect(await Effect.runPromise(orNull(client.seedTable({ payload: seedBody })))).toBeNull();
   });
 
   it("folds a 500 to null", async () => {
     const client = makeClient(respondWith(status(500)));
-    expect(await Effect.runPromise(orNull(client.createTable({})))).toBeNull();
+    expect(await Effect.runPromise(orNull(client.seedTable({ payload: seedBody })))).toBeNull();
   });
 
   it("still yields the view on a 200", async () => {
-    const client = makeClient(respondWith(json({ table_id: "ABCD" })));
-    expect(await Effect.runPromise(orNull(client.createTable({})))).toEqual({ table_id: "ABCD" });
+    const client = makeClient(respondWith(json({ table_id: "ABCD", pod_dns: "x", version: "v" })));
+    expect(await Effect.runPromise(orNull(client.seedTable({ payload: seedBody })))).toEqual({
+      table_id: "ABCD",
+      pod_dns: "x",
+      version: "v",
+    });
   });
 
-  // A defect is a bug, not a wire outcome. Folding it to `null` would let a crash masquerade as
-  // "couldn't reach the table", which is exactly the diagnosis we'd want to keep.
   it("does not swallow defects", async () => {
     const boom = new Error("programmer error");
     await expect(Effect.runPromise(orNull(Effect.die(boom)))).rejects.toThrow();

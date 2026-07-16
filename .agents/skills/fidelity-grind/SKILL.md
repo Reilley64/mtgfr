@@ -94,7 +94,7 @@ Hard-won loop rules (already baked into the script — do not soften them):
 
 Engine waves accrue wire debt. After the grind (or mid-grind if large):
 `just server-codegen`, then diff the regenerated wire types against the client registries —
-every `PendingChoiceView` needs a form in `client/src/lib/promptForms.tsx` (reuse an existing
+every `PendingChoiceView` needs a form in `client/src/components/molecules/prompt-forms.tsx` (reuse an existing
 form when the answer shape matches; the engine dispatches by pending-choice kind), every
 `VisibleEvent` an arm in `client/src/store.ts` (effect/Match, exhaustive), and new
 `MeaningfulAction`s surface via the existing generic tiles/radial. Gate:

@@ -16,13 +16,18 @@ mod tests {
     use tower::ServiceExt; // for `oneshot`
 
     async fn test_app() -> axum::Router {
+        test_app_with_state().await.0
+    }
+
+    async fn test_app_with_state() -> (axum::Router, AppState) {
         let db = db::connect("sqlite::memory:").await.expect("sqlite");
-        app(AppState::for_test(db))
+        let state = AppState::for_test(db);
+        (app(state.clone()), state)
     }
 
     /// `test_app()`, with `settings` in place of the plain test defaults — for the handful of
-    /// tests that exercise deploy-flag-dependent behavior (cookie `Secure`/`Domain`, the admin
-    /// token) rather than the happy-path flows every other test in this module covers.
+    /// tests that exercise deploy-flag-dependent behavior (cookie `Secure`/`Domain`) rather than
+    /// the happy-path flows every other test in this module covers.
     async fn test_app_with_settings(settings: Settings) -> axum::Router {
         let db = db::connect("sqlite::memory:").await.expect("sqlite");
         app(AppState::new(db, Arc::new(settings)))
@@ -104,12 +109,9 @@ mod tests {
         assert_eq!(body_json(me).await["email"], "a@b.c");
     }
 
-    /// Drive two fresh users through signup → deck save → create/join/ready → start against the
-    /// real router, asserting each hop, and return `(host_cookie, guest_cookie, table_id)` for a
-    /// running 2-player game. The host claims the first open seat (seat 0, the starting active
-    /// player); the guest gets seat 1.
+    /// Drive two fresh users through signup → deck save → seed against the real router.
+    /// Returns `(host_cookie, guest_cookie, table_id)` for a running 2-player game.
     async fn start_two_player_game(router: &axum::Router) -> (String, String, String) {
-        // Two users sign up; keep each one's cookie.
         let host = session_cookie(
             &router
                 .clone()
@@ -133,7 +135,27 @@ mod tests {
                 .unwrap(),
         );
 
-        // A legal Tajic deck: the pool's RW nonbasics + 93 Plains.
+        let host_me = body_json(
+            router
+                .clone()
+                .oneshot(get("/auth/me/v1", &host))
+                .await
+                .unwrap(),
+        )
+        .await;
+        let guest_me = body_json(
+            router
+                .clone()
+                .oneshot(get("/auth/me/v1", &guest))
+                .await
+                .unwrap(),
+        )
+        .await;
+        let host_uid = host_me["id"].as_i64().expect("host id");
+        let guest_uid = guest_me["id"].as_i64().expect("guest id");
+        let host_name = host_me["username"].as_str().unwrap().to_string();
+        let guest_name = guest_me["username"].as_str().unwrap().to_string();
+
         let deck_body = json!({
             "name": "deck",
             "commander": "ae6f21a2-e6b6-4793-8343-e27310c0bea1",
@@ -160,112 +182,39 @@ mod tests {
             .as_i64()
             .expect("guest deck id");
 
-        // Create a table, both join with their deck, both ready, host starts.
-        let table = body_json(
-            router
-                .clone()
-                .oneshot(post("/tables/v1", Some(&host), json!({})))
-                .await
-                .unwrap(),
-        )
-        .await["table_id"]
-            .as_str()
-            .unwrap()
-            .to_string();
-
-        for (cookie, deck) in [(&host, host_deck), (&guest, guest_deck)] {
-            let view = body_json(
-                router
-                    .clone()
-                    .oneshot(post(
-                        "/tables/join/v1",
-                        Some(cookie),
-                        json!({"table_id": table, "deck_id": deck}),
-                    ))
-                    .await
-                    .unwrap(),
-            )
-            .await;
-            assert!(view["you"].is_number(), "join seats the user: {view}");
-        }
-        for cookie in [&host, &guest] {
-            let _ = router
-                .clone()
-                .oneshot(post(
-                    "/tables/ready/v1",
-                    Some(cookie),
-                    json!({"table_id": table, "ready": true}),
-                ))
-                .await
-                .unwrap();
-        }
-        let started = body_json(
-            router
-                .clone()
-                .oneshot(post(
-                    "/tables/start/v1",
-                    Some(&host),
-                    json!({"table_id": table}),
-                ))
-                .await
-                .unwrap(),
-        )
-        .await;
-        assert_eq!(
-            started["started"], true,
-            "the host started the game: {started}"
-        );
-        assert!(started["error"].is_null());
+        let table = "HTTP01".to_string();
+        let seeded = router
+            .clone()
+            .oneshot(post(
+                "/tables/seed/v1",
+                Some(&host),
+                json!({
+                    "table_id": table,
+                    "host_user_id": host_uid,
+                    "seats": [
+                        {"user_id": host_uid, "username": host_name, "deck_id": host_deck},
+                        {"user_id": guest_uid, "username": guest_name, "deck_id": guest_deck}
+                    ]
+                }),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(seeded.status(), StatusCode::OK, "seed starts the game");
+        let body = body_json(seeded).await;
+        assert_eq!(body["table_id"], table);
 
         (host, guest, table)
     }
 
     #[tokio::test]
-    async fn signup_build_a_legal_deck_and_start_a_game_over_http() {
+    async fn signup_build_a_legal_deck_and_seed_a_game_over_http() {
         let router = test_app().await;
         let _ = start_two_player_game(&router).await;
     }
 
-    /// `POST /tables/v1`'s success response also sets the affinity cookie (`mtgfr-instance`) —
-    /// a later hop for the same table should have a chance to land back on this instance.
+    /// Session cookie still honors Secure / Domain from settings (affinity cookie is gone).
     #[tokio::test]
-    async fn create_table_sets_the_affinity_cookie() {
-        let router = test_app().await;
-        let host = session_cookie(
-            &router
-                .clone()
-                .oneshot(post(
-                    "/auth/signup/v1",
-                    None,
-                    json!({"email": "aff@x.c", "password": "p", "username": "aff"}),
-                ))
-                .await
-                .unwrap(),
-        );
-
-        let created = router
-            .oneshot(post("/tables/v1", Some(&host), json!({})))
-            .await
-            .unwrap();
-        assert_eq!(created.status(), StatusCode::OK);
-        let set_cookies: Vec<String> = created
-            .headers()
-            .get_all("set-cookie")
-            .iter()
-            .map(|v| v.to_str().unwrap().to_string())
-            .collect();
-        assert!(
-            set_cookies.iter().any(|c| c.starts_with("mtgfr-instance=")),
-            "the affinity cookie is set on create: {set_cookies:?}"
-        );
-    }
-
-    /// Deploy PRD §Configuration: `cookie_secure`/`cookie_domain` shape the auth session cookie so
-    /// it's shared across `edh.example.com` and `api.edh.example.com` in prod, but the affinity
-    /// cookie (`lobby.rs`) stays host-only regardless — it's only meaningful to whichever instance
-    /// set it, and `instance_id` (not `cookie_domain`) supplies its value.
-    #[tokio::test]
-    async fn cookie_secure_and_domain_flags_shape_the_session_and_affinity_cookies() {
+    async fn cookie_secure_and_domain_flags_shape_the_session_cookie() {
         let settings = Settings {
             cookie_secure: true,
             cookie_domain: ".example.com".to_string(),
@@ -290,228 +239,70 @@ mod tests {
             "the session cookie is Secure: {session_set_cookie}"
         );
         assert!(
-            // The `cookie` crate serializes `Domain` without a leading dot (RFC 6265 §5.2.3
-            // treats it as a legacy no-op) even though `cookie_domain` is configured with one.
             session_set_cookie.contains("Domain=example.com"),
             "the session cookie is shared across subdomains: {session_set_cookie}"
         );
-        let host = session_cookie(&signup);
-
-        let created = router
-            .oneshot(post("/tables/v1", Some(&host), json!({})))
-            .await
-            .unwrap();
-        assert_eq!(created.status(), StatusCode::OK);
-        let affinity_set_cookie = find_set_cookie(&created, "mtgfr-instance").to_string();
-        assert!(
-            affinity_set_cookie.contains("Secure"),
-            "the affinity cookie is Secure too: {affinity_set_cookie}"
-        );
-        assert!(
-            !affinity_set_cookie.contains("Domain"),
-            "the affinity cookie stays host-only, unlike the session cookie: {affinity_set_cookie}"
-        );
-        assert_eq!(
-            affinity_set_cookie.split(';').next().unwrap(),
-            "mtgfr-instance=edh-api",
-            "the affinity cookie's value is this instance's id: {affinity_set_cookie}"
-        );
     }
 
-    /// Deploy PRD §Admin / drain endpoints: once `admin_token` is configured, `/admin/drain`
-    /// rejects requests without a matching credential and accepts either the `Authorization:
-    /// Bearer` or the plain `X-Admin-Token` form.
-    #[tokio::test]
-    async fn admin_drain_requires_the_configured_admin_token_once_set() {
-        let settings = Settings {
-            admin_token: "topsecret".to_string(),
-            ..settings::for_test()
-        };
-        let router = test_app_with_settings(settings).await;
-
-        let no_credential = router
-            .clone()
-            .oneshot(post("/admin/drain", None, json!({})))
-            .await
-            .unwrap();
-        assert_eq!(no_credential.status(), StatusCode::UNAUTHORIZED);
-
-        let wrong_bearer = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/admin/drain")
-                    .header("authorization", "Bearer nope")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(wrong_bearer.status(), StatusCode::UNAUTHORIZED);
-
-        let right_bearer = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/admin/drain")
-                    .header("authorization", "Bearer topsecret")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(right_bearer.status(), StatusCode::OK);
-
-        let right_plain_header = router
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/admin/drain")
-                    .header("x-admin-token", "topsecret")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(right_plain_header.status(), StatusCode::OK);
-    }
-
-    /// Deploy PRD §Drain: a draining instance still serves the tables it already owns — lobby
-    /// polling, joining, and readying up all keep working — it only rejects *new* tables
-    /// (`POST /tables/v1`, 503).
+    /// Deploy PRD §Drain: a draining instance still serves games it already owns (stream/intent),
+    /// and rejects *new* seeds with 503.
     #[tokio::test]
     async fn draining_still_serves_a_table_it_already_owns() {
-        let router = test_app().await;
-        let host = session_cookie(
-            &router
-                .clone()
-                .oneshot(post(
-                    "/auth/signup/v1",
-                    None,
-                    json!({"email": "owner@x.c", "password": "p", "username": "owner"}),
-                ))
-                .await
-                .unwrap(),
+        use std::sync::atomic::Ordering;
+
+        let (router, state) = test_app_with_state().await;
+        let (host, _guest, table) = start_two_player_game(&router).await;
+
+        state.draining.store(true, Ordering::Relaxed);
+
+        let stream = router
+            .clone()
+            .oneshot(get(&format!("/tables/{table}/stream/v1"), &host))
+            .await
+            .unwrap();
+        assert_eq!(
+            stream.status(),
+            StatusCode::OK,
+            "stream for an owned table still works while draining"
         );
-        let guest = session_cookie(
-            &router
-                .clone()
-                .oneshot(post(
-                    "/auth/signup/v1",
-                    None,
-                    json!({"email": "guest2@x.c", "password": "p", "username": "guest2"}),
-                ))
-                .await
-                .unwrap(),
-        );
-        let guest_deck = body_json(
+
+        let host_me = body_json(
             router
                 .clone()
-                .oneshot(post(
-                    "/decks/v1",
-                    Some(&guest),
-                    json!({
-                        "name": "deck",
-                        "commander": "ae6f21a2-e6b6-4793-8343-e27310c0bea1",
-                        "commander_print": "45c4c3b3-be18-4d74-99d8-f137498673d7",
-                        "cards": [
-                            {"id": "60ba93eb-39e6-4af2-9c66-cd38f72daff2", "count": 1, "print": "9c9ac1bc-cdf3-4fa6-8319-a7ea164e9e47"},
-                            {"id": "51d9564b-44fc-4de1-9119-09d7b4089378", "count": 1, "print": "3c0f5411-1940-410f-96ce-6f92513f753a"},
-                            {"id": "4b7ac066-e5c7-43e6-9e7e-2739b24a905d", "count": 1, "print": "b8c5e74c-96e7-4a1f-93b7-14d776fe4b2d"},
-                            {"id": "e3886fe8-9b76-4613-8891-4ec74657c087", "count": 1, "print": "17d154d3-7ae5-43ff-9978-d974285e2c89"},
-                            {"id": "a9d288b8-cdc1-4e55-a0c9-d6edfc95e65d", "count": 1, "print": "b23900fb-efe9-43ab-9f67-4545dd01fb9c"},
-                            {"id": "9880ba09-d5b8-4675-bfb4-2161d86d2d41", "count": 1, "print": "89db7256-3bd0-4c1d-9c6f-de81f7d3c1a2"},
-                            {"id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99", "count": 93, "print": "5f9b6584-ad27-410d-b6f1-c25c91630aea"}
-                        ]
-                    }),
-                ))
+                .oneshot(get("/auth/me/v1", &host))
                 .await
                 .unwrap(),
         )
-        .await["id"]
-            .as_i64()
-            .expect("guest deck id");
-
-        let table = body_json(
-            router
-                .clone()
-                .oneshot(post("/tables/v1", Some(&host), json!({})))
-                .await
-                .unwrap(),
-        )
-        .await["table_id"]
-            .as_str()
-            .unwrap()
-            .to_string();
-
-        let drained = router
-            .clone()
-            .oneshot(post("/admin/drain", None, json!({})))
-            .await
-            .unwrap();
-        assert_eq!(drained.status(), StatusCode::OK);
-
-        let lobby = router
-            .clone()
-            .oneshot(get(&format!("/tables/{table}/lobby/v1"), &host))
-            .await
-            .unwrap();
-        assert_eq!(
-            lobby.status(),
-            StatusCode::OK,
-            "lobby polling for an owned table still works while draining"
-        );
-
-        let joined = router
-            .clone()
-            .oneshot(post(
-                "/tables/join/v1",
-                Some(&guest),
-                json!({"table_id": table, "deck_id": guest_deck}),
-            ))
-            .await
-            .unwrap();
-        assert_eq!(
-            joined.status(),
-            StatusCode::OK,
-            "joining an owned table still works while draining"
-        );
-
-        let readied = router
-            .clone()
-            .oneshot(post(
-                "/tables/ready/v1",
-                Some(&guest),
-                json!({"table_id": table, "ready": true}),
-            ))
-            .await
-            .unwrap();
-        assert_eq!(
-            readied.status(),
-            StatusCode::OK,
-            "readying up an owned table still works while draining"
-        );
-
+        .await;
         let rejected = router
-            .oneshot(post("/tables/v1", Some(&host), json!({})))
+            .oneshot(post(
+                "/tables/seed/v1",
+                Some(&host),
+                json!({
+                    "table_id": "NEWONE",
+                    "host_user_id": host_me["id"],
+                    "seats": [
+                        {"user_id": host_me["id"], "username": "a", "deck_id": 1},
+                        {"user_id": host_me["id"], "username": "b", "deck_id": 1}
+                    ]
+                }),
+            ))
             .await
             .unwrap();
         assert_eq!(
             rejected.status(),
             StatusCode::SERVICE_UNAVAILABLE,
-            "a new table is still rejected while draining"
+            "a new seed is rejected while draining"
         );
     }
 
-    /// `POST /admin/drain` flips the live drain flag (no restart), and `GET /health/drain`
-    /// reflects both the flag and how many tables the instance still owns. Once draining,
-    /// `POST /tables/v1` is rejected with 503 — new tables must land on an instance that will
-    /// stick around to run them.
+    /// `GET /health/drain` reflects tables; flipping the drain flag (as SIGTERM would) makes
+    /// `POST /tables/seed/v1` return 503.
     #[tokio::test]
-    async fn admin_drain_flips_the_flag_and_health_drain_reflects_active_tables() {
-        let router = test_app().await;
+    async fn health_drain_reflects_active_tables_and_drain_flag() {
+        use std::sync::atomic::Ordering;
+
+        let (router, state) = test_app_with_state().await;
         let (host, _guest, _table) = start_two_player_game(&router).await;
 
         let before = body_json(
@@ -525,16 +316,7 @@ mod tests {
         assert_eq!(before["draining"], false);
         assert_eq!(before["active_tables"], 1, "the started game is active");
 
-        let drained = body_json(
-            router
-                .clone()
-                .oneshot(post("/admin/drain", None, json!({})))
-                .await
-                .unwrap(),
-        )
-        .await;
-        assert_eq!(drained["draining"], true);
-        assert_eq!(drained["active_tables"], 1);
+        state.draining.store(true, Ordering::Relaxed);
 
         let after = body_json(
             router
@@ -545,16 +327,36 @@ mod tests {
         )
         .await;
         assert_eq!(after["draining"], true, "the flag stuck: {after}");
+        assert_eq!(after["active_tables"], 1);
 
+        let host_me = body_json(
+            router
+                .clone()
+                .oneshot(get("/auth/me/v1", &host))
+                .await
+                .unwrap(),
+        )
+        .await;
         let rejected = router
             .clone()
-            .oneshot(post("/tables/v1", Some(&host), json!({})))
+            .oneshot(post(
+                "/tables/seed/v1",
+                Some(&host),
+                json!({
+                    "table_id": "DRAINX",
+                    "host_user_id": host_me["id"],
+                    "seats": [
+                        {"user_id": host_me["id"], "username": "a", "deck_id": 1},
+                        {"user_id": host_me["id"], "username": "b", "deck_id": 1}
+                    ]
+                }),
+            ))
             .await
             .unwrap();
         assert_eq!(
             rejected.status(),
             StatusCode::SERVICE_UNAVAILABLE,
-            "a draining instance refuses new tables"
+            "a draining instance refuses new seeds"
         );
     }
 
@@ -665,7 +467,7 @@ mod tests {
             router
                 .clone()
                 .oneshot(post(
-                    "/intent/v1",
+                    &format!("/tables/{table}/intent/v1"),
                     Some(actor_cookie),
                     json!({
                         "table_id": table,
@@ -711,7 +513,7 @@ mod tests {
             router
                 .clone()
                 .oneshot(post(
-                    "/intent/v1",
+                    &format!("/tables/{table}/intent/v1"),
                     Some(&outsider),
                     json!({
                         "table_id": table,

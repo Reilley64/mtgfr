@@ -7,7 +7,7 @@
 // *diagonal* — matching where they'd physically sit. Fewer than four just leave later cells empty
 // (2p → you + front, a vertical pair; 3p → drops the diagonal). Top-row seats are flipped to face
 // down across the table; the two bottom seats are upright. One camera pans/zooms the whole table.
-// The hand is a DOM overlay (Hand.tsx); the mana tray is a world-anchored DOM overlay (ManaTray.tsx).
+// The hand is a DOM overlay (components/molecules/hand.tsx); the mana tray is a world-anchored DOM overlay (ManaTray.tsx).
 
 import type { ObjectView, VisibleState, WireKind } from "~/api/generated";
 

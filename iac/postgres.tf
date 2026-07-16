@@ -4,7 +4,9 @@
 #
 # Service name is `postgres` so DATABASE_URL (`locals.tf`) stays `…@postgres:5432/mtgfr`.
 
-resource "kubernetes_secret" "postgres" {
+resource "kubernetes_secret_v1" "postgres" {
+  wait_for_service_account_token = false
+
   metadata {
     name      = local.postgres_service
     namespace = local.namespace
@@ -18,7 +20,9 @@ resource "kubernetes_secret" "postgres" {
   type = "Opaque"
 }
 
-resource "kubernetes_service" "postgres" {
+resource "kubernetes_service_v1" "postgres" {
+  wait_for_load_balancer = false
+
   metadata {
     name      = local.postgres_service
     namespace = local.namespace
@@ -36,7 +40,7 @@ resource "kubernetes_service" "postgres" {
   }
 }
 
-resource "kubernetes_stateful_set" "postgres" {
+resource "kubernetes_stateful_set_v1" "postgres" {
   wait_for_rollout = true
 
   metadata {
@@ -82,7 +86,7 @@ resource "kubernetes_stateful_set" "postgres" {
             name = "POSTGRES_PASSWORD"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.postgres.metadata[0].name
+                name = kubernetes_secret_v1.postgres.metadata[0].name
                 key  = "POSTGRES_PASSWORD"
               }
             }
@@ -137,5 +141,5 @@ resource "kubernetes_stateful_set" "postgres" {
     }
   }
 
-  depends_on = [kubernetes_secret.postgres]
+  depends_on = [kubernetes_secret_v1.postgres]
 }

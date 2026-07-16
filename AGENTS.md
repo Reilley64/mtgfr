@@ -25,8 +25,8 @@ just --group server --list      # server-* recipes only
 just --group client --list      # client-* recipes only
 just engine-cr-index            # regenerate docs/CR_INDEX.md from engine CR citations
 just engine-cr-index-check      # fail if docs/CR_INDEX.md is stale
-just deploy                     # apply-machine: API roll → drain wait → web bump
-just dev                        # tmux: bacon server + client vite
+just client-migrate             # Drizzle migrations for mtgfr_web (WEB_DATABASE_URL)
+just dev                        # tmux: bacon server + client vinxi
 ```
 
 ## Commits & releases
@@ -37,9 +37,9 @@ Commits on `main`/`master` follow [Conventional Commits](https://www.conventiona
 
 - **Engine:** Pure Rust, deterministic, **sequential state machine** — the stack/priority model, *not* a game-loop. Runs authoritatively on the server.
 - **Event-sourced state:** every intent produces events; events mutate board facts. Priority/pass bookkeeping and pending choices are orchestration state in the submit path — preserve intent-replay determinism.
-- **Server:** Axum + SSE (server→client state) + POST (client→server intents). Single instance: in-process `tokio::broadcast` fan-out per table (ADR 0005), not Redis. Live games are in-memory only (ADR 0021); Postgres holds users, sessions, decks (ADR 0010). Server-side per-player visibility filtering is a hard rule (hands/libraries are private).
-- **Client:** SolidJS, hybrid canvas/WebGL board + thin DOM overlay. **Camera transform** (single source of truth for pan/zoom) and **screen→world hit-testing** are foundations everything downstream assumes.
-- **Client state is Effect-first, Solid-second (ADR 0019).** Async work — wire calls, streams, polling — goes through atoms (`effect/unstable/reactivity` + `@effect/atom-solid`); Solid signals/stores are the view layer. Keep `effect` and `@effect/atom-solid` pinned to the same exact beta.
+- **Server:** Axum + SSE (server→client state) + POST (client→server intents). Live games are in-memory only (ADR 0021); Postgres `mtgfr` holds users, sessions, decks (ADR 0010). Pre-game lobby + `table_routes` live in SolidStart on Postgres `mtgfr_web` (Drizzle). BFF routes in-game by table id → pod DNS; seeds hit Service `edh-api` (newest instance only). API/web Deployments are Argo-owned; rolls drain on SIGTERM (ADR 0030). Server-side per-player visibility filtering is a hard rule (hands/libraries are private).
+- **Client:** SolidStart 1.3 (Vinxi, `ssr: false`) — hybrid canvas/WebGL board + thin DOM overlay; same-origin `/api` BFF to Axum. **Camera transform** (single source of truth for pan/zoom) and **screen→world hit-testing** are foundations everything downstream assumes.
+- **Client state is Effect-first, Solid-second (ADR 0019).** Async work — wire calls, streams, polling — goes through atoms (`effect/unstable/reactivity` + `@effect/atom-solid`); Solid signals/stores are the view layer. Keep `effect`, `@effect/atom-solid`, and `@effect/sql-pg` pinned to the same exact beta. BFF Drizzle uses `@effect/sql-pg` (pg-proxy).
 - **Card pool is data-driven scripts.** Let the scripting DSL grow from real cards — resist generalizing it prematurely.
 - **Wire types:** OpenAPI codegen from Rust (`openapi.json` → client Effect client). Run `just server-codegen` after schema changes. During a rolling deploy, N and N+1 must coexist until drain empties — see [docs/WIRE_COMPAT.md](docs/WIRE_COMPAT.md) for the expand-only rules and the `/v2` escape hatch.
 - **Routing:** Required identifiers belong in **path params** (server: Axum `Path`, client: Solid `:param` segments). **Query params are optional** — filters, paging, redirect targets (`?next=`), and preselection (`?deck=`). Never put a required resource id in a query string.

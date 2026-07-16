@@ -13,7 +13,9 @@ const creds = { email: "a@b.co", password: "pw" };
 
 describe("client.login", () => {
   it("succeeds on a 2xx", async () => {
-    const r = await runEither(respondJson({ email: "a@b.co", username: "alice" }), (c) => c.login({ payload: creds }));
+    const r = await runEither(respondJson({ id: 1, email: "a@b.co", username: "alice" }), (c) =>
+      c.login({ payload: creds }),
+    );
     expect(Result.isSuccess(r)).toBe(true);
   });
 
@@ -45,8 +47,8 @@ describe("client.signup", () => {
 
 describe("client.me", () => {
   it("returns the user on 200", async () => {
-    const r = await run(respondJson({ email: "a@b.co", username: "alice" }), (c) => c.me({}));
-    expect(r).toEqual({ email: "a@b.co", username: "alice" });
+    const r = await run(respondJson({ id: 1, email: "a@b.co", username: "alice" }), (c) => c.me({}));
+    expect(r).toEqual({ id: 1, email: "a@b.co", username: "alice" });
   });
 
   it("surfaces a 401 as a failure (the guard treats any failure as not-signed-in)", async () => {
