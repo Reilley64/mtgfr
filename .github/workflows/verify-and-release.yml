@@ -10,6 +10,11 @@ on:
       - main
       - master
 
+# Queue pushes to main — never overlap semantic-release tag/release writes.
+concurrency:
+  group: verify-and-release
+  cancel-in-progress: false
+
 permissions:
   contents: read # verify job
 
