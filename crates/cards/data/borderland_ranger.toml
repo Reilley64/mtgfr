@@ -1,0 +1,27 @@
+# When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand,
+# then shuffle.
+name = "Borderland Ranger"
+oracle = "When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle."
+set = "m10"
+subtypes = ["Human", "Scout", "Ranger"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, you may search your library for a basic land card, reveal it, put it
+# into your hand, then shuffle.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# search your library for a basic land card, reveal it, put it into your hand, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "hand"

@@ -1,0 +1,14 @@
+# This creature can't block.
+name = "Jungle Lion"
+oracle = "This creature can't block."
+set = "por"
+subtypes = ["Cat"]
+keywords = ["cant_block"]
+
+[cost]
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1

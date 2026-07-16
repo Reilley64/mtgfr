@@ -60463,3 +60463,261 @@ fn a_karoo_taps_for_one_of_each_of_its_two_colors() {
         assert!(game.is_tapped(karoo));
     }
 }
+
+#[test]
+fn borderland_ranger_etb_may_search_a_basic_land_to_hand() {
+    // Borderland Ranger: "When this creature enters, you may search your library for a basic
+    // land card, reveal it, put it into your hand, then shuffle." The "may" pauses first; a
+    // nonbasic Forest-typed dual is not a basic land, so only the basic matches.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Tangled Islet"), card("Forest")]);
+    let islet = lib[0];
+    let forest = lib[1];
+    let ranger = game.spawn_in_hand(PlayerId(0), card("Borderland Ranger"));
+    game.cast(ranger).resolve();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the optional ETB search pauses on a yes/no, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!("accepting pauses on the library search");
+    };
+    assert_eq!(dest, SearchDest::Hand, "the found card goes to hand");
+    assert!(matches.contains(&forest), "the basic Forest matches");
+    assert!(
+        !matches.contains(&islet),
+        "a nonbasic Forest-typed dual is not a basic land"
+    );
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(forest),
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Hand,
+        "the found basic land went to hand"
+    );
+}
+
+#[test]
+fn wood_elves_fetches_a_forest_typed_land_onto_the_battlefield_untapped() {
+    // Wood Elves: "When this creature enters, search your library for a Forest card, put that
+    // card onto the battlefield, then shuffle." — a mandatory search for "a Forest card"
+    // (CardFilter::LandWithSubtype): the nonbasic Forest-typed dual matches too (unlike a
+    // basic-land search), and the fetched land enters UNTAPPED.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Island"), card("Tangled Islet"), card("Forest")],
+    );
+    let island = lib[0];
+    let islet = lib[1];
+    let forest = lib[2];
+    let elves = game.spawn_in_hand(PlayerId(0), card("Wood Elves"));
+    game.cast(elves).resolve();
+    resolve_top_of_stack(&mut game); // the mandatory ETB trigger resolves → search pause
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "Wood Elves pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Battlefield);
+    assert!(matches.contains(&forest), "the basic Forest matches");
+    assert!(
+        matches.contains(&islet),
+        "the Forest-typed nonbasic dual matches"
+    );
+    assert!(
+        !matches.contains(&island),
+        "an Island has no Forest subtype"
+    );
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(islet),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(islet), Zone::Battlefield);
+    let perm = game.current_id(islet);
+    assert!(
+        !game.is_tapped(perm),
+        "Wood Elves' fetched Forest enters untapped"
+    );
+}
+
+#[test]
+fn jungle_barrier_etb_draws_a_card() {
+    // Jungle Barrier: "Defender / When this creature enters, draw a card."
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let barrier = game.spawn_in_hand(PlayerId(0), card("Jungle Barrier"));
+    game.cast(barrier).resolve();
+    resolve_top_of_stack(&mut game); // the ETB trigger resolves
+
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Hand,
+        "Jungle Barrier's ETB drew a card"
+    );
+    let perm = game.current_id(barrier);
+    assert!(
+        game.has_keyword(perm, Keyword::Defender),
+        "Jungle Barrier has defender"
+    );
+}
+
+#[test]
+fn jungle_lion_cant_block() {
+    // Jungle Lion: "This creature can't block." (CR 509.1a — never a legal blocker.)
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let lion = game.spawn_on_battlefield(PlayerId(1), card("Jungle Lion"));
+
+    attack_with(&mut game, vec![attacker]);
+    assert!(
+        block_with(&mut game, vec![(lion, attacker)]).is_err(),
+        "Jungle Lion can't block"
+    );
+}
+
+#[test]
+fn man_o_war_etb_bounces_target_creature() {
+    // Man-o'-War: "When this creature enters, return target creature to its owner's hand."
+    // The mandatory trigger targets at placement; the bounced creature goes to its OWNER's hand.
+    let mut game = TestGame::new();
+    let theirs = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let jellyfish = game.spawn_in_hand(PlayerId(0), card("Man-o'-War"));
+    game.cast(jellyfish).resolve();
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ETB bounce pauses to choose its target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(theirs)),
+        "an opponent's creature is a legal bounce target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(theirs)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(theirs),
+        Zone::Hand,
+        "the targeted creature returned to its owner's hand"
+    );
+    assert_eq!(
+        game.zone_of(jellyfish),
+        Zone::Battlefield,
+        "Man-o'-War itself stays on the battlefield"
+    );
+}
+
+#[test]
+fn merfolk_looter_taps_to_draw_then_discard() {
+    // Merfolk Looter: "{T}: Draw a card, then discard a card." — the draw lands first, then
+    // the discard pauses on a card pick from the (now larger) hand.
+    let mut game = Game::new();
+    let looter = game.spawn_on_battlefield(PlayerId(0), card("Merfolk Looter"));
+    let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let lib = game.stack_library(PlayerId(0), &[card("Plains")]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: looter,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(game.is_tapped(looter), "the loot tapped Merfolk Looter");
+    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the loot drew a card");
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::DiscardCards {
+                player: PlayerId(0),
+                count: 1,
+                ..
+            })
+        ),
+        "then the discard pauses on a card pick, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![fodder],
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(fodder),
+        Zone::Graveyard,
+        "the chosen card was discarded"
+    );
+}
+
+#[test]
+fn looter_il_kor_combat_damage_to_player_draws_then_discards() {
+    // Looter il-Kor: "Shadow / Whenever this creature deals damage to an opponent, draw a card,
+    // then discard a card." Its combat damage to the defending player fires the loot.
+    let mut game = Game::new();
+    let looter = game.spawn_on_battlefield(PlayerId(0), card("Looter il-Kor"));
+    let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let lib = game.stack_library(PlayerId(0), &[card("Plains")]);
+
+    attack_with(&mut game, vec![looter]);
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+
+    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the hit drew a card");
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::DiscardCards {
+                player: PlayerId(0),
+                count: 1,
+                ..
+            })
+        ),
+        "then the discard pauses on a card pick, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![fodder],
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(fodder),
+        Zone::Graveyard,
+        "the chosen card was discarded"
+    );
+    assert!(
+        game.has_keyword(looter, Keyword::Shadow),
+        "Looter il-Kor has shadow"
+    );
+}

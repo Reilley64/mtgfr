@@ -1,0 +1,26 @@
+# When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle.
+name = "Wood Elves"
+oracle = "When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle."
+set = "por"
+subtypes = ["Elf", "Scout"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature enters, search your library for a Forest card, put that card onto the
+# battlefield, then shuffle.
+[[abilities]]
+timing = "etb"
+
+# search your library for a Forest card, put that card onto the battlefield, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Forest"] }
+to_zone = "battlefield"
+tapped = false

@@ -1515,6 +1515,19 @@ instead of a fresh copy). **Slice 3 — Illusionary Mask:** evaluate honestly on
 its cast-from-hand-face-down-via-{X} replacement likely stays `approximates` (name the residual
 precisely) — do not contort the DSL for one 1994 card. *Cards:* willbender, illusionary_mask.
 
+### 164. `cross-owner-anthem-cache` — 1 card, S
+Depends on: nothing.
+Found in the wave-B authoring pass: Yavimaya Enchantress's "+1/+1 for each enchantment on the
+battlefield" is fully expressible (`anthem_static`, `self_only`, `power/toughness =
+{ per_permanent = { types = "enchantment" } }`) but latently wrong — the characteristics cache
+invalidates **owner-scoped** on `PermanentEntered`/`MovedToGraveyard`/`SearchedToBattlefield`, so
+an any-controller count anthem goes stale when an *opponent's* enchantment enters or leaves
+(verified empirically; every existing count anthem is `controller = "you"`-scoped, so previously
+unexercised). *Sketch:* on those events invalidate board-wide (the `LifeChanged` arm's pattern),
+or narrowly: any permanent whose anthem amount is a cross-owner `per_permanent`. Regression test:
+opponent's enchantment entering/leaving moves her P/T without any owner-side event. Then author
+the card (TOML + test drafted and withdrawn in wave B). *Cards:* yavimaya_enchantress.
+
 ---
 
 ## Top 5 next increments (build in this order)

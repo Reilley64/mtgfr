@@ -1,0 +1,23 @@
+# When this creature enters, return target creature to its owner's hand.
+name = "Man-o'-War"
+oracle = "When this creature enters, return target creature to its owner's hand."
+set = "vis"
+subtypes = ["Jellyfish"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, return target creature to its owner's hand.
+[[abilities]]
+timing = "etb"
+
+# return target creature to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = "creature"

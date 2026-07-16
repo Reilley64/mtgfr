@@ -1,0 +1,26 @@
+# Defender (This creature can't attack.)
+# When this creature enters, draw a card.
+name = "Jungle Barrier"
+oracle = "Defender (This creature can't attack.)\nWhen this creature enters, draw a card."
+set = "apc"
+subtypes = ["Plant", "Wall"]
+keywords = ["defender"]
+
+[cost]
+generic = 2
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 6
+
+# When this creature enters, draw a card.
+[[abilities]]
+timing = "etb"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

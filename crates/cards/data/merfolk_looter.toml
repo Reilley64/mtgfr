@@ -1,0 +1,29 @@
+# {T}: Draw a card, then discard a card.
+name = "Merfolk Looter"
+oracle = "{T}: Draw a card, then discard a card."
+set = "exo"
+subtypes = ["Merfolk", "Rogue"]
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Draw a card, then discard a card.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# then discard a card.
+[[abilities.effects]]
+type = "discard"
+count = 1

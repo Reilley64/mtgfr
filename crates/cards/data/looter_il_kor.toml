@@ -1,0 +1,35 @@
+# Shadow (This creature can block or be blocked by only creatures with shadow.)
+# Whenever this creature deals damage to an opponent, draw a card, then discard a card.
+# ponytail: the loot rides the deals-combat-damage-to-a-player trigger — noncombat creature-to-player
+# damage isn't a modeled trigger source, and attack targets are always opponents, so the "to an
+# opponent" half is unobservable.
+name = "Looter il-Kor"
+approximates = "triggers on combat damage to a player instead of any damage to an opponent — noncombat creature-to-player damage isn't a modeled trigger source, and attack targets are always opponents"
+oracle = "Shadow (This creature can block or be blocked by only creatures with shadow.)\nWhenever this creature deals damage to an opponent, draw a card, then discard a card."
+set = "tsp"
+subtypes = ["Kor", "Rogue"]
+keywords = ["shadow"]
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Whenever this creature deals damage to an opponent, draw a card, then discard a card.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "this"
+
+# draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# then discard a card.
+[[abilities.effects]]
+type = "discard"
+count = 1

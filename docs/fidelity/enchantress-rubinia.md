@@ -19,7 +19,7 @@ Commander: **Rubinia Soulsinger**. Backlog increments for section D: #135–#163
 
 None — every other deck card is new to the pool.
 
-## C. New, expressible today (29)
+## C. New, expressible today (28)
 
 - [ ] Auramancer — ETB optional `return_from_graveyard_to_hand`, `{ card_in_graveyard = { whose = "yours", filter = "enchantment" } }`
 - [ ] Azorius Chancery — `enters_tapped`, ETB targeted self-land bounce, `{T}: Add {W}{U}` via `add_mana`
@@ -49,9 +49,8 @@ None — every other deck card is new to the pool.
 - [ ] Stonecloaker — flash/flying; ETB self-creature bounce; ETB `exile_target_graveyard_card_then_if_creature` with empty `then`
 - [ ] Wirewood Guardian — Forestcycling via `hand_ability`
 - [ ] Wood Elves — ETB `search_library` `{ land_with_subtype = ["Forest"] }` to battlefield untapped
-- [ ] Yavimaya Enchantress — self-only anthem, `{ per_permanent = { types = "enchantment" } }`
 
-## D. New, needs engine work (35)
+## D. New, needs engine work (36)
 
 - [ ] Armadillo Cloak — #151 enchanted-deals-damage lifegain
 - [ ] Azorius Guildmage — #146 counter target activated ability (cycling/hand activations on the stack)
@@ -88,6 +87,10 @@ None — every other deck card is new to the pool.
 - [ ] Temporal Spring — #135 library-tuck primitive
 - [ ] Treva's Ruins — #143 ETB sacrifice-unless
 - [ ] Willbender — #163 morph/face-down (slices 1–2)
+- [ ] Yavimaya Enchantress — #164 cross-owner anthem cache invalidation (reclassified from C in
+  wave B: the TOML is expressible, but the characteristics cache invalidates owner-scoped, so an
+  any-controller `per_permanent` count anthem goes stale when an opponent's enchantment
+  enters/leaves)
 
 ## Observability re-audit (falsified pool-absence claims)
 
