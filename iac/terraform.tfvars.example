@@ -15,8 +15,8 @@ edh_hostname = "edh.example.com"
 cookie_domain = ""
 cors_origin   = ""
 
-# Versioned API: set only the desired active image. Drain peers are owned by
-# `just deploy` / wait-drain (passed as -var api_peer_images — not listed here).
+# Versioned API: set only the desired active image. Drain peers live in
+# ConfigMap `edh-api-peers` (owned by `just deploy` / wait-drain via kubectl).
 server_image = "ghcr.io/OWNER/mtgfr-server:0.1.0"
 # api_max_instances = 4
 

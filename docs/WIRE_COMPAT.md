@@ -24,7 +24,7 @@ parse — expand-only across the whole set until GC. Nested rolls widen that set
 ## 1. Compatibility window
 
 All concurrent instance versions must coexist until each drain peer reports `active_tables: 0`
-and is removed from `api_peer_images`. No longer-lived multi-version support is required beyond that
+and is removed from ConfigMap `edh-api-peers`. No longer-lived multi-version support is required beyond that
 set — once a peer is torn down, only remaining instances' contracts need to work.
 
 ## 2. Expand-only during that window

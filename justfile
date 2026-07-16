@@ -93,10 +93,6 @@ migrate:
 deploy:
     ./iac/scripts/deploy.sh
 
-[doc("terraform apply that preserves drain peers (use instead of bare apply during/after nested rolls)")]
-tf-apply *ARGS:
-    ./iac/scripts/tf-apply.sh {{ARGS}}
-
 # ── Workspace ────────────────────────────────────────────────────────────────────────
 
 [doc("Format all code")]

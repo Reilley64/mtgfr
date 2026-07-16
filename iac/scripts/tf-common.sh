@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Shared helpers for deploy / wait-drain / tf-apply. Sourced, not executed.
+# Shared helpers for deploy / wait-drain. Sourced, not executed.
 # shellcheck shell=bash
 
 MAX_INSTANCES="${API_MAX_INSTANCES:-4}"
+NAMESPACE="${MTGFR_NAMESPACE:-edh}"
+PEERS_CM="${MTGFR_PEERS_CM:-edh-api-peers}"
 
 die() {
   echo "${0##*/}: error: $*" >&2
@@ -62,23 +64,62 @@ require_output_raw() {
   printf '%s' "$value"
 }
 
-# Current drain peers from state, or {} when outputs are unavailable (greenfield).
-peer_images_json() {
-  if terraform output -json api_peer_images >/tmp/mtgfr-api-peers.json 2>/dev/null; then
-    cat /tmp/mtgfr-api-peers.json
-  else
+# Drain peers from ConfigMap edh-api-peers (fallback {} if missing).
+read_peer_images_cm() {
+  if ! kubectl get configmap "$PEERS_CM" -n "$NAMESPACE" >/dev/null 2>&1; then
     echo "{}"
+    return 0
   fi
+  kubectl get configmap "$PEERS_CM" -n "$NAMESPACE" -o json | python3 -c '
+import json, sys
+doc = json.load(sys.stdin)
+print(json.dumps(doc.get("data") or {}, separators=(",", ":")))
+'
 }
 
-# terraform apply with operator images + script-owned peer map.
+# Replace ConfigMap data with JSON object { instance_id: image, ... } (full replace, drops stale keys).
+write_peer_images_cm() {
+  local peers_json="$1"
+  NAMESPACE="$NAMESPACE" PEERS_CM="$PEERS_CM" python3 -c '
+import json, os, subprocess, sys
+
+peers = json.loads(sys.argv[1])
+ns = os.environ["NAMESPACE"]
+name = os.environ["PEERS_CM"]
+doc = {
+    "apiVersion": "v1",
+    "kind": "ConfigMap",
+    "metadata": {
+        "name": name,
+        "namespace": ns,
+        "labels": {"app": "edh-api-peers"},
+    },
+    "data": peers,
+}
+payload = json.dumps(doc).encode()
+# replace requires the object to exist; create on first use.
+if subprocess.run(["kubectl", "get", "configmap", name, "-n", ns], capture_output=True).returncode != 0:
+    subprocess.run(["kubectl", "create", "-f", "-"], input=payload, check=True)
+else:
+    subprocess.run(["kubectl", "replace", "-f", "-"], input=payload, check=True)
+' "$peers_json"
+}
+
+# terraform apply; peers come from ConfigMap refresh (ignore_changes on data).
 tf_apply_images() {
   local server="$1"
   local web="$2"
-  local peers_json="$3"
   terraform apply -auto-approve \
     -var="server_image=$server" \
     -var="web_image=$web" \
-    -var="api_peer_images=${peers_json}" \
     -var="api_max_instances=$MAX_INSTANCES"
+}
+
+# Write peers then apply so for_each matches the ConfigMap.
+apply_with_peers() {
+  local server="$1"
+  local web="$2"
+  local peers_json="$3"
+  write_peer_images_cm "$peers_json"
+  tf_apply_images "$server" "$web"
 }

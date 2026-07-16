@@ -71,17 +71,11 @@ variable "cloudflared_replicas" {
 # ── Images / API instances ───────────────────────────────────────────────────────────────────────
 # Public GHCR packages (deploy PRD — no imagePullSecrets). Never a moving `latest` tag; pin
 # explicit release versions. Operator sets only `server_image` (desired active) + `web_image`.
-# Drain peers are owned by deploy/GC scripts via `api_peer_images` (-var), not tfvars.
+# Drain peers live in ConfigMap edh-api-peers (scripts via kubectl); not in tfvars.
 
 variable "server_image" {
   description = "Desired active mtgfr-server image. INSTANCE_ID is derived as edh-api-<slug(tag)>. Drain peers are not listed here."
   type        = string
-}
-
-variable "api_peer_images" {
-  description = "Drain peer INSTANCE_ID → image. Default empty; deploy.sh / wait-drain.sh / tf-apply.sh pass the live map from terraform outputs. Do not put this in tfvars."
-  type        = map(string)
-  default     = {}
 }
 
 variable "api_max_instances" {

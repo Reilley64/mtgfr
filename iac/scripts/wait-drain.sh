@@ -30,7 +30,7 @@ apply_map() {
   local server web
   server="$(require_output_raw server_image)"
   web="$(require_output_raw web_image)"
-  tf_apply_images "$server" "$web" "$peers_json"
+  apply_with_peers "$server" "$web" "$peers_json"
 }
 
 start_pf() {
@@ -145,7 +145,7 @@ read_tables() {
 
 gc_empty() {
   local peers_json id tables changed
-  peers_json="$(require_output_json api_peer_images)"
+  peers_json="$(read_peer_images_cm)"
   changed=0
 
   for id in $(python3 -c 'import json,sys; print(" ".join(json.loads(sys.argv[1])))' "$peers_json"); do
@@ -189,7 +189,7 @@ gc_one() {
         tables="$(active_tables_from_json "$(curl_drain_json)")"
         kill "$pf_pid" 2>/dev/null || true
         if [ "$tables" = "0" ]; then
-          peers_json="$(require_output_json api_peer_images)"
+          peers_json="$(read_peer_images_cm)"
           peers_json="$(python3 -c 'import json,sys; m=json.loads(sys.argv[1]); m.pop(sys.argv[2], None); print(json.dumps(m, separators=(",", ":")))' "$peers_json" "$id")"
           echo "wait-drain: removing emptied peer $id." >&2
           apply_map "$peers_json"

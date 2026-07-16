@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Nested API rolls from a single desired server_image (+ web_image).
-# Cutover: stage new as peer → drain old → flip server_image (old becomes peer) → GC → web.
+# Peers live in ConfigMap edh-api-peers; cutover: stage → drain → flip → GC → web.
 # Cap wait: API_CAP_WAIT_SECONDS (default 6h). TF output failures fail closed.
 set -euo pipefail
 
@@ -27,9 +27,6 @@ else
 fi
 
 is_greenfield() {
-  if ! terraform output -json api_peer_images >/tmp/mtgfr-api-peers.json 2>/dev/null; then
-    return 0
-  fi
   if ! terraform output -raw server_image >/tmp/mtgfr-server-image.txt 2>/dev/null; then
     return 0
   fi
@@ -43,9 +40,6 @@ wait_for_cap_slot() {
   local peers_json="$1"
   local count start_time elapsed
   count="$(python3 -c 'import json,sys; print(len(json.loads(sys.argv[1])))' "$peers_json")"
-  # Cap is active + peers; staging a new peer needs peers+1 < max (room for active too).
-  # When rolling we temporarily have active + old peers + new staged = peers+2 until flip.
-  # Require peers+1 < MAX so after staging (peers+1 drain-labeled + 1 active) we are <= MAX.
   start_time=$(date +%s)
   while [ "$((count + 1))" -ge "$MAX_INSTANCES" ]; do
     elapsed=$(($(date +%s) - start_time))
@@ -54,7 +48,7 @@ wait_for_cap_slot() {
     fi
     echo "deploy: at api_max_instances=$MAX_INSTANCES — waiting for a drain peer to empty (${elapsed}s/${CAP_WAIT_SECONDS}s)…" >&2
     ./scripts/wait-drain.sh --gc-one
-    peers_json="$(require_output_json api_peer_images)"
+    peers_json="$(read_peer_images_cm)"
     count="$(python3 -c 'import json,sys; print(len(json.loads(sys.argv[1])))' "$peers_json")"
   done
 }
@@ -66,14 +60,14 @@ if is_greenfield; then
   fi
   new_id="$(instance_id_from_image "$desired_server")"
   echo "deploy: no prior API — applying $desired_server / $desired_web as $new_id." >&2
-  tf_apply_images "$desired_server" "$desired_web" "{}"
+  apply_with_peers "$desired_server" "$desired_web" "{}"
   exit 0
 fi
 
 old_web_image="$(require_output_raw web_image)"
 old_server_image="$(require_output_raw server_image)"
 old_active_id="$(require_output_raw api_active_instance_id)"
-peers_json="$(require_output_json api_peer_images)"
+peers_json="$(read_peer_images_cm)"
 new_id="$(instance_id_from_image "$desired_server")"
 
 if [ "$old_server_image" = "$desired_server" ]; then
@@ -85,12 +79,12 @@ if [ "$old_server_image" = "$desired_server" ]; then
   if [ "$drain_ids" != "[]" ]; then
     echo "deploy: active API unchanged — GC drain peers before considering web bump…" >&2
     ./scripts/wait-drain.sh --gc-empty
-    peers_json="$(require_output_json api_peer_images)"
+    peers_json="$(read_peer_images_cm)"
     drain_ids="$(require_output_json api_drain_instance_ids)"
   fi
   if [ "$drain_ids" = "[]" ] && [ "$old_web_image" != "$desired_web" ]; then
     echo "deploy: bumping edh-web only ($old_web_image -> $desired_web)…" >&2
-    tf_apply_images "$desired_server" "$desired_web" "$peers_json"
+    apply_with_peers "$desired_server" "$desired_web" "$peers_json"
     exit 0
   fi
   if [ "$drain_ids" != "[]" ]; then
@@ -100,7 +94,7 @@ if [ "$old_server_image" = "$desired_server" ]; then
 fi
 
 wait_for_cap_slot "$peers_json"
-peers_json="$(require_output_json api_peer_images)"
+peers_json="$(read_peer_images_cm)"
 
 if python3 -c 'import json,sys; raise SystemExit(0 if sys.argv[1] in json.loads(sys.argv[2]) else 1)' \
   "$new_id" "$peers_json"; then
@@ -110,7 +104,6 @@ if [ "$new_id" = "$old_active_id" ]; then
   die "derived instance id $new_id matches current active — use a distinct image tag"
 fi
 
-# Stage new Deployment as a peer while old server_image stays active.
 echo "deploy: staging $new_id ($desired_server) as peer; active stays $old_active_id; holding web on $old_web_image…" >&2
 staged_peers="$(python3 -c '
 import json, sys
@@ -118,30 +111,29 @@ m = json.loads(sys.argv[1])
 m[sys.argv[2]] = sys.argv[3]
 print(json.dumps(m, separators=(",", ":")))
 ' "$peers_json" "$new_id" "$desired_server")"
-tf_apply_images "$old_server_image" "$old_web_image" "$staged_peers"
+apply_with_peers "$old_server_image" "$old_web_image" "$staged_peers"
 
 echo "deploy: marking previous active $old_active_id draining (live toggle)…" >&2
 ./scripts/wait-drain.sh --mark-only "$old_active_id"
 
-# Flip: new image becomes server_image; old active moves into peer map (drop staged new from peers).
 echo "deploy: flipping active $old_active_id -> $new_id…" >&2
 flipped_peers="$(python3 -c '
 import json, sys
 m = json.loads(sys.argv[1])
-m.pop(sys.argv[2], None)  # new id leaves peers — it is now active
-m[sys.argv[3]] = sys.argv[4]  # old active becomes peer
+m.pop(sys.argv[2], None)
+m[sys.argv[3]] = sys.argv[4]
 print(json.dumps(m, separators=(",", ":")))
 ' "$staged_peers" "$new_id" "$old_active_id" "$old_server_image")"
-tf_apply_images "$desired_server" "$old_web_image" "$flipped_peers"
+apply_with_peers "$desired_server" "$old_web_image" "$flipped_peers"
 
 echo "deploy: GC empty drain peers…" >&2
 ./scripts/wait-drain.sh --gc-empty
 
-peers_json="$(require_output_json api_peer_images)"
+peers_json="$(read_peer_images_cm)"
 drain_ids="$(require_output_json api_drain_instance_ids)"
 if [ "$drain_ids" = "[]" ]; then
   echo "deploy: no drain peers left — bumping edh-web to $desired_web…" >&2
-  tf_apply_images "$desired_server" "$desired_web" "$peers_json"
+  apply_with_peers "$desired_server" "$desired_web" "$peers_json"
 else
   echo "deploy: drain peers remain ($drain_ids) — holding edh-web on $old_web_image (nested roll OK)." >&2
 fi

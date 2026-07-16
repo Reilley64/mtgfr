@@ -17,10 +17,11 @@ to **multiple concurrent draining instances**.
   derived from the image tag (e.g. `ghcr.io/…/mtgfr-server:1.2.3` → `edh-api-1-2-3`) — **not** the
   pod name. The image on a draining Deployment is never rewritten (that would restart the pod).
 - Exactly one instance is **active**, derived from operator `server_image` (`edh-api-<slug(tag)>`);
-  it accepts new tables. Drain peers are **not** listed in tfvars — scripts pass `api_peer_images`
-  from Terraform outputs on every apply. Live drain is `POST /admin/drain` (never env/image churn).
+  it accepts new tables. Drain peers live in ConfigMap **`edh-api-peers`** (scripts update via
+  kubectl; Terraform refreshes and `ignore_changes` on `data` so bare apply does not wipe them).
+  Live drain is `POST /admin/drain` (never env/image churn).
 - Cap: `api_max_instances` (default 4). A nested roll that would exceed the cap waits until a
-  drain peer reports `active_tables=0` and is removed from the peer map.
+  drain peer reports `active_tables=0` and is removed from the peer ConfigMap.
 - On table create/join (and other bind responses), the server sets a host-only affinity cookie:
   ```
   Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
@@ -34,7 +35,8 @@ to **multiple concurrent draining instances**.
 - Deploy cutover (`just deploy`): stage the new image as a peer while `server_image` stays on the
   previous tag → live-drain the previous active → flip `server_image` (old becomes a peer). GC
   removes a peer only when `active_tables=0` (never on probe failure). Cap waits time out
-  (`API_CAP_WAIT_SECONDS`). Non-roll applies use `just tf-apply` so peers are not wiped.
+  (`API_CAP_WAIT_SECONDS`). Bare `terraform apply` is safe for infra edits; peers come from the
+  ConfigMap, not a TF variable.
 - There is **no** nginx sticky proxy. NetworkPolicy: `cloudflared` → `edh-web` only; `edh-web` →
   pods labeled `mtgfr.io/component=api`.
 - Auth session cookies are host-only on edh when `COOKIE_DOMAIN` is empty; the BFF forwards

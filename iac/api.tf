@@ -2,8 +2,24 @@
 # with INSTANCE_ID = map key (e.g. edh-api-1-2-3). Never rewrite a draining peer's image — that would
 # restart the pod and wipe in-memory tables (ADR 0021). Live drain is POST /admin/drain only.
 #
-# Operator sets `server_image` only; drain peers come from `api_peer_images` (scripts). Cookie sticky
-# lives in the SolidStart BFF (`API_UPSTREAMS` / `API_ACTIVE_INSTANCE_ID` on edh-web).
+# Operator sets `server_image` only. Drain peers live in ConfigMap edh-api-peers (kubectl from
+# deploy/GC); Terraform refreshes that map and ignores local `data` so bare apply does not wipe peers.
+# Cookie sticky lives in the SolidStart BFF on edh-web.
+
+resource "kubernetes_config_map_v1" "edh_api_peers" {
+  metadata {
+    name      = "edh-api-peers"
+    namespace = local.namespace
+    labels    = merge(local.common_labels, { app = "edh-api-peers" })
+  }
+
+  # Bootstrap only — deploy.sh / wait-drain.sh own the map via kubectl.
+  data = {}
+
+  lifecycle {
+    ignore_changes = [data]
+  }
+}
 
 locals {
   api_env_common = {
@@ -22,9 +38,12 @@ locals {
     trimsuffix(trimprefix(replace(lower(local.server_image_tag), "/[^a-z0-9]+/", "-"), "-"), "-")
   )
 
+  # Refreshed from the cluster; ignore_changes keeps scripts' kubectl updates.
+  api_peer_images = coalesce(kubernetes_config_map_v1.edh_api_peers.data, {})
+
   api_instances = merge(
     {
-      for id, img in var.api_peer_images : id => { image = img }
+      for id, img in local.api_peer_images : id => { image = img }
       if id != local.api_active_instance_id
     },
     {
@@ -137,7 +156,10 @@ resource "kubernetes_deployment_v1" "edh_api" {
     }
   }
 
-  depends_on = [kubernetes_job_v1.edh_migrate]
+  depends_on = [
+    kubernetes_job_v1.edh_migrate,
+    kubernetes_config_map_v1.edh_api_peers,
+  ]
 }
 
 resource "kubernetes_service_v1" "edh_api" {

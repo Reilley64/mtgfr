@@ -1,4 +1,4 @@
-# Read by deploy / wait-drain / tf-apply scripts.
+# Read by deploy / wait-drain scripts. Peer map mirrors ConfigMap edh-api-peers.
 
 output "server_image" {
   description = "Desired/applied active mtgfr-server image (var.server_image)."
@@ -21,7 +21,7 @@ output "api_instances" {
 }
 
 output "api_peer_images" {
-  description = "Drain peer INSTANCE_ID → image (pass back as -var=api_peer_images on apply)."
+  description = "Drain peer INSTANCE_ID → image (ConfigMap edh-api-peers data)."
   value = {
     for id, img in local.api_instances : id => img
     if id != local.api_active_instance_id
