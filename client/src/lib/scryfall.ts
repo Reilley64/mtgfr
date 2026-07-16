@@ -30,20 +30,34 @@ export function imageUrlByPrint(printId: string, _size: ImageSize = "large", fac
   return `https://api.scryfall.com/cards/${printId}?format=image&version=large${faceParam}`;
 }
 
+export type ScryfallPrint = {
+  id: string;
+  set: string;
+  set_name: string;
+  collector_number: string;
+  released_at: string;
+};
+
 /** Scryfall prints for a Card (oracle) id — picker metadata only; images still use CDN. */
-export async function searchPrints(
-  oracleId: string,
-): Promise<Array<{ id: string; set: string; set_name: string; collector_number: string }>> {
+export async function searchPrints(oracleId: string): Promise<ScryfallPrint[]> {
   const q = encodeURIComponent(`oracleid:${oracleId}`);
-  const out: Array<{ id: string; set: string; set_name: string; collector_number: string }> = [];
+  const out: ScryfallPrint[] = [];
   let url: string | null = `https://api.scryfall.com/cards/search?q=${q}&unique=prints&order=released`;
   while (url) {
     const res = await fetch(url, {
       headers: { Accept: "application/json", "User-Agent": "mtgfr/0.1" },
     });
-    if (!res.ok) break;
+    if (!res.ok) {
+      throw new Error(`Scryfall print search failed (${res.status})`);
+    }
     const body = (await res.json()) as {
-      data?: Array<{ id: string; set: string; set_name: string; collector_number: string }>;
+      data?: Array<{
+        id: string;
+        set: string;
+        set_name: string;
+        collector_number: string;
+        released_at?: string;
+      }>;
       next_page?: string | null;
       has_more?: boolean;
     };
@@ -53,6 +67,7 @@ export async function searchPrints(
         set: c.set,
         set_name: c.set_name,
         collector_number: c.collector_number,
+        released_at: c.released_at ?? "",
       });
     }
     url = body.has_more && body.next_page ? body.next_page : null;

@@ -12,6 +12,18 @@ use schema::{DeckCardEntry, color_identity};
 /// The number of cards a Commander deck holds besides the commander.
 const DECK_SIZE: u32 = 99;
 
+fn is_print_uuid(s: &str) -> bool {
+    let parts: Vec<&str> = s.split('-').collect();
+    if parts.len() != 5 {
+        return false;
+    }
+    let lens = [8, 4, 4, 4, 12];
+    parts
+        .iter()
+        .zip(lens)
+        .all(|(part, len)| part.len() == len && part.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
 fn is_basic(def: &engine::CardDef) -> bool {
     matches!(def.kind, CardKind::Land { basic: true, .. })
 }
@@ -28,6 +40,8 @@ pub fn validate(
 
     if commander_print.is_empty() {
         problems.push("commander is missing a print".to_string());
+    } else if !is_print_uuid(commander_print) {
+        problems.push("commander print is not a valid printing id".to_string());
     }
 
     let commander_identity = match cards::get(commander) {
@@ -57,6 +71,8 @@ pub fn validate(
 
         if entry.print.is_empty() {
             problems.push(format!("card {:?} is missing a print", entry.id));
+        } else if !is_print_uuid(&entry.print) {
+            problems.push(format!("card {:?} has an invalid print", entry.id));
         }
 
         let Some(def) = cards::get(&entry.id) else {
@@ -178,5 +194,29 @@ mod tests {
         let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
         let err = validate(cmd.id, "", &[entry("Plains", 99)]).unwrap_err();
         assert!(err.iter().any(|p| p.contains("commander is missing a print")));
+    }
+
+    #[test]
+    fn invalid_commander_print_is_a_problem() {
+        let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
+        let err = validate(cmd.id, "not-a-uuid", &[entry("Plains", 99)]).unwrap_err();
+        assert!(err.iter().any(|p| p.contains("not a valid printing id")));
+    }
+
+    #[test]
+    fn invalid_card_print_is_a_problem() {
+        let def = cards::get_by_name("Plains").unwrap();
+        let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
+        let err = validate(
+            cmd.id,
+            cmd.default_print,
+            &[DeckCardEntry {
+                id: def.id.to_string(),
+                count: 99,
+                print: "bad-print".to_string(),
+            }],
+        )
+        .unwrap_err();
+        assert!(err.iter().any(|p| p.contains("invalid print")));
     }
 }

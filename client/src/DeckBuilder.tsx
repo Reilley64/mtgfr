@@ -30,12 +30,15 @@ import ConfirmDialog from "~/ConfirmDialog";
 import { client } from "~/effect/client";
 import { useAuthGuard } from "~/guard";
 import { cn } from "~/lib/cn";
+import { commanderPrintForRow, formatReleasedAt, reconcileEntries } from "~/lib/deckBuilderPrint";
 import { lookupCardsByIds } from "~/lib/lookupCards";
+import { openModalWhenReady } from "~/lib/modalDialog";
 import { imageUrlByPrint, searchPrints } from "~/lib/scryfall";
-import { Button, Felt, Field, Modal } from "~/ui";
+import { Button, Felt, Field } from "~/ui";
 
 const BASICS = new Set(["Plains", "Island", "Swamp", "Mountain", "Forest"]);
 const DECK_SIZE = 99;
+const CONTEXT_MENU_PRESS_MS = 500;
 
 /** A card that can be this deck's commander: a legendary creature (the only commanders in pool). */
 const canBeCommander = (c: CatalogCard) => c.legendary && c.kind.kind === "creature";
@@ -48,8 +51,24 @@ const PAGE = 100;
 
 // A pool tile and a decklist row are both list rows; only their density differs.
 const LIST_ROW = "border border-vine-dim bg-glass-dim text-snow hover:bg-white/8";
-const POOL_CARD = cn(LIST_ROW, "flex cursor-pointer flex-col items-center gap-1 rounded-hud p-sm text-caption");
-const DECK_ROW = cn(LIST_ROW, "flex w-full cursor-pointer items-center gap-xs rounded-[5px] px-sm py-1 text-left");
+const POOL_CARD = cn(
+  LIST_ROW,
+  "flex cursor-pointer flex-col items-center gap-1 rounded-hud p-sm text-caption focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
+);
+const DECK_ROW = cn(
+  LIST_ROW,
+  "flex w-full cursor-pointer items-center gap-xs rounded-[5px] px-sm py-1 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
+);
+const MENU_ITEM =
+  "cursor-pointer rounded-[5px] border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
+const PRINT_PICKER_COL = "w-[min(38vw,200px)]";
+const PRINT_TILE = cn(
+  PRINT_PICKER_COL,
+  "flex cursor-pointer flex-col items-center gap-1.5 rounded-hud p-md text-label hover:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
+);
+const PRINT_PICKER_GRID = "grid w-fit grid-cols-2 gap-md";
+const PRINT_BADGE =
+  "rounded-full border border-vine-dim bg-glass-dim px-[7px] py-px font-semibold text-chip text-lichen";
 const CARD_ART = cn("aspect-[0.72] w-full rounded-[5px] object-cover");
 
 // Search: the box writes `queryAtom`; a 200ms debounce feeds the derived query atom so the pool
@@ -203,13 +222,77 @@ export default function DeckBuilder() {
   const [printPicker, setPrintPicker] = createSignal<{ oracleId: string; onPick: (printId: string) => void } | null>(
     null,
   );
+  // Deck id we have already prefilled — blocks atom re-fetch from clobbering in-progress edits.
+  const [prefilledDeckId, setPrefilledDeckId] = createSignal<number | null>(null);
+
+  let suppressClick = false;
+  let menuPressTimer: ReturnType<typeof setTimeout> | undefined;
+  let menuPressOrigin: { x: number; y: number } | null = null;
+
+  const clearMenuPress = () => {
+    if (menuPressTimer) clearTimeout(menuPressTimer);
+    menuPressTimer = undefined;
+    menuPressOrigin = null;
+  };
+
+  const openMenuAt = (title: string, items: MenuItem[], x: number, y: number) => {
+    setHover(null);
+    setMenu({ title, items, x, y });
+  };
+
+  const startMenuPress = (title: string, items: MenuItem[], e: PointerEvent) => {
+    if (e.button !== 0) return;
+    clearMenuPress();
+    const x = e.clientX;
+    const y = e.clientY;
+    menuPressOrigin = { x, y };
+    menuPressTimer = setTimeout(() => {
+      menuPressTimer = undefined;
+      suppressClick = true;
+      openMenuAt(title, items, x, y);
+    }, CONTEXT_MENU_PRESS_MS);
+  };
+
+  const moveMenuPress = (e: PointerEvent) => {
+    if (!menuPressTimer || !menuPressOrigin) return;
+    const dx = e.clientX - menuPressOrigin.x;
+    const dy = e.clientY - menuPressOrigin.y;
+    if (dx * dx + dy * dy > 100) clearMenuPress();
+  };
+
+  createEffect(() => {
+    if (!menu() || printPicker()) return;
+    const dismiss = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenu(null);
+    };
+    document.addEventListener("keydown", dismiss);
+    onCleanup(() => document.removeEventListener("keydown", dismiss));
+  });
 
   createEffect(() => remember(results()?.cards));
 
-  // Prefill when editing an existing deck, hydrate card data, and seed sticky prints from the list.
+  // Reset on route change; prefill once per loaded deck id.
+  createEffect(
+    on(editingId, (id, prevId) => {
+      if (id === null) {
+        setName("value", "New deck");
+        setCommander({ id: "", print: "" });
+        setEntries({});
+        setPreferredPrint({});
+        setPrefilledDeckId(null);
+        setDirty(false);
+        return;
+      }
+      if (prevId !== undefined && id !== prevId) {
+        setPrefilledDeckId(null);
+      }
+    }),
+  );
+
   createEffect(() => {
+    const id = editingId();
     const deck = existing();
-    if (!deck) return;
+    if (id === null || !deck || prefilledDeckId() === id) return;
     setName("value", deck.name);
     setCommander({ id: deck.commander, print: deck.commander_print });
     setEntries(reconcileEntries(deck.cards));
@@ -222,6 +305,8 @@ export default function DeckBuilder() {
     const ids = deck.cards.map((c) => c.id);
     if (deck.commander) ids.push(deck.commander);
     void hydrateCards(ids).then(remember);
+    setPrefilledDeckId(id);
+    setDirty(false);
   });
 
   const commanderIdentity = () => known[commander.id]?.color_identity ?? [];
@@ -245,7 +330,7 @@ export default function DeckBuilder() {
   const add = (card: CatalogCard) => addN(card, 1);
   /** Remove `count` copies (deletes the entry at zero). */
   const removeN = (card: CatalogCard, count: number) => setCount(card, (entries[card.id]?.count ?? 0) - count);
-  /** Add one copy at an explicitly chosen printing (the pool's "Choose print…" flow), ignoring the
+  /** Add one copy at an explicitly chosen printing (the pool's "Choose print" flow), ignoring the
    * sticky preference for this one add — the caller updates the preference itself. */
   const addOneWithPrint = (card: CatalogCard, printId: string) => {
     setDirty(true);
@@ -260,7 +345,10 @@ export default function DeckBuilder() {
   const setCommanderPrint = (printId: string) => {
     setDirty(true);
     setCommander("print", printId);
-    if (commander.id) setPreferredPrint(commander.id, printId);
+    if (commander.id) {
+      setPreferredPrint(commander.id, printId);
+      if (commander.id in entries) setEntries(commander.id, "print", printId);
+    }
   };
 
   const openPrintPicker = (oracleId: string, onPick: (printId: string) => void) => setPrintPicker({ oracleId, onPick });
@@ -272,7 +360,7 @@ export default function DeckBuilder() {
 
   /** Right-click menu items for a pool card: basics add in bulk (and can fill the deck out to
    * the card limit), commanders can be set as the commander, everything else just adds one.
-   * "Choose print…" only offers when this Card id isn't already in the deck — once it's in, the
+   * "Choose print" only offers when this Card id isn't already in the deck — once it's in, the
    * deck row's own menu is where the print changes. */
   const menuItems = (c: CatalogCard): MenuItem[] => {
     const items: MenuItem[] = BASICS.has(c.name)
@@ -290,7 +378,7 @@ export default function DeckBuilder() {
         : [{ label: "Add One", run: () => add(c) }];
     if (!(c.id in entries)) {
       items.push({
-        label: "Choose print…",
+        label: "Choose print",
         run: () =>
           openPrintPicker(c.id, (printId) => {
             setPreferredPrint(c.id, printId);
@@ -301,17 +389,20 @@ export default function DeckBuilder() {
     return items;
   };
 
-  /** Deck row menu: bulk remove for basics (as before), plus "Choose print…" for every row —
+  /** Deck row menu: bulk remove for basics (as before), plus "Choose print" for every row —
    * changing an already-added card's print does not touch its count. */
   const rowMenuItems = (row: { id: string; count: number }): MenuItem[] => {
     const card = known[row.id];
     const items: MenuItem[] = card && BASICS.has(card.name) ? removeItems(card) : [];
     items.push({
-      label: "Choose print…",
+      label: "Choose print",
       run: () =>
         openPrintPicker(row.id, (printId) => {
+          setDirty(true);
           setEntries(row.id, "print", printId);
           setPreferredPrint(row.id, printId);
+          const cmdPrint = commanderPrintForRow(commander.id, row.id, printId);
+          if (cmdPrint) setCommander("print", cmdPrint);
         }),
     });
     return items;
@@ -357,7 +448,9 @@ export default function DeckBuilder() {
       {/* Pool grid — only this column scrolls; its scrollbar sits beside the cards. */}
       <div class="flex min-h-0 min-w-0 flex-col">
         <h1 class="m-0 text-title">Card pool</h1>
-        <div class="text-label text-lichen">Click a card to add it. Only basics may exceed one copy.</div>
+        <div class="text-label text-lichen">
+          Click to add. Right-click or long-press for print and other options. Only basics may exceed one copy.
+        </div>
         <label for="pool-search" class="sr-only">
           Search card pool
         </label>
@@ -379,11 +472,23 @@ export default function DeckBuilder() {
             {(c) => (
               <button
                 type="button"
-                onClick={() => add(c)}
+                title="Right-click or long-press for more options"
+                onClick={() => {
+                  if (suppressClick) {
+                    suppressClick = false;
+                    return;
+                  }
+                  add(c);
+                }}
+                onPointerDown={(e) => startMenuPress(c.name, menuItems(c), e)}
+                onPointerMove={moveMenuPress}
+                onPointerUp={clearMenuPress}
+                onPointerCancel={clearMenuPress}
+                onPointerLeave={clearMenuPress}
                 onContextMenu={(e) => {
                   e.preventDefault();
-                  setHover(null);
-                  setMenu({ title: c.name, items: menuItems(c), x: e.clientX, y: e.clientY });
+                  clearMenuPress();
+                  openMenuAt(c.name, menuItems(c), e.clientX, e.clientY);
                 }}
                 onMouseMove={(e) => setHover({ id: c.id, print: printFor(c), x: e.clientX, y: e.clientY })}
                 onMouseLeave={() => setHover(null)}
@@ -436,27 +541,35 @@ export default function DeckBuilder() {
         <Show
           when={commander.id}
           fallback={
-            <div class="text-label text-lichen">Right-click a legendary creature and choose “Set As Commander”.</div>
+            <div class="text-label text-lichen">
+              Right-click or long-press a legendary creature to set commander or choose its art.
+            </div>
           }
         >
           <button
             type="button"
-            title="Click to remove"
-            onClick={() => setCommanderDirty(null)}
+            title="Click to remove · right-click or long-press to change art"
+            onClick={() => {
+              if (suppressClick) {
+                suppressClick = false;
+                return;
+              }
+              setCommanderDirty(null);
+            }}
+            onPointerDown={(e) => {
+              const title = known[commander.id]?.name ?? commander.id;
+              startMenuPress(title, [{ label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) }], e);
+            }}
+            onPointerMove={moveMenuPress}
+            onPointerUp={clearMenuPress}
+            onPointerCancel={clearMenuPress}
+            onPointerLeave={clearMenuPress}
             onContextMenu={(e) => {
               e.preventDefault();
-              setHover(null);
-              setMenu({
-                title: known[commander.id]?.name ?? commander.id,
-                items: [
-                  {
-                    label: "Choose print…",
-                    run: () => openPrintPicker(commander.id, setCommanderPrint),
-                  },
-                ],
-                x: e.clientX,
-                y: e.clientY,
-              });
+              clearMenuPress();
+              openMenuAt(known[commander.id]?.name ?? commander.id, [
+                { label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) },
+              ], e.clientX, e.clientY);
             }}
             onMouseMove={(e) => setHover({ id: commander.id, print: commander.print, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHover(null)}
@@ -484,21 +597,36 @@ export default function DeckBuilder() {
             {(row) => (
               <button
                 type="button"
-                title="Click to remove one"
+                title="Click to remove one · right-click or long-press for print"
                 onClick={() => {
+                  if (suppressClick) {
+                    suppressClick = false;
+                    return;
+                  }
                   const card = known[row.id];
                   if (card) removeN(card, 1);
                   setHover(null);
                 }}
+                onPointerDown={(e) => startMenuPress(row.name, rowMenuItems(row), e)}
+                onPointerMove={moveMenuPress}
+                onPointerUp={clearMenuPress}
+                onPointerCancel={clearMenuPress}
+                onPointerLeave={clearMenuPress}
                 onMouseMove={(e) => setHover({ id: row.id, print: row.print, x: e.clientX, y: e.clientY })}
                 onMouseLeave={() => setHover(null)}
                 onContextMenu={(e) => {
                   e.preventDefault();
-                  setHover(null);
-                  setMenu({ title: row.name, items: rowMenuItems(row), x: e.clientX, y: e.clientY });
+                  clearMenuPress();
+                  openMenuAt(row.name, rowMenuItems(row), e.clientX, e.clientY);
                 }}
                 class={DECK_ROW}
               >
+                <img
+                  src={imageUrlByPrint(row.print)}
+                  alt=""
+                  aria-hidden
+                  class="aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"
+                />
                 <span class="min-w-0 flex-1 truncate">
                   {known[row.id]?.legendary ? "★ " : ""}
                   {row.name}
@@ -568,7 +696,7 @@ export default function DeckBuilder() {
                       item.run();
                       setMenu(null);
                     }}
-                    class="cursor-pointer rounded-[5px] border-none bg-transparent px-md py-xs text-left text-label text-snow"
+                    class={MENU_ITEM}
                   >
                     {item.label}
                   </button>
@@ -597,49 +725,73 @@ export default function DeckBuilder() {
 
 /** Scryfall print picker; `createResource` so a failed fetch retries on reopen. */
 function PrintPicker(props: { oracleId: string; onPick: (printId: string) => void; onClose: () => void }) {
+  let dialog!: HTMLDialogElement;
   const [prints] = createResource(
     () => props.oracleId,
     (id) => (id ? searchPrints(id) : Promise.resolve([])),
   );
+
+  onMount(() => onCleanup(openModalWhenReady(dialog)));
+  onCleanup(() => {
+    if (dialog?.open) dialog.close();
+  });
+
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop, not a control
-    // biome-ignore lint/a11y/useKeyWithClickEvents: Escape isn't wired here; Close is the keyboard path
-    <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) props.onClose();
-      }}
-      class="fixed inset-0 z-[2600] bg-black/50"
+    <dialog
+      ref={dialog}
+      onClose={() => props.onClose()}
+      onClick={(e) => e.target === dialog && props.onClose()}
+      class={cn(
+        "m-auto w-fit max-w-[90vw] rounded-modal border border-vine bg-forest-surface p-xl text-body text-snow shadow-table",
+        "backdrop:bg-black/60",
+      )}
     >
-      <Modal class="fixed top-1/2 left-1/2 z-[2601] flex max-h-[70vh] w-[min(90vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-md">
-        <div class="font-semibold text-body">Choose printing</div>
-        <div class="flex flex-wrap gap-sm overflow-y-auto">
-          <Show when={!prints.loading} fallback={<div class="text-label text-lichen">Loading printings…</div>}>
+      <div class="flex w-fit max-w-full flex-col gap-md">
+        <div class="flex items-center justify-between gap-lg">
+          <div class="font-semibold text-body">Choose printing</div>
+          <Button type="button" autofocus onClick={props.onClose} variant="ghost" hitQuiet>
+            Close
+          </Button>
+        </div>
+        <div class={cn(PRINT_PICKER_GRID, "max-h-[min(60vh,720px)] overflow-y-auto")}>
+          <Show when={prints.loading}>
+            <For each={Array.from({ length: 4 })}>
+              {() => (
+                <div class={cn(PRINT_TILE, "pointer-events-none cursor-default")}>
+                  <div class={cn(CARD_ART, "animate-skeleton bg-white/8")} />
+                  <div class="flex flex-wrap justify-center gap-1">
+                    <div class="h-[18px] w-10 animate-skeleton rounded-full bg-white/8" />
+                    <div class="h-[18px] w-8 animate-skeleton rounded-full bg-white/8" />
+                    <div class="h-[18px] w-16 animate-skeleton rounded-full bg-white/8" />
+                  </div>
+                </div>
+              )}
+            </For>
+          </Show>
+          <Show when={prints.error}>
+            <div class="col-span-2 text-burn-red text-label">Could not load printings. Close and try again.</div>
+          </Show>
+          <Show when={!prints.loading && !prints.error}>
             <For each={prints() ?? []}>
               {(p) => (
-                <button type="button" onClick={() => props.onPick(p.id)} class={cn(POOL_CARD, "w-[110px]")}>
+                <button type="button" onClick={() => props.onPick(p.id)} class={PRINT_TILE}>
                   <img src={imageUrlByPrint(p.id)} alt={`${p.set_name} #${p.collector_number}`} class={CARD_ART} />
-                  <span class="w-full truncate text-center">
-                    {p.set.toUpperCase()} #{p.collector_number}
-                  </span>
+                  <div class="flex w-full flex-wrap items-center justify-center gap-1">
+                    <span class={PRINT_BADGE} title={p.set_name}>
+                      {p.set.toUpperCase()}
+                    </span>
+                    <span class={PRINT_BADGE}>#{p.collector_number}</span>
+                    <span class={PRINT_BADGE}>{formatReleasedAt(p.released_at)}</span>
+                  </div>
                 </button>
               )}
             </For>
             <Show when={(prints() ?? []).length === 0}>
-              <div class="text-label text-lichen">No printings found.</div>
+              <div class="col-span-2 text-label text-lichen">No printings found.</div>
             </Show>
           </Show>
         </div>
-        <Button type="button" onClick={props.onClose} variant="ghost">
-          Close
-        </Button>
-      </Modal>
-    </div>
+      </div>
+    </dialog>
   );
-}
-
-/** Turn a loaded decklist into the store's id → { count, print } record. */
-function reconcileEntries(cards: DeckCardEntry[]): Record<string, { count: number; print: string }> {
-  const out: Record<string, { count: number; print: string }> = {};
-  for (const c of cards) out[c.id] = { count: c.count, print: c.print };
-  return out;
 }
