@@ -1,0 +1,26 @@
+# Buyback {3} (You may pay an additional {3} as you cast this spell. If you do, put this card into your hand as it
+# resolves.)
+# Return target permanent to its owner's hand.
+name = "Capsize"
+otags = ["removal-bounce", "single-target-instant-sorcery", "recurring-value", "buyback"]
+oracle = "Buyback {3} (You may pay an additional {3} as you cast this spell. If you do, put this card into your hand as it resolves.)\nReturn target permanent to its owner's hand."
+set = "soc"
+
+[cost]
+generic = 1
+blue = 2
+
+[cost.additional.buyback]
+generic = 3
+
+[kind]
+type = "instant"
+
+# Return target permanent to its owner's hand.
+[[abilities]]
+timing = "spell"
+
+# Return target permanent to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = { permanent = {} }

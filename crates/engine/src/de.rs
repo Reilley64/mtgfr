@@ -581,6 +581,7 @@ impl<'de> Deserialize<'de> for Cost {
 /// "one_or_more", filter = "creature" }` spells an optional "sacrifice any number of permanents"
 /// cost (Plumb the Forbidden) — `count` is a marker; only `"one_or_more"` is modeled.
 /// `kicker = { generic = 5 }` spells Kicker (CR 702.33) — the same table shape as `[cost]`.
+/// `buyback = { generic = 3 }` spells Buyback (CR 702.27) — same table shape.
 /// `strive = { generic = 2, red = 1 }` spells Strive (CR 702.42) — same table shape, the
 /// per-extra-target cost. `replicate = { generic = 2 }` spells Replicate (CR 702.108) — same
 /// table shape, the per-payment cost.
@@ -612,6 +613,9 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             sacrifice: Option<RawSacrifice>,
             /// `[cost.additional.kicker]` — Kicker (CR 702.33), the same table shape as `[cost]`.
             kicker: Option<Cost>,
+            /// `[cost.additional.buyback]` — Buyback (CR 702.27), the same table shape as
+            /// `[cost]`.
+            buyback: Option<Cost>,
             /// `[cost.additional.strive]` — Strive (CR 702.42), the same table shape as `[cost]`.
             strive: Option<Cost>,
             /// `[cost.additional.replicate]` — Replicate (CR 702.108), the same table shape as
@@ -649,6 +653,7 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             pay_life,
             sacrifice,
             kicker: raw.kicker.map(|c| &*Box::leak(Box::new(c))),
+            buyback: raw.buyback.map(|c| &*Box::leak(Box::new(c))),
             strive: raw.strive.map(|c| &*Box::leak(Box::new(c))),
             replicate: raw.replicate.map(|c| &*Box::leak(Box::new(c))),
         })
@@ -729,9 +734,10 @@ impl<'de> Deserialize<'de> for CardKind {
 }
 
 /// A mana symbol in TOML: a bare string — a color name, `"colorless"` (`{C}`), or `"any"` —
-/// or a two-color array (`["green", "blue"]`) for a dual's "either of two colors"
-/// ([`Mana::Either`], normalized to WUBRG order so both spellings intern identically).
-/// Color spellings delegate to [`Color`]'s derive so they live in exactly one place.
+/// or a color array (`["green", "blue"]`) for a fixed choice among 2–4 distinct colors: exactly
+/// two normalizes to [`Mana::Either`] (a dual's "either of two colors"), three or four to
+/// [`Mana::OfColors`] (a triome's "{G}, {W}, or {U}" — Treva's Ruins). Color spellings delegate
+/// to [`Color`]'s derive so they live in exactly one place.
 impl<'de> Deserialize<'de> for Mana {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct ManaVisitor;
@@ -740,7 +746,10 @@ impl<'de> Deserialize<'de> for Mana {
             type Value = Mana;
 
             fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.write_str("a mana symbol (a color name, \"colorless\", or \"any\") or a two-color array (a dual's \"either\")")
+                f.write_str(
+                    "a mana symbol (a color name, \"colorless\", or \"any\") or a 2-to-4-color \
+                     array (a fixed choice of colors)",
+                )
             }
 
             fn visit_str<E: de::Error>(self, symbol: &str) -> Result<Mana, E> {
@@ -752,26 +761,34 @@ impl<'de> Deserialize<'de> for Mana {
             }
 
             fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Mana, A::Error> {
-                let two = &"exactly two distinct colors";
-                let first: Color = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, two))?;
-                let second: Color = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(1, two))?;
-                if seq.next_element::<Color>()?.is_some() {
-                    return Err(de::Error::invalid_length(3, two));
+                let hint = &"2 to 4 distinct colors";
+                let mut colors: Vec<Color> = Vec::new();
+                while let Some(color) = seq.next_element::<Color>()? {
+                    colors.push(color);
                 }
-                if first == second {
-                    return Err(de::Error::custom(
-                        "a dual's two colors must differ (spell a mono producer as one color)",
-                    ));
+                if colors.len() < 2 || colors.len() > 4 {
+                    return Err(de::Error::invalid_length(colors.len(), hint));
                 }
-                // Normalize to WUBRG order so ["green", "blue"] == ["blue", "green"].
-                if first.index() < second.index() {
-                    return Ok(Mana::Either(first, second));
+                let mut mask: u8 = 0;
+                for &color in &colors {
+                    let bit = 1 << color.index();
+                    if mask & bit != 0 {
+                        return Err(de::Error::custom(
+                            "a color-choice mana symbol's colors must be distinct (spell a mono \
+                             producer as one color)",
+                        ));
+                    }
+                    mask |= bit;
                 }
-                Ok(Mana::Either(second, first))
+                if colors.len() == 2 {
+                    // Normalize to WUBRG order so ["green", "blue"] == ["blue", "green"].
+                    return Ok(if colors[0].index() < colors[1].index() {
+                        Mana::Either(colors[0], colors[1])
+                    } else {
+                        Mana::Either(colors[1], colors[0])
+                    });
+                }
+                Ok(Mana::OfColors(mask))
             }
         }
 
@@ -1308,6 +1325,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     name: Option<String>,
                     #[serde(default)]
                     nonlegendary: bool,
+                    #[serde(default)]
+                    nonlair: bool,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1335,6 +1354,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     nonbasic: t.nonbasic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
+                    nonlair: t.nonlair,
                 })
             }
         }

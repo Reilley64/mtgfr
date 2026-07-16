@@ -34,6 +34,11 @@ pub enum Intent {
         /// default — decline) for a spell with no kicker. Recorded on the resulting
         /// [`Spell::kicked`].
         kicked: bool,
+        /// Whether the caster paid the spell's buyback cost ([`AdditionalCost::buyback`] — CR
+        /// 702.27c), folding it into the mana paid alongside the printed cost, mirroring
+        /// `kicked`'s own opt-in shape. `false` (the default — decline) for a spell with no
+        /// buyback. Recorded on the resulting [`Spell::bought_back`].
+        bought_back: bool,
         /// Whether the caster is casting the spell for its evoke cost (CR 702.74a —
         /// [`CardDef::evoke`]), charged instead of the printed cost. `false` (the default) for a
         /// spell with no evoke, or to cast it normally. Recorded on the resulting
@@ -242,6 +247,13 @@ pub enum Intent {
         player: PlayerId,
         choice: Option<ObjectId>,
     },
+    /// Answer a [`PendingChoice::SacrificeUnlessReturnLand`]: `land` is the offered non-Lair land
+    /// returned to its owner's hand (keeping the source), or `None` to decline and sacrifice the
+    /// source instead.
+    ReturnLandOrSacrifice {
+        player: PlayerId,
+        land: Option<ObjectId>,
+    },
     /// Answer a [`PendingChoice::ChooseExiledWithCard`]: `choice` is the exiled-with card put
     /// into its owner's graveyard (one of the offered candidates), or `None` to decline.
     ChooseExiledWithCard {
@@ -427,6 +439,7 @@ impl Intent {
             | Intent::RevealedCardToBattlefieldOrHand { choice, .. } => {
                 choice.iter().copied().collect()
             }
+            Intent::ReturnLandOrSacrifice { land, .. } => land.iter().copied().collect(),
             Intent::ChooseSacrifices { sacrifices, .. } => sacrifices.clone(),
             Intent::Discard { cards, .. } => cards.clone(),
             Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
@@ -511,6 +524,7 @@ impl Intent {
             | Intent::ChooseSacrifices { player, .. }
             | Intent::Discard { player, .. }
             | Intent::PutLandFromHand { player, .. }
+            | Intent::ReturnLandOrSacrifice { player, .. }
             | Intent::ChooseExiledWithCard { player, .. }
             | Intent::ChooseExiledWithCardToCast { player, .. }
             | Intent::ChooseExiledDigToCastFree { player, .. }
@@ -555,6 +569,7 @@ impl Intent {
             | Intent::ChooseSacrifices { .. }
             | Intent::Discard { .. }
             | Intent::PutLandFromHand { .. }
+            | Intent::ReturnLandOrSacrifice { .. }
             | Intent::ChooseExiledWithCard { .. }
             | Intent::ChooseExiledWithCardToCast { .. }
             | Intent::ChooseExiledDigToCastFree { .. }
@@ -663,6 +678,18 @@ pub enum PendingChoice {
         cost: Cost,
         spell: ObjectId,
     },
+    /// `player` (the triggering opponent) may pay `cost` to stop `controller`'s optional draw —
+    /// Rhystic Study's "unless that player pays {1}" ([`Effect::MayDrawUnlessPays`]). Only raised
+    /// after `controller` accepts the preceding [`Self::MayYesNo`] pause (the real card's ruling:
+    /// declining to draw never even offers a pay window). Paying leaves `controller`'s hand
+    /// untouched; declining draws them a card. Answered by [`Intent::PayOptionalCost`], the same
+    /// "declining does something" polarity as [`Self::PayOrCounter`], but the something is a
+    /// draw rather than a counter.
+    PayOrControllerDraws {
+        player: PlayerId,
+        controller: PlayerId,
+        cost: Cost,
+    },
     /// `player` (Hinder's controller) must choose the top or bottom of `spell`'s owner's library
     /// (CR 701.5b — [`Effect::CounterTargetSpell`]'s `countered_dest` rider): `spell` is already
     /// countered — still a live [`crate::Object::Spell`] on the stack until this answers — and
@@ -678,6 +705,26 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         cost: Cost,
+    },
+    /// `player` (`source`'s controller) may pay `cost` to keep `source`, or decline and sacrifice
+    /// it — Rupture Spire's own ETB triggered ability (CR 603.3b), NOT Echo, though it shares
+    /// [`Self::PayEchoOrSacrifice`]'s pay-or-sacrifice polarity and its
+    /// [`Intent::PayOptionalCost`] answer shape. Kept as its own variant (rather than reused)
+    /// because it's a real triggered ability firing once at ETB, not Echo's own upkeep-scoped
+    /// keyword (CR 702.31) — conflating the two would misname what's happening on the stack.
+    SacrificeUnlessPay {
+        player: PlayerId,
+        source: ObjectId,
+        cost: Cost,
+    },
+    /// `player` (`source`'s controller) must return one of `candidates` (their own non-Lair
+    /// lands) to its owner's hand to keep `source`, or decline and sacrifice it — Treva's Ruins'
+    /// own ETB triggered ability. The land-bounce twin of [`Self::SacrificeUnlessPay`]; answered
+    /// by [`Intent::ReturnLandOrSacrifice`]. `candidates` are public battlefield permanents.
+    SacrificeUnlessReturnLand {
+        player: PlayerId,
+        source: ObjectId,
+        candidates: Vec<ObjectId>,
     },
     /// `player` (the attacker's controller) must divide `attacker`'s combat damage among its
     /// `blockers`. Answered by [`Intent::AssignDamage`].
@@ -1318,8 +1365,11 @@ impl PendingChoice {
             | PendingChoice::DeclineUntap { player, .. }
             | PendingChoice::PayCost { player, .. }
             | PendingChoice::PayOrCounter { player, .. }
+            | PendingChoice::PayOrControllerDraws { player, .. }
             | PendingChoice::ChooseCounteredSpellDestination { player, .. }
             | PendingChoice::PayEchoOrSacrifice { player, .. }
+            | PendingChoice::SacrificeUnlessPay { player, .. }
+            | PendingChoice::SacrificeUnlessReturnLand { player, .. }
             | PendingChoice::AssignCombatDamage { player, .. }
             | PendingChoice::DivideSpellDamage { player, .. }
             | PendingChoice::DivideCounters { player, .. }
@@ -1482,6 +1532,9 @@ pub enum Event {
         sacrifice_count: u8,
         /// Whether the caster paid the spell's kicker cost (CR 702.33d); see [`Spell::kicked`].
         kicked: bool,
+        /// Whether the caster paid the spell's buyback cost (CR 702.27c); see
+        /// [`Spell::bought_back`].
+        bought_back: bool,
         /// The caster's declared Strive target count (CR 702.42), 0 for a spell with no Strive;
         /// see [`Spell::strive_count`].
         strive_count: u8,
@@ -1497,6 +1550,9 @@ pub enum Event {
         /// Whether this was an evoke cast (CR 702.74a — for [`CardDef::evoke`]); see
         /// [`Spell::evoked`]. `false` for an ordinary cast.
         evoked: bool,
+        /// The colors of mana actually spent to pay this cast's cost (CR 106.9); see
+        /// [`Spell::spent_colors`].
+        spent_colors: [bool; Color::COUNT],
     },
     /// A multi-target spell's chosen targets (CR 601.2c) were recorded onto `spell` — either
     /// auto-filled at cast (when the choice was forced) or answered via [`Intent::ChooseTargets`].

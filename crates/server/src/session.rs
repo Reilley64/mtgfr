@@ -731,6 +731,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,

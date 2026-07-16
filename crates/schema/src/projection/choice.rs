@@ -169,6 +169,15 @@ impl<'a> ChoiceCtx<'a> {
                 spell,
                 cost: wire_cost(cost),
             },
+            engine::PendingChoice::PayOrControllerDraws {
+                player,
+                controller,
+                cost,
+            } => PendingChoiceView::PayOrControllerDraws {
+                player: player.0,
+                controller: controller.0,
+                cost: wire_cost(cost),
+            },
             engine::PendingChoice::ChooseCounteredSpellDestination { player, spell } => {
                 PendingChoiceView::ChooseCounteredSpellDestination {
                     player: player.0,
@@ -183,6 +192,24 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 cost: wire_cost(cost),
+            },
+            engine::PendingChoice::SacrificeUnlessPay {
+                player,
+                source,
+                cost,
+            } => PendingChoiceView::SacrificeUnlessPay {
+                player: player.0,
+                source,
+                cost: wire_cost(cost),
+            },
+            engine::PendingChoice::SacrificeUnlessReturnLand {
+                player,
+                source,
+                candidates,
+            } => PendingChoiceView::SacrificeUnlessReturnLand {
+                player: player.0,
+                source,
+                items: self.label_items(candidates),
             },
             engine::PendingChoice::AssignCombatDamage {
                 player,

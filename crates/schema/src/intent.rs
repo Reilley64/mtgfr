@@ -115,6 +115,10 @@ pub enum WireIntent {
         /// spell with no kicker. See [`engine::Intent::Cast`].
         #[serde(default)]
         kicked: bool,
+        /// Whether the caster paid the spell's buyback cost (CR 702.27c); `false` (decline) for a
+        /// spell with no buyback. See [`engine::Intent::Cast`].
+        #[serde(default)]
+        bought_back: bool,
         /// Whether the caster is casting the spell for its evoke cost (CR 702.74a); `false` for a
         /// spell with no evoke, or to cast it normally. See [`engine::Intent::Cast`].
         #[serde(default)]
@@ -248,6 +252,13 @@ pub enum WireIntent {
         player: u8,
         #[serde(default)]
         choice: Option<ObjectId>,
+    },
+    /// Answer a sacrifice-unless-return-a-land choice (Treva's Ruins): `land` is the offered
+    /// non-Lair land returned to its owner's hand, or absent to decline and sacrifice the source.
+    ReturnLandOrSacrifice {
+        player: u8,
+        #[serde(default)]
+        land: Option<ObjectId>,
     },
     /// Answer a choose-exiled-with-card choice: `choice` is the exiled-with card put into its
     /// owner's graveyard, or absent to decline.
@@ -458,6 +469,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
             evoked,
             strive_count,
             replicate_count,
@@ -472,6 +484,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
             evoked,
             strive_count,
             replicate_count,
@@ -514,6 +527,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             keep_tapped,
         },
         PutLandFromHand { choice, .. } => PutLandFromHand { player, choice },
+        ReturnLandOrSacrifice { land, .. } => ReturnLandOrSacrifice { player, land },
         ChooseExiledWithCard { choice, .. } => ChooseExiledWithCard { player, choice },
         ChooseExiledWithCardToCast { choice, .. } => ChooseExiledWithCardToCast { player, choice },
         ChooseExiledDigToCastFree { choice, .. } => ChooseExiledDigToCastFree { player, choice },
@@ -610,6 +624,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
             evoked,
             strive_count,
             replicate_count,
@@ -626,6 +641,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
             evoked,
             strive_count,
             replicate_count,
@@ -753,6 +769,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         WireIntent::PutLandFromHand { player, choice } => Intent::PutLandFromHand {
             player: PlayerId(player),
             choice,
+        },
+        WireIntent::ReturnLandOrSacrifice { player, land } => Intent::ReturnLandOrSacrifice {
+            player: PlayerId(player),
+            land,
         },
         WireIntent::ChooseExiledWithCard { player, choice } => Intent::ChooseExiledWithCard {
             player: PlayerId(player),

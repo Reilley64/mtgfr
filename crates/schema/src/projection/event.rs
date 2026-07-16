@@ -57,6 +57,11 @@ pub(crate) fn project_event(
             // reasoning as `sacrifice_count` above — no UI reads it yet. Add it when a kicker
             // card's UI wants to show "kicked."
             kicked: _,
+            // ponytail: whether the spell was bought back (CR 702.27) isn't surfaced on the wire
+            // either, same reasoning as `sacrifice_count`/`kicked` above — no UI reads it yet (the
+            // client sees the resulting `ReturnedToHand` event instead). Add it when a buyback
+            // card's UI wants to badge the cast itself as "bought back."
+            bought_back: _,
             // ponytail: the declared Strive count isn't surfaced on the wire either, same
             // reasoning as `sacrifice_count`/`kicked` above — no UI reads it yet. Add it when a
             // Strive card's UI wants to show "cast for N targets."
@@ -79,6 +84,11 @@ pub(crate) fn project_event(
             // (the client reads the resulting sacrifice off its own event). Add an `evoked` here
             // when a UI wants to badge the stack item itself as an evoke cast.
             evoked: _,
+            // ponytail: the colors spent to cast (CR 106.9) aren't surfaced on the wire — the
+            // mana you spent isn't secret, but no UI reads it yet (it feeds an ETB self-sacrifice
+            // condition the client just sees the resulting event for). Add it here if a UI ever
+            // wants to badge the cast itself with which colors funded it.
+            spent_colors: _,
         } => VisibleEvent::SpellCast {
             spell,
             from,

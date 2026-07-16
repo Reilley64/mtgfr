@@ -596,6 +596,13 @@ pub(crate) struct TriggerContext {
     /// this source and copies its effect/target/`{X}`. `None` for every other trigger. See
     /// [`Game::queue_activate_ability_triggers`] for where this is captured.
     pub(crate) triggering_ability: Option<ObjectId>,
+    /// The player who cast the triggering spell, for a [`Trigger::CastSpell`] watch's own
+    /// "unless that player pays" payoff (Rhystic Study's "you may draw a card unless that player
+    /// pays {1}" — [`Effect::MayDrawUnlessPays`]). Distinct from `TriggerContext::controller`
+    /// (the watcher's own controller) precisely when `caster: CasterScope::Opponent`/`AnyPlayer`
+    /// — `controller` alone can't name the payer for those scopes. `None` for every other
+    /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
+    pub(crate) triggering_caster: Option<PlayerId>,
 }
 
 impl TriggerContext {
@@ -619,6 +626,7 @@ impl TriggerContext {
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,
+            triggering_caster: None,
         }
     }
 }

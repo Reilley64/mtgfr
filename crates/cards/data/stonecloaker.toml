@@ -1,0 +1,35 @@
+# Flash
+# Flying
+# When this creature enters, return a creature you control to its owner's hand.
+# When this creature enters, exile target card from a graveyard.
+name = "Stonecloaker"
+oracle = "Flash\nFlying\nWhen this creature enters, return a creature you control to its owner's hand.\nWhen this creature enters, exile target card from a graveyard."
+set = "tsp"
+subtypes = ["Gargoyle"]
+keywords = ["flash", "flying"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# When this creature enters, return a creature you control to its owner's hand.
+[[abilities]]
+timing = "etb"
+
+# return a creature you control to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = "creature_you_control"
+
+# When this creature enters, exile target card from a graveyard.
+[[abilities]]
+timing = "etb"
+
+# exile target card from a graveyard.
+[[abilities.effects]]
+type = "exile_target_graveyard_card_then_if_creature"

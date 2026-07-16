@@ -1,0 +1,29 @@
+# This land enters tapped.
+# When this land enters, sacrifice it unless you pay {1}.
+# {T}: Add one mana of any color.
+name = "Rupture Spire"
+oracle = "This land enters tapped.\nWhen this land enters, sacrifice it unless you pay {1}.\n{T}: Add one mana of any color."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# When this land enters, sacrifice it unless you pay {1}.
+[[abilities]]
+timing = "etb"
+
+# sacrifice it unless you pay {1}.
+[[abilities.effects]]
+type = "sacrifice_self_unless_pay"
+cost = { generic = 1 }
+
+# {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]

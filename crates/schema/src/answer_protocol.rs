@@ -48,6 +48,9 @@ pub enum Answer {
     PutLand {
         choice: Option<ObjectId>,
     },
+    ReturnLand {
+        choice: Option<ObjectId>,
+    },
     ChooseExiled {
         choice: Option<ObjectId>,
     },
@@ -143,6 +146,10 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
             keep_tapped,
         },
         Answer::PutLand { choice } => WireIntent::PutLandFromHand { player, choice },
+        Answer::ReturnLand { choice } => WireIntent::ReturnLandOrSacrifice {
+            player,
+            land: choice,
+        },
         Answer::ChooseExiled { choice } => WireIntent::ChooseExiledWithCard { player, choice },
         Answer::SelectTop { cards } => WireIntent::SelectFromTop { player, cards },
         Answer::Mode { mode } => WireIntent::ChooseMode { player, mode },
@@ -188,8 +195,11 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::DeclineUntap { player, .. }
         | PendingChoiceView::PayCost { player, .. }
         | PendingChoiceView::PayOrCounter { player, .. }
+        | PendingChoiceView::PayOrControllerDraws { player, .. }
         | PendingChoiceView::ChooseCounteredSpellDestination { player, .. }
         | PendingChoiceView::PayEchoOrSacrifice { player, .. }
+        | PendingChoiceView::SacrificeUnlessPay { player, .. }
+        | PendingChoiceView::SacrificeUnlessReturnLand { player, .. }
         | PendingChoiceView::AssignCombatDamage { player, .. }
         | PendingChoiceView::DivideSpellDamage { player, .. }
         | PendingChoiceView::DivideCounters { player, .. }

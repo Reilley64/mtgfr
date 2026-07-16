@@ -1,0 +1,22 @@
+# Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top.
+name = "Enlightened Tutor"
+oracle = "Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top."
+set = "mmq"
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Search your library for an artifact or enchantment card, reveal it, then shuffle and put that
+# card on top.
+[[abilities]]
+timing = "spell"
+
+# Search your library for an artifact or enchantment card, reveal it, then shuffle and put that
+# card on top.
+[[abilities.effects]]
+type = "search_library"
+filter = "artifact_or_enchantment"
+to_zone = "library_top"

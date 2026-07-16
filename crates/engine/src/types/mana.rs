@@ -54,6 +54,7 @@ impl Cost {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -126,6 +127,17 @@ pub struct AdditionalCost {
     /// (`{N}` any number of times, CR 702.34) or a two-kicker-costs card (Rite of Flame-style
     /// "Kicker {1}, Kicker {R}") isn't modeled; grow those from a real card that needs one.
     pub kicker: Option<&'static Cost>,
+    /// Buyback (CR 702.27) — "You may pay an additional [cost] as you cast this spell. If you
+    /// do, put this card into your hand as it resolves" (Capsize's "Buyback {3}"). `None` for a
+    /// spell with no buyback. Entirely optional, mirroring [`Self::kicker`]'s own opt-in shape:
+    /// the caster chooses whether to pay when casting (CR 702.27c), recorded on the resulting
+    /// [`Spell::bought_back`] for [`Game::finish_instant_sorcery_resolution`] to branch on (CR
+    /// 702.27d — the card returns to its owner's hand instead of the graveyard). A `&'static`
+    /// reference for the same recursive-`Cost` reason as [`Self::kicker`]. TOML
+    /// `[cost.additional.buyback]` — the same shape as `[cost.additional.kicker]`.
+    /// ponytail: single-buyback only, mirroring kicker's own single-cost shape — no pool card
+    /// prints two buyback costs; grow that if one ever does.
+    pub buyback: Option<&'static Cost>,
     /// Strive (CR 702.42) — "This spell costs [cost] more to cast for each target beyond the
     /// first" (Twinflame's `{2}{R}`). `None` for a spell with no Strive. Unlike kicker (paid or
     /// not), Strive's total depends on *how many* targets the caster commits to: CR 601.2c
@@ -522,6 +534,19 @@ impl ManaPool {
                 mine.key = None;
             }
         }
+    }
+
+    /// The colors actually spent in this multiset (CR 106.9's "spent to cast" query — Court
+    /// Hussar's "unless {W} was spent to cast it"): `true` at index `i` iff any of `colored[i]`
+    /// was spent. Read off the exact payment [`ManaPool::spend_plan`] returns, right after
+    /// [`Game::settle_payment`](crate::Game::settle_payment) appends its [`Event::ManaSpent`].
+    /// ponytail: only literally-colored `colored` credits count — a dual ([`Mana::Either`]),
+    /// restricted-set ([`Mana::OfColors`]), or "any" ([`Mana::Any`]) credit spent toward a pip
+    /// never resolves to one specific color in this model (see this type's own doc), so paying,
+    /// say, a generic cost entirely from a Tundra never counts as white (or blue) spent here. No
+    /// pool card's mana base exercises that gap yet; widen if a dual/filter-land-heavy deck needs it.
+    pub(crate) fn colors_spent(&self) -> [bool; Color::COUNT] {
+        self.colored.map(|n| n > 0)
     }
 
     /// This pool capped at `cap`, per bucket (CR 500.4's "until end of turn" mana exception,

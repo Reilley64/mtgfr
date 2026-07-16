@@ -1126,6 +1126,7 @@ impl Game {
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
+                triggering_caster: None,
             };
             self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::PlayerAttacksYourOpponent);
         }
@@ -1254,6 +1255,7 @@ impl Game {
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
+                triggering_caster: None,
             };
             self.queue_trigger_group(
                 ctx,
@@ -1445,6 +1447,7 @@ impl Game {
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,
+            triggering_caster: None,
         };
         for id in self.battlefield() {
             if self.owner_of(id) != player {
@@ -1786,6 +1789,10 @@ impl Game {
                 // matched ability's `Effect::CopyTriggeringSpell` by `contextualize_effect`
                 // below, same last-known-information shape as `cast_x` above.
                 triggering_spell: Some(spell),
+                // Rhystic Study's "unless that player pays" payoff needs the caster's identity,
+                // not just the watcher's own controller (they differ whenever `caster` is
+                // `Opponent`/`AnyPlayer`) — see `TriggerContext::triggering_caster`.
+                triggering_caster: Some(spell_controller),
                 ..TriggerContext::of(controller)
             };
             let abilities: Vec<Ability> = self
@@ -2625,6 +2632,11 @@ impl Game {
             // resolve site (`Game::run`), which intercepts it directly against its own `source`
             // parameter before falling through here (Kinetic Ooze's X-threshold riders).
             Condition::SourceEnteredWithXAtLeast { .. } => false,
+            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above — `TriggerContext`
+            // carries no source id either. Reachable only through the `Effect::Conditional` resolve
+            // site (`Game::run`), which intercepts it directly against its own `source` parameter
+            // before falling through here (Court Hussar's "unless {W} was spent to cast it").
+            Condition::ColorWasSpentToCastThis { .. } => false,
             Condition::All { conditions } => {
                 conditions.iter().all(|&c| self.condition_holds(c, ctx))
             }
@@ -3404,10 +3416,15 @@ impl Game {
         controller: PlayerId,
     ) -> Option<(TargetSpec, TargetCount)> {
         for &step in steps {
-            if let Effect::Conditional { condition, then } = step {
+            if let Effect::Conditional {
+                condition,
+                then,
+                negate,
+            } = step
+            {
                 // CR 603.4: a gated clause is only a real target clause when its intervening-if
                 // holds as the trigger goes on the stack.
-                if self.placement_condition_holds(condition, source, controller)
+                if (self.placement_condition_holds(condition, source, controller) != negate)
                     && let Some(found) = self.second_clause_in(then, source, controller)
                 {
                     return Some(found);

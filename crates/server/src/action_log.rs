@@ -184,6 +184,9 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::Discard { cards, .. } => format!("discard {cards:?}"),
         WireIntent::DeclineUntap { keep_tapped, .. } => format!("keep-tapped {keep_tapped:?}"),
         WireIntent::PutLandFromHand { choice, .. } => format!("put-land {}", opt_id(choice)),
+        WireIntent::ReturnLandOrSacrifice { land, .. } => {
+            format!("return-land-or-sacrifice {}", opt_id(land))
+        }
         WireIntent::ChooseExiledWithCard { choice, .. } => {
             format!("choose-exiled {}", opt_id(choice))
         }

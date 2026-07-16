@@ -307,6 +307,23 @@ pub enum Effect {
     },
     /// The ability's controller draws `count` cards.
     DrawCards { count: Amount },
+    /// Rhystic Study's "you may draw a card unless that player pays {1}" (CR 601.2h-style
+    /// "unless" cost, mirroring [`CounterTargetSpell`](Self::CounterTargetSpell)'s `unless_pays`
+    /// but on a draw rather than a counter). Resolution first pauses the ability's own
+    /// controller on a [`PendingChoice::MayYesNo`](crate::PendingChoice::MayYesNo) — do they want
+    /// to draw at all (the card's own ruling: a controller who doesn't want to draw never even
+    /// offers the opponent a pay window, so the pay pause only exists behind a "yes" here).
+    /// Only then does `caster` get a
+    /// [`PendingChoice::PayOrControllerDraws`](crate::PendingChoice::PayOrControllerDraws) to
+    /// stop it by paying `cost`. `caster` is the triggering opponent, baked in by
+    /// [`contextualize_effect`]/`fill_triggering_caster` from
+    /// [`TriggerContext::triggering_caster`] at trigger placement — always `None` in a card
+    /// template.
+    MayDrawUnlessPays {
+        cost: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        caster: Option<PlayerId>,
+    },
     /// The target *player* draws `count` cards (e.g. Ancestral Recall). Unlike [`DrawCards`],
     /// the drawer is the chosen target player rather than the controller.
     /// ponytail: a distinct variant (target Player) keeps a separate shape from `DrawCards`;
@@ -2811,6 +2828,26 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         object: Option<ObjectId>,
     },
+    /// Sacrifice the ability's own source (CR 701.16) — authorable directly in a card template,
+    /// unlike [`SacrificeObject`](Self::SacrificeObject) above (which needs a concrete object id
+    /// filled in at construction and is never authored directly). Court Hussar's "sacrifice it
+    /// unless {W} was spent to cast it": the `then` of a `negate`d [`Conditional`](Self::Conditional).
+    SacrificeSource,
+    /// Rupture Spire's own ETB triggered ability (CR 603.3b — NOT Echo, though it shares Echo's
+    /// pay-or-sacrifice resolution shape): "When this land enters, sacrifice it unless you pay
+    /// {1}." Pauses on [`PendingChoice::SacrificeUnlessPay`], answered by
+    /// [`Intent::PayOptionalCost`] — paying settles `cost` from the controller's mana pool;
+    /// declining sacrifices the source (CR 701.16).
+    SacrificeSelfUnlessPay { cost: Cost },
+    /// Treva's Ruins' own ETB triggered ability: "When this land enters, sacrifice it unless you
+    /// return a non-Lair land you control to its owner's hand." The land-bounce twin of
+    /// [`SacrificeSelfUnlessPay`](Self::SacrificeSelfUnlessPay): `filter` names the qualifying
+    /// lands (`types: land`, `controller: you`, `nonlair: true` — Treva's Ruins is itself a Lair,
+    /// so it can never be its own answer). Pauses on
+    /// [`PendingChoice::SacrificeUnlessReturnLand`] offering the controller's matches, answered by
+    /// [`Intent::ReturnLandOrSacrifice`]. No matching land in play means nothing to offer —
+    /// straight to sacrifice, no pause.
+    SacrificeSelfUnlessReturnLand { filter: PermanentFilter },
     /// A [`Trigger::ThisPermanentLeavesBattlefield`] look-back payoff (Animate Dead): "that
     /// creature's controller sacrifices it" — the creature this permanent was attached to the
     /// instant it left the battlefield (CR 603.10a last-known information). `creature` is filled
@@ -2924,12 +2961,20 @@ pub enum Effect {
     /// untap that land"; Zimone, Quandrix Prodigy's "if you control eight or more lands, draw two
     /// cards instead," modeled as an unconditional draw plus this conditional second draw).
     /// Shares the enclosing ability's controller/source/target/`{X}`.
-    /// ponytail: one `Condition` per gate, no boolean combinators (AND/OR/NOT) — the pool has no
-    /// card that needs composed conditions here; add one only from a real card.
+    /// ponytail: one `Condition` per gate, no boolean combinators (AND/OR) — the pool has no
+    /// card that needs composed conditions here; add one only from a real card. `negate` is the
+    /// one combinator that *is* modeled (CR 603.3b-style "unless" — Court Hussar's "sacrifice it
+    /// unless {W} was spent to cast it" is `condition = color_was_spent_to_cast_this`,
+    /// `negate = true`): flips whether `then` runs, rather than adding a second `Condition` arm
+    /// per negated check.
     Conditional {
         condition: Condition,
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
         then: &'static [Effect],
+        /// Run `then` when `condition` does *not* hold, instead of when it does. Defaults to
+        /// `false` (every conditional before Court Hussar).
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        negate: bool,
     },
     /// Untaps the permanent this same ability's own library search just put onto the
     /// battlefield (Fabled Passage's "then if you control four or more lands, untap that land" —
@@ -3174,6 +3219,7 @@ impl Effect {
             | Effect::MaySacrifice { .. }
             | Effect::MayReturnFromGraveyard { .. }
             | Effect::MayDiscard { .. }
+            | Effect::MayDrawUnlessPays { .. }
             | Effect::PutCountersEach { .. }
             | Effect::Proliferate { .. }
             | Effect::Discard {
@@ -3186,6 +3232,7 @@ impl Effect {
             | Effect::SacrificeOwn { .. }
             | Effect::DefendingPlayerSacrifices { .. }
             | Effect::SacrificeObject { .. }
+            | Effect::SacrificeSource
             | Effect::SacrificeEnchantedCreature { .. }
             | Effect::ExileObject { .. }
             | Effect::MillSelf { .. }
@@ -3281,7 +3328,10 @@ impl Effect {
             | Effect::MyriadTokenCopies { .. }
             // Hofri's granted leaves-battlefield rider bakes its exiled card in at synthesis —
             // no chosen target (see the variant doc).
-            | Effect::ReturnExiledCardToOwnersGraveyard { .. } => TargetSpec::None,
+            | Effect::ReturnExiledCardToOwnersGraveyard { .. }
+            // Both ETB sacrifice-unless arms always act on their own source — no chosen target.
+            | Effect::SacrificeSelfUnlessPay { .. }
+            | Effect::SacrificeSelfUnlessReturnLand { .. } => TargetSpec::None,
         }
     }
 
@@ -3832,6 +3882,12 @@ pub enum Condition {
     /// `ctx.controller`, re-evaluated live like every other static-anthem gate here — flips off
     /// the instant the turn passes to someone else, not just at cleanup.
     DuringYourTurn,
+    /// "if `color` was spent to cast this" (CR 106.9 — Court Hussar's "unless {W} was spent to
+    /// cast it"). Source-object-based like [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast):
+    /// `TriggerContext` carries no source id, so the [`Effect::Conditional`] resolve site
+    /// special-cases it directly against its own `source` parameter, reading
+    /// [`Permanent::spent_colors`].
+    ColorWasSpentToCastThis { color: Color },
 }
 
 /// Whether `sacrifices` is a legal answer to a sacrifice edict over `options`: every id a
@@ -4003,6 +4059,13 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     // shape as `triggering_spell` above, one step over.
     let effect = match ctx.triggering_ability {
         Some(source) => fill_triggering_ability(effect, source),
+        None => effect,
+    };
+    // Rhystic Study's "unless that player pays" payoff needs the triggering opponent's identity,
+    // baked in when the `CastSpell` watch fires — same last-known-information shape as
+    // `triggering_spell` above.
+    let effect = match ctx.triggering_caster {
+        Some(caster) => fill_triggering_caster(effect, caster),
         None => effect,
     };
     match (effect, ctx.attack) {
@@ -4274,6 +4337,28 @@ fn fill_triggering_spell(effect: Effect, spell: ObjectId) -> Effect {
     }
 }
 
+/// Rewrite a [`TriggerContext::triggering_caster`]-reading effect placeholder to the player who
+/// cast the spell that fired the watch: [`Effect::MayDrawUnlessPays`] (Rhystic Study's "unless
+/// that player pays {1}") — mirrors [`fill_triggering_spell`] above, one field over.
+fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
+    match effect {
+        Effect::MayDrawUnlessPays { cost, .. } => Effect::MayDrawUnlessPays {
+            cost,
+            caster: Some(caster),
+        },
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|&step| fill_triggering_caster(step, caster))
+                .collect();
+            Effect::Sequence {
+                steps: Box::leak(filled.into_boxed_slice()),
+            }
+        }
+        other => other,
+    }
+}
+
 /// Rewrite every `Amount` field the trigger-context walkers touch through `f`, recursing into a
 /// [`Effect::Sequence`] so a multi-step ability shares one context snapshot across every step. The
 /// arm set is the union of what the pool's context-filled effects need (flag-don't-force: add an
@@ -4412,8 +4497,9 @@ fn fill_cast_mana_value(effect: Effect, mv: u32) -> Effect {
         Effect::Conditional {
             condition: Condition::TriggeringSpellManaValueAtLeast { at_least },
             then,
+            negate,
         } => {
-            if mv < u32::from(at_least) {
+            if (mv < u32::from(at_least)) != negate {
                 return Effect::Sequence { steps: &[] };
             }
             let filled: Vec<Effect> = then

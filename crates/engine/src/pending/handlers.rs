@@ -29,10 +29,38 @@ impl Game {
             PendingChoice::OrderTriggers {
                 source, effects, ..
             } => {
-                // ponytail: ordered triggers carry no target yet (see place_pending_triggers).
-                let ordered: Vec<(Effect, Option<Target>)> =
-                    order.iter().map(|&i| (effects[i], None)).collect();
-                self.push_ability_group(player, source, &ordered, &mut events);
+                // CR 603.3d: each ability's target is chosen as *it* goes on the stack, in the
+                // chosen order — so re-queue the ordered abilities as N one-ability
+                // `TriggerGroup`s (front of the queue, in `order`) and place them one at a time
+                // through the normal path (`Game::place_pending_triggers` /
+                // `place_targeted_ability`), the same way a delayed or reflexive trigger rides
+                // that path. `expanded: true`: this group already ran its trigger-doubling pass
+                // before `OrderTriggers` was raised (see `place_pending_triggers`), so it must
+                // not double again.
+                for (offset, &i) in order.iter().enumerate() {
+                    self.pending_trigger_groups.insert(
+                        offset,
+                        TriggerGroup {
+                            controller: player,
+                            source,
+                            abilities: vec![Ability {
+                                // Fabricated placeholder — the real `Ability` (with its own
+                                // `optional`/`cost`/`condition`) was already consumed building
+                                // `effects` above; `place_pending_triggers` only reads
+                                // `effect`/`optional`/`cost`/`once_each_turn` off this one.
+                                timing: Timing::Triggered(Trigger::Upkeep),
+                                effect: effects[i],
+                                optional: false,
+                                min_level: 0,
+                                cost: Cost::FREE,
+                                condition: None,
+                                once_each_turn: false,
+                            }],
+                            expanded: true,
+                        },
+                    );
+                }
+                self.place_pending_triggers(&mut events);
             }
             _ => unreachable!("guarded to ordering choices above"),
         }
@@ -544,6 +572,25 @@ impl Game {
                         optional: false,
                     },
                 );
+            } else if let Effect::MayDrawUnlessPays { cost, caster } = effect {
+                // Rhystic Study: `player` (the controller) said they want to draw, so now
+                // `caster` (the triggering opponent, baked in by `contextualize_effect`) gets a
+                // chance to pay `cost` and stop it — see `Game::pay_or_controller_draws`.
+                let caster = caster.expect(
+                    "caster baked in by contextualize_effect at CastSpell trigger placement",
+                );
+                let generic = self.resolve_count(cost, player, source, None, 0);
+                pending::raise_choice(
+                    self,
+                    PendingChoice::PayOrControllerDraws {
+                        player: caster,
+                        controller: player,
+                        cost: Cost {
+                            generic: generic as u8,
+                            ..Cost::FREE
+                        },
+                    },
+                );
             } else {
                 // A targeted "may" (Sun Titan) pauses again to choose its target; a targetless
                 // one (Solemn's dies-draw) goes straight on the stack. NoLegalTarget = accepted
@@ -617,6 +664,36 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::PayOrControllerDraws`]: `player` (the triggering opponent) pays
+    /// `cost` to stop `controller`'s draw, or declines and lets it happen — Rhystic Study's
+    /// "unless that player pays {1}". Same [`Intent::PayOptionalCost`] shape and "declining does
+    /// something" polarity as [`Game::pay_or_counter`], but the "something" is a draw rather than
+    /// a counter.
+    pub(crate) fn pay_or_controller_draws(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PayOrControllerDraws {
+            controller, cost, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+
+        if !pay {
+            self.finish_answer();
+            let evs = self.draw_events(controller, 1);
+            self.apply_all(&evs);
+            return Ok(evs);
+        }
+        let mut events = Vec::new();
+        self.settle_payment(player, cost, None, None, &mut events)?;
+        self.finish_answer();
+        // Paying stops the draw outright — nothing further happens.
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::ChooseCounteredSpellDestination`] (Hinder's CR 701.5b rider):
     /// `top` puts the already-countered `spell` on top of its owner's library instead of the
     /// bottom. `_player` isn't needed beyond `submit`'s choice-gate actor check (like
@@ -682,6 +759,138 @@ impl Game {
         // CR 702.31e: this upkeep is now "since your last upkeep" — echo won't ask again.
         self.permanent_mut(source).echo_unpaid = false;
         self.finish_answer();
+        Ok(events)
+    }
+
+    /// Begin Rupture Spire's own ETB trigger ([`Effect::SacrificeSelfUnlessPay`]): pause on a
+    /// [`PendingChoice::SacrificeUnlessPay`] over `source`'s pay-or-sacrifice cost.
+    pub(crate) fn begin_sacrifice_unless_pay(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        cost: Cost,
+    ) {
+        self.pause_for(PendingChoice::SacrificeUnlessPay {
+            player: controller,
+            source,
+            cost,
+        });
+    }
+
+    /// Answer a [`PendingChoice::SacrificeUnlessPay`]: pay `cost` to keep `source`, or decline
+    /// and sacrifice it (CR 701.16). Rupture Spire's own-ETB twin of [`Game::pay_echo`] — same
+    /// [`Intent::PayOptionalCost`] shape and polarity, kept as its own handler since it isn't
+    /// Echo (see the variant's doc). An unaffordable "pay" leaves the choice pending.
+    pub(crate) fn pay_sacrifice_unless(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::SacrificeUnlessPay { source, cost, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+
+        if !pay {
+            self.finish_answer();
+            let mut events = Vec::new();
+            self.run(
+                Effect::SacrificeObject {
+                    object: Some(source),
+                },
+                ResolveCtx {
+                    controller: player,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                },
+                &mut events,
+            );
+            return Ok(events);
+        }
+        let mut events = Vec::new();
+        self.settle_payment(player, cost, None, None, &mut events)?;
+        self.finish_answer();
+        Ok(events)
+    }
+
+    /// Begin Treva's Ruins' own ETB trigger ([`Effect::SacrificeSelfUnlessReturnLand`]): offer
+    /// `controller`'s permanents matching `filter` (the "non-Lair land you control" gate) as
+    /// candidates to bounce, pausing on a [`PendingChoice::SacrificeUnlessReturnLand`]. With no
+    /// matching land, there's nothing to return — sacrifice `source` outright, no pause (the
+    /// same "no real decision" shortcut [`Game::begin_may_sacrifice`] uses).
+    pub(crate) fn begin_sacrifice_unless_return_land(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        filter: PermanentFilter,
+        events: &mut Vec<Event>,
+    ) {
+        let candidates = self.edict_options(controller, filter);
+        if candidates.is_empty() {
+            self.run(
+                Effect::SacrificeObject {
+                    object: Some(source),
+                },
+                ResolveCtx {
+                    controller,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                },
+                events,
+            );
+            return;
+        }
+        self.pause_for(PendingChoice::SacrificeUnlessReturnLand {
+            player: controller,
+            source,
+            candidates,
+        });
+    }
+
+    /// Answer a [`PendingChoice::SacrificeUnlessReturnLand`]: `land` (one of the offered
+    /// candidates) returns to its owner's hand and `source` stays; `None` declines and
+    /// sacrifices `source` instead (CR 701.16).
+    pub(crate) fn return_land_or_sacrifice(
+        &mut self,
+        player: PlayerId,
+        land: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::SacrificeUnlessReturnLand {
+            source, candidates, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if land.is_some_and(|l| !candidates.contains(&l)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        match land {
+            None => self.run(
+                Effect::SacrificeObject {
+                    object: Some(source),
+                },
+                ResolveCtx {
+                    controller: player,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                },
+                &mut events,
+            ),
+            Some(chosen) => {
+                let card = self.next_object_id();
+                self.push_apply(&mut events, Event::ReturnedToHand { card, from: chosen });
+            }
+        }
         Ok(events)
     }
 
@@ -1454,6 +1663,14 @@ impl Game {
                 controller: player,
                 tapped,
             },
+            // Enlightened Tutor / Sterling Grove: the found card is revealed in place (CR
+            // 701.30) — it hasn't left the library yet, so no zone-move event here; the shuffle
+            // and top-placement below finish the job.
+            SearchDest::LibraryTop => Event::RevealedTopOfLibrary {
+                player,
+                card: from,
+                def: self.def_of(from),
+            },
         };
         self.push_apply(&mut events, event);
 
@@ -1475,7 +1692,13 @@ impl Game {
         }
         // Always shuffle at the true end of the search (CR 701.19). ponytail: library order
         // isn't event-sourced (like scry / `shuffle`) — mutate it directly.
-        self.shuffle(player);
+        if dest == SearchDest::LibraryTop {
+            // "…then shuffle and put that card on top" — `from` never left the library, so put
+            // it back on top after the shuffle instead of shuffling it in with everything else.
+            self.shuffle_then_put_on_top(player, from);
+        } else {
+            self.shuffle(player);
+        }
         Ok(events)
     }
 

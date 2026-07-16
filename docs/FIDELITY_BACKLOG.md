@@ -1338,12 +1338,21 @@ you control have shroud." *Sketch:* the static twin of
 read at the keyword recompute like `anthem_static` instead of resolved once); `other = true` via
 the filter's existing axis. Consulted by `untargetable_by` for shroud. *Cards:* sterling_grove.
 
-### 140. `library-top-search` — 2 cards, S
+### 140. `library-top-search` — 2 cards, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 `SearchDest::LibraryTop` ("reveal it, then shuffle and put that card on top") plus
 `CardFilter::ArtifactOrEnchantment` (the card-filter union exists only for permanent filters
 today). Shuffle first, then place the found card on top — the existing search machinery plus one
 destination arm and one filter arm. *Cards:* enlightened_tutor, sterling_grove.
+
+**Landed:** new `SearchDest::LibraryTop` — the found card is revealed in place
+(`Event::RevealedTopOfLibrary`, no zone move since it never leaves the library), then
+`shuffle_then_put_on_top` reshuffles and reseats it on top (CR 701.19). New
+`CardFilter::ArtifactOrEnchantment` reads `CardKind::types` (so an Aura counts). Both slot into
+the existing `search_library` machinery with no new pause. **Landed:** enlightened_tutor (fully
+faithful, no note). **Still blocked:** sterling_grove — its tutor half is now faithful, but the
+`approximates` note is trimmed (not deleted) to its residual static "other enchantments you control
+have shroud" (#139, not modeled here).
 
 ### 141. `reveal-top-route` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
@@ -1369,7 +1378,7 @@ player, no payoff. *Cards:* relic_of_progenitus.
 verbatim (single player, no `remaining`, no payoff). Fully faithful (no note): relic_of_progenitus
 (both abilities — the tap-target-exile and the `exile_self` sweep+draw).
 
-### 143. `etb-sacrifice-unless` — 2 cards, M
+### 143. `etb-sacrifice-unless` — 2 cards, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 An as-enters "sacrifice it unless you [pay {1} | return a non-Lair land you control to its owner's
 hand]" pause — echo's pay-or-sacrifice choice shape, fired at the permanent's own ETB instead of
@@ -1377,6 +1386,26 @@ upkeep. *Sketch:* `enters_sacrifice_unless = { pay = <cost> }` (Rupture Spire) a
 `{ return_land = <permanent filter> }` (Treva's Ruins — the decline arm names a land to bounce
 instead of mana); reuse `PayEchoOrSacrifice`'s intent shape with a second answer payload for the
 land pick. *Cards:* rupture_spire, trevas_ruins.
+
+**Landed:** each card carries its own real `timing = "etb"` triggered ability — not the Echo
+keyword, though the pay arm shares its pay-or-sacrifice polarity. `Effect::SacrificeSelfUnlessPay
+{ cost }` (Rupture Spire) pauses on a dedicated `PendingChoice::SacrificeUnlessPay` (kept separate
+from `PayEchoOrSacrifice` since this isn't Echo — CR 603.3b, not CR 702.31), answered by the same
+`Intent::PayOptionalCost` wire shape. `Effect::SacrificeSelfUnlessReturnLand { filter }` (Treva's
+Ruins) offers the controller's permanents matching `filter` (`{ types = "land", controller =
+"you", nonlair = true }`) as a battlefield candidate-pick, pausing on
+`PendingChoice::SacrificeUnlessReturnLand`/answered by a new `Intent::ReturnLandOrSacrifice`; no
+matching land skips the pause and sacrifices the source outright. New `PermanentFilter::nonlair`
+axis (a single bool, same shape as `nonbasic`/`nonlegendary`) excludes the "Lair" land subtype so
+Treva's Ruins can't bounce itself or another Lair. Both cards' own `{T}: Add …` abilities needed a
+small DSL extension: the mana-symbol array sugar (previously capped at exactly 2 colors for a
+dual) now also accepts 3-4 distinct colors, normalizing to the existing `Mana::OfColors` bitmask —
+authored as a nested array on an `add_mana` effect (`mana = [["green", "white", "blue"]]` — Treva's
+Ruins' "{G}, {W}, or {U}"), and the `AddMana` resolution now emits the static `of_colors` batch
+(previously it only iterated colored/either/etc., silently dropping an `of_colors` credit — a real
+choose-one-of-three would have added nothing). `schema::catalog::land_colors` gained the matching
+`of_colors` branch for the mana-dot display. Fully faithful (no notes): rupture_spire,
+trevas_ruins.
 
 ### 144. `discard-unless-land` — 1 card, S/M
 Depends on: nothing.
@@ -1449,12 +1478,22 @@ controller orders; grow into a real choice if an evoke card ever needs the rever
 `MeaningfulAction` — like kicked, evoke is a bool on the ordinary cast action. Mulldrifter fully
 faithful, no `approximates`.
 
-### 149. `buyback` — 1 card, M
+### 149. `buyback` — 1 card, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 Buyback (CR 702.27): an optional additional cost (`[cost.additional.buyback]`, the kicker
 skeleton) recorded on the spell; a bought-back instant/sorcery returns to its owner's hand at
 resolution instead of the graveyard (a `finish_instant_sorcery_resolution` fork beside
 flashback's exile). *Cards:* capsize.
+
+**Landed:** `AdditionalCost::buyback` mirrors `kicker` exactly (`&'static Cost`, `[cost.additional.
+buyback]` TOML). The caster opts in via `Intent::Cast`'s `bought_back: bool` (mirroring `kicked`),
+folded into `cast_cost` alongside the printed cost and gated in `validate_cast_cost_picks` the same
+"can't opt into a nonexistent rider" way kicker is; recorded on the resolved `Spell::bought_back`.
+`Game::finish_instant_sorcery_resolution` gained a `spell.bought_back` fork (CR 702.27d) sitting
+beside the flashback/escape exile fork: it emits `Event::ReturnedToHand` instead of
+`MovedToGraveyard`. The body ("Return target permanent to its owner's hand") reuses the existing
+`return_to_hand` effect with an unfiltered `target = { permanent = {} }`. Fully faithful (no note):
+capsize.
 
 ### 150. `fog` — 1 card, M
 Depends on: #130 (landed slice 1 — this is its named slice-3 scope generalization).
@@ -1481,13 +1520,22 @@ Mirari's Wake's "whenever you tap a land for mana, add one mana of any type that
 *Sketch:* a `land_tapped_for_mana` hook scanned like the `spend_mana_to_cast` provenance path,
 resolving bonus credits into the same pool batch. *Cards:* fertile_ground, miraris_wake.
 
-### 153. `rhystic-punisher` — 1 card, M
+### 153. `rhystic-punisher` — 1 card, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 Rhystic Study's "Whenever an opponent casts a spell, you may draw a card unless that player pays
 {1}" — a cast trigger whose resolution pauses the *triggering caster* (not the ability's
 controller) on a pay-or-let-it-happen choice; declining to pay hands the controller an optional
 draw. *Sketch:* reuse `PayOrCounter`'s opponent-addressed pay shape with a draw payload
 (`unless_pays` on a trigger effect rather than a counter). *Cards:* rhystic_study.
+
+**Landed:** a new `TriggerContext::triggering_caster` (filled by `queue_cast_spell_triggers`, same
+last-known-information shape as `triggering_spell`) bakes the triggering opponent's identity into a
+new `Effect::MayDrawUnlessPays { cost }` via `contextualize_effect`/`fill_triggering_caster`.
+Resolution pauses the ability's own controller on a `PendingChoice::MayYesNo` (do they want to draw
+at all — the card's own ruling: declining is quiet, no pay window is ever offered); only a "yes"
+raises the triggering opponent on the new `PendingChoice::PayOrControllerDraws`/
+`Intent::PayOptionalCost`, mirroring `PayOrCounter`'s "declining does something" polarity but
+drawing instead of countering.
 
 ### 154. `opponent-gift-riders` — 1 card, M
 Depends on: nothing.
@@ -1527,13 +1575,25 @@ creature" — the first pool Aura that re-attaches while already attached (falsi
 `attach_self_to_entering` to move an already-attached Aura (emit `AttachedTo` with a detach from
 the old host) and re-check the `enchant` filter at the move. *Cards:* prison_term.
 
-### 157. `mana-spent-tracking` — 1 card, M
+### 157. `mana-spent-tracking` — 1 card, M — **LANDED (2026-07)**
 Depends on: nothing.
 Court Hussar's "sacrifice it unless {W} was spent to cast it" (CR 606-adjacent): record the
 colors of mana actually spent on each cast (the payment planner knows them; snapshot onto
 `Spell`, carry onto the entering permanent like `entered_with_x`), read by a new condition
 `color_was_spent_to_cast_this = "white"` gating a `conditional` ETB self-sacrifice. *Cards:*
 court_hussar.
+
+**Landed:** `ManaPool::colors_spent` reads the exact payment `spend_plan` returns; `Spell::spent_colors`/
+`Permanent::spent_colors` snapshot and carry it the same way `entered_with_x` does; a new
+`Condition::ColorWasSpentToCastThis { color }` (source-object-based, special-cased at the
+`Effect::Conditional` resolve site like `SourceEnteredWithXAtLeast`); a new `negate` axis on
+`Effect::Conditional` (CR "unless" as negated "if" — the pool's established `sacrifice_self_unless_*`
+riders are single-card-shaped, so this generalizes instead of adding a third one); and a new
+`Effect::SacrificeSource` (unlike the engine-internal `SacrificeObject`, authorable directly in a
+card template). Kept internal/no wire surface (ponytail-noted at the `VisibleEvent::SpellCast`
+projection) — the mana you spent isn't secret, but no client UI reads it yet. Fully faithful (no
+`approximates`): court_hussar (vigilance, the mandatory look-top-3 ETB, and the {W}-spent
+self-sacrifice ETB all land in the same pass — authored fresh, not previously on disk).
 
 ### 158. `enter-as-copy-enchantment` — 1 card, S/M
 Depends on: #127 (landed).
@@ -1669,7 +1729,7 @@ or narrowly: any permanent whose anthem amount is a cross-owner `per_permanent`.
 opponent's enchantment entering/leaving moves her P/T without any owner-side event. Then author
 the card (TOML + test drafted and withdrawn in wave B). *Cards:* yavimaya_enchantress.
 
-### 165. `ordered-trigger-targets` — 1 card, M
+### 165. `ordered-trigger-targets` — 1 card, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 Found in the wave-C authoring pass: when a permanent's entry queues TWO (or more) simultaneous
 triggered abilities and any of them is *targeted*, `Game::choose_order` places the ordered
@@ -1685,6 +1745,13 @@ of pushing the group with bare `target: None`. Regression test: Stonecloaker's t
 for targets and both resolve. Then author the card (draft worked otherwise: flash/flying, `return_to_hand`
 creature-you-control, `exile_target_graveyard_card_then_if_creature` with empty `then`).
 *Cards:* stonecloaker.
+
+**Landed:** `Game::choose_order` no longer places the ordered group with bare `target: None` — it
+re-queues the chosen abilities as N one-ability `TriggerGroup`s (front of the queue, in order,
+`expanded: true` so they don't re-double) and runs them through the shared `place_pending_triggers`
+/ `place_targeted_ability` path, so each targeted ordered trigger raises its own `ChooseTarget`
+pause (CR 603.3d). Regression test `stonecloaker_both_ordered_etbs_choose_targets` (RED before,
+GREEN after). Fully faithful (no note): stonecloaker.
 
 ### 166. `noncreature-host-aura-legality` — 1 card, S/M — **LANDED (2026-07-16)**
 Depends on: nothing (pairs naturally with #156's enchant re-check).

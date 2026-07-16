@@ -226,6 +226,16 @@ fn land_colors(def: engine::CardDef) -> Vec<u8> {
                 colors[b.index()] = true;
             }
         }
+        // A fixed 3-4 color choice (Treva's Ruins' "{T}: Add {G}, {W}, or {U}") — same bit order
+        // as `Mana::OfColors`'s own doc.
+        for (mask, &count) in produced.of_colors.iter().enumerate() {
+            if count == 0 {
+                continue;
+            }
+            for (i, on) in colors.iter_mut().enumerate() {
+                *on |= mask & (1 << i) != 0;
+            }
+        }
         if produced.any > 0 {
             colors.iter_mut().for_each(|c| *c = true);
         }

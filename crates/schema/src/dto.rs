@@ -440,6 +440,15 @@ pub enum PendingChoiceView {
         spell: ObjectId,
         cost: WireCost,
     },
+    /// The triggering opponent (`player`) may pay `cost` to stop `controller`'s optional draw —
+    /// Rhystic Study's "unless that player pays {1}". Only raised after `controller` accepts the
+    /// preceding `MayYesNo` pause. Paying leaves `controller`'s hand untouched; declining draws
+    /// them a card.
+    PayOrControllerDraws {
+        player: u8,
+        controller: u8,
+        cost: WireCost,
+    },
     /// `spell` is already countered (CR 701.5b — Hinder's `countered_dest` rider) — choose the
     /// top or bottom of its owner's library for it to go to instead of the graveyard.
     ChooseCounteredSpellDestination { player: u8, spell: ObjectId },
@@ -449,6 +458,20 @@ pub enum PendingChoiceView {
         player: u8,
         source: ObjectId,
         cost: WireCost,
+    },
+    /// Pay `cost` to keep `source`, or decline and sacrifice it — a real ETB triggered ability
+    /// (Rupture Spire, CR 603.3b), not Echo, though it shares `PayEchoOrSacrifice`'s shape.
+    SacrificeUnlessPay {
+        player: u8,
+        source: ObjectId,
+        cost: WireCost,
+    },
+    /// Return one of `items` (a non-Lair land the player controls, public) to its owner's hand
+    /// to keep `source`, or decline and sacrifice it (Treva's Ruins).
+    SacrificeUnlessReturnLand {
+        player: u8,
+        source: ObjectId,
+        items: Vec<ChoiceItem>,
     },
     /// Blockers to divide the attacker's damage among.
     AssignCombatDamage {

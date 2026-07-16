@@ -218,9 +218,19 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
                 game.pay_or_counter(player, pay)
             } else if matches!(
                 game.pending_choice,
+                Some(PendingChoice::PayOrControllerDraws { .. })
+            ) {
+                game.pay_or_controller_draws(player, pay)
+            } else if matches!(
+                game.pending_choice,
                 Some(PendingChoice::PayEchoOrSacrifice { .. })
             ) {
                 game.pay_echo(player, pay)
+            } else if matches!(
+                game.pending_choice,
+                Some(PendingChoice::SacrificeUnlessPay { .. })
+            ) {
+                game.pay_sacrifice_unless(player, pay)
             } else {
                 game.pay_optional_cost(player, pay)
             }
@@ -313,6 +323,9 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             keep_tapped,
         } => game.answer_decline_untap(player, keep_tapped),
         Intent::PutLandFromHand { player, choice } => game.put_land_from_hand(player, choice),
+        Intent::ReturnLandOrSacrifice { player, land } => {
+            game.return_land_or_sacrifice(player, land)
+        }
         Intent::ChooseExiledWithCard { player, choice }
             if matches!(
                 game.pending_choice,

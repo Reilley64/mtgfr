@@ -421,11 +421,13 @@ impl Game {
                 escape,
                 sacrifice_count,
                 kicked,
+                bought_back,
                 strive_count,
                 replicate_count,
                 bestowed,
                 face_down,
                 evoked,
+                spent_colors,
             } => {
                 let (def, commander) = match self.objects[from as usize] {
                     Object::Card(c) => (c.def, c.commander),
@@ -470,12 +472,14 @@ impl Game {
                         counter_division: DamageAssignment::default(),
                         sacrifice_count,
                         kicked,
+                        bought_back,
                         strive_count,
                         replicate_count,
                         serra_recursion,
                         bestowed,
                         face_down,
                         evoked,
+                        spent_colors,
                     }),
                 );
                 if serra_recursion {
@@ -544,12 +548,18 @@ impl Game {
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
                         kicked: false,
+                        bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
                         evoked: false,
+                        // ponytail: an adventure cast still pays real mana (`settle_payment` runs
+                        // above), but no adventure card checks color-spent yet — wire this from
+                        // the same `Event::ManaSpent` snapshot `Event::SpellCast` uses
+                        // (`Game::cast_adventure`) if one ever does.
+                        spent_colors: [false; Color::COUNT],
                     }),
                 );
                 assert_eq!(id, spell);
@@ -631,12 +641,15 @@ impl Game {
                             counter_division: DamageAssignment::default(),
                             sacrifice_count: 0,
                             kicked: false,
+                            bought_back: false,
                             strive_count: 0,
                             replicate_count: 0,
                             serra_recursion: false,
                             bestowed: false,
                             face_down: false,
                             evoked: false,
+                            // A copy pays no cost (CR 707.10) — nothing was spent to "cast" it.
+                            spent_colors: [false; Color::COUNT],
                         },
                     }),
                 );
@@ -704,12 +717,18 @@ impl Game {
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
                         kicked: false,
+                        bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
                         evoked: false,
+                        // ponytail: a prepared cast still pays real mana (`settle_payment` runs
+                        // in `Game::cast_prepared`), but no prepare card checks color-spent yet —
+                        // wire this from the same `Event::ManaSpent` snapshot `Event::SpellCast`
+                        // uses if one ever does.
+                        spent_colors: [false; Color::COUNT],
                     }),
                 );
                 assert_eq!(id, spell);
@@ -1366,6 +1385,7 @@ impl Game {
                     cast_target,
                     face_down,
                     evoked,
+                    spent_colors,
                 ) = match self.objects[from as usize] {
                     Object::Spell(s) => (
                         s.def,
@@ -1378,6 +1398,7 @@ impl Game {
                         s.targets.primary(),
                         s.face_down,
                         s.evoked,
+                        s.spent_colors,
                     ),
                     _ => panic!("PermanentEntered source {from} is not a spell"),
                 };
@@ -1410,6 +1431,9 @@ impl Game {
                 // alongside the permanent's ETB triggers (`Game::enqueue_triggers`), so an ETB
                 // payoff (Mulldrifter's draw two) still resolves first.
                 self.permanent_mut(permanent).evoked = evoked;
+                // See `Permanent::spent_colors`'s doc — same "read it before the spell is gone"
+                // idiom as `entered_with_x` above (Court Hussar's "unless {W} was spent to cast it").
+                self.permanent_mut(permanent).spent_colors = spent_colors;
                 // CR 707.10a: a copy of a permanent spell becomes a token as it resolves — it
                 // ceases to exist (rather than going to the graveyard) once it leaves the
                 // battlefield, via the same `Permanent::token` machinery any other token uses.

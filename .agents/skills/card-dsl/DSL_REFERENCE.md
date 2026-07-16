@@ -120,7 +120,9 @@ mana — Toxic Deluge), `sacrifice = { count = "one_or_more", filter }` (an enti
 one or more creatures"; `count` is a marker, only `"one_or_more"` is modeled — a mandatory or
 fixed-count sacrifice cast cost needs its own shape), `[cost.additional.kicker]` (Kicker,
 CR 702.33 — Rite of Replication's "Kicker {5}"; a `[cost]`-shaped sub-table, e.g.
-`[cost.additional.kicker]` / `generic = 5`), `[cost.additional.strive]` (Strive, CR 702.42 —
+`[cost.additional.kicker]` / `generic = 5`), `[cost.additional.buyback]` (Buyback, CR 702.27 —
+Capsize's "Buyback {3}"; the same `[cost]`-shaped sub-table, e.g. `[cost.additional.buyback]` /
+`generic = 3`), `[cost.additional.strive]` (Strive, CR 702.42 —
 Twinflame's "This spell costs {2}{R} more to cast for each target beyond the first"; the same
 `[cost]`-shaped sub-table, e.g. `[cost.additional.strive]` / `generic = 2` / `red = 1`), or
 `[cost.additional.replicate]` (Replicate, CR 702.108 — Changing Loyalty's "Replicate {2}"; the
@@ -130,7 +132,12 @@ same `[cost]`-shaped sub-table, e.g. `[cost.additional.replicate]` / `generic = 
 via `Game::spell_sacrifice_count`) for a future copy-per-sacrifice rider to consume. Kicker is
 entirely optional (CR 702.33d): the caster opts in via `Intent::Cast`'s `kicked = true` (its mana
 folds into the total cost), and the choice is recorded on the resolved spell, read via
-`Game::spell_was_kicked` — see the `if_kicked`/`else` `Amount` table below. Strive scales with a
+`Game::spell_was_kicked` — see the `if_kicked`/`else` `Amount` table below. Buyback is the same
+entirely-optional shape (CR 702.27c): the caster opts in via `Intent::Cast`'s `bought_back = true`
+(its mana folds into the total cost the same way kicker's does), and the choice is recorded on the
+resolved [`Spell::bought_back`] — when set, `Game::finish_instant_sorcery_resolution` returns the
+resolved instant/sorcery to its owner's hand (CR 702.27d) instead of the graveyard, in place of the
+usual flashback/escape exile or graveyard fork. Strive scales with a
 caster-declared target count rather than a paid cost: the caster names it up front on
 `Intent::Cast`'s `strive_count` (CR 601.2c precedes 601.2f — targets are chosen before the total
 cost is locked, but this engine puts a spell on the stack before pausing to choose multi-targets,
@@ -178,10 +185,13 @@ rest — flag the card.
 | `"land"` | `produces` (mana symbol, §8, **optional**), `subtypes` (array of strings, default `[]`), `basic` (bool, default `false`) | `Land` |
 
 A land's `produces` is **optional sugar** for the common "{T}: Add one mana" free base tap: a
-single mana symbol (§8) — a color name, `"colorless"`, `"any"`, or a **two-color array** for a
-dual ("{T}: Add {G} or {U}" → `produces = ["green", "blue"]`). A dual adds one *credit* spendable
-as either color, resolved at payment time — no choice on tap, and both colors count toward color
-identity and castability. Two literal strings are also accepted: `"commander_identity"` — one
+single mana symbol (§8) — a color name, `"colorless"`, `"any"`, or a **color array of 2 to 4
+distinct colors** for a fixed choice: exactly two is a dual ("{T}: Add {G} or {U}" → `produces =
+["green", "blue"]`), three or four is a triome-style choice ("{T}: Add {G}, {W}, or {U}" →
+`mana = [["green", "white", "blue"]]` on an `add_mana` effect — Treva's Ruins). Either way it
+adds one *credit* spendable as any of the listed colors, resolved at payment time — no choice on
+tap, and every listed color counts toward color identity and castability. Two literal strings are
+also accepted: `"commander_identity"` — one
 mana of any color in your commander's color identity (CR 903.4, Command Tower) — and
 `"opponent_colors"` — one mana of any color a land an opponent controls could produce (Exotic
 Orchard); both resolve their credit from table state at tap time.
@@ -687,6 +697,7 @@ the city's blessing").
 | `"land_entered_under_your_control_this_turn"` | — "a land entered the battlefield under your control this turn" (Zimone, All-Questioning). CR landfall's own "enters," not "played" — a cast, fetched, or token land all set it. |
 | `"you_control_prime_number_of_lands"` | — "you control a prime number of lands" (Zimone, All-Questioning). Trial division over `Game::lands_controlled`. |
 | `"during_your_turn"` | — "during your turn" (Restless Spire's animated form: "During your turn, this creature has first strike"). Holds iff the controller is the active player right now; re-evaluated live, not cached at animation time. Pair with `anthem_static`'s `self_only = true` to gate a manland's own conditional keyword. |
+| `"color_was_spent_to_cast_this"` | `color` (a color) — "if `color` was spent to cast this" (CR 106.9; Court Hussar's "unless {W} was spent to cast it" — pair with `negate = true` on the enclosing `conditional`, §6). Reads the source permanent's locked-in `Permanent::spent_colors`, snapshotted from the casting spell's actual mana payment (which colors funded which pips, including the generic) — only reachable inside `{ type = "conditional", … }`, not `[abilities.condition]` (same shape as `source_entered_with_x_at_least` above). ponytail: only a literally-colored mana source counts — a dual/filter/"any" credit spent toward a pip isn't attributed to either of its colors (see `ManaPool::colors_spent`'s doc); no pool card's mana base exercises that gap yet. |
 
 ```toml
 [abilities.condition]
@@ -855,11 +866,15 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `target_player_loses_life` | `amount` (i32) | intrinsic (target player, no matching gain) |
 | `sacrifice_own` | `filter` (§7 permanent filter), `count` (u32) | no (controller sacrifices `count` of their own matching permanents — a mandatory `PendingChoice::ChooseOwnSacrifices` the controller directs when more than `count` match, CR 701.16a; with `count` or fewer, all of them go immediately, no pause — CR 700.2) |
 | `defending_player_sacrifices` | `count` (u8) | no, subject read from attack context (annihilator N, CR 702.86a: the *defending* player — not the ability's controller — sacrifices `count` of their own permanents of their choice, any type; same `ChooseOwnSacrifices` machinery as `sacrifice_own` with an unrestricted filter and the defender standing in for the controller; pair with `timing = "enchanted_creature_attacks"` — Eldrazi Conscription) |
+| `sacrifice_self_unless_pay` | `cost` (`[cost]` table, same shape as `[echo]`) | no (Rupture Spire: "sacrifice it unless you pay {1}" — a real `timing = "etb"` triggered ability, CR 603.3b, NOT the Echo keyword, though it shares Echo's pay-or-sacrifice resolution shape: pauses on a `PendingChoice::SacrificeUnlessPay`, answered by `Intent::PayOptionalCost`; paying settles `cost` from the controller's mana pool, declining sacrifices the source) |
+| `sacrifice_self_unless_return_land` | `filter` (§7 permanent filter) | no (Treva's Ruins: "sacrifice it unless you return a non-Lair land you control to its owner's hand" — the land-bounce twin of `sacrifice_self_unless_pay`; `filter` names the qualifying lands, `{ types = "land", controller = "you", nonlair = true }` for Treva's Ruins — pauses on a `PendingChoice::SacrificeUnlessReturnLand` offering the controller's matches, answered by `Intent::ReturnLandOrSacrifice`; no matching land skips the pause and sacrifices the source outright) |
+| `sacrifice_source` | none | no (sacrifices the ability's own source unconditionally, no pause — Court Hussar's "sacrifice it unless {W} was spent to cast it": the `then` of a `negate`d `conditional` step, §6 below. Distinct from the engine-internal `sacrifice_object`, which is never authored directly — always pair `sacrifice_source` with a `conditional`/`intervening_if` gate rather than reaching for it unconditionally on its own ability) |
 | `mill_self` | `count` (amount) | no (untargeted — always the controller's own library; contrast `mill`, which targets a player) |
 | `copy_target_spell` | — | intrinsic (an instant/sorcery spell on the stack; Twincast) |
 | `copy_this_spell` | `count` (amount, default one), `cast_from_graveyard_only` (bool, default false), `optional` (bool, default false) | no (storm/Gravestorm-style rider: mints `count` copies of the resolving spell itself, each offered the same CR 707.10c retarget `copy_target_spell` offers — Plumb the Forbidden's `"spell_sacrifice_count"`, Ominous Harvest's `"permanents_died_this_turn"`; `cast_from_graveyard_only` gates the mint on the resolving spell having been cast via flashback — Sevinne's Reclamation's "if this spell was cast from a graveyard"; `optional` pauses on a `PendingChoice::MayYesNo` before minting, declining runs nothing — Sevinne's Reclamation's "you may copy this spell") |
 | `retarget_spell_copy` | `copy` (object id) | — internal only, minted by `copy_this_spell`'s own resolution; never authored in a card TOML |
 | `counter_target_spell` | `unless_pays` (amount, optional — "unless its controller pays {N}", Quandrix Charm), `filter` (spell filter §7, default `"all"` — Decisive Denial's `"noncreature"`), `countered_dest` (optional, only `"library_top_or_bottom"` today — Hinder's "if that spell is countered this way, put that card on your choice of the top or bottom of its owner's library instead of into that player's graveyard," CR 701.5b: pauses this ability's controller on a `PendingChoice::ChooseCounteredSpellDestination`/`Intent::ChooseTopOrBottom { top }` before the countered card moves; a flashback/escape spell exiles instead (CR 702.34e/702.19d), leaving nothing for the rider to redirect — never combined with `unless_pays` in the pool) | intrinsic (a spell on the stack; Counterspell) |
+| `may_draw_unless_pays` | `cost` (amount — "unless that player pays {1}", Rhystic Study) | no (untargeted; the ability's own controller). Pairs with `timing = "cast_spell"`, `caster = "opponent"` (§5, "Trigger sibling fields"): resolution first pauses the ability's own controller on a `PendingChoice::MayYesNo` — do they want to draw at all (the card's ruling: declining is quiet, no pay window is ever offered) — and only a "yes" there raises the *triggering opponent* (not the ability's controller — `Game::queue_cast_spell_triggers` bakes their identity in via `TriggerContext::triggering_caster`, same context-fill shape as `copy_triggering_spell`'s `triggering_spell`) on a `PendingChoice::PayOrControllerDraws`/`Intent::PayOptionalCost`: paying stops the draw, declining lets it happen. |
 | `change_target_of_target_spell_or_ability` | `target` (§7 target spec, default none — `"single_target_spell_on_stack"`) | `"single_target_spell_on_stack"` (the spell to bend, chosen as the trigger goes on the stack, CR 603.3d). Willbender's turned-face-up payload: "change the target of target spell or ability with a single target." At resolution the controller chooses a *different* legal target for that spell (CR 114.6b — must change if able) and it overwrites the stored one, via the same `ChooseSpellTargets`/`SpellTargetsChosen` write-back a multi-target choice uses. No-op if the spell left the stack (CR 608.2b already fizzles the trigger) or has no legal alternate. ponytail: CR's "or ability" half is unmodeled — stack abilities have no object identity to target in this engine (see the `single_target_spell_on_stack` spec); spells only. |
 | `fight` | `ally_is_shared_target` (bool, default `false`) | intrinsic — default shape: target creature an opponent controls; your own fighter is chosen at resolution. `ally_is_shared_target = true` mirrors this: the ability's shared cast target is instead your own creature (a preceding `pump_until_end_of_turn` step's target, e.g.), and the enemy ("fights up to one target creature you don't control") is chosen at an *optional* resolution-time pause instead — no legal enemy, or the ally no longer being a creature, is a no-op (no pause, no fight). Primal Might: `effects = [{ type = "pump_until_end_of_turn", power = "x", toughness = "x", target = "creature_you_control" }, { type = "fight", ally_is_shared_target = true }]` |
 | `schedule_at_next_upkeep` | `who` (`"you"` default, `"target_spell_controller"`), `then` (one effect) | no (delayed trigger, CR 603.7: `then` fires at the next upkeep — Arcane Denial's draws) |
@@ -909,7 +924,7 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `arm_combat_damage_watch` | — | no-target-of-its-own (reads the enclosing `effects` sequence's shared target) — arms a CR 603.7 delayed watch on that shared target: the ability's own source becomes prepared the first time the watched creature deals combat damage to a player, any time later this combat, then the watch is removed (cleared unconsumed at end of combat). Object-armed like `schedule_next_cast_trigger` is filter-armed. Always resolves to `become_prepared`, no `then` list — Stensian Sanguinist's "target creature gains deathtouch until end of turn. Whenever that creature deals combat damage to a player this combat, this creature becomes prepared", authored as `pump_until_end_of_turn` (deathtouch) then this in the same `effects` sequence |
 | `choose_creature_type` | — | no (CR 614.12/700.9-style "as ~ enters, choose a creature type" — pauses on a `ChooseCreatureType` choice for the controller over the pool's known creature types, `CREATURE_TYPES`; the chosen type is stored on the ability's own source, `Permanent::chosen_subtype`, read back by `anthem_static`'s `chosen_subtype` axis — Patchwork Banner) |
 | `choose_color` | — | no (CR 614.12/700.9-style "as ~ enters, choose a color" — pauses on a `ChooseColor` choice for the controller over the fixed five colors; the chosen color is stored on the ability's own source, `Permanent::chosen_color`, read back by `grant_to_attached`'s `protection_from_chosen_color` axis — Flickering Ward) |
-| `conditional` | `condition` (§5 shape), `then` (array of effects) | no (runs `then` only if `condition` holds when *this step* resolves — a per-step gate inside an `effects` sequence; Zimone's "draw two instead") |
+| `conditional` | `condition` (§5 shape), `then` (array of effects), `negate` (bool, default `false`) | no (runs `then` only if `condition` holds — or, with `negate = true`, only if it *doesn't* — when *this step* resolves; a per-step gate inside an `effects` sequence. Plain: Zimone's "draw two instead". Negated: Court Hussar's "sacrifice it unless {W} was spent to cast it" is `condition = { type = "color_was_spent_to_cast_this", color = "white" }`, `negate = true`, `then = [{ type = "sacrifice_source" }]` — CR's "unless" is `negate`d "if") |
 
 `counter_replacement`: adder → `add = 1`; doubler → `times = 2` (omit `add`).
 `token_replacement`: doubler → `times = 2` (Doubling Season). Pure multiply — no `add`/`other`.
@@ -1313,6 +1328,7 @@ for a common type set, a shorthand string:
 | `nonbasic` | bool (default `false`) | `true` excludes basic lands (CR 205.4a's "Basic" supertype — White Orchid Phantom's "target nonbasic land"); meaningful only alongside `types = "land"` |
 | `name` | string, optional | restrict to permanents with this exact printed name (CR 201.2 — Leitmotif Composer's "creatures named Leitmotif Composer can't be blocked"); omit to not gate on name. Printed-name equality only — no pool card changes a permanent's name. |
 | `nonlegendary` | bool (default `false`) | `true` excludes legendary permanents (CR 205.4a's "Legendary" supertype — Muddle, the Ever-Changing's "up to one target nonlegendary creature you control") |
+| `nonlair` | bool (default `false`) | `true` excludes the "Lair" land subtype (Treva's Ruins' "return a non-Lair land you control"); reads the printed land-type list directly, not `subtypes`; meaningful only alongside `types = "land"` |
 
 Shorthand strings (equivalent type-set tables): `"creatures"`/`"creature"`, `"nonland_permanents"`/`"nonland"`,
 `"artifact"`, `"artifact_or_enchantment"`, `"creature_or_planeswalker"`, `"artifact_or_creature"`,
@@ -1461,9 +1477,12 @@ rest_dest = "bottom"
 ## 8. Mana symbols and tokens
 
 **Mana symbol** (for `produces` and `add_mana`): `"white"`, `"blue"`, `"black"`, `"red"`,
-`"green"`, `"colorless"`, `"any"`, or a two-color array (`["green", "blue"]`) for "either of
-two colors" (a dual — one credit that picks its color at payment time; §3). Write the pair in
-the card's printed order — it's normalized to WUBRG internally.
+`"green"`, `"colorless"`, `"any"`, or a **2-to-4-color array** for a fixed choice among those
+colors — one credit that picks its color at payment time, no choice on tap (§3). Exactly two
+(`["green", "blue"]`) is a dual ("either of two colors"); three or four (`["green", "white",
+"blue"]` — Treva's Ruins' "{G}, {W}, or {U}") is a triome-style choice. Write the colors in the
+card's printed order — a 2-color array is normalized to WUBRG internally (a 3-/4-color array
+just needs its colors distinct; order doesn't matter, it collapses to a bitmask).
 
 **Multi-mana** — `add_mana` takes a list, one symbol per mana produced:
 ```toml

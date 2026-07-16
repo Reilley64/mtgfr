@@ -857,6 +857,7 @@ pub(crate) fn fresh_permanent(
         face_down: false,
         evoked: false,
         reverts_to_def_eot: None,
+        spent_colors: [false; Color::COUNT],
     }
 }
 
@@ -1182,6 +1183,11 @@ pub(crate) struct Spell {
     /// of Replication's "If this spell was kicked, create five of those tokens instead") via
     /// [`Game::spell_was_kicked`], the kicked-flag sibling of [`Self::sacrifice_count`]'s read.
     pub(crate) kicked: bool,
+    /// Whether the caster paid this spell's buyback cost (CR 702.27c — [`AdditionalCost::buyback`]),
+    /// `false` for a spell with no buyback or a decline. Read by
+    /// [`Game::finish_instant_sorcery_resolution`] (Capsize's "put this card into your hand as it
+    /// resolves" instead of the graveyard), the buyback-flag sibling of [`Self::kicked`]'s read.
+    pub(crate) bought_back: bool,
     /// The caster's declared Strive target count (CR 702.42 — [`AdditionalCost::strive`]), 0 if
     /// the spell has no Strive cost. Settled before the spell hits the stack (CR 601.2c precedes
     /// 601.2f) and recorded here the way `sacrifice_count`/`kicked` are; read back by
@@ -1215,6 +1221,15 @@ pub(crate) struct Spell {
     /// onto the resulting [`Permanent::evoked`] when the spell resolves ([`Event::PermanentEntered`]),
     /// so the permanent is sacrificed the instant it enters. `false` for an ordinary cast.
     pub(crate) evoked: bool,
+    /// The colors of mana actually spent to cast this spell (CR 106.9 — Court Hussar's "unless
+    /// {W} was spent to cast it"), snapshotted from [`ManaPool::colors_spent`] against the
+    /// [`Event::ManaSpent`] [`Game::settle_payment`](crate::Game::settle_payment) appends right
+    /// before this spell hits the stack. Copied onto the resulting [`Permanent::spent_colors`]
+    /// when the spell resolves, the same "read the spell's own info before it's gone" idiom as
+    /// `entered_with_x`. `[false; Color::COUNT]` for a spell that paid no mana (a copy, a free
+    /// cast) or a cast form (adventure, prepared copy) this snapshot isn't wired through yet — no
+    /// pool card checks color-spent off those forms.
+    pub(crate) spent_colors: [bool; Color::COUNT],
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.
@@ -1444,6 +1459,14 @@ pub(crate) struct Permanent {
     /// `&'static CardDef` (leaked at the copy step, like [`CardDef::back`]) so [`Permanent`] stays
     /// `Copy` and small (a pointer, not a second inlined [`CardDef`]).
     pub(crate) reverts_to_def_eot: Option<&'static CardDef>,
+    /// The colors of mana spent to cast the spell that became this permanent (CR 106.9), fixed
+    /// for the rest of this permanent's existence — copied from [`Spell::spent_colors`] as it
+    /// enters, the same "read the spell's own info before it's gone" idiom as `entered_with_x`.
+    /// Read by [`Condition::ColorWasSpentToCastThis`] (Court Hussar's "unless {W} was spent to
+    /// cast it"). `[false; Color::COUNT]` for a token, a reanimated/reconstructed permanent, or
+    /// any permanent whose casting spell paid no mana or isn't wired through yet (see
+    /// [`Spell::spent_colors`]'s doc).
+    pub(crate) spent_colors: [bool; Color::COUNT],
 }
 
 /// One slot in the object arena. A card's slot becomes [`Object::Moved`] when it changes

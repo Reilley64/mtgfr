@@ -127,6 +127,9 @@ impl Game {
     /// `kicked` folds [`AdditionalCost::kicker`]'s cost on top (CR 702.33d) — `false` for a
     /// spell with no kicker, or when pricing without picking one (list/one-click never offer it,
     /// matching the declinable default).
+    /// `bought_back` folds [`AdditionalCost::buyback`]'s cost on top (CR 702.27c), mirroring
+    /// `kicked`'s own fold — `false` for a spell with no buyback, or when pricing without picking
+    /// one (list/one-click never offer it, matching kicker's own declinable default).
     /// `evoked` charges [`CardDef::evoke`] instead of the printed cost (CR 702.74a) — `false` for
     /// a spell with no evoke, or when pricing without declaring it (list/one-click never offer
     /// it, matching kicker's own declinable default above).
@@ -149,6 +152,7 @@ impl Game {
         zone: Zone,
         delve_count: u8,
         kicked: bool,
+        bought_back: bool,
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
@@ -217,6 +221,17 @@ impl Game {
             }
             cost.colorless = cost.colorless.saturating_add(kicker.colorless);
         }
+        // Buyback (CR 702.27c): the caster's chosen buyback cost, paid alongside the printed
+        // cost, mirroring kicker's own fold above.
+        // ponytail: sums generic/colored/colorless pips only, mirroring kicker's own pip-only
+        // fold — no pool buyback cost carries a hybrid pip.
+        if bought_back && let Some(buyback) = base.additional.buyback {
+            cost.generic = cost.generic.saturating_add(buyback.generic);
+            for (pip, extra) in cost.colored.iter_mut().zip(buyback.colored.iter()) {
+                *pip = pip.saturating_add(*extra);
+            }
+            cost.colorless = cost.colorless.saturating_add(buyback.colorless);
+        }
         // Strive (CR 601.2f/702.42): "{2}{R} more to cast for each target beyond the first" —
         // the caster's declared target count (settled pre-stack, see `Intent::Cast::strive_count`'s
         // own doc) scales the additional cost. `N = 0` or `N = 1` adds nothing (no targets beyond
@@ -272,6 +287,7 @@ impl Game {
         graveyard_exile: Vec<ObjectId>,
         sacrifice_cost: Vec<ObjectId>,
         kicked: bool,
+        bought_back: bool,
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
@@ -286,6 +302,7 @@ impl Game {
             &graveyard_exile,
             &sacrifice_cost,
             kicked,
+            bought_back,
             evoked,
             strive_count,
             replicate_count,
@@ -305,6 +322,7 @@ impl Game {
         graveyard_exile: &[ObjectId],
         sacrifice_cost: &[ObjectId],
         kicked: bool,
+        bought_back: bool,
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
@@ -321,6 +339,7 @@ impl Game {
                 graveyard_exile,
                 sacrifice_cost,
                 kicked,
+                bought_back,
                 evoked,
                 strive_count,
                 replicate_count,
@@ -351,6 +370,10 @@ impl Game {
             Some(def.spell_characteristics()),
             &mut events,
         )?;
+        // CR 106.9's "spent to cast" query (Court Hussar's "unless {W} was spent to cast it"):
+        // read right off the `Event::ManaSpent` `settle_payment` just appended, before any later
+        // event dilutes the `events` tail.
+        let spent_colors = spent_colors_from(&events);
         // ponytail: the additional discard is a *cost* (CR 601.2h — paid pre-stack, before
         // SpellCast below), distinct from a resolution-time `Effect::Discard`. Applied
         // incrementally (not a single `apply_all`) so each `next_object_id()` — one per discarded
@@ -432,11 +455,13 @@ impl Game {
                 escape: cast_via_escape,
                 sacrifice_count: sacrifice_cost.len() as u8,
                 kicked,
+                bought_back,
                 strive_count,
                 replicate_count,
                 bestowed: false,
                 face_down: false,
                 evoked,
+                spent_colors,
             },
         );
         if from_command {
@@ -1180,6 +1205,7 @@ impl Game {
             0,
             false,
             false,
+            false,
             0,
             0,
         );
@@ -1281,6 +1307,7 @@ impl Game {
             0,
             false,
             false,
+            false,
             0,
             0,
         );
@@ -1365,6 +1392,7 @@ impl Game {
             Some(def.spell_characteristics()),
             &mut events,
         )?;
+        let spent_colors = spent_colors_from(&events);
         let spell = self.next_object_id();
         self.push_apply(
             &mut events,
@@ -1379,11 +1407,13 @@ impl Game {
                 escape: false,
                 sacrifice_count: 0,
                 kicked: false,
+                bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
                 bestowed: true,
                 face_down: false,
                 evoked: false,
+                spent_colors,
             },
         );
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
@@ -1431,6 +1461,7 @@ impl Game {
         };
         let mut events = Vec::new();
         self.settle_payment(player, face_down_cost, None, None, &mut events)?;
+        let spent_colors = spent_colors_from(&events);
         let spell = self.next_object_id();
         self.push_apply(
             &mut events,
@@ -1445,11 +1476,13 @@ impl Game {
                 escape: false,
                 sacrifice_count: 0,
                 kicked: false,
+                bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
                 bestowed: false,
                 face_down: true,
                 evoked: false,
+                spent_colors,
             },
         );
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
@@ -1915,6 +1948,19 @@ impl Game {
             self.queue_activate_ability_triggers(player, object);
         }
         Ok(events)
+    }
+}
+
+/// The colors of mana actually spent by the payment [`Game::settle_payment`] just appended to
+/// `events` (CR 106.9 — Court Hussar's "unless {W} was spent to cast it"), read off its trailing
+/// [`Event::ManaSpent`]. `settle_payment` always pushes that event last on success (any tap
+/// events it needs come first), so this only ever runs immediately after such a call, before any
+/// later push dilutes the tail.
+fn spent_colors_from(events: &[Event]) -> [bool; Color::COUNT] {
+    match events.last() {
+        Some(Event::ManaSpent { mana, .. }) => mana.colors_spent(),
+        // unreachable: see this fn's doc — `settle_payment` always ends with `ManaSpent`.
+        _ => [false; Color::COUNT],
     }
 }
 

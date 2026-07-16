@@ -264,6 +264,7 @@ fn card_filter_label(filter: CardFilter) -> String {
         CardFilter::AuraOrEquipment => "an Aura or Equipment card".to_string(),
         CardFilter::Aura => "an Aura card".to_string(),
         CardFilter::ArtifactOrCreature => "an artifact or creature card".to_string(),
+        CardFilter::ArtifactOrEnchantment => "an artifact or enchantment card".to_string(),
     }
 }
 
@@ -296,6 +297,7 @@ impl Effect {
                 let dest = match matched_dest {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
+                    SearchDest::LibraryTop => "on top of your library",
                 };
                 format!(
                     "Reveal cards from the top of your library until you reveal {} {}, put them {}, and put the rest on the bottom of your library",
@@ -328,6 +330,7 @@ impl Effect {
                 let dest = match matched_dest {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
+                    SearchDest::LibraryTop => "on top of your library",
                 };
                 format!(
                     "Reveal the top {} cards of your library, put all cards among them that are {} {}, and put the rest on the bottom of your library",
@@ -967,6 +970,14 @@ impl Effect {
                 let suffix = if tapped { " tapped" } else { "" };
                 format!("Put a land from hand onto the battlefield{suffix}")
             }
+            // ponytail: generic pips only (Rupture Spire's {1}) — no pool card needs a colored
+            // sacrifice-unless-pay cost yet; extend if one does.
+            Effect::SacrificeSelfUnlessPay { cost } => {
+                format!("Sacrifice this unless you pay {{{}}}", cost.generic)
+            }
+            Effect::SacrificeSelfUnlessReturnLand { .. } => {
+                "Sacrifice this unless you return a non-Lair land you control".to_string()
+            }
             // A sequence reads as its steps joined by ", then " (Faithless Looting's "Draw 2, then
             // discard 2").
             Effect::Sequence { steps } => steps
@@ -1098,6 +1109,7 @@ impl Effect {
                 let dest = match to_zone {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
+                    SearchDest::LibraryTop => "on top of your library, revealing it",
                 };
                 format!("Search your library for {what}, put it {dest}")
             }
@@ -1170,6 +1182,9 @@ impl Effect {
                 card_filter_label(filter)
             ),
             Effect::MayDiscard { .. } => "You may discard a card".to_string(),
+            Effect::MayDrawUnlessPays { cost, .. } => {
+                format!("You may draw a card unless that player pays {}", amount_label(cost))
+            }
             Effect::TapTarget { .. } => "Tap target".to_string(),
             Effect::UntapTarget { .. } => "Untap target".to_string(),
             Effect::GainControlUntilEndOfTurn { .. } => {
@@ -1197,6 +1212,7 @@ impl Effect {
                 format!("Defending player sacrifices {count} permanents of their choice")
             }
             Effect::SacrificeObject { .. } => "Sacrifice it".to_string(),
+            Effect::SacrificeSource => "Sacrifice it".to_string(),
             Effect::SacrificeEnchantedCreature { .. } => {
                 "That creature's controller sacrifices it".to_string()
             }

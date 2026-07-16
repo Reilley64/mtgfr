@@ -276,6 +276,7 @@ fn casting_pays_the_spells_cost_from_the_pool() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -312,6 +313,7 @@ const NO_ADD: AdditionalCost = AdditionalCost {
     pay_life: 0,
     sacrifice: None,
     kicker: None,
+    buyback: None,
     strive: None,
     replicate: None,
 };
@@ -413,6 +415,7 @@ fn flashback_casts_a_spell_from_the_graveyard_then_exiles_it() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -479,6 +482,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -526,6 +530,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -548,6 +553,7 @@ fn flashback_with_pay_life_additional_cost() {
                 pay_life: 3,
                 sacrifice: None,
                 kicker: None,
+                buyback: None,
                 strive: None,
                 replicate: None,
             },
@@ -583,6 +589,7 @@ fn flashback_with_pay_life_additional_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -609,6 +616,7 @@ fn flashback_with_pay_life_additional_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -654,6 +662,7 @@ fn raffines_guidance_casts_from_graveyard_for_alt_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -695,6 +704,7 @@ fn raffines_guidance_graveyard_cast_charges_the_alt_cost_not_the_printed_cost() 
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -725,6 +735,7 @@ fn retrace_recasts_from_graveyard_by_discarding_a_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -763,6 +774,7 @@ fn retrace_requires_a_land_in_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -780,6 +792,7 @@ fn retrace_requires_a_land_in_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -804,6 +817,7 @@ fn retrace_is_repeatable() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -828,6 +842,7 @@ fn retrace_is_repeatable() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -872,6 +887,7 @@ fn treasure_cruise_delve_reduces_generic_cost() {
         graveyard_exile: fodder.clone(),
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -1037,6 +1053,7 @@ fn serra_paragon_plays_a_land_from_graveyard_once_per_turn() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -1068,6 +1085,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -1087,6 +1105,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -1105,6 +1124,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -1131,6 +1151,7 @@ fn serra_paragon_recursion_card_exiles_and_gains_2_on_death() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -1159,6 +1180,7 @@ fn serra_paragon_recursion_card_exiles_and_gains_2_on_death() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -1225,6 +1247,7 @@ fn a_normally_cast_permanent_dies_to_the_graveyard_without_serra_rider() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -1261,6 +1284,7 @@ const TWO_ETB: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -1520,6 +1544,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
                 pay_life: 0,
                 sacrifice: None,
                 kicker: None,
+                buyback: None,
                 strive: None,
                 replicate: None,
             },
@@ -2016,6 +2041,7 @@ impl TestGame {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -2036,6 +2062,7 @@ struct Casting<'g> {
     graveyard_exile: Vec<ObjectId>,
     sacrifice_cost: Vec<ObjectId>,
     kicked: bool,
+    bought_back: bool,
     evoked: bool,
     strive_count: u8,
     replicate_count: u8,
@@ -2089,6 +2116,13 @@ impl Casting<'_> {
         self
     }
 
+    /// Pay the spell's buyback cost (CR 702.27c). Unset (`false` — decline) for a spell with no
+    /// buyback, or to not pay an optional one.
+    fn bought_back(mut self, bought_back: bool) -> Self {
+        self.bought_back = bought_back;
+        self
+    }
+
     /// Cast for the spell's evoke cost (CR 702.74a) instead of its printed cost. Unset (`false`
     /// — cast normally) for a spell with no evoke.
     fn evoked(mut self, evoked: bool) -> Self {
@@ -2123,6 +2157,7 @@ impl Casting<'_> {
             graveyard_exile: self.graveyard_exile,
             sacrifice_cost: self.sacrifice_cost,
             kicked: self.kicked,
+            bought_back: self.bought_back,
             evoked: self.evoked,
             strive_count: self.strive_count,
             replicate_count: self.replicate_count,
@@ -2147,6 +2182,7 @@ impl Casting<'_> {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
             evoked,
             strive_count,
             replicate_count,
@@ -2162,6 +2198,7 @@ impl Casting<'_> {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
             evoked,
             strive_count,
             replicate_count,
@@ -2393,6 +2430,7 @@ fn declare_attackers_survives_a_ceased_token() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -2572,6 +2610,7 @@ fn capstone_a_scripted_game_plays_to_a_win() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -2624,6 +2663,7 @@ fn casting_the_commander_from_the_command_zone_taxes_each_recast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -2658,6 +2698,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -2689,6 +2730,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -2720,6 +2762,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -2749,6 +2792,7 @@ fn a_dying_commander_returns_to_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -2767,6 +2811,7 @@ fn a_dying_commander_returns_to_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -3197,6 +3242,7 @@ fn leitmotif_copies_self_on_big_instant_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -3237,6 +3283,7 @@ fn leitmotif_does_not_copy_on_small_instant_or_creature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -3269,6 +3316,7 @@ fn leitmotif_does_not_copy_on_small_instant_or_creature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -3438,6 +3486,7 @@ fn venerable_warsinger_pumped_reanimates_higher_mv() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -3554,6 +3603,7 @@ fn guardian_scalelord_pumped_reanimates_higher_mv() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -3595,6 +3645,7 @@ fn guardian_scalelord_backup_grants_flying_and_attack_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -3673,6 +3724,7 @@ fn guardian_scalelord_backup_on_itself_grants_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -3863,6 +3915,7 @@ fn a_pump_lasts_until_end_of_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -5499,6 +5552,7 @@ fn a_counter_effect_permanently_grows_the_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -5652,6 +5706,7 @@ fn a_token_effect_puts_tokens_onto_the_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -5696,6 +5751,7 @@ fn make_inklings_and_count(game: &mut Game, player: PlayerId) -> usize {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6495,6 +6551,7 @@ fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6567,6 +6624,7 @@ fn eccentric_pestfinder_mints_one_pest_per_opponent_under_you() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6613,6 +6671,7 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6636,6 +6695,7 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6668,6 +6728,7 @@ fn a_token_ceases_to_exist_when_it_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6695,6 +6756,7 @@ fn a_token_ceases_to_exist_when_it_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6861,6 +6923,7 @@ fn a_token_with_a_death_trigger_fires_it_when_it_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6880,6 +6943,7 @@ fn a_token_with_a_death_trigger_fires_it_when_it_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -6973,6 +7037,7 @@ fn cast_twinflame_and_resolve(game: &mut Game, twinflame: ObjectId, strive_count
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count,
         replicate_count: 0,
@@ -7059,6 +7124,7 @@ fn a_token_copy_fires_the_originals_etb_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -7672,6 +7738,7 @@ fn fire_muddle_magecraft(game: &mut Game, dummy: ObjectId, yes: bool, bear: Opti
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -8010,6 +8077,7 @@ fn effective_toughness_governs_lethal_damage() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -8094,6 +8162,7 @@ fn a_nonbasic_dual_sharing_a_basic_land_type_does_not_count_as_basic() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -8140,6 +8209,7 @@ fn natures_lore_fetches_any_forest_typed_card_not_just_the_basic() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -8186,6 +8256,7 @@ fn three_visits_fetches_a_nonbasic_forest_typed_land_not_just_the_basic() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -8389,6 +8460,7 @@ fn a_summoning_sick_creature_cannot_use_a_tap_ability() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -8428,6 +8500,7 @@ fn the_untap_step_clears_summoning_sickness() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -8556,6 +8629,7 @@ fn cast_intent(player: PlayerId, object: ObjectId, target: Option<Target>) -> In
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -9124,6 +9198,7 @@ fn conceding_while_you_owe_the_game_a_choice_drops_that_choice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -9623,6 +9698,7 @@ fn an_etb_trigger_goes_on_the_stack_and_resolves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -9660,6 +9736,7 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -9678,6 +9755,7 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -9860,6 +9938,7 @@ fn nonbasic_filter_matches_nonbasic_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -9908,6 +9987,7 @@ fn white_orchid_phantom_cannot_target_basic_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -9966,6 +10046,7 @@ fn damage_events_carry_their_source_for_the_log() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -10023,6 +10104,7 @@ fn fund_cast_resolve(game: &mut Game, player: PlayerId, object: ObjectId, target
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10207,6 +10289,7 @@ fn a_creature_only_spell_rejects_a_player_target() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -10232,6 +10315,7 @@ fn a_targeted_etb_trigger_pauses_for_a_target_then_deals_damage() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10290,6 +10374,7 @@ fn an_optional_trigger_fires_only_when_accepted() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10335,6 +10420,7 @@ fn a_declined_optional_trigger_is_skipped() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10377,6 +10463,7 @@ fn a_pay_cost_trigger_fires_only_after_paying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10446,6 +10533,7 @@ fn trudge_gardens_pay_2_trigger_creates_a_fungus_beast_only_after_paying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10523,6 +10611,7 @@ fn simultaneous_triggers_from_one_permanent_are_ordered_by_their_controller() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10568,6 +10657,105 @@ fn simultaneous_triggers_from_one_permanent_are_ordered_by_their_controller() {
 }
 
 #[test]
+fn stonecloaker_both_ordered_etbs_choose_targets() {
+    // Stonecloaker: "When this creature enters, return a creature you control to its owner's
+    // hand." / "When this creature enters, exile target card from a graveyard." Both ETBs
+    // trigger simultaneously and must be ordered (CR 603.3b); CR 603.3d then chooses each one's
+    // target as *it* goes on the stack, in the chosen order — neither may silently fizzle.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let graveyard_card = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let stonecloaker = game.spawn_in_hand(PlayerId(0), card("Stonecloaker"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: stonecloaker,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Stonecloaker resolves; two ETB triggers demand an order.
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::OrderTriggers {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the controller must order two simultaneous ETBs; got {:?}",
+        game.pending_choice(),
+    );
+    // Order: the bounce first, the graveyard exile second (CR 603.3b, the printed order).
+    game.submit(Intent::ChooseOrder {
+        player: PlayerId(0),
+        order: vec![0, 1],
+    })
+    .unwrap();
+
+    // The bounce is placed first — its own target choice pauses immediately (CR 603.3d),
+    // rather than silently going on the stack with no target.
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ordered bounce trigger must pause for its own target; got {:?}",
+            game.pending_choice(),
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(bear)),
+        "the controller's own creature is a legal choice; got {legal:?}",
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .unwrap();
+
+    // The graveyard exile is placed next — it must pause for its own target too, not fizzle.
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ordered graveyard-exile trigger must pause for its own target; got {:?}",
+            game.pending_choice(),
+        );
+    };
+    assert_eq!(
+        legal,
+        vec![Target::Object(graveyard_card)],
+        "only the graveyard card"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(graveyard_card)],
+    })
+    .unwrap();
+
+    resolve_top_of_stack(&mut game); // One ability resolves.
+    resolve_top_of_stack(&mut game); // The other ability resolves.
+
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the bounce actually resolved"
+    );
+    assert_eq!(
+        game.zone_of(graveyard_card),
+        Zone::Exile,
+        "the graveyard exile actually resolved"
+    );
+}
+
+#[test]
 fn a_creature_cannot_be_cast_at_instant_speed() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
@@ -10585,6 +10773,7 @@ fn a_creature_cannot_be_cast_at_instant_speed() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10614,6 +10803,7 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10645,6 +10835,7 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10690,6 +10881,7 @@ fn alchemists_refuge_flash_permission_expires_at_the_next_untap() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10719,6 +10911,7 @@ fn an_instant_can_be_cast_outside_the_main_phase() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10746,6 +10939,7 @@ fn a_targeted_spell_requires_a_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10772,6 +10966,7 @@ fn a_creature_targeting_spell_rejects_a_non_creature_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10795,6 +10990,7 @@ fn casting_without_enough_mana_is_rejected() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10825,6 +11021,7 @@ fn casting_a_creature_moves_it_to_the_stack() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -10855,6 +11052,7 @@ fn passing_priority_in_succession_resolves_a_creature_onto_the_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10894,6 +11092,7 @@ fn creature_on_battlefield(game: &mut Game, controller: PlayerId) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -10928,6 +11127,7 @@ fn lethal_damage_kills_the_creature_via_a_state_based_action() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -11099,6 +11299,7 @@ fn state_based_actions_spare_undamaged_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -11503,6 +11704,7 @@ fn feral_appetite_pest_dies_gains_life() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12325,6 +12527,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12342,6 +12545,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12359,6 +12563,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12404,6 +12609,7 @@ fn nontoken_creatures_entered_this_turn_resets_at_the_next_untap() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12472,6 +12678,7 @@ fn nev_trample_grant_drops_once_the_last_counter_is_removed() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12575,6 +12782,7 @@ fn ohran_frostfang_deathtouch_gone_once_ohran_leaves_the_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12697,6 +12905,7 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12736,6 +12945,7 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12896,6 +13106,7 @@ fn cast_red_spell_triggers_balefire_damage() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12939,6 +13150,7 @@ fn cast_red_spell_triggers_balefire_damage() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -12992,6 +13204,7 @@ fn patchwork_banner_buffs_only_chosen_type() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13156,6 +13369,7 @@ fn eidolon_cast_normally_is_a_0_0_creature_pumped_by_its_own_buff() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13247,6 +13461,7 @@ fn bestowed_eidolon_becomes_a_creature_when_its_host_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13332,6 +13547,7 @@ fn vanguard_spirit_anthem_scales_with_commander_casts_from_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13411,6 +13627,7 @@ fn study_hall_scries_when_its_mana_casts_your_commander() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13453,6 +13670,7 @@ fn study_hall_does_not_scry_from_untagged_mana() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13504,6 +13722,7 @@ fn study_hall_does_not_scry_when_its_mana_casts_a_noncommander_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13557,6 +13776,7 @@ fn study_hall_provenance_is_cleared_when_the_pool_empties() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13624,6 +13844,7 @@ fn path_of_ancestry_scries_on_a_typal_creature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13680,6 +13901,7 @@ fn path_of_ancestry_does_not_scry_on_an_unshared_or_noncreature_spell() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -13746,6 +13968,7 @@ fn cast_commander_with_opal_mana(game: &mut Game, cmd: ObjectId) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13787,6 +14010,7 @@ fn opal_palace_commander_enters_with_command_zone_counters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13823,6 +14047,7 @@ fn opal_palace_no_bonus_counters_from_untagged_mana() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13939,6 +14164,7 @@ fn an_instant_stops_auto_pass_while_the_stack_is_not_empty() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -13971,6 +14197,7 @@ fn a_sorcery_speed_spell_is_never_a_reaction() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -14004,6 +14231,7 @@ fn casting_requires_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -14021,6 +14249,7 @@ fn casting_requires_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -14047,6 +14276,7 @@ fn casting_requires_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -14076,6 +14306,7 @@ fn next_pass_resolves_stack_flags_only_the_final_pass() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -14428,6 +14659,7 @@ fn cast_altered_ego(game: &mut Game, x: u32) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -14537,6 +14769,7 @@ fn cursed_mirror_becomes_a_copy_until_end_of_turn_with_haste() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -14598,6 +14831,7 @@ fn cursed_mirror_declined_stays_a_mana_rock() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -14636,6 +14870,7 @@ fn enter_as_copy_no_battlefield_creature_no_pause() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -15083,6 +15318,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -15181,6 +15417,7 @@ fn colorless_mana_pays_a_colorless_cost_pip() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -15222,6 +15459,7 @@ fn colorless_mana_cannot_pay_a_colored_pip() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -15263,6 +15501,7 @@ fn any_color_mana_pays_a_colored_and_a_generic_pip() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -15716,6 +15955,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
                 pay_life: 0,
                 sacrifice: None,
                 kicker: None,
+                buyback: None,
                 strive: None,
                 replicate: None,
             },
@@ -15782,6 +16022,7 @@ fn cast_plain(game: &mut Game, player: PlayerId, object: ObjectId) -> Result<Vec
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -15983,6 +16224,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
                     pay_life: 0,
                     sacrifice: None,
                     kicker: None,
+                    buyback: None,
                     strive: None,
                     replicate: None,
                 },
@@ -16234,6 +16476,7 @@ fn biomass_mutation_hybrid_cost_payable_by_either_color() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -16336,6 +16579,7 @@ fn a_dies_trigger_fires_when_the_creature_is_destroyed() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -16369,6 +16613,7 @@ fn shock_to_death(game: &mut Game, victim: ObjectId, drain_target: PlayerId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -16488,6 +16733,7 @@ fn shock_and_settle(game: &mut Game, victim: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -16581,6 +16827,7 @@ fn fracture_to_death(game: &mut Game, victim: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -16797,6 +17044,7 @@ fn plain_creature_dies_still_excludes_self() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -17480,6 +17728,7 @@ fn dina_drains_each_opponent_on_lifegain_without_looping() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -17919,6 +18168,7 @@ fn nether_traitor_returns_itself_from_graveyard_when_your_creature_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -17975,6 +18225,7 @@ fn nether_traitor_declining_the_cost_leaves_it_in_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18556,6 +18807,7 @@ fn a_you_gain_life_trigger_fires_when_the_controller_gains_life() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18656,6 +18908,7 @@ fn a_magecraft_trigger_fires_when_the_controller_casts_an_instant_or_sorcery() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18694,6 +18947,7 @@ fn prowess_pumps_on_noncreature_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18733,6 +18987,7 @@ fn prowess_does_not_pump_on_creature_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18771,6 +19026,7 @@ fn prowess_only_fires_for_its_own_controllers_casts() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18808,6 +19064,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18824,6 +19081,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18853,6 +19111,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18881,6 +19140,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -18891,6 +19151,156 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         treasure_count(&game),
         1,
         "an opponent's second spell this turn makes exactly one Treasure"
+    );
+}
+
+/// Cast a free instant for `caster` (fetched from hand), leaving Rhystic Study's own trigger
+/// resolved down to its `MayYesNo` pause for `controller` (do they want to draw at all — the
+/// card's own ruling: declining is quiet, no pay window is ever offered).
+fn cast_and_reach_rhystic_may_draw_pause(game: &mut Game, controller: PlayerId, caster: PlayerId) {
+    if game.priority_holder() != caster {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
+    let spell = game.spawn_in_hand(caster, INSTANT_FILLER);
+    game.submit(Intent::Cast {
+        player: caster,
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // Rhystic Study's trigger resolves: pauses on MayYesNo.
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo { player, .. }) if player == controller
+        ),
+        "expected Rhystic Study's may-draw pause for the controller, got {:?}",
+        game.pending_choice()
+    );
+}
+
+#[test]
+fn rhystic_study_draws_when_opponent_declines_to_pay() {
+    // Rhystic Study: "Whenever an opponent casts a spell, you may draw a card unless that
+    // player pays {1}." P0 accepts the draw offer; P1 (the caster) declines to pay.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(1));
+    game.spawn_on_battlefield(PlayerId(0), card("Rhystic Study"));
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+
+    cast_and_reach_rhystic_may_draw_pause(&mut game, PlayerId(0), PlayerId(1));
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+
+    // P0 wants to draw — P1 now gets a chance to pay {1} and stop it.
+    assert!(matches!(
+        game.pending_choice(),
+        Some(PendingChoice::PayOrControllerDraws {
+            player: PlayerId(1),
+            controller: PlayerId(0),
+            ..
+        })
+    ));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(1),
+        pay: false,
+    })
+    .unwrap();
+
+    let hand = hand_ids(&game, PlayerId(0));
+    assert_eq!(hand.len(), 1, "P0 drew the card Rhystic Study offered");
+    assert!(hand.contains(&game.current_id(lib[0])));
+}
+
+#[test]
+fn rhystic_study_no_draw_when_opponent_pays() {
+    // Same setup, but P1 pays {1} to stop the draw — P0's hand stays empty and P1's mana drops.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(1));
+    game.spawn_on_battlefield(PlayerId(0), card("Rhystic Study"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+
+    cast_and_reach_rhystic_may_draw_pause(&mut game, PlayerId(0), PlayerId(1));
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+
+    let p1_mana_before = Color::ALL
+        .iter()
+        .map(|&c| game.mana_in_pool(PlayerId(1), c) as u32)
+        .sum::<u32>();
+    let events = game
+        .submit(Intent::PayOptionalCost {
+            player: PlayerId(1),
+            pay: true,
+        })
+        .unwrap();
+
+    assert!(
+        events.iter().any(|e| matches!(e, Event::ManaSpent { .. })),
+        "paying {{1}} spends mana"
+    );
+    let p1_mana_after = Color::ALL
+        .iter()
+        .map(|&c| game.mana_in_pool(PlayerId(1), c) as u32)
+        .sum::<u32>();
+    assert_eq!(p1_mana_after, p1_mana_before - 1, "P1 paid exactly {{1}}");
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "paying {{1}} stops the draw — P0's hand stays empty"
+    );
+}
+
+#[test]
+fn rhystic_study_ignores_your_own_casts() {
+    // The Study's own controller casting a spell never triggers it (caster = "opponent").
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Rhystic Study"));
+    let own_spell = game.spawn_in_hand(PlayerId(0), FILLER);
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: own_spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // The spell resolves; no Rhystic Study trigger was queued.
+
+    assert!(
+        game.pending_choice().is_none(),
+        "the controller's own cast never offers a may-draw pause"
+    );
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "no trigger fired, so no draw happened"
     );
 }
 
@@ -19153,6 +19563,7 @@ fn cast_spell_trigger_respects_spell_filter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19478,6 +19889,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19518,6 +19930,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -19538,6 +19951,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -19574,6 +19988,7 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19601,6 +20016,7 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19810,6 +20226,7 @@ fn a_copied_burn_spell_deals_its_damage_twice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19826,6 +20243,7 @@ fn a_copied_burn_spell_deals_its_damage_twice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19871,6 +20289,7 @@ fn a_copied_spell_may_be_retargeted() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19887,6 +20306,7 @@ fn a_copied_spell_may_be_retargeted() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19948,6 +20368,7 @@ fn a_copied_draw_spell_draws_twice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -19964,6 +20385,7 @@ fn a_copied_draw_spell_draws_twice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20007,6 +20429,7 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20028,6 +20451,7 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20090,6 +20514,7 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20106,6 +20531,7 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20217,6 +20643,7 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20237,6 +20664,7 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20281,6 +20709,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20302,6 +20731,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20317,6 +20747,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20361,6 +20792,7 @@ fn a_spell_that_cant_be_countered_stays_on_the_stack_against_a_hard_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20381,6 +20813,7 @@ fn a_spell_that_cant_be_countered_stays_on_the_stack_against_a_hard_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20433,6 +20866,7 @@ fn counter_unless_pays_none_is_hard_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20453,6 +20887,7 @@ fn counter_unless_pays_none_is_hard_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20490,6 +20925,7 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20510,6 +20946,7 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20640,6 +21077,7 @@ fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20660,6 +21098,7 @@ fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20763,6 +21202,7 @@ fn hinder_countering_flashback_spell_exiles_it() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20783,6 +21223,7 @@ fn hinder_countering_flashback_spell_exiles_it() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -20922,6 +21363,199 @@ fn echo_declined_sacrifices_the_creature() {
     );
 }
 
+// ── ETB sacrifice-unless (CR 603.3b, rupture_spire / trevas_ruins) ───────────────────
+// "When this land enters, sacrifice it unless you [pay {1} | return a non-Lair land you
+// control to its owner's hand]." — echo's pay-or-sacrifice choice shape, fired at the
+// permanent's own ETB instead of upkeep.
+
+#[test]
+fn rupture_spire_kept_when_paid() {
+    let mut game = Game::new();
+    let spire = game.spawn_in_hand(PlayerId(0), card("Rupture Spire"));
+    game.fund_mana(PlayerId(0));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: spire,
+        })
+        .unwrap();
+    let spire_permanent = land_permanent(&events);
+    resolve_top_of_stack(&mut game); // the ETB "sacrifice it unless you pay {1}" trigger resolves
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::SacrificeUnlessPay {
+                player: PlayerId(0),
+                source,
+                ..
+            }) if source == spire_permanent
+        ),
+        "the ETB trigger pauses on a pay-or-sacrifice choice, not echo's upkeep-scoped one"
+    );
+
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .expect("paying {1} is legal");
+
+    assert_eq!(
+        game.zone_of(spire_permanent),
+        Zone::Battlefield,
+        "paying the {{1}} keeps Rupture Spire"
+    );
+}
+
+#[test]
+fn rupture_spire_sacrificed_when_pay_declined() {
+    let mut game = Game::new();
+    let spire = game.spawn_in_hand(PlayerId(0), card("Rupture Spire"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: spire,
+        })
+        .unwrap();
+    let spire_permanent = land_permanent(&events);
+    resolve_top_of_stack(&mut game);
+
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+    })
+    .expect("declining is legal");
+
+    assert_eq!(
+        game.zone_of(spire_permanent),
+        Zone::Graveyard,
+        "declining to pay sacrifices Rupture Spire"
+    );
+}
+
+#[test]
+fn trevas_ruins_returns_a_non_lair_land_or_is_sacrificed() {
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let ruins = game.spawn_in_hand(PlayerId(0), card("Treva's Ruins"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: ruins,
+        })
+        .unwrap();
+    let ruins_permanent = land_permanent(&events);
+    resolve_top_of_stack(&mut game); // the ETB "sacrifice it unless you return a land" trigger
+
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::SacrificeUnlessReturnLand {
+            player: PlayerId(0),
+            source: ruins_permanent,
+            candidates: vec![forest],
+        }),
+        "only the Forest is offered — Treva's Ruins itself is a Lair, excluded by the filter"
+    );
+
+    game.submit(Intent::ReturnLandOrSacrifice {
+        player: PlayerId(0),
+        land: Some(forest),
+    })
+    .expect("returning the offered Forest is legal");
+
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Hand,
+        "the returned land goes back to its owner's hand"
+    );
+    assert_eq!(
+        game.zone_of(ruins_permanent),
+        Zone::Battlefield,
+        "returning a land keeps Treva's Ruins"
+    );
+}
+
+#[test]
+fn trevas_ruins_cannot_return_a_lair_to_keep_itself() {
+    let mut game = Game::new();
+    // A second Lair — not a legal return, so Treva's Ruins has no candidates and is sacrificed.
+    let other_lair = game.spawn_on_battlefield(PlayerId(0), card("Treva's Ruins"));
+    let ruins = game.spawn_in_hand(PlayerId(0), card("Treva's Ruins"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: ruins,
+        })
+        .unwrap();
+    let ruins_permanent = land_permanent(&events);
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "no non-Lair land to return — nothing to choose, straight to sacrifice"
+    );
+    assert_eq!(
+        game.zone_of(ruins_permanent),
+        Zone::Graveyard,
+        "with no legal land to return, Treva's Ruins sacrifices itself"
+    );
+    assert_eq!(
+        game.zone_of(other_lair),
+        Zone::Battlefield,
+        "the other Lair is never a legal return target and stays untouched"
+    );
+}
+
+#[test]
+fn trevas_ruins_taps_for_one_mana_of_a_chosen_color_not_all_three() {
+    // "{T}: Add {G}, {W}, or {U}." — one `Mana::OfColors` credit choosing among the three, NOT
+    // three separate mana. A single tap pays any one of the three pips, but never two at once.
+    for pip in [Color::Green, Color::White, Color::Blue] {
+        let mut game = Game::new();
+        let ruins = game.spawn_on_battlefield(PlayerId(0), card("Treva's Ruins"));
+        let mut colored = [0; 5];
+        colored[pip.index()] = 1;
+        let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test One-Pip", 0, colored));
+
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: ruins,
+        })
+        .unwrap();
+        cast_plain(&mut game, PlayerId(0), spell).unwrap();
+
+        assert_eq!(
+            game.zone_of(spell),
+            Zone::Stack,
+            "one tap of Treva's Ruins pays a single {pip:?} pip"
+        );
+    }
+
+    // The single credit can only pay one pip: a two-color spell can't be cast off one tap.
+    let mut game = Game::new();
+    let ruins = game.spawn_on_battlefield(PlayerId(0), card("Treva's Ruins"));
+    let mut colored = [0; 5];
+    colored[Color::Green.index()] = 1;
+    colored[Color::White.index()] = 1;
+    let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test Two-Pip", 0, colored));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: ruins,
+    })
+    .unwrap();
+
+    assert_eq!(
+        cast_plain(&mut game, PlayerId(0), spell),
+        Err(Reject::CannotPayCost),
+        "one tap yields one credit — it can't pay {{G}}{{W}} at once (it isn't {{G}}{{W}}{{U}})"
+    );
+}
+
 // ── Evoke (CR 702.74, mulldrifter) ───────────────────────────────────────────────────
 // "You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters."
 
@@ -21011,6 +21645,7 @@ fn mulldrifter_evoke_charges_the_evoke_cost() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -21030,6 +21665,7 @@ fn mulldrifter_evoke_charges_the_evoke_cost() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: true,
             strive_count: 0,
             replicate_count: 0,
@@ -21123,6 +21759,7 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -21143,6 +21780,7 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -21323,6 +21961,7 @@ fn next_cast_trigger_ignores_opponents_and_non_x_spells() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -21409,6 +22048,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -21428,6 +22068,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -21448,6 +22089,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -21532,6 +22174,7 @@ fn thunderclap_drake_only_copies_instant_or_sorcery() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -21584,6 +22227,7 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -21624,6 +22268,7 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -22583,6 +23228,7 @@ fn modifier_sources_attributes_a_pump_to_the_spell_card_def() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -22667,6 +23313,7 @@ fn modifier_sources_clears_eot_pump_at_cleanup() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -22957,6 +23604,7 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
         graveyard_exile: Vec::new(),
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -22976,6 +23624,7 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
         graveyard_exile: Vec::new(),
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -23245,6 +23894,7 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -23261,6 +23911,7 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -23337,6 +23988,7 @@ fn coercive_impetus_fires_under_its_own_controller_on_an_opponents_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -23396,6 +24048,7 @@ fn parasitic_impetus_drains_its_hosts_controller_when_it_attacks() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -23485,6 +24138,7 @@ fn martial_impetus_does_not_pump_attackers_of_its_controller_or_non_attackers() 
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -23532,6 +24186,7 @@ fn cast_scriv_targeting(game: &mut Game, caster: PlayerId, scriv: ObjectId, vict
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -23735,6 +24390,7 @@ fn scriv_with_no_opponent_creature_leaves_no_phantom_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -23809,6 +24465,7 @@ fn angelic_destiny_returns_to_hand_when_its_host_dies_in_a_board_wipe() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -24079,6 +24736,7 @@ fn hateful_eidolon_survives_own_death_in_batch() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -25169,6 +25827,7 @@ fn skyclave_apparition_leaves_mints_owner_illusion() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -25277,6 +25936,7 @@ fn skyclave_apparition_leaves_with_nothing_exiled_mints_no_illusion() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -25852,6 +26512,7 @@ fn cast_tragic_arrogance(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -26177,6 +26838,7 @@ fn each_player_exiles_from_graveyard_in_apnap_order() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -26370,6 +27032,7 @@ fn cast_fateful_tempest_to_vote(game: &mut Game) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -26849,6 +27512,7 @@ fn rootha_return_self_cost_bounces_source() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27140,6 +27804,7 @@ fn exile_removes_a_creature_to_the_exile_zone_not_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27173,6 +27838,7 @@ fn exiling_a_commander_diverts_it_to_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27202,6 +27868,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27220,6 +27887,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27238,6 +27906,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27274,6 +27943,7 @@ fn bounce_returns_a_creature_to_its_owners_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27314,6 +27984,7 @@ fn bouncing_a_token_makes_it_cease_to_exist() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27341,6 +28012,7 @@ fn bouncing_a_token_makes_it_cease_to_exist() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27375,6 +28047,7 @@ fn mill_moves_the_top_cards_from_library_to_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27412,6 +28085,7 @@ fn milling_more_than_the_library_holds_is_safe_and_causes_no_loss() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27460,6 +28134,7 @@ fn blaze_deals_x_damage_to_a_creature_then_to_a_player() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27485,6 +28160,7 @@ fn blaze_deals_x_damage_to_a_creature_then_to_a_player() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27524,6 +28200,7 @@ fn blaze_with_insufficient_mana_for_the_chosen_x_is_rejected() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27541,6 +28218,7 @@ fn blaze_with_insufficient_mana_for_the_chosen_x_is_rejected() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27568,6 +28246,7 @@ fn tyvars_stand_pumps_by_x_and_grants_hexproof_and_indestructible_until_end_of_t
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27611,6 +28290,7 @@ fn primal_might_pumps_the_chosen_creature_by_x_until_end_of_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27642,6 +28322,7 @@ fn primal_might_pumped_creature_fights_chosen_enemy() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27697,6 +28378,7 @@ fn primal_might_fight_declined_leaves_creature_pumped() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -27740,6 +28422,7 @@ fn primal_might_no_enemy_no_pause() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28158,6 +28841,7 @@ fn stroke_of_genius_makes_the_target_player_draw_x() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28195,6 +28879,7 @@ fn the_mana_paid_scales_with_the_chosen_x() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -28230,6 +28915,7 @@ fn raise_dead_returns_a_creature_from_your_graveyard_to_your_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28266,6 +28952,7 @@ fn reanimate_puts_a_creature_onto_the_battlefield_and_fires_its_etb() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28316,6 +29003,7 @@ fn animate_dead_targets_graveyard_creature_at_cast() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -28372,6 +29060,7 @@ fn animate_dead_fizzles_if_target_exiled_in_response() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28524,6 +29213,7 @@ fn reanimate_can_target_an_opponents_graveyard_under_your_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28558,6 +29248,7 @@ fn a_declined_sun_titan_trigger_reanimates_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28609,6 +29300,7 @@ fn an_accepted_sun_titan_trigger_pauses_to_choose_its_reanimation_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28672,6 +29364,7 @@ fn finality_counter_exiles_instead_of_dying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28701,6 +29394,7 @@ fn finality_counter_exiles_instead_of_dying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28727,6 +29421,7 @@ fn finality_counter_exiles_instead_of_dying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28811,6 +29506,7 @@ fn excava_reanimates_with_finality_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28941,6 +29637,7 @@ fn plain_reanimate_does_not_set_type() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -28981,6 +29678,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -29002,6 +29700,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -29023,6 +29722,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -29049,6 +29749,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -29114,6 +29815,7 @@ const NONCREATURE_PERMANENT_MV4: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -29159,6 +29861,7 @@ fn reanimate_noncreature_permanent_under_mv_sevinnes() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -29356,6 +30059,7 @@ fn primary_research_reanimates_a_nonland_permanent_gated_by_mana_value() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -29409,6 +30113,7 @@ const NONCREATURE_PERMANENT_MV5: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -29438,6 +30143,7 @@ fn angel_of_indemnity_reanimates_permanent_card_mv_four() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -29491,6 +30197,7 @@ fn angel_of_indemnity_permanent_card_target_includes_lands_but_not_mv_five() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -29533,6 +30240,7 @@ fn sun_titan_can_reanimate_a_land_card() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -29575,6 +30283,7 @@ fn karmic_guide_reanimates_only_from_your_own_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -29734,6 +30443,7 @@ fn return_land_from_graveyard_to_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -29902,6 +30612,7 @@ fn mass_return_enchantments_from_graveyard_replenish() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -30027,6 +30738,7 @@ fn scry_pauses_on_an_arrange_top_choice_and_reorders_the_library() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -30107,6 +30819,7 @@ fn surveil_puts_the_bottom_pile_into_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -30172,6 +30885,7 @@ fn resolve_look_dig(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -30372,6 +31086,7 @@ fn resolve_look_dig_to_battlefield(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -30802,6 +31517,7 @@ fn expressive_iteration_routes_top_three() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -30890,6 +31606,7 @@ fn resolve_look_dig_mandatory(game: &mut Game) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -30993,6 +31710,7 @@ fn scry_for_more_than_the_library_holds_is_safe() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31082,6 +31800,7 @@ fn an_arrange_top_answer_must_partition_the_shown_cards() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31133,6 +31852,7 @@ fn a_creature_cost_reducer_shaves_generic_from_a_creature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31169,6 +31889,7 @@ fn a_creature_cost_reducer_leaves_noncreature_spells_alone() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -31195,6 +31916,7 @@ fn cost_reduction_never_removes_a_colored_pip() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -31216,6 +31938,7 @@ fn cost_reduction_never_removes_a_colored_pip() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31248,6 +31971,7 @@ fn cost_reducers_stack() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31378,6 +32102,7 @@ fn killian_reduces_only_spells_that_target_a_creature() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -31397,6 +32122,7 @@ fn killian_reduces_only_spells_that_target_a_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31431,6 +32157,7 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31453,6 +32180,7 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -31483,6 +32211,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31511,6 +32240,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31538,6 +32268,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -31577,6 +32308,7 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31608,6 +32340,7 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31640,6 +32373,7 @@ fn self_reduction_absent_leaves_cost_unchanged() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -31672,6 +32406,7 @@ fn tomik_has_affinity_for_planeswalkers_they_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31697,6 +32432,7 @@ fn tomik_has_affinity_for_planeswalkers_they_control() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -31737,6 +32473,7 @@ fn volcanic_salvo_costs_one_less_per_total_power_you_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31786,6 +32523,7 @@ fn furygale_flocking_costs_one_less_per_graveyard_instant_or_sorcery() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31816,6 +32554,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31840,6 +32579,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -31866,6 +32606,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -32060,6 +32801,7 @@ fn a_summoning_sick_goaded_creature_is_not_required_to_attack() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32102,6 +32844,7 @@ fn furygale_flocking_tokens_must_attack_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32155,6 +32898,7 @@ fn furygale_must_attack_requirement_expires_at_the_turn_boundary() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32222,6 +32966,7 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32283,6 +33028,7 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32396,6 +33142,7 @@ fn cast_promise_keeping_one_each(game: &mut Game) -> [ObjectId; 3] {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32484,6 +33231,7 @@ fn an_ordinary_keep_one_edict_places_no_vow_counters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32529,6 +33277,7 @@ fn casting_besmirch_goads_the_target_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32570,6 +33319,7 @@ fn goad_on_attached_forces_attack_and_avoids_the_goader_martial_impetus() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32634,6 +33384,7 @@ fn goad_on_attached_ends_when_the_aura_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32659,6 +33410,7 @@ fn goad_on_attached_ends_when_the_aura_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -32839,6 +33591,7 @@ fn pacifism_restriction_lifts_when_aura_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -33193,6 +33946,7 @@ fn besmirch_untaps_steals_hastes_and_goads() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -34784,6 +35538,7 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -34803,6 +35558,7 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -34840,6 +35596,7 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -34871,6 +35628,7 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -34907,6 +35665,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -34930,6 +35689,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -34952,6 +35712,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -34988,6 +35749,7 @@ fn pearl_ear_affinity_for_auras_grants_no_reduction_with_zero_auras() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -35022,6 +35784,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35044,6 +35807,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35072,6 +35836,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35102,6 +35867,7 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35125,6 +35891,7 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -35160,6 +35927,7 @@ fn zimone_reduces_first_x_spell_each_turn_per_counter() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -35181,6 +35949,7 @@ fn zimone_reduces_first_x_spell_each_turn_per_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35212,6 +35981,7 @@ fn zimone_reduces_only_the_first_x_spell_each_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35231,6 +36001,7 @@ fn zimone_reduces_only_the_first_x_spell_each_turn() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -35264,6 +36035,7 @@ fn zimone_x_spell_reduction_resets_next_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35294,6 +36066,7 @@ fn zimone_x_spell_reduction_resets_next_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35324,6 +36097,7 @@ fn zimone_does_not_reduce_non_x_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -35363,6 +36137,7 @@ fn sram_senior_edificer_draws_on_casting_an_aura_but_not_a_plain_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35625,6 +36400,7 @@ fn witch_of_the_moors_single_trigger_edict_then_optional_return() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35699,6 +36475,7 @@ fn relic_retriever_makes_a_treasure_only_after_a_card_left_your_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35754,6 +36531,7 @@ fn relic_retriever_fires_on_each_players_end_step() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35913,6 +36691,7 @@ fn cards_leaving_graveyard_fires_the_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -35978,6 +36757,7 @@ fn only_your_graveyard_counts() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -36008,6 +36788,7 @@ fn spirit_reanimate_and_resolve_trigger(game: &mut Game, corpse: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -36315,6 +37096,7 @@ fn prepare_kirol_via_graveyard_exit(game: &mut Game, kirol: ObjectId) -> ObjectI
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -36770,6 +37552,7 @@ fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -36839,6 +37622,7 @@ fn adventure_creature_cast_directly_from_hand_still_works() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -37201,6 +37985,7 @@ fn inspired_skypainter_becomes_prepared_on_etb() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -37259,6 +38044,7 @@ fn inspired_skypainter_maestros_gift_copies_target_creature_with_haste() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -37455,6 +38241,7 @@ fn dirgur_becomes_prepared_on_mv5_instant_cast_from_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -37485,6 +38272,7 @@ fn dirgur_does_not_prepare_on_small_instant() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -37520,6 +38308,7 @@ fn dirgur_does_not_prepare_on_flashback_instant() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -37547,6 +38336,7 @@ fn prepare_dirgur(game: &mut Game, dirgur: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -37616,6 +38406,7 @@ fn real_dirgur_focusmage_from_the_pool_prepares_and_casts_braingeyser() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -37860,6 +38651,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -38076,6 +38868,7 @@ fn pest_rescuer_pest_token_dies_gain_life() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -38118,6 +38911,7 @@ fn pest_rescuer_makes_pest_on_each_players_upkeep() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -38737,6 +39531,7 @@ fn a_planeswalker_cast_onto_the_battlefield_has_its_starting_loyalty() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -38974,6 +39769,7 @@ fn cast_red_spell_triggers_balefire_damage_at_a_planeswalker() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -39035,6 +39831,7 @@ fn rip_apart_mode_0_damages_a_creature_or_a_planeswalker() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -39072,6 +39869,7 @@ fn magma_opus_divides_damage_onto_a_planeswalker_and_a_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -39119,6 +39917,7 @@ fn put_two_counters(game: &mut Game, caster: PlayerId, creature: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -40001,6 +40800,7 @@ fn a_tutor_finds_a_card_puts_it_in_hand_and_shuffles() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -40211,6 +41011,7 @@ fn search_up_to_two_declining_the_first_pick_still_shuffles_and_finds_nothing() 
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -40489,6 +41290,7 @@ fn cultivate_finds_two_lands_one_to_battlefield_tapped_one_to_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -40638,6 +41440,7 @@ fn ramp_puts_a_basic_land_onto_the_battlefield_tapped() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -41219,6 +42022,7 @@ fn failing_to_find_is_legal_and_still_shuffles() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -41269,6 +42073,7 @@ fn a_creature_search_cannot_find_a_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -41714,6 +42519,7 @@ fn populate_creates_a_copy_of_a_creature_token_you_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -41763,6 +42569,7 @@ fn delayed_sacrifice_next_end_step_determined_iteration() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -41834,6 +42641,7 @@ fn determined_iteration_populated_token_gains_haste() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -41894,6 +42702,7 @@ fn create_token_copy_without_haste_rider_grants_no_haste() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -41956,6 +42765,7 @@ fn impulse_play_until_end_of_next_turn_atsushi() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42143,6 +42953,7 @@ fn mass_weaken_kills_low_toughness_and_survivors_recover_next_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42228,6 +43039,7 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -42246,6 +43058,7 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42339,6 +43152,7 @@ fn a_create_treasure_effect_puts_artifact_tokens_onto_the_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42377,6 +43191,7 @@ fn a_treasure_sacrifices_for_mana_of_any_color_and_ceases_to_exist() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42422,6 +43237,7 @@ fn a_treasure_sacrifices_for_mana_of_any_color_and_ceases_to_exist() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42449,6 +43265,7 @@ fn magecraft_makes_a_treasure_with_storm_kiln_artist_out() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42604,6 +43421,7 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42627,6 +43445,7 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42730,6 +43549,7 @@ fn magecraft_fractal_enters_with_counters_equal_to_spell_mana_value() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42773,6 +43593,7 @@ fn hardened_scales_grows_a_magecraft_tokens_entry_counters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42807,6 +43628,7 @@ fn renegade_bull_gets_plus_x_until_end_of_turn_where_x_is_the_cast_spells_mana_v
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -42979,6 +43801,7 @@ fn manaform_hellkite_token_pt_equals_mana_spent_printed_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43031,6 +43854,7 @@ fn manaform_hellkite_token_pt_reflects_actual_mana_spent() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43070,6 +43894,7 @@ fn manaform_dragon_token_exiled_at_next_end_step() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43117,6 +43942,7 @@ fn create_token_without_set_base_pt_uses_printed_pt() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43155,6 +43981,7 @@ fn manaform_hellkite_pool_card_creates_the_dragon_illusion() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43315,6 +44142,7 @@ fn rootha_makes_x_x_elemental_where_x_is_the_greatest_instant_or_sorcery_mana_va
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43333,6 +44161,7 @@ fn rootha_makes_x_x_elemental_where_x_is_the_greatest_instant_or_sorcery_mana_va
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43387,6 +44216,7 @@ fn rootha_mastering_the_moment_pool_card_creates_the_elemental() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43502,6 +44332,7 @@ fn rionya_count_is_one_plus_instants_and_sorceries_cast_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -43520,6 +44351,7 @@ fn rionya_count_is_one_plus_instants_and_sorceries_cast_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -44076,6 +44908,7 @@ fn laelia_grows_when_cards_exiled_from_your_library_or_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -44180,6 +45013,7 @@ fn kill_modal_dragon(game: &mut Game) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -44273,6 +45107,7 @@ fn atsushi_dies_trigger_offers_a_two_mode_choose_one() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -44310,6 +45145,7 @@ fn discard_one(game: &mut Game, target_card: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -44527,6 +45363,7 @@ fn conspiracy_theorist_discard_lets_you_impulse_the_card() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -44889,6 +45726,7 @@ fn free_cast_from_exile_pays_no_mana_quintorius_loremaster() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -44948,6 +45786,7 @@ fn free_cast_permission_expires_at_cleanup_quintorius_loremaster() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -44992,6 +45831,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_on_resolve() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -45062,6 +45902,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_when_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -45082,6 +45923,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_when_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -45120,6 +45962,7 @@ fn normal_spell_still_goes_to_graveyard_quintorius_loremaster() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -45325,6 +46168,7 @@ fn an_equip_ability_fizzles_when_its_creature_dies_in_response() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -45725,6 +46569,7 @@ const PER_CREATURE_TREASURES: CardDef = amount_spell!(
                 nonbasic: false,
                 name: None,
                 nonlegendary: false,
+                nonlair: false,
             },
             zone: AmountZone::Battlefield,
         },
@@ -45968,6 +46813,7 @@ fn cast_and_collect(game: &mut Game, spell: ObjectId, target: Option<Target>) ->
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -46221,6 +47067,7 @@ fn enter_counters_static_ignores_opponents() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -46993,6 +47840,7 @@ fn take_action_casts_exactly_like_the_equivalent_cast_intent() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -47221,6 +48069,7 @@ fn cycling_requires_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -47269,6 +48118,7 @@ fn cycling_with_a_spell_on_the_stack_resets_passes_and_keeps_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -47442,6 +48292,7 @@ fn legal_actions_is_empty_while_a_choice_is_pending() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -47487,6 +48338,7 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -47509,6 +48361,7 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -47558,6 +48411,7 @@ fn killian_decisive_mentor_tap_and_goad_target_is_declinable() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -47600,6 +48454,7 @@ fn killian_own_entry_does_not_fire_his_enchantment_watch() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -47699,6 +48554,7 @@ fn beledros_pest_token_dies_gain_life() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -48537,6 +49393,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                         pay_life: 0,
                         sacrifice: None,
                         kicker: None,
+                        buyback: None,
                         strive: None,
                         replicate: None,
                     },
@@ -48612,6 +49469,7 @@ fn remove_counter_cost_destroys_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -48711,6 +49569,7 @@ fn remove_counter_cost_lethal_shrink_dies_to_state_based_actions() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -49582,6 +50441,7 @@ fn moldervine_reclamation_gains_life_and_draws_from_a_single_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -50006,6 +50866,7 @@ fn goldspan_grant_disappears_when_goldspan_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -50163,6 +51024,7 @@ fn troyan_mana_only_pays_expensive_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -50183,6 +51045,7 @@ fn troyan_mana_only_pays_expensive_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -50223,6 +51086,7 @@ fn troyan_mana_pays_x_spell() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -50271,6 +51135,7 @@ fn galazeth_grants_restricted_treasure_mana() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -50291,6 +51156,7 @@ fn galazeth_grants_restricted_treasure_mana() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -50324,6 +51190,7 @@ fn cast_aether_gale(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -50474,6 +51341,7 @@ fn aether_gale_skips_a_target_that_became_illegal_before_resolution() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -50531,6 +51399,7 @@ fn aether_gale_is_a_no_op_when_all_targets_became_illegal() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -50794,6 +51663,7 @@ fn quandrix_command_three_mode_combination_is_unperturbed_by_the_fourth_mode() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -50979,6 +51849,7 @@ fn replication_technique_copies_a_noncreature_permanent_you_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51031,6 +51902,7 @@ fn white_orchid_phantom_etb_destroys_a_target_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51089,6 +51961,7 @@ fn white_orchid_phantom_lets_destroyed_lands_controller_ramp() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51170,6 +52043,7 @@ fn white_orchid_phantom_ramp_search_can_be_declined() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51634,6 +52508,7 @@ fn magma_opus_divides_damage_among_two_chosen_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51686,6 +52561,7 @@ fn magma_opus_division_must_cover_each_target_and_sum_to_the_total() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51752,6 +52628,7 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_chosen_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51803,6 +52680,7 @@ fn magma_opus_divides_damage_across_a_creature_and_a_player() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51852,6 +52730,7 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_player_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51906,6 +52785,7 @@ fn magma_opus_divides_damage_and_taps_two_permanents() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -51977,6 +52857,7 @@ fn volcanic_salvo_deals_full_damage_to_each_of_two_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52024,6 +52905,7 @@ fn prismari_charm_mode_1_damages_one_or_two_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52064,6 +52946,7 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52091,6 +52974,7 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52127,6 +53011,7 @@ fn tap_two_target_permanents() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52167,6 +53052,7 @@ fn put_a_counter_on_each_of_up_to_two_target_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52221,6 +53107,7 @@ fn silkguard_puts_a_counter_on_each_of_up_to_x_target_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52270,6 +53157,7 @@ fn silkguard_at_x_zero_chooses_no_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52387,6 +53275,7 @@ fn silkguard_grants_hexproof_to_modified_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52440,6 +53329,7 @@ fn modified_includes_equipped_and_aura_enchanted_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52480,6 +53370,7 @@ fn silkguard_grants_hexproof_to_the_creatures_it_just_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52547,6 +53438,7 @@ fn silkguard_grants_hexproof_to_your_auras_and_equipment() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52608,6 +53500,7 @@ fn silkguard_hexproof_on_equipment_wears_off_at_cleanup() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52722,6 +53615,7 @@ fn pearl_ear_does_not_draw_when_an_opponent_casts_the_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52756,6 +53650,7 @@ fn curse_of_the_swine_exiles_x_target_creatures_and_makes_a_boar_per_exile() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -52847,6 +53742,7 @@ fn pest_infestation_destroys_up_to_x_targets_and_creates_twice_x_pests() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -53123,6 +54019,7 @@ fn twinflame_strive_scales_cost_by_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 3,
         replicate_count: 0,
@@ -53146,6 +54043,7 @@ fn twinflame_strive_scales_cost_by_targets() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 3,
             replicate_count: 0,
@@ -53422,6 +54320,7 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -53447,6 +54346,7 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -53502,6 +54402,7 @@ fn astral_cornucopia_x3_cost_pays_x_thrice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -53534,6 +54435,7 @@ fn astral_cornucopia_x3_cost_pays_x_thrice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -53568,6 +54470,7 @@ fn single_x_spell_still_pays_x_once() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -53826,6 +54729,7 @@ fn staff_of_the_storyteller_does_not_accrue_when_an_opponent_creates_a_token() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -54564,6 +55468,7 @@ fn grow_ancient_by_two(g: &mut TestGame, ancient: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -54684,6 +55589,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -54728,6 +55634,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -54768,6 +55675,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55125,6 +56033,7 @@ fn open_the_way_reveals_until_x_lands() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55179,6 +56088,7 @@ fn open_the_way_short_library_puts_every_land_found() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55228,6 +56138,7 @@ fn songbirds_blessing_attaches_deployed_aura_to_chosen_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55397,6 +56308,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55459,6 +56371,7 @@ fn songbirds_blessing_declining_goes_to_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55517,6 +56430,7 @@ fn songbirds_blessing_no_aura_in_library_is_a_noop() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55564,6 +56478,7 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55634,6 +56549,7 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -55733,6 +56649,7 @@ fn creative_technique_reveals_until_nonland_exiles_and_casts_free() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -55902,6 +56819,7 @@ fn animists_awakening_reveals_top_x_and_deploys_all_lands() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -55961,6 +56879,7 @@ fn animists_awakening_reveals_exactly_x() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -56006,6 +56925,7 @@ fn animists_awakening_reveals_as_many_as_possible() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -56039,6 +56959,7 @@ fn animists_awakening_spell_mastery_untaps_deployed_lands() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -56073,6 +56994,7 @@ fn animists_awakening_no_spell_mastery_leaves_lands_tapped() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -56323,6 +57245,7 @@ fn arcane_lighthouse_strips_hexproof_and_shroud_and_blocks_a_fresh_grant_this_tu
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -56626,6 +57549,7 @@ fn wheel_of_fortune_each_player_discards_then_draws() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -56813,6 +57737,7 @@ fn cast_x_and_resolve(game: &mut Game, def: CardDef, x: u32, name: &str) -> Obje
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -57068,6 +57993,7 @@ fn gyome_master_chef_end_step_creates_food_equal_to_nontoken_creatures_entered()
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -57085,6 +58011,7 @@ fn gyome_master_chef_end_step_creates_food_equal_to_nontoken_creatures_entered()
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -57186,6 +58113,7 @@ fn gilded_goose_sac_a_food_adds_one_mana_of_any_color() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -57307,6 +58235,7 @@ fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -57487,6 +58416,7 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -58009,6 +58939,7 @@ fn renegade_bull_free_cast_fires_own_cast_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -58070,6 +59001,7 @@ fn renegade_bull_free_cast_fires_other_cast_watchers() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -58453,6 +59385,7 @@ fn cast_devour_creature(game: &mut Game, card_name: &str) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -58635,6 +59568,7 @@ fn ribtruss_roaster_end_step_makes_pests_with_dies_lifegain() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -58770,6 +59704,7 @@ fn abstract_performance_opponent_picks_pile_controller_casts_one_free_rest_to_ha
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -58951,6 +59886,7 @@ fn plargg_and_nassari_upkeep_opponent_picks_a_nonland_controller_casts_up_to_two
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -59020,6 +59956,7 @@ fn plargg_and_nassari_casts_only_what_is_available_when_fewer_than_two_others() 
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -59108,6 +60045,7 @@ fn abstract_performance_next_opponent_in_turn_order_chooses() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -59248,6 +60186,7 @@ fn plargg_and_nassari_offers_up_to_two_free_casts_from_the_other_exiled_nonlands
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -59906,6 +60845,7 @@ fn dance_with_calamity_casts_exiled_free_when_total_mv_at_most_13() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -59971,6 +60911,7 @@ fn dance_with_calamity_bust_over_13_grants_no_free_cast() {
                 graveyard_exile: vec![],
                 sacrifice_cost: vec![],
                 kicked: false,
+                bought_back: false,
                 evoked: false,
                 strive_count: 0,
                 replicate_count: 0,
@@ -60448,6 +61389,7 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -60486,6 +61428,7 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -60536,6 +61479,7 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -60565,6 +61509,7 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -60611,6 +61556,7 @@ fn intermediate_chirography_level_two_counters_on_first_life_loss() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -60890,6 +61836,7 @@ fn cast_chirography(game: &mut Game) -> (ObjectId, ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -61141,6 +62088,7 @@ fn rousing_refrain_adds_red_per_card_in_target_opponent_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -61198,6 +62146,7 @@ fn rousing_refrain_suspend_cast_exiles_with_time_counters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -61255,6 +62204,7 @@ fn rousing_refrain_suspend_ticks_and_casts_free_at_zero() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -61295,6 +62245,7 @@ fn rousing_refrain_mana_persists_across_step() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -61363,6 +62314,7 @@ fn ordinary_mana_empties_at_step_boundary() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -62194,6 +63146,7 @@ fn cast_free(game: &mut Game, player: PlayerId, object: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -63219,6 +64172,99 @@ fn man_o_war_etb_bounces_target_creature() {
     );
 }
 
+// ── Buyback (#149): optional additional cost, bought-back spell returns to hand ────────────
+
+#[test]
+fn capsize_bought_back_returns_to_hand() {
+    // Capsize: "Buyback {3} (You may pay an additional {3} as you cast this spell. If you do,
+    // put this card into your hand as it resolves.) Return target permanent to its owner's
+    // hand." Paying the buyback bounces the target AND returns Capsize to its caster's hand
+    // instead of the graveyard.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let capsize = game.spawn_in_hand(PlayerId(0), card("Capsize"));
+
+    game.cast(capsize)
+        .at(Target::Object(bear))
+        .bought_back(true)
+        .resolve();
+
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the targeted permanent returned to its owner's hand"
+    );
+    assert_eq!(
+        game.zone_of(capsize),
+        Zone::Hand,
+        "buyback puts Capsize into its owner's hand as it resolves, not the graveyard"
+    );
+}
+
+#[test]
+fn capsize_without_buyback_goes_to_graveyard() {
+    // Declining buyback (CR 702.27c) leaves Capsize an ordinary instant: it still bounces its
+    // target, but goes to the graveyard like any other resolved instant.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let capsize = game.spawn_in_hand(PlayerId(0), card("Capsize"));
+
+    game.cast(capsize).at(Target::Object(bear)).resolve();
+
+    assert_eq!(game.zone_of(bear), Zone::Hand, "the target still bounces");
+    assert_eq!(
+        game.zone_of(capsize),
+        Zone::Graveyard,
+        "declining buyback sends Capsize to the graveyard as normal"
+    );
+}
+
+#[test]
+fn capsize_buyback_requires_the_extra_mana() {
+    // Buyback {3} is an *additional* cost (CR 702.27c) on top of the printed {1}{U}{U}: a
+    // caster who can only afford the printed cost can't opt into paying it, mirroring kicker's
+    // own can't-pay gate.
+    let mut game = Game::new();
+    for _ in 0..3 {
+        let island = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: island,
+        })
+        .unwrap();
+    }
+    assert_eq!(game.mana_in_pool(PlayerId(0), Color::Blue), 3);
+
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let capsize = game.spawn_in_hand(PlayerId(0), card("Capsize"));
+    let rejected = game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: capsize,
+        target: Some(Target::Object(bear)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: true,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    });
+    assert_eq!(rejected, Err(Reject::CannotPayCost));
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Blue),
+        3,
+        "the rejected cast spent no mana"
+    );
+    assert_eq!(
+        game.zone_of(capsize),
+        Zone::Hand,
+        "the rejected cast left Capsize in hand"
+    );
+}
+
 #[test]
 fn merfolk_looter_taps_to_draw_then_discard() {
     // Merfolk Looter: "{T}: Draw a card, then discard a card." — the draw lands first, then
@@ -63804,6 +64850,7 @@ fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -63824,6 +64871,7 @@ fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -63866,6 +64914,7 @@ fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -63887,6 +64936,7 @@ fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -64004,6 +65054,7 @@ fn momentary_blink_flickers_creature_you_control_immediately() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
@@ -64078,5 +65129,289 @@ fn mistmeadow_witch_delayed_flicker_returns_at_end_step() {
         game.life(PlayerId(1)),
         life_before + 2,
         "the fresh object's own ETB trigger fired again"
+    );
+}
+
+#[test]
+fn enlightened_tutor_reveals_and_puts_an_artifact_or_enchantment_card_on_top() {
+    // Enlightened Tutor: "Search your library for an artifact or enchantment card, reveal it,
+    // then shuffle and put that card on top." Exercises `CardFilter::ArtifactOrEnchantment` and
+    // `SearchDest::LibraryTop` (CR 701.19: reveal, then shuffle, then top — nothing leaves the
+    // library, nothing is drawn).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Forest"),          // land — no match
+            card("Grizzly Bear"),    // creature — no match
+            card("Sol Ring"),        // artifact — a match
+            card("Glorious Anthem"), // enchantment — a match
+        ],
+    );
+    let before = game.library_size(PlayerId(0));
+    let tutor = game.spawn_in_hand(PlayerId(0), card("Enlightened Tutor"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: tutor,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Enlightened Tutor resolves → pause on the search choice.
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "Enlightened Tutor pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        dest,
+        SearchDest::LibraryTop,
+        "the found card goes to the top"
+    );
+    assert!(
+        matches.contains(&lib[2]),
+        "Sol Ring is an artifact card — a legal find"
+    );
+    assert!(
+        matches.contains(&lib[3]),
+        "Glorious Anthem is an enchantment card — a legal find"
+    );
+    assert!(
+        !matches.contains(&lib[0]),
+        "a land card is not an artifact or enchantment"
+    );
+    assert!(
+        !matches.contains(&lib[1]),
+        "a plain creature card is not an artifact or enchantment"
+    );
+
+    let anthem = lib[3];
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(anthem),
+    })
+    .unwrap();
+    assert_eq!(game.pending_choice(), None, "the search is resolved");
+    assert_eq!(
+        game.zone_of(anthem),
+        Zone::Library,
+        "the found card stays in the library — revealed and re-topped, not moved to hand"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        before,
+        "search + shuffle + top — nothing left the library"
+    );
+
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(anthem),
+        Zone::Hand,
+        "the tutored card was drawn first — proving it landed on top"
+    );
+}
+
+#[test]
+fn sterling_grove_tutors_an_enchantment_to_the_top() {
+    // Sterling Grove: "{1}, Sacrifice this enchantment: Search your library for an enchantment
+    // card, reveal it, then shuffle and put that card on top." (The shroud anthem half is #139's
+    // job, not modeled here.)
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Forest"),          // land — no match
+            card("Grizzly Bear"),    // creature — no match
+            card("Glorious Anthem"), // enchantment — a match
+        ],
+    );
+    let anthem = lib[2];
+    let grove = game.spawn_on_battlefield(PlayerId(0), card("Sterling Grove"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: grove,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(grove),
+        Zone::Graveyard,
+        "Sterling Grove is sacrificed as a cost"
+    );
+
+    resolve_top_of_stack(&mut game); // the search ability resolves → pause on the search
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "Sterling Grove pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        dest,
+        SearchDest::LibraryTop,
+        "the found card goes to the top"
+    );
+    assert!(
+        matches.contains(&anthem),
+        "Glorious Anthem is an enchantment card"
+    );
+    assert!(
+        !matches.contains(&lib[0]),
+        "a land card is not an enchantment"
+    );
+    assert!(
+        !matches.contains(&lib[1]),
+        "a creature card is not an enchantment"
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(anthem),
+    })
+    .unwrap();
+    assert_eq!(game.pending_choice(), None, "the search is resolved");
+
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(anthem),
+        Zone::Hand,
+        "the tutored enchantment was drawn first — it was on top of the library"
+    );
+}
+
+// ── Court Hussar (CR 106.9 — mana-spent-to-cast tracking) #157 ─────────────────────────
+
+/// Cast Court Hussar (`{2}{U}`) with the generic `{2}` funded from `generic_source`'s color and
+/// the `{U}` pip from an Island, then order its two simultaneous ETB triggers so the look-top-3
+/// resolves first and the sacrifice-unless resolves second. Answers the mandatory
+/// look-top-3 pick with the first card shown.
+fn cast_court_hussar_funding_generic_with(game: &mut Game, generic_source: &str) -> ObjectId {
+    let hussar = game.spawn_in_hand(PlayerId(0), card("Court Hussar"));
+    game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+        ],
+    );
+    for _ in 0..2 {
+        let source = game.spawn_on_battlefield(PlayerId(0), card(generic_source));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: source,
+        })
+        .unwrap();
+    }
+    let island = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: island,
+    })
+    .unwrap();
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: hussar,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // the spell resolves → the creature enters, two ETB triggers queue
+
+    // order [1, 0] pushes the sacrifice-unless (index 1) first (bottom), the look-top-3
+    // (index 0) last (top) — the look-top-3 resolves first.
+    game.submit(Intent::ChooseOrder {
+        player: PlayerId(0),
+        order: vec![1, 0],
+    })
+    .unwrap();
+
+    resolve_top_of_stack(game); // the look-top-3 ETB resolves, pausing on the mandatory pick
+    let Some(PendingChoice::SelectFromTop { cards, .. }) = game.pending_choice() else {
+        panic!(
+            "Court Hussar's look-top-3 ETB pauses on a pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+    let pick = cards[0];
+    game.submit(Intent::SelectFromTop {
+        player: PlayerId(0),
+        cards: vec![pick],
+    })
+    .unwrap();
+
+    resolve_top_of_stack(game); // the sacrifice-unless ETB resolves
+    hussar
+}
+
+#[test]
+fn court_hussar_kept_when_white_was_spent() {
+    // "sacrifice it unless {W} was spent to cast it" — funding the generic {2} with two Plains
+    // means {W} was spent (CR 106.9) alongside the {U} pip, so it survives.
+    let mut game = Game::new();
+    let hussar = cast_court_hussar_funding_generic_with(&mut game, "Plains");
+
+    assert_eq!(
+        game.zone_of(hussar),
+        Zone::Battlefield,
+        "white was spent to cast it, so the sacrifice-unless ETB doesn't fire"
+    );
+}
+
+#[test]
+fn court_hussar_sacrificed_when_no_white_spent() {
+    // Funding the generic {2} with two Islands means the whole `{2}{U}` was paid in blue — no
+    // white was ever spent, so the "unless" ETB sacrifices it.
+    let mut game = Game::new();
+    let hussar = cast_court_hussar_funding_generic_with(&mut game, "Island");
+
+    assert_eq!(
+        game.zone_of(hussar),
+        Zone::Graveyard,
+        "no white was spent to cast it, so the sacrifice-unless ETB fires"
+    );
+}
+
+#[test]
+fn court_hussar_looks_at_top_three_and_puts_one_in_hand() {
+    // "look at the top three cards of your library, then put one of them into your hand and the
+    // rest on the bottom of your library in any order" — locked in regardless of the
+    // sacrifice-unless outcome (funding with Plains here so it also survives).
+    let mut game = Game::new();
+    let hussar = cast_court_hussar_funding_generic_with(&mut game, "Plains");
+
+    assert_eq!(game.zone_of(hussar), Zone::Battlefield);
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        2,
+        "one of the top three went to hand, the other two stayed in the library (moved to the bottom)"
     );
 }

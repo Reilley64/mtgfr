@@ -332,6 +332,7 @@ impl Game {
                 0,
                 false,
                 false,
+                false,
                 0,
                 0,
             );
@@ -348,6 +349,7 @@ impl Game {
                     0,
                     Zone::Battlefield,
                     0,
+                    false,
                     false,
                     false,
                     0,
@@ -1191,6 +1193,14 @@ impl Game {
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
         // creature you control"). Reads the current (possibly copied) def.
         if filter.nonlegendary && self.def_of(id).legendary {
+            return false;
+        }
+        // Non-Lair land exclusion (CR 305 — Treva's Ruins' "non-Lair land"). Reads the printed
+        // land-type list directly, not `CardDef::subtypes` (see the field's doc).
+        if filter.nonlair
+            && let CardKind::Land { subtypes, .. } = self.def_of(id).kind
+            && subtypes.contains(&"Lair")
+        {
             return false;
         }
         // Strictly lesser power than the filter's own source (Mentor, CR 702.121a). No-op

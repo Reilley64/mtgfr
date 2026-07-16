@@ -121,8 +121,33 @@ toughness = 1
             "one credit of either black or green"
         );
 
-        // A same-color "dual" and a three-color array are both load errors.
-        for produces in ["[\"green\", \"green\"]", "[\"white\", \"blue\", \"black\"]"] {
+        // A 3-color array (a triome's fixed choice — Treva's Ruins) normalizes to `Mana::OfColors`.
+        let triome = "name = \"Test Triome\"\n\n[kind]\ntype = \"artifact\"\n\n[[abilities]]\ntiming = \"activated\"\ntaps_self = true\n\n[[abilities.effects]]\ntype = \"add_mana\"\nmana = [[\"blue\", \"white\", \"green\"]]\n";
+        let def: CardDef = toml::from_str(triome).expect("a 3-color add_mana batch parses");
+        let Effect::AddMana { mana: produced, .. } = def.abilities[0].effect else {
+            panic!("expected an add_mana effect");
+        };
+        assert_eq!(
+            produced,
+            {
+                let mut pool = engine::ManaPool::default();
+                let mask = 1 << Color::Blue.index()
+                    | 1 << Color::White.index()
+                    | 1 << Color::Green.index();
+                pool.add(Mana::OfColors(mask), 1);
+                pool
+            },
+            "one credit of blue, white, or green"
+        );
+
+        // A same-color "dual", a duplicate-color triome, and an out-of-range (1 or 5 color)
+        // array are all load errors.
+        for produces in [
+            "[\"green\", \"green\"]",
+            "[\"white\", \"blue\", \"white\"]",
+            "[\"green\"]",
+            "[\"white\", \"blue\", \"black\", \"red\", \"green\"]",
+        ] {
             let card = format!(
                 "name = \"Test Bad Dual\"\n\n[kind]\ntype = \"land\"\nproduces = {produces}\n"
             );

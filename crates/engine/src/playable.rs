@@ -16,6 +16,9 @@ pub(crate) struct CastInputs<'a> {
     pub sacrifice_cost: &'a [ObjectId],
     /// Whether the caster is paying the spell's kicker cost (CR 702.33d — [`AdditionalCost::kicker`]).
     pub kicked: bool,
+    /// Whether the caster is paying the spell's buyback cost (CR 702.27c —
+    /// [`AdditionalCost::buyback`]), mirroring `kicked`'s own opt-in shape.
+    pub bought_back: bool,
     /// Whether the caster is casting the spell for its evoke cost (CR 702.74a —
     /// [`CardDef::evoke`]), instead of the printed cost.
     pub evoked: bool,
@@ -70,6 +73,7 @@ impl Game {
                 graveyard_exile: &[],
                 sacrifice_cost: &[],
                 kicked: false,
+                bought_back: false,
                 evoked: false,
                 strive_count: 0,
                 replicate_count: 0,
@@ -188,6 +192,7 @@ impl Game {
             zone,
             delve_count,
             inputs.kicked,
+            inputs.bought_back,
             inputs.evoked,
             inputs.strive_count,
             inputs.replicate_count,
@@ -277,7 +282,7 @@ impl Game {
         let spell = Some(def.spell_characteristics());
         let affordable = |target: Option<Target>, delve: u8| {
             let cost = self.cast_cost(
-                player, object, def, target, 0, zone, delve, false, false, 0, 0,
+                player, object, def, target, 0, zone, delve, false, false, false, 0, 0,
             );
             Self::affordable_from(available, cost, spell)
                 && self
@@ -390,6 +395,12 @@ impl Game {
         if inputs.kicked && cost.additional.kicker.is_none() {
             return Err(Reject::CannotPayCost);
         }
+        // Buyback (CR 702.27c): only payable if the spell actually has one, mirroring kicker's
+        // own gate above. Its mana is already folded into `cost` by `Game::cast_cost`;
+        // affordability of that total is checked by `Game::settle_payment` downstream.
+        if inputs.bought_back && cost.additional.buyback.is_none() {
+            return Err(Reject::CannotPayCost);
+        }
         // Evoke (CR 702.74a): only declarable if the card actually has an evoke cost — a client
         // can't opt into a nonexistent alternative cost, mirroring kicker's own gate above.
         if inputs.evoked && def.evoke.is_none() {
@@ -421,6 +432,7 @@ mod tests {
         pay_life: 0,
         sacrifice: None,
         kicker: None,
+        buyback: None,
         strive: None,
         replicate: None,
     };
@@ -573,6 +585,7 @@ mod tests {
             graveyard_exile: &[],
             sacrifice_cost: &[],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -607,6 +620,7 @@ mod tests {
             graveyard_exile: &[],
             sacrifice_cost: &[],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -634,6 +648,7 @@ mod tests {
             graveyard_exile: &[],
             sacrifice_cost: &[],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
@@ -671,6 +686,7 @@ mod tests {
             graveyard_exile: &[],
             sacrifice_cost: &[],
             kicked: false,
+            bought_back: false,
             evoked: false,
             strive_count: 0,
             replicate_count: 0,

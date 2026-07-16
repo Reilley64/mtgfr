@@ -433,8 +433,9 @@ impl Game {
 
     /// Move a resolved instant/sorcery `object` to its post-resolution zone: ceases to exist if
     /// it's a copy (CR 707.10a), exile if it was cast via flashback/escape (CR 702.34e/702.19d),
-    /// else the graveyard. Split out of [`Self::resolve_spell`] so [`Game::resume_deferred_sequence`]
-    /// can also call it once a [`Game::pending_spell_finish`] pause clears.
+    /// its owner's hand if it was bought back (CR 702.27d), else the graveyard. Split out of
+    /// [`Self::resolve_spell`] so [`Game::resume_deferred_sequence`] can also call it once a
+    /// [`Game::pending_spell_finish`] pause clears.
     pub(crate) fn finish_instant_sorcery_resolution(
         &mut self,
         object: ObjectId,
@@ -474,6 +475,18 @@ impl Game {
             self.push_apply(
                 events,
                 Event::MovedToExile {
+                    card: self.next_object_id(),
+                    from: object,
+                },
+            );
+            return;
+        }
+        // Buyback (CR 702.27d): "If you do, put this card into your hand as it resolves" (Capsize)
+        // — the resolved spell returns to its owner's hand instead of the graveyard below.
+        if spell.bought_back {
+            self.push_apply(
+                events,
+                Event::ReturnedToHand {
                     card: self.next_object_id(),
                     from: object,
                 },
@@ -1053,6 +1066,20 @@ impl Game {
                     },
                 );
             }
+            // Rhystic Study's "you may draw a card unless that player pays {1}": pause the
+            // ability's own controller on whether they want to draw at all (the card's ruling —
+            // declining is quiet, no pay window is ever offered). Only a "yes" here raises the
+            // triggering opponent's own pay-or-let-it-happen pause (`Game::answer_may`).
+            Effect::MayDrawUnlessPays { cost, caster } => {
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::MayYesNo {
+                        player: controller,
+                        source,
+                        effect: Effect::MayDrawUnlessPays { cost, caster },
+                    },
+                );
+            }
             // Hinder's destination rider (CR 701.5b — `countered_dest`): pause this ability's
             // controller on a top/bottom pick before the countered card moves, unless it's not
             // going to a graveyard anyway — already left the stack / uncounterable (CR 608.2b /
@@ -1605,6 +1632,17 @@ impl Game {
             // "You may put a land from hand onto the battlefield" pauses on a card-pick choice
             // (up to one hand land, or decline).
             Effect::PutLandFromHand { tapped } => self.begin_put_land_from_hand(controller, tapped),
+            // Rupture Spire's own ETB trigger: "sacrifice it unless you pay {1}." Pauses on the
+            // same pay-or-sacrifice shape Echo's `PayEchoOrSacrifice` uses, under its own variant
+            // (this is a real triggered ability, not Echo — CR 603.3b, not CR 702.31).
+            Effect::SacrificeSelfUnlessPay { cost } => {
+                self.begin_sacrifice_unless_pay(controller, source, cost)
+            }
+            // Treva's Ruins' own ETB trigger: "sacrifice it unless you return a non-Lair land you
+            // control." Pauses on a candidate-land pick (or sacrifices outright with none).
+            Effect::SacrificeSelfUnlessReturnLand { filter } => {
+                self.begin_sacrifice_unless_return_land(controller, source, filter, events)
+            }
             // "Put a card exiled with this" pauses on a card-pick choice over this source's
             // exiled-with pile (up to one, or decline).
             Effect::CashOutExiledWithThis => {
@@ -1619,15 +1657,20 @@ impl Game {
             // A sequence runs its steps in order, sharing this target/{X}; a pausing step defers
             // the rest until answered.
             Effect::Sequence { steps } => self.run_sequence(steps, ctx, events),
-            // A per-step gate: run `then` only if `condition` holds right now (mid-resolution),
-            // sharing this target/{X}. Reuses the same intervening-if evaluator triggers use,
-            // except `TargetPowerAtLeast` (Yavimaya Bloomsage's power-7 check) and
-            // `SourceEnteredWithXAtLeast` (Kinetic Ooze's X-threshold riders): `TriggerContext`
-            // carries neither a target nor a source id, so those are special-cased directly
-            // against the shared `target`/this resolution's own `source` here — the same
-            // "condition_holds can't reach it" shape as `ability_condition_holds`'s source-based
-            // special cases.
-            Effect::Conditional { condition, then } => {
+            // A per-step gate: run `then` only if `condition` holds (negated by `negate`) right
+            // now (mid-resolution), sharing this target/{X}. Reuses the same intervening-if
+            // evaluator triggers use, except `TargetPowerAtLeast` (Yavimaya Bloomsage's power-7
+            // check), `SourceEnteredWithXAtLeast` (Kinetic Ooze's X-threshold riders), and
+            // `ColorWasSpentToCastThis` (Court Hussar's "unless {W} was spent to cast it"):
+            // `TriggerContext` carries neither a target nor a source id, so those are
+            // special-cased directly against the shared `target`/this resolution's own `source`
+            // here — the same "condition_holds can't reach it" shape as
+            // `ability_condition_holds`'s source-based special cases.
+            Effect::Conditional {
+                condition,
+                then,
+                negate,
+            } => {
                 let holds = match condition {
                     Condition::TargetPowerAtLeast { at_least } => target
                         .and_then(Target::object_id)
@@ -1635,9 +1678,12 @@ impl Game {
                     Condition::SourceEnteredWithXAtLeast { at_least } => {
                         self.ability_source_x(source) >= at_least
                     }
+                    Condition::ColorWasSpentToCastThis { color } => self
+                        .as_permanent(source)
+                        .is_some_and(|p| p.spent_colors[color.index()]),
                     _ => self.condition_holds(condition, TriggerContext::of(controller)),
                 };
-                if holds {
+                if holds != negate {
                     self.run_sequence(then, ctx, events);
                 }
             }
@@ -2355,6 +2401,12 @@ impl Game {
                                 card: def,
                             });
                         }
+                        // ponytail: no pool card sets `matched_dest = "library_top"` on
+                        // `reveal_until`/`reveal_top_cards` — this routine already processes the
+                        // library strictly top-down, so once every miss ahead of a match has been
+                        // routed away by `rest_dest`, the match sits on top with nothing further
+                        // to do. Give this a real move event if a card ever needs it.
+                        SearchDest::LibraryTop => {}
                     }
                     next += 1;
                 }
@@ -2428,6 +2480,10 @@ impl Game {
                                 card: def,
                             });
                         }
+                        // ponytail: no pool card sets `matched_dest = "library_top"` on
+                        // `reveal_until`/`reveal_top_cards` — see the sibling arm in
+                        // `RevealUntil`'s resolution above for why this is a genuine no-op today.
+                        SearchDest::LibraryTop => {}
                     }
                     next += 1;
                 }
@@ -2574,6 +2630,11 @@ impl Game {
                 // Dual credits (filter lands' "{W}{W}/{W}{B}/{B}{B}", a painland's colored mode).
                 for (&(a, b), &n) in COLOR_PAIRS.iter().zip(produced.either.iter()) {
                     push(Mana::Either(a, b), n);
+                }
+                // Fixed 2-4 color-choice credits (Treva's Ruins' "{T}: Add {G}, {W}, or {U}"),
+                // keyed by their WUBRG bitmask — the static-batch twin of the `either` loop above.
+                for (mask, &n) in produced.of_colors.iter().enumerate() {
+                    push(Mana::OfColors(mask as u8), n);
                 }
                 // Spend-restricted credits (Troyan's own restriction above, or a granted mana
                 // ability's pre-wrapped batch — Galazeth's Treasures-style grant).
@@ -3795,6 +3856,9 @@ impl Game {
             | Effect::DefendingPlayerSacrifices { .. }
             | Effect::MayReturnFromGraveyard { .. }
             | Effect::MayDiscard { .. }
+            // Needs `&mut self` to pause on the MayYesNo/PayOrControllerDraws chain — only
+            // resolves via `Game::run`, never this pure path.
+            | Effect::MayDrawUnlessPays { .. }
             | Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. }
             | Effect::Discard { .. }
             | Effect::PutLandFromHand { .. }
@@ -3862,7 +3926,14 @@ impl Game {
             | Effect::MintFreeCopyOfExiledCard { .. }
             // Needs `&mut self` to conditionally `run_sequence` its `then` — only resolves via
             // `Game::run`, never this pure path.
-            | Effect::ExileTargetGraveyardCardThenIfCreature { .. } => {
+            | Effect::ExileTargetGraveyardCardThenIfCreature { .. }
+            // Needs `&mut self` to pause on `SacrificeUnlessPay` — only resolves via `Game::run`,
+            // never this pure path.
+            | Effect::SacrificeSelfUnlessPay { .. }
+            // Needs `&mut self` to scan the battlefield and pause on `SacrificeUnlessReturnLand`
+            // (or sacrifice outright with no candidates) — only resolves via `Game::run`, never
+            // this pure path.
+            | Effect::SacrificeSelfUnlessReturnLand { .. } => {
                 unreachable!("a pausing/composite effect resolves via Game::run")
             }
             Effect::GoadTarget { .. } => {
@@ -4085,6 +4156,21 @@ impl Game {
                     self.sacrifice_event(id),
                     Event::Sacrificed {
                         object: id,
+                        by: controller,
+                        def,
+                    },
+                ]
+            }
+            // Sacrifice the ability's own source (CR 701.16) — Court Hussar's "sacrifice it",
+            // authorable directly (unlike `SacrificeObject` above). No zone guard needed: this
+            // only ever runs synchronously off the source's own ETB, which can't have already
+            // left the battlefield.
+            Effect::SacrificeSource => {
+                let def = self.def_of(source);
+                vec![
+                    self.sacrifice_event(source),
+                    Event::Sacrificed {
+                        object: source,
                         by: controller,
                         def,
                     },

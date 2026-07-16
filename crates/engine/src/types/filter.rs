@@ -329,6 +329,11 @@ pub enum CardFilter {
     /// creature card from your graveyard"). The unbounded twin of
     /// [`ArtifactOrCreatureWithManaValueAtMost`](Self::ArtifactOrCreatureWithManaValueAtMost).
     ArtifactOrCreature,
+    /// An artifact or enchantment card, no mana-value bound (Enlightened Tutor: "Search your
+    /// library for an artifact or enchantment card"). Reads [`CardKind::types`] rather than a raw
+    /// [`CardKind`] match, so an Aura counts (it's still an enchantment card, CR 205.4a) the same
+    /// way [`Enchantment`](Self::Enchantment) does.
+    ArtifactOrEnchantment,
 }
 
 impl CardFilter {
@@ -397,6 +402,10 @@ impl CardFilter {
             CardFilter::ArtifactOrCreature => {
                 matches!(def.kind, CardKind::Artifact | CardKind::Creature { .. })
             }
+            CardFilter::ArtifactOrEnchantment => def
+                .kind
+                .types()
+                .intersects(TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT)),
         }
     }
 }
@@ -414,6 +423,11 @@ pub enum SearchDest {
     /// Onto the battlefield under the searcher's control (ramp / fetchlands), tapped per the
     /// effect's `tapped` flag.
     Battlefield,
+    /// Onto the top of the searcher's own library, revealed as it's found (Enlightened Tutor,
+    /// Sterling Grove: "reveal it, then shuffle and put that card on top" — CR 701.19). A
+    /// same-zone reorder, not a zone change (CR 400.7) — the card never leaves the library, so it
+    /// keeps its object id, the same way [`Event::PutOnBottomOfLibrary`] does for the bottom.
+    LibraryTop,
 }
 
 /// Where a card selected by [`Effect::LookAtTop`] goes (the "put that card into …" destination).
@@ -656,6 +670,14 @@ pub struct PermanentFilter {
     /// Ever-Changing's "up to one target *nonlegendary* creature you control"). `false` (default)
     /// imposes no restriction. Reads the current (possibly copied) [`CardDef::legendary`].
     pub nonlegendary: bool,
+    /// Excludes the "Lair" land subtype (CR 305 — Treva's Ruins' "return a *non-Lair* land you
+    /// control"). `false` (default) imposes no restriction. Reads the printed land-type list
+    /// directly ([`CardKind::Land::subtypes`], the rules-relevant one — see that field's doc),
+    /// not [`CardDef::subtypes`].
+    /// ponytail: a single bool covers the pool's one "not this land subtype" need, same shape as
+    /// `nonbasic`/`nonlegendary` above; generalize to a `subtypes_exclude` list if a second
+    /// land-subtype exclusion turns up.
+    pub nonlair: bool,
 }
 
 impl PermanentFilter {
@@ -685,6 +707,7 @@ impl PermanentFilter {
             nonbasic: false,
             name: None,
             nonlegendary: false,
+            nonlair: false,
         }
     }
 }
