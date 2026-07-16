@@ -3,8 +3,7 @@
 locals {
   namespace = kubernetes_namespace.edh.metadata[0].name
 
-  # fullnameOverride in postgres.tf pins the chart's Service name to exactly "postgres", matching
-  # the DATABASE_URL shape in the deploy PRD's migrate.tf example.
+  # Service / StatefulSet name in postgres.tf — must match DATABASE_URL host.
   postgres_service = "postgres"
   # urlencode: the password is user input (terraform.tfvars / TF_VAR_mtgfr_db_password) and can
   # contain URI-reserved characters (@, :, /, ?, #, …) that would otherwise corrupt the DSN or get

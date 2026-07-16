@@ -34,6 +34,17 @@ resource "kubernetes_job" "edh_migrate" {
       spec {
         restart_policy = "Never"
 
+        # depends_on the StatefulSet only waits for the object to exist — not for Postgres to
+        # accept connections. Without this, the Job often hits connection-refused on first apply.
+        init_container {
+          name  = "wait-for-postgres"
+          image = var.postgres_image
+          command = [
+            "sh", "-c",
+            "until pg_isready -h ${local.postgres_service} -U mtgfr -d mtgfr; do sleep 2; done",
+          ]
+        }
+
         container {
           name    = "migrate"
           image   = var.server_image
@@ -53,5 +64,5 @@ resource "kubernetes_job" "edh_migrate" {
     }
   }
 
-  depends_on = [helm_release.postgresql]
+  depends_on = [kubernetes_stateful_set.postgres]
 }
