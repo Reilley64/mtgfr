@@ -96,6 +96,7 @@ impl Game {
                 }
                 groups.push(ModifierSourceGroup {
                     source_name,
+                    source_card_id: "",
                     contributions: vec![contribution],
                 });
             };
@@ -254,7 +255,25 @@ impl Game {
             }
         }
 
+        for group in &mut groups {
+            group.source_card_id = self.card_id_for_source_name(group.source_name);
+        }
         groups
+    }
+
+    /// Best-effort Card id for an inspect-ledger source name: the first battlefield permanent
+    /// whose def name matches. Empty for synthetic labels or when the source has left play.
+    fn card_id_for_source_name(&self, name: &'static str) -> &'static str {
+        if name.is_empty() {
+            return "";
+        }
+        for &id in &self.battlefield() {
+            let def = self.def_of(id);
+            if def.name == name {
+                return def.id;
+            }
+        }
+        ""
     }
 
     /// Whether a permanent is tapped.

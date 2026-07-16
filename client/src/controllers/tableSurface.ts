@@ -94,7 +94,7 @@ export type TableSurface = {
   noteDropSeed(seed: Vec | null): void;
 
   notePointer(sx: number, sy: number): void;
-  setAuxHover(source: "hand" | "stack", name: string | null): void;
+  setAuxHover(source: "hand" | "stack", card: { name: string; cardId?: string; print?: string } | null): void;
   tryPinInspect(): InspectPin | null;
   clearInspect(): void;
   inspectPin: Accessor<InspectPin | null>;
@@ -497,24 +497,34 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
 
   // ── Aux inspect ───────────────────────────────────────────────────────────────────
   const [inspectPin, setInspectPin] = createSignal<InspectPin | null>(null);
-  let handHoverName: string | null = null;
-  let stackHoverName: string | null = null;
+  let handHover: { name: string; cardId?: string; print?: string } | null = null;
+  let stackHover: { name: string; cardId?: string; print?: string } | null = null;
 
-  const setAuxHover = (source: "hand" | "stack", name: string | null) => {
-    if (source === "hand") handHoverName = name;
-    else stackHoverName = name;
+  const setAuxHover = (source: "hand" | "stack", card: { name: string; cardId?: string; print?: string } | null) => {
+    if (source === "hand") handHover = card;
+    else stackHover = card;
   };
 
   const tryPinInspect = (): InspectPin | null => {
     // Hand (and stack) DOM overlays sit above the canvas; prefer their hover so Alt-inspect
     // doesn't pin a battlefield card that peeks under the hand bar.
-    if (handHoverName) {
-      const pin = { name: handHoverName, prepared: false };
+    if (handHover) {
+      const pin: InspectPin = {
+        name: handHover.name,
+        prepared: false,
+        ...(handHover.cardId ? { cardId: handHover.cardId } : {}),
+        ...(handHover.print ? { print: handHover.print } : {}),
+      };
       setInspectPin(pin);
       return pin;
     }
-    if (stackHoverName) {
-      const pin = { name: stackHoverName, prepared: false };
+    if (stackHover) {
+      const pin: InspectPin = {
+        name: stackHover.name,
+        prepared: false,
+        ...(stackHover.cardId ? { cardId: stackHover.cardId } : {}),
+        ...(stackHover.print ? { print: stackHover.print } : {}),
+      };
       setInspectPin(pin);
       return pin;
     }

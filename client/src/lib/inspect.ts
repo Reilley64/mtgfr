@@ -20,7 +20,7 @@ export type InspectPin = {
   objectId?: number;
   /** Card (oracle) id, when known — drives the oracle-text lookup (ADR 0031). */
   cardId?: string;
-  /** Printing UUID for this pin's art (ADR 0031); absent renders a broken image. */
+  /** Printing UUID for this pin's art (ADR 0031); absent falls back to catalog `default_print`. */
   print?: string;
 };
 
@@ -31,8 +31,19 @@ export function inspectRootChanged(prevRoot: InspectPin | undefined, next: Inspe
 }
 
 /** Push a catalog-only source card onto the inspect history stack. */
-export function pushInspectSource(history: InspectPin[], name: string): InspectPin[] {
-  return [...history, { name, prepared: false }];
+export function pushInspectSource(
+  history: InspectPin[],
+  source: { name: string; cardId?: string; print?: string },
+): InspectPin[] {
+  return [
+    ...history,
+    {
+      name: source.name,
+      prepared: false,
+      ...(source.cardId ? { cardId: source.cardId } : {}),
+      ...(source.print ? { print: source.print } : {}),
+    },
+  ];
 }
 
 /** Pop one inspect history entry; no-op at the root. */

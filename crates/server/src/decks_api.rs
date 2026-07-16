@@ -53,7 +53,7 @@ fn detail_of(deck: Deck) -> Result<DeckDetail, Response> {
 
 /// Validate a save request; `Err` is a ready-to-return 422 with all problems.
 fn check(req: &SaveDeckRequest) -> Result<(), Response> {
-    legality::validate(&req.commander, &req.cards).map_err(|problems| {
+    legality::validate(&req.commander, &req.commander_print, &req.cards).map_err(|problems| {
         (
             StatusCode::UNPROCESSABLE_ENTITY,
             Json(DeckError { problems }),
@@ -102,6 +102,7 @@ pub async fn list_decks(
             id: d.id,
             name: d.name,
             commander: d.commander,
+            commander_print: d.commander_print,
         })
         .collect();
     summaries.extend(precons::summaries());

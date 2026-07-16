@@ -618,7 +618,7 @@ export default function Board() {
               expanded={stackExpanded()}
               onExpand={() => setStackExpanded(true)}
               onCollapse={() => setStackExpanded(false)}
-              onHoverName={(n) => surface.setAuxHover("stack", n)}
+              onHoverCard={(c) => surface.setAuxHover("stack", c)}
               onDwell={setDwell}
             />
             <LogPanel />
@@ -630,7 +630,7 @@ export default function Board() {
         <Hand
           viewer={me()}
           hiddenId={stagedCard()?.id ?? null}
-          onHoverName={(n) => surface.setAuxHover("hand", n)}
+          onHoverCard={(c) => surface.setAuxHover("hand", c)}
           onHoverAction={setHoverAction}
           onDrop={onHandDrop}
         />
@@ -936,14 +936,15 @@ function StackOverlay(props: {
   expanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
-  onHoverName: (name: string | null) => void;
+  onHoverCard: (card: { name: string; cardId?: string; print?: string } | null) => void;
   onDwell: (dwelling: boolean) => void;
 }) {
   const names = createMemo(() => new Map(props.state.objects.map((o) => [o.id, o.name])));
   const name = (id: number) => names().get(id) ?? `#${id}`;
-  // Printing UUID for an ability's source permanent (ADR 0031); a pure spell label has no backing
-  // object, so it falls through to "" (broken image) — there's no name-based art fallback anymore.
-  const prints = createMemo(() => new Map(props.state.objects.map((o) => [o.id, o.print ?? ""])));
+  // Printing UUID / Card id for stack art and Alt-inspect (ADR 0031).
+  const byId = createMemo(
+    () => new Map(props.state.objects.map((o) => [o.id, { print: o.print ?? "", cardId: o.card_id || undefined }])),
+  );
   const [holdMs, setHoldMs] = createSignal(props.state.stack_hold_remaining_ms ?? 0);
   const [holdTotal, setHoldTotal] = createSignal(0);
   const [stackHover, setStackHover] = createSignal(false);
@@ -1016,7 +1017,7 @@ function StackOverlay(props: {
   const clearHover = (row: number) => {
     if (hoveredRow !== row) return;
     hoveredRow = null;
-    props.onHoverName(null);
+    props.onHoverCard(null);
     endDwell();
   };
   const leaveStack = () => {
@@ -1024,10 +1025,10 @@ function StackOverlay(props: {
     if (hoveredRow !== null) clearHover(hoveredRow);
     endDwell();
   };
-  const hoverEntry = (row: number, imageName: string | null) => {
+  const hoverEntry = (row: number, imageName: string | null, meta: { cardId?: string; print?: string }) => {
     if (!imageName) return;
     hoveredRow = row;
-    props.onHoverName(imageName);
+    props.onHoverCard({ name: imageName, cardId: meta.cardId, print: meta.print });
     if (props.allowDwell) {
       setDwelling(true);
       props.onDwell(true);
@@ -1053,6 +1054,7 @@ function StackOverlay(props: {
     row: number;
     imageName: string | null;
     print: string;
+    cardId?: string;
     label: string;
     isTop: boolean;
     staged?: boolean;
@@ -1060,7 +1062,7 @@ function StackOverlay(props: {
   }) => (
     // biome-ignore lint/a11y/noStaticElementInteractions: hover reveals art / dwell
     <div
-      onMouseEnter={() => hoverEntry(opts.row, opts.imageName)}
+      onMouseEnter={() => hoverEntry(opts.row, opts.imageName, { cardId: opts.cardId, print: opts.print })}
       style={opts.style}
       class={cn(
         "absolute animate-stack-in rounded-game shadow-[0_4px_14px_rgb(0_0_0/0.55)]",
@@ -1100,14 +1102,15 @@ function StackOverlay(props: {
               return identity;
             });
             const imageName = () => (entry().kind === "spell" ? entry().label : (names().get(entry().source) ?? null));
-            // A spell on the stack has no backing permanent object (no print); an ability names its
-            // source permanent, which does.
-            const print = () => (entry().kind === "spell" ? "" : (prints().get(entry().source) ?? ""));
+            // Spell `source` is the stack object id; ability `source` is the permanent — both live in
+            // `objects` with a Printing (ADR 0031).
+            const meta = () => byId().get(entry().source) ?? { print: "", cardId: undefined };
             const isTop = () => row === props.state.stack.length - 1 && !(props.staged && props.showPileStaged);
             return stackFace({
               row,
               imageName: imageName(),
-              print: print(),
+              print: meta().print,
+              cardId: meta().cardId,
               label: entry().label,
               isTop: isTop(),
               style: {
@@ -1126,6 +1129,7 @@ function StackOverlay(props: {
               row: props.state.stack.length,
               imageName: card().name,
               print: card().print ?? "",
+              cardId: card().card_id || undefined,
               label: card().name,
               isTop: true,
               staged: true,
@@ -1192,18 +1196,23 @@ function StackOverlay(props: {
   const stripOrFullBody = () => {
     const mode = presentation();
     const items = () => {
-      const list = props.state.stack.map((entry, row) => ({
-        row,
-        imageName: entry.kind === "spell" ? entry.label : (names().get(entry.source) ?? null),
-        print: entry.kind === "spell" ? "" : (prints().get(entry.source) ?? ""),
-        label: entry.label,
-        staged: false as boolean,
-      }));
+      const list = props.state.stack.map((entry, row) => {
+        const meta = byId().get(entry.source) ?? { print: "", cardId: undefined };
+        return {
+          row,
+          imageName: entry.kind === "spell" ? entry.label : (names().get(entry.source) ?? null),
+          print: meta.print,
+          cardId: meta.cardId,
+          label: entry.label,
+          staged: false as boolean,
+        };
+      });
       if (props.staged) {
         list.push({
           row: props.state.stack.length,
           imageName: props.staged.name,
           print: props.staged.print ?? "",
+          cardId: props.staged.card_id || undefined,
           label: props.staged.name,
           staged: true,
         });
@@ -1265,6 +1274,7 @@ function StackOverlay(props: {
                 row: item.row,
                 imageName: item.imageName,
                 print: item.print,
+                cardId: item.cardId,
                 label: item.label,
                 isTop: isTop(),
                 staged: item.staged,

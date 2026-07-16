@@ -246,7 +246,7 @@ async fn resolve_deck(state: &AppState, deck_id: i64) -> Result<SeatDeck, &'stat
             let entries = serde_json::from_str(&deck.cards).map_err(|_| "CorruptDeck")?;
             (deck.commander, deck.commander_print, entries)
         };
-    legality::validate(&commander_id, &entries).map_err(|_| "IllegalDeck")?;
+    legality::validate(&commander_id, &commander_print, &entries).map_err(|_| "IllegalDeck")?;
     let commander = cards::get(&commander_id).ok_or("UnknownCard")?;
     let mut prints = std::collections::HashMap::new();
     prints.insert(commander.id.to_string(), commander_print);

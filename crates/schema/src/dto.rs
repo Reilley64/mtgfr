@@ -225,6 +225,10 @@ pub struct ObjectView {
 pub struct ModifierSourceView {
     /// Card def name — clicking inspects this catalog card.
     pub source_name: String,
+    /// Card id when resolvable (so inspect can load oracle text / default art). Empty when the
+    /// source is a synthetic label (e.g. "Goad") or the permanent has left the board.
+    #[serde(default)]
+    pub source_card_id: String,
     /// Display crumbs: `"+1/+1"`, `"Flying"`, `"goaded"`, `"controls"`, `"mana ability"`, …
     pub contributions: Vec<String>,
 }
@@ -886,6 +890,9 @@ pub struct DeckSummary {
     pub id: i64,
     pub name: String,
     pub commander: String,
+    /// Printing UUID for the commander's art (list hover preview).
+    #[serde(default)]
+    pub commander_print: String,
 }
 
 /// A deck with its full contents (the builder's edit view).

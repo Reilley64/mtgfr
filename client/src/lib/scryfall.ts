@@ -5,6 +5,7 @@
 // card-id image endpoint so localdev still works.
 
 export type ImageSize = "small" | "normal" | "large" | "png" | "art_crop";
+export type ImageFace = "front" | "back";
 
 const CDN = String(import.meta.env.VITE_CARD_CDN ?? "").replace(/\/$/, "");
 
@@ -15,17 +16,18 @@ export function cardBackUrl(): string {
 
 // The CDN path for a Scryfall Printing UUID: first two hex chars fan out the folder tree. Only
 // `large` webp exists, so the requested size is ignored when CDN is set.
-function cdnUrl(printId: string): string {
+function cdnUrl(printId: string, face: ImageFace): string {
   const a = printId[0];
   const b = printId[1];
-  return `${CDN}/large/front/${a}/${b}/${printId}.webp`;
+  return `${CDN}/large/${face}/${a}/${b}/${printId}.webp`;
 }
 
-/** Art URL for a Printing UUID. Empty print → empty URL (broken `<img>`). */
-export function imageUrlByPrint(printId: string, _size: ImageSize = "large"): string {
+/** Art URL for a Printing UUID. Empty print → empty URL (broken `<img>`). `face` selects DFC side. */
+export function imageUrlByPrint(printId: string, _size: ImageSize = "large", face: ImageFace = "front"): string {
   if (!printId) return "";
-  if (CDN) return cdnUrl(printId);
-  return `https://api.scryfall.com/cards/${printId}?format=image&version=large`;
+  if (CDN) return cdnUrl(printId, face);
+  const faceParam = face === "back" ? "&face=back" : "";
+  return `https://api.scryfall.com/cards/${printId}?format=image&version=large${faceParam}`;
 }
 
 /** Scryfall prints for a Card (oracle) id — picker metadata only; images still use CDN. */

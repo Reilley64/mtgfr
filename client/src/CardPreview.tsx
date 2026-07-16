@@ -5,7 +5,6 @@ import * as Effect from "effect/Effect";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import type { ModifierSourceView } from "~/api/generated";
-import { client } from "~/effect/client";
 import { cn } from "~/lib/cn";
 import {
   type InspectFace,
@@ -16,6 +15,7 @@ import {
   pushInspectSource,
   shownName,
 } from "~/lib/inspect";
+import { lookupCardsByIds } from "~/lib/lookupCards";
 import { splitOracleText } from "~/lib/oracleText";
 import { imageUrlByPrint } from "~/lib/scryfall";
 import { Button } from "~/ui";
@@ -23,11 +23,7 @@ import { Button } from "~/ui";
 // Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
 // the fetch rather than looking anything up by name; there is no name-based lookup anymore.
 const cardTextFamily = Atom.family((id: string) =>
-  Atom.make(
-    id === ""
-      ? Effect.succeed(null)
-      : client.lookupCards({ params: { ids: [id] } }).pipe(Effect.map((cards) => cards[0] ?? null)),
-  ),
+  Atom.make(id === "" ? Effect.succeed(null) : lookupCardsByIds([id]).pipe(Effect.map((cards) => cards[0] ?? null))),
 );
 
 const W = 320;
@@ -91,7 +87,10 @@ function TextPanel(props: {
   );
 }
 
-function ModifierLedger(props: { modifiers: ModifierSourceView[]; onSource: (name: string) => void }) {
+function ModifierLedger(props: {
+  modifiers: ModifierSourceView[];
+  onSource: (source: { name: string; cardId?: string }) => void;
+}) {
   return (
     <For each={props.modifiers}>
       {(group) => (
@@ -99,7 +98,12 @@ function ModifierLedger(props: { modifiers: ModifierSourceView[]; onSource: (nam
           <button
             type="button"
             class="cursor-pointer underline decoration-white/40 underline-offset-2 hover:decoration-white"
-            onClick={() => props.onSource(group.source_name)}
+            onClick={() =>
+              props.onSource({
+                name: group.source_name,
+                cardId: group.source_card_id || undefined,
+              })
+            }
           >
             {group.source_name}
           </button>
@@ -208,9 +212,12 @@ export function InspectDock(props: {
   });
   const canGoBack = () => history().length > 1;
   const goBack = () => setHistory(popInspectHistory);
-  const openSource = (name: string) => setHistory((h) => pushInspectSource(h, name));
+  const openSource = (source: { name: string; cardId?: string }) => setHistory((h) => pushInspectSource(h, source));
   const hasOracle = () => !!(oracle() || approximates());
   const hasMods = () => modifiers().length > 0;
+  // Pin print wins; otherwise the catalog's baked default once hydrated (modifier sources, etc.).
+  const artPrint = () => current()?.print || card()?.default_print || "";
+  const artFace = () => (face() === "back" ? "back" : "front");
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape dismisses via showModal() → onClose.
@@ -275,7 +282,7 @@ export function InspectDock(props: {
               }
             >
               <img
-                src={imageUrlByPrint(current()?.print ?? "")}
+                src={imageUrlByPrint(artPrint(), "large", artFace())}
                 alt={displayName()}
                 style={{ "--w": `${W}px` }}
                 class="w-(--w) flex-none rounded-[14px] shadow-table"

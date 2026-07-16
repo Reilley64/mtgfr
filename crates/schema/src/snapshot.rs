@@ -92,7 +92,9 @@ pub fn complete_visible(
         if seat >= extras.prints.len() {
             continue;
         }
-        if let Some(print) = extras.prints[seat].get(&obj.card_id) {
+        if let Some(print) = extras.prints[seat].get(&obj.card_id)
+            && !print.is_empty()
+        {
             obj.print = print.clone();
         }
     }
@@ -542,6 +544,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                     .into_iter()
                     .map(|group| ModifierSourceView {
                         source_name: group.source_name.to_string(),
+                        source_card_id: group.source_card_id.to_string(),
                         contributions: group
                             .contributions
                             .into_iter()
@@ -693,6 +696,35 @@ mod tests {
         );
         assert_eq!(spectating.stack_hold_remaining_ms, 1500);
         assert_eq!(spectating.players[0].username, "alice");
+    }
+
+    #[test]
+    fn complete_visible_overlays_seat_prints_and_skips_empty_values() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let shock = game.spawn_in_hand(p0, def("Shock"));
+        let shock_id = game.def_of(shock).id.to_string();
+        let default_print = game.def_of(shock).default_print.to_string();
+
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(shock_id.clone(), "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".into());
+        prints[0].insert("unused".into(), String::new());
+
+        let extras = ViewExtras {
+            prints,
+            ..ViewExtras::default()
+        };
+        let snap = complete_visible(&game, Some(p0), &extras);
+        let obj = snap.objects.iter().find(|o| o.id == shock).expect("shock");
+        assert_eq!(obj.print, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        assert_ne!(obj.print, default_print);
+
+        // An empty map value must not clobber the CardDef default print.
+        let mut empty_override = ViewExtras::default();
+        empty_override.prints[0].insert(shock_id, String::new());
+        let snap2 = complete_visible(&game, Some(p0), &empty_override);
+        let obj2 = snap2.objects.iter().find(|o| o.id == shock).expect("shock");
+        assert_eq!(obj2.print, default_print);
     }
 
     #[test]
@@ -1676,6 +1708,11 @@ mod tests {
             .iter()
             .find(|m| m.source_name == "Lightning Greaves")
             .expect("Greaves grants appear under its card name");
+        assert_eq!(
+            greaves_mod.source_card_id,
+            game.def_of(greaves).id,
+            "modifier sources carry Card id for inspect"
+        );
         assert!(
             greaves_mod.contributions.iter().any(|c| c == "Haste"),
             "expected Haste from Greaves, got {:?}",

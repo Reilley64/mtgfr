@@ -11,7 +11,18 @@ import { useAtom, useAtomResource, useAtomSet, useAtomValue } from "@effect/atom
 import { useNavigate, useParams } from "@solidjs/router";
 import * as Effect from "effect/Effect";
 import * as Atom from "effect/unstable/reactivity/Atom";
-import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, untrack } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+  untrack,
+} from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import type { CatalogCard, DeckCardEntry, DeckError, SaveDeckRequest } from "~/api/generated";
 import CardPreview from "~/CardPreview";
@@ -19,6 +30,7 @@ import ConfirmDialog from "~/ConfirmDialog";
 import { client } from "~/effect/client";
 import { useAuthGuard } from "~/guard";
 import { cn } from "~/lib/cn";
+import { lookupCardsByIds } from "~/lib/lookupCards";
 import { imageUrlByPrint, searchPrints } from "~/lib/scryfall";
 import { Button, Felt, Field, Modal } from "~/ui";
 
@@ -63,7 +75,7 @@ const deckAtomFamily = Atom.family((id: number | null) =>
 
 // Hydrate a loaded deck's cards' data (the commander/decklist need color identity). Invoked once
 // per loaded deck from the prefill effect; the caller folds the result into `known` via `remember`.
-const hydrateCardsFn = Atom.fn((ids: string[]) => client.lookupCards({ params: { ids } }));
+const hydrateCardsFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 
 // Save a deck. Every branch resolves to a problem list or `null` ("saved") — a 422 arrives as a
 // generated `MtgfrError` tag (`{Create,Update}Deck422`) carrying the `DeckError` — so the promise
@@ -85,11 +97,6 @@ const saveDeckFn = Atom.fn((req: { id: number | null; body: SaveDeckRequest }) =
     }),
   );
 });
-
-// Scryfall prints for a Card id — picker metadata only; images resolve through the CDN by print.
-const printsFamily = Atom.family((oracleId: string) =>
-  Atom.make(oracleId === "" ? Effect.succeed([]) : Effect.promise(() => searchPrints(oracleId))),
-);
 
 export default function DeckBuilder() {
   useAuthGuard();
@@ -200,12 +207,19 @@ export default function DeckBuilder() {
   createEffect(() => remember(results()?.cards));
 
   // Prefill when editing an existing deck, and hydrate its cards' data for identity/preview.
+  // Seed sticky print preferences from the saved deck so pool adds match what the list already uses.
   createEffect(() => {
     const deck = existing();
     if (!deck) return;
     setName("value", deck.name);
     setCommander({ id: deck.commander, print: deck.commander_print });
     setEntries(reconcileEntries(deck.cards));
+    setPreferredPrint(
+      produce((p) => {
+        if (deck.commander && deck.commander_print) p[deck.commander] = deck.commander_print;
+        for (const c of deck.cards) if (c.print) p[c.id] = c.print;
+      }),
+    );
     const ids = deck.cards.map((c) => c.id);
     if (deck.commander) ids.push(deck.commander);
     void hydrateCards(ids).then(remember);
@@ -247,6 +261,7 @@ export default function DeckBuilder() {
   const setCommanderPrint = (printId: string) => {
     setDirty(true);
     setCommander("print", printId);
+    if (commander.id) setPreferredPrint(commander.id, printId);
   };
 
   const openPrintPicker = (oracleId: string, onPick: (printId: string) => void) => setPrintPicker({ oracleId, onPick });
@@ -294,7 +309,11 @@ export default function DeckBuilder() {
     const items: MenuItem[] = card && BASICS.has(card.name) ? removeItems(card) : [];
     items.push({
       label: "Choose print…",
-      run: () => openPrintPicker(row.id, (printId) => setEntries(row.id, "print", printId)),
+      run: () =>
+        openPrintPicker(row.id, (printId) => {
+          setEntries(row.id, "print", printId);
+          setPreferredPrint(row.id, printId);
+        }),
     });
     return items;
   };
@@ -578,9 +597,13 @@ export default function DeckBuilder() {
 }
 
 /** Picker for a Card id's Scryfall printings — thumbs from `searchPrints`, art from the CDN by
- * print UUID. Selecting a printing hands its id to the caller and closes. */
+ * print UUID. Selecting a printing hands its id to the caller and closes. Uses `createResource`
+ * (not a cached Atom) so a failed Scryfall fetch retries when the picker reopens. */
 function PrintPicker(props: { oracleId: string; onPick: (printId: string) => void; onClose: () => void }) {
-  const [prints] = useAtomResource(() => printsFamily(props.oracleId));
+  const [prints] = createResource(
+    () => props.oracleId,
+    (id) => (id ? searchPrints(id) : Promise.resolve([])),
+  );
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: backdrop, not a control
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape isn't wired here; Close is the keyboard path

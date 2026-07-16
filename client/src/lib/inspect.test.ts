@@ -73,8 +73,15 @@ describe("inspect history", () => {
 
   it("pushes catalog-only sources and pops back to the root", () => {
     const root = { name: "Bear", prepared: false, objectId: 1 };
-    const stacked = pushInspectSource([root], "Lightning Greaves");
-    expect(stacked).toEqual([root, { name: "Lightning Greaves", prepared: false }]);
+    const stacked = pushInspectSource([root], {
+      name: "Lightning Greaves",
+      cardId: "greaves-id",
+      print: "greaves-print",
+    });
+    expect(stacked).toEqual([
+      root,
+      { name: "Lightning Greaves", prepared: false, cardId: "greaves-id", print: "greaves-print" },
+    ]);
     expect(popInspectHistory(stacked)).toEqual([root]);
     expect(popInspectHistory([root])).toEqual([root]);
   });

@@ -41,7 +41,7 @@ export default function Hand(props: {
   viewer: number;
   hiddenId: number | null; // the staged card, dimmed in place while it awaits a target
   /** Current face-up bar card under the cursor (for Alt-pin inspect owned by Board). */
-  onHoverName?: (name: string | null) => void;
+  onHoverCard?: (card: { name: string; cardId?: string; print?: string } | null) => void;
   /** Action under the cursor (or being dragged) — Board paints its `auto_tap` preview. */
   onHoverAction?: (action: ActionView | null) => void;
   onDrop: (d: ActionDrop) => void;
@@ -51,10 +51,11 @@ export default function Hand(props: {
     game.state ? game.state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === props.viewer) : [],
   );
   const handActionByObject = createMemo(() => byObject(grouped().hand));
-  // Printing UUID for a battlefield/hand/command object id (ADR 0031); "" renders a broken image —
-  // there is no name-based art source anymore, so an id without a print just shows no art.
-  const printForObject = (id: number | undefined | null): string =>
-    (id != null && game.state?.objects.find((o) => o.id === id)?.print) || "";
+  // Printing UUID / Card id for a battlefield/hand/command object (ADR 0031).
+  const objectMeta = (id: number | undefined | null): { print: string; cardId?: string } => {
+    const obj = id != null ? game.state?.objects.find((o) => o.id === id) : undefined;
+    return { print: obj?.print ?? "", cardId: obj?.card_id || undefined };
+  };
   // Hand cards plus overshadowed alternative-action tiles (cycle / suspend / discard-ability) share
   // one fan so extras sit in the same arc.
   const handSlots = createMemo(() => {
@@ -88,9 +89,9 @@ export default function Hand(props: {
   } | null>(null);
   // Track which bar card is under the cursor so Board can Alt-pin inspect it.
   const [hover, setHover] = createSignal<string | null>(null);
-  const setHoverName = (name: string | null) => {
-    setHover(name);
-    props.onHoverName?.(name);
+  const setHoverCard = (card: { name: string; cardId?: string; print?: string } | null) => {
+    setHover(card?.name ?? null);
+    props.onHoverCard?.(card);
   };
   const setHoverAction = (action: ActionView | null) => {
     props.onHoverAction?.(action);
@@ -111,7 +112,7 @@ export default function Hand(props: {
     teardown();
     // StackOverlay clears aux hover on unmount; do the same so a sticky hand name can't
     // steal Alt-inspect after Hand is torn down (eliminate / spectate).
-    setHoverName(null);
+    setHoverCard(null);
     setHoverAction(null);
   });
 
@@ -153,6 +154,7 @@ export default function Hand(props: {
   const BarCard = (p: {
     name: string;
     print: string;
+    cardId?: string;
     action: ActionView | null;
     dimmed?: boolean;
     caption?: string;
@@ -183,11 +185,11 @@ export default function Hand(props: {
         draggable={false}
         onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, e)}
         onPointerMove={() => {
-          setHoverName(p.name);
+          setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
           setHoverAction(p.action);
         }}
         onPointerLeave={() => {
-          setHoverName(hover() === p.name ? null : hover());
+          if (hover() === p.name) setHoverCard(null);
           if (!drag()) setHoverAction(null);
         }}
         class={cn(
@@ -221,7 +223,8 @@ export default function Hand(props: {
                 return (
                   <BarCard
                     name={slot.action.label.replace(/^[^:]+:\s*/, "")}
-                    print={printForObject(slot.action.object)}
+                    print={objectMeta(slot.action.object).print}
+                    cardId={objectMeta(slot.action.object).cardId}
                     action={slot.action}
                     caption={actionCaption(slot.action.kind)}
                     fan={fanTransform(i(), count())}
@@ -235,6 +238,7 @@ export default function Hand(props: {
                 <BarCard
                   name={slot.card.name}
                   print={slot.card.print ?? ""}
+                  cardId={slot.card.card_id || undefined}
                   action={action()}
                   dimmed={dimmed()}
                   caption={caption()}
@@ -253,6 +257,7 @@ export default function Hand(props: {
                   <BarCard
                     name={card.name}
                     print={card.print ?? ""}
+                    cardId={card.card_id || undefined}
                     action={action()}
                     dimmed={!action()}
                     caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
@@ -299,7 +304,8 @@ export default function Hand(props: {
             {(a, i) => (
               <BarCard
                 name={p.name(a)}
-                print={printForObject(a.object)}
+                print={objectMeta(a.object).print}
+                cardId={objectMeta(a.object).cardId}
                 action={a}
                 caption={p.caption ? a.label : undefined}
                 fan={fanTransform(i(), p.actions.length)}

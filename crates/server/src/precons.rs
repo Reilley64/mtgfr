@@ -94,6 +94,7 @@ pub fn summaries() -> Vec<DeckSummary> {
             id: d.id,
             name: d.name.clone(),
             commander: d.commander.clone(),
+            commander_print: d.commander_print.clone(),
         })
         .collect()
 }

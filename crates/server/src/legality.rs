@@ -17,9 +17,18 @@ fn is_basic(def: &engine::CardDef) -> bool {
 }
 
 /// Validate a deck for Commander legality. `Ok(())` = legal; `Err` lists every problem.
-/// `commander` and each entry's `id` are Card ids (Scryfall oracle ids).
-pub fn validate(commander: &str, cards: &[DeckCardEntry]) -> Result<(), Vec<String>> {
+/// `commander` and each entry's `id` are Card ids (Scryfall oracle ids). `commander_print` and
+/// each entry's `print` must be non-empty Printing UUIDs (art preference — ADR 0031).
+pub fn validate(
+    commander: &str,
+    commander_print: &str,
+    cards: &[DeckCardEntry],
+) -> Result<(), Vec<String>> {
     let mut problems = Vec::new();
+
+    if commander_print.is_empty() {
+        problems.push("commander is missing a print".to_string());
+    }
 
     let commander_identity = match cards::get(commander) {
         None => {
@@ -97,30 +106,26 @@ mod tests {
         }
     }
 
-    fn commander_id(name: &str) -> String {
-        cards::get_by_name(name).expect("pool card").id.to_string()
-    }
-
     #[test]
     fn a_legal_deck_validates() {
         let plains = entry("Plains", 99);
-        assert!(validate(&commander_id("Tajic, Legion's Edge"), &[plains]).is_ok());
+        let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
+        assert!(validate(cmd.id, cmd.default_print, &[plains]).is_ok());
     }
 
     #[test]
     fn wrong_size_is_a_problem() {
-        let err = validate(
-            &commander_id("Tajic, Legion's Edge"),
-            &[entry("Plains", 98)],
-        )
-        .unwrap_err();
+        let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
+        let err = validate(cmd.id, cmd.default_print, &[entry("Plains", 98)]).unwrap_err();
         assert!(err.iter().any(|p| p.contains("98")));
     }
 
     #[test]
     fn singleton_blocks_duplicates_of_non_basics() {
+        let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
         let err = validate(
-            &commander_id("Tajic, Legion's Edge"),
+            cmd.id,
+            cmd.default_print,
             &[entry("Sol Ring", 2), entry("Plains", 97)],
         )
         .unwrap_err();
@@ -130,8 +135,10 @@ mod tests {
     #[test]
     fn off_identity_is_a_problem() {
         // Tajic is RW; Deep Analysis is blue.
+        let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
         let err = validate(
-            &commander_id("Tajic, Legion's Edge"),
+            cmd.id,
+            cmd.default_print,
             &[entry("Deep Analysis", 1), entry("Plains", 98)],
         )
         .unwrap_err();
@@ -140,15 +147,22 @@ mod tests {
 
     #[test]
     fn unknown_commander_is_a_problem() {
-        let err = validate("not-a-real-oracle-id", &[entry("Plains", 99)]).unwrap_err();
+        let err = validate(
+            "not-a-real-oracle-id",
+            "00000000-0000-0000-0000-000000000000",
+            &[entry("Plains", 99)],
+        )
+        .unwrap_err();
         assert!(err.iter().any(|p| p.contains("not in the card pool")));
     }
 
     #[test]
     fn missing_print_is_a_problem() {
         let def = cards::get_by_name("Plains").unwrap();
+        let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
         let err = validate(
-            &commander_id("Tajic, Legion's Edge"),
+            cmd.id,
+            cmd.default_print,
             &[DeckCardEntry {
                 id: def.id.to_string(),
                 count: 99,
@@ -157,5 +171,12 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.iter().any(|p| p.contains("missing a print")));
+    }
+
+    #[test]
+    fn missing_commander_print_is_a_problem() {
+        let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
+        let err = validate(cmd.id, "", &[entry("Plains", 99)]).unwrap_err();
+        assert!(err.iter().any(|p| p.contains("commander is missing a print")));
     }
 }

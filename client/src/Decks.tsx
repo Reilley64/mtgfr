@@ -6,7 +6,6 @@
 
 import { useAtomRefresh, useAtomResource, useAtomSet } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
-import * as Effect from "effect/Effect";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import type { CatalogCard } from "~/api/generated";
@@ -15,15 +14,14 @@ import CardPreview from "~/CardPreview";
 import ConfirmDialog from "~/ConfirmDialog";
 import { client, succeeded } from "~/effect/client";
 import { useAuthGuard } from "~/guard";
+import { lookupCardsByIds } from "~/lib/lookupCards";
 import { Button, Felt, ListRow } from "~/ui";
 
 const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id), {})));
 const logoutFn = Atom.fn(() => succeeded(client.logout({})));
 // Commander catalog lookup, by Card id — the deck summary carries only the id (ADR 0031); we
-// hydrate names (and a default print to preview) once the deck list is in.
-const lookupCommandersFn = Atom.fn((ids: string[]) =>
-  ids.length === 0 ? Effect.succeed([]) : client.lookupCards({ params: { ids } }),
-);
+// hydrate names once the deck list is in. Art for hover comes from `commander_print` on the summary.
+const lookupCommandersFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 
 export default function Decks() {
   const user = useAuthGuard();
@@ -124,7 +122,7 @@ export default function Decks() {
                     onMouseMove={(e) =>
                       setHover({
                         id: d.commander,
-                        print: commanders()[d.commander]?.default_print,
+                        print: d.commander_print || commanders()[d.commander]?.default_print,
                         x: e.clientX,
                         y: e.clientY,
                       })
