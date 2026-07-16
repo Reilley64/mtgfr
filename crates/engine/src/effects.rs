@@ -774,6 +774,16 @@ impl Game {
             // is the real-stack-object primitive; migrate to it when Augusta's "you do" condition
             // (its own exile fan-out, not a token creation) is threadable through it.
             Effect::EachPlayerExilesFromGraveyard => self.begin_each_player_exile(source),
+            // Relic of Progenitus: "Target player exiles a card from their graveyard." The one-
+            // player special case of the fan-out above — no `follow_up`, no payoff.
+            Effect::TargetPlayerExilesFromGraveyard { .. } => {
+                let Some(Target::Player(player)) = target else {
+                    panic!(
+                        "target player exiles from graveyard resolves with a chosen player target"
+                    );
+                };
+                self.begin_target_player_exile(player, source)
+            }
             // The caster-directed keep-one-of-each-type sweep (Tragic Arrogance): for each player,
             // the caster picks up to one nonland permanent of each type to keep; the rest are
             // sacrificed. Pauses per player on a CasterKeepPermanents choice answered by the caster.
@@ -3569,6 +3579,7 @@ impl Game {
             | Effect::SearchLibrary { .. }
             | Effect::EachPlayerSacrifices { .. }
             | Effect::EachPlayerExilesFromGraveyard
+            | Effect::TargetPlayerExilesFromGraveyard { .. }
             | Effect::CasterKeepsOneOfEachTypePerPlayer
             | Effect::EachPlayerControllerChoosesCounterTarget
             | Effect::CouncilsDilemmaVote { .. }

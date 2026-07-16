@@ -1,0 +1,26 @@
+# This creature gets +1/+1 for each enchantment on the battlefield.
+name = "Yavimaya Enchantress"
+otags = ["synergy-enchantment"]
+oracle = "This creature gets +1/+1 for each enchantment on the battlefield."
+set = "soc"
+subtypes = ["Human", "Druid"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# This creature gets +1/+1 for each enchantment on the battlefield.
+[[abilities]]
+timing = "static"
+
+# This creature gets +1/+1 for each enchantment on the battlefield.
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+power = { per_permanent = { types = "enchantment" } }
+toughness = { per_permanent = { types = "enchantment" } }

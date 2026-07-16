@@ -108,6 +108,9 @@ impl Game {
                     if self.suspend_listable(player, id, available) {
                         actions.push(MeaningfulAction::Suspend { card: id });
                     }
+                    if self.cast_face_down_listable(player, id, available) {
+                        actions.push(MeaningfulAction::CastFaceDown { card: id });
+                    }
                 }
                 // A non-mana activated ability the player can afford, or a prepared back-face cast. (CR 602, CR 601, CR 113)
                 Object::Permanent(p) => {
@@ -215,6 +218,34 @@ impl Game {
         Self::affordable_from(available, *suspend.cost, None)
     }
 
+    /// Whether `card` may be offered a face-down morph cast (CR 702.37b): priority holder, a hand
+    /// card with a morph cost, castable at creature-spell (sorcery) speed, and the flat {3}
+    /// affordable. The real cost is irrelevant — a face-down cast always pays {3}.
+    fn cast_face_down_listable(
+        &self,
+        player: PlayerId,
+        card: ObjectId,
+        available: ManaPool,
+    ) -> bool {
+        if player != self.priority {
+            return false;
+        }
+        let Object::Card(c) = &self.objects[card as usize] else {
+            return false;
+        };
+        if c.zone != Zone::Hand || c.owner != player || c.def.morph.is_none() {
+            return false;
+        }
+        if !self.can_take_sorcery_speed_action(player) {
+            return false;
+        }
+        let face_down_cost = Cost {
+            generic: 3,
+            ..Cost::FREE
+        };
+        Self::affordable_from(available, face_down_cost, None)
+    }
+
     /// Whether `card` may be offered as an Encore action (CR 702.140): priority holder, in the
     /// owner's graveyard with an affordable encore cost, at sorcery speed (CR 702.140b — active
     /// player, a main phase, empty stack).
@@ -259,7 +290,10 @@ impl Game {
         if !matches!(perm.def.kind, CardKind::Creature { .. }) {
             return false;
         }
-        Self::affordable_from(available, perm.def.cost, None)
+        // Morph turns up for its morph cost (CR 702.37c); a manifest for its printed cost — the
+        // same fork as `Game::turn_face_up`.
+        let cost = perm.def.morph.unwrap_or(perm.def.cost);
+        Self::affordable_from(available, cost, None)
     }
 
     /// Whether `source` may offer a prepared back-face cast in the action list (timing +
@@ -1222,6 +1256,7 @@ mod permanent_filter_tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
             delve: false,
             escape: None,
             retrace: false,

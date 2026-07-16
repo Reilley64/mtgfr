@@ -422,6 +422,7 @@ impl Game {
                 strive_count,
                 replicate_count,
                 bestowed: false,
+                face_down: false,
             },
         );
         if from_command {
@@ -1043,10 +1044,11 @@ impl Game {
         Ok(events)
     }
 
-    /// Turn a face-down manifested permanent face up (CR 701.34e — Reality Shift's manifest): a
-    /// special action (no stack) usable any time its controller has priority. Pay the hidden
-    /// creature card's mana cost, then clear the face-down flag to reveal it. Only a creature card
-    /// may be turned face up (a noncreature manifest stays a 2/2 forever).
+    /// Turn a face-down permanent face up: a special action (no stack) usable any time its
+    /// controller has priority. Pay the reveal cost — a morph card's *morph* cost (CR 702.37c) if
+    /// it has one, otherwise a manifest's hidden *printed* cost (CR 701.34e — Reality Shift) — then
+    /// clear the face-down flag to reveal it. Only a creature card may be turned face up (a
+    /// noncreature manifest stays a 2/2 forever).
     pub(crate) fn turn_face_up(
         &mut self,
         player: PlayerId,
@@ -1065,7 +1067,13 @@ impl Game {
         let CardKind::Creature { .. } = perm.def.kind else {
             return Err(Reject::CannotActivate);
         };
-        let cost = perm.def.cost;
+        // A morph card turns up for its morph cost (CR 702.37c); a manifest (no morph) pays the
+        // hidden card's printed cost (CR 701.34e).
+        // ponytail: a manifested *morph* card (CR 702.37j — pay either the {3}-back manifest turn
+        // or the morph cost) isn't modeled; no pool card manifests a morph card, so a `morph`
+        // card here was always a morph cast and its morph cost is correct. Add the dual-cost fork
+        // when a card first manifests a morph card.
+        let cost = perm.def.morph.unwrap_or(perm.def.cost);
 
         // Pay the hidden card's mana cost (auto-tapping lands; an unpayable cost rejects before the
         // reveal), then flip it face up.
@@ -1358,6 +1366,72 @@ impl Game {
                 strive_count: 0,
                 replicate_count: 0,
                 bestowed: true,
+                face_down: false,
+            },
+        );
+        // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
+        self.consecutive_passes = 0;
+        self.priority = player;
+        Ok(events)
+    }
+
+    /// Cast a hand card face down as a 2/2 creature for {3} (CR 702.37b — morph). Any card whose
+    /// [`CardDef::morph`] is `Some` may be cast this way, paying a flat generic {3} (independent
+    /// of the card's morph cost, which is what turns it face up later). It lands as a face-down
+    /// creature spell → face-down permanent (CR 708.2: a 2/2 colorless creature with no name,
+    /// types, or abilities until turned up). Cast at ordinary creature-spell timing (sorcery
+    /// speed).
+    ///
+    /// ponytail: a flat {3}, not routed through `cast_cost` — no cost reducer / ward pipeline
+    /// interacts with a face-down cast (its real cost is hidden). Route through `cast_cost` if a
+    /// pool card ever reduces the face-down cast cost.
+    pub(crate) fn cast_face_down(
+        &mut self,
+        player: PlayerId,
+        card: ObjectId,
+    ) -> Result<Vec<Event>, Reject> {
+        // Casting requires priority (CR 117.1a).
+        if player != self.priority {
+            return Err(Reject::NotYourPriority);
+        }
+        // A morph card is cast face down from its owner's hand.
+        if self.playable_zone(card, player) != Some(Zone::Hand) {
+            return Err(Reject::NotCastable);
+        }
+        if self.def_of(card).morph.is_none() {
+            return Err(Reject::NotCastable);
+        }
+        // A face-down creature spell obeys creature-spell timing — sorcery speed only.
+        if !self.can_take_sorcery_speed_action(player) {
+            return Err(Reject::WrongTiming);
+        }
+        // CR 702.37b: the face-down cast cost is a flat generic {3}, not the card's printed or
+        // morph cost. Settle first — the last fallible step, so an unpayable {3} rejects with the
+        // card still in hand.
+        let face_down_cost = Cost {
+            generic: 3,
+            ..Cost::FREE
+        };
+        let mut events = Vec::new();
+        self.settle_payment(player, face_down_cost, None, None, &mut events)?;
+        let spell = self.next_object_id();
+        self.push_apply(
+            &mut events,
+            Event::SpellCast {
+                spell,
+                from: card,
+                controller: player,
+                target: None,
+                x: 0,
+                modes: Modes::default(),
+                flashback: false,
+                escape: false,
+                sacrifice_count: 0,
+                kicked: false,
+                strive_count: 0,
+                replicate_count: 0,
+                bestowed: false,
+                face_down: true,
             },
         );
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)

@@ -1064,8 +1064,21 @@ impl Game {
                 };
                 (*cost, None, None)
             }
-            // Turning a manifest face up pays its hidden creature card's own mana cost (CR 701.34e).
-            MeaningfulAction::TurnFaceUp { permanent } => (self.def_of(permanent).cost, None, None),
+            // Turning face up pays a morph card's morph cost (CR 702.37c), else a manifest's
+            // hidden printed cost (CR 701.34e) — the same fork as `Game::turn_face_up`.
+            MeaningfulAction::TurnFaceUp { permanent } => {
+                let def = self.def_of(permanent);
+                (def.morph.unwrap_or(def.cost), None, None)
+            }
+            // A face-down morph cast pays a flat generic {3} (CR 702.37b).
+            MeaningfulAction::CastFaceDown { .. } => (
+                Cost {
+                    generic: 3,
+                    ..Cost::FREE
+                },
+                None,
+                None,
+            ),
             MeaningfulAction::Activate { source, ability } => {
                 let Ok((_, cost)) = self.ability_activation_gate(player, source, ability) else {
                     return Vec::new();
@@ -1480,6 +1493,7 @@ mod tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
             delve: false,
             escape: None,
             retrace: false,

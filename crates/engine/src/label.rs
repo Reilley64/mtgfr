@@ -42,6 +42,7 @@ fn amount_label(amount: Amount) -> String {
         Amount::LifeGainedThisTurn => "life gained this turn".to_string(),
         Amount::SpellsCastThisTurn => "spells cast this turn".to_string(),
         Amount::CardsInTargetPlayerHand => "1 per card in target opponent's hand".to_string(),
+        Amount::CardsInYourHand => "1 per card in your hand".to_string(),
         Amount::CommanderCastsFromCommandZone => {
             "the number of times they've cast their commander from the command zone".to_string()
         }
@@ -1079,6 +1080,9 @@ impl Effect {
             }
             Effect::EachPlayerExilesFromGraveyard => {
                 "Each player exiles a card from their graveyard".to_string()
+            }
+            Effect::TargetPlayerExilesFromGraveyard { .. } => {
+                "Target player exiles a card from their graveyard".to_string()
             }
             Effect::CasterKeepsOneOfEachTypePerPlayer => {
                 "For each player, you choose an artifact, a creature, an enchantment, and a \

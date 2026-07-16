@@ -43,6 +43,10 @@ pub enum Trigger {
     /// When this permanent enters the battlefield (ETB). Spelled `"etb"` in TOML (`"etb_triggered"`
     /// is an accepted alias — see `de::TriggerTag`).
     Etb,
+    /// When this permanent is turned face up (CR 702.37f — a morph/megamorph turned-face-up
+    /// trigger). Fires off [`Event::TurnedFaceUp`] by scanning the now-revealed object's own
+    /// abilities. Spelled `"turned_face_up"` in TOML.
+    TurnedFaceUp,
     /// When this creature is declared as an attacker.
     Attacks,
     /// When this creature dies (moves from the battlefield to the graveyard, or — for a

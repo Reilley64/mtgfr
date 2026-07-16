@@ -544,6 +544,14 @@ pub struct CardDef {
     /// `None` for a card without bestow. `[bestow]` in TOML, the same `[cost]`-table shape as
     /// [`Self::echo`].
     pub bestow: Option<Cost>,
+    /// Morph (CR 702.37 — Willbender): "You may cast this card face down as a 2/2 creature for
+    /// {3}. Turn it face up any time for its morph cost." `None` for a card without morph.
+    /// `Some(cost)` is the card's *morph cost*: casting the card face down instead pays a flat
+    /// generic {3} (CR 702.37b — [`Intent::CastFaceDown`]), and this cost is what turns the
+    /// resulting face-down permanent face up ([`Game::turn_face_up`], CR 702.37c) rather than the
+    /// printed cost a manifest pays. `[morph]` in TOML, the same `[cost]`-table shape as
+    /// [`Self::bestow`].
+    pub morph: Option<Cost>,
     /// Delve (CR 702.66): "Each card you exile from your graveyard while casting this spell pays
     /// for {1}." `true` makes the card's cast accept a player-chosen number of graveyard cards to
     /// exile as part of casting (from hand, unlike flashback/escape), each reducing the cast's
@@ -932,6 +940,7 @@ pub fn treasure_token() -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -984,6 +993,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -1038,6 +1048,7 @@ pub(crate) fn illusion_token() -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -1175,6 +1186,11 @@ pub(crate) struct Spell {
     /// creature, and the resulting permanent carries [`Permanent::bestowed`]. `false` for an
     /// ordinary creature cast.
     pub(crate) bestowed: bool,
+    /// Whether this spell was cast face down (CR 702.37b — a morph cast, [`Intent::CastFaceDown`]):
+    /// a 2/2 colorless creature spell whose real characteristics are hidden. Copied onto the
+    /// resulting [`Permanent::face_down`] when the spell resolves ([`Event::PermanentEntered`]),
+    /// so the permanent enters face down (CR 708). `false` for an ordinary face-up cast.
+    pub(crate) face_down: bool,
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.
@@ -1403,6 +1419,10 @@ pub(crate) struct Permanent {
 /// One slot in the object arena. A card's slot becomes [`Object::Moved`] when it changes
 /// zones (a fresh slot/id is minted for its new form); `to` points at that new id so an
 /// old id's lineage can still be followed (see [`Game::zone_of`]).
+// The `Spell`/`Permanent` variants inline a whole `CardDef` and are near-equal in size (~2.3 KB);
+// the id-indexed object arena needs `Object: Copy`, so boxing a variant isn't an option — the same
+// carve-out the sibling `Copy` enums in this crate take.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Object {
     Card(Card),

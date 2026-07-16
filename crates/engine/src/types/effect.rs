@@ -58,6 +58,12 @@ pub enum Amount {
     /// like [`CommanderCastsFromCommandZone`](Self::CommanderCastsFromCommandZone) — the ability
     /// must have chosen a `Target::Player`.
     CardsInTargetPlayerHand,
+    /// The number of cards in the effect's own controller's hand (Empyrial Armor's "Enchanted
+    /// creature gets +1/+1 for each card in your hand") — the no-target, "your hand" sibling of
+    /// [`CardsInTargetPlayerHand`](Self::CardsInTargetPlayerHand). Read live off the controller
+    /// (not the resolving spell's target) at every characteristic recompute, so a
+    /// [`Effect::GrantToAttached`] static using it tracks the hand as it grows or shrinks.
+    CardsInYourHand,
     /// How many times the *targeted* player has cast their commander from the command zone
     /// this game (CR "cast a commander from the command zone this game") — Commander's
     /// Insight's "an additional card for each time they've cast a commander from the command
@@ -2446,6 +2452,12 @@ pub enum Effect {
     /// answered (the same deferred-tail path a pausing sequence step uses) — so, unlike
     /// [`EachPlayerSacrifices`](Self::EachPlayerSacrifices), this carries no `follow_up` of its own.
     EachPlayerExilesFromGraveyard,
+    /// "Target player exiles a card from their graveyard" (Relic of Progenitus): the *targeted*
+    /// player, not the caster/activator, picks one card from their own graveyard — mandatory when
+    /// non-empty, a no-op when empty. Pauses on the same [`PendingChoice::ExileFromGraveyard`]
+    /// [`EachPlayerExilesFromGraveyard`](Self::EachPlayerExilesFromGraveyard) uses, with a single
+    /// player and no `remaining` — the one-player special case of that fan-out. No payoff.
+    TargetPlayerExilesFromGraveyard { target: TargetSpec },
     /// The caster-directed keep-one-of-each-type sweep (Tragic Arrogance: "For each player, you
     /// choose from among the permanents that player controls an artifact, a creature, an
     /// enchantment, and a planeswalker. Then each player sacrifices all other nonland permanents
@@ -2844,6 +2856,7 @@ impl Effect {
             | Effect::ReanimateToBattlefield { target, .. }
             | Effect::TuckFromGraveyard { target, .. }
             | Effect::Mill { target, .. }
+            | Effect::TargetPlayerExilesFromGraveyard { target }
             | Effect::GoadTarget { target }
             | Effect::CreateTokenCopy { target, .. }
             | Effect::TapTarget { target, .. }

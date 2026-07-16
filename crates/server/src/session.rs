@@ -691,6 +691,7 @@ mod tests {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,

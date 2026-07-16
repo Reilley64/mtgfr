@@ -492,6 +492,7 @@ mod tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -530,6 +531,7 @@ mod tests {
             flashback: Some(flash_cost(2)),
             echo: None,
             bestow: None,
+            morph: None,
             ..spell_def("Flashback Draw", Cost::FREE, false)
         };
         let object = game.spawn_in_graveyard(P0, def);

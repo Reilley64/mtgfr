@@ -222,6 +222,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -358,6 +359,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// absent for a card without bestow.
             #[serde(default)]
             bestow: Option<Cost>,
+            /// Morph (CR 702.37) — `[morph]` with the same `[cost]`-table shape as `[bestow]` (the
+            /// card's morph cost); absent for a card without morph.
+            #[serde(default)]
+            morph: Option<Cost>,
             /// Delve (CR 702.66) — `delve = true`; absent (`false`) for a card without delve.
             #[serde(default)]
             delve: bool,
@@ -452,6 +457,7 @@ impl<'de> Deserialize<'de> for CardDef {
             flashback: card.flashback,
             echo: card.echo,
             bestow: card.bestow,
+            morph: card.morph,
             delve: card.delve,
             escape: card.escape,
             retrace: card.retrace,
@@ -865,6 +871,7 @@ impl<'de> Deserialize<'de> for Amount {
             "life_gained_this_turn",
             "spells_cast_this_turn",
             "cards_in_target_player_hand",
+            "cards_in_your_hand",
             "commander_casts_from_command_zone",
             "creatures_died_this_turn",
             "nontoken_creatures_entered_this_turn",
@@ -917,6 +924,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
                     "spells_cast_this_turn" => Amount::SpellsCastThisTurn,
                     "cards_in_target_player_hand" => Amount::CardsInTargetPlayerHand,
+                    "cards_in_your_hand" => Amount::CardsInYourHand,
                     "commander_casts_from_command_zone" => Amount::CommanderCastsFromCommandZone,
                     "creatures_died_this_turn" => Amount::CreaturesDiedThisTurn,
                     "nontoken_creatures_entered_this_turn" => {
@@ -1413,6 +1421,7 @@ impl<'de> Deserialize<'de> for SacrificeCost {
 enum TriggerTag {
     #[serde(alias = "etb_triggered")]
     Etb,
+    TurnedFaceUp,
     Attacks,
     Dies,
     CreatureDies,
@@ -1636,6 +1645,7 @@ impl<'de> Deserialize<'de> for Ability {
         let timing = match flat.timing {
             TimingName::Trigger(tag) => Timing::Triggered(match tag {
                 TriggerTag::Etb => Trigger::Etb,
+                TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
                 TriggerTag::Attacks => Trigger::Attacks,
                 TriggerTag::Dies => Trigger::Dies,
                 TriggerTag::CreatureDies => Trigger::CreatureDies,

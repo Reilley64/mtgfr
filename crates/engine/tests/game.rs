@@ -338,6 +338,7 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     flashback: Some(flash_cost(2, [0; 5], NO_ADD)),
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -431,6 +432,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -479,6 +481,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         flashback: Some(flash_cost(1, [0; 5], NO_ADD)),
         echo: None,
         bestow: None,
+        morph: None,
         functions_in_graveyard: false,
         enchant: None,
         enchant_graveyard: false,
@@ -1276,6 +1279,7 @@ const TWO_ETB: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1346,6 +1350,7 @@ const PINGER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1405,6 +1410,7 @@ const MAY_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1481,6 +1487,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1549,6 +1556,7 @@ const LOOK_DIG: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1617,6 +1625,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1686,6 +1695,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1781,6 +1791,7 @@ const fn creature(
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -3868,6 +3879,7 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -3930,6 +3942,7 @@ const GRANT_FLYING: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -3990,6 +4003,7 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4056,6 +4070,7 @@ const DESTROY: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4122,6 +4137,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4191,6 +4207,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4256,6 +4273,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4325,6 +4343,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4393,6 +4412,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4461,6 +4481,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4526,6 +4547,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4591,6 +4613,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4641,6 +4664,7 @@ const SHROUD_CREATURE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4691,6 +4715,7 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4753,6 +4778,7 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4814,6 +4840,7 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4876,6 +4903,7 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -5319,6 +5347,7 @@ const GROWTH: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -5401,6 +5430,7 @@ const INKLING: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -5466,6 +5496,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -6471,6 +6502,7 @@ const PEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -6536,6 +6568,7 @@ const MAKE_PEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -6840,6 +6873,7 @@ const HERALD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -8577,6 +8611,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enchant_graveyard: false,
         echo: None,
         bestow: None,
+        morph: None,
     };
     let rock = CardDef {
         name: "Bare Rock (test)",
@@ -8620,6 +8655,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enchant_graveyard: false,
         echo: None,
         bestow: None,
+        morph: None,
     };
 
     let mut game = Game::new();
@@ -9805,6 +9841,7 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -10838,6 +10875,7 @@ const ANTHEM_LORD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -11455,6 +11493,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -11632,6 +11671,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -11678,6 +11718,7 @@ const TEST_FOOD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -11758,6 +11799,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -12234,6 +12276,137 @@ fn quintorius_spirit_anthem_buffs_only_spirits() {
         2,
         "a non-Spirit creature you control is untouched by the filtered anthem",
     );
+}
+
+/// A test-only creature carrying Yavimaya Enchantress's shape: "This creature gets +1/+1 for
+/// [`TEST_ENCHANTMENT`] with Flash (CR 702.8a), so a non-active player can cast it the moment
+/// they hold priority — the cross-owner anthem regression test's "player B casts a real
+/// enchantment with no A-side event" needs the caster to hold priority without owning the turn.
+const FLASH_ENCHANTMENT_TEST: CardDef = CardDef {
+    name: "Flash Enchantment (test)",
+    keywords: &[Keyword::Flash],
+    ..TEST_ENCHANTMENT
+};
+
+/// A test-only enchantment spell, free to cast, for a controller other than the count anthem's
+/// controller — Destroy Enchantment (test)'s payload for putting it back in the graveyard.
+const DESTROY_ENCHANTMENT_TEST: CardDef = CardDef {
+    name: "Destroy Enchantment (test)",
+    cost: Cost::FREE,
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    abilities: &[Ability {
+        timing: Timing::Spell,
+        effect: Effect::DestroyTarget {
+            target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ENCHANTMENT)),
+            count: TargetCount {
+                min: 1,
+                max: 1,
+                x_scaled: false,
+                sacrifice_scaled: false,
+                strive_scaled: false,
+            },
+            cant_be_regenerated: false,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..TEST_ENCHANTMENT
+};
+
+#[test]
+fn yavimaya_enchantress_counts_opponents_enchantments() {
+    // Yavimaya Enchantress (soc): "This creature gets +1/+1 for each enchantment on the
+    // battlefield" — a cross-owner count anthem. The characteristics cache invalidates
+    // owner-scoped on `PermanentEntered`/`MovedToGraveyard`, so an opponent's enchantment
+    // entering or leaving must still recompute this creature's cached P/T with no A-side event.
+    let mut game = Game::new();
+    let enchantress = game.spawn_on_battlefield(PlayerId(0), card("Yavimaya Enchantress"));
+    assert_eq!(
+        game.power(enchantress),
+        1,
+        "no enchantments on the battlefield yet — base 1/1"
+    );
+    assert_eq!(game.toughness(enchantress), 1);
+
+    // Player B (an opponent) casts and resolves an enchantment — no A-side event at all. Player A
+    // passes priority (still their own turn) so B can act; B's card carries Flash so a
+    // non-active player holding priority can legally cast it (CR 602.8a).
+    let opponents_enchantment = game.spawn_in_hand(PlayerId(1), FLASH_ENCHANTMENT_TEST);
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: opponents_enchantment,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    let events = resolve_top_of_stack_events(&mut game);
+    let opponents_enchantment = events
+        .iter()
+        .find_map(|e| match e {
+            Event::PermanentEntered { permanent, .. } => Some(*permanent),
+            _ => None,
+        })
+        .expect("the opponent's enchantment entered the battlefield");
+    assert_eq!(
+        game.zone_of(opponents_enchantment),
+        Zone::Battlefield,
+        "the opponent's enchantment resolved onto the battlefield"
+    );
+
+    assert_eq!(
+        game.power(enchantress),
+        2,
+        "an opponent's enchantment entering the battlefield still moves the cross-owner count"
+    );
+    assert_eq!(game.toughness(enchantress), 2);
+
+    // Player A destroys the opponent's enchantment — the buff must drop back.
+    let destroy_spell = game.spawn_in_hand(PlayerId(0), DESTROY_ENCHANTMENT_TEST);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: destroy_spell,
+        target: Some(Target::Object(opponents_enchantment)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(opponents_enchantment),
+        Zone::Graveyard,
+        "the opponent's enchantment was destroyed"
+    );
+
+    assert_eq!(
+        game.power(enchantress),
+        1,
+        "the opponent's enchantment leaving the battlefield drops the buff back"
+    );
+    assert_eq!(game.toughness(enchantress), 1);
 }
 
 /// A test-only creature carrying Balefire Liege's color-split anthem shape: "Other red creatures
@@ -14564,6 +14737,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -15124,6 +15298,7 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -15192,6 +15367,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -15488,6 +15664,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -15733,6 +15910,7 @@ const DIES_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -16187,6 +16365,7 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -16285,6 +16464,7 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -16413,6 +16593,7 @@ const CREATURE_MV3: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -16539,6 +16720,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17089,6 +17271,7 @@ const UPKEEP_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17171,6 +17354,7 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17570,6 +17754,7 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17673,6 +17858,7 @@ const END_STEP_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17748,6 +17934,7 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17855,6 +18042,7 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17911,6 +18099,7 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18006,6 +18195,7 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18314,6 +18504,7 @@ const INSTANT_FILLER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18378,6 +18569,7 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18476,6 +18668,7 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18575,6 +18768,7 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18621,6 +18815,7 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -19014,6 +19209,7 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -19521,6 +19717,7 @@ const COUNTER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -20992,6 +21189,7 @@ const FLIGHT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -21099,6 +21297,7 @@ const MUTATION: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -21380,6 +21579,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -22867,6 +23067,7 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -22940,6 +23141,7 @@ const PLAIN_AURA: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -23150,6 +23352,34 @@ fn sages_reverie_draws_and_pumps_per_aura_you_control() {
         game.power(host),
         2 + 3,
         "the static grows live as a third Aura attaches"
+    );
+    assert_eq!(game.toughness(host), 2 + 3);
+}
+
+#[test]
+fn empyrial_armor_tracks_hand_size() {
+    // Empyrial Armor (soc): "Enchant creature. Enchanted creature gets +1/+1 for each card in
+    // your hand."
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(0), VANILLA); // 2/2
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let armor = game.spawn_in_hand(PlayerId(0), card("Empyrial Armor"));
+    cast_and_resolve(&mut game, armor, Some(Target::Object(host))); // Empyrial Armor leaves hand
+
+    assert_eq!(
+        game.power(host),
+        2 + 2,
+        "+1/+1 for each of the two cards left in hand once Empyrial Armor itself was cast"
+    );
+    assert_eq!(game.toughness(host), 2 + 2);
+
+    // Live tracking: a card entering hand grows the buff without touching the attachment.
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    assert_eq!(
+        game.power(host),
+        2 + 3,
+        "the static reads hand size live as it grows, no re-attach needed"
     );
     assert_eq!(game.toughness(host), 2 + 3);
 }
@@ -24298,6 +24528,7 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -24997,6 +25228,7 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -25829,6 +26061,152 @@ fn millikin_ability_illegal_with_an_empty_library() {
         }),
         Err(Reject::CannotActivate),
         "an empty library can't pay a \"mill a card\" cost"
+    );
+}
+
+// ── Target-player graveyard exile (Relic of Progenitus's "{T}: Target player exiles a card from
+// their graveyard.") ──────────────────────────────────────────────────────────────────────────
+
+/// A test-only artifact whose one ability is Relic of Progenitus's "{T}: Target player exiles a
+/// card from their graveyard." — isolates the single-target exile step from Relic's second
+/// (exile-self) ability.
+const RELIC_SHAPED_TARGET_EXILE: CardDef = CardDef {
+    abilities: &[Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            return_self: false,
+            mill_self: 0,
+            exile_self: false,
+        }),
+        effect: Effect::TargetPlayerExilesFromGraveyard {
+            target: TargetSpec::Player,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        cost: Cost::FREE,
+        condition: None,
+    }],
+    ..artifact("Relic-Shaped Target Exile (test)", 1)
+};
+
+#[test]
+fn relic_of_progenitus_target_player_exiles_from_graveyard() {
+    // "{T}: Target player exiles a card from their graveyard." The TARGETED player, not the
+    // activator, picks which card leaves their own graveyard — mandatory when it's non-empty.
+    let mut game = Game::new();
+    let relic = game.spawn_on_battlefield(PlayerId(0), RELIC_SHAPED_TARGET_EXILE);
+    let keep = game.spawn_in_graveyard(PlayerId(1), VANILLA);
+    let exile = game.spawn_in_graveyard(PlayerId(1), card("Forest"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: relic,
+        ability_index: 0,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("P0 can activate targeting P1");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        graveyard_exile_chooser(&game),
+        Some(PlayerId(1)),
+        "the targeted player picks, not the activator"
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![exile],
+    })
+    .expect("a legal graveyard-exile answer");
+
+    assert_eq!(
+        game.zone_of(exile),
+        Zone::Exile,
+        "the chosen card is exiled"
+    );
+    assert_eq!(game.zone_of(keep), Zone::Graveyard, "the other card stays");
+    assert!(
+        game.pending_choice().is_none(),
+        "no payoff — the single-player fan-out completes"
+    );
+}
+
+#[test]
+fn relic_of_progenitus_target_player_exiles_from_graveyard_is_a_no_op_on_an_empty_graveyard() {
+    let mut game = Game::new();
+    let relic = game.spawn_on_battlefield(PlayerId(0), RELIC_SHAPED_TARGET_EXILE);
+    // P1's graveyard is empty.
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: relic,
+        ability_index: 0,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("P0 can activate targeting P1");
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "an empty graveyard is a no-op — no pause"
+    );
+}
+
+#[test]
+fn relic_of_progenitus_exile_self_exiles_all_graveyards_and_draws_a_card() {
+    // The real card's second ability: "{1}, Exile this artifact: Exile all graveyards. Draw a
+    // card." — proves the printed card's cost/effect wiring, not just the isolated fan-out step.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[VANILLA]); // a card to draw — a fresh test game's library is empty
+    let relic = game.spawn_on_battlefield(PlayerId(0), card("Relic of Progenitus"));
+    let own_gy = game.spawn_in_graveyard(PlayerId(0), card("Mountain"));
+    let their_gy = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: relic,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("{1}, Exile this artifact is payable");
+    assert_eq!(
+        game.zone_of(relic),
+        Zone::Exile,
+        "Relic of Progenitus exiles itself to pay the cost"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(own_gy),
+        Zone::Exile,
+        "every graveyard is exiled"
+    );
+    assert_eq!(
+        game.zone_of(their_gy),
+        Zone::Exile,
+        "every graveyard is exiled"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before + 1,
+        "the activator draws a card"
     );
 }
 
@@ -27760,6 +28138,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -28360,6 +28739,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -28532,6 +28912,7 @@ const REPLENISH: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -31358,6 +31739,7 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -31533,6 +31915,7 @@ const MELODY: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -32200,6 +32583,7 @@ const CHOOSE_TWO: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -32515,6 +32899,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -32871,6 +33256,7 @@ const FIGHT_SPELL: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34084,6 +34470,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34419,6 +34806,7 @@ static PACK_A_PUNCH: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34481,6 +34869,7 @@ static KIROL: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34743,6 +35132,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34797,6 +35187,7 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34874,6 +35265,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34927,6 +35319,7 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -35531,6 +35924,7 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -35595,6 +35989,7 @@ static DIRGUR_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -35990,6 +36385,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -36848,6 +37244,7 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -38110,6 +38507,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -39609,6 +40007,7 @@ const MASS_SHOCK: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -39667,6 +40066,7 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -39819,6 +40219,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -40435,6 +40836,7 @@ const MAKE_TREASURES: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -40627,6 +41029,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -40683,6 +41086,7 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -40808,6 +41212,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -40970,6 +41375,7 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41045,6 +41451,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41301,6 +41708,7 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41371,6 +41779,7 @@ const ROOTHA_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41552,6 +41961,7 @@ const RIONYA_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41781,6 +42191,7 @@ const IMPULSE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41970,6 +42381,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -42221,6 +42633,7 @@ const MODAL_DRAGON: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -43595,6 +44008,7 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -43683,6 +44097,7 @@ macro_rules! amount_spell {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -43866,6 +44281,7 @@ macro_rules! hydra_with_etb {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -44690,6 +45106,7 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -46575,6 +46992,7 @@ const TEST_STEELBANE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -46860,6 +47278,7 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -46939,6 +47358,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 flashback: None,
                 echo: None,
                 bestow: None,
+                morph: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -46975,6 +47395,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -47040,6 +47461,7 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -47625,6 +48047,7 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -48045,6 +48468,7 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -49376,6 +49800,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -49473,6 +49898,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -49542,6 +49968,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -50281,6 +50708,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -51798,6 +52226,7 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -53268,6 +53697,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -54107,6 +54537,7 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -54624,6 +55055,7 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -58087,6 +58519,7 @@ const TEST_CLASS: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -59497,6 +59930,129 @@ fn manifest_noncreature_cannot_be_turned_face_up() {
             .iter()
             .any(|a| matches!(a, MeaningfulAction::TurnFaceUp { .. })),
         "a face-down noncreature card is never offered the turn-face-up action"
+    );
+}
+
+// --- Morph (CR 702.37 — cast a card face down as a 2/2 for {3}, turn up for its morph cost) ---
+
+/// A "when this is turned face up, draw a card" ability (CR 702.37f — a morph turned-face-up
+/// trigger), for the synthetic morph creature below.
+const TURNED_FACE_UP_DRAW: Ability = Ability {
+    timing: Timing::Triggered(Trigger::TurnedFaceUp),
+    effect: Effect::DrawCards {
+        count: Amount::Fixed(1),
+    },
+    optional: false,
+    min_level: 0,
+    once_each_turn: false,
+    condition: None,
+    cost: Cost::FREE,
+};
+
+/// A synthetic morph creature: printed a 4/4 for {5}, with `Morph {1}{U}` and a "when turned face
+/// up, draw a card" trigger — distinct printed cost ({5}), morph cost ({1}{U}), and face-down
+/// cost ({3}) so each is observably different.
+const MORPH_CREATURE: CardDef = CardDef {
+    cost: flash_cost(5, [0, 0, 0, 0, 0], NO_ADD),
+    morph: Some(flash_cost(1, [0, 1, 0, 0, 0], NO_ADD)),
+    abilities: &[TURNED_FACE_UP_DRAW],
+    ..creature("Morph Test Creature", 4, 4, &[])
+};
+
+/// Casting a morph card face down (CR 702.37b) pays the generic {3} face-down cost — not the
+/// card's printed cost — and lands a face-down 2/2 colorless creature (CR 708.2), its real name,
+/// types, and subtypes hidden.
+#[test]
+fn morph_cast_face_down_is_a_2_2() {
+    let mut game = TestGame::new();
+    let card = game.spawn_in_hand(PlayerId(0), MORPH_CREATURE);
+    game.fund_mana(PlayerId(0));
+    let before = total_mana(&game, PlayerId(0));
+
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card,
+    })
+    .unwrap();
+    assert_eq!(
+        before - total_mana(&game, PlayerId(0)),
+        3,
+        "casting face down pays the flat {{3}} morph cast cost, not the printed {{5}}"
+    );
+    resolve_top_of_stack(&mut game);
+
+    let perm = game.current_id(card);
+    assert_eq!(
+        game.zone_of(perm),
+        Zone::Battlefield,
+        "the face-down spell resolves onto the battlefield"
+    );
+    assert!(game.is_face_down(perm), "a morph cast enters face down");
+    assert_eq!(
+        (game.power(perm), game.toughness(perm)),
+        (2, 2),
+        "a face-down permanent is a 2/2 (CR 708.2), not its printed 4/4"
+    );
+    assert!(
+        game.effective_types(perm).intersects(TypeSet::CREATURE),
+        "a face-down permanent is a creature"
+    );
+    assert!(
+        game.effective_subtypes(perm).is_empty(),
+        "a face-down permanent exposes no printed subtypes"
+    );
+}
+
+/// A morph-cast face-down permanent turns face up for its **morph** cost (CR 702.37c — {1}{U},
+/// not the printed {5}), revealing its real characteristics and firing its turned-face-up trigger
+/// (CR 702.37f).
+#[test]
+fn morph_turned_face_up_pays_morph_cost_and_triggers() {
+    let mut game = TestGame::new();
+    let card = game.spawn_in_hand(PlayerId(0), MORPH_CREATURE);
+    // A library to draw from when the turned-face-up trigger fires.
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA]);
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let perm = game.current_id(card);
+    assert!(game.is_face_down(perm));
+
+    let lib_before = game.library_size(PlayerId(0));
+    let mana_before = total_mana(&game, PlayerId(0));
+    assert!(
+        game.meaningful_actions(PlayerId(0))
+            .contains(&MeaningfulAction::TurnFaceUp { permanent: perm }),
+        "the controller may turn the face-down permanent up"
+    );
+    game.submit(Intent::TurnFaceUp {
+        player: PlayerId(0),
+        permanent: perm,
+    })
+    .unwrap();
+    assert_eq!(
+        mana_before - total_mana(&game, PlayerId(0)),
+        2,
+        "turning up pays the {{1}}{{U}} morph cost (2 mana), not the printed {{5}}"
+    );
+
+    assert!(!game.is_face_down(perm), "the permanent is now face up");
+    assert_eq!(
+        (game.power(perm), game.toughness(perm)),
+        (4, 4),
+        "the real 4/4 characteristics are revealed"
+    );
+    // Resolve the turned-face-up draw trigger.
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        lib_before - 1,
+        "the turned-face-up trigger drew a card"
     );
 }
 

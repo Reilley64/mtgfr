@@ -47,6 +47,13 @@ impl Game {
                     //   landfall watch *any other* permanent's entry, not their own.
                     self.queue_permanent_enters_triggers(permanent);
                 }
+                // Turned face up (CR 702.37f): scan the now-revealed permanent's own abilities for
+                // a turned-face-up trigger. The flag is already cleared (the apply ran first), so
+                // its real abilities are visible — the same self-scan idiom as the `Etb` above,
+                // but not entering the battlefield, so no watch-others enters triggers.
+                Event::TurnedFaceUp { permanent } => {
+                    self.queue_self_trigger(permanent, Trigger::TurnedFaceUp);
+                }
                 Event::TokenCreated {
                     token,
                     controller,
@@ -2789,6 +2796,8 @@ impl Game {
                     "a target-player-hand amount resolves with a chosen player target, got {other:?}"
                 ),
             },
+            // A live read off the effect's controller (Empyrial Armor) — no target involved.
+            Amount::CardsInYourHand => self.hand_of(controller).len() as i32,
             // ponytail: reads the single commander's counter (matches the shared command_casts
             // tax counter, apply.rs). A partner-commander pair would need to sum both commanders'
             // counts; no soc-pool player has more than one commander.

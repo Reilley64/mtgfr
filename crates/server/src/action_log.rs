@@ -208,6 +208,7 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::Suspend { card, .. } => format!("suspend {card}"),
         WireIntent::Encore { card, .. } => format!("encore {card}"),
         WireIntent::TurnFaceUp { permanent, .. } => format!("turn-face-up {permanent}"),
+        WireIntent::CastFaceDown { card, .. } => format!("cast-face-down {card}"),
         WireIntent::CastPrepared { source, target, .. } => {
             format!("cast-prepared {source}>{}", opt(target))
         }

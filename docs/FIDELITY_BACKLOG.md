@@ -1283,12 +1283,17 @@ the target pre-tuck like Swords to Plowshares' rider) and `Amount::SacrificedCre
 (Miren's "gain life equal to the sacrificed creature's toughness" — the `SacrificedCreaturePower`
 context-fill, toughness side). *Cards:* condemn, miren_the_moaning_well.
 
-### 137. `cards-in-hand-amount` — 1 card, S
+### 137. `cards-in-hand-amount` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 `Amount::CardsInYourHand` — the effect controller's own live hand count (the only hand-count arm
 today is `CardsInTargetPlayerHand`, which needs a player target). Read live on every
 characteristic recompute so Empyrial Armor's `grant_to_attached` power/toughness track the hand.
 *Cards:* empyrial_armor.
+
+**Landed:** `Amount::CardsInYourHand` reads `hand_of(controller).len()` live at every characteristic
+recompute. Fully faithful (no note): empyrial_armor. Also fixed a latent characteristics-cache gap —
+`CardDrawn`/`SearchedToHand`/`SpellCast` didn't invalidate the caster's cache, so any hand-size
+static would go stale on a real draw/tutor/cast; now owner-scoped invalidated.
 
 ### 138. `global-anthem-scope` — 1 card, S
 Depends on: nothing.
@@ -1320,12 +1325,17 @@ it into your hand." *Sketch:* a `rest_dest = "hand"` arm on `reveal_top_cards` (
 "land", matched_dest "battlefield") — the non-match routes to hand instead of bottom; no pause,
 fully deterministic. *Cards:* coiling_oracle.
 
-### 142. `target-player-graveyard-exile` — 1 card, S
+### 142. `target-player-graveyard-exile` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 "Target player exiles a card from their graveyard" — the targeted player (not the caster) picks
 one card from their own graveyard, mandatory when non-empty. *Sketch:* a player-targeted effect
 pausing on the picked player like `each_player_exiles_from_graveyard`'s per-player step, single
 player, no payoff. *Cards:* relic_of_progenitus.
+
+**Landed:** `Effect::TargetPlayerExilesFromGraveyard { target }` — the one-player special case of
+`EachPlayerExilesFromGraveyard`, reusing `prompt_next_graveyard_exile`/`PendingChoice::ExileFromGraveyard`
+verbatim (single player, no `remaining`, no payoff). Fully faithful (no note): relic_of_progenitus
+(both abilities — the tap-target-exile and the `exile_self` sweep+draw).
 
 ### 143. `etb-sacrifice-unless` — 2 cards, M
 Depends on: nothing.
@@ -1515,8 +1525,27 @@ instead of a fresh copy). **Slice 3 — Illusionary Mask:** evaluate honestly on
 its cast-from-hand-face-down-via-{X} replacement likely stays `approximates` (name the residual
 precisely) — do not contort the DSL for one 1994 card. *Cards:* willbender, illusionary_mask.
 
-### 164. `cross-owner-anthem-cache` — 1 card, S
+**Progress (2026-07-16) — Slice 1 (morph) landed:** `[morph]` cost, `Intent::CastFaceDown` ({3}
+face-down cast → face-down 2/2 creature spell → face-down permanent), morph-cost turn-face-up
+(`turn_face_up` pays `def.morph.unwrap_or(def.cost)`, so manifest still pays printed cost), and
+`turned_face_up` triggers (scanned on `Event::TurnedFaceUp`). Schema mirror + snapshot ActionView
+for `CastFaceDown` wired. Willbender still absent — needs Slice 2's
+`Effect::ChangeTargetOfTargetSpellOrAbility` retarget payload. Follow-up noticed: a face-down
+morph creature's ETB self-trigger would fire while face down (`queue_self_trigger` reads
+`def.abilities`, not `functional_abilities`) — latent (shared with manifest; no pool morph/manifest
+card has an ETB), fix at the `queue_self_trigger` Etb site when one lands.
+
+### 164. `cross-owner-anthem-cache` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
+
+**Landed:** widened the characteristics-cache invalidation on `PermanentEntered`,
+`ReanimatedToBattlefield`/`SearchedToBattlefield`/`Manifested`/`PutOntoBattlefieldFromHand`, and
+`MovedToGraveyard`/`MovedToExile`/`ReturnedToHand`/`TuckedToLibrary` from owner-scoped to
+board-wide (`invalidate_all_battlefield`, the `LifeChanged` pattern), each with a ponytail note
+naming the coarse ceiling. Fully faithful (no note): yavimaya_enchantress. **Still latent:** a
+phased-out or token *enchantment* under an opponent (no `invalidate_all_battlefield` on
+phasing/`TokenCreated`) — no pool card exercises it; narrow-then-widen when one lands.
+
 Found in the wave-B authoring pass: Yavimaya Enchantress's "+1/+1 for each enchantment on the
 battlefield" is fully expressible (`anthem_static`, `self_only`, `power/toughness =
 { per_permanent = { types = "enchantment" } }`) but latently wrong — the characteristics cache

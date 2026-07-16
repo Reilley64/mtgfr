@@ -107,6 +107,11 @@ pub enum Intent {
         object: ObjectId,
         target: Option<Target>,
     },
+    /// Cast a hand card face down as a 2/2 creature for {3} (CR 702.37b — morph). `card` is the
+    /// card in `player`'s hand (its [`CardDef::morph`] makes it eligible). Casting pays a flat
+    /// generic {3} and puts it on the stack as a face-down creature spell; on resolution it
+    /// enters as a face-down 2/2 permanent (CR 708.2). See [`Game::cast_face_down`].
+    CastFaceDown { player: PlayerId, card: ObjectId },
     /// Tap a land for one mana (a mana ability — doesn't use the stack).
     TapForMana { player: PlayerId, object: ObjectId },
     /// Pay 1 life to add {C} under a Channel-style temporary grant (a mana ability — doesn't use
@@ -359,7 +364,8 @@ impl Intent {
             Intent::Cycle { card, .. }
             | Intent::ActivateHandAbility { card, .. }
             | Intent::Suspend { card, .. }
-            | Intent::Encore { card, .. } => vec![*card],
+            | Intent::Encore { card, .. }
+            | Intent::CastFaceDown { card, .. } => vec![*card],
             Intent::TurnFaceUp { permanent, .. } => vec![*permanent],
             Intent::CastPrepared { source, target, .. }
             | Intent::CastAdventure { source, target, .. } => once(*source)
@@ -465,6 +471,7 @@ impl Intent {
             | Intent::CastPrepared { player, .. }
             | Intent::CastAdventure { player, .. }
             | Intent::CastBestow { player, .. }
+            | Intent::CastFaceDown { player, .. }
             | Intent::TapForMana { player, .. }
             | Intent::ChannelColorlessMana { player, .. }
             | Intent::ActivateAbility { player, .. }
@@ -549,6 +556,7 @@ impl Intent {
             | Intent::CastPrepared { .. }
             | Intent::CastAdventure { .. }
             | Intent::CastBestow { .. }
+            | Intent::CastFaceDown { .. }
             | Intent::TapForMana { .. }
             | Intent::ChannelColorlessMana { .. }
             | Intent::ActivateAbility { .. }
@@ -1444,6 +1452,9 @@ pub enum Event {
         /// Whether this was a bestow cast (CR 702.103 — for [`CardDef::bestow`], as an Aura spell);
         /// see [`Spell::bestowed`]. `false` for an ordinary cast.
         bestowed: bool,
+        /// Whether this was a face-down morph cast (CR 702.37b — [`Intent::CastFaceDown`]); see
+        /// [`Spell::face_down`]. `false` for an ordinary face-up cast.
+        face_down: bool,
     },
     /// A multi-target spell's chosen targets (CR 601.2c) were recorded onto `spell` — either
     /// auto-filled at cast (when the choice was forced) or answered via [`Intent::ChooseTargets`].
@@ -2267,6 +2278,9 @@ pub enum MeaningfulAction {
     TurnFaceUp { permanent: ObjectId },
     /// Cast a prepared permanent's back-face spell (soc/sos prepare DFCs).
     CastPrepared { source: ObjectId },
+    /// Cast `card` from hand face down as a 2/2 for {3} (CR 702.37b — morph). Offered only for a
+    /// hand card whose [`CardDef::morph`] is `Some` and whose controller can pay the {3}.
+    CastFaceDown { card: ObjectId },
     /// Declare attackers: the player has a creature able to attack this combat.
     DeclareAttackers,
     /// Declare blocks: the player has a creature able to block an attacker this combat.

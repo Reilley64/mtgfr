@@ -69,6 +69,11 @@ pub(crate) fn project_event(
             // either, same reasoning as `sacrifice_count`/`kicked` above — no UI reads it yet. Add
             // a `bestowed` to VisibleEvent::SpellCast when the UI wants to show "bestowed."
             bestowed: _,
+            // ponytail: whether the spell was cast face down (CR 702.37) isn't surfaced on the
+            // wire either — the client reads face-down status off the resulting permanent's
+            // redacted catalog entry, not this event. Add a `face_down` here when a UI wants to
+            // badge the stack item itself as a morph cast.
+            face_down: _,
         } => VisibleEvent::SpellCast {
             spell,
             from,

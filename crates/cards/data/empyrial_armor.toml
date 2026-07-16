@@ -1,0 +1,24 @@
+# Enchant creature
+# Enchanted creature gets +1/+1 for each card in your hand.
+name = "Empyrial Armor"
+otags = ["ethereal-armor"]
+oracle = "Enchant creature\nEnchanted creature gets +1/+1 for each card in your hand."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +1/+1 for each card in your hand.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +1/+1 for each card in your hand.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = "cards_in_your_hand"
+toughness = "cards_in_your_hand"

@@ -3563,6 +3563,14 @@ impl Game {
         self.prompt_next_graveyard_exile(affected, source);
     }
 
+    /// Begin the single-player graveyard exile ([`Effect::TargetPlayerExilesFromGraveyard`] —
+    /// Relic of Progenitus's "Target player exiles a card from their graveyard"): the one-player
+    /// special case of [`Self::begin_each_player_exile`]'s fan-out — same pause, no `remaining`
+    /// players queued behind it, and no payoff tally to reset.
+    pub(crate) fn begin_target_player_exile(&mut self, player: PlayerId, source: ObjectId) {
+        self.prompt_next_graveyard_exile(vec![player], source);
+    }
+
     /// Pause on the next affected player who has a graveyard card to exile (skipping any with an
     /// empty graveyard), or — when none remain — return, letting the enclosing sequence resume.
     pub(crate) fn prompt_next_graveyard_exile(
@@ -3917,6 +3925,7 @@ mod tests {
                 flashback: None,
                 echo: None,
                 bestow: None,
+                morph: None,
                 delve: false,
                 escape: None,
                 retrace: false,

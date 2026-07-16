@@ -348,6 +348,12 @@ pub enum WireIntent {
         player: u8,
         permanent: ObjectId,
     },
+    /// Cast a hand card face down as a 2/2 for {3} (CR 702.37b — morph): pay the flat {3} and put
+    /// it on the stack as a face-down creature spell. See [`engine::Intent::CastFaceDown`].
+    CastFaceDown {
+        player: u8,
+        card: ObjectId,
+    },
     /// Cast a copy of a prepared permanent's back-face spell (soc/sos prepare DFCs): pay the back
     /// face's cost, put the copy on the stack targeting `target`, and unprepare `source`.
     CastPrepared {
@@ -516,6 +522,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         Suspend { card, .. } => Suspend { player, card },
         Encore { card, .. } => Encore { player, card },
         TurnFaceUp { permanent, .. } => TurnFaceUp { player, permanent },
+        CastFaceDown { card, .. } => CastFaceDown { player, card },
         CastPrepared {
             source, target, x, ..
         } => CastPrepared {
@@ -803,6 +810,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         WireIntent::TurnFaceUp { player, permanent } => Intent::TurnFaceUp {
             player: PlayerId(player),
             permanent,
+        },
+        WireIntent::CastFaceDown { player, card } => Intent::CastFaceDown {
+            player: PlayerId(player),
+            card,
         },
         WireIntent::CastPrepared {
             player,

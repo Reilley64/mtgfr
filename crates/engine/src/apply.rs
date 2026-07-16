@@ -376,6 +376,7 @@ impl Game {
                 strive_count,
                 replicate_count,
                 bestowed,
+                face_down,
             } => {
                 let (def, commander) = match self.objects[from as usize] {
                     Object::Card(c) => (c.def, c.commander),
@@ -424,6 +425,7 @@ impl Game {
                         replicate_count,
                         serra_recursion,
                         bestowed,
+                        face_down,
                     }),
                 );
                 if serra_recursion {
@@ -496,6 +498,7 @@ impl Game {
                         replicate_count: 0,
                         serra_recursion: false,
                         bestowed: false,
+                        face_down: false,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -581,6 +584,7 @@ impl Game {
                             replicate_count: 0,
                             serra_recursion: false,
                             bestowed: false,
+                            face_down: false,
                         },
                     }),
                 );
@@ -652,6 +656,7 @@ impl Game {
                         replicate_count: 0,
                         serra_recursion: false,
                         bestowed: false,
+                        face_down: false,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -1284,20 +1289,30 @@ impl Game {
             }
             Event::PriorityPassed { .. } => {}
             Event::PermanentEntered { permanent, from } => {
-                let (def, owner, commander, x, serra_recursion, bestowed, copy, cast_target) =
-                    match self.objects[from as usize] {
-                        Object::Spell(s) => (
-                            s.def,
-                            s.controller,
-                            s.commander,
-                            s.x,
-                            s.serra_recursion,
-                            s.bestowed,
-                            s.copy,
-                            s.targets.primary(),
-                        ),
-                        _ => panic!("PermanentEntered source {from} is not a spell"),
-                    };
+                let (
+                    def,
+                    owner,
+                    commander,
+                    x,
+                    serra_recursion,
+                    bestowed,
+                    copy,
+                    cast_target,
+                    face_down,
+                ) = match self.objects[from as usize] {
+                    Object::Spell(s) => (
+                        s.def,
+                        s.controller,
+                        s.commander,
+                        s.x,
+                        s.serra_recursion,
+                        s.bestowed,
+                        s.copy,
+                        s.targets.primary(),
+                        s.face_down,
+                    ),
+                    _ => panic!("PermanentEntered source {from} is not a spell"),
+                };
                 let id = self.create_object(
                     Some(from),
                     Object::Permanent(fresh_permanent(def, owner, true, commander)),
@@ -1318,6 +1333,10 @@ impl Game {
                 // Bestow (CR 702.103d): a bestowed spell enters as a dual-nature Aura/creature — it
                 // is an Aura while attached, a creature once it stops being attached.
                 self.permanent_mut(permanent).bestowed = bestowed;
+                // Morph (CR 702.37b/708): a face-down creature spell enters as a face-down 2/2 —
+                // its real characteristics stay hidden (the characteristics choke reads this flag)
+                // until it's turned face up.
+                self.permanent_mut(permanent).face_down = face_down;
                 // CR 707.10a: a copy of a permanent spell becomes a token as it resolves — it
                 // ceases to exist (rather than going to the graveyard) once it leaves the
                 // battlefield, via the same `Permanent::token` machinery any other token uses.
