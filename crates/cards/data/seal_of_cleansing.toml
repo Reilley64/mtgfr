@@ -1,0 +1,21 @@
+# Sacrifice this enchantment: Destroy target artifact or enchantment.
+name = "Seal of Cleansing"
+oracle = "Sacrifice this enchantment: Destroy target artifact or enchantment."
+set = "nem"
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "enchantment"
+
+# Sacrifice this enchantment: Destroy target artifact or enchantment.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Destroy target artifact or enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact_or_enchantment" } }

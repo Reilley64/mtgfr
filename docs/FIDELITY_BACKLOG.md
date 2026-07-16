@@ -1545,6 +1545,21 @@ for targets and both resolve. Then author the card (draft worked otherwise: flas
 creature-you-control, `exile_target_graveyard_card_then_if_creature` with empty `then`).
 *Cards:* stonecloaker.
 
+### 166. `noncreature-host-aura-legality` — 1 card, S/M
+Depends on: nothing (pairs naturally with #156's enchant re-check).
+Found in the wave-D authoring pass: the CR 704.5m/n attachment-legality SBA
+(`crates/engine/src/apply.rs`, the `Some(host) => !self.is_creature_on_battlefield(host)` arm)
+hardcodes creature hosts — any Aura attached to a **noncreature** permanent is swept to the
+graveyard on the next SBA pass regardless of its `enchant` filter. Confiscate ("Enchant
+permanent\nYou control enchanted permanent") worked on a creature and fell off a land. *Sketch:*
+the SBA re-checks the Aura's own `def.enchant` filter against its live host (mirroring the
+resolve-time attach check in `effects.rs`), falling back to "host is a creature" for the default
+enchant-creature case. Regression test: Confiscate stays on a land across SBA passes; a real
+enchant-creature Aura still falls off a host that stops being a creature. Then author the card
+(TOML draft worked otherwise: `enchant = {}`, `control_attached`). Also a correctness prereq the
+#156 Prison-Term re-attach work will lean on.
+*Cards:* confiscate.
+
 ---
 
 ## Top 5 next increments (build in this order)

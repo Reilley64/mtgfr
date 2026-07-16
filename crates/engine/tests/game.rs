@@ -61056,3 +61056,321 @@ fn auramancer_declining_the_return_is_legal() {
         "declining returns nothing"
     );
 }
+
+// ── Enchantress/Rubinia wave: Dismantling Blow, Oblivion Ring, Overwhelming Intellect,
+// Resurrection, Seal of Cleansing ──────────────────────────────────────────────────────────
+
+#[test]
+fn dismantling_blow_unkicked_destroys_without_drawing() {
+    // Dismantling Blow, kicker declined: pays only the printed {2}{W} and destroys the
+    // artifact; "If this spell was kicked, draw two cards" does nothing (CR 702.33d).
+    let mut game = TestGame::new();
+    let stone = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let blow = game.spawn_in_hand(PlayerId(0), card("Dismantling Blow"));
+
+    let events = game.cast(blow).at(Target::Object(stone)).submit();
+    let spent = events
+        .iter()
+        .find_map(|e| match e {
+            Event::ManaSpent {
+                player: PlayerId(0),
+                mana,
+            } => Some(mana_pool_pips(mana)),
+            _ => None,
+        })
+        .expect("casting Dismantling Blow spends mana");
+    assert_eq!(
+        spent, 3,
+        "declining the kicker spends only the printed {{2}}{{W}}"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(stone),
+        Zone::Graveyard,
+        "the artifact was destroyed"
+    );
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "an unkicked Dismantling Blow draws nothing"
+    );
+}
+
+#[test]
+fn dismantling_blow_kicked_pays_the_kicker_and_draws_two() {
+    // Paying the {2}{U} kicker makes the total {4}{W}{U} (6 mana) and draws two cards.
+    let mut game = TestGame::new();
+    let stone = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let blow = game.spawn_in_hand(PlayerId(0), card("Dismantling Blow"));
+
+    let events = game
+        .cast(blow)
+        .at(Target::Object(stone))
+        .kicked(true)
+        .submit();
+    let spent = events
+        .iter()
+        .find_map(|e| match e {
+            Event::ManaSpent {
+                player: PlayerId(0),
+                mana,
+            } => Some(mana_pool_pips(mana)),
+            _ => None,
+        })
+        .expect("casting a kicked Dismantling Blow spends mana");
+    assert_eq!(
+        spent, 6,
+        "paying the kicker spends the printed {{2}}{{W}} plus the {{2}}{{U}} kicker"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(stone),
+        Zone::Graveyard,
+        "the artifact was destroyed"
+    );
+    assert!(
+        library.iter().all(|&id| game.zone_of(id) == Zone::Hand),
+        "a kicked Dismantling Blow draws two cards"
+    );
+}
+
+#[test]
+fn oblivion_ring_exiles_until_it_leaves_the_battlefield() {
+    // Oblivion Ring: the ETB exile is linked to the leave-return (CR 603.6e) — destroying the
+    // Ring returns the exiled card to the battlefield under its owner's control.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let ring_card = game.spawn_in_hand(PlayerId(0), card("Oblivion Ring"));
+
+    game.cast(ring_card).resolve();
+    let ring = battlefield_named(&game, PlayerId(0), "Oblivion Ring")[0];
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget { .. })
+        ),
+        "the ETB exile ability is waiting for its target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Exile,
+        "the targeted nonland permanent was exiled"
+    );
+
+    let fracture = game.spawn_in_hand(PlayerId(0), card("Fracture"));
+    game.cast(fracture).at(Target::Object(ring)).resolve();
+    assert_eq!(
+        game.zone_of(ring),
+        Zone::Graveyard,
+        "the Ring was destroyed"
+    );
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "the exiled card returned when the Ring left (CR 603.6e)"
+    );
+    assert_eq!(
+        game.controller_of(bear),
+        PlayerId(1),
+        "it returns under its owner's control"
+    );
+}
+
+#[test]
+fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
+    // Overwhelming Intellect: "Counter target creature spell. Draw cards equal to that spell's
+    // mana value." P1's Auramancer ({2}{W}, mana value 3) is countered; P0 draws three.
+    let mut game = Game::new();
+    let mancer = game.spawn_in_hand(PlayerId(1), card("Auramancer"));
+    let intellect = game.spawn_in_hand(PlayerId(0), card("Overwhelming Intellect"));
+    let library = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+        ],
+    );
+    // P1 draws at their draw step on the way to their main phase — an empty library would lose.
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+
+    // P1 can't cast a creature at instant speed on P0's turn — roll to P1's main phase.
+    // Mana is funded after the roll (pools empty as each step ends).
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: mancer,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Auramancer is castable");
+    let mancer_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: intellect,
+        target: Some(Target::Object(mancer_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Overwhelming Intellect can counter a creature spell");
+    resolve_top_of_stack(&mut game);
+
+    assert_ne!(
+        game.zone_of(mancer),
+        Zone::Battlefield,
+        "the creature spell was countered"
+    );
+    assert!(
+        library.iter().all(|&id| game.zone_of(id) == Zone::Hand),
+        "P0 drew cards equal to the countered spell's mana value (3)"
+    );
+}
+
+#[test]
+fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
+    // "Counter target creature spell" — an instant on the stack is not a legal target.
+    let mut game = Game::new();
+    let bolt = game.spawn_in_hand(PlayerId(1), card("Lightning Bolt"));
+    let intellect = game.spawn_in_hand(PlayerId(0), card("Overwhelming Intellect"));
+    // P1 draws at their draw step on the way to their main phase — an empty library would lose.
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: bolt,
+        target: Some(Target::Player(PlayerId(0))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Lightning Bolt is castable");
+    let bolt_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    assert_eq!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: intellect,
+            target: Some(Target::Object(bolt_on_stack)),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            strive_count: 0,
+            replicate_count: 0,
+        }),
+        Err(Reject::IllegalTarget),
+        "a noncreature spell is not a legal target for Overwhelming Intellect"
+    );
+}
+
+#[test]
+fn resurrection_returns_your_creature_card_to_the_battlefield() {
+    // Resurrection: "Return target creature card from your graveyard to the battlefield."
+    let mut game = TestGame::new();
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let resurrection = game.spawn_in_hand(PlayerId(0), card("Resurrection"));
+
+    game.cast(resurrection).at(Target::Object(corpse)).resolve();
+
+    assert_eq!(
+        game.zone_of(corpse),
+        Zone::Battlefield,
+        "the creature card returned to the battlefield"
+    );
+    assert_eq!(
+        game.controller_of(corpse),
+        PlayerId(0),
+        "under its owner's (and caster's) control"
+    );
+}
+
+#[test]
+fn resurrection_cannot_target_an_opponents_graveyard_card() {
+    // "your graveyard" — an opponent's graveyard card is not a legal target.
+    let mut game = TestGame::new();
+    let corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let resurrection = game.spawn_in_hand(PlayerId(0), card("Resurrection"));
+
+    assert_eq!(
+        game.cast(resurrection)
+            .at(Target::Object(corpse))
+            .try_submit(),
+        Err(Reject::IllegalTarget),
+        "Resurrection only reaches its caster's own graveyard"
+    );
+}
+
+#[test]
+fn seal_of_cleansing_sacrifices_itself_to_destroy_an_artifact() {
+    // Seal of Cleansing: "Sacrifice this enchantment: Destroy target artifact or enchantment."
+    let mut game = Game::new();
+    let seal = game.spawn_on_battlefield(PlayerId(0), card("Seal of Cleansing"));
+    let stone = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: seal,
+        ability_index: 0,
+        target: Some(Target::Object(stone)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(seal),
+        Zone::Graveyard,
+        "the Seal is sacrificed as a cost, before the ability resolves"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(stone),
+        Zone::Graveyard,
+        "the targeted artifact was destroyed"
+    );
+}

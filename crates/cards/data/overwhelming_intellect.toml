@@ -1,0 +1,25 @@
+# Counter target creature spell. Draw cards equal to that spell's mana value.
+name = "Overwhelming Intellect"
+oracle = "Counter target creature spell. Draw cards equal to that spell's mana value."
+set = "mmq"
+
+[cost]
+generic = 4
+blue = 2
+
+[kind]
+type = "instant"
+
+# Counter target creature spell. Draw cards equal to that spell's mana value.
+[[abilities]]
+timing = "spell"
+
+# Counter target creature spell.
+[[abilities.effects]]
+type = "counter_target_spell"
+filter = "creature"
+
+# Draw cards equal to that spell's mana value.
+[[abilities.effects]]
+type = "draw_cards"
+count = "target_mana_value"

@@ -1,0 +1,23 @@
+# When this enchantment enters, exile another target nonland permanent.
+# When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.
+name = "Oblivion Ring"
+oracle = "When this enchantment enters, exile another target nonland permanent.\nWhen this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control."
+set = "lrw"
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "enchantment"
+
+# When this enchantment enters, exile another target nonland permanent.
+# When this enchantment leaves the battlefield, return the exiled card to the battlefield under
+# its owner's control.
+[[abilities]]
+timing = "etb"
+
+# exile another target nonland permanent
+[[abilities.effects]]
+type = "exile_until_source_leaves"
+target = { permanent = { types = "nonland", other = true } }

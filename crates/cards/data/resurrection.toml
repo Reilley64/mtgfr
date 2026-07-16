@@ -1,0 +1,20 @@
+# Return target creature card from your graveyard to the battlefield.
+name = "Resurrection"
+oracle = "Return target creature card from your graveyard to the battlefield."
+set = "lea"
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "sorcery"
+
+# Return target creature card from your graveyard to the battlefield.
+[[abilities]]
+timing = "spell"
+
+# Return target creature card from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = "your_graveyard"

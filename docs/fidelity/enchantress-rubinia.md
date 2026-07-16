@@ -19,14 +19,13 @@ Commander: **Rubinia Soulsinger**. Backlog increments for section D: #135–#163
 
 None — every other deck card is new to the pool.
 
-## C. New, expressible today (27)
+## C. New, expressible today (26)
 
 - [ ] Auramancer — ETB optional `return_from_graveyard_to_hand`, `{ card_in_graveyard = { whose = "yours", filter = "enchantment" } }`
 - [ ] Azorius Chancery — `enters_tapped`, ETB targeted self-land bounce, `{T}: Add {W}{U}` via `add_mana`
 - [ ] Bant Panorama — `{T}: Add {C}` + sac-fetch `{ basic_land_with_subtype = ["Forest", "Plains", "Island"] }`
 - [ ] Borderland Ranger — ETB optional `search_library` basic land to hand
 - [ ] Coastal Tower — tapped dual
-- [ ] Confiscate — `enchant = {}` (any permanent) + `control_attached`
 - [ ] Dismantling Blow — `[cost.additional.kicker]` + `destroy_target` + draw `{ if_kicked = 2, else = 0 }`
 - [ ] Elfhame Palace — tapped dual
 - [ ] Jungle Barrier — defender, ETB draw
@@ -49,7 +48,7 @@ None — every other deck card is new to the pool.
 - [ ] Wirewood Guardian — Forestcycling via `hand_ability`
 - [ ] Wood Elves — ETB `search_library` `{ land_with_subtype = ["Forest"] }` to battlefield untapped
 
-## D. New, needs engine work (37)
+## D. New, needs engine work (38)
 
 - [ ] Armadillo Cloak — #151 enchanted-deals-damage lifegain
 - [ ] Azorius Guildmage — #146 counter target activated ability (cycling/hand activations on the stack)
@@ -93,6 +92,9 @@ None — every other deck card is new to the pool.
 - [ ] Stonecloaker — #165 ordered-trigger targets (reclassified from C in wave C: its two
   simultaneous targeted ETB triggers both fizzle — `choose_order` places ordered triggers with no
   target)
+- [ ] Confiscate — #166 noncreature-host Aura legality (reclassified from C in wave D: the
+  CR 704.5m SBA hardcodes creature hosts, so an enchant-permanent Aura on a land is swept to the
+  graveyard on the next SBA pass; Prison Term's #156 re-attach must also respect the same filter)
 
 ## Observability re-audit (falsified pool-absence claims)
 
