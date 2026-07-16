@@ -4,3 +4,8 @@ namespace: edh
 apiActiveInstanceId: edh-api
 apiTerminationGraceSeconds: 86400
 apiHeadlessService: edh-api-headless
+cookieDomain: ""
+corsOrigin: ""
+logLevel: info
+dbSecretName: mtgfr-db
+adminSecretName: mtgfr-admin

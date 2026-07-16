@@ -2,12 +2,12 @@
 
 Deploy mtgfr to a **Kubernetes cluster** reached via a **Cloudflare Tunnel** (no inbound ports on the cluster), with infrastructure-as-code, semver releases, and **draining** rolling deploys so in-progress games are not killed mid-hand.
 
-> **Routing / drain model:** [ADR 0030](../adr/0030-table-instance-affinity-for-drain-rolls.md) — BFF lobby on `mtgfr_web` (Drizzle / `@effect/sql-pg`), in-game `table_routes` → pod DNS on headless Service, `terraform apply` image rolls (SIGTERM drain). Argo CD is installed; optional Application mirrors `iac/charts/edh` when `argocd_repo_url` is set (TF still owns live Deployments).
+> **Routing / drain model:** [ADR 0030](../adr/0030-table-instance-affinity-for-drain-rolls.md) — BFF lobby on `mtgfr_web` (Drizzle / `@effect/sql-pg`), in-game `table_routes` → pod DNS on headless Service. `terraform apply` bumps Argo Application helm params (after migrate Jobs complete); Argo syncs Deployments then Service `edh-api` (sync waves + `PruneLast`); pruned API pods drain on SIGTERM.
 
 ## Goals
 
 1. **Reachable by friends** — single public origin `https://edh.example.com` (SolidStart BFF: SPA + `/api` proxy); stable share links on that host.
-2. **Reproducible infra** — Terraform in **this repo** (`iac/`) owns the edh namespace workloads, Postgres, Cloudflare Tunnel/DNS, and deploy config. `terraform apply` is the deploy path.
+2. **Reproducible infra** — Terraform in **this repo** (`iac/`) owns headless/web Services, secrets, Postgres, Cloudflare Tunnel/DNS, migrate Jobs, and the Argo Application params. Argo owns API/web Deployments and Service `edh-api` (`iac/charts/edh`). `terraform apply` is the operator ship path.
 3. **Zero-downtime for active games** — during a release, players at a live table stay on the old server binary until that table is empty (game over or everyone left).
 4. **Traceable releases** — every merge to `main`/`master` runs [semantic-release](https://semantic-release.org/) (default config) on green verify; container images build when the resulting `v*` tag is pushed (`docker.yml`).
 
@@ -44,12 +44,12 @@ Apply machine (NOT the k3s host): terraform apply  (mtgfr/iac/)
 Home k3s host (separate machine)
     │
     ├─ Namespace: terraform          (tfstate Secret + lock Lease)
-    ├─ Namespace: argocd             (Helm argo-cd; optional Application)
+    ├─ Namespace: argocd             (Helm argo-cd; Application edh — owns Deployments)
     ├─ Namespace: edh
-    │     ├─ Deployment edh-web              (SolidStart BFF, distroless)
-    │     ├─ Deployment edh-api-<tag>        (role=active; old pods Terminating + SIGTERM drain)
-    │     ├─ Service edh-api                 (selects api-role=active — seed / auth / decks)
-    │     ├─ Service edh-api-headless        (publishNotReadyAddresses — in-game dial)
+    │     ├─ Deployment edh-web              (SolidStart BFF; Argo-owned)
+    │     ├─ Deployment edh-api-<tag>        (newest active; prior generations Terminating + SIGTERM drain)
+    │     ├─ Service edh-api                 (Argo-owned; selects app=<apiActiveInstanceId> after new Deployment healthy)
+    │     ├─ Service edh-api-headless        (TF; publishNotReadyAddresses — in-game dial)
     │     ├─ Job edh-migrate                 (Toasty apply on mtgfr)
     │     ├─ Job edh-web-migrate             (Drizzle apply on mtgfr_web)
     │     ├─ Job postgres-create-web-db      (CREATE DATABASE mtgfr_web)
@@ -63,10 +63,10 @@ Internet ── Cloudflare (DNS + Tunnel) ──► cloudflared ──► edh-we
                          ┌────────────────────┼────────────────────┐
                          ▼                    ▼                    ▼
                       edh-api              Terminating          Terminating
-                   (role=active)            old pod               older pod
+                   (newest only)            old pod               older pod
 ```
 
-**Apply machine vs cluster host:** `terraform` / `kubectl` always run on the apply machine. That machine needs network reachability to the k3s API server (LAN, VPN, or Tailscale — whatever you already use for remote kubeconfig). Do **not** install or run Terraform on the k3s node for this stack. Admin/drain probes use `kubectl port-forward` from the apply machine (not the public tunnel).
+**Apply machine vs cluster host:** `terraform` / `kubectl` always run on the apply machine. That machine needs network reachability to the k3s API server (LAN, VPN, or Tailscale — whatever you already use for remote kubeconfig). Do **not** install or run Terraform on the k3s node for this stack. `GET /health/drain` (observation) uses `kubectl port-forward` from the apply machine (not the public tunnel).
 
 **Hostname** (Cloudflare `example.com` zone):
 
@@ -163,9 +163,9 @@ Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-ca
 | Cloudflare Tunnel + DNS | Single `edh` hostname → `edh-web` |
 | `kubernetes_namespace.terraform` | Optional if bootstrapped by hand; state Secret/Lease live here |
 | `kubernetes_namespace.edh` | Isolation boundary for workloads |
-| `kubernetes_namespace.argocd` + Helm `argo-cd` | Control plane install; optional Application when `argocd_repo_url` set |
+| `kubernetes_namespace.argocd` + Helm `argo-cd` | Control plane; Application owns API/web Deployments (`argocd_repo_url` required) |
 | `edh-web` | SolidStart BFF (`API_UPSTREAM` + `WEB_DATABASE_URL`) |
-| `edh-api-<tag>` Deployment + Services | Desired `server_image` with `api-role=active`; headless for pod DNS |
+| `edh-api-<tag>` Deployment + Services | Desired `server_image` (Argo); Service selects `app=<instanceId>`; headless for pod DNS |
 | `edh-migrate` Job | Toasty `migration apply` on `mtgfr` before API roll |
 | `edh-web-migrate` Job | Drizzle migrate on `mtgfr_web` before web roll |
 | `postgres-create-web-db` Job | Idempotent `CREATE DATABASE mtgfr_web` |
@@ -186,7 +186,7 @@ Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-ca
 | `mtgfr_db_password` | `DATABASE_URL` / `WEB_DATABASE_URL` (composed in Terraform) |
 | `auth_secret` | reserved — session signing if added later |
 | `server_image` / `web_image` | Desired active API + web images |
-| `argocd_repo_url` | Optional; empty skips the Argo Application CR |
+| `argocd_repo_url` | Required; git source for Argo Application (`iac/charts/edh`) |
 | `api_termination_grace_seconds` | SIGTERM drain ceiling (default 24h) |
 
 ### Apply
@@ -197,10 +197,20 @@ From the **apply machine** (repo checkout + Terraform CLI + network access to k3
 export KUBE_CONFIG_PATH=~/.kube/config   # example — remote k3s
 cd iac
 terraform init
-terraform apply          # sets server_image / web_image; old API pods drain on SIGTERM
+terraform apply          # migrate Jobs complete → bump Argo helm params; sync waves + PruneLast
 ```
 
-Drain is in-process on SIGTERM until `active_tables=0` or grace expires.
+Drain is in-process on SIGTERM until `active_tables=0` or grace expires. Apply does not wait on grace.
+
+**Roll ordering (avoids seed blackhole):** Argo sync-wave `0` brings up the new API Deployment; wave `1` retargets Service `edh-api` to `app=<newId>`; `PruneLast` then deletes the prior Deployment (SIGTERM drain). Mid-game stays on headless pod DNS.
+
+**One-time cutover** from TF-owned Deployments / `edh-api` Service:
+
+1. Merge this chart (`iac/charts/edh` Deployments + `edh-api` Service) to the git revision in `argocd_target_revision` **before** apply — Argo reads the chart from git, not the apply machine working tree.
+2. `terraform state rm` old `kubernetes_deployment_v1.edh_api`, `kubernetes_deployment_v1.edh_web`, and `kubernetes_service_v1.edh_api_active` (if present) so Terraform does not destroy them before Argo adopts.
+3. Set required `argocd_repo_url` / `argocd_target_revision`, then `terraform apply`.
+
+**Failure mode:** If Service `edh-api` ever selects an instance id with no Ready pods (mis-ordered sync without waves), Start/seed/auth return connection errors until the new Deployment is healthy.
 
 ## DNS & Cloudflare
 
@@ -248,7 +258,7 @@ sequenceDiagram
 ```
 
 1. **Migrate** `mtgfr` (Toasty Job) and `mtgfr_web` (Drizzle Job).
-2. **`terraform apply`** updates `server_image` / `web_image`. New API Deployment becomes `api-role=active`; previous pods receive SIGTERM and drain in-process.
+2. **`terraform apply`** waits for image-keyed migrate Jobs, then updates Argo helm params. Argo syncs the new API Deployment (wave 0), retargets Service `edh-api` (wave 1), then `PruneLast` deletes the previous Deployment; pruned pods receive SIGTERM and drain in-process.
 3. **New tables** only seed on Service `edh-api` (active). BFF writes `table_routes` with the seed response’s `pod_dns`.
 4. **In-game** traffic uses path `{table}` → `table_routes` → headless pod DNS (Terminating pods stay dialable via `publishNotReadyAddresses`).
 5. **Web may roll with the API**; expand-only wire while old pods hold games ([WIRE_COMPAT.md](../WIRE_COMPAT.md)).
@@ -285,7 +295,7 @@ On `SIGTERM` (K8s pod termination):
 2. Stop accepting new tables immediately.
 3. Keep the process alive while `active_tables > 0` (poll every few seconds; configurable timeout with loud logging).
 4. Close idle HTTP connections; **do not** cut active SSE streams until the table is finished or the hard timeout fires (hard timeout is a last resort — prefer waiting).
-5. Prefer waiting for `active_tables=0` over relying on a huge grace alone. Distroless has **no preStop shell** — drain is in-process on SIGTERM. Default `terminationGracePeriodSeconds` is **24h**; if still draining after that, kube SIGKILLs. Loud logs while draining are expected for long games.
+5. Prefer waiting for `active_tables=0` over relying on a huge grace alone. Drain is in-process on SIGTERM (distroless has no shell `preStop`). Default `terminationGracePeriodSeconds` is **24h**; if still draining after that, kube SIGKILLs. Loud logs while draining are expected for long games.
 
 ## Server changes required
 
@@ -309,7 +319,7 @@ pub struct Settings {
     pub port: u16,              // default 8080
     pub database_url: String,
     pub instance_id: String,    // stable per Deployment, e.g. "edh-api" — not pod name
-    pub drain: bool,            // default false; also toggled live via admin endpoint
+    pub drain: bool,            // default false; flipped live by SIGTERM
     pub cookie_secure: bool,    // default false; true behind HTTPS (Cloudflare)
     pub cookie_domain: String,   // default ""; prod ".example.com" for auth session only
     pub cors_origin: String,     // default ""; prod "https://edh.example.com"
@@ -362,11 +372,11 @@ No secrets in the TOML file — production credentials come only from Terraform-
 | `port` | `PORT` | `8080` |
 | `database_url` | `DATABASE_URL` | `postgresql://mtgfr:<secret>@postgres:5432/mtgfr` |
 | `instance_id` | `INSTANCE_ID` | stable Deployment id, e.g. `edh-api-1-2-3` |
-| `drain` | `DRAIN` | startup default `false`; live drain via admin API, not Deployment env churn |
+| `drain` | `DRAIN` | startup default `false`; live drain via SIGTERM |
 | `cookie_secure` | `COOKIE_SECURE` | `true` |
 | `cookie_domain` | `COOKIE_DOMAIN` | empty (host-only session cookie on edh) |
 | `cors_origin` | `CORS_ORIGIN` | empty (browser is same-origin via BFF) |
-| `admin_token` | `ADMIN_TOKEN` | shared secret guarding `/admin/drain` + `/health/drain`; empty leaves them unauthenticated behind the NetworkPolicy |
+| `admin_token` | `ADMIN_TOKEN` | shared secret guarding `/health/drain`; empty leaves it unauthenticated behind the NetworkPolicy |
 | `version` | `VERSION` | image release tag |
 | `pod_dns` | `POD_DNS` | Downward API + headless DNS; returned by seed |
 
@@ -521,10 +531,9 @@ Same-origin `/api` always — no separate API hostname bake:
 | `Settings::load()` | Called once in `mtgfr serve`; bind `settings.listen_addr()`. |
 | CORS middleware | Axum layer: allow `cors_origin`, credentials, needed methods/headers. |
 | Cookie `Domain` | Auth session: empty `cookie_domain` (host-only on edh). |
-| `POST /admin/drain` | Live drain toggle — must not restart the pod. **Not on the public tunnel hostname.** NetworkPolicy blocks ingress from `cloudflared` / public paths. The apply machine reaches it via `kubectl port-forward` (through the k3s API), not by opening NodePorts on the k3s host. |
+| `GET /health/drain` | JSON `{ "active_tables": N, "draining": bool }` — observation only (SIGTERM sets `draining`). **Not on the public tunnel hostname.** NetworkPolicy blocks ingress from `cloudflared` / public paths. The apply machine reaches it via `kubectl port-forward` (through the k3s API). |
 | `GET /health/live` | `200` if process is up; body includes `version`. |
 | `GET /health/ready` | `200` if accepting traffic (not draining, or draining with tables — still "ready" for those tables). |
-| `GET /health/drain` | JSON `{ "active_tables": N, "draining": bool }` — polled from the apply machine via port-forward; same NetworkPolicy posture as admin. |
 | Active table count | Registry helper: started games only (lobbies are on the BFF). |
 | `POST /tables/seed/v1` | BFF Start → seed seats/decks; response includes `pod_dns`. |
 | Idle lobby TTL | **30 min** on `mtgfr_web` — BFF sweep so abandoned lobbies drop. |
@@ -590,16 +599,16 @@ mtgfr/
     providers.tf         # kubernetes + helm + cloudflare
     variables.tf
     namespace.tf          # edh (+ terraform if not bootstrapped by hand)
-    api.tf               # edh-api Deployment + active/headless Services
-    web.tf               # SolidStart BFF (API_UPSTREAM + WEB_DATABASE_URL)
+    api.tf               # edh-api-headless Service (Deployments + edh-api Service in charts/edh)
+    web.tf               # edh-web Service (Deployment in charts/edh)
     web-migrate.tf       # Drizzle Job for mtgfr_web
     postgres-web-db.tf   # CREATE DATABASE mtgfr_web
     postgres.tf          # StatefulSet + Service: official postgres image
-    migrate.tf           # Job: toasty migration apply
-    argocd.tf            # Argo CD Helm + optional Application
-    charts/edh/          # mirror chart (readme ConfigMap; TF owns live objects)
+    migrate.tf           # Job: toasty migration apply (gates Application image bumps)
+    argocd.tf            # Argo CD Helm + Application (owns API/web Deployments + edh-api)
+    charts/edh/          # API/web Deployments + edh-api Service (sync waves + PruneLast)
     tunnel.tf            # Cloudflare Tunnel + cloudflared + DNS records
-    network-policy.tf    # cluster-internal only for admin/drain
+    network-policy.tf    # cluster-internal only for /health/drain
     secrets.tf           # DATABASE_URL, etc.
     terraform.tfvars     # gitignored secrets + image tags
   docker/
@@ -620,7 +629,7 @@ env = [
   { name = "DATABASE_URL", value_from = secret_key_ref … },
   { name = "INSTANCE_ID", value = "edh-api-1-2-3" },  # Deployment name
   { name = "POD_DNS", value = "$(POD_NAME).edh-api-headless.$(POD_NAMESPACE).svc.cluster.local" },
-  { name = "DRAIN", value = "false" },          # startup only; SIGTERM / POST /admin/drain for live drain
+  { name = "DRAIN", value = "false" },          # startup only; SIGTERM for live drain
   { name = "COOKIE_SECURE", value = "true" },
   { name = "COOKIE_DOMAIN", value = "" },
   { name = "CORS_ORIGIN", value = "" },
@@ -821,7 +830,7 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 
 ### Deploy
 
-`terraform apply` updates desired images. Service `edh-api` always points at `api-role=active`. Terminating pods remain reachable on the headless Service. From the apply machine: optional `POST /admin/drain` / `GET /health/drain` via `kubectl port-forward`. Web may roll with the API.
+`terraform apply` updates Argo helm params after migrate Jobs. Argo sync-wave 0 = new Deployments; wave 1 = Service `edh-api` → `app=<apiActiveInstanceId>`; `PruneLast` then drains the prior API Deployment. Terminating pods remain reachable on the headless Service. From the apply machine: optional `GET /health/drain` via `kubectl port-forward`. Web may roll with the API.
 
 ## Phases
 
@@ -834,7 +843,7 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 | **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json`, `RELEASE_TOKEN` | Merge to `main` → semantic-release (default) → `v*` tag push → GHCR images |
 | **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres, BFF, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
 | **6 — Drain + routing** | SIGTERM drain, `POD_DNS`, BFF lobby + `table_routes`, active + headless Services, [WIRE_COMPAT.md](../WIRE_COMPAT.md) | Deploy while a game runs on the prior binary without disconnect; mid-game hops stay on old pod DNS |
-| **7 — Deploy ergonomics** | `terraform apply` of images; Argo CD install + optional mirror Application | Release → bump images → apply |
+| **7 — Deploy ergonomics** | `terraform apply` of images; Argo Application owns Deployments (`prune` on) | Release → bump images → apply |
 
 ## Decisions (locked)
 
@@ -853,7 +862,7 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 | Client vs API roll order | **Web may roll with API**; expand-only wire while Terminating pods hold tables |
 | Wire backwards compatibility | **Expand-only** across concurrent binaries — see [WIRE_COMPAT.md](../WIRE_COMPAT.md) |
 | Static asset compression | Cloudflare edge gzip/brotli OK; **no SSE buffering/gzip** through the BFF |
-| Control plane | **`terraform apply`** sets images; Argo CD installed; optional Application when `argocd_repo_url` set |
+| Control plane | **`terraform apply`** bumps Argo helm params after migrate Jobs; Argo owns API/web Deployments + `edh-api` (`argocd_repo_url` required; sync waves + `PruneLast`) |
 
 ## Open questions
 
@@ -869,7 +878,7 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 - [ ] `just client-migrate` applies Drizzle migrations to `mtgfr_web`.
 - [ ] `terraform apply` from the apply machine (not the k3s host) uses the kubernetes backend on home k3s and reproduces the edh stack; plan fails clearly if the cluster/tunnel prerequisites are missing.
 - [ ] Migrate Jobs complete before `edh-api` / `edh-web` roll; schema versions match the deployed images.
-- [ ] SIGTERM drain rejects new seeds with 503 while existing tables keep SSE; `/admin/drain` + `/health/drain` are not reachable via the public tunnel.
+- [ ] SIGTERM drain rejects new seeds with 503 while existing tables keep SSE; `/health/drain` is not reachable via the public tunnel.
 - [ ] Idle lobbies expire after 30 minutes on `mtgfr_web`.
 - [ ] Deploying `vX.Y.Z+1` while a four-player game runs on `vX.Y.Z` completes without SSE drop or `UnknownAction` spikes.
 - [ ] During that roll, mid-game traffic stays on the Terminating pod via headless DNS; new tables seed on active; web may roll with newest.

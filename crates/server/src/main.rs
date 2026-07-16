@@ -90,7 +90,7 @@ async fn run_serve() {
 }
 
 /// On SIGTERM/Ctrl-C: enter drain, then wait until in-memory tables are gone (or kube
-/// hits `terminationGracePeriodSeconds` and SIGKILLs). Distroless has no preStop shell.
+/// hits `terminationGracePeriodSeconds` and SIGKILLs).
 async fn await_shutdown_signal(state: server::AppState) {
     let ctrl_c = async {
         tokio::signal::ctrl_c()

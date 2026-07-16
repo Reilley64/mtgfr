@@ -83,7 +83,7 @@ pub struct AppState {
     pub reg: Arc<Mutex<Registry>>,
     pub db: toasty::Db,
     pub settings: Arc<Settings>,
-    /// Live drain flag (startup from `settings.drain`; flipped by `/admin/drain` or SIGTERM).
+    /// Live drain flag (startup from `settings.drain`; flipped by SIGTERM).
     pub draining: Arc<AtomicBool>,
 }
 
@@ -359,7 +359,6 @@ pub fn app(state: AppState) -> Router {
         .route("/health/live", get(health::live))
         .route("/health/ready", get(health::ready))
         .route("/health/drain", get(health::drain))
-        .route("/admin/drain", post(admin::drain))
         .with_state(state);
     match cors {
         Some(cors) => router.layer(cors),

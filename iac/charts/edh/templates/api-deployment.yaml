@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.apiActiveInstanceId }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.apiActiveInstanceId }}
+    app.kubernetes.io/part-of: mtgfr
+    mtgfr.io/component: api
+    mtgfr.io/api-role: active
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.apiActiveInstanceId }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.apiActiveInstanceId }}
+        app.kubernetes.io/part-of: mtgfr
+        mtgfr.io/component: api
+        mtgfr.io/api-role: active
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.apiTerminationGraceSeconds }}
+      containers:
+        - name: edh-api
+          image: {{ .Values.serverImage | quote }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8080"
+            - name: COOKIE_SECURE
+              value: "true"
+            - name: COOKIE_DOMAIN
+              value: {{ .Values.cookieDomain | quote }}
+            - name: CORS_ORIGIN
+              value: {{ .Values.corsOrigin | quote }}
+            - name: RUST_LOG
+              value: {{ .Values.logLevel | quote }}
+            - name: INSTANCE_ID
+              value: {{ .Values.apiActiveInstanceId | quote }}
+            - name: DRAIN
+              value: "false"
+            - name: VERSION
+              value: {{ .Values.serverImage | quote }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_DNS
+              value: "$(POD_NAME).{{ .Values.apiHeadlessService }}.$(POD_NAMESPACE).svc.cluster.local"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dbSecretName }}
+                  key: DATABASE_URL
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.adminSecretName }}
+                  key: ADMIN_TOKEN
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

@@ -57,13 +57,12 @@ variable "edh_hostname" {
 }
 
 variable "argocd_repo_url" {
-  description = "Git repo URL for the optional Argo Application (iac/charts/edh). Empty skips the Application CR."
+  description = "Git repo URL for the Argo Application (iac/charts/edh). Required — Argo owns API/web Deployments."
   type        = string
-  default     = ""
 }
 
 variable "argocd_target_revision" {
-  description = "Git revision for the Argo Application when argocd_repo_url is set."
+  description = "Git revision for the Argo Application."
   type        = string
   default     = "HEAD"
 }
@@ -149,7 +148,7 @@ variable "auth_secret" {
 }
 
 variable "admin_token" {
-  description = "Bearer token guarding POST /admin/drain and GET /health/drain (deploy PRD §Admin / drain endpoints). Defense in depth on top of the NetworkPolicy that already keeps these routes cluster-internal; matches the server's `admin_token` Settings default so an unset token behaves the same on both sides. Empty leaves them unauthenticated. Set a strong value and pass it back via MTGFR_ADMIN_TOKEN to scripts/wait-drain.sh."
+  description = "Bearer token guarding GET /health/drain. Defense in depth on top of the NetworkPolicy that already keeps the route cluster-internal; matches the server's admin_token Settings default so an unset token behaves the same on both sides. Empty leaves it unauthenticated."
   type        = string
   sensitive   = true
   default     = ""

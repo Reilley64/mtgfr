@@ -20,7 +20,7 @@ pub struct Settings {
     /// later hops for the table to the pod that owns its in-memory game. Default `""` — the seed
     /// handler falls back to `instance_id` (dev, single pod).
     pub pod_dns: String,
-    /// Startup default only; live drain is `POST /admin/drain`.
+    /// Startup default only; SIGTERM flips the live drain flag.
     pub drain: bool,
     /// Session cookie `Secure`. Default `false` (localhost http).
     pub cookie_secure: bool,
@@ -30,7 +30,7 @@ pub struct Settings {
     pub cors_origin: String,
     /// Surfaced on `/health/live`. Default: crate version.
     pub version: String,
-    /// Guards `/admin/drain` and `/health/drain`. Empty = open (NetworkPolicy still applies).
+    /// Guards `/health/drain`. Empty = open (NetworkPolicy still applies).
     pub admin_token: String,
 }
 

@@ -1,6 +1,7 @@
-# Argo CD install. Workloads remain Terraform-managed in api.tf / web.tf so
-# `terraform apply` alone rolls images (SIGTERM drain). When `argocd_repo_url` is set,
-# an Application tracks iac/charts/edh for the same values (gitops mirror / future cutover).
+# Argo CD owns API + web Deployments and Service edh-api (iac/charts/edh). Terraform apply
+# updates Application helm params (images / grace / active instance id); it does not wait on
+# pod termination grace. Sync waves: Deployment (0) then edh-api Service (1). PruneLast deletes
+# the prior per-tag API Deployment after the new generation is up → SIGTERM drain.
 
 resource "kubernetes_namespace_v1" "argocd" {
   metadata {
@@ -20,8 +21,6 @@ resource "helm_release" "argocd" {
 }
 
 resource "kubernetes_manifest" "edh_application" {
-  count = var.argocd_repo_url == "" ? 0 : 1
-
   manifest = {
     apiVersion = "argoproj.io/v1alpha1"
     kind       = "Application"
@@ -43,6 +42,12 @@ resource "kubernetes_manifest" "edh_application" {
             { name = "namespace", value = local.namespace },
             { name = "apiTerminationGraceSeconds", value = tostring(var.api_termination_grace_seconds) },
             { name = "apiActiveInstanceId", value = local.api_active_instance_id },
+            { name = "apiHeadlessService", value = local.api_headless_service },
+            { name = "cookieDomain", value = var.cookie_domain },
+            { name = "corsOrigin", value = var.cors_origin },
+            { name = "logLevel", value = var.log_level },
+            { name = "dbSecretName", value = kubernetes_secret_v1.mtgfr_db.metadata[0].name },
+            { name = "adminSecretName", value = kubernetes_secret_v1.mtgfr_admin.metadata[0].name },
           ]
         }
       }
@@ -52,12 +57,24 @@ resource "kubernetes_manifest" "edh_application" {
       }
       syncPolicy = {
         automated = {
-          prune    = false
-          selfHeal = false
+          prune    = true
+          selfHeal = true
         }
+        syncOptions = [
+          "PruneLast=true",
+        ]
       }
     }
   }
 
-  depends_on = [helm_release.argocd]
+  # Image bumps recreate migrate Jobs (name = image hash); wait_for_completion finishes before
+  # this Application CR is updated, so Argo never syncs a new server image ahead of schema.
+  depends_on = [
+    helm_release.argocd,
+    kubernetes_job_v1.edh_migrate,
+    kubernetes_job_v1.postgres_create_web_db,
+    kubernetes_job_v1.edh_web_migrate,
+    kubernetes_secret_v1.mtgfr_db,
+    kubernetes_secret_v1.mtgfr_admin,
+  ]
 }

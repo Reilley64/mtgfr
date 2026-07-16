@@ -15,23 +15,23 @@ edh_hostname = "edh.example.com"
 cookie_domain = ""
 cors_origin   = ""
 
-# Versioned API: set desired active + web images. Drain = SIGTERM + grace on the old Deployment.
+# Versioned API: set desired active + web images. Argo syncs Deployments; old API pods drain on SIGTERM.
 server_image = "ghcr.io/OWNER/mtgfr-server:0.1.0"
 # api_termination_grace_seconds = 86400
 
 web_image = "ghcr.io/OWNER/mtgfr-web:0.1.0"
 
-# Optional Argo Application git mirror (empty = install Argo only, TF owns Deployments).
-# argocd_repo_url = "https://github.com/OWNER/mtgfr.git"
-# argocd_target_revision = "main"
+# Required — Argo Application source for API/web Deployments + edh-api Service (iac/charts/edh).
+# targetRevision must already contain the chart templates before the first Argo-owned apply.
+argocd_repo_url        = "https://github.com/OWNER/mtgfr.git"
+argocd_target_revision = "main"
 
 mtgfr_db_password = "e5db11cd56bb69063d88f6434463198837d33f9cadd5d8fb70f20ccbd2a5945d"
 
 # Reserved — session signing if added later; leave empty until the server consumes it.
 auth_secret = ""
 
-# Bearer token for /admin/drain + /health/drain (empty = unauthenticated, matching the server's
-# default). Set a strong value once the cluster is stable.
+# Bearer token for GET /health/drain (empty = unauthenticated, matching the server's default).
 admin_token = ""
 
 # Pin cloudflared to an explicit release — never "latest". Check

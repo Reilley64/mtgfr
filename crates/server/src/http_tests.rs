@@ -16,8 +16,13 @@ mod tests {
     use tower::ServiceExt; // for `oneshot`
 
     async fn test_app() -> axum::Router {
+        test_app_with_state().await.0
+    }
+
+    async fn test_app_with_state() -> (axum::Router, AppState) {
         let db = db::connect("sqlite::memory:").await.expect("sqlite");
-        app(AppState::for_test(db))
+        let state = AppState::for_test(db);
+        (app(state.clone()), state)
     }
 
     /// `test_app()`, with `settings` in place of the plain test defaults — for the handful of
@@ -239,11 +244,10 @@ mod tests {
         );
     }
 
-    /// Deploy PRD §Admin / drain endpoints: once `admin_token` is configured, `/admin/drain`
-    /// rejects requests without a matching credential and accepts either the `Authorization:
-    /// Bearer` or the plain `X-Admin-Token` form.
+    /// Deploy PRD: once `admin_token` is configured, `/health/drain` rejects requests without a
+    /// matching credential and accepts either `Authorization: Bearer` or `X-Admin-Token`.
     #[tokio::test]
-    async fn admin_drain_requires_the_configured_admin_token_once_set() {
+    async fn health_drain_requires_the_configured_admin_token_once_set() {
         let settings = Settings {
             admin_token: "topsecret".to_string(),
             ..settings::for_test()
@@ -252,7 +256,7 @@ mod tests {
 
         let no_credential = router
             .clone()
-            .oneshot(post("/admin/drain", None, json!({})))
+            .oneshot(get("/health/drain", ""))
             .await
             .unwrap();
         assert_eq!(no_credential.status(), StatusCode::UNAUTHORIZED);
@@ -261,8 +265,8 @@ mod tests {
             .clone()
             .oneshot(
                 Request::builder()
-                    .method("POST")
-                    .uri("/admin/drain")
+                    .method("GET")
+                    .uri("/health/drain")
                     .header("authorization", "Bearer nope")
                     .body(Body::empty())
                     .unwrap(),
@@ -275,8 +279,8 @@ mod tests {
             .clone()
             .oneshot(
                 Request::builder()
-                    .method("POST")
-                    .uri("/admin/drain")
+                    .method("GET")
+                    .uri("/health/drain")
                     .header("authorization", "Bearer topsecret")
                     .body(Body::empty())
                     .unwrap(),
@@ -288,8 +292,8 @@ mod tests {
         let right_plain_header = router
             .oneshot(
                 Request::builder()
-                    .method("POST")
-                    .uri("/admin/drain")
+                    .method("GET")
+                    .uri("/health/drain")
                     .header("x-admin-token", "topsecret")
                     .body(Body::empty())
                     .unwrap(),
@@ -303,15 +307,12 @@ mod tests {
     /// and rejects *new* seeds with 503.
     #[tokio::test]
     async fn draining_still_serves_a_table_it_already_owns() {
-        let router = test_app().await;
+        use std::sync::atomic::Ordering;
+
+        let (router, state) = test_app_with_state().await;
         let (host, _guest, table) = start_two_player_game(&router).await;
 
-        let drained = router
-            .clone()
-            .oneshot(post("/admin/drain", None, json!({})))
-            .await
-            .unwrap();
-        assert_eq!(drained.status(), StatusCode::OK);
+        state.draining.store(true, Ordering::Relaxed);
 
         let stream = router
             .clone()
@@ -354,11 +355,13 @@ mod tests {
         );
     }
 
-    /// `POST /admin/drain` flips the live drain flag; `GET /health/drain` reflects tables;
-    /// `POST /tables/seed/v1` is 503 while draining.
+    /// `GET /health/drain` reflects tables; flipping the drain flag (as SIGTERM would) makes
+    /// `POST /tables/seed/v1` return 503.
     #[tokio::test]
-    async fn admin_drain_flips_the_flag_and_health_drain_reflects_active_tables() {
-        let router = test_app().await;
+    async fn health_drain_reflects_active_tables_and_drain_flag() {
+        use std::sync::atomic::Ordering;
+
+        let (router, state) = test_app_with_state().await;
         let (host, _guest, _table) = start_two_player_game(&router).await;
 
         let before = body_json(
@@ -372,16 +375,7 @@ mod tests {
         assert_eq!(before["draining"], false);
         assert_eq!(before["active_tables"], 1, "the started game is active");
 
-        let drained = body_json(
-            router
-                .clone()
-                .oneshot(post("/admin/drain", None, json!({})))
-                .await
-                .unwrap(),
-        )
-        .await;
-        assert_eq!(drained["draining"], true);
-        assert_eq!(drained["active_tables"], 1);
+        state.draining.store(true, Ordering::Relaxed);
 
         let after = body_json(
             router
@@ -392,6 +386,7 @@ mod tests {
         )
         .await;
         assert_eq!(after["draining"], true, "the flag stuck: {after}");
+        assert_eq!(after["active_tables"], 1);
 
         let host_me = body_json(
             router

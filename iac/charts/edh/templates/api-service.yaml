@@ -1,0 +1,19 @@
+# Newest-only seed / auth / decks. Sync-wave 1 runs after the API Deployment (wave 0) is
+# healthy so the selector never points at a missing instance id (no seed blackhole).
+apiVersion: v1
+kind: Service
+metadata:
+  name: edh-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: edh-api
+    app.kubernetes.io/part-of: mtgfr
+    mtgfr.io/component: api
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  selector:
+    app: {{ .Values.apiActiveInstanceId }}
+  ports:
+    - port: 8080
+      targetPort: 8080

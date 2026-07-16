@@ -1,15 +1,11 @@
-//! `POST /admin/drain` — live drain toggle (no pod restart). Cluster-internal via NetworkPolicy;
-//! `AdminAuth` is defense in depth when `settings.admin_token` is set.
+//! `AdminAuth` — defense in depth for cluster-internal admin/health routes when
+//! `settings.admin_token` is set.
 
-use std::sync::atomic::Ordering;
-
-use axum::Json;
-use axum::extract::{FromRequestParts, State};
+use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum::http::request::Parts;
 
 use crate::AppState;
-use crate::health::{DrainStatus, drain_status};
 
 const ADMIN_TOKEN_HEADER: &str = "x-admin-token";
 
@@ -44,11 +40,6 @@ impl FromRequestParts<AppState> for AdminAuth {
     }
 }
 
-pub async fn drain(_auth: AdminAuth, State(state): State<AppState>) -> Json<DrainStatus> {
-    state.draining.store(true, Ordering::Relaxed);
-    Json(drain_status(&state))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -74,16 +65,6 @@ mod tests {
             .unwrap()
             .into_parts()
             .0
-    }
-
-    #[tokio::test]
-    async fn drain_flips_the_flag() {
-        let state = test_state().await;
-        assert!(!state.draining.load(Ordering::Relaxed));
-
-        let Json(status) = drain(AdminAuth, State(state.clone())).await;
-        assert!(status.draining);
-        assert!(state.draining.load(Ordering::Relaxed));
     }
 
     #[tokio::test]

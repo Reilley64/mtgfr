@@ -1,5 +1,5 @@
 //! `/health/live` + `/health/ready` stay 200 while draining (owned tables keep traffic).
-//! `/health/drain` reports `{active_tables, draining}` for the apply-machine waiter.
+//! `/health/drain` reports `{active_tables, draining}` for observation (SIGTERM sets draining).
 
 use std::sync::atomic::Ordering;
 

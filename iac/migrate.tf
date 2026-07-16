@@ -5,9 +5,10 @@
 # hasn't changed — pointless churn on every web-only deploy step.
 # Naming on the image hash makes the Job stable (and thus a no-op plan) when the image is
 # unchanged, and forces a fresh Job (name changes) whenever it is. `wait_for_completion` blocks
-# this resource until the Job finishes, so any resource that `depends_on` it (api.tf) only rolls
-# after the schema is current. `ttl_seconds_after_finished` lets the completed Job/Pod get garbage
-# collected instead of accumulating one per release forever.
+# this resource until the Job finishes; `argocd.tf`'s Application `depends_on` this Job so helm
+# params (and thus Argo sync of the new image) only update after schema is current.
+# `ttl_seconds_after_finished` lets the completed Job/Pod get garbage collected instead of
+# accumulating one per release forever.
 
 resource "kubernetes_job_v1" "edh_migrate" {
   wait_for_completion = true
