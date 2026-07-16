@@ -193,7 +193,10 @@ mod tests {
     fn missing_commander_print_is_a_problem() {
         let cmd = cards::get_by_name("Tajic, Legion's Edge").unwrap();
         let err = validate(cmd.id, "", &[entry("Plains", 99)]).unwrap_err();
-        assert!(err.iter().any(|p| p.contains("commander is missing a print")));
+        assert!(
+            err.iter()
+                .any(|p| p.contains("commander is missing a print"))
+        );
     }
 
     #[test]

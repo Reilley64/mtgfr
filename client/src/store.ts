@@ -138,11 +138,14 @@ function extractProvenance(events: VisibleEvent[]): {
         fromStack.add(e.permanent);
       }),
       Match.discriminator("kind")("reanimated_to_battlefield", (e) => moves.set(e.permanent, e.from)),
+      // A flicker's return mints a fresh permanent id (CR 400.7) — glide it from the exiled card.
+      Match.discriminator("kind")("flickered_to_battlefield", (e) => moves.set(e.permanent, e.from)),
       // Every other kind is deliberately not a glide-provenance move. Listed (not orElse'd) so a
       // new engine event kind is a compile error here until someone decides whether it glides.
       Match.discriminator("kind")(
         "abilities_granted",
         "ability_activated_this_turn",
+        "ability_countered",
         "ability_resolved",
         "added_subtypes",
         "attached_to",
@@ -177,6 +180,8 @@ function extractProvenance(events: VisibleEvent[]): {
         "combat_damage_watch_consumed",
         "commander_cast_from_command_zone",
         "commander_damage_dealt",
+        "conditioned_control_ended",
+        "conditioned_control_gained",
         "control_ended_until_end_of_turn",
         "control_gained",
         "control_gained_until_end_of_turn",
@@ -296,6 +301,10 @@ function describe(e: VisibleEvent, state: VisibleState): string | null {
       // counter_kind is a numeric engine index with no client name table, so the kind stays unnamed.
       kind_counters_placed: (e) => `${name(e.object)} gets ${e.count} counter${e.count === 1 ? "" : "s"}`,
       control_gained: (e) => `${p(e.controller)} gains control of ${name(e.object)}`,
+      conditioned_control_gained: (e) => `${p(e.controller)} gains control of ${name(e.object)}`,
+      conditioned_control_ended: (e) => `control of ${name(e.object)} reverts`,
+      ability_countered: (e) => `${name(e.source)}'s ability is countered`,
+      flickered_to_battlefield: (e) => `${name(e.permanent)} is exiled and returns`,
       token_entered_attacking: (e) => `${name(e.token)} enters attacking`,
       citys_blessing_gained: (e) => `${p(e.player)} gains the city's blessing`,
       // def is the card name string — a hidden-zone card not in state.objects, so use it directly.

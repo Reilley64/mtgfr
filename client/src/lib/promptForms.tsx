@@ -1604,6 +1604,167 @@ const ChooseTriggerModesForm: Component<FormProps> = (props) => {
 /** kind → form component, one entry per `PendingChoiceView["kind"]`. `Record` over the union is
  * the compile-time exhaustiveness check the old `<Match>` chain lacked: add a wire kind, TS fails
  * the build right here until a form is wired up. */
+// "You may choose not to untap this permanent during your untap step" (CR 502.2 — Rubinia):
+// pick the permanents to KEEP TAPPED; submitting an empty selection untaps everything.
+const DeclineUntapForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"decline_untap">;
+  return (
+    <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
+      title="Untap step: choose permanents to keep tapped"
+      hint="Anything not chosen untaps as normal."
+      submitLabel="Confirm"
+      items={pc().items}
+      count={null}
+      onSubmit={(ids) => props.onAnswer({ kind: "keep_tapped", ids })}
+    />
+  );
+};
+
+// "Sacrifice it unless you pay …" as it enters (Rupture Spire). Same `pay` answer as
+// PayEchoOrSacrificeForm; only the copy differs (this isn't echo).
+const SacrificeUnlessPayForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"sacrifice_unless_pay">;
+  return (
+    <div>
+      <div class={PROMPT_TITLE}>
+        {objectName(props.state, pc().source)}: pay {costText(pc().cost)} or sacrifice it
+      </div>
+      <div class={PROMPT_ROW}>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "pay", pay: true })}>
+          Pay {costText(pc().cost)}
+        </Button>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "pay", pay: false })} variant="ghost">
+          Sacrifice it
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Rhystic Study's punisher: the caster pays, or the enchantment's controller may draw.
+const PayOrControllerDrawsForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"pay_or_controller_draws">;
+  const who = () => {
+    const name = props.state.players.find((pl) => pl.player === pc().controller)?.username?.trim();
+    return name || `P${pc().controller}`;
+  };
+  return (
+    <div>
+      <div class={PROMPT_TITLE}>
+        Pay {costText(pc().cost)}? If you don't, {who()} may draw a card.
+      </div>
+      <div class={PROMPT_ROW}>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "pay", pay: true })}>
+          Pay {costText(pc().cost)}
+        </Button>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "pay", pay: false })} variant="ghost">
+          Don't pay
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Hinder's counter rider: put the countered spell on top or bottom of its owner's library.
+const ChooseCounteredSpellDestinationForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"choose_countered_spell_destination">;
+  return (
+    <div>
+      <div class={PROMPT_TITLE}>Put {objectName(props.state, pc().spell)} on top or bottom of its owner's library?</div>
+      <div class={PROMPT_ROW}>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "top_or_bottom", top: true })}>
+          Top of library
+        </Button>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "top_or_bottom", top: false })} variant="ghost">
+          Bottom of library
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Treva's Ruins: return one of the offered lands to your hand, or sacrifice the source.
+const SacrificeUnlessReturnLandForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"sacrifice_unless_return_land">;
+  return (
+    <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
+      title={`${objectName(props.state, pc().source)}: return a land to your hand or sacrifice it`}
+      submitLabel="Return to hand"
+      declineLabel="Sacrifice it"
+      items={pc().items}
+      count={1}
+      onSubmit={(ids) => props.onAnswer({ kind: "return_land", land: ids[0] })}
+      onDecline={() => props.onAnswer({ kind: "return_land", land: null })}
+    />
+  );
+};
+
+// Illusionary Mask: cast one of the offered hand creatures face down, or decline (CR 708.2).
+const CastCreatureFaceDownForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"cast_creature_face_down">;
+  return (
+    <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
+      title="Cast a creature face down?"
+      submitLabel="Cast face down"
+      declineLabel="Decline"
+      items={pc().items}
+      count={1}
+      onSubmit={(ids) => props.onAnswer({ kind: "cast_face_down_choice", choice: ids[0] })}
+      onDecline={() => props.onAnswer({ kind: "cast_face_down_choice", choice: null })}
+    />
+  );
+};
+
+// Fact or Fiction: the chosen opponent splits the revealed cards — selected cards form one pile,
+// the rest form the other. Answered with the same subset shape as a sacrifice pick.
+const PartitionRevealedForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"partition_revealed">;
+  return (
+    <CardPickPrompt
+      print={(id) => objectPrint(props.state, id)}
+      title={`${objectName(props.state, pc().source)}: split the revealed cards into two piles`}
+      hint="Selected cards form one pile; the rest form the other. Either pile may be empty."
+      submitLabel="Split"
+      items={pc().items}
+      count={null}
+      onSubmit={(ids) => props.onAnswer({ kind: "sacrifice", ids })}
+    />
+  );
+};
+
+// Fact or Fiction: the caster picks which pile goes to hand (the other goes to the graveyard).
+// Same two-pile view and `opponent_pile` answer as OpponentChoosesPileForm; only the copy differs.
+const ChoosePileForHandForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"choose_pile_for_hand">;
+  const pileLabel = (items: ChoiceItem[]) => (items.length === 0 ? "(empty)" : items.map((it) => it.label).join(", "));
+  return (
+    <div>
+      <div class={PROMPT_TITLE}>{objectName(props.state, pc().source)}: choose a pile to put into your hand</div>
+      <div class="my-1 flex flex-col items-stretch gap-xs">
+        <Button
+          type="button"
+          onClick={() => props.onAnswer({ kind: "opponent_pile", pile: 0 })}
+          variant="ghost"
+          class="text-left"
+        >
+          Pile A — {pileLabel(pc().pile_a)}
+        </Button>
+        <Button
+          type="button"
+          onClick={() => props.onAnswer({ kind: "opponent_pile", pile: 1 })}
+          variant="ghost"
+          class="text-left"
+        >
+          Pile B — {pileLabel(pc().pile_b)}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export const FORMS: Record<PendingChoiceView["kind"], Component<FormProps>> = {
   order_triggers: OrderForm,
   choose_target: ChooseTargetForm,
@@ -1653,4 +1814,15 @@ export const FORMS: Record<PendingChoiceView["kind"], Component<FormProps>> = {
   choose_ability_targets: ChooseSpellTargetsForm,
   distribute_top: DistributeTopForm,
   choose_trigger_modes: ChooseTriggerModesForm,
+  decline_untap: DeclineUntapForm,
+  sacrifice_unless_pay: SacrificeUnlessPayForm,
+  sacrifice_unless_return_land: SacrificeUnlessReturnLandForm,
+  pay_or_controller_draws: PayOrControllerDrawsForm,
+  choose_countered_spell_destination: ChooseCounteredSpellDestinationForm,
+  cast_creature_face_down: CastCreatureFaceDownForm,
+  // "An opponent" chosen by the controller (Fact or Fiction) — the same items/label/source shape
+  // and single-target `choose_targets` answer as choose_target; reuse that form.
+  choose_splitting_opponent: ChooseTargetForm,
+  partition_revealed: PartitionRevealedForm,
+  choose_pile_for_hand: ChoosePileForHandForm,
 };

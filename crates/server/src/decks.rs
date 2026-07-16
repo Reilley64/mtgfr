@@ -286,11 +286,9 @@ mod soc_deck_tests {
 
     fn assert_legal(fixture: &str) {
         let deck = load(fixture);
-        if let Err(problems) = crate::legality::validate(
-            &deck.commander,
-            &deck.commander_print,
-            &deck.cards,
-        ) {
+        if let Err(problems) =
+            crate::legality::validate(&deck.commander, &deck.commander_print, &deck.cards)
+        {
             panic!(
                 "{fixture} ({} + {} others) is not a legal Commander deck:\n  {}",
                 deck.commander,
