@@ -98,12 +98,10 @@ resource "kubernetes_network_policy" "edh_web_ingress" {
   }
 }
 
-# Bitnami's postgresql chart (postgres.tf) labels the primary pod
-# app.kubernetes.io/name=postgresql, app.kubernetes.io/instance=<release name> — the release name
-# is local.postgres_service ("postgres", via fullnameOverride). Only the three workloads that
-# actually hold DATABASE_URL may reach it: edh-api, edh-api-drain (api.tf), and edh-migrate
-# (migrate.tf, the `app` label on its Job's pod template). Egress from those pods is unrestricted
-# (no NetworkPolicy selects them for egress), so this ingress-only rule is the full control.
+# postgres.tf labels the primary pod `app=postgres`. Only the three workloads that actually hold
+# DATABASE_URL may reach it: edh-api, edh-api-drain (api.tf), and edh-migrate (migrate.tf). Egress
+# from those pods is unrestricted (no NetworkPolicy selects them for egress), so this ingress-only
+# rule is the full control.
 resource "kubernetes_network_policy" "postgres_ingress" {
   metadata {
     name      = "postgres-ingress"
@@ -113,8 +111,7 @@ resource "kubernetes_network_policy" "postgres_ingress" {
   spec {
     pod_selector {
       match_labels = {
-        "app.kubernetes.io/name"     = "postgresql"
-        "app.kubernetes.io/instance" = local.postgres_service
+        app = local.postgres_service
       }
     }
 

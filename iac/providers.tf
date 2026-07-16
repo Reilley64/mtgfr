@@ -6,13 +6,6 @@ provider "kubernetes" {
   config_path = var.kubeconfig_path
 }
 
-# Helm is required — the Bitnami postgresql release (postgres.tf) lives here.
-provider "helm" {
-  kubernetes {
-    config_path = var.kubeconfig_path
-  }
-}
-
 provider "cloudflare" {
   api_token = var.cloudflare_api_token
 }

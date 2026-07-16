@@ -21,6 +21,9 @@ COPY --from=build /server /server
 COPY --from=build /src/config/mtgfr.toml /config/mtgfr.toml
 COPY --from=build /src/Toasty.toml /Toasty.toml
 COPY --from=build /src/toasty /toasty
+# cards::load_from_data_dir bakes CARGO_MANIFEST_DIR (/src/crates/cards) into the binary —
+# the TOML pool must live at that path in the runtime image too.
+COPY --from=build /src/crates/cards/data /src/crates/cards/data
 ENV HOST=0.0.0.0
 ENV PORT=8080
 EXPOSE 8080
