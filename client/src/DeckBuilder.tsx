@@ -737,6 +737,7 @@ function PrintPicker(props: { oracleId: string; onPick: (printId: string) => voi
   });
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click's keyboard equivalent is Escape, which showModal() wires natively into onClose.
     <dialog
       ref={dialog}
       onClose={() => props.onClose()}
