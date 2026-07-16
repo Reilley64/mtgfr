@@ -4,9 +4,9 @@
 // stray Enter away.
 
 import { createEffect, onCleanup, Show } from "solid-js";
+import { Button } from "~/components/atoms";
 import { cn } from "~/lib/cn";
 import { openModalWhenReady } from "~/lib/modalDialog";
-import { Button } from "~/components/atoms";
 
 export default function ConfirmDialog(props: {
   open: boolean;

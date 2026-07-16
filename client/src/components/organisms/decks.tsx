@@ -10,12 +10,12 @@ import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import type { CatalogCard } from "~/api/generated";
 import { decksAtom } from "~/atoms";
+import { Button, Felt, ListRow } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client, succeeded } from "~/effect/client";
 import { useAuthGuard } from "~/guard";
 import { lookupCardsByIds } from "~/lib/lookupCards";
-import { Button, Felt, ListRow } from "~/components/atoms";
 
 const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id), {})));
 const logoutFn = Atom.fn(() => succeeded(client.logout({})));

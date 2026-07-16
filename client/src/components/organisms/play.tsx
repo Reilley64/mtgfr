@@ -4,9 +4,9 @@ import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createSignal, Show } from "solid-js";
 import Board from "~/components/organisms/board";
+import Lobby from "~/components/organisms/lobby";
 import { client } from "~/effect/client";
 import { useAuthGuard } from "~/guard";
-import Lobby from "~/components/organisms/lobby";
 import { tableId } from "~/net";
 
 // Failures fold to "not started"; lobby poll recovers. `immediate` is required or the atom never runs.

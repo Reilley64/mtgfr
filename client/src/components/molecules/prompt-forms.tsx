@@ -5,6 +5,7 @@
 
 import { type Component, createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
 import type { ChoiceItem, ModeView, PendingChoiceView, VisibleState, WireCost, WireTarget } from "~/api/generated";
+import { Button, Field } from "~/components/atoms";
 import { InspectDock } from "~/components/molecules/card-preview";
 import { seatColor } from "~/layout";
 import type { AnswerInput } from "~/lib/choice";
@@ -25,7 +26,6 @@ import {
   sourceHint,
   spellTargetsTitle,
 } from "~/lib/targetPrompt";
-import { Button, Field } from "~/components/atoms";
 
 export const PROMPT_TITLE = cn("mb-sm font-bold");
 export const PROMPT_ROW = cn("my-1 flex flex-wrap gap-xs");

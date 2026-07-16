@@ -1,6 +1,6 @@
 import { type JSX, splitProps } from "solid-js";
-import { cn } from "~/lib/cn";
 import { cva, type VariantProps } from "~/components/atoms/cva";
+import { cn } from "~/lib/cn";
 
 /** DESIGN.md §5 button vocabulary — variants live here, not in CSS `@apply`. */
 const button = cva({
