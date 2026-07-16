@@ -470,9 +470,6 @@ impl Game {
         // above instead, entering the battlefield rather than reaching this graveyard
         // path — no pool escape card is a non-permanent, so this branch is exercised only (CR 702.19)
         // by flashback today.)
-        // ponytail: only the resolve path is handled here. A *countered* flashback/escape
-        // spell would also exile (CR 702.34e/702.19d cover "as it leaves the stack"), but
-        // no pool card counters one, so `counter_spell`'s graveyard move is left as-is.
         if spell.flashback || spell.escape {
             self.push_apply(
                 events,
@@ -557,6 +554,18 @@ impl Game {
         // stays on the stack, unaffected.
         if self.def_of(spell).uncounterable {
             return Vec::new();
+        }
+        // CR 702.34e/CR 702.19d: a flashback or escape spell exiles "as it leaves the stack" —
+        // countered is one such departure, same as resolving (see
+        // `finish_instant_sorcery_resolution`'s twin check). Checked before the Quintorius rider
+        // below: a flashback/escape spell never reaches a graveyard in the first place, so
+        // Quintorius's "would be put into a graveyard" redirect doesn't apply to it either.
+        let countered = self.spell(spell);
+        if countered.flashback || countered.escape {
+            return vec![Event::MovedToExile {
+                card: self.next_object_id(),
+                from: spell,
+            }];
         }
         // Quintorius, Loremaster's CR 614.6 rider (see `finish_instant_sorcery_resolution`'s
         // twin check) — "would be put into a graveyard" covers the countered case too. `&self`
@@ -1040,6 +1049,42 @@ impl Game {
                             generic: generic as u8,
                             ..Cost::FREE
                         },
+                        spell: original,
+                    },
+                );
+            }
+            // Hinder's destination rider (CR 701.5b — `countered_dest`): pause this ability's
+            // controller on a top/bottom pick before the countered card moves, unless it's not
+            // going to a graveyard anyway — already left the stack / uncounterable (CR 608.2b /
+            // 701.5g), or exiles instead (flashback/escape, CR 702.34e/702.19d; Quintorius's CR
+            // 614.6 bottom-library redirect) — those cases fall through to the ordinary
+            // `counter_spell`, which has nothing left for this rider to redirect.
+            Effect::CounterTargetSpell {
+                unless_pays: None,
+                countered_dest: Some(CounteredDest::LibraryTopOrBottom),
+                ..
+            } => {
+                let original = expect_object_target(target, "a spell to counter");
+                let is_spell = matches!(self.objects[original as usize], Object::Spell(_));
+                let goes_to_graveyard = is_spell
+                    && !self.def_of(original).uncounterable
+                    && !self.spell(original).flashback
+                    && !self.spell(original).escape
+                    && !self
+                        .play_permissions
+                        .stack_object_bottoms_library_on_leave
+                        .iter()
+                        .any(|&flagged| self.current_id(flagged) == original);
+                if !goes_to_graveyard {
+                    let evs = self.counter_spell(original);
+                    self.apply_all(&evs);
+                    events.extend(evs);
+                    return;
+                }
+                pending::raise_choice(
+                    self,
+                    PendingChoice::ChooseCounteredSpellDestination {
+                        player: controller,
                         spell: original,
                     },
                 );
@@ -3851,6 +3896,20 @@ impl Game {
             Effect::GainControl { .. } => {
                 let object = expect_object_target(target, "a permanent control change");
                 vec![Event::ControlGained { object, controller }]
+            }
+            Effect::GainControlWhile {
+                while_source_tapped,
+                ..
+            } => {
+                let object = expect_object_target(target, "a conditioned steal");
+                vec![Event::ConditionedControlGained {
+                    object,
+                    controller,
+                    condition: crate::ControlCondition {
+                        source,
+                        needs_tapped: while_source_tapped,
+                    },
+                }]
             }
             // Backup's rider (CR 702.166): the shared target creature gains the source's other
             // abilities until end of turn — but only "if that's another creature", so the source

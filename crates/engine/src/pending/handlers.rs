@@ -617,6 +617,34 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::ChooseCounteredSpellDestination`] (Hinder's CR 701.5b rider):
+    /// `top` puts the already-countered `spell` on top of its owner's library instead of the
+    /// bottom. `_player` isn't needed beyond `submit`'s choice-gate actor check (like
+    /// [`Game::choose_color`]).
+    pub(crate) fn choose_countered_spell_destination(
+        &mut self,
+        _player: PlayerId,
+        top: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseCounteredSpellDestination { spell, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        self.push_apply(
+            &mut events,
+            Event::TuckedToLibrary {
+                card: self.next_object_id(),
+                from: spell,
+                to_top: top,
+            },
+        );
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::PayEchoOrSacrifice`]: pay Echo's cost to keep `source`, or
     /// decline and sacrifice it (CR 702.31d). The permanent-scoped twin of
     /// [`Game::pay_or_counter`] — same [`Intent::PayOptionalCost`] shape and "declining does
@@ -3847,6 +3875,39 @@ impl Game {
         }
         Ok(events)
     }
+
+    /// Answer a [`PendingChoice::DeclineUntap`] (CR 502.2 — Rubinia Soulsinger's "you may choose
+    /// not to untap"): untap every offered permanent the active player didn't keep tapped, then
+    /// resume the interrupted untap step (the same step-transition resume as a cleanup discard).
+    /// Leaving a permanent tapped is exactly what sustains a "remains tapped" control condition —
+    /// the SBA sweep after this answer reverts any steal whose source the player chose to untap.
+    pub(crate) fn answer_decline_untap(
+        &mut self,
+        player: PlayerId,
+        keep_tapped: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::DeclineUntap {
+            player: chooser,
+            permanents,
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        // The answer must come from the asked player and only name permanents that were offered.
+        if player != chooser || !keep_tapped.iter().all(|id| permanents.contains(id)) {
+            return Err(Reject::IllegalChoice); // invalid — the choice stays pending
+        }
+
+        self.finish_answer();
+        let mut events = Vec::new();
+        for id in permanents {
+            if !keep_tapped.contains(&id) {
+                self.push_apply(&mut events, Event::Untapped { object: id });
+            }
+        }
+        events.extend(self.advance_step());
+        Ok(events)
+    }
 }
 
 /// Whether each permanent (given by its type `masks`) can be assigned a *distinct* `slot` type it
@@ -3952,6 +4013,7 @@ mod tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         )
     }

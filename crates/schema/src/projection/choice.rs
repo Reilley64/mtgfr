@@ -169,6 +169,12 @@ impl<'a> ChoiceCtx<'a> {
                 spell,
                 cost: wire_cost(cost),
             },
+            engine::PendingChoice::ChooseCounteredSpellDestination { player, spell } => {
+                PendingChoiceView::ChooseCounteredSpellDestination {
+                    player: player.0,
+                    spell,
+                }
+            }
             engine::PendingChoice::PayEchoOrSacrifice {
                 player,
                 source,
@@ -445,6 +451,12 @@ impl<'a> ChoiceCtx<'a> {
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
+            engine::PendingChoice::DeclineUntap { player, permanents } => {
+                PendingChoiceView::DeclineUntap {
+                    player: player.0,
+                    items: self.label_items(permanents),
+                }
+            }
             engine::PendingChoice::PutLandFromHand {
                 player, candidates, ..
             } => PendingChoiceView::PutLandFromHand {
@@ -741,6 +753,18 @@ mod coverage_tests {
                     spell,
                 },
                 |view| matches!(view, PendingChoiceView::PayOrCounter { .. }),
+            ),
+            (
+                PendingChoice::ChooseCounteredSpellDestination {
+                    player: PlayerId(0),
+                    spell,
+                },
+                |view| {
+                    matches!(
+                        view,
+                        PendingChoiceView::ChooseCounteredSpellDestination { .. }
+                    )
+                },
             ),
             (
                 PendingChoice::AssignCombatDamage {

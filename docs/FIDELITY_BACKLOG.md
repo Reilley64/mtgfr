@@ -1290,13 +1290,19 @@ same `TuckedToLibrary`-based primitive for its countered-spell tuck destination.
 `condemn_tucks_attacking_creature_to_bottom`, `condemn_only_targets_attacking_creatures`,
 `tuck_permanent_token_ceases_to_exist`.
 
-### 136. `toughness-amounts` — 2 cards, S
+### 136. `toughness-amounts` — 2 cards, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 Two Amount arms the pool has power-side twins for: `Amount::TargetToughness` (Condemn's "its
 controller gains life equal to its toughness" — pair with `gain_life_target_controller`, reading
 the target pre-tuck like Swords to Plowshares' rider) and `Amount::SacrificedCreatureToughness`
 (Miren's "gain life equal to the sacrificed creature's toughness" — the `SacrificedCreaturePower`
 context-fill, toughness side). *Cards:* condemn, miren_the_moaning_well.
+
+**Landed:** `Amount::TargetToughness` (reads `toughness(target)` in `resolve_amount`) and
+`Amount::SacrificedCreatureToughness` (context-filled to `Fixed` at ability placement via
+`contextualize_sacrifice_effect`, now passed the sacrificed creature's toughness alongside power).
+Fully faithful (notes deleted): condemn (toughness lifegain read pre-tuck), miren_the_moaning_well.
+Still blocked: nothing.
 
 ### 137. `cards-in-hand-amount` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
@@ -1310,13 +1316,19 @@ recompute. Fully faithful (no note): empyrial_armor. Also fixed a latent charact
 `CardDrawn`/`SearchedToHand`/`SpellCast` didn't invalidate the caster's cache, so any hand-size
 static would go stale on a real draw/tutor/cast; now owner-scoped invalidated.
 
-### 138. `global-anthem-scope` — 1 card, S
+### 138. `global-anthem-scope` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 An `all_players: bool` axis on `anthem_static` widening the candidate scan from "creatures you
 control" to every creature on the battlefield ("All creatures have haste"). *Sketch:* one axis in
 `matching_anthems`' controller gate; keyword-only consumer first. The World-enchantment supertype
 rule (CR 704.5k) is NOT modeled — ponytail note on the card (single World card in the pool, the
 rule needs a second to observe). *Cards:* concordant_crossroads.
+
+**Landed:** `all_players: bool` on `Effect::AnthemStatic` drops the "source's controller controls
+candidate" gate in `matching_anthems` (and mirrored in `modifier_sources`'s UI-explain scan).
+Fully faithful: concordant_crossroads (keyword-only haste anthem). Still blocked: the World
+supertype uniqueness rule (CR 704.5k) — no World axis in the DSL; carried as a `ponytail:` note on
+the card, unblocks when a second World card lands.
 
 ### 139. `noncreature-keyword-anthem` — 1 card, S/M
 Depends on: nothing.
@@ -1538,7 +1550,7 @@ the `damage_creature` choke, removing one +1/+1 counter per prevented damage eve
 removal is not optional; fires even at zero counters where it prevents and removes nothing).
 *Cards:* phantom_centaur.
 
-### 160. `counter-with-tuck` — 1 card, M
+### 160. `counter-with-tuck` — 1 card, M — **LANDED (2026-07-16)**
 Depends on: #135.
 Hinder's "If that spell is countered this way, put that card on your choice of the top or bottom
 of its owner's library instead of into that player's graveyard" — a destination rider on
@@ -1547,6 +1559,13 @@ top/bottom pick). Also closes the falsified claim at `effects.rs`: a countered f
 spell must exile (CR 702.34e/702.19d) — wire that fork into `counter_spell`'s card move while
 touching it (Hinder countering a flashbacked Moment's Peace exiles it; the tuck rider then has
 nothing to move, CR 701.5b). *Cards:* hinder.
+
+**Landed:** `countered_dest: Option<CounteredDest>` (`LibraryTopOrBottom`) on
+`Effect::CounterTargetSpell`; resolution pauses on `PendingChoice::ChooseCounteredSpellDestination`
+/ `Intent::ChooseTopOrBottom` and emits `TuckedToLibrary`. `counter_spell` now exiles a countered
+flashback/escape spell (CR 702.34e/702.19d), checked ahead of the Quintorius graveyard-redirect;
+the stale ponytail claiming no pool card counters one is deleted. Fully faithful: hinder. Still
+blocked: nothing.
 
 ### 161. `pile-split` — 1 card, M/L
 Depends on: nothing.
@@ -1559,7 +1578,7 @@ effect), then that opponent answers a partition choice, then the controller pick
 take to hand (other to graveyard). New pending-choice surface for the partition (a subset pick
 over the five). *Cards:* fact_or_fiction.
 
-### 162. `conditioned-control-duration` — 1 card, L
+### 162. `conditioned-control-duration` — 1 card, L — **LANDED (2026-07-16)**
 Depends on: nothing. **The commander — schedule early despite the L.**
 Rubinia Soulsinger: "You may choose not to untap Rubinia during your untap step" and "{T}: Gain
 control of target creature for as long as you control Rubinia and Rubinia remains tapped."
@@ -1570,6 +1589,13 @@ tapped), re-evaluated at the SBA/recompute chokes — the moment Rubinia untaps,
 controller, the steal reverts (CR 611.2b duration). The existing overrides are until-EOT or
 forever; this is the first condition-scoped one — give the override record an optional
 `while: ControlCondition` rather than a third hardcoded variant. *Cards:* rubinia_soulsinger.
+
+**Landed:** `may_choose_not_to_untap` CardDef flag → `PendingChoice::DeclineUntap` /
+`Intent::DeclineUntap` at the untap turn-based action; `Effect::GainControlWhile { while_source_tapped }`
+writes a third `conditioned_control_overrides` registry keyed by a `ControlCondition { source,
+needs_tapped }`, consulted by `controller_of` and swept by `check_conditioned_control_reversions`
+(new SBA). Fully faithful: rubinia_soulsinger. Still blocked: client catch-up (Phase 5) still owed
+for the `DeclineUntap` choice/intent and `ConditionedControl*` events.
 
 ### 163. `morph-face-down` — 2 cards, XL — **LANDED (2026-07-16, illusionary_mask residual)**
 Depends on: #the landed manifest substrate (face-down 2/2 status, turn-face-up special action).

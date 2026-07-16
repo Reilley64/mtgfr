@@ -1,0 +1,23 @@
+# {T}: Add {C}.
+# {2}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.
+name = "Miren, the Moaning Well"
+otags = ["activated-ability", "lifegain", "mana-sink", "repeatable-lifegain", "sacrifice-outlet-creature", "synergy-sacrifice", "toughness-matters", "utility-land", "virtual-legendary"]
+oracle = "{T}: Add {C}.\n{2}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness."
+set = "soc"
+legendary = true
+
+[kind]
+type = "land"
+produces = "colorless"
+
+# {2}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 2 }
+sacrifice = "creature"
+
+# You gain life equal to the sacrificed creature's toughness.
+[[abilities.effects]]
+type = "gain_life"
+amount = "sacrificed_creature_toughness"

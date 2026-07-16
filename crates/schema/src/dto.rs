@@ -419,6 +419,11 @@ pub enum PendingChoiceView {
         source: ObjectId,
         label: String,
     },
+    /// This player (the active player at their untap step) may choose not to untap any of `items`
+    /// — the permanents they control that "may choose not to untap" (CR 502.2 — Rubinia
+    /// Soulsinger). `items` are public battlefield permanents. Answering keeps the chosen subset
+    /// tapped and untaps the rest.
+    DeclineUntap { player: u8, items: Vec<ChoiceItem> },
     /// The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
     /// effect label so the client can say what paying does.
     PayCost {
@@ -435,6 +440,9 @@ pub enum PendingChoiceView {
         spell: ObjectId,
         cost: WireCost,
     },
+    /// `spell` is already countered (CR 701.5b — Hinder's `countered_dest` rider) — choose the
+    /// top or bottom of its owner's library for it to go to instead of the graveyard.
+    ChooseCounteredSpellDestination { player: u8, spell: ObjectId },
     /// Pay `cost` (Echo) to keep `source`, or decline and sacrifice it (CR 702.31 — the
     /// permanent-scoped twin of `PayOrCounter`).
     PayEchoOrSacrifice {

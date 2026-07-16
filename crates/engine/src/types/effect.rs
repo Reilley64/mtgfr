@@ -41,6 +41,11 @@ pub enum Amount {
     SourceToughness,
     /// The targeted permanent's power (Swords to Plowshares: "life equal to its power").
     TargetPower,
+    /// The targeted permanent's toughness — the toughness twin of [`TargetPower`](Self::TargetPower)
+    /// (Condemn: "its controller gains life equal to its toughness"). Like `TargetPower`, this
+    /// must resolve before the target leaves the battlefield (CR 613.6/603.10a last-known
+    /// information) — the effect that reads it runs ahead of any move/tuck step in the sequence.
+    TargetToughness,
     /// The targeted object's mana value.
     TargetManaValue,
     /// The number of +1/+1 counters on the effect's source.
@@ -97,6 +102,13 @@ pub enum Amount {
     /// there's nothing left on the battlefield to read power from at that point) — resolving this
     /// variant directly is a bug (see [`Game::resolve_amount`]'s panic).
     SacrificedCreaturePower,
+    /// The toughness of the creature just paid as this ability's sacrifice cost — the toughness
+    /// twin of [`SacrificedCreaturePower`](Self::SacrificedCreaturePower) (Miren, the Moaning
+    /// Well's "You gain life equal to the sacrificed creature's toughness"). Same placeholder
+    /// shape: [`contextualize_sacrifice_effect`] rewrites it to [`Fixed`](Self::Fixed) with the
+    /// sacrificed creature's toughness at ability placement — resolving this variant directly is
+    /// a bug (see [`Game::resolve_amount`]'s panic).
+    SacrificedCreatureToughness,
     /// The number of colors in the effect's controller's commander's color identity (CR 903.4) —
     /// War Room's "pay life equal to the number of colors in your commander's color identity".
     CommanderColorCount,
@@ -655,6 +667,14 @@ pub enum Effect {
         /// battlefield.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         from_graveyard: bool,
+        /// Drop the "candidate is controlled by the anthem source's controller" gate entirely —
+        /// every creature on the battlefield qualifies, not just the source's controller's (CR
+        /// "**all** creatures" — Concordant Crossroads's "All creatures have haste"). `false`
+        /// (default) is the ordinary "creatures you control" scope every anthem before this axis
+        /// had. Read in [`Game::matching_anthems`], the only place the controller gate lives;
+        /// every other axis here (`subtypes`, `colors`, `exclude_source`, …) still applies.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_players: bool,
     },
     /// A static ability that makes certain triggered abilities trigger an *additional* time (CR
     /// 603.3c — Harmonic Prodigy's "a triggered ability of a Shaman or another Wizard you control
@@ -1286,6 +1306,20 @@ pub enum Effect {
     /// [`GainControlUntilEndOfTurn`](Self::GainControlUntilEndOfTurn), it is never reverted at
     /// cleanup. Recorded in [`Game::permanent_control_overrides`].
     GainControl { target: TargetSpec },
+    /// A condition-scoped control change (CR 611.2b — Rubinia Soulsinger's "Gain control of target
+    /// creature for as long as you control Rubinia and Rubinia remains tapped"): the ability's
+    /// controller gains control of the target creature while the source stays under their control
+    /// and (when `while_source_tapped`) tapped. Unlike [`GainControlUntilEndOfTurn`](Self::GainControlUntilEndOfTurn)
+    /// (cleanup) and [`GainControl`](Self::GainControl) (permanent), the steal reverts on its own
+    /// the instant the condition fails — recorded in [`Game::conditioned_control_overrides`] and
+    /// swept by [`Game::check_conditioned_control_reversions`]. Rubinia's activation cost is `{T}`,
+    /// so tapping her is exactly what starts the "remains tapped" condition true.
+    GainControlWhile {
+        target: TargetSpec,
+        /// "and Rubinia remains tapped" — the source must stay tapped, not merely controlled.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        while_source_tapped: bool,
+    },
     /// Equipment's Equip ability (CR 702.6): attach this Equipment to the target creature its
     /// controller controls, detaching it from any prior creature. Sorcery-speed.
     Equip,
@@ -2367,11 +2401,21 @@ pub enum Effect {
     /// `filter` restricts which spells are legal targets (Decisive Denial's "target noncreature
     /// spell", Quandrix Command's "target artifact or enchantment spell"); defaults to
     /// [`SpellFilter::AllSpells`], the classic "counter target spell".
+    ///
+    /// `countered_dest`, when set, is Hinder's destination rider (CR 701.5b — "if that spell is
+    /// countered this way, put that card [somewhere] instead of into that player's graveyard"):
+    /// resolution pauses this ability's controller on a
+    /// [`PendingChoice::ChooseCounteredSpellDestination`] top/bottom pick before the countered
+    /// card moves. `None` (the common case) is the ordinary counter straight to the graveyard.
+    /// Never combined with `unless_pays` in the pool today — the "unless" branch's `PayOrCounter`
+    /// pause always resolves through the ordinary [`Game::counter_spell`], not this rider.
     CounterTargetSpell {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         unless_pays: Option<Amount>,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         filter: SpellFilter,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        countered_dest: Option<CounteredDest>,
     },
     /// Fight (CR 701.12): the ability's controller's creature and a target creature they don't
     /// control each deal damage equal to their power to the other, simultaneously. The printed
@@ -2932,6 +2976,7 @@ impl Effect {
             | Effect::UntapTarget { target }
             | Effect::GainControlUntilEndOfTurn { target }
             | Effect::GainControl { target }
+            | Effect::GainControlWhile { target, .. }
             | Effect::ShuffleTargetPermanentIntoLibraryThenReveal { target }
             | Effect::TuckPermanentIntoLibrary { target, .. }
             | Effect::RegenerateShield { target }
@@ -3345,6 +3390,20 @@ impl Effect {
             other => other,
         }
     }
+}
+
+/// Where a countered spell goes instead of its owner's graveyard (CR 701.5b), the destination
+/// rider on [`Effect::CounterTargetSpell::countered_dest`] (Hinder).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CounteredDest {
+    /// "Put that card on the top or bottom of its owner's library" — the countering ability's
+    /// controller picks, via a [`PendingChoice::ChooseCounteredSpellDestination`] pause.
+    LibraryTopOrBottom,
 }
 
 /// A sacrifice requirement in an ability's activation cost (CR 118.9 — sacrifice as a cost).
@@ -4514,9 +4573,10 @@ fn fill_source_power(effect: Effect, power: i32) -> Effect {
 /// Essence Brewer's "gain X life *and* put X counters") shares one recorded value across both
 /// steps; every other effect passes through unchanged. Called at [`Game::activate_ability`],
 /// mirroring how [`contextualize_effect`] fills a triggered ability's context at placement.
-pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32) -> Effect {
+pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughness: i32) -> Effect {
     let fill = |amount: Amount| match amount {
         Amount::SacrificedCreaturePower => Amount::Fixed(power),
+        Amount::SacrificedCreatureToughness => Amount::Fixed(toughness),
         other => other,
     };
     match effect {
@@ -4546,7 +4606,7 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32) -> Effe
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
-                .map(|&step| contextualize_sacrifice_effect(step, power))
+                .map(|&step| contextualize_sacrifice_effect(step, power, toughness))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),

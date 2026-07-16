@@ -903,6 +903,7 @@ keywords = ["flying"]
             Effect::CounterTargetSpell {
                 unless_pays: None,
                 filter: SpellFilter::ArtifactOrEnchantment,
+                countered_dest: None,
             }
         ));
         assert!(matches!(

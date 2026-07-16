@@ -27,6 +27,7 @@ fn amount_label(amount: Amount) -> String {
         Amount::SourcePower => "its power".to_string(),
         Amount::SourceToughness => "its toughness".to_string(),
         Amount::TargetPower => "target's power".to_string(),
+        Amount::TargetToughness => "target's toughness".to_string(),
         Amount::TargetManaValue => "target's mana value".to_string(),
         Amount::PerCounterOnSource => "1 per +1/+1 counter on it".to_string(),
         Amount::PerCounterOfKindOnSource { kind } => {
@@ -54,6 +55,7 @@ fn amount_label(amount: Amount) -> String {
                 .to_string()
         }
         Amount::SacrificedCreaturePower => "the sacrificed creature's power".to_string(),
+        Amount::SacrificedCreatureToughness => "the sacrificed creature's toughness".to_string(),
         Amount::CommanderColorCount => {
             "the number of colors in your commander's color identity".to_string()
         }
@@ -465,8 +467,10 @@ impl Effect {
                 has_counters,
                 condition: _,
                 from_graveyard: _,
+                all_players,
             } => {
                 let scope = match subtypes {
+                    _ if all_players => "All creatures".to_string(),
                     _ if chosen_subtype => "Creatures you control of the chosen type".to_string(),
                     [] if self_only => "This creature".to_string(),
                     [] => "Creatures you control".to_string(),
@@ -1017,10 +1021,21 @@ impl Effect {
             Effect::CounterTargetSpell {
                 unless_pays: None,
                 filter,
+                countered_dest: None,
             } => format!("Counter target {}", counter_target_spell_noun(filter)),
+            Effect::CounterTargetSpell {
+                unless_pays: None,
+                filter,
+                countered_dest: Some(CounteredDest::LibraryTopOrBottom),
+            } => format!(
+                "Counter target {}. If that spell is countered this way, put that card on the \
+                 top or bottom of its owner's library instead of into that player's graveyard",
+                counter_target_spell_noun(filter)
+            ),
             Effect::CounterTargetSpell {
                 unless_pays: Some(amount),
                 filter,
+                ..
             } => format!(
                 "Counter target {} unless its controller pays {}",
                 counter_target_spell_noun(filter),
@@ -1161,6 +1176,10 @@ impl Effect {
                 "Gain control of target creature until end of turn".to_string()
             }
             Effect::GainControl { .. } => "Gain control of target creature".to_string(),
+            Effect::GainControlWhile { .. } => {
+                "Gain control of target creature for as long as you control this and it remains tapped"
+                    .to_string()
+            }
             Effect::GrantSourceAbilitiesUntilEndOfTurn => {
                 "It gains this creature's other abilities until end of turn".to_string()
             }

@@ -165,6 +165,13 @@ pub enum Intent {
     },
     /// Answer a [`PendingChoice::MayYesNo`]: accept or decline an optional trigger.
     AnswerMay { player: PlayerId, yes: bool },
+    /// Answer a [`PendingChoice::DeclineUntap`] (CR 502.2 — Rubinia Soulsinger's "you may choose
+    /// not to untap"): `keep_tapped` are the offered permanents the player leaves tapped; every
+    /// other offered permanent untaps.
+    DeclineUntap {
+        player: PlayerId,
+        keep_tapped: Vec<ObjectId>,
+    },
     /// Answer a [`PendingChoice::PayCost`]: pay the cost (getting the effect) or decline.
     PayOptionalCost { player: PlayerId, pay: bool },
     /// Answer a [`PendingChoice::AssignCombatDamage`] with `(blocker, amount)` assignments.
@@ -301,6 +308,9 @@ pub enum Intent {
         player: PlayerId,
         copy: Option<ObjectId>,
     },
+    /// Answer a [`PendingChoice::ChooseCounteredSpellDestination`] (Hinder's CR 701.5b rider):
+    /// `top` puts the countered card on top of its owner's library, `false` on the bottom.
+    ChooseTopOrBottom { player: PlayerId, top: bool },
     /// Decline to act; pass priority.
     PassPriority { player: PlayerId },
     /// Leave the game (CR 104.3a). Legal at any time, with or without priority, and even while the
@@ -419,6 +429,7 @@ impl Intent {
             }
             Intent::ChooseSacrifices { sacrifices, .. } => sacrifices.clone(),
             Intent::Discard { cards, .. } => cards.clone(),
+            Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
             Intent::ChooseAttachHost { host, .. } => host.iter().copied().collect(),
             Intent::ChooseCopyTarget { copy, .. } => copy.iter().copied().collect(),
             // The carried params reference real object ids (the action's own object is looked
@@ -459,6 +470,7 @@ impl Intent {
             | Intent::ChooseManaColor { .. }
             | Intent::ChooseCreatureType { .. }
             | Intent::ChooseColor { .. }
+            | Intent::ChooseTopOrBottom { .. }
             | Intent::PassPriority { .. }
             | Intent::Concede { .. } => Vec::new(),
         }
@@ -490,6 +502,7 @@ impl Intent {
             | Intent::PayOptionalCost { player, .. }
             | Intent::AssignDamage { player, .. }
             | Intent::DivideSpellDamage { player, .. }
+            | Intent::DeclineUntap { player, .. }
             | Intent::ArrangeTop { player, .. }
             | Intent::SelectFromTop { player, .. }
             | Intent::DistributeTop { player, .. }
@@ -510,6 +523,7 @@ impl Intent {
             | Intent::ChooseColor { player, .. }
             | Intent::ChooseCopyTarget { player, .. }
             | Intent::ChooseAttachHost { player, .. }
+            | Intent::ChooseTopOrBottom { player, .. }
             | Intent::TakeAction { player, .. }
             | Intent::PassPriority { player }
             | Intent::Concede { player } => *player,
@@ -532,6 +546,7 @@ impl Intent {
             | Intent::PayOptionalCost { .. }
             | Intent::AssignDamage { .. }
             | Intent::DivideSpellDamage { .. }
+            | Intent::DeclineUntap { .. }
             | Intent::ArrangeTop { .. }
             | Intent::SelectFromTop { .. }
             | Intent::DistributeTop { .. }
@@ -551,7 +566,8 @@ impl Intent {
             | Intent::ChooseCreatureType { .. }
             | Intent::ChooseColor { .. }
             | Intent::ChooseCopyTarget { .. }
-            | Intent::ChooseAttachHost { .. } => true,
+            | Intent::ChooseAttachHost { .. }
+            | Intent::ChooseTopOrBottom { .. } => true,
             Intent::Cast { .. }
             | Intent::PlayLand { .. }
             | Intent::Cycle { .. }
@@ -620,6 +636,15 @@ pub enum PendingChoice {
         source: ObjectId,
         effect: Effect,
     },
+    /// `player` (the active player at their untap step) may choose not to untap each of
+    /// `permanents` — the permanents they control that carry [`CardDef::may_choose_not_to_untap`]
+    /// (CR 502.2 — Rubinia Soulsinger). Raised as a turn-based-action pause; answered by
+    /// [`Intent::DeclineUntap`], which untaps every offered permanent the player didn't keep tapped
+    /// and resumes the interrupted untap step.
+    DeclineUntap {
+        player: PlayerId,
+        permanents: Vec<ObjectId>,
+    },
     /// `player` may pay `cost` to get an optional triggered ability (`source`'s `effect`).
     /// Answered by [`Intent::PayOptionalCost`].
     PayCost {
@@ -638,6 +663,12 @@ pub enum PendingChoice {
         cost: Cost,
         spell: ObjectId,
     },
+    /// `player` (Hinder's controller) must choose the top or bottom of `spell`'s owner's library
+    /// (CR 701.5b — [`Effect::CounterTargetSpell`]'s `countered_dest` rider): `spell` is already
+    /// countered — still a live [`crate::Object::Spell`] on the stack until this answers — and
+    /// this choice picks where it goes instead of into the graveyard. Answered by
+    /// [`Intent::ChooseTopOrBottom`].
+    ChooseCounteredSpellDestination { player: PlayerId, spell: ObjectId },
     /// `player` (the permanent's controller) may pay `cost` (its printed Echo cost) to keep
     /// `source`, or decline and sacrifice it (CR 702.31c/d — "sacrifice it unless you pay its
     /// echo cost"). Answered by [`Intent::PayOptionalCost`], the permanent-scoped twin of
@@ -1284,8 +1315,10 @@ impl PendingChoice {
             | PendingChoice::ChooseSpellTargets { player, .. }
             | PendingChoice::ChooseAbilityTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
+            | PendingChoice::DeclineUntap { player, .. }
             | PendingChoice::PayCost { player, .. }
             | PendingChoice::PayOrCounter { player, .. }
+            | PendingChoice::ChooseCounteredSpellDestination { player, .. }
             | PendingChoice::PayEchoOrSacrifice { player, .. }
             | PendingChoice::AssignCombatDamage { player, .. }
             | PendingChoice::DivideSpellDamage { player, .. }
@@ -1724,6 +1757,20 @@ pub enum Event {
         object: ObjectId,
         controller: PlayerId,
     },
+    /// A condition-scoped control-changing effect (CR 611.2b — Rubinia Soulsinger's "for as long
+    /// as you control Rubinia and Rubinia remains tapped") took effect: `object` is now controlled
+    /// by `controller` while `condition` holds. Read back by [`Game::controller_of`] via
+    /// [`Game::conditioned_control_overrides`]; reverted automatically by
+    /// [`Event::ConditionedControlEnded`] the moment the condition fails (a state-based check).
+    ConditionedControlGained {
+        object: ObjectId,
+        controller: PlayerId,
+        condition: crate::ControlCondition,
+    },
+    /// A condition-scoped control override on `object` ended because its condition no longer holds
+    /// (the source untapped, left the battlefield, or changed controller — CR 611.2b); control
+    /// reverts to the owner (or an active `ControlAttached` Aura, if still attached).
+    ConditionedControlEnded { object: ObjectId },
     /// A creature was declared as an attacker, attacking `defender`.
     AttackerDeclared {
         object: ObjectId,

@@ -251,6 +251,17 @@ pub enum VisibleEvent {
         object: ObjectId,
         controller: u8,
     },
+    /// A condition-scoped control change took effect (CR 611.2b — Rubinia Soulsinger): `object` is
+    /// now controlled by `controller` for as long as the condition holds.
+    ConditionedControlGained {
+        object: ObjectId,
+        controller: u8,
+    },
+    /// A condition-scoped control override ended because its condition stopped holding (the source
+    /// untapped, left, or changed controller — CR 611.2b).
+    ConditionedControlEnded {
+        object: ObjectId,
+    },
     AttackerDeclared {
         object: ObjectId,
         defender: u8,

@@ -1271,9 +1271,17 @@ impl Game {
                 for id in to_phase_in {
                     self.push_apply(events, Event::PhasedIn { object: id });
                 }
+                // "You may choose not to untap this" (CR 502.2 — Rubinia Soulsinger): a tapped
+                // permanent carrying the flag isn't untapped here; instead it's offered below in a
+                // yes/no pause, and only untapped once the active player declines to keep it tapped.
+                let mut optional_untap: Vec<ObjectId> = Vec::new();
                 for id in self.controlled_battlefield(active) {
                     if self.permanent(id).tapped {
-                        self.push_apply(events, Event::Untapped { object: id });
+                        if self.def_of(id).may_choose_not_to_untap {
+                            optional_untap.push(id);
+                        } else {
+                            self.push_apply(events, Event::Untapped { object: id });
+                        }
                     }
                     if self.permanent(id).summoning_sick {
                         self.push_apply(events, Event::LostSummoningSickness { object: id });
@@ -1288,6 +1296,18 @@ impl Game {
                             },
                         );
                     }
+                }
+                // Pause on the optional-untap decision (CR 502.2). `advance_step` returns on this so
+                // the step loop doesn't skip past it; `answer_decline_untap` untaps the ones the
+                // player didn't keep tapped and resumes the loop.
+                if !optional_untap.is_empty() {
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::DeclineUntap {
+                            player: active,
+                            permanents: optional_untap,
+                        },
+                    );
                 }
             }
             Step::Upkeep => {
@@ -1511,6 +1531,7 @@ mod tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 

@@ -1289,6 +1289,7 @@ mod permanent_filter_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 

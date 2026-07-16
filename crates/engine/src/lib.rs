@@ -43,6 +43,7 @@ mod zones;
 
 /// Shared Effect-resolution context for [`Game::run`] / [`Game::run_sequence`].
 pub(crate) use resolution::ResolveCtx;
+pub use state::ControlCondition;
 pub use types::*;
 
 /// The authoritative state of one game.
@@ -736,6 +737,7 @@ mod refresh_actions_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -834,6 +836,7 @@ mod refresh_actions_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         );
         game.refresh_actions();

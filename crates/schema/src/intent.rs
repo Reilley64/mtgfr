@@ -236,6 +236,12 @@ pub enum WireIntent {
         player: u8,
         cards: Vec<ObjectId>,
     },
+    /// Answer an optional-untap choice (CR 502.2 — Rubinia Soulsinger): `keep_tapped` are the
+    /// offered permanents this player leaves tapped; every other offered permanent untaps.
+    DeclineUntap {
+        player: u8,
+        keep_tapped: Vec<ObjectId>,
+    },
     /// Answer a put-a-land-from-hand choice: `choice` is the hand land put onto the battlefield,
     /// or absent to decline.
     PutLandFromHand {
@@ -320,6 +326,13 @@ pub enum WireIntent {
     ChooseCopyTarget {
         player: u8,
         copy: Option<ObjectId>,
+    },
+    /// Answer a choose-countered-spell-destination choice (CR 701.5b — Hinder's rider): `top`
+    /// puts the countered spell on top of its owner's library, `false` on the bottom. See
+    /// [`engine::Intent::ChooseTopOrBottom`].
+    ChooseTopOrBottom {
+        player: u8,
+        top: bool,
     },
     /// Activate a hand card's Cycling ability (CR 702.29a): pay its cycling cost, discard the
     /// card, draw one.
@@ -496,6 +509,10 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         SearchLibrary { choice, .. } => SearchLibrary { player, choice },
         ChooseSacrifices { sacrifices, .. } => ChooseSacrifices { player, sacrifices },
         Discard { cards, .. } => Discard { player, cards },
+        DeclineUntap { keep_tapped, .. } => DeclineUntap {
+            player,
+            keep_tapped,
+        },
         PutLandFromHand { choice, .. } => PutLandFromHand { player, choice },
         ChooseExiledWithCard { choice, .. } => ChooseExiledWithCard { player, choice },
         ChooseExiledWithCardToCast { choice, .. } => ChooseExiledWithCardToCast { player, choice },
@@ -521,6 +538,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ChooseColor { color, .. } => ChooseColor { player, color },
         ChooseAttachHost { host, .. } => ChooseAttachHost { player, host },
         ChooseCopyTarget { copy, .. } => ChooseCopyTarget { player, copy },
+        ChooseTopOrBottom { top, .. } => ChooseTopOrBottom { player, top },
         ChooseMode { mode, .. } => ChooseMode { player, mode },
         ChooseTriggerModes { modes, .. } => ChooseTriggerModes { player, modes },
         Cycle { card, .. } => Cycle { player, card },
@@ -725,6 +743,13 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             cards,
         },
+        WireIntent::DeclineUntap {
+            player,
+            keep_tapped,
+        } => Intent::DeclineUntap {
+            player: PlayerId(player),
+            keep_tapped,
+        },
         WireIntent::PutLandFromHand { player, choice } => Intent::PutLandFromHand {
             player: PlayerId(player),
             choice,
@@ -798,6 +823,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         WireIntent::ChooseCopyTarget { player, copy } => Intent::ChooseCopyTarget {
             player: PlayerId(player),
             copy,
+        },
+        WireIntent::ChooseTopOrBottom { player, top } => Intent::ChooseTopOrBottom {
+            player: PlayerId(player),
+            top,
         },
         WireIntent::Cycle { player, card } => Intent::Cycle {
             player: PlayerId(player),

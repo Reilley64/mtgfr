@@ -355,6 +355,18 @@ impl Game {
                 {
                     return controller;
                 }
+                // A condition-scoped steal (Effect::GainControlWhile, Rubinia Soulsinger) — same
+                // "an active entry wins" precedence. An entry stays live only while its condition
+                // holds: the moment it fails, the SBA sweep (`check_conditioned_control_reversions`)
+                // drops it, so a present entry means the steal is still in force.
+                if let Some(&(_, controller, _)) = self
+                    .play_permissions
+                    .conditioned_control_overrides
+                    .iter()
+                    .find(|&&(o, ..)| o == id)
+                {
+                    return controller;
+                }
                 // A permanent control change (Effect::GainControl, Entrancing Melody) — same
                 // "an active entry wins" precedence as the until-EOT check above.
                 if let Some(&(_, controller)) = self

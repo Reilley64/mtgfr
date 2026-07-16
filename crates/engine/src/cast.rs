@@ -1694,14 +1694,17 @@ impl Game {
                 chosen
             }
         };
-        // Read the sacrificed creature's power *before* it's sacrificed (Dina, Soul Steeper's
-        // "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters", X = that power) — by
-        // the time the ability resolves off the stack, the creature is gone and there's nothing
-        // left to read `Amount::SourcePower` from. No pool card combines `SourcePower` with a
-        // multi-creature sacrifice cost, so the first sacrificed creature is the only one that
-        // can matter here.
+        // Read the sacrificed creature's power/toughness *before* it's sacrificed (Dina, Soul
+        // Steeper's "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters", X = that
+        // power; Miren, the Moaning Well's "gain life equal to the sacrificed creature's
+        // toughness") — by the time the ability resolves off the stack, the creature is gone and
+        // there's nothing left to read `Amount::SourcePower`/`SourceToughness` from. No pool card
+        // combines `SourcePower`/`SourceToughness` with a multi-creature sacrifice cost, so the
+        // first sacrificed creature is the only one that can matter here.
         let effect = match sacrificed.first() {
-            Some(&id) => contextualize_sacrifice_effect(ability.effect, self.power(id)),
+            Some(&id) => {
+                contextualize_sacrifice_effect(ability.effect, self.power(id), self.toughness(id))
+            }
             None => ability.effect,
         };
         // Pay the cost. The mana settles first (auto-tapping lands for a pool shortfall) so an

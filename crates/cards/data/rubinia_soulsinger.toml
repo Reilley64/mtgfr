@@ -1,0 +1,35 @@
+# Flying
+# You may choose not to untap Rubinia Soulsinger during your untap step.
+# {T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains
+# tapped.
+name = "Rubinia Soulsinger"
+oracle = "Flying\nYou may choose not to untap Rubinia Soulsinger during your untap step.\n{T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains tapped."
+set = "soc"
+subtypes = ["Faerie"]
+legendary = true
+keywords = ["flying"]
+
+# You may choose not to untap Rubinia Soulsinger during your untap step.
+may_choose_not_to_untap = true
+
+[cost]
+generic = 2
+white = 1
+blue = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# {T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains
+# tapped.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains tapped.
+[[abilities.effects]]
+type = "gain_control_while"
+target = "creature"
+while_source_tapped = true

@@ -1,0 +1,27 @@
+# All creatures have haste.
+name = "Concordant Crossroads"
+oracle = "All creatures have haste."
+set = "usg"
+
+# ponytail: World supertype (CR 704.5k, "a player who controls two or more World enchantments
+# puts all but the one that most recently came under their control into their graveyard") is not
+# modeled — the DSL has no World-supertype axis, and this is the only World card in the pool, so
+# the rule has nothing to interact with yet. Authored as a plain enchantment; add the axis (see
+# `legendary`/`basic` for the pattern) when a second World card lands.
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "enchantment"
+
+# All creatures have haste.
+[[abilities]]
+timing = "static"
+
+# All creatures have haste.
+[[abilities.effects]]
+type = "anthem_static"
+keywords = ["haste"]
+all_players = true

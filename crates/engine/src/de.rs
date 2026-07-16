@@ -238,6 +238,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         },
     })
 }
@@ -426,6 +427,11 @@ impl<'de> Deserialize<'de> for CardDef {
             /// Absent for a card without one.
             #[serde(default)]
             hand_ability: Option<HandActivatedAbility>,
+            /// "You may choose not to untap this during your untap step" (CR 502.2 — Rubinia
+            /// Soulsinger) — `may_choose_not_to_untap = true`; absent (`false`) for every ordinary
+            /// permanent.
+            #[serde(default)]
+            may_choose_not_to_untap: bool,
         }
 
         let card = Card::deserialize(d)?;
@@ -483,6 +489,7 @@ impl<'de> Deserialize<'de> for CardDef {
             // reference can live on the `CardDef`.
             encore: card.encore.map(|cost| &*Box::leak(Box::new(cost))),
             hand_ability: card.hand_ability,
+            may_choose_not_to_untap: card.may_choose_not_to_untap,
         })
     }
 }
@@ -872,6 +879,7 @@ impl<'de> Deserialize<'de> for Amount {
             "source_power",
             "source_toughness",
             "target_power",
+            "target_toughness",
             "target_mana_value",
             "per_counter_on_source",
             "life_gained_this_turn",
@@ -882,6 +890,7 @@ impl<'de> Deserialize<'de> for Amount {
             "creatures_died_this_turn",
             "nontoken_creatures_entered_this_turn",
             "sacrificed_creature_power",
+            "sacrificed_creature_toughness",
             "commander_color_count",
             "total_power_you_control",
             "triggering_spell_mana_value",
@@ -925,6 +934,7 @@ impl<'de> Deserialize<'de> for Amount {
                     "source_power" => Amount::SourcePower,
                     "source_toughness" => Amount::SourceToughness,
                     "target_power" => Amount::TargetPower,
+                    "target_toughness" => Amount::TargetToughness,
                     "target_mana_value" => Amount::TargetManaValue,
                     "per_counter_on_source" => Amount::PerCounterOnSource,
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
@@ -937,6 +947,7 @@ impl<'de> Deserialize<'de> for Amount {
                         Amount::NontokenCreaturesEnteredThisTurn
                     }
                     "sacrificed_creature_power" => Amount::SacrificedCreaturePower,
+                    "sacrificed_creature_toughness" => Amount::SacrificedCreatureToughness,
                     "commander_color_count" => Amount::CommanderColorCount,
                     "total_power_you_control" => Amount::TotalPowerYouControl,
                     "triggering_spell_mana_value" => Amount::TriggeringSpellManaValue,

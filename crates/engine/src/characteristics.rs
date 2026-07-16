@@ -131,6 +131,14 @@ impl Game {
                 push(source_name, ModifierContribution::Controls);
             }
         }
+        for &(host, _, condition) in &self.play_permissions.conditioned_control_overrides {
+            if host == object {
+                push(
+                    self.source_name_of(condition.source),
+                    ModifierContribution::Controls,
+                );
+            }
+        }
 
         for attachment in self.attachments(object) {
             let name = self.def_of(attachment).name;
@@ -180,9 +188,8 @@ impl Game {
         if let Some(candidate_permanent) = self.as_permanent(object) {
             let owner = candidate_permanent.owner;
             for &id in &self.battlefield() {
-                let p = match self.as_permanent(id) {
-                    Some(p) if p.owner == owner => p,
-                    _ => continue,
+                let Some(p) = self.as_permanent(id) else {
+                    continue;
                 };
                 for ability in p.def.abilities {
                     let (
@@ -195,12 +202,16 @@ impl Game {
                             colors,
                             exclude_source,
                             attacking_only,
+                            all_players,
                             ..
                         },
                     ) = (ability.timing, ability.effect)
                     else {
                         continue;
                     };
+                    if !all_players && p.owner != owner {
+                        continue;
+                    }
                     if exclude_source && id == object {
                         continue;
                     }
@@ -1113,34 +1124,41 @@ impl Game {
     /// Every static [`Effect::AnthemStatic`] that applies to `candidate`, paired with the
     /// [`ObjectId`] of the permanent carrying it (its source — needed to resolve a dynamic
     /// `power`/`toughness` [`Amount`] and to honor `self_only`): on a permanent `candidate`'s
-    /// owner also owns, matching its `subtype`/`attacking_only`/`self_only` filter (`None`/
-    /// `false` matches everything, same as the old untyped anthem). The shared scan behind
-    /// [`Game::anthem_pt_bonus`] and [`Game::anthem_keywords`] — a filtered anthem has to be
-    /// tested per candidate creature, unlike the old controller-wide flat bonus.
+    /// owner also owns (or, for an `all_players` anthem, any permanent at all), matching its
+    /// `subtype`/`attacking_only`/`self_only` filter (`None`/`false` matches everything, same as
+    /// the old untyped anthem). The shared scan behind [`Game::anthem_pt_bonus`] and
+    /// [`Game::anthem_keywords`] — a filtered anthem has to be tested per candidate creature,
+    /// unlike the old controller-wide flat bonus.
     fn matching_anthems(&self, candidate: ObjectId) -> Vec<(ObjectId, Effect)> {
         let Some(candidate_permanent) = self.as_permanent(candidate) else {
             return Vec::new();
         };
         let owner = candidate_permanent.owner;
         let mut matches = Vec::new();
-        // Battlefield anthems (`from_graveyard == false`) on permanents the owner controls,
-        // plus graveyard anthems (`from_graveyard == true`) on the owner's graveyard cards that
-        // function there (CR 603.6e continuous-analog — Anger's "as long as this card is in your
-        // graveyard … creatures you control have haste"). The `bool` tags which zone each
-        // source is in so the two anthem kinds never leak across (a graveyard-only anthem's
-        // battlefield copy grants nothing, and vice versa).
+        // Battlefield anthems (`from_graveyard == false`) on every permanent, plus graveyard
+        // anthems (`from_graveyard == true`) on the owner's graveyard cards that function there
+        // (CR 603.6e continuous-analog — Anger's "as long as this card is in your graveyard …
+        // creatures you control have haste"). The `bool` tags which zone each source is in so
+        // the two anthem kinds never leak across (a graveyard-only anthem's battlefield copy
+        // grants nothing, and vice versa). The "source's controller controls candidate" gate is
+        // applied per-ability below (skipped for `all_players`), not by pre-filtering sources
+        // here — an `all_players` anthem's source can belong to any player.
         let battlefield_sources = self
             .objects
             .iter()
             .enumerate()
-            .filter(|(_, object)| matches!(object, Object::Permanent(p) if p.owner == owner))
-            .map(|(index, _)| (index as ObjectId, false));
+            .filter_map(|(index, object)| match object {
+                Object::Permanent(p) => Some((index as ObjectId, false, p.owner)),
+                _ => None,
+            });
         let graveyard_sources = self
             .graveyard_cards(owner)
             .into_iter()
             .filter(|&id| self.def_of(id).functions_in_graveyard)
-            .map(|id| (id, true));
-        for (source, source_in_graveyard) in battlefield_sources.chain(graveyard_sources) {
+            .map(|id| (id, true, owner));
+        for (source, source_in_graveyard, source_owner) in
+            battlefield_sources.chain(graveyard_sources)
+        {
             for ability in self.functional_abilities(source) {
                 let (
                     Timing::Static,
@@ -1156,6 +1174,7 @@ impl Game {
                         has_counters,
                         condition,
                         from_graveyard,
+                        all_players,
                         ..
                     },
                 ) = (ability.timing, ability.effect)
@@ -1163,6 +1182,9 @@ impl Game {
                     continue;
                 };
                 if from_graveyard != source_in_graveyard {
+                    continue;
+                }
+                if !all_players && source_owner != owner {
                     continue;
                 }
                 // A level-gated anthem functions only at or above its level (CR 717.5). A
@@ -1211,7 +1233,7 @@ impl Game {
                 // against the anthem source's own controller, same as its cost/trigger reads
                 // would be.
                 if let Some(cond) = condition
-                    && !self.condition_holds(cond, TriggerContext::of(owner))
+                    && !self.condition_holds(cond, TriggerContext::of(source_owner))
                 {
                     continue;
                 }
@@ -1857,6 +1879,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -1878,6 +1901,7 @@ mod cache_tests {
                 has_counters: false,
                 condition: None,
                 from_graveyard: false,
+                all_players: false,
             },
             optional: false,
             min_level: 0,
@@ -1929,6 +1953,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -2083,6 +2108,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -2212,6 +2238,7 @@ mod characteristic_query_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -2264,6 +2291,7 @@ mod characteristic_query_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -2347,6 +2375,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         );
         let colorless = game.spawn_on_battlefield(P0, creature_with(&[]));
@@ -2418,6 +2447,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         );
         assert!(game.damage_prevented_by_protection(knight, Some(black_source)));
@@ -2487,6 +2517,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         );
         assert_eq!(

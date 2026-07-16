@@ -1,0 +1,24 @@
+# Counter target spell. If that spell is countered this way, put that card on your choice of the top or bottom of
+# its owner's library instead of into that player's graveyard.
+name = "Hinder"
+otags = ["counterspell-hard", "removal-tuck", "single-target-instant-sorcery"]
+oracle = "Counter target spell. If that spell is countered this way, put that card on your choice of the top or bottom of its owner's library instead of into that player's graveyard."
+set = "soc"
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Counter target spell. If that spell is countered this way, put that card on your choice of the
+# top or bottom of its owner's library instead of into that player's graveyard.
+[[abilities]]
+timing = "spell"
+
+# Counter target spell. If that spell is countered this way, put that card on your choice of the
+# top or bottom of its owner's library instead of into that player's graveyard.
+[[abilities.effects]]
+type = "counter_target_spell"
+countered_dest = "library_top_or_bottom"

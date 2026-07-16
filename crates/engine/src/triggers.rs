@@ -2812,6 +2812,9 @@ impl Game {
             Amount::TargetPower => {
                 self.power(expect_object_target(target, "a power-derived amount"))
             }
+            Amount::TargetToughness => {
+                self.toughness(expect_object_target(target, "a toughness-derived amount"))
+            }
             Amount::TargetManaValue => self
                 .def_of(expect_object_target(target, "a mana-value amount"))
                 .mana_value() as i32,
@@ -2875,6 +2878,11 @@ impl Game {
             // `Fixed` before the ability reaches the stack — see the variant's own doc comment.
             Amount::SacrificedCreaturePower => panic!(
                 "Amount::SacrificedCreaturePower must be contextualized to Fixed before resolving"
+            ),
+            // A placeholder [`contextualize_sacrifice_effect`] must have already rewritten to
+            // `Fixed` before the ability reaches the stack — see the variant's own doc comment.
+            Amount::SacrificedCreatureToughness => panic!(
+                "Amount::SacrificedCreatureToughness must be contextualized to Fixed before resolving"
             ),
             Amount::CommanderColorCount => self
                 .commander_identity_of(controller)

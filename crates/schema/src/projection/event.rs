@@ -274,6 +274,17 @@ pub(crate) fn project_event(
             object,
             controller: controller.0,
         },
+        Event::ConditionedControlGained {
+            object,
+            controller,
+            condition: _,
+        } => VisibleEvent::ConditionedControlGained {
+            object,
+            controller: controller.0,
+        },
+        Event::ConditionedControlEnded { object } => {
+            VisibleEvent::ConditionedControlEnded { object }
+        }
         Event::AttackerDeclared { object, defender } => VisibleEvent::AttackerDeclared {
             object,
             defender: defender.0,

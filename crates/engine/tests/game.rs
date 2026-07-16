@@ -29,7 +29,16 @@ fn land_permanent(events: &[Event]) -> ObjectId {
 fn advance_until(game: &mut Game, predicate: impl Fn(&Game) -> bool) {
     let mut guard = 0;
     while !predicate(game) {
-        if game.current_step() == Step::DeclareAttackers && !game.attackers_declared() {
+        if let Some(PendingChoice::DeclineUntap { player, .. }) = game.pending_choice() {
+            // Neutral default: untap everything (Rubinia Soulsinger's optional-untap pause). A test
+            // that wants to keep a permanent tapped stops on this choice via its predicate and
+            // answers it itself before advancing further.
+            game.submit(Intent::DeclineUntap {
+                player,
+                keep_tapped: vec![],
+            })
+            .unwrap();
+        } else if game.current_step() == Step::DeclareAttackers && !game.attackers_declared() {
             let player = game.active_player();
             let attackers = game.required_attacks(player);
             game.submit(Intent::DeclareAttackers { player, attackers })
@@ -357,6 +366,7 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Total mana (every color plus colorless) currently in `player`'s pool.
@@ -453,6 +463,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         ..FLASHBACK_DRAW
     };
     let object = game.spawn_in_graveyard(PlayerId(0), no_flashback);
@@ -499,6 +510,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         ..FLASHBACK_DRAW
     };
     let object = game.spawn_in_graveyard(PlayerId(0), cheap_flashback);
@@ -551,6 +563,7 @@ fn flashback_with_pay_life_additional_cost() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         ..FLASHBACK_DRAW
     };
 
@@ -1321,6 +1334,7 @@ const TWO_ETB: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature whose single ETB trigger deals 2 damage to a target creature —
@@ -1393,6 +1407,7 @@ const PINGER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature with an optional ("you may") ETB draw — exercises the yes/no prompt.
@@ -1454,6 +1469,7 @@ const MAY_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Like [`MAY_DRAW`] but you must pay {1} to draw — exercises the pay-or-decline prompt.
@@ -1532,6 +1548,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature whose ETB looks at the top three cards, may put a land into hand, and
@@ -1602,6 +1619,7 @@ const LOOK_DIG: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature whose ETB looks at the top seven cards and must put exactly two into
@@ -1672,6 +1690,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature whose ETB looks at the top three cards, may put an Aura or Equipment card
@@ -1743,6 +1762,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Resolve the top of the stack by having both players pass in succession.
@@ -1840,6 +1860,7 @@ const fn creature(
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -3957,6 +3978,7 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Target creature gains flying until end of turn." — isolates a
@@ -4021,6 +4043,7 @@ const GRANT_FLYING: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Target creature gains indestructible until end of turn."
@@ -4083,6 +4106,7 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Destroy target creature." — isolates `DestroyTarget` from any
@@ -4151,6 +4175,7 @@ const DESTROY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Destroy target permanent." — like `DESTROY` above but any permanent
@@ -4219,6 +4244,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Destroy target nonbasic land." — exercises
@@ -4290,6 +4316,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Exile target creature card from a graveyard." — proves a look-back
@@ -4357,6 +4384,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Exile target card from a graveyard." — like
@@ -4428,6 +4456,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only exile spell targeting a noncreature artifact or noncreature enchantment —
@@ -4498,6 +4527,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only exile spell targeting a creature with power 2 or less — exercises
@@ -4568,6 +4598,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only exile spell targeting any enchantment — exercises the `also: TypeSet`
@@ -4635,6 +4666,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only exile spell targeting any artifact — the artifact-side twin of
@@ -4702,6 +4734,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only 2/2 with intrinsic shroud (CR 702.18) — can't be the target of any
@@ -4754,6 +4787,7 @@ const SHROUD_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only 2/2 with intrinsic hexproof (CR 702.11) — can't be the target of spells/
@@ -4806,6 +4840,7 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Creatures you control gain indestructible until end of turn." —
@@ -4870,6 +4905,7 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Creatures you control gain flying and get +X/+X until end of turn,
@@ -4933,6 +4969,7 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature "Target creature can't be blocked this turn." — the Rogue's Passage
@@ -4997,6 +5034,7 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -5442,6 +5480,7 @@ const GROWTH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -5527,6 +5566,7 @@ const INKLING: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only sorcery "Create two 1/1 Inkling tokens with flying."
@@ -5594,6 +5634,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -6326,9 +6367,7 @@ fn temporal_spring_puts_permanent_on_top_of_owners_library() {
     );
 }
 
-/// Condemn: "Put target attacking creature on the bottom of its owner's library." Tuck-to-bottom
-/// half only — the "its controller gains life equal to its toughness" rider is #136
-/// (`toughness-amounts`), not yet built.
+/// Condemn: "Put target attacking creature on the bottom of its owner's library."
 #[test]
 fn condemn_tucks_attacking_creature_to_bottom() {
     let mut game = TestGame::new();
@@ -6352,6 +6391,33 @@ fn condemn_tucks_attacking_creature_to_bottom() {
         game.zone_of(attacker),
         Zone::Library,
         "still in the library after drawing the card stacked above it"
+    );
+}
+
+/// Condemn: "Its controller gains life equal to its toughness" — read the *toughness*, not the
+/// power, and read it before the tuck removes the creature from the battlefield (CR 613.6
+/// last-known information, same shape as Swords to Plowshares' power rider).
+#[test]
+fn condemn_controller_gains_life_equal_to_creature_toughness() {
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), creature("Big (test)", 5, 3, &[]));
+    let condemn = game.spawn_in_hand(PlayerId(0), card("Condemn"));
+    let before_life = game.life(PlayerId(0));
+
+    attack_with(&mut game, vec![attacker]);
+
+    game.cast(condemn).at(Target::Object(attacker)).resolve();
+
+    assert_eq!(
+        game.zone_of(attacker),
+        Zone::Library,
+        "tucked to the library"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before_life + 3,
+        "the attacker's controller gained life equal to its toughness (3), not its power (5)",
     );
 }
 
@@ -6708,6 +6774,7 @@ const PEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only sorcery "Create a Pest token with 'When this token dies, you gain 1 life.'"
@@ -6775,6 +6842,7 @@ const MAKE_PEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -7085,6 +7153,7 @@ const HERALD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -8803,6 +8872,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         functions_in_graveyard: false,
         back: None,
         adventure: None,
@@ -8848,6 +8918,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         functions_in_graveyard: false,
         back: None,
         adventure: None,
@@ -10072,6 +10143,7 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -11098,6 +11170,7 @@ const ANTHEM_LORD: CardDef = CardDef {
             has_counters: false,
             condition: None,
             from_graveyard: false,
+            all_players: false,
         },
         optional: false,
         min_level: 0,
@@ -11127,6 +11200,7 @@ const ANTHEM_LORD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -11747,6 +11821,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         },
     );
     cast_and_resolve(&mut game, mover, None);
@@ -11926,6 +12001,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only artifact token with the Food subtype — a minimal fixture for testing a
@@ -11974,6 +12050,7 @@ const TEST_FOOD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature with a free "Sacrifice a Food: gain 1 life" activated ability — a
@@ -12056,6 +12133,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature with a free "Sacrifice a creature: gain 1 life" activated ability — the
@@ -12455,6 +12533,27 @@ fn brudiclad_token_haste_anthem_gives_tokens_haste() {
 }
 
 #[test]
+fn concordant_crossroads_grants_haste_to_all_creatures() {
+    // Concordant Crossroads: "All creatures have haste." An `all_players` anthem drops the
+    // usual "controller controls candidate" gate — unlike a `you`-scoped anthem (see
+    // `brudiclad_token_haste_anthem_gives_tokens_haste` above), this reaches every creature on
+    // the battlefield, not just its controller's.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Concordant Crossroads"));
+    let yours = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let theirs = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    assert!(
+        game.has_keyword(yours, Keyword::Haste),
+        "the controller's own creature has haste"
+    );
+    assert!(
+        game.has_keyword(theirs, Keyword::Haste),
+        "an opponent's creature has haste too — the anthem is not controller-scoped"
+    );
+}
+
+#[test]
 fn ohran_frostfang_deathtouch_gone_once_ohran_leaves_the_battlefield() {
     // The anthem is read live off the battlefield, not cached at declare-attackers: once Ohran
     // is destroyed before combat, its deathtouch grant stops applying to the attacker it used
@@ -12680,6 +12779,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
                 has_counters: false,
                 condition: None,
                 from_graveyard: false,
+                all_players: false,
             },
             optional: false,
             min_level: 0,
@@ -12704,6 +12804,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
                 has_counters: false,
                 condition: None,
                 from_graveyard: false,
+                all_players: false,
             },
             optional: false,
             min_level: 0,
@@ -15028,6 +15129,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -15593,6 +15695,7 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -15663,6 +15766,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -15962,6 +16066,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -16210,6 +16315,7 @@ const DIES_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -16670,6 +16776,7 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -16771,6 +16878,7 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -16901,6 +17009,7 @@ const CREATURE_MV3: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only mana-value-4 creature — one over `CREATURE_MV3`, for exercising a `mv_max`
@@ -17029,6 +17138,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -17582,6 +17692,7 @@ const UPKEEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -17666,6 +17777,7 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Same upkeep self-return ability, but *not* graveyard-functional — an ordinary card that only
@@ -17684,6 +17796,7 @@ const BATTLEFIELD_UPKEEP_RETURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
     ..GRAVEYARD_UPKEEP_RETURN
 };
 
@@ -18069,6 +18182,7 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18174,6 +18288,7 @@ const END_STEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18251,6 +18366,7 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18360,6 +18476,7 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A permanent that draws whenever its controller gains life. Modeled after Well of Lost
@@ -18418,6 +18535,7 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18516,6 +18634,7 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18834,6 +18953,7 @@ const INSTANT_FILLER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 // ── Becomes-the-target-of-a-spell trigger (Goldspan Dragon) ────────────────────────────
@@ -18900,6 +19020,7 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -19000,6 +19121,7 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -19102,6 +19224,7 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only free artifact spell — a minimal `SpellFilter::Historic` probe (CR 702.135:
@@ -19150,6 +19273,7 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -19550,6 +19674,7 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -20040,6 +20165,7 @@ const COUNTER: CardDef = CardDef {
         effect: Effect::CounterTargetSpell {
             unless_pays: None,
             filter: SpellFilter::AllSpells,
+            countered_dest: None,
         },
         optional: false,
         min_level: 0,
@@ -20069,6 +20195,7 @@ const COUNTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -20487,6 +20614,191 @@ fn counter_unless_pays_paid_saves_spell() {
     assert!(
         !battlefield_named(&game, PlayerId(0), "Grizzly Bear").is_empty(),
         "the saved spell resolves into a creature as normal"
+    );
+}
+
+// ── Hinder's countered-spell destination rider (CR 701.5b) ──────────────────────────
+
+/// Cast Grizzly Bear for P0 and Hinder for P1 targeting the bear, resolving Hinder — leaving the
+/// game paused on the resulting [`PendingChoice::ChooseCounteredSpellDestination`]. Returns the
+/// bear's stack id. `filler` is stacked atop P0's library so a subsequent draw can prove which
+/// end of the library the countered bear landed on.
+fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[filler]);
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let hinder = game.spawn_in_hand(PlayerId(1), card("Hinder"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bear,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Grizzly Bear is castable");
+    let bear_on_stack = top_spell(game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: hinder,
+        target: Some(Target::Object(bear_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Hinder can target the bear on the stack");
+
+    resolve_top_of_stack(game); // Hinder resolves: pauses on the top/bottom choice.
+    bear_on_stack
+}
+
+#[test]
+fn hinder_counters_spell_and_tucks_to_top_of_library() {
+    // Hinder: "Counter target spell. If that spell is countered this way, put that card on your
+    // choice of the top or bottom of its owner's library instead of into that player's
+    // graveyard." P1 (Hinder's controller) chooses the top.
+    let mut game = Game::new();
+    let bear_on_stack = cast_hinder_countering_bear(&mut game, card("Forest"));
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseCounteredSpellDestination {
+                player: PlayerId(1),
+                spell,
+            }) if spell == bear_on_stack
+        ),
+        "Hinder's controller (P1) pauses on the top/bottom choice for the countered bear"
+    );
+
+    game.submit(Intent::ChooseTopOrBottom {
+        player: PlayerId(1),
+        top: true,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Library,
+        "the countered bear went to its owner's library, not the graveyard"
+    );
+    // The pre-seeded Forest is drawn second — proving the tuck landed on top, not the bottom.
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Hand,
+        "the countered card was put on top of its owner's library"
+    );
+}
+
+#[test]
+fn hinder_tucks_to_bottom() {
+    // Same setup, but P1 chooses the bottom instead.
+    let mut game = Game::new();
+    let bear_on_stack = cast_hinder_countering_bear(&mut game, card("Forest"));
+
+    game.submit(Intent::ChooseTopOrBottom {
+        player: PlayerId(1),
+        top: false,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Library,
+        "the countered bear went to its owner's library, not the graveyard"
+    );
+    // The pre-seeded Forest is drawn first — proving the tuck landed on the bottom, not the top.
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Library,
+        "still in the library after drawing the card stacked above it"
+    );
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Hand,
+        "the countered card was put on the bottom of its owner's library"
+    );
+}
+
+#[test]
+fn hinder_countering_flashback_spell_exiles_it() {
+    // CR 702.34e/702.19d: a flashback (or escape) spell exiles as it leaves the stack even when
+    // countered — CR 701.5b's tuck rider then has nothing to move (no tuck, no graveyard).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let looting = game.spawn_in_graveyard(PlayerId(0), FLASHBACK_DRAW);
+    tap_forests(&mut game, 2); // flashback {2} (CR 702.34)
+    let hinder = game.spawn_in_hand(PlayerId(1), card("Hinder"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: looting,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("a flashback card is castable from its owner's graveyard");
+    let looting_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: hinder,
+        target: Some(Target::Object(looting_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Hinder can target the flashback spell on the stack");
+
+    resolve_top_of_stack(&mut game); // Hinder resolves.
+
+    assert!(
+        game.pending_choice().is_none(),
+        "a flashback/escape spell exiles outright — no top/bottom pause, nothing to tuck"
+    );
+    assert_eq!(
+        game.zone_of(looting_on_stack),
+        Zone::Exile,
+        "the countered flashback spell was exiled, not tucked or put into the graveyard"
     );
 }
 
@@ -21686,6 +21998,7 @@ const FLIGHT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// The activated ability Fallen Ideal grants its enchanted host: "Sacrifice a creature: This
@@ -21798,6 +22111,7 @@ const MUTATION: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only 3/3 vanilla creature — a printed base distinct from the set-base value.
@@ -21888,6 +22202,7 @@ const ANGEL_ANTHEM: CardDef = CardDef {
             has_counters: false,
             condition: None,
             from_graveyard: false,
+            all_players: false,
         },
         optional: false,
         min_level: 0,
@@ -22081,6 +22396,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -23582,6 +23898,7 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -23657,6 +23974,7 @@ const PLAIN_AURA: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// [`PLAIN_AURA`] with the printed "Aura" subtype — needed to feed a `per_permanent` "Auras you
@@ -25048,6 +25366,7 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 // ── Control-changing Auras (CR 720) ──────────────────────────────────────────────────
@@ -25825,6 +26144,7 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// The player a pending `ExileFromGraveyard` is waiting on, or `None` if that's not the choice.
@@ -28775,6 +29095,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// The same shape at mana value 4 — over Sevinne's "mana value 3 or less" gate.
@@ -29383,6 +29704,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -29558,6 +29880,7 @@ const REPLENISH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -32636,6 +32959,7 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -32683,6 +33007,172 @@ fn stolen_creature_reverts_control_at_cleanup() {
         game.controller_of(creature),
         PlayerId(1),
         "no residual override two turns later"
+    );
+}
+
+// ── Condition-scoped control duration (CR 611.2b — Rubinia Soulsinger) ──────────────
+
+/// A test proxy for Rubinia Soulsinger: a legendary flyer with "You may choose not to untap this
+/// during your untap step" and "{T}: Gain control of target creature for as long as you control
+/// this and this remains tapped."
+const RUBINIA: CardDef = CardDef {
+    legendary: true,
+    may_choose_not_to_untap: true,
+    abilities: &[Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            return_self: false,
+            mill_self: 0,
+            exile_self: false,
+        }),
+        effect: Effect::GainControlWhile {
+            target: TargetSpec::Creature,
+            while_source_tapped: true,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("Rubinia Soulsinger (test)", 2, 4, &[Keyword::Flying])
+};
+
+/// Set up P0's Rubinia and P1's creature, then activate Rubinia's `{T}` steal targeting it.
+fn steal_with_rubinia(game: &mut Game) -> (ObjectId, ObjectId) {
+    // Libraries so neither player decks out while turns roll forward to the next untap step.
+    game.stack_library(PlayerId(0), &[VANILLA; 4]);
+    game.stack_library(PlayerId(1), &[VANILLA; 4]);
+    let rubinia = game.spawn_on_battlefield(PlayerId(0), RUBINIA);
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let index = only_activated_ability_index(game, rubinia);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: rubinia,
+        ability_index: index,
+        target: Some(Target::Object(creature)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("Rubinia's {T} steal is activatable");
+    resolve_top_of_stack(game);
+    (rubinia, creature)
+}
+
+#[test]
+fn rubinia_steals_creature_while_tapped() {
+    let mut game = Game::new();
+    let (rubinia, creature) = steal_with_rubinia(&mut game);
+
+    assert!(game.is_tapped(rubinia), "the {{T}} cost taps Rubinia");
+    assert_eq!(
+        game.owner_of(creature),
+        PlayerId(1),
+        "ownership never changes (CR 720)"
+    );
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "Rubinia's controller now controls the creature (CR 611.2b)"
+    );
+}
+
+#[test]
+fn rubinia_untapping_reverts_the_steal() {
+    let mut game = Game::new();
+    let (rubinia, creature) = steal_with_rubinia(&mut game);
+
+    // Reach P0's next untap; `advance_until` answers the optional-untap pause by untapping Rubinia
+    // (empty keep-tapped), which breaks the "remains tapped" condition.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Draw
+    });
+
+    assert!(!game.is_tapped(rubinia), "Rubinia untapped this turn");
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(1),
+        "the steal reverts the instant Rubinia untaps (CR 611.2b)"
+    );
+}
+
+#[test]
+fn rubinia_declines_untap_keeps_control() {
+    let mut game = Game::new();
+    let (rubinia, creature) = steal_with_rubinia(&mut game);
+
+    // Advance to P0's untap step and stop on the optional-untap pause.
+    advance_until(&mut game, |g| {
+        matches!(g.pending_choice(), Some(PendingChoice::DeclineUntap { .. }))
+    });
+    game.submit(Intent::DeclineUntap {
+        player: PlayerId(0),
+        keep_tapped: vec![rubinia],
+    })
+    .expect("P0 may choose not to untap Rubinia");
+
+    assert!(
+        game.is_tapped(rubinia),
+        "declining to untap leaves Rubinia tapped (CR 502.2)"
+    );
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "the steal persists while Rubinia stays tapped and controlled (CR 611.2b)"
+    );
+}
+
+#[test]
+fn rubinia_soulsinger_card_steals_while_tapped() {
+    // The authored TOML wires `gain_control_while` + `may_choose_not_to_untap` end to end.
+    let mut game = Game::new();
+    let rubinia = game.spawn_on_battlefield(PlayerId(0), card("Rubinia Soulsinger"));
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    assert!(
+        game.def_of(rubinia).may_choose_not_to_untap,
+        "the TOML flag parsed onto the card"
+    );
+    let index = only_activated_ability_index(&game, rubinia);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: rubinia,
+        ability_index: index,
+        target: Some(Target::Object(creature)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("Rubinia's {T} steal is activatable");
+    resolve_top_of_stack(&mut game);
+
+    assert!(game.is_tapped(rubinia), "the {{T}} cost taps Rubinia");
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "the loaded card gains control of the target creature (CR 611.2b)"
+    );
+}
+
+#[test]
+fn rubinia_leaving_battlefield_reverts_control() {
+    let mut game = Game::new();
+    let (rubinia, creature) = steal_with_rubinia(&mut game);
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(rubinia)));
+
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(1),
+        "the steal reverts the instant Rubinia leaves the battlefield (CR 611.2b)"
     );
 }
 
@@ -32814,6 +33304,7 @@ const MELODY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -33483,6 +33974,7 @@ const CHOOSE_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -33800,6 +34292,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -34158,6 +34651,7 @@ const FIGHT_SPELL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -35397,6 +35891,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -35737,6 +36232,7 @@ static PACK_A_PUNCH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Kirol, History Buff's front face: a 2/3 legendary Vampire Cleric that becomes prepared
@@ -35795,6 +36291,7 @@ static KIROL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
     functions_in_graveyard: false,
     enchant: None,
     enchant_graveyard: false,
@@ -36066,6 +36563,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Brazen Borrower's front face — a 3/1 flash/flying Faerie Rogue that can block only flyers,
@@ -36122,6 +36620,7 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Elusive Otter's adventure half — Grove's Bounty ({X}{G} sorcery), simplified to a single
@@ -36201,6 +36700,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Elusive Otter's front face — a 1/1 Otter with prowess that lesser-power creatures can't block,
@@ -36256,6 +36756,7 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
@@ -36866,6 +37367,7 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Dirgur Focusmage's front face: a 1/4 that becomes prepared whenever its controller casts an
@@ -36926,6 +37428,7 @@ static DIRGUR_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
     functions_in_graveyard: false,
     enchant: None,
     enchant_graveyard: false,
@@ -37334,6 +37837,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     };
 
     let mut game = Game::new();
@@ -38197,6 +38701,7 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -39466,6 +39971,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -40973,6 +41479,7 @@ const MASS_SHOCK: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A mass-bounce sorcery: "Return all creatures to their owners' hands." Exercises
@@ -41033,6 +41540,7 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -41187,6 +41695,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -41813,6 +42322,7 @@ const MAKE_TREASURES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -42011,6 +42521,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -42069,6 +42580,7 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -42198,6 +42710,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -42365,6 +42878,7 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only permanent isolating Manaform Hellkite's cast-noncreature trigger: "Whenever you
@@ -42442,6 +42956,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -42705,6 +43220,7 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only permanent isolating Rootha, Mastering the Moment's begin-combat trigger: "At the
@@ -42777,6 +43293,7 @@ const ROOTHA_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -42963,6 +43480,7 @@ const RIONYA_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -43196,6 +43714,7 @@ const IMPULSE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Impulse-exile the top card of P0's library, returning the exiled card's id.
@@ -43387,6 +43906,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -43641,6 +44161,7 @@ const MODAL_DRAGON: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Put `MODAL_DRAGON` onto the battlefield, kill it with Shock, and resolve until its dies
@@ -45028,6 +45549,7 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -45118,6 +45640,7 @@ macro_rules! amount_spell {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     };
 }
@@ -45303,6 +45826,7 @@ macro_rules! hydra_with_etb {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     };
 }
@@ -45801,6 +46325,49 @@ fn dina_essence_brewer_sac_index(game: &Game, dina: ObjectId) -> usize {
 }
 
 #[test]
+fn miren_gain_life_equals_sacrificed_creature_toughness() {
+    // Miren, the Moaning Well: "{2}, {T}, Sacrifice a creature: You gain life equal to the
+    // sacrificed creature's toughness."
+    let mut game = TestGame::new();
+    game.fund_mana(PlayerId(0));
+    let miren = game.spawn_on_battlefield(PlayerId(0), card("Miren, the Moaning Well"));
+    let sac = game.spawn_on_battlefield(PlayerId(0), creature("Big (test)", 5, 3, &[]));
+    let before_life = game.life(PlayerId(0));
+
+    let index = miren_sac_index(&game, miren);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: miren,
+        ability_index: index,
+        target: None,
+        sacrifice: vec![sac],
+        x: 0,
+    })
+    .unwrap();
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(sac),
+        Zone::Graveyard,
+        "the creature paid the cost"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before_life + 3,
+        "gained life equal to the sacrificed creature's toughness (3), not its power (5)",
+    );
+}
+
+/// Miren, the Moaning Well's sacrifice ability's index (its only ability).
+fn miren_sac_index(game: &Game, miren: ObjectId) -> usize {
+    game.def_of(miren)
+        .abilities
+        .iter()
+        .position(|a| matches!(a.timing, Timing::Activated(_)))
+        .expect("Miren, the Moaning Well has an activated sacrifice ability")
+}
+
+#[test]
 fn wave_of_reckoning_each_creature_damages_itself_by_its_own_power() {
     // "Each creature deals damage to itself equal to its power": a 2/2 takes 2, a 4/4 takes 4.
     let mut game = TestGame::new();
@@ -46131,6 +46698,7 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -48027,6 +48595,7 @@ const TEST_STEELBANE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -48316,6 +48885,7 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only enchantment with a constellation-shaped watch trigger: "whenever an
@@ -48397,6 +48967,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -48435,6 +49006,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only permanent with a landfall-shaped watch trigger scoped to opponents only:
@@ -48502,6 +49074,7 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -49090,6 +49663,7 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -49513,6 +50087,7 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only sorcery "Draw a card." costing `{4}` — mana value 4, no `{X}`: below Troyan's
@@ -50830,6 +51405,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
             has_counters: false,
             condition: None,
             from_graveyard: false,
+            all_players: false,
         },
         optional: false,
         min_level: 0,
@@ -50859,6 +51435,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -50958,6 +51535,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only "put a +1/+1 counter on each of up to two target creatures" instant (Silkguard's
@@ -51029,6 +51607,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// CR 601.2d — Magma Opus's "4 damage divided as you choose among any number of targets": the
@@ -51784,6 +52363,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -53319,6 +53899,7 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -54798,6 +55379,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     };
 
     let mut game = Game::new();
@@ -55689,6 +56271,7 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 fn activate_lighthouse_strip(game: &mut Game, lighthouse: ObjectId) {
@@ -56210,6 +56793,7 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Cast `def` from player 0's hand with chosen `x`, resolve it (passing priority until the
@@ -59692,6 +60276,7 @@ const TEST_CLASS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only permanent with a free activated ability that makes its controller lose 1 life —
@@ -61255,6 +61840,7 @@ const HARD_COUNTER: CardDef = CardDef {
     abilities: &[spell_ability(Effect::CounterTargetSpell {
         unless_pays: None,
         filter: SpellFilter::AllSpells,
+        countered_dest: None,
     })],
     ..creature("Test Hard Counter", 0, 0, &[])
 };

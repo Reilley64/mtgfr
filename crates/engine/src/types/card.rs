@@ -666,6 +666,11 @@ pub struct CardDef {
     /// stored as a pip). A `&'static Cost` (leaked at load, like [`Self::suspend`]'s cost) so
     /// [`CardDef`] stays `Copy`. `[encore]` in TOML, the same `[cost]`-table shape as a spell's cost.
     pub encore: Option<&'static Cost>,
+    /// "You may choose not to untap this during your untap step" (CR 502.2 — Rubinia Soulsinger):
+    /// the untap turn-based action pauses this permanent's controller on a yes/no for each such
+    /// permanent they control, letting them leave it tapped ([`PendingChoice::DeclineUntap`]).
+    /// `false` for every ordinary permanent. `may_choose_not_to_untap = true` in TOML.
+    pub may_choose_not_to_untap: bool,
 }
 
 /// The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars,
@@ -967,6 +972,7 @@ pub fn treasure_token() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -1021,6 +1027,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -1077,6 +1084,7 @@ pub(crate) fn illusion_token() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 

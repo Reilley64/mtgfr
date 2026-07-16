@@ -178,6 +178,7 @@ impl Game {
         let bound = self.objects.len() + self.players.len() + 1;
         for _ in 0..bound {
             let mut sba = self.check_state_based_actions();
+            sba.extend(self.check_conditioned_control_reversions());
             sba.extend(self.check_linked_exile_returns());
             sba.extend(self.check_leaves_battlefield_illusions());
             sba.extend(self.take_serra_lifegain_events());
@@ -208,6 +209,33 @@ impl Game {
                 source: None,
             })
             .collect()
+    }
+
+    /// CR 611.2b: for each condition-scoped control override whose [`ControlCondition`] no longer
+    /// holds — the source left the battlefield, its controller (the thief) lost control of it, or
+    /// (Rubinia Soulsinger's clause) it untapped — end the steal. Detected the same state-based way
+    /// as [`Game::check_linked_exile_returns`] (swept to a fixpoint), so control reverts on its own
+    /// the instant the condition breaks rather than through a triggered ability.
+    pub(crate) fn check_conditioned_control_reversions(&self) -> Vec<Event> {
+        self.play_permissions
+            .conditioned_control_overrides
+            .iter()
+            .filter(|&&(_, thief, condition)| !self.control_condition_holds(thief, condition))
+            .map(|&(object, ..)| Event::ConditionedControlEnded { object })
+            .collect()
+    }
+
+    /// Whether a condition-scoped steal's [`ControlCondition`] still holds for `thief` (the
+    /// override's controller): its source is still a battlefield permanent controlled by `thief`
+    /// and — when `needs_tapped` (Rubinia's "remains tapped") — still tapped.
+    fn control_condition_holds(&self, thief: PlayerId, condition: ControlCondition) -> bool {
+        let Some(source) = self.as_permanent(condition.source) else {
+            return false;
+        };
+        if condition.needs_tapped && !source.tapped {
+            return false;
+        }
+        self.controller_of(condition.source) == thief
     }
 
     /// The O-Ring pattern (CR 603.6e): for each `(source, exiled)` link still on
@@ -1036,6 +1064,19 @@ impl Game {
                     .permanent_control_overrides
                     .push((object, controller));
             }
+            Event::ConditionedControlGained {
+                object,
+                controller,
+                condition,
+            } => {
+                self.play_permissions
+                    .conditioned_control_overrides
+                    .push((object, controller, condition));
+            }
+            Event::ConditionedControlEnded { object } => self
+                .play_permissions
+                .conditioned_control_overrides
+                .retain(|&(o, ..)| o != object),
             Event::AttackerDeclared { object, defender } => {
                 self.combat.attackers.push(object);
                 self.combat.attack_targets.push((object, defender));

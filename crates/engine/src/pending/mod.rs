@@ -308,6 +308,10 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
         }
         Intent::Discard { player, cards } => game.answer_discard(player, cards),
+        Intent::DeclineUntap {
+            player,
+            keep_tapped,
+        } => game.answer_decline_untap(player, keep_tapped),
         Intent::PutLandFromHand { player, choice } => game.put_land_from_hand(player, choice),
         Intent::ChooseExiledWithCard { player, choice }
             if matches!(
@@ -362,6 +366,9 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
         }
         Intent::ChooseCopyTarget { player, copy } => game.answer_enter_as_copy(player, copy),
         Intent::ChooseAttachHost { player, host } => game.choose_attach_host(player, host),
+        Intent::ChooseTopOrBottom { player, top } => {
+            game.choose_countered_spell_destination(player, top)
+        }
         _ => Err(Reject::IllegalChoice),
     }
 }

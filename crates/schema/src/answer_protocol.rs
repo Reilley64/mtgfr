@@ -42,6 +42,9 @@ pub enum Answer {
     Discard {
         cards: Vec<ObjectId>,
     },
+    DeclineUntap {
+        keep_tapped: Vec<ObjectId>,
+    },
     PutLand {
         choice: Option<ObjectId>,
     },
@@ -95,6 +98,9 @@ pub enum Answer {
     CopyTarget {
         copy: Option<ObjectId>,
     },
+    TopOrBottom {
+        top: bool,
+    },
 }
 
 /// Encode a form answer into the WireIntent that answers `view`.
@@ -132,6 +138,10 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
             sacrifices: ids,
         },
         Answer::Discard { cards } => WireIntent::Discard { player, cards },
+        Answer::DeclineUntap { keep_tapped } => WireIntent::DeclineUntap {
+            player,
+            keep_tapped,
+        },
         Answer::PutLand { choice } => WireIntent::PutLandFromHand { player, choice },
         Answer::ChooseExiled { choice } => WireIntent::ChooseExiledWithCard { player, choice },
         Answer::SelectTop { cards } => WireIntent::SelectFromTop { player, cards },
@@ -164,6 +174,7 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
         }
         Answer::AttachHost { host } => WireIntent::ChooseAttachHost { player, host },
         Answer::CopyTarget { copy } => WireIntent::ChooseCopyTarget { player, copy },
+        Answer::TopOrBottom { top } => WireIntent::ChooseTopOrBottom { player, top },
     }
 }
 
@@ -174,8 +185,10 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::ChooseSpellTargets { player, .. }
         | PendingChoiceView::ChooseTargetPlayers { player, .. }
         | PendingChoiceView::MayYesNo { player, .. }
+        | PendingChoiceView::DeclineUntap { player, .. }
         | PendingChoiceView::PayCost { player, .. }
         | PendingChoiceView::PayOrCounter { player, .. }
+        | PendingChoiceView::ChooseCounteredSpellDestination { player, .. }
         | PendingChoiceView::PayEchoOrSacrifice { player, .. }
         | PendingChoiceView::AssignCombatDamage { player, .. }
         | PendingChoiceView::DivideSpellDamage { player, .. }

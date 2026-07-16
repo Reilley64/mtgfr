@@ -6,6 +6,21 @@
 
 use crate::{CardDef, Effect, Keyword, ObjectId, PlayerId, SpellFilter, Step};
 
+/// The CR 611.2b duration condition scoping a control-changing effect (Rubinia Soulsinger's "for
+/// as long as you control Rubinia and Rubinia remains tapped"). Stored alongside the override in
+/// [`PlayPermissions::conditioned_control_overrides`] and re-evaluated as a state-based check
+/// ([`Game::check_conditioned_control_reversions`](crate::Game::check_conditioned_control_reversions));
+/// the moment it stops holding, the override is dropped and control reverts. "You control the
+/// source" is checked against the override's own controller (the thief), so it isn't a field here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ControlCondition {
+    /// The permanent whose continued control (by the thief) and tapped state sustain the steal
+    /// (Rubinia herself). When it leaves the battlefield the condition fails.
+    pub source: ObjectId,
+    /// Whether `source` must remain tapped for the steal to hold ("Rubinia remains tapped").
+    pub needs_tapped: bool,
+}
+
 /// Combat-adjacent state stored outside `Permanent` because `Permanent` is `Copy`.
 #[derive(Clone, Default)]
 pub(crate) struct CombatExtras {
@@ -54,6 +69,17 @@ pub(crate) struct PlayPermissions {
     /// this after the until-end-of-turn entries (an active until-EOT steal still outranks it,
     /// same no-per-entry-timestamp reasoning as `control_overrides`).
     pub permanent_control_overrides: Vec<(ObjectId, PlayerId)>,
+    /// Condition-scoped control changes (CR 611.2b — Rubinia Soulsinger's "for as long as you
+    /// control Rubinia and Rubinia remains tapped"), each entry `(the controlled object, its new
+    /// controller, the sustaining condition)`. The first condition-scoped duration in the engine:
+    /// unlike [`control_overrides`](Self::control_overrides) (cleanup) and
+    /// [`permanent_control_overrides`](Self::permanent_control_overrides) (never), an entry here is
+    /// dropped the moment its [`ControlCondition`] stops holding, detected as a state-based check
+    /// ([`Game::check_conditioned_control_reversions`](crate::Game::check_conditioned_control_reversions))
+    /// that emits [`Event::ConditionedControlEnded`](crate::Event::ConditionedControlEnded). Read
+    /// by [`Game::controller_of`](crate::Game::controller_of), same "an active entry wins"
+    /// precedence as the two registries above (no pool card layers two on one permanent).
+    pub conditioned_control_overrides: Vec<(ObjectId, PlayerId, ControlCondition)>,
     /// Impulse draw (CR 118.6): each entry is `(an exiled card, the player who may play it,
     /// extended)` — the play permission granted by
     /// [`Effect::ExileTopMayPlay`](crate::Effect::ExileTopMayPlay). A plain entry (`extended =
