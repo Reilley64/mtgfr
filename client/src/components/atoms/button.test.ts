@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buttonClass } from "~/ui/button";
+import { buttonClass } from "~/components/atoms/button";
 
 describe("buttonClass (cva)", () => {
   it("defaults to primary", () => {

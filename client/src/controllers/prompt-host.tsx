@@ -4,8 +4,8 @@ import type { PendingChoiceView, VisibleState, WireIntent } from "~/api/generate
 import { type AnswerInput, choiceIntent } from "~/lib/choice";
 import { choiceShowKey, myChoice } from "~/lib/promptChoice";
 import { isFullscreenPrompt } from "~/lib/promptForm";
-import { FORMS, PROMPT_ROW, PROMPT_TITLE } from "~/lib/promptForms";
-import { Button, Field, Modal } from "~/ui";
+import { FORMS, PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
+import { Button, Field, Modal } from "~/components/atoms";
 
 export { choiceShowKey, myChoice } from "~/lib/promptChoice";
 

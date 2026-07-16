@@ -18,7 +18,7 @@ import {
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { splitOracleText } from "~/lib/oracleText";
 import { imageUrlByPrint } from "~/lib/scryfall";
-import { Button } from "~/ui";
+import { Button } from "~/components/atoms";
 
 // Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
 // the fetch rather than looking anything up by name; there is no name-based lookup anymore.

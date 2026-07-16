@@ -15,7 +15,7 @@ import { cn } from "~/lib/cn";
 import { lobbyIsHost } from "~/lib/lobby";
 import { lobbyPollFamily, startLobbyPoll } from "~/lobbyPoll";
 import { parseTableCode, setTableUrl } from "~/net";
-import { Button, Felt, Field, Panel } from "~/ui";
+import { Button, Felt, Field, Panel } from "~/components/atoms";
 
 // The three seat-claiming wire actions plus table creation, as function atoms. Logical outcomes
 // (TableFull, NotHost, …) come back as a 200 `LobbyView` with an `error` field; a *transport*

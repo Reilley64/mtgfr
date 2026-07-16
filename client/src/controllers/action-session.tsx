@@ -4,7 +4,7 @@
 
 import { type Accessor, type Component, createMemo } from "solid-js";
 import type { ActionView, ObjectView, WireTarget } from "~/api/generated";
-import { ActionChrome, type ActionChromeModel } from "~/controllers/actionChrome";
+import { ActionChrome, type ActionChromeModel } from "~/controllers/action-chrome";
 import { type ActionExecutionDeps, type StagedAction, useActionExecution } from "~/controllers/actionExecution";
 import type { TargetMode } from "~/lib/targeting";
 

@@ -1,14 +1,14 @@
 /**
  * @vitest-environment happy-dom
  *
- * ActionSession pulls ActionChrome → promptForms → CardPreview, which registers
+ * ActionSession pulls ActionChrome → prompt-forms → card-preview, which registers
  * Solid delegated events on `window` at module load. Default vitest env is node.
  */
 import { createRoot } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
 import type { ActionView, ObjectView, VisibleState } from "~/api/generated";
 import { emptyCostPicks, useActionExecution } from "~/controllers/actionExecution";
-import { useActionSession } from "~/controllers/actionSession";
+import { useActionSession } from "~/controllers/action-session";
 import { fitCamera } from "~/lib/interaction";
 
 const mkAction = (over: Partial<ActionView> = {}): ActionView => ({

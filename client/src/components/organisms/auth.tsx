@@ -6,7 +6,7 @@ import * as Effect from "effect/Effect";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createSignal, Show } from "solid-js";
 import { client, statusOf } from "~/effect/client";
-import { Button, Felt, Field, Panel } from "~/ui";
+import { Button, Felt, Field, Panel } from "~/components/atoms";
 
 type Creds = { mode: "login" | "signup"; email: string; password: string; username: string };
 

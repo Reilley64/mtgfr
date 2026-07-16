@@ -6,7 +6,7 @@
 import { createEffect, onCleanup, Show } from "solid-js";
 import { cn } from "~/lib/cn";
 import { openModalWhenReady } from "~/lib/modalDialog";
-import { Button } from "~/ui";
+import { Button } from "~/components/atoms";
 
 export default function ConfirmDialog(props: {
   open: boolean;

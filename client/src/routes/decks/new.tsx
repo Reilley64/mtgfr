@@ -1,3 +1,3 @@
-import DeckBuilder from "~/DeckBuilder";
+import DeckBuilder from "~/components/organisms/deck-builder";
 
 export default DeckBuilder;

@@ -1,3 +1,3 @@
-import Decks from "~/Decks";
+import Decks from "~/components/organisms/decks";
 
 export default Decks;

@@ -1,3 +1,3 @@
-import Play from "~/Play";
+import Play from "~/components/organisms/play";
 
 export default Play;

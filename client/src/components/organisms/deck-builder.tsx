@@ -25,8 +25,8 @@ import {
 } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import type { CatalogCard, DeckCardEntry, DeckError, SaveDeckRequest } from "~/api/generated";
-import CardPreview from "~/CardPreview";
-import ConfirmDialog from "~/ConfirmDialog";
+import CardPreview from "~/components/molecules/card-preview";
+import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client } from "~/effect/client";
 import { useAuthGuard } from "~/guard";
 import { cn } from "~/lib/cn";
@@ -34,7 +34,7 @@ import { commanderPrintForRow, formatReleasedAt, reconcileEntries } from "~/lib/
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { openModalWhenReady } from "~/lib/modalDialog";
 import { imageUrlByPrint, searchPrints } from "~/lib/scryfall";
-import { Button, Felt, Field } from "~/ui";
+import { Button, Felt, Field } from "~/components/atoms";
 
 const BASICS = new Set(["Plains", "Island", "Swamp", "Mountain", "Forest"]);
 const DECK_SIZE = 99;

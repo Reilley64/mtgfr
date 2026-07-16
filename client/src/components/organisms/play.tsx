@@ -6,10 +6,10 @@ import { useParams } from "@solidjs/router";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createSignal, Show } from "solid-js";
-import Board from "~/Board";
+import Board from "~/components/organisms/board";
 import { client } from "~/effect/client";
 import { useAuthGuard } from "~/guard";
-import Lobby from "~/Lobby";
+import Lobby from "~/components/organisms/lobby";
 import { tableId } from "~/net";
 
 // One-shot "did this table already start?" check. Any failure folds to "not started" — we fall
