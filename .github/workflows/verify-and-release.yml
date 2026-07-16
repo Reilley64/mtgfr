@@ -100,9 +100,10 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
           persist-credentials: true
 
+      # Pin — `lts/*` resolves via the Node dist index / API and fails when those are degraded.
       - uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version-file: .node-version
         # do NOT set registry-url — conflicts with semantic-release (see recipe pitfalls)
 
       - run: npm clean-install # installs semantic-release devDependencies from package.json
