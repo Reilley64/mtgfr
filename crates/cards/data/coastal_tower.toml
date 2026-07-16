@@ -1,0 +1,10 @@
+# This land enters tapped.
+# {T}: Add {W} or {U}.
+name = "Coastal Tower"
+oracle = "This land enters tapped.\n{T}: Add {W} or {U}."
+set = "inv"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["white", "blue"]

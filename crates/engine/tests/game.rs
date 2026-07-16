@@ -60078,3 +60078,388 @@ fn tajic_prevents_fight_damage_to_your_creature() {
         "the opponent's creature still took the 3 back and died",
     );
 }
+
+// ── Guild/shard mana lands: taplands, Signets, a Panorama fetch, and the karoos ────────
+
+#[test]
+fn coastal_tower_enters_tapped_and_its_dual_credit_pays_white_or_blue() {
+    // Coastal Tower: "This land enters tapped. / {T}: Add {W} or {U}."
+    let mut game = Game::new();
+    let tower = game.spawn_in_hand(PlayerId(0), card("Coastal Tower"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: tower,
+        })
+        .unwrap();
+    assert!(
+        game.is_tapped(land_permanent(&events)),
+        "Coastal Tower enters the battlefield tapped (CR 614.13)"
+    );
+
+    // The dual credit picks its color at payment time: it pays a {W} pip and a {U} pip alike.
+    for pip in [Color::White, Color::Blue] {
+        let mut game = Game::new();
+        // Pre-stack both libraries so the intervening draws don't cause a draw-from-empty loss.
+        game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+        game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+        let tower = game.spawn_on_battlefield(PlayerId(0), card("Coastal Tower"));
+        // Spawn honors enters_tapped; P0's next untap clears it.
+        advance_to_p0_second_main(&mut game);
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: tower,
+        })
+        .unwrap();
+        let mut colored = [0; 5];
+        colored[pip.index()] = 1;
+        let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test One-Pip", 0, colored));
+        cast_plain(&mut game, PlayerId(0), spell).unwrap();
+        assert_eq!(
+            game.zone_of(spell),
+            Zone::Stack,
+            "Coastal Tower's dual credit paid the {pip:?} pip"
+        );
+    }
+}
+
+#[test]
+fn elfhame_palace_enters_tapped_and_its_dual_credit_pays_green_or_white() {
+    // Elfhame Palace: "This land enters tapped. / {T}: Add {G} or {W}."
+    let mut game = Game::new();
+    let palace = game.spawn_in_hand(PlayerId(0), card("Elfhame Palace"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: palace,
+        })
+        .unwrap();
+    assert!(
+        game.is_tapped(land_permanent(&events)),
+        "Elfhame Palace enters the battlefield tapped (CR 614.13)"
+    );
+
+    for pip in [Color::Green, Color::White] {
+        let mut game = Game::new();
+        // Pre-stack both libraries so the intervening draws don't cause a draw-from-empty loss.
+        game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+        game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+        let palace = game.spawn_on_battlefield(PlayerId(0), card("Elfhame Palace"));
+        // Spawn honors enters_tapped; P0's next untap clears it.
+        advance_to_p0_second_main(&mut game);
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: palace,
+        })
+        .unwrap();
+        let mut colored = [0; 5];
+        colored[pip.index()] = 1;
+        let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test One-Pip", 0, colored));
+        cast_plain(&mut game, PlayerId(0), spell).unwrap();
+        assert_eq!(
+            game.zone_of(spell),
+            Zone::Stack,
+            "Elfhame Palace's dual credit paid the {pip:?} pip"
+        );
+    }
+}
+
+#[test]
+fn seaside_citadel_enters_tapped_and_taps_for_any_one_of_its_three_colors() {
+    // Seaside Citadel: "This land enters tapped. / {T}: Add {G}, {W}, or {U}." — three
+    // activated modes, one per color; tapping is the cost, so only one fires per untap.
+    let mut game = Game::new();
+    let citadel = game.spawn_in_hand(PlayerId(0), card("Seaside Citadel"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: citadel,
+        })
+        .unwrap();
+    assert!(
+        game.is_tapped(land_permanent(&events)),
+        "Seaside Citadel enters the battlefield tapped (CR 614.13)"
+    );
+
+    for (index, color) in [(0, Color::Green), (1, Color::White), (2, Color::Blue)] {
+        let mut game = Game::new();
+        let citadel = game.spawn_on_battlefield(PlayerId(0), card("Seaside Citadel"));
+        pass_until_next_turn(&mut game);
+        pass_until_next_turn(&mut game); // spawn honors enters_tapped; untap at P0's own turn
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: citadel,
+            ability_index: index,
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        })
+        .unwrap();
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), color),
+            1,
+            "mode {index} adds one {color:?}"
+        );
+        assert!(game.is_tapped(citadel), "tapping itself is the cost");
+        assert_eq!(
+            game.submit(Intent::ActivateAbility {
+                player: PlayerId(0),
+                object: citadel,
+                ability_index: (index + 1) % 3,
+                target: None,
+                sacrifice: vec![],
+                x: 0,
+            }),
+            Err(Reject::CannotActivate),
+            "a tapped Citadel can't add a second color the same turn"
+        );
+    }
+}
+
+#[test]
+fn selesnya_and_simic_signets_pay_one_and_add_their_guild_colors() {
+    // Selesnya Signet "{1}, {T}: Add {G}{W}." / Simic Signet "{1}, {T}: Add {G}{U}." —
+    // a Forest funds the {1}; the output is one mana of each guild color.
+    for (name, a, b) in [
+        ("Selesnya Signet", Color::Green, Color::White),
+        ("Simic Signet", Color::Green, Color::Blue),
+    ] {
+        let mut game = Game::new();
+        let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+        let signet = game.spawn_on_battlefield(PlayerId(0), card(name));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: forest,
+        })
+        .unwrap();
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: signet,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        })
+        .unwrap();
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), a),
+            1,
+            "{name} adds one {a:?}"
+        );
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), b),
+            1,
+            "{name} adds one {b:?}"
+        );
+        assert_eq!(
+            game.floating_mana(PlayerId(0)),
+            2,
+            "{name}: the Forest's green paid the {{1}} activation cost"
+        );
+        assert!(game.is_tapped(signet));
+    }
+}
+
+#[test]
+fn bant_panorama_taps_for_colorless() {
+    let mut game = Game::new();
+    let panorama = game.spawn_on_battlefield(PlayerId(0), card("Bant Panorama"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: panorama,
+    })
+    .unwrap();
+    assert_eq!(game.colorless_in_pool(PlayerId(0)), 1);
+}
+
+#[test]
+fn bant_panorama_fetches_a_tapped_basic_forest_plains_or_island() {
+    // Bant Panorama: "{1}, {T}, Sacrifice this land: Search your library for a basic Forest,
+    // Plains, or Island card, put it onto the battlefield tapped, then shuffle." A Mountain is
+    // basic but the wrong type; a Forest-typed nonbasic dual is the right type but not basic.
+    let mut game = Game::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Mountain"),
+            card("Tangled Islet"),
+            card("Plains"),
+            card("Island"),
+            card("Forest"),
+        ],
+    );
+    let forest_src = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let panorama = game.spawn_on_battlefield(PlayerId(0), card("Bant Panorama"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest_src,
+    })
+    .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: panorama,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(panorama),
+        Zone::Graveyard,
+        "the Panorama is sacrificed as a cost"
+    );
+
+    resolve_top_of_stack(&mut game); // the search ability resolves → pause on the search
+    let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
+        panic!(
+            "Bant Panorama pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        matches.contains(&lib[2]) && matches.contains(&lib[3]) && matches.contains(&lib[4]),
+        "the basic Plains, Island, and Forest all match"
+    );
+    assert!(
+        !matches.contains(&lib[0]),
+        "a basic Mountain is not a Forest, Plains, or Island"
+    );
+    assert!(
+        !matches.contains(&lib[1]),
+        "a nonbasic Forest-typed dual is not basic (CR 205.4a)"
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[2]), Zone::Battlefield);
+    assert!(
+        game.is_tapped(game.current_id(lib[2])),
+        "the fetched basic enters tapped"
+    );
+}
+
+#[test]
+fn azorius_chancery_bounce_may_return_itself_even_with_another_land() {
+    // Azorius Chancery: "When this land enters, return a land you control to its owner's
+    // hand." — no "another", so the Chancery itself is a legal choice alongside other lands.
+    let mut game = Game::new();
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let chancery = game.spawn_in_hand(PlayerId(0), card("Azorius Chancery"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: chancery,
+        })
+        .unwrap();
+    let chancery_perm = land_permanent(&events);
+    assert!(game.is_tapped(chancery_perm), "enters tapped");
+
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the enters trigger pauses on the mandatory bounce, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(player, PlayerId(0));
+    assert!(
+        legal.contains(&Target::Object(plains)),
+        "another land is a legal bounce"
+    );
+    assert!(
+        legal.contains(&Target::Object(chancery_perm)),
+        "the Chancery itself is a legal bounce"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(chancery_perm)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(chancery_perm),
+        Zone::Hand,
+        "the Chancery bounced itself"
+    );
+    assert_eq!(game.zone_of(plains), Zone::Battlefield, "the Plains stayed");
+}
+
+#[test]
+fn a_karoo_with_no_other_land_is_forced_to_bounce_itself() {
+    // Selesnya Sanctuary alone on the battlefield: the mandatory enters trigger's only legal
+    // target is the Sanctuary itself — like the real card, it must return itself.
+    let mut game = Game::new();
+    let sanctuary = game.spawn_in_hand(PlayerId(0), card("Selesnya Sanctuary"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: sanctuary,
+        })
+        .unwrap();
+    let perm = land_permanent(&events);
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the enters trigger pauses on the mandatory bounce, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        legal,
+        vec![Target::Object(perm)],
+        "the Sanctuary itself is the only legal bounce"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(perm)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(perm),
+        Zone::Hand,
+        "the Sanctuary returned itself"
+    );
+}
+
+#[test]
+fn a_karoo_taps_for_one_of_each_of_its_two_colors() {
+    // "{T}: Add {W}{U}." (and guild-mates) is two mana — one of each color — not a dual choice.
+    for (name, a, b) in [
+        ("Azorius Chancery", Color::White, Color::Blue),
+        ("Selesnya Sanctuary", Color::Green, Color::White),
+        ("Simic Growth Chamber", Color::Green, Color::Blue),
+    ] {
+        let mut game = Game::new();
+        let karoo = game.spawn_on_battlefield(PlayerId(0), card(name));
+        pass_until_next_turn(&mut game);
+        pass_until_next_turn(&mut game); // spawn honors enters_tapped; untap at P0's own turn
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: karoo,
+        })
+        .unwrap();
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), a),
+            1,
+            "{name} adds one {a:?}"
+        );
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), b),
+            1,
+            "{name} adds one {b:?}"
+        );
+        assert_eq!(
+            game.floating_mana(PlayerId(0)),
+            2,
+            "{name} adds exactly two mana"
+        );
+        assert!(game.is_tapped(karoo));
+    }
+}

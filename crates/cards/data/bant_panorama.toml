@@ -1,0 +1,29 @@
+# {T}: Add {C}.
+# {1}, {T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card, put it onto the
+# battlefield tapped, then shuffle.
+name = "Bant Panorama"
+oracle = "{T}: Add {C}.\n{1}, {T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle."
+set = "ala"
+
+# {T}: Add {C}.
+[kind]
+type = "land"
+produces = "colorless"
+
+# {1}, {T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card,
+# put it onto the battlefield tapped, then shuffle.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 1
+
+# Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield
+# tapped, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = { basic_land_with_subtype = ["Forest", "Plains", "Island"] }
+to_zone = "battlefield"
+tapped = true

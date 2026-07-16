@@ -1,0 +1,21 @@
+# {1}, {T}: Add {G}{W}.
+name = "Selesnya Signet"
+oracle = "{1}, {T}: Add {G}{W}."
+set = "rav"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {1}, {T}: Add {G}{W}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {G}{W}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["green", "white"]
