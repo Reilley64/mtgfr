@@ -1,0 +1,21 @@
+# Lightning Bolt deals 3 damage to any target.
+name = "Lightning Bolt"
+otags = ["cycle-lea-boon", "meme", "single-target-instant-sorcery", "spot-removal", "burn-any"]
+oracle = "Lightning Bolt deals 3 damage to any target."
+set = "msc"
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# Lightning Bolt deals 3 damage to any target.
+[[abilities]]
+timing = "spell"
+
+# Lightning Bolt deals 3 damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 3
+target = "any"

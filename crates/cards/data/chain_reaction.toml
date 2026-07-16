@@ -1,0 +1,25 @@
+# Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield.
+# "Chain Reaction deals X damage to each creature, where X is the number of creatures on the
+#  battlefield." — {2}{R}{R} sorcery. The damage is a board-derived count, read at resolution.
+name = "Chain Reaction"
+otags = ["burn-creature", "creature-count-matters", "hate-wide", "sweeper", "symmetrical"]
+oracle = "Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield."
+set = "soc"
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "sorcery"
+
+# Chain Reaction deals X damage to each creature, where X is the number of creatures on the
+# battlefield.
+[[abilities]]
+timing = "spell"
+
+# Chain Reaction deals X damage to each creature, where X is the number of creatures on the
+# battlefield.
+[[abilities.effects]]
+type = "damage_each_creature"
+amount = "per_creature_on_battlefield"

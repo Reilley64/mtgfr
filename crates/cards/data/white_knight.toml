@@ -1,0 +1,17 @@
+# First strike (This creature deals combat damage before creatures without first strike.)
+# Protection from black (This creature can't be blocked, targeted, dealt damage, or enchanted by anything black.)
+# White Knight (ddg): {W}{W} 2/2 with first strike and protection from black.
+name = "White Knight"
+otags = ["evasion", "french-vanilla", "hate-black", "mirrored-knight", "rhyming-name", "type-addition-human"]
+oracle = "First strike (This creature deals combat damage before creatures without first strike.)\nProtection from black (This creature can't be blocked, targeted, dealt damage, or enchanted by anything black.)"
+set = "ddg"
+subtypes = ["Human", "Knight"]
+keywords = ["first_strike", { protection = "black" }]
+
+[cost]
+white = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

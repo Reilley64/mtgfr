@@ -1,0 +1,52 @@
+# Choose one —
+# • Each opponent sacrifices a nontoken artifact of their choice.
+# • Return target artifact or creature card with mana value 2 or less from your graveyard to the battlefield.
+# • Creatures you control get +1/+1 and gain trample until end of turn.
+# Lorehold Charm {R}{W} — a modal "choose one" instant (CR 700.2). Real modes:
+#   • Each opponent sacrifices a nontoken artifact of their choice.
+#   • Return target artifact or creature card with mana value 2 or less from your graveyard to
+#     the battlefield.
+#   • Creatures you control get +1/+1 and gain trample until end of turn.
+name = "Lorehold Charm"
+otags = ["cycle-sos-charm", "mana-value-matters", "multi-removal", "overrun", "reanimate-artifact", "reanimate-creature", "removal-artifact", "removal-sacrifice", "single-target-instant-sorcery", "spot-removal", "toughness-boost-to-all"]
+oracle = "Choose one —\n• Each opponent sacrifices a nontoken artifact of their choice.\n• Return target artifact or creature card with mana value 2 or less from your graveyard to the battlefield.\n• Creatures you control get +1/+1 and gain trample until end of turn."
+set = "sos"
+modal = true
+
+[cost]
+red = 1
+white = 1
+
+[kind]
+type = "instant"
+
+# Mode 1 — each opponent sacrifices a nontoken artifact of their choice.
+[[abilities]]
+timing = "spell"
+
+# Each opponent sacrifices a nontoken artifact of their choice.
+[[abilities.effects]]
+type = "each_player_sacrifices"
+scope = "each_opponent"
+filter = { types = "artifact", token = "nontoken" }
+
+# Mode 2 — return target artifact or creature card with mana value 2 or less from your graveyard
+# to the battlefield.
+[[abilities]]
+timing = "spell"
+
+# Return target artifact or creature card with mana value 2 or less from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = { artifact_or_creature_with_mana_value_at_most = 2 } } }
+
+# Mode 3 — creatures you control get +1/+1 and gain trample until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Creatures you control get +1/+1 and gain trample until end of turn.
+[[abilities.effects]]
+type = "pump_creatures_you_control_until_end_of_turn"
+power = 1
+toughness = 1
+keywords = ["trample"]

@@ -1,0 +1,57 @@
+# Whenever you discard a card, you may exile that card from your graveyard.
+# {2}, {T}: Draw a card, then discard a card.
+# {T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If
+# it's a nonland card, create a 2/2 black Rogue creature token.
+# Currency Converter {1} — artifact. Real oracle text:
+#   "Whenever you discard a card, you may exile that card from your graveyard.
+#    {2}, {T}: Draw a card, then discard a card.
+#    {T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card,
+#    create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token."
+name = "Currency Converter"
+otags = ["activated-ability", "alliteration", "discarded-type-matters", "hate-discard", "ramp", "repeatable-creature-tokens", "repeatable-loot", "repeatable-treasures", "self-discard-matters", "triggered-ability"]
+oracle = "Whenever you discard a card, you may exile that card from your graveyard.\n{2}, {T}: Draw a card, then discard a card.\n{T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token."
+set = "msc"
+
+[cost]
+generic = 1
+
+[kind]
+type = "artifact"
+
+# {2}, {T}: Draw a card, then discard a card.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# then discard a card
+[[abilities.effects]]
+type = "discard"
+count = 1
+
+[abilities.activation_cost]
+generic = 2
+
+# Whenever you discard a card, you may exile that card from your graveyard.
+[[abilities]]
+timing = "you_discard"
+optional = true
+
+# you may exile that card from your graveyard
+[[abilities.effects]]
+type = "exile_discarded_with_this"
+
+# {T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card,
+# create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create
+# a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.
+[[abilities.effects]]
+type = "cash_out_exiled_with_this"

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "scryfall": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "scryfall-mcp-server"
+      ],
+      "env": {}
+    }
+  }
+}

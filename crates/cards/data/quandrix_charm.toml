@@ -1,0 +1,47 @@
+# Choose one —
+# • Counter target spell unless its controller pays {2}.
+# • Destroy target enchantment.
+# • Target creature has base power and toughness 5/5 until end of turn.
+# Quandrix Charm {G}{U} — a modal "choose one" instant (CR 700.2). Its spell-timed abilities are
+# its modes; the caster picks exactly one at cast (`modal = true`, choose defaults to 1).
+name = "Quandrix Charm"
+otags = ["counterspell-soft", "cycle-sos-charm", "removal-destroy", "removal-enchantment", "shapechange", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Choose one —\n• Counter target spell unless its controller pays {2}.\n• Destroy target enchantment.\n• Target creature has base power and toughness 5/5 until end of turn."
+set = "sos"
+modal = true
+
+[cost]
+green = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Counter target spell unless its controller pays {2}."
+[[abilities]]
+timing = "spell"
+
+# Counter target spell unless its controller pays {2}.
+[[abilities.effects]]
+type = "counter_target_spell"
+unless_pays = 2
+
+# Mode 1 — "Destroy target enchantment."
+[[abilities]]
+timing = "spell"
+
+# Destroy target enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "enchantment" } }
+
+# Mode 2 — "Target creature has base power and toughness 5/5 until end of turn."
+[[abilities]]
+timing = "spell"
+
+# Target creature has base power and toughness 5/5 until end of turn.
+[[abilities.effects]]
+type = "set_base_pt_target_until_end_of_turn"
+power = 5
+toughness = 5
+target = "creature"

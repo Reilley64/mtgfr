@@ -1,0 +1,589 @@
+/* Subset of mana-font for oracle/approximates pips + mana-tray symbols (duo, color indicators).
+ * Regenerate: `just client-mana-oracle` (or `node scripts/gen-mana-oracle.mjs`).
+ * Check stale: `just client-mana-oracle-check`.
+ */
+.ms {
+  display: inline-block;
+  font: normal normal normal 14px Mana;
+  font-size: inherit;
+  line-height: 1em;
+  text-rendering: auto;
+  transform: translate(0, 0);
+  speak: none;
+  text-transform: none;
+  vertical-align: middle;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --ms-mana-b: #a7999e;
+  --ms-mana-c: #d0c6bb;
+  --ms-mana-g: #9fcba6;
+  --ms-mana-r: #f19b79;
+  --ms-mana-u: #bcdaf7;
+  --ms-mana-w: #fdfbce;
+}
+
+.ms-w::before {
+  content: "\e600";
+}
+.ms-w-original::before {
+  content: "\e997";
+}
+.ms-w-list::before {
+  content: "\e998";
+}
+.ms-u::before {
+  content: "\e601";
+}
+.ms-b::before {
+  content: "\e602";
+}
+.ms-r::before {
+  content: "\e603";
+}
+.ms-g::before {
+  content: "\e604";
+}
+.ms-0::before {
+  content: "\e605";
+}
+.ms-1::before {
+  content: "\e606";
+}
+.ms-2 {
+  margin-left: inherit !important;
+}
+.ms-2::before {
+  content: "\e607";
+}
+.ms-3::before {
+  content: "\e608";
+}
+.ms-4::before {
+  content: "\e609";
+}
+.ms-5::before {
+  content: "\e60a";
+}
+.ms-6::before {
+  content: "\e60b";
+}
+.ms-7::before {
+  content: "\e60c";
+}
+.ms-8::before {
+  content: "\e60d";
+}
+.ms-9::before {
+  content: "\e60e";
+}
+.ms-10::before {
+  content: "\e60f";
+}
+.ms-11::before {
+  content: "\e610";
+}
+.ms-12::before {
+  content: "\e611";
+}
+.ms-13::before {
+  content: "\e612";
+}
+.ms-14::before {
+  content: "\e613";
+}
+.ms-15::before {
+  content: "\e614";
+}
+.ms-16::before {
+  content: "\e62a";
+}
+.ms-17::before {
+  content: "\e62b";
+}
+.ms-18::before {
+  content: "\e62c";
+}
+.ms-19::before {
+  content: "\e62d";
+}
+.ms-20::before {
+  content: "\e62e";
+}
+.ms-x::before {
+  content: "\e615";
+}
+.ms-y::before {
+  content: "\e616";
+}
+.ms-z::before {
+  content: "\e617";
+}
+.ms-s::before {
+  content: "\e619";
+}
+.ms-s-mtga::before {
+  content: "\e996";
+}
+.ms-c::before {
+  content: "\e904";
+}
+.ms-e::before, .ms-energy::before {
+  content: "\e907";
+}
+.ms-acorn::before {
+  content: "\e929";
+}
+.ms-ticket::before, .ms-tk::before {
+  content: "\e9c4";
+}
+.ms-1-2::before {
+  content: "\e902";
+}
+.ms-infinity::before {
+  content: "\e903";
+}
+.ms-l::before {
+  content: "\ea2d";
+}
+.ms-d::before {
+  content: "\ea2e";
+}
+.ms-spree::before {
+  content: "\ea55";
+}
+.ms-h::before, .ms-watermark-phyrexian::before {
+  content: "\e618";
+}
+.ms-paw::before {
+  content: "\ea32";
+}
+.ms-p::before {
+  content: "\e618";
+}
+.ms-tap::before {
+  content: "\e61a";
+}
+.ms-untap::before {
+  content: "\e61b";
+}
+.ms-tap-alt::before, .ms-tap-3ed::before {
+  content: "\e61c";
+}
+.ms-tap-4ed::before {
+  content: "\ea31";
+}
+.ms-chaos::before {
+  content: "\e61d";
+}
+.ms-artifact::before {
+  content: "\e61e";
+}
+.ms-battle::before {
+  content: "\e9d1";
+}
+.ms-battle-siege::before {
+  content: "\e9d2";
+}
+.ms-commander::before {
+  content: "\e9c6";
+}
+.ms-conspiracy::before {
+  content: "\e972";
+}
+.ms-creature::before {
+  content: "\e61f";
+}
+.ms-enchantment::before {
+  content: "\e620";
+}
+.ms-dungeon::before {
+  content: "\e995";
+}
+.ms-instant::before {
+  content: "\e621";
+}
+.ms-land::before {
+  content: "\e622";
+}
+.ms-multicolor::before {
+  content: "\e985";
+}
+.ms-phenomenon::before {
+  content: "\e96e";
+}
+.ms-plane::before {
+  content: "\e96f";
+}
+.ms-planeswalker::before, .ms-watermark-planeswalker::before {
+  content: "\e623";
+}
+.ms-rarity::before {
+  content: "\e96c";
+}
+.ms-saga::before {
+  content: "\e92a";
+}
+.ms-scheme::before {
+  content: "\e970";
+}
+.ms-sorcery::before {
+  content: "\e624";
+}
+.ms-token::before {
+  content: "\e96d";
+}
+.ms-tribal::before, .ms-multiple::before {
+  content: "\e925";
+}
+.ms-vanguard::before {
+  content: "\e971";
+}
+.ms-hand::before {
+  content: "\e9ca";
+}
+.ms-library::before {
+  content: "\e9cb";
+}
+.ms-graveyard::before {
+  content: "\e9cc";
+}
+.ms-exile::before {
+  content: "\e9cd";
+}
+.ms-wu::before, .ms-wb::before, .ms-rw::after, .ms-gw::after, .ms-2w::after, .ms-cw::after {
+  content: "\e600";
+}
+.ms-ub::before, .ms-ur::before, .ms-wu::after, .ms-gu::after, .ms-2u::after, .ms-cu::after {
+  content: "\e601";
+}
+.ms-br::before, .ms-bg::before, .ms-wb::after, .ms-ub::after, .ms-2b::after, .ms-cb::after {
+  content: "\e602";
+}
+.ms-rw::before, .ms-rg::before, .ms-ur::after, .ms-br::after, .ms-2r::after, .ms-cr::after {
+  content: "\e603";
+}
+.ms-gw::before, .ms-gu::before, .ms-bg::after, .ms-rg::after, .ms-2g::after, .ms-cg::after {
+  content: "\e604";
+}
+.ms-2w::before, .ms-2u::before, .ms-2b::before, .ms-2r::before, .ms-2g::before {
+  content: "\e607";
+}
+.ms-cw::before, .ms-cu::before, .ms-cb::before, .ms-cr::before, .ms-cg::before {
+  content: "\e904";
+}
+.ms-wp::before, .ms-up::before, .ms-bp::before, .ms-rp::before, .ms-gp::before, .ms-wup::before, .ms-wup::after, .ms-wbp::before, .ms-wbp::after, .ms-ubp::before, .ms-ubp::after, .ms-urp::before, .ms-urp::after, .ms-brp::before, .ms-brp::after, .ms-bgp::before, .ms-bgp::after, .ms-rwp::before, .ms-rwp::after, .ms-rgp::before, .ms-rgp::after, .ms-gwp::before, .ms-gwp::after, .ms-gup::before, .ms-gup::after {
+  content: "\e618";
+}
+
+.ms-cost {
+  background-color: #beb9b2;
+  border-radius: 1em;
+  color: #111;
+  font-size: 0.95em;
+  width: 1.3em;
+  height: 1.3em;
+  line-height: 1.35em;
+  text-align: center;
+}
+.ms-cost.ms-w, .ms-cost.ms-wp {
+  background-color: #f0f2c0;
+}
+.ms-cost.ms-u, .ms-cost.ms-up {
+  background-color: #b5cde3;
+}
+.ms-cost.ms-b, .ms-cost.ms-bp {
+  background-color: #aca29a;
+}
+.ms-cost.ms-r, .ms-cost.ms-rp {
+  background-color: #db8664;
+}
+.ms-cost.ms-g, .ms-cost.ms-gp {
+  background-color: #93b483;
+}
+.ms-cost.ms-wu, .ms-cost.ms-wb, .ms-cost.ms-ub, .ms-cost.ms-ur, .ms-cost.ms-br, .ms-cost.ms-bg, .ms-cost.ms-rw, .ms-cost.ms-rg, .ms-cost.ms-gw, .ms-cost.ms-gu, .ms-cost.ms-2w, .ms-cost.ms-2u, .ms-cost.ms-2b, .ms-cost.ms-2r, .ms-cost.ms-2g, .ms-cost.ms-cw, .ms-cost.ms-cu, .ms-cost.ms-cb, .ms-cost.ms-cr, .ms-cost.ms-cg, .ms-cost.ms-wup, .ms-cost.ms-wbp, .ms-cost.ms-ubp, .ms-cost.ms-urp, .ms-cost.ms-brp, .ms-cost.ms-bgp, .ms-cost.ms-rwp, .ms-cost.ms-rgp, .ms-cost.ms-gwp, .ms-cost.ms-gup {
+  --ms-split-top: var(--ms-mana-c);
+  --ms-split-bottom: var(--ms-mana-u);
+  background: var(--ms-split-top);
+  background: -moz-linear-gradient(135deg, var(--ms-split-top) 0%, var(--ms-split-top) 50%, var(--ms-split-bottom) 50%, var(--ms-split-bottom) 100%);
+  background: -webkit-linear-gradient(135deg, var(--ms-split-top) 0%, var(--ms-split-top) 50%, var(--ms-split-bottom) 50%, var(--ms-split-bottom) 100%);
+  background: linear-gradient(135deg, var(--ms-split-top) 0%, var(--ms-split-top) 50%, var(--ms-split-bottom) 50%, var(--ms-split-bottom) 100%);
+  position: relative;
+  width: 1.3em;
+  height: 1.3em;
+}
+.ms-cost.ms-wu::before, .ms-cost.ms-wu::after, .ms-cost.ms-wb::before, .ms-cost.ms-wb::after, .ms-cost.ms-ub::before, .ms-cost.ms-ub::after, .ms-cost.ms-ur::before, .ms-cost.ms-ur::after, .ms-cost.ms-br::before, .ms-cost.ms-br::after, .ms-cost.ms-bg::before, .ms-cost.ms-bg::after, .ms-cost.ms-rw::before, .ms-cost.ms-rw::after, .ms-cost.ms-rg::before, .ms-cost.ms-rg::after, .ms-cost.ms-gw::before, .ms-cost.ms-gw::after, .ms-cost.ms-gu::before, .ms-cost.ms-gu::after, .ms-cost.ms-2w::before, .ms-cost.ms-2w::after, .ms-cost.ms-2u::before, .ms-cost.ms-2u::after, .ms-cost.ms-2b::before, .ms-cost.ms-2b::after, .ms-cost.ms-2r::before, .ms-cost.ms-2r::after, .ms-cost.ms-2g::before, .ms-cost.ms-2g::after, .ms-cost.ms-cw::before, .ms-cost.ms-cw::after, .ms-cost.ms-cu::before, .ms-cost.ms-cu::after, .ms-cost.ms-cb::before, .ms-cost.ms-cb::after, .ms-cost.ms-cr::before, .ms-cost.ms-cr::after, .ms-cost.ms-cg::before, .ms-cost.ms-cg::after, .ms-cost.ms-wup::before, .ms-cost.ms-wup::after, .ms-cost.ms-wbp::before, .ms-cost.ms-wbp::after, .ms-cost.ms-ubp::before, .ms-cost.ms-ubp::after, .ms-cost.ms-urp::before, .ms-cost.ms-urp::after, .ms-cost.ms-brp::before, .ms-cost.ms-brp::after, .ms-cost.ms-bgp::before, .ms-cost.ms-bgp::after, .ms-cost.ms-rwp::before, .ms-cost.ms-rwp::after, .ms-cost.ms-rgp::before, .ms-cost.ms-rgp::after, .ms-cost.ms-gwp::before, .ms-cost.ms-gwp::after, .ms-cost.ms-gup::before, .ms-cost.ms-gup::after {
+  font-size: 0.55em !important;
+  position: absolute;
+}
+.ms-cost.ms-wu::before, .ms-cost.ms-wb::before, .ms-cost.ms-ub::before, .ms-cost.ms-ur::before, .ms-cost.ms-br::before, .ms-cost.ms-bg::before, .ms-cost.ms-rw::before, .ms-cost.ms-rg::before, .ms-cost.ms-gw::before, .ms-cost.ms-gu::before, .ms-cost.ms-2w::before, .ms-cost.ms-2u::before, .ms-cost.ms-2b::before, .ms-cost.ms-2r::before, .ms-cost.ms-2g::before, .ms-cost.ms-cw::before, .ms-cost.ms-cu::before, .ms-cost.ms-cb::before, .ms-cost.ms-cr::before, .ms-cost.ms-cg::before, .ms-cost.ms-wup::before, .ms-cost.ms-wbp::before, .ms-cost.ms-ubp::before, .ms-cost.ms-urp::before, .ms-cost.ms-brp::before, .ms-cost.ms-bgp::before, .ms-cost.ms-rwp::before, .ms-cost.ms-rgp::before, .ms-cost.ms-gwp::before, .ms-cost.ms-gup::before {
+  top: -0.38em;
+  left: 0.28em;
+}
+.ms-cost.ms-wu::after, .ms-cost.ms-wb::after, .ms-cost.ms-ub::after, .ms-cost.ms-ur::after, .ms-cost.ms-br::after, .ms-cost.ms-bg::after, .ms-cost.ms-rw::after, .ms-cost.ms-rg::after, .ms-cost.ms-gw::after, .ms-cost.ms-gu::after, .ms-cost.ms-2w::after, .ms-cost.ms-2u::after, .ms-cost.ms-2b::after, .ms-cost.ms-2r::after, .ms-cost.ms-2g::after, .ms-cost.ms-cw::after, .ms-cost.ms-cu::after, .ms-cost.ms-cb::after, .ms-cost.ms-cr::after, .ms-cost.ms-cg::after, .ms-cost.ms-wup::after, .ms-cost.ms-wbp::after, .ms-cost.ms-ubp::after, .ms-cost.ms-urp::after, .ms-cost.ms-brp::after, .ms-cost.ms-bgp::after, .ms-cost.ms-rwp::after, .ms-cost.ms-rgp::after, .ms-cost.ms-gwp::after, .ms-cost.ms-gup::after {
+  top: 0.5em;
+  left: 1em;
+}
+.ms-cost.ms-wu, .ms-cost.ms-wup {
+  --ms-split-top: var(--ms-mana-w);
+}
+.ms-cost.ms-wb, .ms-cost.ms-wbp {
+  --ms-split-top: var(--ms-mana-w);
+  --ms-split-bottom: var(--ms-mana-b);
+}
+.ms-cost.ms-ub, .ms-cost.ms-ubp {
+  --ms-split-top: var(--ms-mana-u);
+  --ms-split-bottom: var(--ms-mana-b);
+}
+.ms-cost.ms-ur, .ms-cost.ms-urp {
+  --ms-split-top: var(--ms-mana-u);
+  --ms-split-bottom: var(--ms-mana-r);
+}
+.ms-cost.ms-br, .ms-cost.ms-brp {
+  --ms-split-top: var(--ms-mana-b);
+  --ms-split-bottom: var(--ms-mana-r);
+}
+.ms-cost.ms-bg, .ms-cost.ms-bgp {
+  --ms-split-top: var(--ms-mana-b);
+  --ms-split-bottom: var(--ms-mana-g);
+}
+.ms-cost.ms-rw, .ms-cost.ms-rwp {
+  --ms-split-top: var(--ms-mana-r);
+  --ms-split-bottom: var(--ms-mana-w);
+}
+.ms-cost.ms-rg, .ms-cost.ms-rgp {
+  --ms-split-top: var(--ms-mana-r);
+  --ms-split-bottom: var(--ms-mana-g);
+}
+.ms-cost.ms-gw, .ms-cost.ms-gwp {
+  --ms-split-top: var(--ms-mana-g);
+  --ms-split-bottom: var(--ms-mana-w);
+}
+.ms-cost.ms-gu, .ms-cost.ms-gup {
+  --ms-split-top: var(--ms-mana-g);
+}
+.ms-cost.ms-2w, .ms-cost.ms-cw {
+  --ms-split-bottom: var(--ms-mana-w);
+}
+.ms-cost.ms-2b, .ms-cost.ms-cb {
+  --ms-split-bottom: var(--ms-mana-b);
+}
+.ms-cost.ms-2r, .ms-cost.ms-cr {
+  --ms-split-bottom: var(--ms-mana-r);
+}
+.ms-cost.ms-2g, .ms-cost.ms-cg {
+  --ms-split-bottom: var(--ms-mana-g);
+}
+.ms-cost.ms-p::before {
+  display: inline-block;
+  -moz-transform: scale(1.2, 1.2);
+  -webkit-transform: scale(1.2, 1.2);
+  transform: scale(1.2, 1.2);
+}
+.ms-cost.ms-wp::before, .ms-cost.ms-up::before, .ms-cost.ms-bp::before, .ms-cost.ms-rp::before, .ms-cost.ms-gp::before, .ms-cost.ms-cw::before, .ms-cost.ms-cu::before, .ms-cost.ms-cb::before, .ms-cost.ms-cr::before, .ms-cost.ms-cg::before, .ms-cost.ms-wup::before, .ms-cost.ms-wbp::before, .ms-cost.ms-ubp::before, .ms-cost.ms-urp::before, .ms-cost.ms-brp::before, .ms-cost.ms-bgp::before, .ms-cost.ms-rwp::before, .ms-cost.ms-rgp::before, .ms-cost.ms-gwp::before, .ms-cost.ms-gup::before, .ms-cost.ms-wup::after, .ms-cost.ms-wbp::after, .ms-cost.ms-ubp::after, .ms-cost.ms-urp::after, .ms-cost.ms-brp::after, .ms-cost.ms-bgp::after, .ms-cost.ms-rwp::after, .ms-cost.ms-rgp::after, .ms-cost.ms-gwp::after, .ms-cost.ms-gup::after {
+  display: inline-block;
+  transform: scale(1.2) translateX(0.01rem) translateY(-0.03rem);
+}
+.ms-cost.ms-tap-alt::before {
+  display: inline-block;
+  transform: scale(1.2);
+  padding-left: 0.06em;
+  padding-bottom: 0.1em;
+}
+.ms-cost.ms-s::before {
+  color: #fff;
+  -webkit-text-stroke: 2px #fff;
+  font-size: 0.85em;
+  top: -0.05em;
+  position: relative;
+  display: inline-block;
+}
+.ms-cost.ms-s::after {
+  content: "\e619";
+  position: absolute;
+  color: #333;
+  margin-left: -0.9em;
+  font-size: 1.1em;
+}
+.ms-cost.ms-s-mtga::before {
+  color: #fff;
+}
+.ms-cost.ms-untap {
+  background-color: #111;
+  color: #fff;
+}
+.ms-cost.ms-shadow {
+  box-shadow: -0.06em 0.07em 0 #111, 0 0.06em 0 #111;
+}
+.ms-cost.ms-shadow.ms-untap {
+  box-shadow: -0.06em 0.07em 0 #fff, 0 0.06em 0 #fff;
+}
+
+.ms-split {
+  position: relative;
+  width: 1.3em;
+  height: 1.3em;
+}
+
+.ms-split::before,
+.ms-split::after {
+  font-size: 0.55em !important;
+  position: absolute;
+}
+
+.ms-split::before {
+  top: -0.38em;
+  left: 0.28em;
+}
+
+.ms-split::after {
+  top: 0.5em;
+  left: 1em;
+}
+
+.ms-duo {
+  color: #fff;
+}
+.ms-duo::after {
+  color: #000;
+  content: "";
+  display: block;
+  font-size: 1em;
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+.ms-duo.ms-multicolor::after {
+  content: "\e986";
+}
+.ms-duo-color::before {
+  color: #010101;
+}
+.ms-duo-color.ms-multicolor::after {
+  color: #cca753;
+}
+.ms-duo-color.ms-multicolor.ms-grad::after {
+  background: linear-gradient(45deg, #cca54f 0%, #e0d3bb 50%, #cca54f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ms-ci {
+  border-radius: 100%;
+  box-shadow: inset 0 0 1px #fff;
+  line-height: 0.95em;
+  width: 1em;
+  height: 1em;
+}
+.ms-ci::before {
+  color: #010101;
+}
+.ms-ci-1::before {
+  content: "\e98a";
+}
+.ms-ci-2::before {
+  content: "\e98b";
+}
+.ms-ci-3::before {
+  content: "\e98c";
+}
+.ms-ci-4::before {
+  content: "\e98d";
+}
+.ms-ci-5::before {
+  content: "\e98e";
+}
+.ms-ci-w {
+  background: #fff;
+}
+.ms-ci-u {
+  background: #3b6ba0;
+}
+.ms-ci-b {
+  background: #383431;
+}
+.ms-ci-r {
+  background: #c6553e;
+}
+.ms-ci-g {
+  background: #3d684b;
+}
+.ms-ci-wu, .ms-ci-uw, .ms-ci-azorius {
+  background: conic-gradient(#fff 45deg, #3b6ba0 45deg 225deg, #fff 225deg);
+}
+.ms-ci-wb, .ms-ci-bw, .ms-ci-orzhov {
+  background: conic-gradient(#fff 45deg, #383431 45deg 225deg, #fff 225deg);
+}
+.ms-ci-ub, .ms-ci-bu, .ms-ci-dimir {
+  background: conic-gradient(#3b6ba0 45deg, #383431 45deg 225deg, #3b6ba0 225deg);
+}
+.ms-ci-ur, .ms-ci-ru, .ms-ci-izzet {
+  background: conic-gradient(#3b6ba0 45deg, #c6553e 45deg 225deg, #3b6ba0 225deg);
+}
+.ms-ci-bg, .ms-ci-gb, .ms-ci-golgari, .ms-ci-rock {
+  background: conic-gradient(#383431 45deg, #3d684b 45deg 225deg, #383431 225deg);
+}
+.ms-ci-br, .ms-ci-rb, .ms-ci-rakdos {
+  background: conic-gradient(#383431 45deg, #c6553e 45deg 225deg, #383431 225deg);
+}
+.ms-ci-rw, .ms-ci-wr, .ms-ci-boros {
+  background: conic-gradient(#c6553e 45deg, #fff 45deg 225deg, #c6553e 225deg);
+}
+.ms-ci-rg, .ms-ci-gr, .ms-ci-gruul {
+  background: conic-gradient(#c6553e 45deg, #3d684b 45deg 225deg, #c6553e 225deg);
+}
+.ms-ci-gu, .ms-ci-ug, .ms-ci-simic {
+  background: conic-gradient(#3d684b 45deg, #3b6ba0 45deg 225deg, #3d684b 225deg);
+}
+.ms-ci-gw, .ms-ci-wg, .ms-ci-selesnya {
+  background: conic-gradient(#3d684b 45deg, #fff 45deg 225deg, #3d684b 225deg);
+}
+.ms-ci-wug, .ms-ci-wgu, .ms-ci-ugw, .ms-ci-uwg, .ms-ci-gwu, .ms-ci-guw, .ms-ci-bant {
+  background: conic-gradient(#3b6ba0 60deg, #3d684b 60deg 180deg, #fff 180deg 300deg, #3b6ba0 300deg);
+}
+.ms-ci-ubw, .ms-ci-uwb, .ms-ci-buw, .ms-ci-bwu, .ms-ci-wub, .ms-ci-wbu, .ms-ci-esper {
+  background: conic-gradient(#383431 60deg, #fff 60deg 180deg, #3b6ba0 180deg 300deg, #383431 300deg);
+}
+.ms-ci-bru, .ms-ci-bur, .ms-ci-rbu, .ms-ci-rub, .ms-ci-ubr, .ms-ci-urb, .ms-ci-grixis {
+  background: conic-gradient(#c6553e 60deg, #3b6ba0 60deg 180deg, #383431 180deg 300deg, #c6553e 300deg);
+}
+.ms-ci-rgb, .ms-ci-rbg, .ms-ci-grb, .ms-ci-gbr, .ms-ci-brg, .ms-ci-bgr, .ms-ci-jund {
+  background: conic-gradient(#3d684b 60deg, #383431 60deg 180deg, #c6553e 180deg 300deg, #3d684b 300deg);
+}
+.ms-ci-gwr, .ms-ci-grw, .ms-ci-wgr, .ms-ci-wrg, .ms-ci-rgw, .ms-ci-rwg, .ms-ci-naya {
+  background: conic-gradient(#fff 60deg, #c6553e 60deg 180deg, #3d684b 180deg 300deg, #fff 300deg);
+}
+.ms-ci-wbg, .ms-ci-wgb, .ms-ci-bwg, .ms-ci-bgw, .ms-ci-gwb, .ms-ci-gbw, .ms-ci-abzan, .ms-ci-junk, .ms-ci-necra {
+  background: conic-gradient(#383431 60deg, #3d684b 60deg 180deg, #fff 180deg 300deg, #383431 300deg);
+}
+.ms-ci-urw, .ms-ci-uwr, .ms-ci-ruw, .ms-ci-rwu, .ms-ci-wur, .ms-ci-wru, .ms-ci-jeskai, .ms-ci-raka {
+  background: conic-gradient(#c6553e 60deg, #fff 60deg 180deg, #3b6ba0 180deg 300deg, #c6553e 300deg);
+}
+.ms-ci-bgu, .ms-ci-bug, .ms-ci-gbu, .ms-ci-gub, .ms-ci-ubg, .ms-ci-ugb, .ms-ci-sultai, .ms-ci-bug, .ms-ci-ana {
+  background: conic-gradient(#3d684b 60deg, #3b6ba0 60deg 180deg, #383431 180deg 300deg, #3d684b 300deg);
+}
+.ms-ci-rwb, .ms-ci-rbw, .ms-ci-wrb, .ms-ci-wbr, .ms-ci-brw, .ms-ci-bwr, .ms-ci-mardu, .ms-ci-dega {
+  background: conic-gradient(#fff 60deg, #383431 60deg 180deg, #c6553e 180deg 300deg, #fff 300deg);
+}
+.ms-ci-gur, .ms-ci-gru, .ms-ci-ugr, .ms-ci-urg, .ms-ci-rgu, .ms-ci-rug, .ms-ci-temur, .ms-ci-ceta {
+  background: conic-gradient(#3b6ba0 60deg, #c6553e 60deg 180deg, #3d684b 180deg 300deg, #3b6ba0 300deg);
+}
+.ms-ci-ubrg, .ms-ci-ubgr, .ms-ci-ugbr, .ms-ci-ugrb, .ms-ci-urbg, .ms-ci-urgb, .ms-ci-bgru, .ms-ci-bgur, .ms-ci-brgu, .ms-ci-brug, .ms-ci-bugr, .ms-ci-burg, .ms-ci-gbru, .ms-ci-gbur, .ms-ci-grbu, .ms-ci-grub, .ms-ci-gubr, .ms-ci-gurb, .ms-ci-rbgu, .ms-ci-rbug, .ms-ci-rgbu, .ms-ci-rgub, .ms-ci-rubg, .ms-ci-rugb, .ms-ci-glint {
+  background: conic-gradient(#3b6ba0 45deg, #383431 45deg 135deg, #c6553e 135deg 225deg, #3d684b 225deg 315deg, #3b6ba0 315deg);
+}
+.ms-ci-brgw, .ms-ci-bgrw, .ms-ci-bgwr, .ms-ci-brwg, .ms-ci-bwgr, .ms-ci-bwrg, .ms-ci-gbrw, .ms-ci-gbwr, .ms-ci-grbw, .ms-ci-grwb, .ms-ci-gwbr, .ms-ci-gwrb, .ms-ci-rbgw, .ms-ci-rbwg, .ms-ci-rgbw, .ms-ci-rgwb, .ms-ci-rwbg, .ms-ci-rwgb, .ms-ci-wbgr, .ms-ci-wbrg, .ms-ci-wgbr, .ms-ci-wgrb, .ms-ci-wrbg, .ms-ci-wrgb, .ms-ci-dune {
+  background: conic-gradient(#383431 45deg, #c6553e 45deg 135deg, #3d684b 135deg 225deg, #fff 225deg 315deg, #383431 315deg);
+}
+.ms-ci-rgwu, .ms-ci-gruw, .ms-ci-grwu, .ms-ci-gurw, .ms-ci-guwr, .ms-ci-gwru, .ms-ci-gwur, .ms-ci-rguw, .ms-ci-rugw, .ms-ci-ruwg, .ms-ci-rwgu, .ms-ci-rwug, .ms-ci-ugrw, .ms-ci-ugwr, .ms-ci-urgw, .ms-ci-urwg, .ms-ci-uwgr, .ms-ci-uwrg, .ms-ci-wgru, .ms-ci-wgur, .ms-ci-wrgu, .ms-ci-wrug, .ms-ci-wugr, .ms-ci-wurg, .ms-ci-ink {
+  background: conic-gradient(#c6553e 45deg, #3d684b 45deg 135deg, #fff 135deg 225deg, #3b6ba0 225deg 315deg, #c6553e 315deg);
+}
+.ms-ci-gwub, .ms-ci-bguw, .ms-ci-bgwu, .ms-ci-bugw, .ms-ci-buwg, .ms-ci-bwgu, .ms-ci-bwug, .ms-ci-gbuw, .ms-ci-gbwu, .ms-ci-gubw, .ms-ci-guwb, .ms-ci-gwbu, .ms-ci-ubgw, .ms-ci-ubwg, .ms-ci-ugbw, .ms-ci-ugwb, .ms-ci-uwbg, .ms-ci-uwgb, .ms-ci-wbgu, .ms-ci-wbug, .ms-ci-wgbu, .ms-ci-wgub, .ms-ci-wubg, .ms-ci-wugb, .ms-ci-witch {
+  background: conic-gradient(#3d684b 45deg, #fff 45deg 135deg, #3b6ba0 135deg 225deg, #383431 225deg 315deg, #3d684b 315deg);
+}
+.ms-ci-wubr, .ms-ci-bruw, .ms-ci-brwu, .ms-ci-burw, .ms-ci-buwr, .ms-ci-bwru, .ms-ci-bwur, .ms-ci-rbuw, .ms-ci-rbwu, .ms-ci-rubw, .ms-ci-ruwb, .ms-ci-rwbu, .ms-ci-rwub, .ms-ci-ubrw, .ms-ci-ubwr, .ms-ci-urbw, .ms-ci-urwb, .ms-ci-uwbr, .ms-ci-uwrb, .ms-ci-wbru, .ms-ci-wbur, .ms-ci-wrbu, .ms-ci-wrub, .ms-ci-wurb, .ms-ci-yore {
+  background: conic-gradient(#fff 45deg, #3b6ba0 45deg 135deg, #383431 135deg 225deg, #c6553e 225deg 315deg, #fff 315deg);
+}
+.ms-ci-wubrg, .ms-ci-bgruw, .ms-ci-bgrwu, .ms-ci-bgurw, .ms-ci-bguwr, .ms-ci-bgwru, .ms-ci-bgwur, .ms-ci-brguw, .ms-ci-brgwu, .ms-ci-brugw, .ms-ci-bruwg, .ms-ci-brwgu, .ms-ci-brwug, .ms-ci-bugrw, .ms-ci-bugwr, .ms-ci-burgw, .ms-ci-burwg, .ms-ci-buwgr, .ms-ci-buwrg, .ms-ci-bwgru, .ms-ci-bwgur, .ms-ci-bwrgu, .ms-ci-bwrug, .ms-ci-bwugr, .ms-ci-bwurg, .ms-ci-gbruw, .ms-ci-gbrwu, .ms-ci-gburw, .ms-ci-gbuwr, .ms-ci-gbwru, .ms-ci-gbwur, .ms-ci-grbuw, .ms-ci-grbwu, .ms-ci-grubw, .ms-ci-gruwb, .ms-ci-grwbu, .ms-ci-grwub, .ms-ci-gubrw, .ms-ci-gubwr, .ms-ci-gurbw, .ms-ci-gurwb, .ms-ci-guwbr, .ms-ci-guwrb, .ms-ci-gwbru, .ms-ci-gwbur, .ms-ci-gwrbu, .ms-ci-gwrub, .ms-ci-gwubr, .ms-ci-gwurb, .ms-ci-rbguw, .ms-ci-rbgwu, .ms-ci-rbugw, .ms-ci-rbuwg, .ms-ci-rbwgu, .ms-ci-rbwug, .ms-ci-rgbuw, .ms-ci-rgbwu, .ms-ci-rgubw, .ms-ci-rguwb, .ms-ci-rgwbu, .ms-ci-rgwub, .ms-ci-rubgw, .ms-ci-rubwg, .ms-ci-rugbw, .ms-ci-rugwb, .ms-ci-ruwbg, .ms-ci-ruwgb, .ms-ci-rwbgu, .ms-ci-rwbug, .ms-ci-rwgbu, .ms-ci-rwgub, .ms-ci-rwubg, .ms-ci-rwugb, .ms-ci-ubgrw, .ms-ci-ubgwr, .ms-ci-ubrgw, .ms-ci-ubrwg, .ms-ci-ubwgr, .ms-ci-ubwrg, .ms-ci-ugbrw, .ms-ci-ugbwr, .ms-ci-ugrbw, .ms-ci-ugrwb, .ms-ci-ugwbr, .ms-ci-ugwrb, .ms-ci-urbgw, .ms-ci-urbwg, .ms-ci-urgbw, .ms-ci-urgwb, .ms-ci-urwbg, .ms-ci-urwgb, .ms-ci-uwbgr, .ms-ci-uwbrg, .ms-ci-uwgbr, .ms-ci-uwgrb, .ms-ci-uwrbg, .ms-ci-uwrgb, .ms-ci-wbgru, .ms-ci-wbgur, .ms-ci-wbrgu, .ms-ci-wbrug, .ms-ci-wbugr, .ms-ci-wburg, .ms-ci-wgbru, .ms-ci-wgbur, .ms-ci-wgrbu, .ms-ci-wgrub, .ms-ci-wgubr, .ms-ci-wgurb, .ms-ci-wrbgu, .ms-ci-wrbug, .ms-ci-wrgbu, .ms-ci-wrgub, .ms-ci-wrubg, .ms-ci-wrugb, .ms-ci-wubgr, .ms-ci-wugbr, .ms-ci-wugrb, .ms-ci-wurbg, .ms-ci-wurgb, .ms-ci-5 {
+  background: conic-gradient(#fff 36deg, #3b6ba0 36deg 108deg, #383431 108deg 180deg, #c6553e 180deg 252deg, #3d684b 252deg 324deg, #fff 324deg);
+}

@@ -1,0 +1,44 @@
+# Skulk (This creature can't be blocked by creatures with greater power.)
+# This creature enters with X +1/+1 counters on it.
+# At the beginning of your upkeep, if this creature has one or more +1/+1 counters on it, you may remove a +1/+1 counter
+# from it. If you do, draw a card.
+name = "Ingenious Prodigy"
+otags = ["counter-fuel-pp", "draw-engine", "gains-pp-counters", "intervening-if-clause", "repeatable-pure-draw", "skulk"]
+oracle = "Skulk (This creature can't be blocked by creatures with greater power.)\nThis creature enters with X +1/+1 counters on it.\nAt the beginning of your upkeep, if this creature has one or more +1/+1 counters on it, you may remove a +1/+1 counter from it. If you do, draw a card."
+set = "soc"
+subtypes = ["Human", "Wizard"]
+keywords = ["skulk"]
+
+[cost]
+x = true
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+
+# At the beginning of your upkeep, if this creature has one or more +1/+1 counters on it, you may
+# remove a +1/+1 counter from it. If you do, draw a card.
+[[abilities]]
+timing = "upkeep"
+optional = true
+condition = { type = "source_has_counters", at_least = 1 }
+
+# you may remove a +1/+1 counter from it.
+[[abilities.effects]]
+type = "remove_counter_from_self"
+
+# If you do, draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

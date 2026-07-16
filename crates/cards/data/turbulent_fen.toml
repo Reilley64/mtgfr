@@ -1,0 +1,17 @@
+# ({T}: Add {B} or {G}.)
+# This land enters tapped unless your opponents control eight or more lands.
+# Turbulent Fen (soc): Land — Swamp Forest. "({T}: Add {B} or {G}.) This land enters tapped
+# unless your opponents control eight or more lands."
+name = "Turbulent Fen"
+otags = ["activated-ability", "cycle-soc-octoland", "multiplayer", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {B} or {G}.)\nThis land enters tapped unless your opponents control eight or more lands."
+set = "soc"
+
+[kind]
+type = "land"
+produces = ["black", "green"]
+subtypes = ["Swamp", "Forest"]
+
+[enters_tapped_unless]
+type = "opponents_control_lands"
+count = 8

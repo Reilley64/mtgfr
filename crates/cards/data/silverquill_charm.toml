@@ -1,0 +1,46 @@
+# Choose one —
+# • Put two +1/+1 counters on target creature.
+# • Exile target creature with power 2 or less.
+# • Each opponent loses 3 life and you gain 3 life.
+# Silverquill Charm {W}{B} — a modal "choose one" instant (CR 700.2). Its three spell-timed
+# abilities are its modes; the caster picks exactly one at cast (`modal = true`).
+name = "Silverquill Charm"
+otags = ["cycle-sos-charm", "drain-life", "gives-pp-counters", "opponent-loses-life", "power-matters", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Choose one —\n• Put two +1/+1 counters on target creature.\n• Exile target creature with power 2 or less.\n• Each opponent loses 3 life and you gain 3 life."
+set = "sos"
+modal = true
+
+[cost]
+white = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Put two +1/+1 counters on target creature."
+[[abilities]]
+timing = "spell"
+
+# Put two +1/+1 counters on target creature.
+[[abilities.effects]]
+type = "put_counters"
+count = 2
+target = "creature"
+
+# Mode 1 — "Exile target creature with power 2 or less."
+[[abilities]]
+timing = "spell"
+
+# Exile target creature with power 2 or less.
+[[abilities.effects]]
+type = "exile_target"
+target = { permanent = { types = "creature", power_max = 2 } }
+
+# Mode 2 — "Each opponent loses 3 life and you gain 3 life." (no target)
+[[abilities]]
+timing = "spell"
+
+# Each opponent loses 3 life and you gain 3 life.
+[[abilities.effects]]
+type = "each_opponent_drain"
+amount = 3

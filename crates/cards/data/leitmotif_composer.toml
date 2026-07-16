@@ -1,0 +1,57 @@
+name = "Leitmotif Composer"
+otags = ["activated-ability", "cast-trigger-you", "copy-self", "curiosity", "exponential", "gives-unblockable", "mana-value-matters", "name-matters", "repeatable-creature-tokens", "repeatable-pure-draw", "synergy-instant", "synergy-sorcery"]
+oracle = "Whenever this creature deals combat damage to a player, draw a card.\nWhenever you cast an instant or sorcery spell with mana value 5 or greater, create a token that's a copy of this creature.\n{2}{U}: Creatures named Leitmotif Composer can't be blocked this turn."
+set = "soc"
+subtypes = ["Human", "Bard"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever this creature deals combat damage to a player, draw a card.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "this"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# Whenever you cast an instant or sorcery spell with mana value 5 or greater, create a token
+# that's a copy of this creature.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "instant_or_sorcery"
+caster = "you"
+
+[abilities.condition]
+type = "triggering_spell_mana_value_at_least"
+at_least = 5
+
+# create a token that's a copy of this creature.
+[[abilities.effects]]
+type = "create_token_copy"
+target = "this"
+count = 1
+
+# {2}{U}: Creatures named Leitmotif Composer can't be blocked this turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 2, blue = 1 }
+
+# Creatures named Leitmotif Composer can't be blocked this turn.
+# ponytail: the printed-name filter matches any permanent named "Leitmotif Composer", including
+# this card's own token copies (which share the printed name) — see the `PermanentFilter.name`
+# axis doc for the equality-only scope.
+[[abilities.effects]]
+type = "pump_creatures_you_control_until_end_of_turn"
+power = 0
+toughness = 0
+keywords = ["unblockable"]
+filter = { name = "Leitmotif Composer" }

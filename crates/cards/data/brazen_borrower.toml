@@ -1,0 +1,46 @@
+# [Brazen Borrower]
+# Flash
+# Flying
+# This creature can block only creatures with flying.
+# [Petty Theft]
+# Return target nonland permanent an opponent controls to its owner's hand.
+name = "Brazen Borrower"
+otags = ["alliteration", "castable-from-exile", "cheaper-than-mv", "exile-self", "high-flying", "removal-bounce", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Flash\nFlying\nThis creature can block only creatures with flying. // Return target nonland permanent an opponent controls to its owner's hand."
+set = "soc"
+subtypes = ["Faerie", "Rogue"]
+
+[cost]
+generic = 1
+blue = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 1
+
+keywords = ["flying", "flash", "can_block_only_flyers"]
+
+# Adventure — Petty Theft {1}{U} instant: "Return target nonland permanent an opponent controls
+# to its owner's hand." Cast from hand; on resolution the card is exiled on an adventure and its
+# owner may cast the creature half from exile later.
+[adventure]
+name = "Petty Theft"
+oracle = "Return target nonland permanent an opponent controls to its owner's hand."
+set = "soc"
+
+[adventure.cost]
+generic = 1
+blue = 1
+
+[adventure.kind]
+type = "instant"
+
+# Return target nonland permanent an opponent controls to its owner's hand.
+[[adventure.abilities]]
+timing = "spell"
+
+# Return target nonland permanent an opponent controls to its owner's hand.
+[[adventure.abilities.effects]]
+type = "return_to_hand"
+target = { permanent = { types = "nonland", controller = "opponent" } }

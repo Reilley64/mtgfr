@@ -1,0 +1,37 @@
+# Exile all creatures. Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1
+# counters on it equal to the total power of creatures they controlled that were exiled this way.
+name = "Oversimplify"
+otags = ["cycle-c21-college-spell", "donate-token", "gives-pp-counters", "power-matters", "removal-creature", "removal-exile", "single-english-word-name", "swap-removal", "sweeper"]
+oracle = "Exile all creatures. Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1 counters on it equal to the total power of creatures they controlled that were exiled this way."
+set = "soc"
+
+[cost]
+generic = 3
+green = 1
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Exile all creatures. Each player creates a 0/0 green and blue Fractal creature token and puts
+# a number of +1/+1 counters on it equal to the total power of creatures they controlled that
+# were exiled this way.
+[[abilities]]
+timing = "spell"
+
+# Exile all creatures.
+[[abilities.effects]]
+type = "exile_all"
+filter = "creatures"
+
+# Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1
+# counters on it equal to the total power of creatures they controlled that were exiled this way.
+[[abilities.effects]]
+type = "each_player_creates_fractal_from_exiled_power"
+
+[abilities.effects.token]
+name = "Fractal"
+power = 0
+toughness = 0
+colors = ["green", "blue"]
+subtypes = ["Fractal"]

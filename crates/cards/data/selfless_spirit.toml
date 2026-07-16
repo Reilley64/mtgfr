@@ -1,0 +1,33 @@
+# Flying
+# Sacrifice this creature: Creatures you control gain indestructible until end of turn.
+# Secrets of Strixhaven Commander printing. {1}{W}, Creature — Spirit Cleric, 2/1.
+# Real oracle text:
+#   "Flying
+#    Sacrifice this creature: Creatures you control gain indestructible until end of turn."
+name = "Selfless Spirit"
+otags = ["activated-ability", "alliteration", "evasion", "gives-indestructible", "martyr", "protects-all", "protects-creature"]
+oracle = "Flying\nSacrifice this creature: Creatures you control gain indestructible until end of turn."
+set = "soc"
+subtypes = ["Spirit", "Cleric"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# Sacrifice this creature: Creatures you control gain indestructible until end of turn.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Creatures you control gain indestructible until end of turn.
+[[abilities.effects]]
+type = "pump_creatures_you_control_until_end_of_turn"
+power = 0
+toughness = 0
+keywords = ["indestructible"]

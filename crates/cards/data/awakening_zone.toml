@@ -1,0 +1,43 @@
+# At the beginning of your upkeep, you may create a 0/1 colorless Eldrazi Spawn creature token. It has "Sacrifice this
+# token: Add {C}."
+name = "Awakening Zone"
+otags = ["ramp", "repeatable-creature-tokens", "triggered-ability"]
+oracle = "At the beginning of your upkeep, you may create a 0/1 colorless Eldrazi Spawn creature token. It has \"Sacrifice this token: Add {C}.\""
+set = "soc"
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "enchantment"
+
+# At the beginning of your upkeep, you may create a 0/1 colorless Eldrazi Spawn creature token. It
+# has "Sacrifice this token: Add {C}."
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+# create a 0/1 colorless Eldrazi Spawn creature token
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Eldrazi Spawn"
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# "Sacrifice this token: Add {C}." Color is not modeled, but a token with no color pips is
+# colorless anyway.
+[[abilities.effects.token.abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Add {C}
+[[abilities.effects.token.abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]

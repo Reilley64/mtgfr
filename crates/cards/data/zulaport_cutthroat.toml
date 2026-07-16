@@ -1,0 +1,26 @@
+# Whenever this creature or another creature you control dies, each opponent loses 1 life and you gain 1 life.
+name = "Zulaport Cutthroat"
+otags = ["blood-artist-ability", "group-slug", "opponent-loses-life"]
+oracle = "Whenever this creature or another creature you control dies, each opponent loses 1 life and you gain 1 life."
+set = "soc"
+subtypes = ["Human", "Rogue", "Ally"]
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Whenever this creature or another creature you control dies, each opponent loses 1 life and
+# you gain 1 life. Self-fires off its own death (CR 603.6c/603.10 last-known information — see
+# Blood Artist).
+[[abilities]]
+timing = "creature_you_control_dies_including_this"
+
+# each opponent loses 1 life and you gain 1 life.
+[[abilities.effects]]
+type = "each_opponent_drain"
+amount = 1

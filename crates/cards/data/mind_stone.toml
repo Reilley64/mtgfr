@@ -1,0 +1,37 @@
+# {T}: Add {C}.
+# {1}, {T}, Sacrifice this artifact: Draw a card.
+# Mind Stone {2} — Artifact. "{T}: Add {C}.  {1}, {T}, Sacrifice this artifact: Draw a card."
+name = "Mind Stone"
+otags = ["activated-ability", "egg", "hand-neutral", "pure-draw", "refund", "utility-mana-rock"]
+oracle = "{T}: Add {C}.\n{1}, {T}, Sacrifice this artifact: Draw a card."
+set = "soc"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {1}, {T}, Sacrifice this artifact: Draw a card.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 1
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

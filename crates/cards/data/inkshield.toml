@@ -1,0 +1,31 @@
+# Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented this way, create a 2/1
+# white and black Inkling creature token with flying.
+name = "Inkshield"
+otags = ["aikido", "cycle-c21-college-spell", "damage-prevention-you", "evasion", "fog-selective", "multiple-bodies"]
+oracle = "Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented this way, create a 2/1 white and black Inkling creature token with flying."
+set = "soc"
+
+[cost]
+generic = 3
+white = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented this
+# way, create a 2/1 white and black Inkling creature token with flying.
+[[abilities]]
+timing = "spell"
+
+# Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented this
+# way, create a 2/1 white and black Inkling creature token with flying.
+[[abilities.effects]]
+type = "prevent_combat_damage_to_you_creating_tokens"
+[abilities.effects.token]
+name = "Inkling"
+power = 2
+toughness = 1
+colors = ["white", "black"]
+subtypes = ["Inkling"]
+keywords = ["flying"]

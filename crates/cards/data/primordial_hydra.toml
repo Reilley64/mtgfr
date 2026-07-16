@@ -1,0 +1,42 @@
+# This creature enters with X +1/+1 counters on it.
+# At the beginning of your upkeep, double the number of +1/+1 counters on this creature.
+# This creature has trample as long as it has ten or more +1/+1 counters on it.
+# Primordial Hydra (soc). Real oracle text:
+#   "This creature enters with X +1/+1 counters on it.
+#    At the beginning of your upkeep, double the number of +1/+1 counters on this creature.
+#    This creature has trample as long as it has ten or more +1/+1 counters on it."
+name = "Primordial Hydra"
+otags = ["counter-doubler", "exponential", "gains-pp-counters", "gains-trample", "pp-counters-matter", "repeatable-pp-counters", "triggered-ability"]
+oracle = "This creature enters with X +1/+1 counters on it.\nAt the beginning of your upkeep, double the number of +1/+1 counters on this creature.\nThis creature has trample as long as it has ten or more +1/+1 counters on it."
+set = "soc"
+subtypes = ["Hydra"]
+conditional_keywords = [
+    { condition = { type = "source_has_counters", at_least = 10 }, keyword = "trample" },
+]
+
+[cost]
+x = true
+green = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+
+# At the beginning of your upkeep, double the number of +1/+1 counters on this creature.
+[[abilities]]
+timing = "upkeep"
+
+# double the number of +1/+1 counters on this creature.
+[[abilities.effects]]
+type = "double_counters"
+target = "this"

@@ -1,0 +1,44 @@
+# When this creature enters, you may search your library for a basic land card, put that card onto the battlefield
+# tapped, then shuffle.
+# When this creature dies, you may draw a card.
+# Solemn Simulacrum {4} — 2/2 Golem (an artifact creature).
+# "When this creature enters, you may search your library for a basic land card, put it onto the
+#  battlefield tapped, then shuffle. When this creature dies, you may draw a card."
+name = "Solemn Simulacrum"
+otags = ["alliteration", "death-trigger-self", "invitational-card", "land-ramp", "pure-draw", "tutor-land-basic", "type-addition-from-none", "tutor-land-to-battlefield"]
+oracle = "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\nWhen this creature dies, you may draw a card."
+set = "msc"
+subtypes = ["Golem"]
+
+[cost]
+generic = 4
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+also = ["artifact"]
+
+# When this creature enters, you may search your library for a basic land card, put that card onto
+# the battlefield tapped, then shuffle.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# you may search your library for a basic land card, put that card onto the battlefield tapped,
+# then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+tapped = true
+
+# When this creature dies, you may draw a card.
+[[abilities]]
+timing = "dies"
+optional = true
+
+# you may draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

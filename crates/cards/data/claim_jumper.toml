@@ -1,0 +1,52 @@
+# Vigilance
+# When this creature enters, if an opponent controls more lands than you, you may search your library for a Plains card
+# and put it onto the battlefield tapped. Then if an opponent controls more lands than you, repeat this process once. If
+# you search your library this way, shuffle.
+# Claim Jumper (soc): 3/3 Rabbit Mercenary, Vigilance. "When this creature enters, if an opponent
+# controls more lands than you, you may search your library for a Plains card and put it onto the
+# battlefield tapped. Then if an opponent controls more lands than you, repeat this process once."
+name = "Claim Jumper"
+otags = ["catch-up", "intervening-if-clause", "multi-land-ramp", "punny-name", "tutor-land-plains", "tutor-land-to-battlefield", "unique-type-line", "virtual-french-vanilla"]
+oracle = "Vigilance\nWhen this creature enters, if an opponent controls more lands than you, you may search your library for a Plains card and put it onto the battlefield tapped. Then if an opponent controls more lands than you, repeat this process once. If you search your library this way, shuffle."
+set = "soc"
+subtypes = ["Rabbit", "Mercenary"]
+keywords = ["vigilance"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# When this creature enters, if an opponent controls more lands than you, you may search your
+# library for a Plains card and put it onto the battlefield tapped. Then if an opponent controls
+# more lands than you, repeat this process once. If you search your library this way, shuffle.
+[[abilities]]
+timing = "etb"
+optional = true
+
+[abilities.condition]
+type = "opponent_controls_more_lands"
+
+# search your library for a Plains card and put it onto the battlefield tapped
+[[abilities.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Plains"] }
+to_zone = "battlefield"
+tapped = true
+
+# Then if an opponent controls more lands than you, repeat this process once.
+[[abilities.effects]]
+type = "conditional"
+
+[abilities.effects.condition]
+type = "opponent_controls_more_lands"
+
+[[abilities.effects.then]]
+type = "search_library"
+filter = { land_with_subtype = ["Plains"] }
+to_zone = "battlefield"
+tapped = true

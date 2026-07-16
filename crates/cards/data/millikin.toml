@@ -1,0 +1,27 @@
+# {T}, Mill a card: Add {C}. (To mill a card, put the top card of your library into your graveyard.)
+name = "Millikin"
+otags = ["activated-ability", "mana-dork", "mill-self", "portmanteau", "punny-name", "type-addition-from-none"]
+oracle = "{T}, Mill a card: Add {C}. (To mill a card, put the top card of your library into your graveyard.)"
+set = "soc"
+subtypes = ["Construct"]
+
+[cost]
+generic = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+also = ["artifact"]
+
+# {T}, Mill a card: Add {C}. (To mill a card, put the top card of your library into your
+# graveyard.)
+[[abilities]]
+timing = "activated"
+taps_self = true
+mill_self = 1
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]

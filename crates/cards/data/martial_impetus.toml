@@ -1,0 +1,40 @@
+# Enchant creature
+# Enchanted creature gets +1/+1 and is goaded. (It attacks each combat if able and attacks a player other than you if
+# able.)
+# Whenever enchanted creature attacks, each other creature that's attacking one of your opponents gets +1/+1 until end
+# of turn.
+name = "Martial Impetus"
+otags = ["attack-trigger", "attacking-matters", "cycle-c20-impetus", "force-attacker"]
+oracle = "Enchant creature\nEnchanted creature gets +1/+1 and is goaded. (It attacks each combat if able and attacks a player other than you if able.)\nWhenever enchanted creature attacks, each other creature that's attacking one of your opponents gets +1/+1 until end of turn."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +1/+1 and is goaded. (It attacks each combat if able and attacks a
+# player other than you if able.)
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +1/+1 and is goaded.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 1
+toughness = 1
+goad = true
+
+# Whenever enchanted creature attacks, each other creature that's attacking one of your
+# opponents gets +1/+1 until end of turn.
+[[abilities]]
+timing = "enchanted_creature_attacks"
+
+# each other creature that's attacking one of your opponents gets +1/+1 until end of turn.
+[[abilities.effects]]
+type = "pump_other_attackers_attacking_your_opponents"
+power = 1
+toughness = 1

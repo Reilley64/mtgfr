@@ -1,0 +1,22 @@
+# Target player draws X cards.
+name = "Stroke of Genius"
+otags = ["burst-draw", "force-draw", "hand-positive", "pure-draw", "single-target-instant-sorcery", "usg-storyline-in-cards"]
+oracle = "Target player draws X cards."
+set = "soc"
+
+[cost]
+x = true
+generic = 2
+blue = 1
+
+[kind]
+type = "instant"
+
+# Target player draws X cards.
+[[abilities]]
+timing = "spell"
+
+# Target player draws X cards.
+[[abilities.effects]]
+type = "target_player_draws"
+count = "x"

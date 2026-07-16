@@ -1,0 +1,58 @@
+# Destroy up to X target artifacts and/or enchantments. Create twice X 1/1 black and green Pest creature tokens with
+# "When this token dies, you gain 1 life."
+# Pest Infestation {X}{X}{G} — "Destroy up to X target artifacts and/or enchantments. Create twice
+# X 1/1 black and green Pest creature tokens with 'When this token dies, you gain 1 life.'"
+name = "Pest Infestation"
+otags = ["disenchant-naturalize", "lifegain", "multi-removal", "multiple-bodies", "multiple-targets", "out-of-color-token", "removal-destroy", "single-target-instant-sorcery", "spot-removal", "triggered-ability"]
+oracle = "Destroy up to X target artifacts and/or enchantments. Create twice X 1/1 black and green Pest creature tokens with \"When this token dies, you gain 1 life.\""
+set = "soc"
+
+[cost]
+green = 1
+x = 2
+
+[kind]
+type = "sorcery"
+
+# Destroy up to X target artifacts and/or enchantments. A separate spell-timed ability from the
+# token creation below (not a `Sequence` step): the two clauses aren't per-target-linked like
+# Curse of the Swine's exile-then-Boar, so the token half must resolve exactly once regardless of
+# how many artifacts/enchantments the destroy half actually hits, not once per destroyed target.
+[[abilities]]
+timing = "spell"
+
+# Destroy up to X target artifacts and/or enchantments.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = ["artifact", "enchantment"] } }
+count = { min = 0, max = 0, x_scaled = true }
+
+# Create twice X 1/1 black and green Pest creature tokens with "When this token dies, you gain 1
+# life."
+[[abilities]]
+timing = "spell"
+
+# Create twice X 1/1 black and green Pest creature tokens with "When this token dies, you gain 1
+# life."
+[[abilities.effects]]
+type = "create_token"
+count = "twice_x"
+
+[abilities.effects.token]
+name = "Pest"
+colors = ["black", "green"]
+subtypes = ["Pest"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# "When this token dies, you gain 1 life."
+[[abilities.effects.token.abilities]]
+timing = "dies"
+
+# you gain 1 life
+[[abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 1

@@ -1,0 +1,35 @@
+# When this creature enters, you may sacrifice a land. If you do, search your library for up to two basic land cards,
+# put them onto the battlefield tapped, then shuffle.
+name = "Springbloom Druid"
+otags = ["land-ramp", "sacrifice-outlet-land", "triggered-ability", "tutor-land-basic", "tutor-land-to-battlefield", "virtual-vanilla"]
+oracle = "When this creature enters, you may sacrifice a land. If you do, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle."
+set = "fdn"
+subtypes = ["Elf", "Druid"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature enters, you may sacrifice a land. If you do, search your library for up to two
+# basic land cards, put them onto the battlefield tapped, then shuffle.
+[[abilities]]
+timing = "etb"
+
+# you may sacrifice a land.
+[[abilities.effects]]
+type = "may_sacrifice"
+filter = "land"
+
+# If you do, search your library for up to two basic land cards, put them onto the battlefield
+# tapped, then shuffle.
+[[abilities.effects.then]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+tapped = true
+count = 2

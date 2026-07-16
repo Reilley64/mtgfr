@@ -1,0 +1,74 @@
+# Magma Opus deals 4 damage divided as you choose among any number of targets. Tap two target permanents. Create a 4/4
+# blue and red Elemental creature token. Draw two cards.
+# {U/R}{U/R}, Discard this card: Create a Treasure token.
+# Magma Opus {6}{U}{R} — instant.
+name = "Magma Opus"
+otags = ["activate-from-hand", "burn-any", "cheaper-than-mv", "cycle-stx-m-college-spell", "cycle-stx-treasure-spell", "fun-ruling", "hand-positive", "multi-removal", "multiple-targets", "punny-name", "pure-draw", "ramp"]
+oracle = "Magma Opus deals 4 damage divided as you choose among any number of targets. Tap two target permanents. Create a 4/4 blue and red Elemental creature token. Draw two cards.\n{U/R}{U/R}, Discard this card: Create a Treasure token."
+set = "soc"
+
+[cost]
+generic = 6
+blue = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Magma Opus deals 4 damage divided as you choose among any number of targets.
+[[abilities]]
+timing = "spell"
+
+# Magma Opus deals 4 damage divided as you choose among any number of targets.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 4
+target = "any"
+count = { max = 4 }
+divided = true
+
+# Tap two target permanents.
+[[abilities]]
+timing = "spell"
+
+# Tap two target permanents.
+[[abilities.effects]]
+type = "tap_target"
+target = { permanent = {} }
+count = { min = 2, max = 2 }
+
+# Create a 4/4 blue and red Elemental creature token.
+[[abilities]]
+timing = "spell"
+
+# Create a 4/4 blue and red Elemental creature token.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Elemental"
+power = 4
+toughness = 4
+colors = ["blue", "red"]
+subtypes = ["Elemental"]
+
+# Draw two cards.
+[[abilities]]
+timing = "spell"
+
+# Draw two cards.
+[[abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# {U/R}{U/R}, Discard this card: Create a Treasure token.
+[hand_ability]
+
+[hand_ability.cost]
+hybrid = [["blue", "red"], ["blue", "red"]]
+
+# Create a Treasure token.
+[[hand_ability.effects]]
+type = "create_treasure"
+count = 1

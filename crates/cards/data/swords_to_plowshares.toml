@@ -1,0 +1,27 @@
+# Exile target creature. Its controller gains life equal to its power.
+name = "Swords to Plowshares"
+otags = ["bible-reference", "drawback", "lifegain", "opponent-lifegain", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Exile target creature. Its controller gains life equal to its power."
+set = "msc"
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# "Exile target creature. Its controller gains life equal to its power." (per #65's TargetPower
+# amount) — the life gain runs first so it reads the creature's power while it's still on the
+# battlefield, then the exile.
+[[abilities]]
+timing = "spell"
+
+# Its controller gains life equal to its power.
+[[abilities.effects]]
+type = "gain_life_target_controller"
+amount = "target_power"
+
+# Exile target creature.
+[[abilities.effects]]
+type = "exile_target"
+target = "creature"

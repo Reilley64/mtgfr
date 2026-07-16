@@ -1,0 +1,50 @@
+# Devour 1 (As this creature enters, you may sacrifice any number of creatures. This creature enters with that many
+# +1/+1 counters on it.)
+# At the beginning of your end step, create a number of 1/1 black and green Pest creature tokens equal to the number of
+# +1/+1 counters on this creature. They have "When this token dies, you gain 1 life."
+name = "Ribtruss Roaster"
+otags = ["alliteration", "devour", "pp-counters-matter", "repeatable-creature-tokens", "repeatable-lifegain", "sacrifice-outlet-creature", "triggered-ability"]
+oracle = "Devour 1 (As this creature enters, you may sacrifice any number of creatures. This creature enters with that many +1/+1 counters on it.)\nAt the beginning of your end step, create a number of 1/1 black and green Pest creature tokens equal to the number of +1/+1 counters on this creature. They have \"When this token dies, you gain 1 life.\""
+set = "soc"
+subtypes = ["Troll", "Druid"]
+devour = 1
+
+[cost]
+generic = 4
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# At the beginning of your end step, create a number of 1/1 black and green Pest creature tokens
+# equal to the number of +1/+1 counters on this creature. They have "When this token dies, you
+# gain 1 life."
+[[abilities]]
+timing = "end_step"
+
+# create a number of 1/1 black and green Pest creature tokens equal to the number of +1/+1
+# counters on this creature
+[[abilities.effects]]
+type = "create_token"
+count = "per_counter_on_source"
+
+[abilities.effects.token]
+name = "Pest"
+colors = ["black", "green"]
+subtypes = ["Pest"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# "When this token dies, you gain 1 life."
+[[abilities.effects.token.abilities]]
+timing = "dies"
+
+# you gain 1 life
+[[abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 1

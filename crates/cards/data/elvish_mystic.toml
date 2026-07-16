@@ -1,0 +1,25 @@
+# {T}: Add {G}.
+# Elvish Mystic: "{T}: Add {G}." A {G} 1/1 Elf Druid mana dork.
+name = "Elvish Mystic"
+otags = ["activated-ability", "mana-dork"]
+oracle = "{T}: Add {G}."
+set = "soc"
+subtypes = ["Elf", "Druid"]
+
+[cost]
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Add {G}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["green"]

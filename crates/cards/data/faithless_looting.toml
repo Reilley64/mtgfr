@@ -1,0 +1,32 @@
+# Draw two cards, then discard two cards.
+# Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)
+# Faithless Looting {R} — sorcery. "Draw two cards, then discard two cards. Flashback {2}{R}."
+name = "Faithless Looting"
+otags = ["castable-from-graveyard", "color-break", "exile-self", "hand-negative", "loot", "more-expensive-than-mv"]
+oracle = "Draw two cards, then discard two cards.\nFlashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+set = "soc"
+
+[cost]
+red = 1
+
+# Flashback {2}{R} (CR 702.34) — cast from the graveyard for this cost, then exiled on resolve.
+[flashback]
+generic = 2
+red = 1
+
+[kind]
+type = "sorcery"
+
+# Draw two cards, then discard two cards — one resolution (an ordered effect list).
+[[abilities]]
+timing = "spell"
+
+# Draw two cards
+[[abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# then discard two cards
+[[abilities.effects]]
+type = "discard"
+count = 2

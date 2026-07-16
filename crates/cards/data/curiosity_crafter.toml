@@ -1,0 +1,39 @@
+# Flying
+# You have no maximum hand size.
+# Whenever a creature token you control deals combat damage to a player, draw a card.
+# Curiosity Crafter (SOC): {3}{U} 3/3 Bird Wizard.
+# "Flying. You have no maximum hand size. Whenever a creature token you control deals combat
+# damage to a player, draw a card."
+name = "Curiosity Crafter"
+otags = ["alliteration", "curiosity", "draw-engine", "evasion", "hand-size-increase", "repeatable-pure-draw", "synergy-token-creature", "triggered-ability"]
+oracle = "Flying\nYou have no maximum hand size.\nWhenever a creature token you control deals combat damage to a player, draw a card."
+set = "soc"
+subtypes = ["Bird", "Wizard"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# You have no maximum hand size.
+[[abilities]]
+timing = "static"
+
+# You have no maximum hand size.
+[[abilities.effects]]
+type = "no_maximum_hand_size"
+
+# Whenever a creature token you control deals combat damage to a player, draw a card.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "your_tokens"
+
+# draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

@@ -1,0 +1,30 @@
+# First strike
+# At the beginning of each end step, if a card left your graveyard this turn, create a Treasure token. (It's an artifact
+# with "{T}, Sacrifice this token: Add one mana of any color.")
+name = "Relic Retriever"
+otags = ["alliteration", "intervening-if-clause", "leaving-graveyard-matters", "ramp", "repeatable-treasures"]
+oracle = "First strike\nAt the beginning of each end step, if a card left your graveyard this turn, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+set = "soc"
+subtypes = ["Spirit", "Monkey"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# At the beginning of each end step, if a card left your graveyard this turn, create a Treasure token.
+[[abilities]]
+timing = "each_end_step"
+
+[abilities.condition]
+type = "card_left_your_graveyard_this_turn"
+
+# create a Treasure token.
+[[abilities.effects]]
+type = "create_treasure"
+count = 1

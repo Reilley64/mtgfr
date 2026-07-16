@@ -1,0 +1,24 @@
+# This spell costs {2} less to cast if you gained life this turn.
+# Destroy target nonland permanent.
+name = "Mortality Spear"
+otags = ["discount-self", "infusion", "removal-destroy", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
+oracle = "This spell costs {2} less to cast if you gained life this turn.\nDestroy target nonland permanent."
+set = "soc"
+
+[cost]
+generic = 2
+black = 1
+green = 1
+reduce_own_generic = { condition = { type = "you_gained_life_this_turn" }, then = 2 }
+
+[kind]
+type = "instant"
+
+# Destroy target nonland permanent.
+[[abilities]]
+timing = "spell"
+
+# Destroy target nonland permanent.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = "nonland" }

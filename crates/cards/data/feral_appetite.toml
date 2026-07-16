@@ -1,0 +1,65 @@
+# Attacking Pests you control get +1/+0 and have deathtouch.
+# {1}{G}: Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1 black and green Pest
+# creature token with "When this token dies, you gain 1 life."
+name = "Feral Appetite"
+otags = ["activated-ability", "anthem", "attacking-matters", "gives-deathtouch", "graveyard-fuel-creature", "hate-graveyard", "keyword-anthem", "power-boost-to-all", "repeatable-creature-tokens", "repeatable-lifegain", "typal-pest"]
+oracle = "Attacking Pests you control get +1/+0 and have deathtouch.\n{1}{G}: Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\""
+set = "soc"
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "enchantment"
+
+# Attacking Pests you control get +1/+0 and have deathtouch.
+[[abilities]]
+timing = "static"
+
+# Attacking Pests you control get +1/+0 and have deathtouch.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 0
+subtypes = ["Pest"]
+attacking_only = true
+keywords = ["deathtouch"]
+
+# {1}{G}: Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1
+# black and green Pest creature token with "When this token dies, you gain 1 life."
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 1
+green = 1
+
+# Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1 black
+# and green Pest creature token with "When this token dies, you gain 1 life."
+[[abilities.effects]]
+type = "exile_target_graveyard_card_then_if_creature"
+
+# create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."
+[[abilities.effects.then]]
+type = "create_token"
+count = 1
+
+[abilities.effects.then.token]
+name = "Pest"
+colors = ["black", "green"]
+subtypes = ["Pest"]
+
+[abilities.effects.then.token.kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# "When this token dies, you gain 1 life."
+[[abilities.effects.then.token.abilities]]
+timing = "dies"
+
+# you gain 1 life
+[[abilities.effects.then.token.abilities.effects]]
+type = "gain_life"
+amount = 1

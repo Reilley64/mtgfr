@@ -1,0 +1,55 @@
+# [Eiganjo Dynastorian]
+# Vigilance
+# Whenever you attack with two or more creatures, this creature becomes prepared. (While it's prepared, you may cast a
+# copy of its spell. Doing so unprepares it.)
+# [Replenish]
+# Return all enchantment cards from your graveyard to the battlefield.
+# Eiganjo Dynastorian // Replenish (soc), a "prepare" double-faced card: {2}{W} 2/3 Fox Advisor
+# with vigilance whose front-face trigger makes it become prepared; while prepared, its
+# controller may cast a copy of the {3}{W} Replenish sorcery below, which unprepares it.
+name = "Eiganjo Dynastorian"
+otags = ["attack-trigger", "attacking-matters", "cycle-soc-guest-lecturer", "gives-castable-from-exile", "mass-reanimation", "reanimate-enchantment", "synergy-enchantment", "unique-type-line"]
+oracle = "Vigilance\nWhenever you attack with two or more creatures, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Return all enchantment cards from your graveyard to the battlefield."
+set = "soc"
+subtypes = ["Fox", "Advisor"]
+keywords = ["vigilance"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Whenever you attack with two or more creatures, this creature becomes prepared.
+[[abilities]]
+timing = "you_attack_with_creatures"
+at_least = 2
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# Back face — Replenish ({3}{W} sorcery): "Return all enchantment cards from your graveyard to
+# the battlefield."
+[back]
+name = "Replenish"
+set = "soc"
+
+[back.cost]
+generic = 3
+white = 1
+
+[back.kind]
+type = "sorcery"
+
+# Return all enchantment cards from your graveyard to the battlefield.
+[[back.abilities]]
+timing = "spell"
+
+# Return all enchantment cards from your graveyard to the battlefield.
+[[back.abilities.effects]]
+type = "mass_return_from_graveyard"
+filter = "enchantment"

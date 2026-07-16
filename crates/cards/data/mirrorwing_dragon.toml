@@ -1,0 +1,30 @@
+# Flying
+# Whenever a player casts an instant or sorcery spell that targets only this creature, that player copies that spell for
+# each other creature they control that the spell could target. Each copy targets a different one of those creatures.
+name = "Mirrorwing Dragon"
+otags = ["cast-trigger", "copy-instant", "copy-sorcery", "copy-spell", "evasion", "hate-instant", "hate-sorcery", "heroic", "radiate", "synergy-instant", "synergy-sorcery"]
+oracle = "Flying\nWhenever a player casts an instant or sorcery spell that targets only this creature, that player copies that spell for each other creature they control that the spell could target. Each copy targets a different one of those creatures."
+set = "soc"
+subtypes = ["Dragon"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+red = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 5
+
+# Whenever a player casts an instant or sorcery spell that targets only this creature, that player
+# copies that spell for each other creature they control that the spell could target. Each copy
+# targets a different one of those creatures.
+[[abilities]]
+timing = "spell_targets_this"
+spell_filter = "instant_or_sorcery"
+
+# That player copies that spell for each other creature they control that the spell could target.
+# Each copy targets a different one of those creatures.
+[[abilities.effects]]
+type = "copy_triggering_spell_for_each_other_creature_you_control"

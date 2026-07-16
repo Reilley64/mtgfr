@@ -1,0 +1,35 @@
+# Strive — This spell costs {2}{R} more to cast for each target beyond the first.
+# Choose any number of target creatures you control. For each of them, create a token that's a copy of that creature,
+# except it has haste. Exile those tokens at the beginning of the next end step.
+name = "Twinflame"
+otags = ["copy-creature", "delayed-trigger", "more-expensive-than-mv", "multiple-bodies", "multiple-targets", "single-target-instant-sorcery", "strive", "temporary-token"]
+oracle = "Strive — This spell costs {2}{R} more to cast for each target beyond the first.\nChoose any number of target creatures you control. For each of them, create a token that's a copy of that creature, except it has haste. Exile those tokens at the beginning of the next end step."
+set = "soc"
+
+[cost]
+generic = 1
+red = 1
+
+# Strive — This spell costs {2}{R} more to cast for each target beyond the first.
+[cost.additional.strive]
+generic = 2
+red = 1
+
+[kind]
+type = "sorcery"
+
+# Choose any number of target creatures you control. For each of them, create a token that's a
+# copy of that creature, except it has haste. Exile those tokens at the beginning of the next end
+# step.
+[[abilities]]
+timing = "spell"
+
+# create a token that's a copy of that creature, except it has haste. Exile those tokens at the
+# beginning of the next end step.
+[[abilities.effects]]
+type = "create_token_copy"
+count = 1
+target = "creature_you_control"
+targets = { strive_scaled = true }
+haste = true
+exile_at_next_end_step = true

@@ -1,0 +1,19 @@
+# {1}, {T}: Add {U}{R}.
+name = "Ferrous Lake"
+otags = ["activated-ability", "cycle-pip-enemy-filterland"]
+oracle = "{1}, {T}: Add {U}{R}."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {1}, {T}: Add {U}{R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {U}{R}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["blue", "red"]

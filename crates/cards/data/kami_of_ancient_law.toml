@@ -1,0 +1,27 @@
+# Sacrifice this creature: Destroy target enchantment.
+# Kami of Ancient Law (soc): {1}{W} 2/2 Spirit.
+# "Sacrifice this creature: Destroy target enchantment."
+name = "Kami of Ancient Law"
+otags = ["activated-ability", "martyr", "removal-destroy", "removal-enchantment", "spot-removal"]
+oracle = "Sacrifice this creature: Destroy target enchantment."
+set = "soc"
+subtypes = ["Spirit"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Sacrifice this creature: Destroy target enchantment.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Destroy target enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "enchantment" } }

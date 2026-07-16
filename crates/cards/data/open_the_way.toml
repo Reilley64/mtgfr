@@ -1,0 +1,30 @@
+# ponytail: "X can't be greater than the number of players in the game" isn't enforced as a
+# cast-time legality check — no effect in the pool bounds an X cost by player count yet.
+name = "Open the Way"
+otags = ["consult-onto-battlefield", "multi-land-ramp", "per-player"]
+oracle = "X can't be greater than the number of players in the game.\nReveal cards from the top of your library until you reveal X land cards. Put those land cards onto the battlefield tapped and the rest on the bottom of your library in a random order."
+set = "soc"
+
+[cost]
+green = 2
+x = true
+
+[kind]
+type = "sorcery"
+
+# Reveal cards from the top of your library until you reveal X land cards. Put those land cards
+# onto the battlefield tapped and the rest on the bottom of your library in a random order.
+[[abilities]]
+timing = "spell"
+
+# Reveal cards from the top of your library until you reveal X land cards. Put those land cards
+# onto the battlefield tapped and the rest on the bottom of your library in a random order.
+# ponytail: "in a random order" — the engine is pure (no rand); non-matching reveals go to the
+# bottom in library order instead, the same deterministic stand-in `select_from_top` uses.
+[[abilities.effects]]
+type = "reveal_until"
+filter = "land"
+count = "x"
+matched_dest = "battlefield"
+matched_tapped = true
+rest_dest = "bottom"

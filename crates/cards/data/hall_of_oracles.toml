@@ -1,0 +1,42 @@
+# {T}: Add {C}.
+# {1}, {T}: Add one mana of any color.
+# {T}: Put a +1/+1 counter on target creature. Activate only as a sorcery and only if you've cast an instant or sorcery
+# spell this turn.
+# Hall of Oracles: "{T}: Add {C}. {1}, {T}: Add one mana of any color. {T}: Put a +1/+1
+# counter on target creature. Activate only as a sorcery and only if you've cast an instant
+# or sorcery spell this turn."
+name = "Hall of Oracles"
+otags = ["activated-ability", "filterland", "gives-pp-counters", "repeatable-crime", "repeatable-pp-counters", "synergy-instant", "synergy-sorcery", "utility-land"]
+oracle = "{T}: Add {C}.\n{1}, {T}: Add one mana of any color.\n{T}: Put a +1/+1 counter on target creature. Activate only as a sorcery and only if you've cast an instant or sorcery spell this turn."
+set = "soc"
+
+[kind]
+type = "land"
+produces = "colorless"
+
+# {1}, {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]
+
+# {T}: Put a +1/+1 counter on target creature. Activate only as a sorcery and only if you've
+# cast an instant or sorcery spell this turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sorcery_speed = true
+
+[abilities.condition]
+type = "cast_instant_or_sorcery_this_turn"
+
+# Put a +1/+1 counter on target creature.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "creature"

@@ -1,0 +1,75 @@
+# Choose two —
+# • Target player mills three cards, then you return a land card from your graveyard to your hand.
+# • Destroy target noncreature, nonland permanent with mana value 2 or less.
+# • Target creature gets -3/-1 until end of turn.
+# • Target opponent loses 2 life and you gain 2 life.
+# Witherbloom Command {B}{G} — a modal "choose two" sorcery (CR 700.2). Its four spell-timed
+# abilities are its modes; the caster picks two distinct ones at cast (`modal = true`, `choose = 2`).
+# Real modes:
+#   • Target player mills three cards, then you return a land card from your graveyard to your hand.
+#   • Destroy target noncreature, nonland permanent with mana value 2 or less.
+#   • Target creature gets -3/-1 until end of turn.
+#   • Target opponent loses 2 life and you gain 2 life.
+name = "Witherbloom Command"
+otags = ["cycle-stx-command", "drain-life", "hand-neutral", "mill-any", "multi-removal", "multiple-targets", "opponent-loses-life", "regrowth-land", "removal-artifact", "removal-battle", "removal-destroy", "removal-enchantment"]
+oracle = "Choose two —\n• Target player mills three cards, then you return a land card from your graveyard to your hand.\n• Destroy target noncreature, nonland permanent with mana value 2 or less.\n• Target creature gets -3/-1 until end of turn.\n• Target opponent loses 2 life and you gain 2 life."
+set = "soc"
+modal = true
+choose = 2
+
+[cost]
+black = 1
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Mode 0 — "Target player mills three cards, then you return a land card from your graveyard to
+# your hand."
+# ponytail: "you return" (mandatory) is modeled as "you may return" (Effect::MayReturnFromGraveyard) —
+# declining is illegal by the oracle, but returning a land is pure upside, so a rational player
+# never declines and the divergence is unobservable. Upgrade: a mandatory
+# ReturnACardFromYourGraveyard { filter } sibling if a card ever punishes declining.
+[[abilities]]
+timing = "spell"
+
+# Target player mills three cards,
+[[abilities.effects]]
+type = "mill"
+count = 3
+target = "player"
+
+# then you return a land card from your graveyard to your hand.
+[[abilities.effects]]
+type = "may_return_from_graveyard"
+filter = "land"
+
+# Mode 1 — "Destroy target noncreature, nonland permanent with mana value 2 or less."
+[[abilities]]
+timing = "spell"
+
+# Destroy target noncreature, nonland permanent with mana value 2 or less.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "nonland", noncreature = true, mv_max = 2 } }
+
+# Mode 2 — "Target creature gets -3/-1 until end of turn." (a negative pump)
+[[abilities]]
+timing = "spell"
+
+# Target creature gets -3/-1 until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = -3
+toughness = -1
+target = "creature"
+
+# Mode 3 — "Target opponent loses 2 life and you gain 2 life."
+[[abilities]]
+timing = "spell"
+
+# Target opponent loses 2 life and you gain 2 life.
+[[abilities.effects]]
+type = "drain_target"
+amount = 2
+opponent = true

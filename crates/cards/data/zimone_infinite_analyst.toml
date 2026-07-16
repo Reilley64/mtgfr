@@ -1,0 +1,45 @@
+# The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each +1/+1 counter on Zimone.
+# Whenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters on Zimone.
+name = "Zimone, Infinite Analyst"
+otags = ["cast-trigger-you", "cost-reducer", "cycle-soc-face-commander", "gains-pp-counters", "pp-counters-matter", "repeatable-pp-counters", "x-cost-matters"]
+oracle = "The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each +1/+1 counter on Zimone.\nWhenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters on Zimone."
+set = "soc"
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+generic = 1
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 4
+
+# The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each
+# +1/+1 counter on Zimone.
+[[abilities]]
+timing = "static"
+
+# The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each
+# +1/+1 counter on Zimone.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = "per_counter_on_source"
+filter = "has_x"
+first_x_spell_each_turn = true
+
+# Whenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters
+# on Zimone.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "has_x"
+caster = "you"
+nth_each_turn = 1
+
+# put two +1/+1 counters on Zimone.
+[[abilities.effects]]
+type = "put_counters"
+count = 2
+target = "this"

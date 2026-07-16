@@ -1,0 +1,25 @@
+[package]
+name = "engine"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+# Deserialize card definitions from the TOML card DSL (used by the `cards` crate).
+# Pure data-in — no I/O or nondeterminism — so the engine's purity rule holds. Named
+# for what it gates (DSL-shaped, Deserialize-only impls) so a future wire-protocol
+# `serde` feature can mean plain round-trippable serde support.
+card-dsl = ["dep:serde"]
+
+# Tests load the real card pool from the `cards` crate (which depends on `engine`);
+# Cargo permits this cycle because it's only through dev-dependencies.
+[dev-dependencies]
+cards = { workspace = true }
+toml = "0.8"
+
+[[test]]
+name = "de"
+path = "tests/de.rs"
+required-features = ["card-dsl"]

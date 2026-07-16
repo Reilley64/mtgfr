@@ -1,0 +1,42 @@
+# Enchantment spells you cast cost {1} less to cast.
+# Whenever an enchantment you control is put into a graveyard from the battlefield, put a +1/+1 counter on this
+# creature.
+# Starfield Mystic (soc). Real oracle text:
+#   "Enchantment spells you cast cost {1} less to cast.
+#    Whenever an enchantment you control is put into a graveyard from the battlefield, put a
+#    +1/+1 counter on this creature."
+name = "Starfield Mystic"
+otags = ["cost-reducer-enchantment", "death-trigger", "gains-pp-counters", "repeatable-pp-counters"]
+oracle = "Enchantment spells you cast cost {1} less to cast.\nWhenever an enchantment you control is put into a graveyard from the battlefield, put a +1/+1 counter on this creature."
+set = "soc"
+subtypes = ["Human", "Cleric"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Enchantment spells you cast cost {1} less to cast.
+[[abilities]]
+timing = "static"
+
+# Enchantment spells you cast cost {1} less to cast.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = 1
+filter = "enchantment"
+
+# Whenever an enchantment you control is put into a graveyard from the battlefield, put a
+# +1/+1 counter on this creature.
+[[abilities]]
+timing = "enchantment_you_control_dies"
+
+# put a +1/+1 counter on this creature.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"

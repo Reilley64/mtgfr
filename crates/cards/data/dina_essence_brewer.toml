@@ -1,0 +1,52 @@
+# Whenever you sacrifice a creature, draw a card. This ability triggers only once each turn.
+# {2}, {T}, Sacrifice another creature: You gain X life and put X +1/+1 counters on target creature you control, where X
+# is the sacrificed creature's power.
+# Dina, Essence Brewer: "Whenever you sacrifice a creature, draw a card. This ability triggers
+# only once each turn. {2}, {T}, Sacrifice another creature: You gain X life and put X +1/+1
+# counters on target creature you control, where X is the sacrificed creature's power."
+name = "Dina, Essence Brewer"
+otags = ["activated-ability", "cycle-soc-face-commander", "draw-engine", "gives-pp-counters", "power-matters", "repeatable-lifegain", "repeatable-pp-counters", "repeatable-pure-draw", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "synergy-sacrifice", "triggered-ability"]
+oracle = "Whenever you sacrifice a creature, draw a card. This ability triggers only once each turn.\n{2}, {T}, Sacrifice another creature: You gain X life and put X +1/+1 counters on target creature you control, where X is the sacrificed creature's power."
+set = "soc"
+subtypes = ["Dryad", "Druid"]
+legendary = true
+
+[cost]
+generic = 1
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Whenever you sacrifice a creature, draw a card. This ability triggers only once each turn.
+[[abilities]]
+timing = "you_sacrifice"
+filter = "creature"
+once_each_turn = true
+
+# draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# {2}, {T}, Sacrifice another creature: You gain X life and put X +1/+1 counters on target
+# creature you control, where X is the sacrificed creature's power.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 2 }
+sacrifice = { creature = { other = true } }
+
+# You gain X life
+[[abilities.effects]]
+type = "gain_life"
+amount = "sacrificed_creature_power"
+
+# put X +1/+1 counters on target creature you control, where X is the sacrificed creature's power
+[[abilities.effects]]
+type = "put_counters"
+count = "sacrificed_creature_power"
+target = "creature_you_control"

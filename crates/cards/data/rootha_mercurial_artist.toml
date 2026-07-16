@@ -1,0 +1,31 @@
+# {2}, Return Rootha to its owner's hand: Copy target instant or sorcery spell you control. You may choose new targets
+# for the copy.
+name = "Rootha, Mercurial Artist"
+otags = ["activated-ability", "bounce-self", "copy-instant", "copy-sorcery", "copy-spell", "cycle-stx-student", "mana-sink", "synergy-instant", "synergy-sorcery"]
+oracle = "{2}, Return Rootha to its owner's hand: Copy target instant or sorcery spell you control. You may choose new targets for the copy."
+set = "soc"
+subtypes = ["Orc", "Shaman"]
+legendary = true
+
+[cost]
+generic = 1
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 4
+
+# {2}, Return Rootha to its owner's hand: Copy target instant or sorcery spell you control. You may
+# choose new targets for the copy.
+[[abilities]]
+timing = "activated"
+return_self = true
+
+[abilities.activation_cost]
+generic = 2
+
+# Copy target instant or sorcery spell you control. You may choose new targets for the copy.
+[[abilities.effects]]
+type = "copy_target_spell"

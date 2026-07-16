@@ -1,0 +1,65 @@
+# Bestow {2}{W}{W} (If you cast this card for its bestow cost, it's an Aura spell with enchant creature. It becomes a
+# creature again if it's not attached.)
+# This creature and enchanted creature each get +1/+1 for each creature you control and +1/+1 for each Aura you control.
+name = "Eidolon of Countless Battles"
+otags = ["auraify", "deanimate-self", "ethereal-armor", "more-expensive-than-mv", "synergy-aura", "warlord"]
+oracle = "Bestow {2}{W}{W} (If you cast this card for its bestow cost, it's an Aura spell with enchant creature. It becomes a creature again if it's not attached.)\nThis creature and enchanted creature each get +1/+1 for each creature you control and +1/+1 for each Aura you control."
+set = "soc"
+subtypes = ["Spirit"]
+
+[cost]
+generic = 1
+white = 2
+
+# Bestow {2}{W}{W}
+[bestow]
+generic = 2
+white = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# This creature and enchanted creature each get +1/+1 for each creature you control and +1/+1 for
+# each Aura you control.
+[[abilities]]
+timing = "static"
+
+# This creature ... get +1/+1 for each creature you control
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+power = { per_permanent = { types = "creature", controller = "you" } }
+toughness = { per_permanent = { types = "creature", controller = "you" } }
+
+# and enchanted creature ... get +1/+1 for each creature you control
+[[abilities]]
+timing = "static"
+
+# and enchanted creature ... get +1/+1 for each creature you control
+[[abilities.effects]]
+type = "grant_to_attached"
+power = { per_permanent = { types = "creature", controller = "you" } }
+toughness = { per_permanent = { types = "creature", controller = "you" } }
+
+# This creature ... get +1/+1 for each Aura you control
+[[abilities]]
+timing = "static"
+
+# This creature ... get +1/+1 for each Aura you control
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+power = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
+toughness = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
+
+# and enchanted creature ... get +1/+1 for each Aura you control
+[[abilities]]
+timing = "static"
+
+# and enchanted creature ... get +1/+1 for each Aura you control
+[[abilities.effects]]
+type = "grant_to_attached"
+power = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
+toughness = { per_permanent = { subtypes = ["Aura"], controller = "you" } }

@@ -1,0 +1,20 @@
+# Return target creature to its owner's hand.
+name = "Unsummon"
+otags = ["removal-creature", "single-target-instant-sorcery", "spot-removal", "removal-bounce"]
+oracle = "Return target creature to its owner's hand."
+set = "fdn"
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Return target creature to its owner's hand.
+[[abilities]]
+timing = "spell"
+
+# Return target creature to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = "creature"

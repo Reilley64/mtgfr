@@ -1,0 +1,52 @@
+# This creature enters with X +1/+1 counters on it.
+# If one or more +1/+1 counters would be put on another creature you control, that many plus one +1/+1 counters are put
+# on it instead.
+# {T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature you control.
+name = "Benevolent Hydra"
+otags = ["activated-ability", "counter-fuel-pp", "counter-increaser", "gains-pp-counters", "gives-pp-counters", "repeatable-pp-counters"]
+oracle = "This creature enters with X +1/+1 counters on it.\nIf one or more +1/+1 counters would be put on another creature you control, that many plus one +1/+1 counters are put on it instead.\n{T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature you control."
+set = "soc"
+subtypes = ["Hydra"]
+
+[cost]
+green = 2
+x = true
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Enters with X +1/+1 counters.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+
+# If one or more +1/+1 counters would be put on another creature you control, that many plus one
+# +1/+1 counters are put on it instead.
+[[abilities]]
+timing = "static"
+
+# If one or more +1/+1 counters would be put on another creature you control, that many plus
+# one +1/+1 counters are put on it instead.
+[[abilities.effects]]
+type = "counter_replacement"
+add = 1
+other = true
+
+# {T}, Remove a +1/+1 counter from this creature: Put a +1/+1 counter on another target creature
+# you control.
+[[abilities]]
+timing = "activated"
+taps_self = true
+remove_counters = 1
+
+# Put a +1/+1 counter on another target creature you control.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = { permanent = { types = "creature", controller = "you", other = true } }

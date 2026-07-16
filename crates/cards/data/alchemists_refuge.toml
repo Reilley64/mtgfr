@@ -1,0 +1,22 @@
+name = "Alchemist's Refuge"
+otags = ["activated-ability", "cycle-dka-enemy-utilityland", "gives-flash", "utility-land"]
+oracle = "{T}: Add {C}.\n{G}{U}, {T}: You may cast spells this turn as though they had flash."
+set = "soc"
+identity = ["green", "blue"]
+
+# {T}: Add {C}.
+[kind]
+type = "land"
+produces = "colorless"
+
+# {G}{U}, {T}: You may cast spells this turn as though they had flash.
+[[abilities]]
+timing = "activated"
+taps_self = true
+[abilities.activation_cost]
+green = 1
+blue = 1
+
+# You may cast spells this turn as though they had flash.
+[[abilities.effects]]
+type = "grant_flash_this_turn"

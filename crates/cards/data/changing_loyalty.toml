@@ -1,0 +1,34 @@
+# Flash
+# Replicate {2} (When you cast this spell, copy it for each time you paid its replicate cost. You may choose new targets
+# for the copies. Copies become tokens.)
+# Enchant creature
+# When enchanted creature dies, return it to the battlefield under your control.
+# Changing Loyalty (soc). Real oracle text:
+#   "Flash
+#    Replicate {2}
+#    Enchant creature
+#    When enchanted creature dies, return it to the battlefield under your control."
+name = "Changing Loyalty"
+otags = ["cast-trigger-self", "cheat-death", "copy-self", "death-trigger", "intervening-if-clause", "protects-all", "protects-creature", "theft-creature"]
+oracle = "Flash\nReplicate {2} (When you cast this spell, copy it for each time you paid its replicate cost. You may choose new targets for the copies. Copies become tokens.)\nEnchant creature\nWhen enchanted creature dies, return it to the battlefield under your control."
+set = "soc"
+subtypes = ["Aura"]
+keywords = ["flash"]
+
+[cost]
+generic = 1
+black = 1
+
+[cost.additional.replicate]
+generic = 2
+
+[kind]
+type = "aura"
+
+# When enchanted creature dies, return it to the battlefield under your control.
+[[abilities]]
+timing = "enchanted_creature_dies"
+
+# return it to the battlefield under your control
+[[abilities.effects]]
+type = "reanimate_dying_enchanted_creature"

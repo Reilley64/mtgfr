@@ -1,0 +1,49 @@
+# Flying
+# Instant and sorcery spells you cast cost {1} less to cast.
+# {2}{U}, Sacrifice this creature: When you next cast an instant or sorcery spell this turn, copy it for each time
+# you've cast your commander from the command zone this game. You may choose new targets for the copies.
+name = "Thunderclap Drake"
+otags = ["activated-ability", "cast-trigger-you", "copy-instant", "copy-sorcery", "copy-spell", "cost-reducer-instant-sorcery", "day-zero-errata", "delayed-trigger", "evasion", "martyr", "recasting-commander-matters", "storm-like"]
+oracle = "Flying\nInstant and sorcery spells you cast cost {1} less to cast.\n{2}{U}, Sacrifice this creature: When you next cast an instant or sorcery spell this turn, copy it for each time you've cast your commander from the command zone this game. You may choose new targets for the copies."
+set = "soc"
+subtypes = ["Drake"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# Instant and sorcery spells you cast cost {1} less to cast.
+[[abilities]]
+timing = "static"
+
+# Instant and sorcery spells you cast cost {1} less to cast.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = 1
+filter = "instant_or_sorcery"
+
+# {2}{U}, Sacrifice this creature: When you next cast an instant or sorcery spell this turn,
+# copy it for each time you've cast your commander from the command zone this game. You may
+# choose new targets for the copies.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 2
+blue = 1
+
+# When you next cast an instant or sorcery spell this turn, copy it for each time you've cast
+# your commander from the command zone this game. You may choose new targets for the copies.
+[[abilities.effects]]
+type = "schedule_next_cast_trigger"
+filter = "instant_or_sorcery"
+then = [
+        { type = "copy_triggering_spell", count = "commander_casts_from_command_zone", may_choose_new_targets = true },
+    ]

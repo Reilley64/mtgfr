@@ -1,0 +1,42 @@
+# Enchant creature you control
+# When this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield.
+# Enchanted creature has ward {2}. (Whenever it becomes the target of a spell or ability an opponent controls, counter
+# it unless that player pays {2}.)
+# Chains of Custody {2}{W} — Aura (soc). Real oracle text:
+#   "Enchant creature you control. When this Aura enters, exile target nonland permanent an
+#    opponent controls until this Aura leaves the battlefield. Enchanted creature has ward {2}."
+name = "Chains of Custody"
+otags = ["alliteration", "banish", "gives-ward", "removal-nonland", "spot-removal", "triggered-ability"]
+oracle = "Enchant creature you control\nWhen this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield.\nEnchanted creature has ward {2}. (Whenever it becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)"
+set = "soc"
+subtypes = ["Aura"]
+enchant = { types = "creature", controller = "you" }
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "aura"
+
+# When this Aura enters, exile target nonland permanent an opponent controls until this Aura
+# leaves the battlefield.
+[[abilities]]
+timing = "etb"
+
+# exile target nonland permanent an opponent controls until this Aura leaves the battlefield
+[[abilities.effects]]
+type = "exile_until_source_leaves"
+target = { permanent = { types = "nonland", controller = "opponent" } }
+
+# Enchanted creature has ward {2}. (Whenever it becomes the target of a spell or ability an
+# opponent controls, counter it unless that player pays {2}.)
+[[abilities]]
+timing = "static"
+
+# Enchanted creature has ward {2}.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 0
+toughness = 0
+keywords = [{ ward = 2 }]

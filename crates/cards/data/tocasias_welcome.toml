@@ -1,0 +1,26 @@
+# Whenever one or more creatures you control with mana value 3 or less enter, draw a card. This ability triggers only
+# once each turn.
+name = "Tocasia's Welcome"
+otags = ["creaturefall", "draw-engine", "mana-value-matters", "namesake-spell", "repeatable-pure-draw", "triggered-ability"]
+oracle = "Whenever one or more creatures you control with mana value 3 or less enter, draw a card. This ability triggers only once each turn."
+set = "soc"
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "enchantment"
+
+# Whenever one or more creatures you control with mana value 3 or less enter, draw a card. This
+# ability triggers only once each turn.
+[[abilities]]
+timing = "permanent_enters"
+filter = { types = "creature", mv_max = 3 }
+controller = "you"
+once_each_turn = true
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

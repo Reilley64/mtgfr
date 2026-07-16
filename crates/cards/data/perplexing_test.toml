@@ -1,0 +1,34 @@
+# Choose one —
+# • Return all creature tokens to their owners' hands.
+# • Return all nontoken creatures to their owners' hands.
+# Perplexing Test (soc): {3}{U}{U} instant.
+name = "Perplexing Test"
+otags = ["hate-token", "modal-inverse-choices", "pseudo-fog", "removal-bounce", "removal-creature", "sweeper", "synergy-token-creature"]
+oracle = "Choose one —\n• Return all creature tokens to their owners' hands.\n• Return all nontoken creatures to their owners' hands."
+set = "soc"
+modal = true
+
+[cost]
+generic = 3
+blue = 2
+
+[kind]
+type = "instant"
+
+# Mode 0 — Return all creature tokens to their owners' hands.
+[[abilities]]
+timing = "spell"
+
+# Return all creature tokens to their owners' hands.
+[[abilities.effects]]
+type = "return_all_to_hand"
+filter = { types = "creature", token = "token" }
+
+# Mode 1 — Return all nontoken creatures to their owners' hands.
+[[abilities]]
+timing = "spell"
+
+# Return all nontoken creatures to their owners' hands.
+[[abilities.effects]]
+type = "return_all_to_hand"
+filter = { types = "creature", token = "nontoken" }

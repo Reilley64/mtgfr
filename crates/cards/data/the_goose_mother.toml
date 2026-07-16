@@ -1,0 +1,70 @@
+# Flying
+# The Goose Mother enters with X +1/+1 counters on it.
+# When The Goose Mother enters, create half X Food tokens, rounded up.
+# Whenever The Goose Mother attacks, you may sacrifice a Food. If you do, draw a card.
+name = "The Goose Mother"
+otags = ["attack-trigger", "attacking-matters-self", "cycle-woe-r-two-color", "division", "draw-engine", "evasion", "gains-pp-counters", "lifegain", "repeatable-plunder", "sacrifice-outlet-artifact", "synergy-food", "unique-type-line"]
+oracle = "Flying\nThe Goose Mother enters with X +1/+1 counters on it.\nWhen The Goose Mother enters, create half X Food tokens, rounded up.\nWhenever The Goose Mother attacks, you may sacrifice a Food. If you do, draw a card."
+set = "soc"
+subtypes = ["Bird", "Hydra"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+x = true
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# The Goose Mother enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# The Goose Mother enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+
+# When The Goose Mother enters, create half X Food tokens, rounded up.
+[[abilities]]
+timing = "etb"
+
+# create half X Food tokens, rounded up
+[[abilities.effects]]
+type = "create_token"
+count = "half_x"
+
+[abilities.effects.token]
+name = "Food"
+subtypes = ["Food"]
+
+[abilities.effects.token.kind]
+type = "artifact"
+
+# "{2}, {T}, Sacrifice this token: You gain 3 life."
+[[abilities.effects.token.abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.effects.token.abilities.activation_cost]
+generic = 2
+
+# You gain 3 life.
+[[abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 3
+
+# Whenever The Goose Mother attacks, you may sacrifice a Food. If you do, draw a card.
+[[abilities]]
+timing = "attacks"
+
+# you may sacrifice a Food. If you do, draw a card.
+[[abilities.effects]]
+type = "may_sacrifice"
+filter = { subtypes = ["Food"] }
+then = [{ type = "draw_cards", count = 1 }]

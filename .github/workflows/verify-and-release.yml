@@ -1,0 +1,103 @@
+name: Verify and Release
+
+# Deploy PRD §GitHub Actions — official semantic-release verify-and-release recipe, adapted for
+# Rust/Bun in the verify job. Release job runs `npx semantic-release` with default configuration
+# (no .releaserc, no extra plugins).
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read # verify job
+
+env:
+  DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mtgfr
+          POSTGRES_PASSWORD: mtgfr
+          POSTGRES_DB: mtgfr
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mtgfr -d mtgfr"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: extractions/setup-just@v3
+
+      - name: Install client dependencies
+        run: cd client && bun install --frozen-lockfile
+
+      - name: Apply Toasty migrations
+        run: cargo run -p server -- migration apply
+
+      - name: just check (codegen + format + lint + typecheck + test)
+        run: just check
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: verify
+    permissions:
+      contents: write # publish GitHub release + tag
+      issues: write # comment on released issues (default plugin behavior)
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # required — semantic-release needs full history
+          # Persist credentials so semantic-release's tag push uses RELEASE_TOKEN.
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+        # do NOT set registry-url — conflicts with semantic-release (see recipe pitfalls)
+
+      - run: npm clean-install # installs semantic-release devDependencies from package.json
+
+      - name: Require RELEASE_TOKEN
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "Set repo secret RELEASE_TOKEN (PAT: contents + workflow)." >&2
+            echo "semantic-release must push v* tags with a PAT — GITHUB_TOKEN cannot trigger docker.yml." >&2
+            exit 1
+          fi
+
+      - name: Release
+        env:
+          # PAT only — never GITHUB_TOKEN. Tag push must be able to trigger docker.yml on v*.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: npx semantic-release

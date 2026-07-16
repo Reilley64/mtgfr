@@ -1,0 +1,53 @@
+# Magecraft — Whenever you cast or copy an instant or sorcery spell, create a 0/0 green and blue Fractal creature token.
+# Put X +1/+1 counters on it, where X is that spell's mana value.
+# {3}{U}: Target creature token can't be blocked this turn.
+name = "Deekah, Fractal Theorist"
+otags = ["activated-ability", "cycle-c21-mono-legend", "gives-pp-counters", "gives-unblockable", "magecraft", "mana-sink", "mana-value-matters", "out-of-color-token", "repeatable-crime", "repeatable-pp-counters", "synergy-token-creature", "young-pyromancer-ability"]
+oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it, where X is that spell's mana value.\n{3}{U}: Target creature token can't be blocked this turn."
+set = "soc"
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+generic = 4
+blue = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Magecraft — Whenever you cast or copy an instant or sorcery spell, create a 0/0 green and blue
+# Fractal creature token. Put X +1/+1 counters on it, where X is that spell's mana value.
+[[abilities]]
+timing = "magecraft"
+
+# create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it, where X is
+# that spell's mana value.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+enters_with = "triggering_spell_mana_value"
+
+[abilities.effects.token]
+name = "Fractal"
+power = 0
+toughness = 0
+colors = ["green", "blue"]
+subtypes = ["Fractal"]
+
+# {3}{U}: Target creature token can't be blocked this turn.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 3
+blue = 1
+
+# Target creature token can't be blocked this turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = { permanent = { types = "creature", token = "token" } }
+keywords = ["unblockable"]

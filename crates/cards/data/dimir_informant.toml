@@ -1,0 +1,25 @@
+# When this creature enters, surveil 2. (Look at the top two cards of your library, then put any number of them into
+# your graveyard and the rest on top of your library in any order.)
+name = "Dimir Informant"
+otags = ["surveil", "triggered-ability", "virtual-vanilla"]
+oracle = "When this creature enters, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)"
+set = "grn"
+subtypes = ["Human", "Rogue"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 4
+
+# "When this creature enters, surveil 2."
+[[abilities]]
+timing = "etb"
+
+# surveil 2
+[[abilities.effects]]
+type = "surveil"
+count = 2

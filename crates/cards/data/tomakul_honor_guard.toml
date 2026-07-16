@@ -1,0 +1,19 @@
+# Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that
+# player pays {2}.)
+# Tomakul Honor Guard: {1}{G} 3/1 with Ward {2}. Modeled as a cast-time targeting tax
+# (see engine::Game::cast) — an opponent pays {2} more to target it.
+name = "Tomakul Honor Guard"
+otags = ["french-vanilla", "rhystic", "triggered-ability"]
+oracle = "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)"
+set = "bro"
+subtypes = ["Human", "Soldier"]
+keywords = [{ ward = 2 }]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 1

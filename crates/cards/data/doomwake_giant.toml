@@ -1,0 +1,34 @@
+# Constellation — Whenever this creature or another enchantment you control enters, creatures your opponents control get
+# -1/-1 until end of turn.
+# Doomwake Giant (soc), an Enchantment Creature. Real oracle text:
+#   "Constellation — Whenever this creature or another enchantment you control enters,
+#    creatures your opponents control get -1/-1 until end of turn."
+name = "Doomwake Giant"
+otags = ["enchantmentfall", "removal-toughness", "repeatable-removal", "sweeper-one-sided", "triggered-ability"]
+oracle = "Constellation — Whenever this creature or another enchantment you control enters, creatures your opponents control get -1/-1 until end of turn."
+set = "soc"
+subtypes = ["Giant"]
+
+[cost]
+generic = 4
+black = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 6
+also = ["enchantment"]
+
+# Constellation — whenever this creature or another enchantment you control enters, creatures
+# your opponents control get -1/-1 until end of turn.
+[[abilities]]
+timing = "permanent_enters_including_this"
+filter = "enchantment"
+controller = "you"
+
+# creatures your opponents control get -1/-1 until end of turn
+[[abilities.effects]]
+type = "weaken_each_creature"
+power = 1
+toughness = 1
+opponents_only = true

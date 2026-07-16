@@ -1,0 +1,49 @@
+# Spirits you control get +1/+0.
+# Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token.
+# Secrets of Strixhaven Commander. {3}{R}{W}, Legendary Creature — Elephant Cleric, 2/4.
+# Real oracle text:
+#   "Spirits you control get +1/+0.
+#    Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature
+#    token."
+name = "Quintorius, Field Historian"
+otags = ["anthem", "cycle-stx-student", "leaves-graveyard-trigger", "power-boost-to-all", "repeatable-creature-tokens", "typal-spirit"]
+oracle = "Spirits you control get +1/+0.\nWhenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token."
+set = "soc"
+subtypes = ["Elephant", "Cleric"]
+legendary = true
+
+[cost]
+generic = 3
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# Spirits you control get +1/+0.
+[[abilities]]
+timing = "static"
+
+# Spirits you control get +1/+0.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 0
+subtypes = ["Spirit"]
+
+# Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token.
+[[abilities]]
+timing = "cards_leave_your_graveyard"
+
+# create a 3/2 red and white Spirit creature token.
+[[abilities.effects]]
+type = "create_token"
+
+[abilities.effects.token]
+name = "Spirit"
+power = 3
+toughness = 2
+colors = ["red", "white"]
+subtypes = ["Spirit"]

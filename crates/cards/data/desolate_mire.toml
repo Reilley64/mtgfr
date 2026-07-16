@@ -1,0 +1,19 @@
+# {1}, {T}: Add {W}{B}.
+name = "Desolate Mire"
+otags = ["activated-ability", "cycle-pip-enemy-filterland"]
+oracle = "{1}, {T}: Add {W}{B}."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {1}, {T}: Add {W}{B}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {W}{B}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["white", "black"]

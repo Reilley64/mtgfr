@@ -1,0 +1,32 @@
+# {T}: Add {C}.
+# {U/R}, {T}: Add {U}{U}, {U}{R}, or {R}{R}.
+# A filter land: feed it one mana and tap it for two {U}/{R} mana (a net +1). The two outputs
+# are {U/R} dual credits, so they can be spent as UU, UR, or RR.
+name = "Cascade Bluffs"
+otags = ["activated-ability", "cycle-eve-filterland"]
+oracle = "{T}: Add {C}.\n{U/R}, {T}: Add {U}{U}, {U}{R}, or {R}{R}."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {U/R}, {T}: Add {U}{U}, {U}{R}, or {R}{R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { hybrid = [["blue", "red"]] }
+
+# Add {U}{U}, {U}{R}, or {R}{R}.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["blue", "red"], ["blue", "red"]]

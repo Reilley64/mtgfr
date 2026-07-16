@@ -1,0 +1,25 @@
+# Destroy all creatures that aren't enchanted. They can't be regenerated.
+# "Destroy all creatures that aren't enchanted. They can't be regenerated." — {3}{W}{W} sorcery.
+#
+# ponytail: regeneration doesn't exist in the engine, so "can't be regenerated" is a no-op (not an
+# approximation — no destroyed creature could have regenerated anyway).
+name = "Winds of Rath"
+otags = ["hate-regenerate", "removal-creature", "removal-destroy", "sweeper", "synergy-aura"]
+oracle = "Destroy all creatures that aren't enchanted. They can't be regenerated."
+set = "soc"
+
+[cost]
+generic = 3
+white = 2
+
+[kind]
+type = "sorcery"
+
+# Destroy all creatures that aren't enchanted. They can't be regenerated.
+[[abilities]]
+timing = "spell"
+
+# Destroy all creatures that aren't enchanted.
+[[abilities.effects]]
+type = "destroy_all"
+filter = { types = "creature", enchanted = false }

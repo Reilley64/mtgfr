@@ -1,0 +1,11 @@
+# {T}: Add one mana of any color that a land an opponent controls could produce.
+# Exotic Orchard (msc): "{T}: Add one mana of any color that a land an opponent controls could
+# produce." Resolved at tap time to the exact union of colors any opponent's lands could produce.
+name = "Exotic Orchard"
+otags = ["activated-ability", "rainbow-land"]
+oracle = "{T}: Add one mana of any color that a land an opponent controls could produce."
+set = "msc"
+
+[kind]
+type = "land"
+produces = "opponent_colors"

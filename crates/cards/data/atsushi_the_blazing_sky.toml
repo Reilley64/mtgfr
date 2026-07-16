@@ -1,0 +1,40 @@
+# Flying, trample
+# When Atsushi dies, choose one —
+# • Exile the top two cards of your library. Until the end of your next turn, you may play those cards.
+# • Create three Treasure tokens.
+# Atsushi, the Blazing Sky (soc): 4/4 legendary Dragon Spirit, Flying, trample. "When Atsushi
+# dies, choose one — [exile top two, may play until end of next turn] • [create three Treasures]."
+# ponytail: the mode is chosen at resolution rather than as the ability goes on the stack (CR
+# 603.3d) — unobservable, nothing responds between placement and resolution.
+name = "Atsushi, the Blazing Sky"
+otags = ["cycle-neo-dragon", "death-trigger-self", "evasion", "long-term-impulsive-draw", "modal", "ramp"]
+oracle = "Flying, trample\nWhen Atsushi dies, choose one —\n• Exile the top two cards of your library. Until the end of your next turn, you may play those cards.\n• Create three Treasure tokens."
+set = "soc"
+subtypes = ["Dragon", "Spirit"]
+legendary = true
+keywords = ["flying", "trample"]
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# "When Atsushi dies, choose one — exile the top two cards (you may play them) • create three
+# Treasure tokens." A choose-one on a triggered ability: the mode is picked at resolution.
+[[abilities]]
+timing = "dies"
+
+# choose one —
+# • Exile the top two cards of your library. Until the end of your next turn, you may play
+#   those cards.
+# • Create three Treasure tokens.
+[[abilities.effects]]
+type = "choose_one"
+modes = [
+    { type = "exile_top_may_play", count = 2, until_next_turn = true },
+    { type = "create_treasure", count = 3 },
+]

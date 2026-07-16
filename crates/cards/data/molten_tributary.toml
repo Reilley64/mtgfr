@@ -1,0 +1,12 @@
+# ({T}: Add {U} or {R}.)
+# This land enters tapped.
+# Molten Tributary: "{T}: Add {U} or {R}. This land enters tapped."
+name = "Molten Tributary"
+otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["blue", "red"]

@@ -1,0 +1,66 @@
+# Choose one or more —
+# • Destroy target artifact.
+# • Destroy target creature.
+# • Destroy target enchantment.
+# • Destroy target land.
+# • Destroy target planeswalker.
+name = "Casualties of War"
+otags = ["cycle-war-r-two-color", "modal", "multi-removal", "multiple-targets", "removal-artifact", "removal-creature", "removal-destroy", "removal-enchantment", "removal-land", "removal-planeswalker", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Choose one or more —\n• Destroy target artifact.\n• Destroy target creature.\n• Destroy target enchantment.\n• Destroy target land.\n• Destroy target planeswalker."
+set = "soc"
+modal = true
+choose = 1
+choose_max = 5
+
+[cost]
+generic = 2
+black = 2
+green = 2
+
+[kind]
+type = "sorcery"
+
+# Mode 0 — "• Destroy target creature."
+[[abilities]]
+timing = "spell"
+
+# • Destroy target creature.
+[[abilities.effects]]
+type = "destroy_target"
+target = "creature"
+
+# Mode 1 — "• Destroy target artifact."
+[[abilities]]
+timing = "spell"
+
+# • Destroy target artifact.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact" } }
+
+# Mode 2 — "• Destroy target enchantment."
+[[abilities]]
+timing = "spell"
+
+# • Destroy target enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "enchantment" } }
+
+# Mode 3 — "• Destroy target land."
+[[abilities]]
+timing = "spell"
+
+# • Destroy target land.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "land" } }
+
+# Mode 4 — "• Destroy target planeswalker."
+[[abilities]]
+timing = "spell"
+
+# • Destroy target planeswalker.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "planeswalker" } }

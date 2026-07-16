@@ -1,0 +1,36 @@
+# When this enchantment enters, return target nonland permanent card with mana value 3 or less from your graveyard to
+# the battlefield.
+# At the beginning of your end step, if a card left your graveyard this turn, draw a card.
+name = "Primary Research"
+otags = ["draw-engine", "intervening-if-clause", "leaving-graveyard-matters", "mana-value-matters", "reanimate-nonland", "repeatable-pure-draw"]
+oracle = "When this enchantment enters, return target nonland permanent card with mana value 3 or less from your graveyard to the battlefield.\nAt the beginning of your end step, if a card left your graveyard this turn, draw a card."
+set = "sos"
+
+[cost]
+generic = 4
+white = 1
+
+[kind]
+type = "enchantment"
+
+# When this enchantment enters, return target nonland permanent card with mana value 3 or less
+# from your graveyard to the battlefield.
+[[abilities]]
+timing = "etb"
+
+# return target nonland permanent card with mana value 3 or less from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = { nonland_permanent_with_mana_value_at_most = 3 } } }
+
+# At the beginning of your end step, if a card left your graveyard this turn, draw a card.
+[[abilities]]
+timing = "end_step"
+
+[abilities.condition]
+type = "card_left_your_graveyard_this_turn"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

@@ -1,0 +1,68 @@
+# This enchantment enters with X study counters on it.
+# When this enchantment enters and whenever you cast your first spell with {X} in its mana cost
+# each turn, create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters
+# on it equal to the number of study counters on this enchantment.
+# Lattice Library (soc): {X}{G}{G} Enchantment.
+name = "Lattice Library"
+otags = ["aesthetic-counter", "alliteration", "cast-trigger-you", "gives-pp-counters", "repeatable-creature-tokens", "repeatable-pp-counters", "x-cost-matters"]
+oracle = "This enchantment enters with X study counters on it.\nWhen this enchantment enters and whenever you cast your first spell with {X} in its mana cost each turn, create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it equal to the number of study counters on this enchantment."
+set = "soc"
+
+[cost]
+x = true
+green = 2
+
+[kind]
+type = "enchantment"
+
+# This enchantment enters with X study counters on it.
+[[abilities]]
+timing = "static"
+
+# This enchantment enters with X study counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+kind = "study"
+
+# When this enchantment enters ... create a 0/0 green and blue Fractal creature token. Put a
+# number of +1/+1 counters on it equal to the number of study counters on this enchantment.
+[[abilities]]
+timing = "etb"
+
+# create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it
+# equal to the number of study counters on this enchantment.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+enters_with = { per_counter_of_kind = "study" }
+
+[abilities.effects.token]
+name = "Fractal"
+power = 0
+toughness = 0
+colors = ["green", "blue"]
+subtypes = ["Fractal"]
+
+# ... whenever you cast your first spell with {X} in its mana cost each turn, create a 0/0
+# green and blue Fractal creature token. Put a number of +1/+1 counters on it equal to the
+# number of study counters on this enchantment.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "has_x"
+caster = "you"
+nth_each_turn = 1
+
+# create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it
+# equal to the number of study counters on this enchantment.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+enters_with = { per_counter_of_kind = "study" }
+
+[abilities.effects.token]
+name = "Fractal"
+power = 0
+toughness = 0
+colors = ["green", "blue"]
+subtypes = ["Fractal"]

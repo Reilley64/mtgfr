@@ -1,0 +1,23 @@
+# Proliferate X times. (To proliferate, choose any number of permanents and/or players, then give each another counter
+# of each kind already there.)
+# Expansion Algorithm {X}{U}{U} — sorcery (soc).
+name = "Expansion Algorithm"
+otags = ["counters-matter"]
+oracle = "Proliferate X times. (To proliferate, choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+set = "soc"
+
+[cost]
+blue = 2
+x = true
+
+[kind]
+type = "sorcery"
+
+# Proliferate X times.
+[[abilities]]
+timing = "spell"
+
+# Proliferate X times.
+[[abilities.effects]]
+type = "proliferate"
+times = "x"

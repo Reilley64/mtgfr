@@ -1,0 +1,42 @@
+# When you cast this spell, you gain half X life and draw half X cards. Round down each time.
+# Flying, trample
+# This creature enters with X +1/+1 counters on it.
+name = "Hydroid Krasis"
+otags = ["burst-draw", "cast-trigger-self", "cycle-rna-m-guild-spell", "division", "evasion", "gains-pp-counters", "hand-positive", "lifegain", "pure-draw", "unique-type-line", "virtual-french-vanilla"]
+oracle = "When you cast this spell, you gain half X life and draw half X cards. Round down each time.\nFlying, trample\nThis creature enters with X +1/+1 counters on it."
+set = "soc"
+subtypes = ["Jellyfish", "Hydra", "Beast"]
+keywords = ["flying", "trample"]
+
+[cost]
+x = true
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# When you cast this spell, you gain half X life and draw half X cards. Round down each time.
+[[abilities]]
+timing = "when_you_cast_this"
+
+# you gain half X life
+[[abilities.effects]]
+type = "gain_life"
+amount = "half_x_rounded_down"
+
+# and draw half X cards. Round down each time.
+[[abilities.effects]]
+type = "draw_cards"
+count = "half_x_rounded_down"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"

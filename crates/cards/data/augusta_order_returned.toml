@@ -1,0 +1,39 @@
+# Flying, vigilance
+# Whenever Augusta attacks, each player exiles a card from their graveyard. When one or more nonland cards are exiled
+# this way, put that many +1/+1 counters on target attacking creature.
+name = "Augusta, Order Returned"
+otags = ["attack-trigger", "attacking-matters", "attacking-matters-self", "evasion", "gives-pp-counters", "graveyard-fuel", "hate-graveyard", "reflexive-trigger", "repeatable-pp-counters"]
+oracle = "Flying, vigilance\nWhenever Augusta attacks, each player exiles a card from their graveyard. When one or more nonland cards are exiled this way, put that many +1/+1 counters on target attacking creature."
+set = "soc"
+subtypes = ["Spirit", "Advisor"]
+legendary = true
+keywords = ["flying", "vigilance"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 3
+
+# Whenever Augusta attacks, each player exiles a card from their graveyard. When one or more
+# nonland cards are exiled this way, put that many +1/+1 counters on target attacking creature.
+# ponytail: the reflexive "when one or more nonland cards are exiled this way" trigger is modeled
+# as a same-resolution sequenced payoff — its target attacking creature is chosen when the attack
+# trigger goes on the stack (before the exiles), and a zero-nonland exile is a no-op (0 counters)
+# rather than the payoff never being created. Upgrade to a real reflexive trigger that chooses its
+# target after the exiles resolve when reflexive-trigger machinery lands.
+[[abilities]]
+timing = "attacks"
+
+# each player exiles a card from their graveyard
+[[abilities.effects]]
+type = "each_player_exiles_from_graveyard"
+
+# put that many +1/+1 counters on target attacking creature
+[[abilities.effects]]
+type = "put_counters"
+count = "nonland_cards_exiled_this_way"
+target = { permanent = { types = "creature", attacking = true } }

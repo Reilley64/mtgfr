@@ -1,0 +1,66 @@
+# Other red creatures you control get +1/+1.
+# Other white creatures you control get +1/+1.
+# Whenever you cast a red spell, this creature deals 3 damage to target player or planeswalker.
+# Whenever you cast a white spell, you gain 3 life.
+# Balefire Liege (soc): {2}{R/W}{R/W}{R/W} 2/4 Spirit Horror.
+name = "Balefire Liege"
+otags = ["anthem", "burn-planeswalker", "burn-player", "cast-trigger-you", "cycle-shm-liege", "power-boost-to-all", "repeatable-crime", "repeatable-lifegain", "repeatable-removal", "spot-removal", "synergy-red", "synergy-white"]
+oracle = "Other red creatures you control get +1/+1.\nOther white creatures you control get +1/+1.\nWhenever you cast a red spell, this creature deals 3 damage to target player or planeswalker.\nWhenever you cast a white spell, you gain 3 life."
+set = "soc"
+subtypes = ["Spirit", "Horror"]
+
+[cost]
+generic = 2
+hybrid = [["red", "white"], ["red", "white"], ["red", "white"]]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# Other red creatures you control get +1/+1.
+[[abilities]]
+timing = "static"
+
+# Other red creatures you control get +1/+1.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 1
+colors = ["red"]
+exclude_source = true
+
+# Other white creatures you control get +1/+1.
+[[abilities]]
+timing = "static"
+
+# Other white creatures you control get +1/+1.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 1
+colors = ["white"]
+exclude_source = true
+
+# Whenever you cast a red spell, this creature deals 3 damage to target player or planeswalker.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = { color = "red" }
+caster = "you"
+
+# this creature deals 3 damage to target player or planeswalker.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 3
+target = "player_or_planeswalker"
+
+# Whenever you cast a white spell, you gain 3 life.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = { color = "white" }
+caster = "you"
+
+# you gain 3 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = 3

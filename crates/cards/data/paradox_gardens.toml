@@ -1,0 +1,24 @@
+# This land enters tapped.
+# {T}: Add {G} or {U}.
+# {2}{G}{U}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)
+# Paradox Gardens (SOS): "This land enters tapped. {T}: Add {G} or {U}. {2}{G}{U}, {T}: Surveil 1."
+name = "Paradox Gardens"
+otags = ["activated-ability", "cycle-sos-surveil-dual", "mana-sink", "surveil", "utility-land", "virtual-legendary"]
+oracle = "This land enters tapped.\n{T}: Add {G} or {U}.\n{2}{G}{U}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
+set = "sos"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["green", "blue"]
+
+# {2}{G}{U}, {T}: Surveil 1.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 2, green = 1, blue = 1 }
+
+# Surveil 1.
+[[abilities.effects]]
+type = "surveil"
+count = 1

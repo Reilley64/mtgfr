@@ -1,0 +1,44 @@
+# Flying
+name = "Herald of Amity"
+otags = ["attack-trigger", "attacking-matters-self", "evasion", "free-cast-another", "gives-castable-from-exile", "impulse-cast", "impulse-enchantment-aura", "synergy-aura"]
+oracle = "Flying\nWhen this creature enters, exile the top eight cards of your library. You may cast an Aura spell from among them without paying its mana cost. Then put the rest on the bottom of your library in a random order.\nWhenever this creature attacks, it gets +X/+X until end of turn, where X is the number of Auras you control."
+set = "soc"
+subtypes = ["Griffin"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, exile the top eight cards of your library. You may cast an Aura
+# spell from among them without paying its mana cost. Then put the rest on the bottom of your
+# library in a random order.
+[[abilities]]
+timing = "etb"
+
+# exile the top eight cards of your library. You may cast an Aura spell from among them without
+# paying its mana cost. Then put the rest on the bottom of your library in a random order.
+# ponytail: the free cast is offered at a later priority window this turn, not mid-resolution of
+# this ability (same approximation Quintorius, Loremaster's free-cast permission already
+# carries); "random order" for the bottomed rest is the deterministic library-order stand-in
+# every other impulse-dig effect in this pool uses (no `rand` in the pure engine).
+[[abilities.effects]]
+type = "exile_top_cast_matching_free"
+count = 8
+filter = "aura"
+
+# Whenever this creature attacks, it gets +X/+X until end of turn, where X is the number of Auras
+# you control.
+[[abilities]]
+timing = "attacks"
+
+# it gets +X/+X until end of turn, where X is the number of Auras you control
+[[abilities.effects]]
+type = "pump_self_until_end_of_turn"
+power = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
+toughness = { per_permanent = { subtypes = ["Aura"], controller = "you" } }

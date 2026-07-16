@@ -1,0 +1,41 @@
+/target
+/data
+/crates/server/data
+/node_modules
+openapi.json
+
+mutants*.out
+
+/.idea
+.DS_Store
+
+# Local env overrides — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Optional local Settings override (prod/secrets stay in env / K8s)
+config/mtgfr.local.toml
+
+# Verify-skill / curl cookie jars (live session tokens)
+jar.txt
+**/jar.txt
+
+# Ephemeral CR-index hook state + atomic write scratch
+.cursor/hooks/state/
+docs/CR_INDEX.md.tmp
+docs/CR_INDEX.md.lock
+
+__pycache__/
+*.py[cod]
+
+# Terraform (iac/) — deploy PRD §Terraform. State lives in the kubernetes backend, not locally;
+# tfvars hold secrets (image tags, DB password, Cloudflare token, kubeconfig path).
+# `.terraform.lock.hcl` is intentionally NOT ignored — commit it for reproducible provider installs.
+iac/.terraform/
+iac/terraform.tfvars
+iac/*.auto.tfvars
+iac/terraform.tfvars.json
+iac/*.tfstate
+iac/*.tfstate.*
+iac/*.tfplan

@@ -1,0 +1,33 @@
+# Gravestorm (When you cast this spell, copy it for each permanent put into a graveyard from the battlefield this turn.)
+# Target player draws a card and loses 1 life.
+name = "Ominous Harvest"
+otags = ["burst-draw", "cast-trigger-self", "copy-self", "force-draw", "hand-positive", "life-for-cards", "opponent-loses-life", "pure-draw", "single-target-instant-sorcery", "storm-like"]
+oracle = "Gravestorm (When you cast this spell, copy it for each permanent put into a graveyard from the battlefield this turn.)\nTarget player draws a card and loses 1 life."
+set = "soc"
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "sorcery"
+
+# Gravestorm (When you cast this spell, copy it for each permanent put into a graveyard from the
+# battlefield this turn.) Target player draws a card and loses 1 life.
+[[abilities]]
+timing = "spell"
+
+# Target player draws a card
+[[abilities.effects]]
+type = "target_player_draws"
+count = 1
+
+# loses 1 life.
+[[abilities.effects]]
+type = "target_player_loses_life"
+amount = 1
+
+# Gravestorm: copy it for each permanent put into a graveyard from the battlefield this turn.
+[[abilities.effects]]
+type = "copy_this_spell"
+count = "permanents_died_this_turn"

@@ -1,0 +1,63 @@
+# When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it and attach
+# this Equipment to it.
+# Whenever equipped creature attacks, double the number of +1/+1 counters on it.
+# Equip {2}
+# Fractal Harness (soc): "{X}{2}{G} Artifact — Equipment.
+#   When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1
+#   counters on it and attach this Equipment to it.
+#   Whenever equipped creature attacks, double the number of +1/+1 counters on it.
+#   Equip {2}"
+name = "Fractal Harness"
+otags = ["activated-ability", "attack-trigger", "attacking-matters", "counter-doubler", "exponential", "gives-pp-counters", "living-weapon", "out-of-color-token", "pp-counters-matter", "repeatable-pp-counters"]
+oracle = "When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it and attach this Equipment to it.\nWhenever equipped creature attacks, double the number of +1/+1 counters on it.\nEquip {2}"
+set = "soc"
+subtypes = ["Equipment"]
+
+[cost]
+x = true
+generic = 2
+green = 1
+
+[kind]
+type = "artifact"
+
+# When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1
+# counters on it and attach this Equipment to it.
+[[abilities]]
+timing = "etb"
+
+# create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it
+[[abilities.effects]]
+type = "create_token"
+count = 1
+enters_with = "x"
+
+[abilities.effects.token]
+name = "Fractal"
+power = 0
+toughness = 0
+colors = ["green", "blue"]
+subtypes = ["Fractal"]
+
+# attach this Equipment to it.
+[[abilities.effects]]
+type = "attach_self_to_minted_token"
+
+# Whenever equipped creature attacks, double the number of +1/+1 counters on it.
+[[abilities]]
+timing = "equipped_creature_attacks"
+
+# double the number of +1/+1 counters on it.
+[[abilities.effects]]
+type = "double_counters_on_attached_creature"
+
+# Equip {2}
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 2
+
+# Equip {2}
+[[abilities.effects]]
+type = "equip"

@@ -1,0 +1,70 @@
+# [Inspired Skypainter]
+# Flying
+# When this creature enters and whenever one or more creature tokens you control deal combat damage to a player, this
+# creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.)
+# [Maestro's Gift]
+# Create a token that's a copy of target creature you control. That token gains haste until end of turn.
+# Inspired Skypainter // Maestro's Gift (soc), a "prepare" double-faced card: {U}{R} 2/2 Lizard
+# Wizard with flying whose front-face triggers (on enter, and when your creature tokens deal
+# combat damage to a player) make it become prepared; while prepared, its controller may cast a
+# copy of the {3}{U}{R} Maestro's Gift sorcery below, which unprepares it.
+name = "Inspired Skypainter"
+otags = ["bottomless-mana-sink", "copy-creature", "cycle-soc-two-color-prepare", "evasion", "gives-castable-from-exile", "gives-haste", "repeatable-creature-tokens", "saboteur", "single-target-instant-sorcery", "synergy-token-creature", "triggered-ability"]
+oracle = "Flying\nWhen this creature enters and whenever one or more creature tokens you control deal combat damage to a player, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Create a token that's a copy of target creature you control. That token gains haste until end of turn."
+set = "soc"
+subtypes = ["Lizard", "Wizard"]
+keywords = ["flying"]
+
+[cost]
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters ... this creature becomes prepared.
+[[abilities]]
+timing = "etb"
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# ...whenever one or more creature tokens you control deal combat damage to a player, this
+# creature becomes prepared.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "your_tokens"
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# Back face — Maestro's Gift ({3}{U}{R} sorcery): "Create a token that's a copy of target
+# creature you control. That token gains haste until end of turn."
+[back]
+name = "Maestro's Gift"
+set = "soc"
+
+[back.cost]
+generic = 3
+blue = 1
+red = 1
+
+[back.kind]
+type = "sorcery"
+
+# Create a token that's a copy of target creature you control. That token gains haste until end
+# of turn.
+[[back.abilities]]
+timing = "spell"
+
+# Create a token that's a copy of target creature you control. That token gains haste until end
+# of turn.
+[[back.abilities.effects]]
+type = "create_token_copy"
+count = 1
+target = { permanent = { types = "creature", controller = "you" } }
+haste = true

@@ -1,0 +1,41 @@
+# Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.
+# You draw a card at the beginning of the next turn's upkeep.
+# Arcane Denial (msc): {1}{U} Instant
+# "Counter target spell. Its controller may draw up to two cards at the beginning of the next
+#  turn's upkeep. You draw a card at the beginning of the next turn's upkeep."
+# ponytail: CR 603.7 delayed triggers (#27) + "may draw up to two" (CR 603.2c) collapse to a
+# mandatory draw two — no optional/declinable-draw machinery exists, and drawing is strictly
+# beneficial everywhere in this pool, so nothing is lost by not offering the decline.
+name = "Arcane Denial"
+otags = ["counterspell-with-set-mechanic", "delayed-cantrip", "drawback", "hand-neutral", "interrupt", "single-target-instant-sorcery"]
+oracle = "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.\nYou draw a card at the beginning of the next turn's upkeep."
+set = "msc"
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Counter target spell. Its controller may draw up to two cards at the beginning of the next
+# turn's upkeep.
+# You draw a card at the beginning of the next turn's upkeep.
+[[abilities]]
+timing = "spell"
+
+# Counter target spell.
+[[abilities.effects]]
+type = "counter_target_spell"
+
+# Its controller may draw up to two cards at the beginning of the next turn's upkeep.
+[[abilities.effects]]
+type = "schedule_at_next_upkeep"
+who = "target_spell_controller"
+then = { type = "draw_cards", count = 2 }
+
+# You draw a card at the beginning of the next turn's upkeep.
+[[abilities.effects]]
+type = "schedule_at_next_upkeep"
+who = "you"
+then = { type = "draw_cards", count = 1 }

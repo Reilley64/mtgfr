@@ -1,0 +1,44 @@
+# As this artifact enters, choose a creature type.
+# Creatures you control of the chosen type get +1/+1.
+# {T}: Add one mana of any color.
+# Patchwork Banner {3} — Artifact. "As this artifact enters, choose a creature type. Creatures you
+# control of the chosen type get +1/+1.  {T}: Add one mana of any color."
+name = "Patchwork Banner"
+otags = ["activated-ability", "anthem", "mana-rock-with-set-s-mechanic", "mini-refund", "power-boost-to-all", "toughness-boost-to-all", "typal-choose", "utility-mana-rock"]
+oracle = "As this artifact enters, choose a creature type.\nCreatures you control of the chosen type get +1/+1.\n{T}: Add one mana of any color."
+set = "msc"
+
+[cost]
+generic = 3
+
+[kind]
+type = "artifact"
+
+# As this artifact enters, choose a creature type.
+[[abilities]]
+timing = "etb"
+
+# choose a creature type.
+[[abilities.effects]]
+type = "choose_creature_type"
+
+# Creatures you control of the chosen type get +1/+1.
+[[abilities]]
+timing = "static"
+
+# Creatures you control of the chosen type get +1/+1.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 1
+chosen_subtype = true
+
+# {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]

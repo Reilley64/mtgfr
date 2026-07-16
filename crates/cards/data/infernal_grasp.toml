@@ -1,0 +1,35 @@
+# Destroy target creature. You lose 2 life.
+name = "Infernal Grasp"
+otags = ["life-payment", "removal-creature", "removal-destroy", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Destroy target creature. You lose 2 life."
+set = "soc"
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# Destroy target creature. You lose 2 life.
+# A non-modal spell runs every one of its spell abilities against its single target, so the destroy
+# and the life loss both resolve. If the destroy's target is illegal at resolution, the whole spell
+# fizzles (CR 608.2b) — the life-loss rider does not resolve either.
+# ponytail: gain_life with a negative amount subtracts life and (guarded on amount > 0) does not fire
+# the "whenever you gain life" trigger.
+[[abilities]]
+timing = "spell"
+
+# Destroy target creature.
+[[abilities.effects]]
+type = "destroy_target"
+target = "creature"
+
+# You lose 2 life.
+[[abilities]]
+timing = "spell"
+
+# You lose 2 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = -2

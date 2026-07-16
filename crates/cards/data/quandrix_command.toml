@@ -1,0 +1,60 @@
+# Choose two —
+# • Return target creature or planeswalker to its owner's hand.
+# • Counter target artifact or enchantment spell.
+# • Put two +1/+1 counters on target creature.
+# • Target player shuffles up to three target cards from their graveyard into their library.
+# Quandrix Command {1}{G}{U} — a modal "choose two" instant (CR 700.2). Its spell-timed abilities
+# are its modes; the caster picks two distinct ones at cast (`modal = true`, `choose = 2`).
+name = "Quandrix Command"
+otags = ["counterspell-artifact", "counterspell-enchantment", "cycle-stx-command", "giant-growth", "gives-pp-counters", "hate-graveyard", "multiple-targets", "removal-bounce", "removal-creature", "removal-planeswalker", "restock-any", "single-target-instant-sorcery"]
+oracle = "Choose two —\n• Return target creature or planeswalker to its owner's hand.\n• Counter target artifact or enchantment spell.\n• Put two +1/+1 counters on target creature.\n• Target player shuffles up to three target cards from their graveyard into their library."
+set = "soc"
+modal = true
+choose = 2
+
+[cost]
+generic = 1
+green = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Return target creature or planeswalker to its owner's hand."
+[[abilities]]
+timing = "spell"
+
+# Return target creature or planeswalker to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = { permanent = { types = "creature_or_planeswalker" } }
+
+# Mode 1 — "Counter target artifact or enchantment spell."
+[[abilities]]
+timing = "spell"
+
+# Counter target artifact or enchantment spell.
+[[abilities.effects]]
+type = "counter_target_spell"
+filter = "artifact_or_enchantment"
+
+# Mode 2 — "Put two +1/+1 counters on target creature."
+[[abilities]]
+timing = "spell"
+
+# Put two +1/+1 counters on target creature.
+[[abilities.effects]]
+type = "put_counters"
+count = 2
+target = "creature"
+
+# Mode 3 — "Target player shuffles up to three target cards from their graveyard into their
+# library."
+[[abilities]]
+timing = "spell"
+
+# Target player shuffles up to three target cards from their graveyard into their library.
+[[abilities.effects]]
+type = "shuffle_target_cards_from_graveyard_into_library"
+max = 3
+target_player = true

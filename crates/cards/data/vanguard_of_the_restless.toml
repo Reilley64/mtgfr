@@ -1,0 +1,55 @@
+# Flying
+# Spirits you control get +1/+1 for each time you've cast your commander from the command zone this game.
+# Whenever a Spirit you control enters, you may pay {2}{W}. If you do, return this card from your graveyard to the
+# battlefield.
+# Vanguard of the Restless (soc). Real oracle text:
+#   "Flying
+#    Spirits you control get +1/+1 for each time you've cast your commander from the command
+#    zone this game.
+#    Whenever a Spirit you control enters, you may pay {2}{W}. If you do, return this card from
+#    your graveyard to the battlefield."
+name = "Vanguard of the Restless"
+otags = ["anthem", "creaturefall", "evasion", "noncreature-typal", "power-boost-to-all", "reanimate-self", "recasting-commander-matters", "synergy-commander", "toughness-boost-to-all", "trigger-from-graveyard", "typal-spirit"]
+oracle = "Flying\nSpirits you control get +1/+1 for each time you've cast your commander from the command zone this game.\nWhenever a Spirit you control enters, you may pay {2}{W}. If you do, return this card from your graveyard to the battlefield."
+set = "soc"
+subtypes = ["Spirit", "Knight"]
+keywords = ["flying"]
+# CR 603.6e — the pay-to-return-from-graveyard trigger functions from the graveyard.
+functions_in_graveyard = true
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Spirits you control get +1/+1 for each time you've cast your commander from the command zone
+# this game.
+[[abilities]]
+timing = "static"
+
+# Spirits you control get +1/+1 for each time you've cast your commander from the command zone
+# this game.
+[[abilities.effects]]
+type = "anthem_static"
+subtypes = ["Spirit"]
+power = "commander_casts_from_command_zone"
+toughness = "commander_casts_from_command_zone"
+
+# Whenever a Spirit you control enters, you may pay {2}{W}. If you do, return this card from
+# your graveyard to the battlefield.
+[[abilities]]
+timing = "permanent_enters"
+filter = { types = "creature", subtypes = ["Spirit"] }
+optional = true
+
+[abilities.cost]
+generic = 2
+white = 1
+
+# return this card from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "return_this_from_graveyard_to_battlefield"

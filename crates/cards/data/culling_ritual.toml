@@ -1,0 +1,29 @@
+# Destroy each nonland permanent with mana value 2 or less. Add {B} or {G} for each permanent destroyed this way.
+name = "Culling Ritual"
+otags = ["adds-multiple-mana", "full-refund", "mana-value-matters", "removal-destroy", "removal-nonland", "ritual", "sweeper"]
+oracle = "Destroy each nonland permanent with mana value 2 or less. Add {B} or {G} for each permanent destroyed this way."
+set = "soc"
+
+[cost]
+generic = 2
+black = 1
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Destroy each nonland permanent with mana value 2 or less. Add {B} or {G} for each permanent
+# destroyed this way.
+[[abilities]]
+timing = "spell"
+
+# Destroy each nonland permanent with mana value 2 or less.
+[[abilities.effects]]
+type = "destroy_all"
+filter = { types = "nonland", mv_max = 2 }
+
+# Add {B} or {G} for each permanent destroyed this way.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["black", "green"]]
+repeat = { permanents_destroyed_this_way = {} }

@@ -1,0 +1,34 @@
+# This land enters tapped.
+# {T}: Add one mana of any color in your commander's color identity. When that mana is spent to cast a creature spell
+# that shares a creature type with your commander, scry 1. (Look at the top card of your library. You may put that card
+# on the bottom.)
+name = "Path of Ancestry"
+otags = ["activated-ability", "buff-mana", "cast-trigger-you", "commander-identity-matters", "delayed-trigger", "rainbow-land", "scry", "synergy-color-share", "synergy-commander", "tapland-with-set-s-mechanic", "typal-share", "utility-land"]
+oracle = "This land enters tapped.\n{T}: Add one mana of any color in your commander's color identity. When that mana is spent to cast a creature spell that shares a creature type with your commander, scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
+set = "msc"
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# {T}: Add one mana of any color in your commander's color identity.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color in your commander's color identity.
+[[abilities.effects]]
+type = "add_mana"
+identity = 1
+track_provenance = true
+
+# When that mana is spent to cast a creature spell that shares a creature type with your
+# commander, scry 1. (Look at the top card of your library. You may put that card on the bottom.)
+[[abilities]]
+timing = "spend_mana_to_cast"
+spend_predicate = "creature_sharing_type_with_commander"
+
+# scry 1.
+[[abilities.effects]]
+type = "scry"
+count = 1

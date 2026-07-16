@@ -1,0 +1,24 @@
+# When this creature enters, draw a card.
+name = "Elvish Visionary"
+otags = ["cantrip", "hand-neutral", "triggered-ability", "virtual-vanilla"]
+oracle = "When this creature enters, draw a card."
+set = "cmr"
+subtypes = ["Elf", "Shaman"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature enters, draw a card.
+[[abilities]]
+timing = "etb"
+
+# draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

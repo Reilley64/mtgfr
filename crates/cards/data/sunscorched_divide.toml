@@ -1,0 +1,19 @@
+# {1}, {T}: Add {R}{W}.
+name = "Sunscorched Divide"
+otags = ["activated-ability", "cycle-pip-enemy-filterland"]
+oracle = "{1}, {T}: Add {R}{W}."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {1}, {T}: Add {R}{W}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {R}{W}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["red", "white"]

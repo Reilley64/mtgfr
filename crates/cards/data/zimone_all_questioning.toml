@@ -1,0 +1,49 @@
+# At the beginning of your end step, if a land entered the battlefield under your control this turn and you control a
+# prime number of lands, create Primo, the Indivisible, a legendary 0/0 green and blue Fractal creature token, then put
+# that many +1/+1 counters on it. (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, and 31 are prime numbers.)
+name = "Zimone, All-Questioning"
+otags = ["cycle-dsk-r-two-color", "fun-ruling", "gives-pp-counters", "intervening-if-clause", "land-count-matters", "landfall", "repeatable-creature-tokens", "repeatable-pp-counters"]
+oracle = "At the beginning of your end step, if a land entered the battlefield under your control this turn and you control a prime number of lands, create Primo, the Indivisible, a legendary 0/0 green and blue Fractal creature token, then put that many +1/+1 counters on it. (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, and 31 are prime numbers.)"
+set = "soc"
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+generic = 1
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# At the beginning of your end step, if a land entered the battlefield under your control this
+# turn and you control a prime number of lands, create Primo, the Indivisible, a legendary 0/0
+# green and blue Fractal creature token, then put that many +1/+1 counters on it.
+[[abilities]]
+timing = "end_step"
+
+[abilities.condition]
+type = "all"
+conditions = [
+  { type = "land_entered_under_your_control_this_turn" },
+  { type = "you_control_prime_number_of_lands" },
+]
+
+# create Primo, the Indivisible, a legendary 0/0 green and blue Fractal creature token, then put
+# that many +1/+1 counters on it
+[[abilities.effects]]
+type = "create_token"
+enters_with = { per_permanent = { types = "land", controller = "you" } }
+
+[abilities.effects.token]
+name = "Primo, the Indivisible"
+legendary = true
+colors = ["green", "blue"]
+subtypes = ["Fractal"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 0
+toughness = 0

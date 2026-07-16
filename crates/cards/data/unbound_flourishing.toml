@@ -1,0 +1,45 @@
+name = "Unbound Flourishing"
+otags = ["cast-trigger-you", "copy-ability", "copy-instant", "copy-sorcery", "copy-spell", "intervening-if-clause", "synergy-instant", "synergy-sorcery", "unique-doubler", "x-cost-matters"]
+oracle = "Whenever you cast a permanent spell with a mana cost that contains {X}, double the value of X.\nWhenever you cast an instant or sorcery spell or activate an ability, if that spell's mana cost or that ability's activation cost contains {X}, copy that spell or ability. You may choose new targets for the copy."
+set = "soc"
+approximates = "a copied *activated* ability keeps its original targets — the \"you may choose new targets\" re-pick isn't offered for the ability half (no targeted {X}-cost activated ability exists to copy)."
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "enchantment"
+
+# Whenever you cast a permanent spell with a mana cost that contains {X}, double the value of X.
+[[abilities]]
+timing = "static"
+
+# double the value of X.
+[[abilities.effects]]
+type = "cast_x_replacement"
+times = 2
+
+# Whenever you cast an instant or sorcery spell ..., if that spell's mana cost ... contains {X},
+# copy that spell .... You may choose new targets for the copy.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "instant_or_sorcery_with_x"
+caster = "you"
+
+# copy that spell .... You may choose new targets for the copy.
+[[abilities.effects]]
+type = "copy_triggering_spell"
+count = 1
+may_choose_new_targets = true
+
+# Whenever you ... activate an ability, if that ... ability's activation cost contains {X},
+# copy that ... ability. You may choose new targets for the copy.
+[[abilities]]
+timing = "activate_ability"
+caster = "you"
+
+# copy that ... ability. You may choose new targets for the copy.
+[[abilities.effects]]
+type = "copy_triggering_ability"
+may_choose_new_targets = true

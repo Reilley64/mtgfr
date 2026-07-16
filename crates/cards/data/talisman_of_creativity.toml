@@ -1,0 +1,35 @@
+# {T}: Add {C}.
+# {T}: Add {U} or {R}. This artifact deals 1 damage to you.
+# Talisman of Creativity: {2} Artifact. "{T}: Add {C}. / {T}: Add {U} or {R}. This artifact deals
+# 1 damage to you."
+name = "Talisman of Creativity"
+otags = ["activated-ability", "burn-you", "cycle-mh1-talisman", "mana-ability-with-extra-effect", "mana-rock", "refund"]
+oracle = "{T}: Add {C}.\n{T}: Add {U} or {R}. This artifact deals 1 damage to you."
+set = "msc"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {T}: Add {U} or {R}. This artifact deals 1 damage to you.
+[[abilities]]
+timing = "activated"
+taps_self = true
+self_damage = 1
+
+# Add {U} or {R}. This artifact deals 1 damage to you.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["blue", "red"]]

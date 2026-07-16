@@ -1,0 +1,24 @@
+# {T}: Add {G}.
+name = "Llanowar Elves"
+otags = ["activated-ability", "cycle-spellshaped-from-fut", "has-identical-token", "type-errata", "mana-dork"]
+oracle = "{T}: Add {G}."
+set = "fdn"
+subtypes = ["Elf", "Druid"]
+
+[cost]
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Add {G}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["green"]

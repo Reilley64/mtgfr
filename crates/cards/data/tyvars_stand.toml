@@ -1,0 +1,31 @@
+# Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn. (It can't be the
+# target of spells or abilities your opponents control. Damage and effects that say "destroy" don't destroy it.)
+# Tyvar's Stand {X}{G} — an instant (soc). Oracle:
+#   "Target creature you control gets +X/+X and gains hexproof and indestructible until end of
+#    turn."
+name = "Tyvar's Stand"
+otags = ["enlarge", "giant-growth", "gives-hexproof", "gives-indestructible", "namesake-spell", "protects-creature", "single-target-instant-sorcery"]
+oracle = "Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn. (It can't be the target of spells or abilities your opponents control. Damage and effects that say \"destroy\" don't destroy it.)"
+set = "soc"
+
+[cost]
+x = true
+green = 1
+
+[kind]
+type = "instant"
+
+# Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn.
+# (It can't be the target of spells or abilities your opponents control. Damage and effects that
+# say "destroy" don't destroy it.)
+[[abilities]]
+timing = "spell"
+
+# Target creature you control gets +X/+X and gains hexproof and indestructible until end of
+# turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = "x"
+toughness = "x"
+target = "creature_you_control"
+keywords = ["hexproof", "indestructible"]

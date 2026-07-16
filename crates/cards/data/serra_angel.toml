@@ -1,0 +1,17 @@
+# Flying
+# Vigilance (Attacking doesn't cause this creature to tap.)
+name = "Serra Angel"
+otags = ["cycle-w16-u", "evasion", "french-vanilla", "meme", "namesake-spell"]
+oracle = "Flying\nVigilance (Attacking doesn't cause this creature to tap.)"
+set = "fdn"
+subtypes = ["Angel"]
+keywords = ["flying", "vigilance"]
+
+[cost]
+generic = 3
+white = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

@@ -1,0 +1,44 @@
+# Until end of turn, gain control of target creature and it gains haste. Untap and goad that creature. (Until your next
+# turn, that creature attacks each combat if able and attacks a player other than you if able.)
+# Mono-red goad sorcery (Conspiracy: Take the Crown). A staple used here to exercise
+# Effect::UntapTarget/GoadTarget/GainControlUntilEndOfTurn directly at sorcery speed.
+name = "Besmirch"
+otags = ["force-attacker", "gives-haste", "single-english-word-name", "single-target-instant-sorcery", "threaten-with-set-s-mechanic", "untapper-creature"]
+oracle = "Until end of turn, gain control of target creature and it gains haste. Untap and goad that creature. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)"
+set = "cn2"
+
+[cost]
+generic = 1
+red = 2
+
+[kind]
+type = "sorcery"
+
+# Until end of turn, gain control of target creature and it gains haste. Untap and goad that
+# creature. (Until your next turn, that creature attacks each combat if able and attacks a player
+# other than you if able.)
+[[abilities]]
+timing = "spell"
+
+# gain control of target creature
+[[abilities.effects]]
+type = "gain_control_until_end_of_turn"
+target = "creature"
+
+# it gains haste
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = "creature"
+keywords = ["haste"]
+
+# Untap and goad that creature.
+[[abilities.effects]]
+type = "untap_target"
+target = "creature"
+
+# goad that creature
+[[abilities.effects]]
+type = "goad_target"
+target = "creature"

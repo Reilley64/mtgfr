@@ -1,0 +1,33 @@
+# At the beginning of your upkeep, if an opponent controls more lands than you, you may search your library for up to
+# three basic land cards, reveal them, put them into your hand, then shuffle.
+# Land Tax {W} — Enchantment (soc). Real oracle text:
+#   "At the beginning of your upkeep, if an opponent controls more lands than you, you may
+#   search your library for up to three basic land cards, reveal them, put them into your hand,
+#   then shuffle."
+name = "Land Tax"
+otags = ["catch-up", "intervening-if-clause", "tutor-land-basic", "tutor-to-hand"]
+oracle = "At the beginning of your upkeep, if an opponent controls more lands than you, you may search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle."
+set = "soc"
+
+[cost]
+white = 1
+
+[kind]
+type = "enchantment"
+
+# At the beginning of your upkeep, if an opponent controls more lands than you, you may search
+# your library for up to three basic land cards, reveal them, put them into your hand, then
+# shuffle.
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+[abilities.condition]
+type = "opponent_controls_more_lands"
+
+# search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "hand"
+count = 3

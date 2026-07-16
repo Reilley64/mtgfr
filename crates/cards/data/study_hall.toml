@@ -1,0 +1,34 @@
+# {T}: Add {C}.
+# {1}, {T}: Add one mana of any color. When you spend this mana to cast your commander, scry X, where X is the number of
+# times it's been cast from the command zone this game.
+name = "Study Hall"
+otags = ["activated-ability", "buff-mana", "cast-trigger-you", "delayed-trigger", "filterland", "recasting-commander-matters", "school-name", "scry", "synergy-commander", "utility-land"]
+oracle = "{T}: Add {C}.\n{1}, {T}: Add one mana of any color. When you spend this mana to cast your commander, scry X, where X is the number of times it's been cast from the command zone this game."
+set = "soc"
+
+[kind]
+type = "land"
+produces = "colorless"
+
+# {1}, {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]
+track_provenance = true
+
+# When you spend this mana to cast your commander, scry X, where X is the number of times it's
+# been cast from the command zone this game.
+[[abilities]]
+timing = "spend_mana_to_cast"
+spend_predicate = "commander"
+
+# scry X, where X is the number of times it's been cast from the command zone this game.
+[[abilities.effects]]
+type = "scry"
+count = "commander_casts_from_command_zone"

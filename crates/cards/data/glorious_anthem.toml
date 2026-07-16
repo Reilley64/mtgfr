@@ -1,0 +1,22 @@
+# Creatures you control get +1/+1.
+name = "Glorious Anthem"
+otags = ["power-boost-to-all", "toughness-boost-to-all", "anthem"]
+oracle = "Creatures you control get +1/+1."
+set = "m21"
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "enchantment"
+
+# Creatures you control get +1/+1.
+[[abilities]]
+timing = "static"
+
+# Creatures you control get +1/+1.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 1

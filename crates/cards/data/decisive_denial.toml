@@ -1,0 +1,38 @@
+# Choose one —
+# • Target creature you control fights target creature you don't control. (Each deals damage equal to its power to the
+# other.)
+# • Counter target noncreature spell unless its controller pays {3}.
+# Decisive Denial {G}{U} — Instant. A modal "choose one" spell (CR 700.2); the caster picks
+# exactly one mode at cast (`modal = true`, choose defaults to 1). Real modes:
+#   • Target creature you control fights target creature you don't control.
+#   • Counter target noncreature spell unless its controller pays {3}.
+name = "Decisive Denial"
+otags = ["alliteration", "counterspell-noncreature", "counterspell-soft", "modal", "multiple-targets", "removal-fight", "single-target-instant-sorcery"]
+oracle = "Choose one —\n• Target creature you control fights target creature you don't control. (Each deals damage equal to its power to the other.)\n• Counter target noncreature spell unless its controller pays {3}."
+set = "soc"
+modal = true
+
+[cost]
+green = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Target creature you control fights target creature you don't control."
+[[abilities]]
+timing = "spell"
+
+# Target creature you control fights target creature you don't control.
+[[abilities.effects]]
+type = "fight"
+
+# Mode 1 — "Counter target noncreature spell unless its controller pays {3}."
+[[abilities]]
+timing = "spell"
+
+# Counter target noncreature spell unless its controller pays {3}.
+[[abilities.effects]]
+type = "counter_target_spell"
+unless_pays = 3
+filter = "noncreature"

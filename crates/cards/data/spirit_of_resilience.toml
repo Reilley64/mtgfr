@@ -1,0 +1,29 @@
+# Whenever one or more cards leave your graveyard, put a +1/+1 counter on this creature, then you may have this creature
+# become a copy of an artifact or creature card from among those cards until end of turn.
+# ponytail: the copy takes the chosen card's printed `CardDef` copyable values (CR 707.2), not a
+# full read of any copy-layer modifications already on it — exact for this pool.
+name = "Spirit of Resilience"
+otags = ["copy-artifact", "copy-creature", "gains-pp-counters", "leaves-graveyard-trigger", "repeatable-pp-counters"]
+oracle = "Whenever one or more cards leave your graveyard, put a +1/+1 counter on this creature, then you may have this creature become a copy of an artifact or creature card from among those cards until end of turn."
+set = "soc"
+subtypes = ["Spirit", "Warrior"]
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever one or more cards leave your graveyard, put a +1/+1 counter on this creature, then
+# you may have this creature become a copy of an artifact or creature card from among those
+# cards until end of turn.
+[[abilities]]
+timing = "cards_leave_your_graveyard"
+
+# put a +1/+1 counter on this creature, then you may have this creature become a copy of an
+# artifact or creature card from among those cards until end of turn.
+[[abilities.effects]]
+type = "put_counter_then_may_become_copy_of_card_from_list"

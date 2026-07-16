@@ -1,0 +1,39 @@
+# This creature enters with X +1/+1 counters on it.
+# {2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment.
+# Steelbane Hydra (soc). Real oracle text:
+#   "This creature enters with X +1/+1 counters on it.
+#    {2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment."
+name = "Steelbane Hydra"
+otags = ["activated-ability", "counter-fuel-pp", "disenchant-naturalize", "gains-pp-counters", "removal-destroy", "repeatable-crime", "repeatable-removal", "spot-removal"]
+oracle = "This creature enters with X +1/+1 counters on it.\n{2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment."
+set = "soc"
+subtypes = ["Turtle", "Hydra"]
+
+[cost]
+x = true
+green = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+
+# {2}{G}, Remove a +1/+1 counter from this creature: Destroy target artifact or enchantment.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 2, green = 1 }
+remove_counters = 1
+
+# Destroy target artifact or enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact_or_enchantment" } }

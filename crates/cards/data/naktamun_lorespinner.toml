@@ -1,0 +1,54 @@
+# [Naktamun Lorespinner]
+# At the beginning of your upkeep, if a player has one or fewer cards in hand, this creature becomes prepared. (While
+# it's prepared, you may cast a copy of its spell. Doing so unprepares it.)
+# [Wheel of Fortune]
+# Each player discards their hand, then draws seven cards.
+name = "Naktamun Lorespinner"
+otags = ["burst-draw", "cycle-soc-guest-lecturer", "discard", "ditch-hand", "force-draw", "gives-castable-from-exile", "heckbent", "intervening-if-clause", "repeatable-card-advantage", "wheel-symmetrical"]
+oracle = "At the beginning of your upkeep, if a player has one or fewer cards in hand, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Each player discards their hand, then draws seven cards."
+set = "soc"
+subtypes = ["Jackal", "Wizard"]
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# At the beginning of your upkeep, if a player has one or fewer cards in hand, this creature
+# becomes prepared.
+[[abilities]]
+timing = "upkeep"
+
+[abilities.condition]
+type = "any_player_hand_size_at_most"
+at_most = 1
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# Back face — Wheel of Fortune ({2}{R} sorcery): "Each player discards their hand, then draws
+# seven cards."
+[back]
+name = "Wheel of Fortune"
+set = "soc"
+
+[back.cost]
+generic = 2
+red = 1
+
+[back.kind]
+type = "sorcery"
+
+# Each player discards their hand, then draws seven cards.
+[[back.abilities]]
+timing = "spell"
+
+# Each player discards their hand, then draws seven cards.
+[[back.abilities.effects]]
+type = "each_player_discards_hand_then_draws"
+count = 7

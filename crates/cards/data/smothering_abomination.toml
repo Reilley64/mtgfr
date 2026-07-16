@@ -1,0 +1,41 @@
+# Devoid (This card has no color.)
+# Flying
+# At the beginning of your upkeep, sacrifice a creature.
+# Whenever you sacrifice a creature, draw a card.
+# ponytail: Devoid (making the card colorless despite its black mana cost) is flavor — no pool
+# card cares whether a permanent is colorless vs. its casting-cost colors.
+name = "Smothering Abomination"
+otags = ["cda-color", "draw-engine", "evasion", "repeatable-pure-draw", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "synergy-sacrifice", "triggered-ability", "upkeep-cost"]
+oracle = "Devoid (This card has no color.)\nFlying\nAt the beginning of your upkeep, sacrifice a creature.\nWhenever you sacrifice a creature, draw a card."
+set = "soc"
+subtypes = ["Eldrazi"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+black = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 3
+
+# At the beginning of your upkeep, sacrifice a creature.
+[[abilities]]
+timing = "upkeep"
+
+# sacrifice a creature.
+[[abilities.effects]]
+type = "sacrifice_own"
+filter = "creature"
+count = 1
+
+# Whenever you sacrifice a creature, draw a card.
+[[abilities]]
+timing = "you_sacrifice"
+filter = "creature"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

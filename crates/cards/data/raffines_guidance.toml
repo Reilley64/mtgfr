@@ -1,0 +1,29 @@
+# Enchant creature
+# Enchanted creature gets +1/+1.
+# You may cast this card from your graveyard by paying {2}{W} rather than paying its mana cost.
+name = "Raffine's Guidance"
+otags = ["castable-from-graveyard", "namesake-spell", "reanimate-cast", "reanimate-self"]
+oracle = "Enchant creature\nEnchanted creature gets +1/+1.\nYou may cast this card from your graveyard by paying {2}{W} rather than paying its mana cost."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+white = 1
+
+# You may cast this card from your graveyard by paying {2}{W} rather than paying its mana cost.
+[graveyard_cast_cost]
+generic = 2
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +1/+1.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +1/+1.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 1
+toughness = 1

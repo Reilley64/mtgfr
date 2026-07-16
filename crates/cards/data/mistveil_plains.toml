@@ -1,0 +1,30 @@
+# ({T}: Add {W}.)
+# This land enters tapped.
+# {W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only if you control two or more
+# white permanents.
+name = "Mistveil Plains"
+otags = ["activated-ability", "cycle-shm-utilityland", "nonbasic-basic-land-type", "restock-to-bottom", "synergy-white", "utility-land"]
+oracle = "({T}: Add {W}.)\nThis land enters tapped.\n{W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only if you control two or more white permanents."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = "white"
+
+# {W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only
+# if you control two or more white permanents.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { white = 1 }
+
+# Put target card from your graveyard on the bottom of your library.
+[[abilities.effects]]
+type = "tuck_from_graveyard"
+target = { card_in_graveyard = { whose = "yours", filter = "any_card" } }
+
+[abilities.condition]
+type = "you_control_color_permanents"
+color = "white"
+at_least = 2

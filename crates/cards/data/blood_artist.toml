@@ -1,0 +1,27 @@
+# Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.
+name = "Blood Artist"
+otags = ["inscryption-achievement", "opponent-loses-life", "repeatable-crime", "blood-artist-ability"]
+oracle = "Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life."
+set = "soc"
+subtypes = ["Vampire"]
+# "Whenever this creature or another creature dies, target player loses 1 life and you gain 1
+# life." A watch-others death trigger that also self-fires off its own death, reading its own
+# last-known information (CR 603.6c/603.10).
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.
+[[abilities]]
+timing = "creature_dies_including_this"
+
+# target player loses 1 life and you gain 1 life
+[[abilities.effects]]
+type = "drain_target"
+amount = 1

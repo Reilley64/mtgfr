@@ -1,0 +1,56 @@
+# Choose one or more —
+# • Destroy all creatures.
+# • Destroy all planeswalkers.
+# • Destroy all battles.
+# • Exile all graveyards.
+# • Each opponent loses all counters.
+# Final Act {4}{B}{B} — "Choose one or more —" destroy all creatures / all planeswalkers / all
+# battles / exile all graveyards / each opponent loses all counters.
+#
+# ponytail: the printed card has five modes; three are expressible (destroy all creatures, destroy
+# all planeswalkers, exile all graveyards), so `choose_max` opens "one or more" over those three
+# (mirroring Casualties of War's precedent for a partial-mode "choose one or more" pool). "Destroy
+# all battles" is dropped — battles aren't a modeled permanent type. "Each opponent loses all
+# counters" is dropped — that's counters on the player (poison/energy/experience/etc.), and this
+# pool tracks no player-level counters.
+name = "Final Act"
+otags = ["modal", "removal-battle", "removal-creature", "removal-destroy", "removal-planeswalker", "remove-counters-other", "remove-counters-player", "sweeper", "sweeper-graveyard"]
+oracle = "Choose one or more —\n• Destroy all creatures.\n• Destroy all planeswalkers.\n• Destroy all battles.\n• Exile all graveyards.\n• Each opponent loses all counters."
+set = "soc"
+approximates = "the printed card has five modes; two are dropped — \"destroy all battles\" (battles aren't a modeled permanent type) and \"each opponent loses all counters\" (counters on the player, which this pool doesn't track). \"Choose one or more\" is offered over the remaining three (destroy all creatures / destroy all planeswalkers / exile all graveyards)."
+modal = true
+choose = 1
+choose_max = 3
+
+[cost]
+generic = 4
+black = 2
+
+[kind]
+type = "sorcery"
+
+# Mode 0 — "Destroy all creatures."
+[[abilities]]
+timing = "spell"
+
+# Destroy all creatures.
+[[abilities.effects]]
+type = "destroy_all"
+filter = "creatures"
+
+# Mode 1 — "Destroy all planeswalkers."
+[[abilities]]
+timing = "spell"
+
+# Destroy all planeswalkers.
+[[abilities.effects]]
+type = "destroy_all"
+filter = { types = "planeswalker" }
+
+# Mode 2 — "Exile all graveyards."
+[[abilities]]
+timing = "spell"
+
+# Exile all graveyards.
+[[abilities.effects]]
+type = "exile_all_graveyards"

@@ -1,0 +1,46 @@
+# Menace (This creature can't be blocked except by two or more creatures.)
+# Whenever this creature attacks, you gain 1 life.
+# {B}{G}: Return this card from your graveyard to the battlefield tapped.
+# Teacher's Pest (sos). Real oracle text:
+#   "Menace
+#    Whenever this creature attacks, you gain 1 life.
+#    {B}{G}: Return this card from your graveyard to the battlefield tapped."
+name = "Teacher's Pest"
+otags = ["activate-from-graveyard", "attack-trigger", "attacking-matters-self", "evasion", "punny-name", "reanimate-self", "repeatable-lifegain", "unique-type-line"]
+oracle = "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever this creature attacks, you gain 1 life.\n{B}{G}: Return this card from your graveyard to the battlefield tapped."
+set = "sos"
+subtypes = ["Skeleton", "Pest"]
+keywords = ["menace"]
+# CR 112.6/603.6e — the {B}{G} graveyard-recursion ability functions from the graveyard.
+functions_in_graveyard = true
+
+[cost]
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Whenever this creature attacks, you gain 1 life.
+[[abilities]]
+timing = "attacks"
+
+# you gain 1 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = 1
+
+# {B}{G}: Return this card from your graveyard to the battlefield tapped.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+black = 1
+green = 1
+
+# Return this card from your graveyard to the battlefield tapped.
+[[abilities.effects]]
+type = "return_this_from_graveyard_to_battlefield"
+tapped = true

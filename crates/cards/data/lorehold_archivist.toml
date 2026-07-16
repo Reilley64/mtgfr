@@ -1,0 +1,56 @@
+# [Lorehold Archivist]
+# First strike
+# At the beginning of your upkeep, if there are three or more artifact and/or creature cards in your graveyard, this
+# creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.)
+# [Restore Relic]
+# Exile target artifact or creature card from your graveyard. Create a token that's a copy of it.
+name = "Lorehold Archivist"
+otags = ["cards-in-graveyard-matter", "copy-artifact", "copy-creature", "cycle-soc-two-color-prepare", "gives-castable-from-exile", "graveyard-fuel-artifact", "graveyard-fuel-creature", "intervening-if-clause", "reanimate-copy", "repeatable-artifact-tokens", "repeatable-creature-tokens", "single-target-instant-sorcery"]
+oracle = "First strike\nAt the beginning of your upkeep, if there are three or more artifact and/or creature cards in your graveyard, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Exile target artifact or creature card from your graveyard. Create a token that's a copy of it."
+set = "soc"
+subtypes = ["Dwarf", "Artificer"]
+keywords = ["first_strike"]
+
+[cost]
+generic = 1
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# At the beginning of your upkeep, if there are three or more artifact and/or creature cards in
+# your graveyard, this creature becomes prepared.
+[[abilities]]
+timing = "upkeep"
+
+[abilities.condition]
+type = "artifact_or_creature_cards_in_your_graveyard_at_least"
+count = 3
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+[back]
+name = "Restore Relic"
+set = "soc"
+
+[back.cost]
+generic = 2
+red = 1
+white = 1
+
+[back.kind]
+type = "sorcery"
+
+# Exile target artifact or creature card from your graveyard. Create a token that's a copy of it.
+[[back.abilities]]
+timing = "spell"
+
+# Exile target artifact or creature card from your graveyard. Create a token that's a copy of it.
+[[back.abilities.effects]]
+type = "exile_target_from_graveyard_create_token_copy"
+filter = "artifact_or_creature"

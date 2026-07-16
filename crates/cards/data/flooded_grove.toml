@@ -1,0 +1,32 @@
+# {T}: Add {C}.
+# {G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}.
+# A filter land: feed it one mana and tap it for two {G}/{U} mana (a net +1). The two outputs
+# are {G/U} dual credits, so they can be spent as GG, GU, or UU.
+name = "Flooded Grove"
+otags = ["activated-ability", "cycle-eve-filterland"]
+oracle = "{T}: Add {C}.\n{G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { hybrid = [["green", "blue"]] }
+
+# Add {G}{G}, {G}{U}, or {U}{U}.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["green", "blue"], ["green", "blue"]]

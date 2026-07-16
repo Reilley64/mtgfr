@@ -1,0 +1,13 @@
+# ({T}: Add {G} or {U}.)
+# This land enters tapped.
+# Tangled Islet (SOC): Land — Forest Island. "{T}: Add {G} or {U}. This land enters tapped."
+name = "Tangled Islet"
+otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {G} or {U}.)\nThis land enters tapped."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["green", "blue"]
+subtypes = ["Forest", "Island"]

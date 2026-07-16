@@ -1,0 +1,32 @@
+# Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green Boar creature token.
+# Curse of the Swine {X}{U}{U} — a sorcery (soc). Oracle:
+#   "Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green
+#    Boar creature token."
+name = "Curse of the Swine"
+otags = ["donate-token", "multi-removal", "multiple-targets", "out-of-color-token", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal", "strive", "swap-removal"]
+oracle = "Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green Boar creature token."
+set = "soc"
+
+[cost]
+x = true
+blue = 2
+
+[kind]
+type = "sorcery"
+
+# Exile X target creatures. For each creature exiled this way, its controller creates a 2/2 green
+# Boar creature token.
+[[abilities]]
+timing = "spell"
+
+# Exile X target creatures.
+[[abilities.effects]]
+type = "exile_target"
+target = "creature"
+count = { min = 1, max = 1, x_scaled = true }
+
+# For each creature exiled this way, its controller creates a 2/2 green Boar creature token.
+[[abilities.effects]]
+type = "create_token"
+controller = "target_controller"
+token = { name = "Boar", power = 2, toughness = 2, colors = ["green"], subtypes = ["Boar"] }
