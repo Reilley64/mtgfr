@@ -370,7 +370,7 @@ describe("useTableSurface", () => {
       setSelectedId(11);
       const drawn = surface.drawnCards();
       expect(drawn.map((c) => c.id)).toEqual([10, 12, 11]); // 11 raised to end
-      expect(drawn.find((c) => c.id === 12)!.x).toBeGreaterThan(400);
+      expect(drawn.find((c) => c.id === 12)?.x).toBeGreaterThan(400);
       dispose();
     });
   });
@@ -409,9 +409,18 @@ describe("useTableSurface", () => {
       });
       const screen = worldToScreen(surface.camera(), 50 + CARD_W / 2, 50 + CARD_H / 2);
       surface.notePointer(screen.x, screen.y);
-      surface.setAuxHover("hand", "Hand Shock");
+      surface.setAuxHover("hand", {
+        name: "Hand Shock",
+        cardId: "shock-id",
+        print: "shock-print",
+      });
       // Hand bar sits over the battlefield; Alt-inspect should take the hand card under the cursor.
-      expect(surface.tryPinInspect()).toEqual({ name: "Hand Shock", prepared: false });
+      expect(surface.tryPinInspect()).toEqual({
+        name: "Hand Shock",
+        prepared: false,
+        cardId: "shock-id",
+        print: "shock-print",
+      });
       surface.clearInspect();
       expect(surface.inspectPin()).toBeNull();
 
@@ -435,8 +444,17 @@ describe("useTableSurface", () => {
       });
       const screen = worldToScreen(surface.camera(), 50 + CARD_W / 2, 50 + CARD_H / 2);
       surface.notePointer(screen.x, screen.y);
-      surface.setAuxHover("stack", "Stack Counterspell");
-      expect(surface.tryPinInspect()).toEqual({ name: "Stack Counterspell", prepared: false });
+      surface.setAuxHover("stack", {
+        name: "Stack Counterspell",
+        cardId: "counter-id",
+        print: "counter-print",
+      });
+      expect(surface.tryPinInspect()).toEqual({
+        name: "Stack Counterspell",
+        prepared: false,
+        cardId: "counter-id",
+        print: "counter-print",
+      });
       surface.clearInspect();
 
       surface.setAuxHover("stack", null);
@@ -456,8 +474,8 @@ describe("useTableSurface", () => {
         initialSize: { x: 800, y: 600 },
         reducedMotion: () => true,
       });
-      surface.setAuxHover("hand", "Hand Shock");
-      surface.setAuxHover("stack", "Stack Counterspell");
+      surface.setAuxHover("hand", { name: "Hand Shock" });
+      surface.setAuxHover("stack", { name: "Stack Counterspell" });
       expect(surface.tryPinInspect()).toEqual({ name: "Hand Shock", prepared: false });
       dispose();
     });

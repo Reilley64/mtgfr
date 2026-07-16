@@ -1270,6 +1270,8 @@ mod permanent_filter_tests {
     fn def(kind: CardKind, mv: u8) -> CardDef {
         CardDef {
             name: "T",
+            id: "",
+            default_print: "",
             cost: Cost {
                 generic: mv,
                 colored: [0; Color::COUNT],

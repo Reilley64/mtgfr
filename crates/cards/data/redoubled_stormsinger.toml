@@ -2,6 +2,8 @@
 # Whenever this creature attacks, for each creature token you control that entered this turn, create a tapped and
 # attacking token that's a copy of that token. At the beginning of the next end step, sacrifice those tokens.
 name = "Redoubled Stormsinger"
+id = "792c4d38-41e6-49eb-bd4e-de0a5ac8330f"
+default_print = "fc5fcb5e-091e-4f47-9c74-9e187a9e0e5d"
 otags = ["attack-trigger", "attacking-matters-self", "copy-token", "delayed-trigger", "repeatable-creature-tokens", "synergy-token-creature", "temporary-token", "tokenfall", "unnoted-tracked-information"]
 oracle = "First strike\nWhenever this creature attacks, for each creature token you control that entered this turn, create a tapped and attacking token that's a copy of that token. At the beginning of the next end step, sacrifice those tokens."
 set = "soc"

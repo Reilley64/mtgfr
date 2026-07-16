@@ -1,6 +1,8 @@
 # {T}: Add {C}.
 # {T}: Add {G} or {U}. This land deals 1 damage to you.
 name = "Yavimaya Coast"
+id = "40b36bc6-c185-4bda-99e7-0118953c2c97"
+default_print = "f4c1500b-1f4c-4d33-810c-25e3bb0a4666"
 otags = ["activated-ability", "burn-you", "cycle-apc-painland", "mana-ability-with-extra-effect"]
 oracle = "{T}: Add {C}.\n{T}: Add {G} or {U}. This land deals 1 damage to you."
 set = "soc"

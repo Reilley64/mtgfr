@@ -20,9 +20,11 @@ server-build:
     cargo build
 
 [group('server')]
-[doc("Run Rust tests")]
+[doc("Run Rust tests via nextest (JUnit under GitHub Actions)")]
 server-test *args:
-    cargo test {{ args }}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo nextest run --profile ci "$@"
 
 [group('server')]
 [doc("Build the server for production")]
@@ -108,7 +110,7 @@ test *args:
     @just client-test
 
 [doc("Run all checks")]
-check: format lint typecheck test
+check: server-codegen format lint typecheck test
 
 [doc("Regenerate docs/CR_INDEX.md from engine CR citations")]
 engine-cr-index:

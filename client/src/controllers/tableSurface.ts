@@ -94,7 +94,7 @@ export type TableSurface = {
   noteDropSeed(seed: Vec | null): void;
 
   notePointer(sx: number, sy: number): void;
-  setAuxHover(source: "hand" | "stack", name: string | null): void;
+  setAuxHover(source: "hand" | "stack", card: { name: string; cardId?: string; print?: string } | null): void;
   tryPinInspect(): InspectPin | null;
   clearInspect(): void;
   inspectPin: Accessor<InspectPin | null>;
@@ -222,7 +222,7 @@ export function densityHoverFromHit(
 
   if (fannedClusterId != null) {
     const cluster = logical.find((c) => c.id === fannedClusterId);
-    if (cluster && cluster.clusterMembers.includes(hit.id)) {
+    if (cluster?.clusterMembers.includes(hit.id)) {
       return { hoverId: hit.id, fannedClusterId };
     }
   }
@@ -283,8 +283,7 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
     setCamera((c) => zoomCameraAt(c, sx, sy, factor));
   };
 
-  const hitCard = (sx: number, sy: number): RenderCard | null =>
-    hitLogicalCard(camera(), interactiveCards(), sx, sy);
+  const hitCard = (sx: number, sy: number): RenderCard | null => hitLogicalCard(camera(), interactiveCards(), sx, sy);
 
   const hitSeat = (sx: number, sy: number, seats: readonly number[]): number | null =>
     hitAvatar(camera(), sx, sy, avatarWorldFor(seats, deps.me(), deps.playerCount()));
@@ -486,7 +485,8 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
       const rotating = tf !== undefined && tf !== (c.tapped ? 1 : 0);
       const layoutCard = logical.find((l) => l.id === c.id);
       // Fan (and any density x/y shift) wins over tween — don't snap fanned members back.
-      const densityMoved = !layoutCard || layoutCard.x !== c.x || layoutCard.y !== c.y || (layoutCard.cluster > 1 && c.cluster === 0);
+      const densityMoved =
+        !layoutCard || layoutCard.x !== c.x || layoutCard.y !== c.y || (layoutCard.cluster > 1 && c.cluster === 0);
       if (densityMoved) return rotating ? { ...c, tapFrac: tf } : c;
       const p = anim.get(c.id);
       const moved = p && (p.x !== c.x || p.y !== c.y);
@@ -497,24 +497,24 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
 
   // ── Aux inspect ───────────────────────────────────────────────────────────────────
   const [inspectPin, setInspectPin] = createSignal<InspectPin | null>(null);
-  let handHoverName: string | null = null;
-  let stackHoverName: string | null = null;
+  let handHover: { name: string; cardId?: string; print?: string } | null = null;
+  let stackHover: { name: string; cardId?: string; print?: string } | null = null;
 
-  const setAuxHover = (source: "hand" | "stack", name: string | null) => {
-    if (source === "hand") handHoverName = name;
-    else stackHoverName = name;
+  const setAuxHover = (source: "hand" | "stack", card: { name: string; cardId?: string; print?: string } | null) => {
+    if (source === "hand") handHover = card;
+    else stackHover = card;
   };
 
   const tryPinInspect = (): InspectPin | null => {
-    // Hand (and stack) DOM overlays sit above the canvas; prefer their hover so Alt-inspect
-    // doesn't pin a battlefield card that peeks under the hand bar.
-    if (handHoverName) {
-      const pin = { name: handHoverName, prepared: false };
-      setInspectPin(pin);
-      return pin;
-    }
-    if (stackHoverName) {
-      const pin = { name: stackHoverName, prepared: false };
+    // Hand/stack DOM overlays sit above the canvas — prefer their hover over a battlefield hit.
+    const aux = handHover ?? stackHover;
+    if (aux) {
+      const pin: InspectPin = {
+        name: aux.name,
+        prepared: false,
+        ...(aux.cardId ? { cardId: aux.cardId } : {}),
+        ...(aux.print ? { print: aux.print } : {}),
+      };
       setInspectPin(pin);
       return pin;
     }
@@ -528,6 +528,8 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
             prepared: card.prepared,
             id: card.id,
             zone: card.zone,
+            cardId: card.cardId,
+            print: card.print,
           }
         : null,
       ZONE.Battlefield,

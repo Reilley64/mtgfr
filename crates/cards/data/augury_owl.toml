@@ -2,6 +2,8 @@
 # When this creature enters, scry 3. (Look at the top three cards of your library, then put any number of them on the
 # bottom and the rest on top in any order.)
 name = "Augury Owl"
+id = "44c5f8e1-d9b8-4067-a60a-1ecc8bd11145"
+default_print = "4e5b8297-406e-4aef-ba46-867c1bf4cc8e"
 otags = ["evasion", "scry", "triggered-ability", "virtual-french-vanilla"]
 oracle = "Flying\nWhen this creature enters, scry 3. (Look at the top three cards of your library, then put any number of them on the bottom and the rest on top in any order.)"
 set = "pca"

@@ -6,6 +6,8 @@
 # engine's Aura-legality SBA (CR 704.5m/n) only detaches an Aura from a non-creature/absent host,
 # never for a can't-be-enchanted quality, so the protection it grants can't dislodge it.
 name = "Flickering Ward"
+id = "3e2ae59a-40a1-46ca-8f24-3231ebd4e4eb"
+default_print = "23fcd6a8-be83-4304-ae32-d3dfc855f596"
 otags = ["activated-ability", "bounceable-aura", "gives-protection", "hate-color-choose", "protects-creature", "repeatable-crime"]
 oracle = "Enchant creature\nAs this Aura enters, choose a color.\nEnchanted creature has protection from the chosen color. This effect doesn't remove this Aura.\n{W}: Return this Aura to its owner's hand."
 set = "soc"

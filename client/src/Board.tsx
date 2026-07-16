@@ -52,7 +52,7 @@ import { type Outcome, outcome } from "~/lib/outcome";
 import { playerLabel } from "~/lib/players";
 import { PROMPT_ROW, PROMPT_TITLE } from "~/lib/promptForms";
 import { type RadialOption, radialOptions } from "~/lib/radial";
-import { imageUrlByName } from "~/lib/scryfall";
+import { imageUrlByPrint } from "~/lib/scryfall";
 import { stackChrome } from "~/lib/stackResponse";
 import { stagedTargetHint } from "~/lib/targetPrompt";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
@@ -618,7 +618,7 @@ export default function Board() {
               expanded={stackExpanded()}
               onExpand={() => setStackExpanded(true)}
               onCollapse={() => setStackExpanded(false)}
-              onHoverName={(n) => surface.setAuxHover("stack", n)}
+              onHoverCard={(c) => surface.setAuxHover("stack", c)}
               onDwell={setDwell}
             />
             <LogPanel />
@@ -630,7 +630,7 @@ export default function Board() {
         <Hand
           viewer={me()}
           hiddenId={stagedCard()?.id ?? null}
-          onHoverName={(n) => surface.setAuxHover("hand", n)}
+          onHoverCard={(c) => surface.setAuxHover("hand", c)}
           onHoverAction={setHoverAction}
           onDrop={onHandDrop}
         />
@@ -936,11 +936,14 @@ function StackOverlay(props: {
   expanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
-  onHoverName: (name: string | null) => void;
+  onHoverCard: (card: { name: string; cardId?: string; print?: string } | null) => void;
   onDwell: (dwelling: boolean) => void;
 }) {
   const names = createMemo(() => new Map(props.state.objects.map((o) => [o.id, o.name])));
   const name = (id: number) => names().get(id) ?? `#${id}`;
+  const byId = createMemo(
+    () => new Map(props.state.objects.map((o) => [o.id, { print: o.print ?? "", cardId: o.card_id || undefined }])),
+  );
   const [holdMs, setHoldMs] = createSignal(props.state.stack_hold_remaining_ms ?? 0);
   const [holdTotal, setHoldTotal] = createSignal(0);
   const [stackHover, setStackHover] = createSignal(false);
@@ -1013,7 +1016,7 @@ function StackOverlay(props: {
   const clearHover = (row: number) => {
     if (hoveredRow !== row) return;
     hoveredRow = null;
-    props.onHoverName(null);
+    props.onHoverCard(null);
     endDwell();
   };
   const leaveStack = () => {
@@ -1021,10 +1024,10 @@ function StackOverlay(props: {
     if (hoveredRow !== null) clearHover(hoveredRow);
     endDwell();
   };
-  const hoverEntry = (row: number, imageName: string | null) => {
+  const hoverEntry = (row: number, imageName: string | null, meta: { cardId?: string; print?: string }) => {
     if (!imageName) return;
     hoveredRow = row;
-    props.onHoverName(imageName);
+    props.onHoverCard({ name: imageName, cardId: meta.cardId, print: meta.print });
     if (props.allowDwell) {
       setDwelling(true);
       props.onDwell(true);
@@ -1049,6 +1052,8 @@ function StackOverlay(props: {
   const stackFace = (opts: {
     row: number;
     imageName: string | null;
+    print: string;
+    cardId?: string;
     label: string;
     isTop: boolean;
     staged?: boolean;
@@ -1056,7 +1061,7 @@ function StackOverlay(props: {
   }) => (
     // biome-ignore lint/a11y/noStaticElementInteractions: hover reveals art / dwell
     <div
-      onMouseEnter={() => hoverEntry(opts.row, opts.imageName)}
+      onMouseEnter={() => hoverEntry(opts.row, opts.imageName, { cardId: opts.cardId, print: opts.print })}
       style={opts.style}
       class={cn(
         "absolute animate-stack-in rounded-game shadow-[0_4px_14px_rgb(0_0_0/0.55)]",
@@ -1075,7 +1080,7 @@ function StackOverlay(props: {
           </div>
         }
       >
-        {(n) => <img src={imageUrlByName(n(), "normal")} alt={n()} width={STACK_CARD_W} class="block rounded-game" />}
+        {(n) => <img src={imageUrlByPrint(opts.print)} alt={n()} width={STACK_CARD_W} class="block rounded-game" />}
       </Show>
     </div>
   );
@@ -1096,10 +1101,13 @@ function StackOverlay(props: {
               return identity;
             });
             const imageName = () => (entry().kind === "spell" ? entry().label : (names().get(entry().source) ?? null));
+            const meta = byId().get(entry().source) ?? { print: "", cardId: undefined };
             const isTop = () => row === props.state.stack.length - 1 && !(props.staged && props.showPileStaged);
             return stackFace({
               row,
               imageName: imageName(),
+              print: meta.print,
+              cardId: meta.cardId,
               label: entry().label,
               isTop: isTop(),
               style: {
@@ -1117,6 +1125,8 @@ function StackOverlay(props: {
             stackFace({
               row: props.state.stack.length,
               imageName: card().name,
+              print: card().print ?? "",
+              cardId: card().card_id || undefined,
               label: card().name,
               isTop: true,
               staged: true,
@@ -1183,16 +1193,23 @@ function StackOverlay(props: {
   const stripOrFullBody = () => {
     const mode = presentation();
     const items = () => {
-      const list = props.state.stack.map((entry, row) => ({
-        row,
-        imageName: entry.kind === "spell" ? entry.label : (names().get(entry.source) ?? null),
-        label: entry.label,
-        staged: false as boolean,
-      }));
+      const list = props.state.stack.map((entry, row) => {
+        const meta = byId().get(entry.source) ?? { print: "", cardId: undefined };
+        return {
+          row,
+          imageName: entry.kind === "spell" ? entry.label : (names().get(entry.source) ?? null),
+          print: meta.print,
+          cardId: meta.cardId,
+          label: entry.label,
+          staged: false as boolean,
+        };
+      });
       if (props.staged) {
         list.push({
           row: props.state.stack.length,
           imageName: props.staged.name,
+          print: props.staged.print ?? "",
+          cardId: props.staged.card_id || undefined,
           label: props.staged.name,
           staged: true,
         });
@@ -1253,6 +1270,8 @@ function StackOverlay(props: {
               return stackFace({
                 row: item.row,
                 imageName: item.imageName,
+                print: item.print,
+                cardId: item.cardId,
                 label: item.label,
                 isTop: isTop(),
                 staged: item.staged,
@@ -1404,7 +1423,7 @@ function PileOverlay(props: { cards: ObjectView[]; onClose: () => void }) {
         <div class={PROMPT_TITLE}>Pile ({props.cards.length})</div>
         <div class="flex flex-wrap gap-xs">
           <For each={props.cards}>
-            {(c) => <img src={imageUrlByName(c.name, "small")} alt={c.name} width={90} class="rounded-md" />}
+            {(c) => <img src={imageUrlByPrint(c.print ?? "")} alt={c.name} width={90} class="rounded-md" />}
           </For>
         </div>
         <div class={cn(PROMPT_ROW, "mt-sm")}>

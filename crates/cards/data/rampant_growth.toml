@@ -2,6 +2,8 @@
 # Rampant Growth: "Search your library for a basic land card, put that card onto the
 # battlefield tapped, then shuffle." — the canonical two-mana ramp spell.
 name = "Rampant Growth"
+id = "8539f295-5d58-4436-a73a-b9277c4c7795"
+default_print = "b7c47024-5e08-4b17-b41a-7647f8b814b9"
 otags = ["tutor-land-basic", "tutor-land-to-battlefield", "land-ramp"]
 oracle = "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."
 set = "tdc"

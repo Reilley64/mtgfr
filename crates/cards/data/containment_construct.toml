@@ -5,6 +5,8 @@
 # The artifact creature type is modeled as a plain creature (bodies-only precedent:
 # Darksteel Myr, Solemn Simulacrum).
 name = "Containment Construct"
+id = "54d48e54-be4a-4a78-a778-b28e74ef7134"
+default_print = "feb09084-0fdb-4226-b536-56d856354b5a"
 otags = ["alliteration", "impulsive-recursion", "self-discard-matters", "triggered-ability"]
 oracle = "Whenever you discard a card, you may exile that card from your graveyard. If you do, you may play that card this turn."
 set = "soc"

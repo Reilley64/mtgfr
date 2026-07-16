@@ -2,6 +2,8 @@
 # is that card's mana value. Whenever a creature you control deals combat damage to a player this turn, copy the exiled
 # card. You may cast the copy without paying its mana cost.
 name = "Surge to Victory"
+id = "8ea414c1-88cf-46d4-9a54-6dee9847c537"
+default_print = "b5345934-60eb-417c-9716-477882c4796d"
 otags = ["delayed-trigger", "demilich-effect", "free-cast-another", "graveyard-fuel-instant", "graveyard-fuel-sorcery", "mana-value-matters", "power-boost-to-all", "saboteur", "single-target-instant-sorcery", "synergy-instant", "synergy-sorcery"]
 oracle = "Exile target instant or sorcery card from your graveyard. Creatures you control get +X/+0 until end of turn, where X is that card's mana value. Whenever a creature you control deals combat damage to a player this turn, copy the exiled card. You may cast the copy without paying its mana cost."
 set = "soc"

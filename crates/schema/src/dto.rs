@@ -153,7 +153,13 @@ pub struct ObjectView {
     pub zone: u8,
     pub owner: u8,
     pub controller: u8,
+    /// Card id (Scryfall oracle id). Empty when face-down or a token without one.
+    #[serde(default)]
+    pub card_id: String,
     pub name: String,
+    /// Printing UUID for art (CDN). Empty when unknown / token without art.
+    #[serde(default)]
+    pub print: String,
     pub kind: WireKind,
     pub mana_cost: WireCost,
     /// Whether casting this card requires choosing a target (drives the targeting UI).
@@ -219,6 +225,9 @@ pub struct ObjectView {
 pub struct ModifierSourceView {
     /// Card def name — clicking inspects this catalog card.
     pub source_name: String,
+    /// Card id when a matching battlefield permanent is still present; empty for synthetic labels.
+    #[serde(default)]
+    pub source_card_id: String,
     /// Display crumbs: `"+1/+1"`, `"Flying"`, `"goaded"`, `"controls"`, `"mana ability"`, …
     pub contributions: Vec<String>,
 }
@@ -925,11 +934,14 @@ pub struct Me {
 // it carries the engine's *actual simplified* stats/keywords/effect text (not Scryfall
 // oracle text, which wouldn't match a simplified card).
 
-/// One line of a decklist: a pool card name and how many copies.
+/// One line of a decklist: a Card id, how many copies, and the chosen Printing UUID.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct DeckCardEntry {
-    pub name: String,
+    /// Card id (Scryfall oracle id).
+    pub id: String,
     pub count: u32,
+    /// Scryfall card UUID for art (required).
+    pub print: String,
 }
 
 /// A deck in a list view (no card contents).
@@ -938,6 +950,9 @@ pub struct DeckSummary {
     pub id: i64,
     pub name: String,
     pub commander: String,
+    /// Printing UUID for the commander's art (list hover preview).
+    #[serde(default)]
+    pub commander_print: String,
 }
 
 /// A deck with its full contents (the builder's edit view).
@@ -945,7 +960,10 @@ pub struct DeckSummary {
 pub struct DeckDetail {
     pub id: i64,
     pub name: String,
+    /// Commander Card id (Scryfall oracle id).
     pub commander: String,
+    /// Printing UUID for the commander's art.
+    pub commander_print: String,
     pub cards: Vec<DeckCardEntry>,
 }
 
@@ -953,7 +971,10 @@ pub struct DeckDetail {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct SaveDeckRequest {
     pub name: String,
+    /// Commander Card id (Scryfall oracle id).
     pub commander: String,
+    /// Printing UUID for the commander's art.
+    pub commander_print: String,
     pub cards: Vec<DeckCardEntry>,
 }
 

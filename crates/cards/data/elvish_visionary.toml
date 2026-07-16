@@ -1,5 +1,7 @@
 # When this creature enters, draw a card.
 name = "Elvish Visionary"
+id = "c6a3a882-a127-4590-93d7-679ef4313efe"
+default_print = "a2f174e6-9532-4fc3-815b-2dc3966c6523"
 otags = ["cantrip", "hand-neutral", "triggered-ability", "virtual-vanilla"]
 oracle = "When this creature enters, draw a card."
 set = "cmr"

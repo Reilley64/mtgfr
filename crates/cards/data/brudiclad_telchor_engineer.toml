@@ -3,6 +3,8 @@
 # a token you control. If you do, each other token you control becomes a copy of that token.
 # Brudiclad, Telchor Engineer (SOC): {4}{U}{R} 4/4 Legendary Artifact Creature.
 name = "Brudiclad, Telchor Engineer"
+id = "a7ac5d98-805e-4212-be94-333a0c0c44a7"
+default_print = "d24bf1df-5087-4ad6-a1aa-4eda2340cd8b"
 otags = ["copy-token", "cycle-2xm-r-two-color", "cycle-c18-alt-commander", "faux-targeting", "gives-haste", "keyword-anthem", "repeatable-artifact-tokens", "repeatable-creature-tokens", "shapesharing", "synergy-token-creature", "triggered-ability", "type-addition-phyrexian"]
 oracle = "Creature tokens you control have haste.\nAt the beginning of combat on your turn, create a 2/1 blue Phyrexian Myr artifact creature token. Then you may choose a token you control. If you do, each other token you control becomes a copy of that token."
 set = "soc"

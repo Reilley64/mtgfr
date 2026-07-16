@@ -2,6 +2,8 @@
 # This land enters tapped.
 # Sunlit Marsh (SOC): "{T}: Add {W} or {B}. This land enters tapped."
 name = "Sunlit Marsh"
+id = "a5e5a259-5fa7-4b01-93cb-a2b4aaf80927"
+default_print = "fa447616-db24-4729-bf66-7f72aba0272d"
 otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped."
 set = "soc"

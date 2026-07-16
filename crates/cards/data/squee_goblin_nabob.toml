@@ -1,6 +1,8 @@
 # At the beginning of your upkeep, you may return this card from your graveyard to your hand.
 # Squee, Goblin Nabob (soc): {2}{R} 1/1 Legendary Goblin.
 name = "Squee, Goblin Nabob"
+id = "0ef760f4-bbec-4735-8d60-fc24d973452a"
+default_print = "8aabc541-ff2a-416f-a973-44eda8ec4706"
 otags = ["deprecated-legend-type", "regrowth-self", "trigger-from-graveyard"]
 oracle = "At the beginning of your upkeep, you may return this card from your graveyard to your hand."
 set = "soc"

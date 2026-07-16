@@ -42,8 +42,10 @@ pub struct Deck {
     #[index]
     pub user_id: i64,
     pub name: String,
-    /// Commander card name.
+    /// Commander Card id (Scryfall oracle id).
     pub commander: String,
+    /// Printing UUID for the commander's art.
+    pub commander_print: String,
     /// `serde_json` of `Vec<schema::DeckCardEntry>` — the whole 99, read/written as a unit.
     /// ponytail: a JSON blob, not a `deck_cards` join table; add relations only if per-card
     /// queries ever appear (they won't for legality).
@@ -90,10 +92,12 @@ mod tests {
             .expect("find by unique email");
         assert_eq!(found.id, user.id);
 
+        let tajic = cards::get_by_name("Tajic, Legion's Edge").expect("pool");
         let deck = Deck::create()
             .user_id(user.id)
             .name("Test")
-            .commander("Tajic, Legion's Edge")
+            .commander(tajic.id)
+            .commander_print(tajic.default_print)
             .cards("[]")
             .exec(&mut db)
             .await

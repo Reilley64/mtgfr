@@ -7,7 +7,7 @@ use engine::*;
 
 /// Load a real card from the `cards` crate's TOML pool (a dev-dependency).
 fn card(name: &str) -> CardDef {
-    cards::get(name).unwrap_or_else(|| panic!("unknown card {name:?}"))
+    cards::get_by_name(name).unwrap_or_else(|| panic!("unknown card {name:?}"))
 }
 
 /// The battlefield permanent id minted by a `LandPlayed` event (the played land's card object
@@ -322,6 +322,8 @@ const NO_ADD: AdditionalCost = AdditionalCost {
 /// to isolate the graveyard-cast-then-exile behavior.
 const FLASHBACK_DRAW: CardDef = CardDef {
     name: "Flashback Draw (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -1271,6 +1273,8 @@ fn a_normally_cast_permanent_dies_to_the_graveyard_without_serra_rider() {
 /// the ordering choice (real cards with two ETB abilities exist; this stays local).
 const TWO_ETB: CardDef = CardDef {
     name: "Test Double-ETB",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 1,
         colored: [0, 0, 0, 0, 0],
@@ -1366,6 +1370,8 @@ const TWO_ETB: CardDef = CardDef {
 /// a targeted ETB yet; see ADR 0006).
 const PINGER: CardDef = CardDef {
     name: "Test Pinger",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -1437,6 +1443,8 @@ const PINGER: CardDef = CardDef {
 /// A test-only creature with an optional ("you may") ETB draw — exercises the yes/no prompt.
 const MAY_DRAW: CardDef = CardDef {
     name: "Test May-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -1499,6 +1507,8 @@ const MAY_DRAW: CardDef = CardDef {
 /// Like [`MAY_DRAW`] but you must pay {1} to draw — exercises the pay-or-decline prompt.
 const MAY_PAY_DRAW: CardDef = CardDef {
     name: "Test May-Pay-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -1581,6 +1591,8 @@ const MAY_PAY_DRAW: CardDef = CardDef {
 /// direct test can exercise [`Effect::LookAtTop`] without staging a magecraft cast.
 const LOOK_DIG: CardDef = CardDef {
     name: "Test Look-Dig",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -1652,6 +1664,8 @@ const LOOK_DIG: CardDef = CardDef {
 /// isolated from delve's cost math.
 const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     name: "Test Look-Dig Mandatory Two",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -1724,6 +1738,8 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
 /// combat.
 const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     name: "Test Look-Dig To Battlefield",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -1839,6 +1855,8 @@ const fn creature(
 ) -> CardDef {
     CardDef {
         name,
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Creature {
             power,
@@ -3974,6 +3992,8 @@ fn layered_pt_recompute_matches_additive_stack() {
 /// above its printed value (Venerable Warsinger's X reads the actual damage dealt).
 const PUMP_POWER_PLUS_2: CardDef = CardDef {
     name: "Pump +2/+0 (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4039,6 +4059,8 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
 /// so a test can stack both on one permanent.
 const GRANT_FLYING: CardDef = CardDef {
     name: "Grant Flying (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4102,6 +4124,8 @@ const GRANT_FLYING: CardDef = CardDef {
 /// A test-only instant "Target creature gains indestructible until end of turn."
 const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     name: "Grant Indestructible (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4166,6 +4190,8 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
 /// real removal spell's other clauses.
 const DESTROY: CardDef = CardDef {
     name: "Destroy (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4235,6 +4261,8 @@ const DESTROY: CardDef = CardDef {
 /// type, for proving a permanent-scoped (not creature-only) died-this-turn tally.
 const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     name: "Destroy Permanent (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4304,6 +4332,8 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
 /// [`PermanentFilter::nonbasic`] (White Orchid Phantom's ETB) apart from the ETB shell.
 const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     name: "Destroy Nonbasic Land (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4376,6 +4406,8 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
 /// reanimation payoff no-ops if the dying card is exiled out from under it in response.
 const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     name: "Exile From Any Graveyard (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4445,6 +4477,8 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
 /// return payoff no-ops if a non-creature Aura is exiled out from under it in response).
 const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     name: "Exile Any Card From Any Graveyard (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4516,6 +4550,8 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
 /// exercises [`PermanentFilter::noncreature`] (Haywire Mite's exile ability).
 const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     name: "Exile Noncreature Artifact or Enchantment (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4587,6 +4623,8 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
 /// [`PermanentFilter::power_max`] (Silverquill Charm's "creature with power 2 or less").
 const EXILE_SMALL_CREATURE: CardDef = CardDef {
     name: "Exile Small Creature (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4658,6 +4696,8 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
 /// axis (#124) on an Artifact/Enchantment Creature's [`CardKind::Creature`].
 const EXILE_ENCHANTMENT: CardDef = CardDef {
     name: "Exile Enchantment (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4726,6 +4766,8 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
 /// [`EXILE_ENCHANTMENT`].
 const EXILE_ARTIFACT: CardDef = CardDef {
     name: "Exile Artifact (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4794,6 +4836,8 @@ const EXILE_ARTIFACT: CardDef = CardDef {
 /// spell/ability, even its own controller's.
 const SHROUD_CREATURE: CardDef = CardDef {
     name: "Test Shroud Creature",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -4847,6 +4891,8 @@ const SHROUD_CREATURE: CardDef = CardDef {
 /// abilities opponents control, but its own controller can still target it.
 const HEXPROOF_CREATURE: CardDef = CardDef {
     name: "Test Hexproof Creature",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -4901,6 +4947,8 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
 /// not this effect).
 const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     name: "Mass Indestructible (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -4965,6 +5013,8 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
 /// where X is the number of creatures you control." — the Moonshaker Cavalry shape, isolated.
 const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     name: "Mass Flying Per Creature (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -5030,6 +5080,8 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
 /// to duplicate; `Keyword::Unblockable`'s block-legality effect is what's under test).
 const GRANT_UNBLOCKABLE: CardDef = CardDef {
     name: "Grant Unblockable (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -5469,6 +5521,8 @@ fn deekah_grant_unblockable_lets_token_through() {
 /// half of real `soc` cards like Quandrix Command / Run the Play, isolated.
 const GROWTH: CardDef = CardDef {
     name: "Growth (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -5574,6 +5628,8 @@ fn a_counter_effect_permanently_grows_the_target() {
 /// A plain 1/1 flying token — the Inkling made across Silverquill (soc).
 const INKLING: CardDef = CardDef {
     name: "Inkling",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -5626,6 +5682,8 @@ const INKLING: CardDef = CardDef {
 /// A test-only sorcery "Create two 1/1 Inkling tokens with flying."
 const MAKE_INKLINGS: CardDef = CardDef {
     name: "Make Inklings (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -6780,6 +6838,8 @@ fn a_token_ceases_to_exist_when_it_dies() {
 /// fire as the token ceases to exist, not just base P/T + keywords.
 const PEST: CardDef = CardDef {
     name: "Pest",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -6842,6 +6902,8 @@ const PEST: CardDef = CardDef {
 /// A test-only sorcery "Create a Pest token with 'When this token dies, you gain 1 life.'"
 const MAKE_PEST: CardDef = CardDef {
     name: "Make Pest (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -7163,6 +7225,8 @@ fn a_token_copy_carries_the_originals_keywords() {
 /// (attack) triggered ability, the shape Silverquill (Breena) leans on.
 const HERALD: CardDef = CardDef {
     name: "Herald (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -8913,6 +8977,8 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
     }];
     let granter = CardDef {
         name: "Free Artifact Mana Grant (test)",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Creature {
             power: 1,
@@ -8963,6 +9029,8 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
     };
     let rock = CardDef {
         name: "Bare Rock (test)",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Artifact,
         legendary: false,
@@ -10170,6 +10238,8 @@ fn target_player_draws_makes_the_targeted_player_draw() {
 /// (Secret Rendezvous's "target opponent each draw three cards").
 const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     name: "Target Opponent Draws Three (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -11331,6 +11401,8 @@ fn state_based_actions_spare_undamaged_creatures() {
 /// Liege / Creakwood Liege, whose bonus counts their own body per `anthem_bonus`.
 const ANTHEM_LORD: CardDef = CardDef {
     name: "Test Anthem Lord",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -11979,6 +12051,8 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
         PlayerId(0),
         CardDef {
             name: "Return From Exile (test)",
+            id: "",
+            default_print: "",
             cost: Cost::FREE,
             kind: CardKind::Spell {
                 speed: SpellSpeed::Instant,
@@ -12119,6 +12193,8 @@ fn hofri_ghostforge_multiple_deaths_each_token_returns_its_own_card() {
 /// through a real card's cast/target machinery.
 const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     name: "Test Counter Shedder",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -12210,6 +12286,8 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
 /// non-creature sacrifice cost without routing through a real card's token-minting machinery.
 const TEST_FOOD: CardDef = CardDef {
     name: "Test Food",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Artifact,
     legendary: false,
@@ -12259,6 +12337,8 @@ const TEST_FOOD: CardDef = CardDef {
 /// minimal fixture for a non-creature (`sacrifice = { permanent = { ... } }`) sacrifice cost.
 const TEST_SAC_A_FOOD: CardDef = CardDef {
     name: "Test Sac A Food",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -15445,6 +15525,8 @@ fn combat_getters_expose_declared_attackers_and_blocks() {
 /// cost. Exercises paying a `{C}` pip (only colorless mana, never a color, may pay it).
 const COLORLESS_ROCK: CardDef = CardDef {
     name: "Test Colorless Rock",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 0,
         colored: [0, 0, 0, 0, 0],
@@ -16028,6 +16110,8 @@ fn kami_adds_power_many_of_one_chosen_color() {
 const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
     CardDef {
         name,
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Land {
             produces: Some(LandProduces::Mana(Mana::Either(a, b))),
@@ -16082,6 +16166,8 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
 const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
     CardDef {
         name,
+        id: "",
+        default_print: "",
         cost: Cost {
             generic,
             colored,
@@ -16402,6 +16488,8 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
     }]));
     CardDef {
         name,
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Land {
             produces: None,
@@ -16642,6 +16730,8 @@ fn hybrid_pips_count_toward_mana_value() {
 /// of making a token).
 const DIES_DRAW: CardDef = CardDef {
     name: "Test Dies-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -17106,6 +17196,8 @@ fn zulaport_triggers_on_its_own_death() {
 /// `*IncludingThis` variant), to guard that the plain arm stays self-excluded.
 const WATCHES_CREATURE_DIES: CardDef = CardDef {
     name: "Test Watches-Creature-Dies",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 0,
@@ -17210,6 +17302,8 @@ fn plain_creature_dies_still_excludes_self() {
 /// at once each turn (`once_each_turn: true`).
 const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     name: "Test Watches-Creature-Dies-Once-Each-Turn",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -17348,6 +17442,8 @@ fn a_regular_triggered_ability_without_the_cap_fires_every_time() {
 /// A test-only mana-value-3 creature, free otherwise, for exercising `mv_max` filters.
 const CREATURE_MV3: CardDef = CardDef {
     name: "Test MV3 Creature",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 3,
         ..Cost::FREE
@@ -17404,6 +17500,8 @@ const CREATURE_MV3: CardDef = CardDef {
 /// filter's ceiling.
 const CREATURE_MV4: CardDef = CardDef {
     name: "Test MV4 Creature",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 4,
         ..Cost::FREE
@@ -17455,6 +17553,8 @@ fn tocasias_welcome_draws_on_mv3_creature_enter() {
 /// you control" effect its real payoff needs.
 const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     name: "Test Watches-Any-Sacrifice",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -18029,6 +18129,8 @@ fn sacrificing_a_creature_you_do_not_control_or_naming_none_is_rejected() {
 /// Arena — "At the beginning of your upkeep, draw a card" (dropping the life loss).
 const UPKEEP_DRAW: CardDef = CardDef {
     name: "Test Upkeep-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -18112,6 +18214,8 @@ fn an_upkeep_trigger_fires_at_the_controllers_upkeep() {
 /// non-optional so it hits the stack directly (the guard/scan is what's under test here).
 const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     name: "Test Graveyard Upkeep-Return",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -18521,6 +18625,8 @@ fn vanguard_of_the_restless_returns_itself_when_a_spirit_you_control_enters() {
 /// Witherbloom's "At the beginning of each upkeep, …" (dropping the token/life half).
 const EACH_UPKEEP_DRAW: CardDef = CardDef {
     name: "Test Each-Upkeep-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -18627,6 +18733,8 @@ fn an_each_upkeep_trigger_also_fires_on_its_controllers_own_upkeep() {
 /// River Cutthroat — "At the beginning of your end step, … draw a card" (dropping the if).
 const END_STEP_DRAW: CardDef = CardDef {
     name: "Test EndStep-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -18705,6 +18813,8 @@ fn an_end_step_trigger_fires_at_the_controllers_end_step() {
 /// Leonin Vanguard's timing — "At the beginning of combat on your turn, … [do something]."
 const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     name: "Test BeginCombat-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -18811,6 +18921,8 @@ fn a_begin_combat_trigger_does_not_fire_on_upkeep_or_the_opponents_turn() {
 /// A free creature whose ETB gains 3 life — used to *cause* a life gain through the stack.
 const GAIN_LIFE_ETB: CardDef = CardDef {
     name: "Test Gain-Life-ETB",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -18874,6 +18986,8 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
 /// Dreams — "Whenever you gain life, … draw a card" (unconditional here).
 const LIFE_GAIN_DRAW: CardDef = CardDef {
     name: "Test LifeGain-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -18970,6 +19084,8 @@ fn a_you_gain_life_trigger_fires_when_the_controller_gains_life() {
 /// spell, draw a card" (the copy half isn't modeled; the engine has no spell copying yet).
 const MAGECRAFT_DRAW: CardDef = CardDef {
     name: "Test Magecraft-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -19449,6 +19565,8 @@ fn rhystic_study_ignores_your_own_casts() {
 /// needs the caster to also be the active player in their own main phase.
 const INSTANT_FILLER: CardDef = CardDef {
     name: "Instant Filler (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -19512,6 +19630,8 @@ const INSTANT_FILLER: CardDef = CardDef {
 /// Treasure token" — the Goldspan Dragon shape (CR 603.2c "becomes the target").
 const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     name: "Test Becomes-Targeted Treasure Maker",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 4,
@@ -19610,6 +19730,8 @@ fn spell_targeting_elsewhere_does_not_trigger_goldspan() {
 /// `Trigger::CastSpell`'s `filter` axis independent of Monologue Tax's `caster`/`nth_each_turn`.
 const AURA_CAST_DRAW: CardDef = CardDef {
     name: "Test Aura-Cast Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -19721,6 +19843,8 @@ fn cast_spell_trigger_respects_spell_filter() {
 /// probe, independent of any pool card's own resolution effects.
 const X_INSTANT_FILLER: CardDef = CardDef {
     name: "X Instant Filler (test)",
+    id: "",
+    default_print: "",
     cost: Cost { x: 1, ..Cost::FREE },
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -19782,6 +19906,8 @@ const X_INSTANT_FILLER: CardDef = CardDef {
 /// artifacts are historic).
 const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     name: "Historic Test Artifact",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Artifact,
     legendary: false,
@@ -20175,6 +20301,8 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
 /// [`Trigger::PlayerDraws`] test drive draws across a turn boundary.
 const DRAW_ONE_TARGET: CardDef = CardDef {
     name: "Draw One, Target Player (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -20705,6 +20833,8 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
 /// isolated from its card-draw riders.
 const COUNTER: CardDef = CardDef {
     name: "Counter (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -22723,6 +22853,8 @@ fn mirrorwing_no_copies_when_spell_targets_more_than_just_it() {
 /// (Angelic Destiny, etc.) need the layer system, so this stands in for the combat check.
 const FLIGHT: CardDef = CardDef {
     name: "Flight (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
@@ -22844,6 +22976,8 @@ const FALLEN_IDEAL_TEST: CardDef = CardDef {
 /// A test-only Aura that SETS its host's base P/T to 0/1 (Darksteel Mutation's core effect).
 const MUTATION: CardDef = CardDef {
     name: "Mutation (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
@@ -22970,6 +23104,8 @@ fn darksteel_mutation_makes_its_host_a_zero_one() {
 /// `Effect::AnthemStatic`, i.e. the type/subtype layer flows through the anthem match choke.
 const ANGEL_ANTHEM: CardDef = CardDef {
     name: "Test Angel Anthem",
+    id: "",
+    default_print: "",
     kind: CardKind::Enchantment,
     abilities: &[Ability {
         timing: Timing::Static,
@@ -23099,6 +23235,8 @@ fn darksteel_mutation_sets_type_line() {
 /// under Darksteel Mutation none of these printed abilities/keywords should function.
 const MUTABLE_FLYER: CardDef = CardDef {
     name: "Test Mutable Flyer",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -24644,6 +24782,8 @@ fn angelic_destiny_returns_to_hand_when_its_host_dies_in_a_board_wipe() {
 /// owner regardless of who controls the ability that placed it).
 const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     name: "Test Watches-Host-Dies-Draw",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
@@ -24730,6 +24870,8 @@ fn enchanted_creature_dies_trigger_fires_under_the_auras_own_controller() {
 /// controls the Aura, what it's attached to) from any payoff on the Aura itself.
 const PLAIN_AURA: CardDef = CardDef {
     name: "Test Plain Aura",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
@@ -26117,6 +26259,8 @@ fn skyclave_apparition_leaves_with_nothing_exiled_mints_no_illusion() {
 /// live primitive other cards can use.
 const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     name: "Test Control-Attached Aura",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Aura,
     legendary: false,
@@ -26902,6 +27046,8 @@ fn tragic_arrogance_skips_players_with_only_lands() {
 /// the APNAP walk from Augusta's payoff.
 const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     name: "Each Exile Graveyard (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -29877,6 +30023,8 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
 /// Reclamation's widened "permanent card" graveyard target (creature *or* noncreature).
 const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     name: "Test Artifact MV2",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 2,
         colored: [0, 0, 0, 0, 0],
@@ -29943,6 +30091,8 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
 /// The same shape at mana value 4 — over Sevinne's "mana value 3 or less" gate.
 const NONCREATURE_PERMANENT_MV4: CardDef = CardDef {
     name: "Test Artifact MV4",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 4,
         colored: [0, 0, 0, 0, 0],
@@ -30241,6 +30391,8 @@ fn primary_research_reanimates_a_nonland_permanent_gated_by_mana_value() {
 /// The same shape at mana value 5 — over Angel of Indemnity's "mana value 4 or less" gate.
 const NONCREATURE_PERMANENT_MV5: CardDef = CardDef {
     name: "Test Artifact MV5",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 5,
         colored: [0, 0, 0, 0, 0],
@@ -30497,6 +30649,8 @@ fn lorehold_charm_mode_reanimates_a_cheap_artifact_or_creature() {
 /// separate multi-target gap — see its `approximates` note).
 const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     name: "Return Land From Graveyard (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -30677,6 +30831,8 @@ fn mystic_sanctuary_entering_tapped_never_offers_the_tuck() {
 /// battlefield (the Replenish shape).
 const REPLENISH: CardDef = CardDef {
     name: "Replenish (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -33985,6 +34141,8 @@ fn pacifism_restriction_lifts_when_aura_leaves() {
 /// `GainControlUntilEndOfTurn` from Besmirch's goad/untap/haste riders.
 const STEAL_UNTIL_EOT: CardDef = CardDef {
     name: "Steal Until End of Turn (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -34324,6 +34482,8 @@ const MV5: CardDef = CardDef {
 /// Melody's real TOML.
 const MELODY: CardDef = CardDef {
     name: "Melody (test)",
+    id: "",
+    default_print: "",
     cost: Cost {
         colored: [0, 2, 0, 0, 0], // {U}{U}
         x: 1,
@@ -34462,6 +34622,8 @@ fn entrancing_melody_gains_permanent_control_of_a_mana_value_x_creature() {
 const fn artifact(name: &'static str, mv: u8) -> CardDef {
     CardDef {
         name,
+        id: "",
+        default_print: "",
         cost: Cost {
             generic: mv,
             ..Cost::FREE
@@ -34955,6 +35117,8 @@ fn a_mode_chosen_for_a_non_modal_spell_is_rejected() {
 //   3 — you gain 7 life
 const CHOOSE_TWO: CardDef = CardDef {
     name: "Choose Two (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -35297,6 +35461,8 @@ fn witherbloom_command_mode_0_mills_then_returns_land() {
 //   1 — you gain 3 life
 const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     name: "Choose One or More (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -35677,6 +35843,8 @@ fn shadrix_declining_the_may_resolves_to_nothing() {
 /// pauses at resolution for the caster to pick their own creature (see `Effect::Fight`'s doc).
 const FIGHT_SPELL: CardDef = CardDef {
     name: "Fight (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -36936,6 +37104,8 @@ fn drumbellower_does_not_fire_on_its_controllers_own_untap_step() {
 /// (dropping the token's white-Spirit color/subtype, a separate #10 residual).
 const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     name: "Test Graveyard-Exit Watcher",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -37259,6 +37429,8 @@ fn spirit_of_resilience_only_offers_artifact_or_creature_cards() {
 /// (a `Sequence`) whose counters and trample hit the same chosen creature.
 static PACK_A_PUNCH: CardDef = CardDef {
     name: "Pack a Punch",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 1,
         colored: [1, 0, 0, 1, 0], // {W}{R}
@@ -37348,6 +37520,8 @@ static PACK_A_PUNCH: CardDef = CardDef {
 /// back-face spell.
 static KIROL: CardDef = CardDef {
     name: "Kirol, History Buff",
+    id: "",
+    default_print: "",
     cost: Cost {
         colored: [1, 0, 0, 1, 0], // {R}{W}
         ..Cost::FREE
@@ -37604,6 +37778,8 @@ fn cast_prepared_rejected_without_the_mana() {
 /// permanent an opponent controls to its owner's hand."
 static PETTY_THEFT_TEST: CardDef = CardDef {
     name: "Petty Theft",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 1,
         colored: [0, 1, 0, 0, 0], // {U}
@@ -37679,6 +37855,8 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
 /// carrying Petty Theft as its adventure half.
 static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     name: "Brazen Borrower",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 1,
         colored: [0, 2, 0, 0, 0], // {U}{U}
@@ -37738,6 +37916,8 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
 /// `groves_bounty_distributes_x_counters_among_target_creatures` below.
 static GROVES_BOUNTY_TEST: CardDef = CardDef {
     name: "Grove's Bounty",
+    id: "",
+    default_print: "",
     cost: Cost {
         colored: [0, 0, 0, 0, 1], // {G}
         x: 1,
@@ -37816,6 +37996,8 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
 /// carrying Grove's Bounty as its adventure half.
 static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     name: "Elusive Otter",
+    id: "",
+    default_print: "",
     cost: Cost {
         colored: [0, 0, 0, 0, 1], // {G}
         ..Cost::FREE
@@ -38421,6 +38603,8 @@ fn inspired_skypainter_maestros_gift_copies_target_creature_with_haste() {
 /// cards."
 static BRAINGEYSER_TEST: CardDef = CardDef {
     name: "Braingeyser (test)",
+    id: "",
+    default_print: "",
     cost: Cost {
         colored: [0, 2, 0, 0, 0], // {U}{U}
         x: 1,
@@ -38488,6 +38672,8 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
 /// is skipped here — it doesn't feed `from_hand`, and the real TOML covers it).
 static DIRGUR_TEST: CardDef = CardDef {
     name: "Dirgur Focusmage (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -38894,6 +39080,8 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
     // fires on a flashback cast from the graveyard — proves the new gate is opt-in. (CR 702.34, CR 403.5, CR 601)
     const WATCH_ANY_CAST: CardDef = CardDef {
         name: "Watch Any Cast (test)",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Creature {
             power: 1,
@@ -39780,6 +39968,8 @@ const fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
 const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
     CardDef {
         name,
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Planeswalker { loyalty },
         legendary: false,
@@ -41038,6 +41228,8 @@ fn double_counters_on_a_creature_with_no_counters_is_a_no_op() {
 /// prove a filtered search can't find an off-filter card (a land).
 const CREATURE_TUTOR: CardDef = CardDef {
     name: "Test Creature Tutor",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -42943,6 +43135,8 @@ fn assassins_trophy_destroys_any_opponents_permanent_and_ramps_its_controller() 
 /// than Blasphemous Act's 13 is in the pool, so the toughness threshold is exercised here.
 const MASS_SHOCK: CardDef = CardDef {
     name: "Mass Shock",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -43005,6 +43199,8 @@ const MASS_SHOCK: CardDef = CardDef {
 /// Effect::ReturnAllToHand (the mass mirror of ReturnToHand) — Perplexing Test.
 const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     name: "Test Mass-Bounce",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -43151,6 +43347,8 @@ fn perplexing_test_mode_returns_only_nontoken_creatures() {
 /// Determined Iteration.
 const POPULATE_AT_END_STEP: CardDef = CardDef {
     name: "Test Populate",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -43793,6 +43991,8 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
 /// effect without a real card's riders (draw, additional costs).
 const MAKE_TREASURES: CardDef = CardDef {
     name: "Make Treasures (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -44005,6 +44205,8 @@ const INSTANT_DRAW_ABILITY: [Ability; 1] = [spell_ability(Effect::DrawCards {
 const fn instant_with_mana_value(generic: u8) -> CardDef {
     CardDef {
         name: "Test Instant",
+        id: "",
+        default_print: "",
         cost: Cost {
             generic,
             ..Cost::FREE
@@ -44063,6 +44265,8 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
 const fn instant_with_generic_and_x(generic: u8) -> CardDef {
     CardDef {
         name: "Test X Instant",
+        id: "",
+        default_print: "",
         cost: Cost {
             generic,
             x: 1,
@@ -44179,6 +44383,8 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
 /// from Deekah's own stats/other ability.
 const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     name: "Test Deekah",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 3,
@@ -44368,6 +44574,8 @@ fn renegade_bull_gets_plus_x_until_end_of_turn_where_x_is_the_cast_spells_mana_v
 /// flying and haste — the base power/toughness is overridden at mint time by `set_base_pt`.
 const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     name: "Dragon Illusion",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 0,
@@ -44423,6 +44631,8 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
 /// beginning of the next end step."
 const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     name: "Test Manaform Hellkite",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 4,
@@ -44715,6 +44925,8 @@ fn manaform_hellkite_pool_card_creates_the_dragon_illusion() {
 /// `set_base_pt`.
 const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     name: "Elemental",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 0,
@@ -44770,6 +44982,8 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
 /// greatest mana value among instant and sorcery spells you've cast this turn."
 const ROOTHA_TEST: CardDef = CardDef {
     name: "Test Rootha",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 3,
@@ -44953,6 +45167,8 @@ fn rootha_mastering_the_moment_pool_card_creates_the_elemental() {
 /// turn. They gain haste. Exile them at the beginning of the next end step."
 const RIONYA_TEST: CardDef = CardDef {
     name: "Test Rionya",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 3,
@@ -45189,6 +45405,8 @@ fn rionya_fire_dancer_pool_card_mints_hasty_copies() {
 /// controller's library face-up and lets them play it until end of turn (impulse draw).
 const IMPULSE: CardDef = CardDef {
     name: "Test Impulse",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -45384,6 +45602,8 @@ fn laelia_impulses_the_top_card_on_attack_and_it_is_playable_from_exile() {
 
 const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     name: "Test Random Graveyard Exile",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -45642,6 +45862,8 @@ fn laelia_grows_when_cards_exiled_from_your_library_or_graveyard() {
 /// cards, you may play them • create three Treasures." The mode is chosen at resolution.
 const MODAL_DRAGON: CardDef = CardDef {
     name: "Modal Dragon (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 2,
@@ -47058,6 +47280,8 @@ fn cleanup_discards_nothing_and_raises_no_choice_when_hand_is_at_the_limit() {
 /// modelling Reliquary Tower / Curiosity Crafter's static ability, minus their other text.
 const NO_MAX_HAND_SIZE: CardDef = CardDef {
     name: "Test No Maximum Hand Size",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Artifact,
     legendary: false,
@@ -47149,6 +47373,8 @@ macro_rules! amount_spell {
     ($name:expr, $speed:expr, $cost:expr, $effect:expr) => {
         CardDef {
             name: $name,
+            id: "",
+            default_print: "",
             cost: $cost,
             kind: CardKind::Spell { speed: $speed },
             legendary: false,
@@ -47314,6 +47540,8 @@ macro_rules! hydra_with_etb {
     ($name:expr, $count:expr) => {
         CardDef {
             name: $name,
+            id: "",
+            default_print: "",
             cost: X_COST,
             kind: CardKind::Creature {
                 power: 0,
@@ -48216,6 +48444,8 @@ fn mana_geyser_adds_red_per_tapped_opponent_land() {
 const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
     CardDef {
         name,
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Spell {
             speed: SpellSpeed::Sorcery,
@@ -50178,6 +50408,8 @@ fn plumb_the_forbidden_naming_an_opponents_creature_is_rejected() {
 /// or planeswalker.`
 const TEST_STEELBANE: CardDef = CardDef {
     name: "Test Steelbane",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 0,
@@ -50538,6 +50770,8 @@ fn toxic_deluge_x_zero_is_legal() {
 /// (Glorious Anthem's own +1/+1 anthem would otherwise buff the constellation token too).
 const TEST_ENCHANTMENT: CardDef = CardDef {
     name: "Test Enchantment",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -50589,6 +50823,8 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
 /// casting this card must not fire its own ability off its own entry.
 const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     name: "Test Watches-Enchantments-Enter",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -50616,6 +50852,8 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
         effect: Effect::CreateToken {
             token: CardDef {
                 name: "Test Cat",
+                id: "",
+                default_print: "",
                 cost: Cost::FREE,
                 kind: CardKind::Creature {
                     power: 2,
@@ -50710,6 +50948,8 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
 /// that choice).
 const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     name: "Test Watches-Opponent-Landfall",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 1,
@@ -51313,6 +51553,8 @@ fn moldervine_reclamation_gains_life_and_draws_from_a_single_trigger() {
 const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
     CardDef {
         name,
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Land {
             produces: Some(LandProduces::Mana(Mana::OfColors(mask))),
@@ -51738,6 +51980,8 @@ fn goldspan_grant_disappears_when_goldspan_leaves() {
 /// never qualifies Troyan's restricted mana; this one always does.
 const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     name: "Five Mana Value Sorcery (test)",
+    id: "",
+    default_print: "",
     cost: flash_cost(5, [0; 5], NO_ADD),
     kind: CardKind::Spell {
         speed: SpellSpeed::Sorcery,
@@ -53079,6 +53323,8 @@ fn green_beast_token_is_green() {
 /// a real card's.
 const SAPROLING_ANTHEM: CardDef = CardDef {
     name: "Test Saproling Anthem",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -53184,6 +53430,8 @@ fn saproling_token_gets_saproling_anthem() {
 /// see `magma_opus.toml`'s residual note on the one-multi-target-clause-per-spell limit).
 const TAP_TWO_PERMANENTS: CardDef = CardDef {
     name: "Test Tap Two",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -53253,6 +53501,8 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
 /// own X-scaled count needing #68).
 const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     name: "Test Counter Each",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -54026,6 +54276,8 @@ fn silkguard_at_x_zero_chooses_no_targets() {
 /// Silkguard's rider, isolated from its own put-counters clause (already covered above).
 const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     name: "Mass Hexproof to Modified (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -55540,6 +55792,8 @@ fn staff_of_the_storyteller_does_not_accrue_from_a_noncreature_token() {
 fn staff_of_the_storyteller_does_not_accrue_when_an_opponent_creates_a_token() {
     const OPPONENT_INKLINGS: CardDef = CardDef {
         name: "Make Inklings At Instant Speed (test)",
+        id: "",
+        default_print: "",
         kind: CardKind::Spell {
             speed: SpellSpeed::Instant,
         },
@@ -55586,6 +55840,8 @@ fn staff_of_the_storyteller_does_not_accrue_when_an_opponent_creates_a_token() {
 /// `CounterKind::Study` before lattice_library's own abilities are authored.
 const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     name: "Test Study Counter Source",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -56139,6 +56395,8 @@ fn proliferate_rejects_choosing_the_same_permanent_twice() {
 /// cast) onto a second nonland permanent you control (chosen at resolution).
 const MOVE_ALL_PLUS_COUNTERS: CardDef = CardDef {
     name: "Move All Plus Counters (test)",
+    id: "",
+    default_print: "",
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
     },
@@ -57082,6 +57340,8 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
     // graveyard, unpaused.
     const NARROW_AURA: CardDef = CardDef {
         name: "Land Aura (test)",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Aura,
         legendary: false,
@@ -57972,6 +58232,8 @@ fn kicked_is_rejected_on_a_spell_with_no_kicker_cost() {
 /// re-suppresses a keyword granted to an opponent's creature after the strip.
 const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     name: "Grant Hexproof Any Target (test)",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
@@ -58496,6 +58758,8 @@ fn naktamun_lorespinner_casts_wheel_of_fortune_and_unprepares() {
 /// static applies atomically as it enters (no SBA window where it'd sit at 0/1 uncountered).
 const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     name: "Zero Power With Counter",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Creature {
         power: 0,
@@ -62209,6 +62473,8 @@ const fn level_up_ability(level: u8) -> Ability {
 /// base one (`min_level` 0) and a level-2-gated one — so the level gate is observable via life.
 const TEST_CLASS: CardDef = CardDef {
     name: "Test Class",
+    id: "",
+    default_print: "",
     cost: Cost::FREE,
     kind: CardKind::Enchantment,
     legendary: false,
@@ -62584,6 +62850,8 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
 /// A plain {2} artifact spell, for the "a hand cast gets no reduction" leg above.
 const TWO_GENERIC_ARTIFACT: CardDef = CardDef {
     name: "Test Two-Generic Artifact",
+    id: "",
+    default_print: "",
     cost: Cost {
         generic: 2,
         ..Cost::FREE

@@ -6,6 +6,8 @@
 #    Whenever this creature attacks, you gain 1 life.
 #    {B}{G}: Return this card from your graveyard to the battlefield tapped."
 name = "Teacher's Pest"
+id = "12397dbf-99a9-40c3-aa7c-76d09baad008"
+default_print = "eaa358ac-761d-4507-aa15-3d4684027207"
 otags = ["activate-from-graveyard", "attack-trigger", "attacking-matters-self", "evasion", "punny-name", "reanimate-self", "repeatable-lifegain", "unique-type-line"]
 oracle = "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever this creature attacks, you gain 1 life.\n{B}{G}: Return this card from your graveyard to the battlefield tapped."
 set = "sos"

@@ -1,5 +1,7 @@
 # Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.
 name = "Blood Artist"
+id = "310f141c-7f37-4729-aed6-dd9c09db448d"
+default_print = "b5275d76-2947-4219-be21-614c7421614a"
 otags = ["inscryption-achievement", "opponent-loses-life", "repeatable-crime", "blood-artist-ability"]
 oracle = "Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life."
 set = "soc"

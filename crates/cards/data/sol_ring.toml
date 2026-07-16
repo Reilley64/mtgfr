@@ -1,5 +1,7 @@
 # {T}: Add {C}{C}.
 name = "Sol Ring"
+id = "6ad8011d-3471-4369-9d68-b264cc027487"
+default_print = "91fdb56b-54d5-4272-8319-505ff987fe9b"
 otags = ["activated-ability", "adds-multiple-mana", "full-refund", "mana-rock"]
 oracle = "{T}: Add {C}{C}."
 set = "msc"

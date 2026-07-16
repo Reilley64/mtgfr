@@ -1,4 +1,6 @@
 name = "Alchemist's Refuge"
+id = "357ed28b-899f-404b-94ff-6fb2ef81d87b"
+default_print = "36a11c11-1ea9-48e2-b1bc-49cba1390620"
 otags = ["activated-ability", "cycle-dka-enemy-utilityland", "gives-flash", "utility-land"]
 oracle = "{T}: Add {C}.\n{G}{U}, {T}: You may cast spells this turn as though they had flash."
 set = "soc"

@@ -5,6 +5,8 @@
 #   • Rip Apart deals 3 damage to target creature or planeswalker.
 #   • Destroy target artifact or enchantment."
 name = "Rip Apart"
+id = "cbdbf18f-0180-4ade-a79e-1e644dd42d6f"
+default_print = "b4964c78-b9ca-43c2-bcaa-bf75d92b9065"
 otags = ["abrade", "burn-planeswalker", "disenchant-naturalize", "modal", "removal-destroy", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Choose one —\n• Rip Apart deals 3 damage to target creature or planeswalker.\n• Destroy target artifact or enchantment."
 set = "msc"

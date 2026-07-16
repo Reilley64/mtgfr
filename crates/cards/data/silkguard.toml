@@ -5,6 +5,8 @@
 #   "Put a +1/+1 counter on each of up to X target creatures you control.
 #    Auras, Equipment, and modified creatures you control gain hexproof until end of turn."
 name = "Silkguard"
+id = "6dbeeb49-55c6-4ceb-94dd-3e4110dff8c0"
+default_print = "2b5fbcb8-9023-4a1c-b082-db44be8d8325"
 otags = ["combat-trick", "gives-hexproof", "multiple-targets", "protects-all", "protects-creature", "single-target-instant-sorcery", "strive", "support", "synergy-modified"]
 oracle = "Put a +1/+1 counter on each of up to X target creatures you control.\nAuras, Equipment, and modified creatures you control gain hexproof until end of turn. (Equipment, Auras you control, and counters are modifications.)"
 set = "soc"

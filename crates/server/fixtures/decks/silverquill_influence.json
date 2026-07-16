@@ -1,345 +1,431 @@
 {
- "commander": "Killian, Decisive Mentor",
+ "commander": "9c54bd34-667d-415c-ad26-82e0eb0ff409",
+ "commander_print": "76b6c35a-bb92-4ad3-8f85-88b9bafc6266",
  "cards": [
   {
-   "name": "Ajani's Chosen",
-   "count": 1
+   "id": "9c77eb0a-543a-41db-ba1f-aa0163837ae0",
+   "count": 1,
+   "print": "bc20cca0-303f-4463-85ae-26b80ff26211"
   },
   {
-   "name": "Archon of Sun's Grace",
-   "count": 1
+   "id": "48a99dce-0aa9-4aac-81df-cec5f94c639d",
+   "count": 1,
+   "print": "0d3af89d-d22c-45e8-9fec-170ac9bb0a34"
   },
   {
-   "name": "Armored Skyhunter",
-   "count": 1
+   "id": "b4dbbf56-d7df-4183-bb48-cfc6b4d0468f",
+   "count": 1,
+   "print": "707e9d2e-3934-4b90-878d-4699ac1cbe89"
   },
   {
-   "name": "Breena, the Demagogue",
-   "count": 1
+   "id": "d11e627b-8a48-411d-a261-2c9a02a758ba",
+   "count": 1,
+   "print": "599f87c8-643e-4224-93a5-853c0bd4e497"
   },
   {
-   "name": "Combat Calligrapher",
-   "count": 1
+   "id": "ee7ebbc1-2f9e-4867-a522-424869b6d772",
+   "count": 1,
+   "print": "3c154814-72e4-4cca-a927-66c58602ae80"
   },
   {
-   "name": "Defacing Duskmage",
-   "count": 1
+   "id": "27c366cf-00d7-47d4-9577-736bfc4a3b81",
+   "count": 1,
+   "print": "c35a1c6f-1656-4619-9ab8-40044c857a7f"
   },
   {
-   "name": "Doomwake Giant",
-   "count": 1
+   "id": "ba069664-9f92-47c7-b556-9e5143a22579",
+   "count": 1,
+   "print": "0be3f848-ba01-4890-a3a1-ed0dfb564632"
   },
   {
-   "name": "Eidolon of Countless Battles",
-   "count": 1
+   "id": "441b51b0-ecd0-466d-9ca8-e754eb563aec",
+   "count": 1,
+   "print": "4ad6fcb1-7c35-4111-8f1e-d18a2fae5638"
   },
   {
-   "name": "Eiganjo Dynastorian",
-   "count": 1
+   "id": "09b7ea91-2620-4c45-af3c-60bbeab89966",
+   "count": 1,
+   "print": "09d1f048-f411-4677-a0dc-dbddd06fe694"
   },
   {
-   "name": "Eriette of the Charmed Apple",
-   "count": 1
+   "id": "f43f5855-f297-4433-984b-18263b734cfc",
+   "count": 1,
+   "print": "baf256c5-1b4c-4fbe-94e4-1538d2577f8f"
   },
   {
-   "name": "Firemane Commando",
-   "count": 1
+   "id": "ac675899-25bb-4f06-9c8c-bf188024495f",
+   "count": 1,
+   "print": "c86269cc-bf4d-44b4-ad4b-8356857c532f"
   },
   {
-   "name": "Hateful Eidolon",
-   "count": 1
+   "id": "a3b39590-34b7-4fd0-877f-748e6df30e88",
+   "count": 1,
+   "print": "ff028d0b-066a-4769-89bc-f267d15eb707"
   },
   {
-   "name": "Herald of Amity",
-   "count": 1
+   "id": "6c25c6b5-d98c-4eb4-aacd-b6960a8779a9",
+   "count": 1,
+   "print": "0a36fe06-225f-44c6-b608-452344e3585a"
   },
   {
-   "name": "Keen Duelist",
-   "count": 1
+   "id": "b8602f19-6fc2-43c4-b0c4-2cd11d5dbda2",
+   "count": 1,
+   "print": "0446a3df-6f77-4b86-b694-ce99feb3d9ab"
   },
   {
-   "name": "Killian, Ink Duelist",
-   "count": 1
+   "id": "e233cb5b-7237-4271-8157-9179cc897b6c",
+   "count": 1,
+   "print": "9f51c115-dc9b-40a4-849d-3fc0c26e5a39"
   },
   {
-   "name": "Kor Spiritdancer",
-   "count": 1
+   "id": "2bfc7467-1316-43d3-9ca6-ff36cc2de607",
+   "count": 1,
+   "print": "48da45bd-ed72-4239-af02-e848703a1d02"
   },
   {
-   "name": "Mangara, the Diplomat",
-   "count": 1
+   "id": "cbcb6d9a-6ae5-4bcd-8013-2b657553764a",
+   "count": 1,
+   "print": "49d0d7ec-4bee-47d3-91a6-43510be65402"
   },
   {
-   "name": "Nils, Discipline Enforcer",
-   "count": 1
+   "id": "ff6b52b7-ae3c-465b-b10e-901160e5230e",
+   "count": 1,
+   "print": "c34cff04-01b0-4849-85bf-9e0b034be0e6"
   },
   {
-   "name": "Pearl-Ear, Imperial Advisor",
-   "count": 1
+   "id": "9bdc1e63-1cf9-4ddb-a7d5-f2a2eb91bdfd",
+   "count": 1,
+   "print": "7e8d6bc1-4609-4802-a4b6-7e75fdae186c"
   },
   {
-   "name": "Scriv, the Obligator",
-   "count": 1
+   "id": "64c986f0-e786-419c-9b51-8c316c8fae0e",
+   "count": 1,
+   "print": "c133a860-7b8d-485d-b9a2-bf8ae3a68f47"
   },
   {
-   "name": "Shadrix Silverquill",
-   "count": 1
+   "id": "2143f413-7baa-4fd6-a7ca-32f52bfa553f",
+   "count": 1,
+   "print": "214a695b-208e-4fd5-9ceb-23c882eadcf7"
   },
   {
-   "name": "Sram, Senior Edificer",
-   "count": 1
+   "id": "7e00b0cd-d212-4604-ba07-da21f4fe00b0",
+   "count": 1,
+   "print": "8fbd18ce-0ac3-4b52-9cd0-0af7e0244207"
   },
   {
-   "name": "Starfield Mystic",
-   "count": 1
+   "id": "2975590d-6a5b-41e5-8a3b-e9325e71226a",
+   "count": 1,
+   "print": "e8f2fcb4-8d06-49ac-9c70-9c54d77c6d86"
   },
   {
-   "name": "Tomik, Wielder of Law",
-   "count": 1
+   "id": "2ef0961a-0543-4371-8c2a-333881b735e5",
+   "count": 1,
+   "print": "8a7fc460-fc49-480f-8ee2-28a173509f0b"
   },
   {
-   "name": "Transcendent Envoy",
-   "count": 1
+   "id": "f08f7814-4585-41dd-b82e-ed2ef5e24242",
+   "count": 1,
+   "print": "363a88de-c9ae-41b8-a8d8-321a1b95a427"
   },
   {
-   "name": "Anguished Unmaking",
-   "count": 1
+   "id": "ad09b3c3-c8e7-481c-8c45-e7f234935117",
+   "count": 1,
+   "print": "407183c6-c962-4f8c-867e-abc309b6c573"
   },
   {
-   "name": "Fracture",
-   "count": 1
+   "id": "f21d0319-0509-4ac1-b6e3-10955a26fd7a",
+   "count": 1,
+   "print": "cba33bf7-0919-408c-8eb0-0bb9fe920c81"
   },
   {
-   "name": "Inkshield",
-   "count": 1
+   "id": "da93264e-4e04-401a-9809-e4e1056cf604",
+   "count": 1,
+   "print": "3362ade8-d585-40be-8486-382cad6efaf8"
   },
   {
-   "name": "Vanishing Verse",
-   "count": 1
+   "id": "5b8f0cdf-572d-4025-b930-79291f7c35be",
+   "count": 1,
+   "print": "8a475868-a335-45e7-9d59-9dc4c2cea1ae"
   },
   {
-   "name": "Promise of Loyalty",
-   "count": 1
+   "id": "e1d294e8-67b1-4a4a-86b8-f98f28a327d9",
+   "count": 1,
+   "print": "5877c99c-35b0-40c4-b766-e96335ea2c27"
   },
   {
-   "name": "Secret Rendezvous",
-   "count": 1
+   "id": "34b90d3e-f48c-41ff-b3e4-5cab7a9cd597",
+   "count": 1,
+   "print": "9be712b3-14ed-4a73-b3d3-5b76b2c5db64"
   },
   {
-   "name": "Winds of Rath",
-   "count": 1
+   "id": "a6fd90dc-0ec3-4dce-a77a-4d04f5e254bf",
+   "count": 1,
+   "print": "8dee155b-1f06-4d74-afa8-a1244c254978"
   },
   {
-   "name": "Arcane Signet",
-   "count": 1
+   "id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+   "count": 1,
+   "print": "7811dd72-61b9-4067-ac20-cea153e625d2"
   },
   {
-   "name": "Fellwar Stone",
-   "count": 1
+   "id": "95560508-7ac9-4be9-8a3f-3c7d5b52807b",
+   "count": 1,
+   "print": "385b9f5e-81dd-49f6-a644-59d53245e3dc"
   },
   {
-   "name": "Sol Ring",
-   "count": 1
+   "id": "6ad8011d-3471-4369-9d68-b264cc027487",
+   "count": 1,
+   "print": "870ec754-a76c-40ea-9b81-81b3dca1f62c"
   },
   {
-   "name": "Talisman of Hierarchy",
-   "count": 1
+   "id": "b693c3de-2eaf-4850-b405-e79d00adefda",
+   "count": 1,
+   "print": "0c959368-2f58-48de-b7a5-2bab408652b5"
   },
   {
-   "name": "Angelic Destiny",
-   "count": 1
+   "id": "8ba36878-0816-44c7-b543-8ebfc28c2ecd",
+   "count": 1,
+   "print": "a588b610-86bb-4a18-b54e-a12f7d7d15c8"
   },
   {
-   "name": "Animate Dead",
-   "count": 1
+   "id": "c0d8fef4-65f4-4769-982d-b397d2b7e977",
+   "count": 1,
+   "print": "cc0c2bab-4392-4e7b-9d14-2901f4ffbae8"
   },
   {
-   "name": "Chains of Custody",
-   "count": 1
+   "id": "5acff7a3-bc84-4251-bd37-80231396ac38",
+   "count": 1,
+   "print": "3484b0bb-f305-404b-b4a9-430296061365"
   },
   {
-   "name": "Changing Loyalty",
-   "count": 1
+   "id": "cdfa9de4-7d7d-4638-8ac4-793ece6372dd",
+   "count": 1,
+   "print": "5c2e30d4-98ab-46a7-87ab-1c36c43ab34a"
   },
   {
-   "name": "Coercive Impetus",
-   "count": 1
+   "id": "dbb8a3d9-6b1b-4ad1-b8b9-f92ead03d1d9",
+   "count": 1,
+   "print": "f98ca390-d2ea-41c8-93ed-57fcd22737d8"
   },
   {
-   "name": "Darksteel Mutation",
-   "count": 1
+   "id": "05a4f8ff-49da-42af-add5-6248c4b0644b",
+   "count": 1,
+   "print": "6e776a1e-266d-4b30-83da-be4721a55ed2"
   },
   {
-   "name": "Eldrazi Conscription",
-   "count": 1
+   "id": "3635e4e5-e655-45f4-a444-39756f55129a",
+   "count": 1,
+   "print": "33965c48-a7ce-4a04-8251-8eeb2d908c0b"
   },
   {
-   "name": "Fallen Ideal",
-   "count": 1
+   "id": "4b8183e6-4ff2-4254-9ee0-0ebbf8cef4a3",
+   "count": 1,
+   "print": "f54acc9f-d128-49d4-b1a9-47a7ece13833"
   },
   {
-   "name": "Flickering Ward",
-   "count": 1
+   "id": "3e2ae59a-40a1-46ca-8f24-3231ebd4e4eb",
+   "count": 1,
+   "print": "23fcd6a8-be83-4304-ae32-d3dfc855f596"
   },
   {
-   "name": "Forum Filibuster",
-   "count": 1
+   "id": "6a9cc11b-a223-46f0-bf58-c1e08ad1253d",
+   "count": 1,
+   "print": "1c2fcf3e-63ce-45bd-afc4-2c11f54c70c4"
   },
   {
-   "name": "Ghostly Prison",
-   "count": 1
+   "id": "e828b189-0e8f-43b8-b909-4c23e742e028",
+   "count": 1,
+   "print": "e1f723a8-0be9-4270-b451-a52d6b2fda4e"
   },
   {
-   "name": "Ghoulish Impetus",
-   "count": 1
+   "id": "276eccd6-4a76-46e8-b604-94472e618115",
+   "count": 1,
+   "print": "f6fab24d-0174-4248-8481-52194e05d6f9"
   },
   {
-   "name": "Gift of Immortality",
-   "count": 1
+   "id": "2c11c72f-5b04-47d8-bdf8-8d9d197ebc1b",
+   "count": 1,
+   "print": "673ec38c-0849-48ce-9f6f-cb195299c785"
   },
   {
-   "name": "Intermediate Chirography",
-   "count": 1
+   "id": "6c948f71-5c86-450c-8828-df4d8deaf1dd",
+   "count": 1,
+   "print": "d60c64aa-57a9-4082-82f4-af0d89c1a52d"
   },
   {
-   "name": "Land Tax",
-   "count": 1
+   "id": "d2d9ecea-7925-420e-98b9-2f87f41f387c",
+   "count": 1,
+   "print": "c70d3706-9d28-49ac-8718-4a516413e727"
   },
   {
-   "name": "Martial Impetus",
-   "count": 1
+   "id": "c8decfdf-1421-4649-acde-5215e7f08bb9",
+   "count": 1,
+   "print": "41ccc31c-9377-4e8a-aede-248d16cd5264"
   },
   {
-   "name": "Parasitic Impetus",
-   "count": 1
+   "id": "ff3de07d-86c3-49e1-9de0-97c85301ff93",
+   "count": 1,
+   "print": "1d312b2e-c529-42ac-ad9e-73573e5f1c34"
   },
   {
-   "name": "Raffine's Guidance",
-   "count": 1
+   "id": "ad3bf726-e0c2-4038-a66e-9a9dff439563",
+   "count": 1,
+   "print": "8eb97e21-442b-4f23-a846-f0a0135a5c31"
   },
   {
-   "name": "Redemption Arc",
-   "count": 1
+   "id": "c22e5fc6-9b4e-4197-b472-70d168eb4330",
+   "count": 1,
+   "print": "49326de1-d3b0-4f2b-95bc-5f2878e14a89"
   },
   {
-   "name": "Sage's Reverie",
-   "count": 1
+   "id": "bd92cacd-c7d8-43a2-a261-ea4754fefdc5",
+   "count": 1,
+   "print": "5515393a-7d4d-454f-a550-156862ab02f1"
   },
   {
-   "name": "Screams from Within",
-   "count": 1
+   "id": "a3b3b9ae-1e48-481d-80a5-7e2a26cf2f50",
+   "count": 1,
+   "print": "27e2a759-971d-455b-845c-2e9b471950bb"
   },
   {
-   "name": "Sentinel's Eyes",
-   "count": 1
+   "id": "0a7d6489-b239-4ce8-aea3-7b5d0e436f70",
+   "count": 1,
+   "print": "9f50278a-06fc-4b11-a1d2-d28cd213ff8f"
   },
   {
-   "name": "Sheltered by Ghosts",
-   "count": 1
+   "id": "d13fc657-c6fc-4394-bc70-691050550226",
+   "count": 1,
+   "print": "8e8a5cfe-1b3f-4414-b9a4-078bdb4072a7"
   },
   {
-   "name": "Shielded by Faith",
-   "count": 1
+   "id": "79085dea-8daa-41c0-a975-61e3e6da2e26",
+   "count": 1,
+   "print": "681149f2-0802-4ab7-9521-3b3c7281f55d"
   },
   {
-   "name": "Songbirds' Blessing",
-   "count": 1
+   "id": "2598294c-a9a7-4bef-a562-23f297a80536",
+   "count": 1,
+   "print": "4d1e229a-ed04-4d8d-90a9-5a451ca81470"
   },
   {
-   "name": "Spirit Mantle",
-   "count": 1
+   "id": "81a51328-b995-4f3b-90bc-a20ae21dd254",
+   "count": 1,
+   "print": "8ac5a048-e8aa-48e8-b51b-b4e9a5b63ea6"
   },
   {
-   "name": "Arcane Lighthouse",
-   "count": 1
+   "id": "30ac68e6-160a-41f9-9f0f-0e0eef383150",
+   "count": 1,
+   "print": "e2384e42-2442-4b40-9bae-8db470d2fb8c"
   },
   {
-   "name": "Bojuka Bog",
-   "count": 1
+   "id": "04b7362d-0490-4cb0-b5d7-2a7732f659ce",
+   "count": 1,
+   "print": "55b5b094-9d2d-4d96-b90c-78fecdae725a"
   },
   {
-   "name": "Caves of Koilos",
-   "count": 1
+   "id": "33de01e9-ce5a-42d4-afcb-343cd54a6d80",
+   "count": 1,
+   "print": "a8a57915-5226-4d3c-ae8e-a55c50f3c131"
   },
   {
-   "name": "Command Tower",
-   "count": 1
+   "id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+   "count": 1,
+   "print": "c46a217c-0ed2-4b3c-9a01-ee38d12d76f3"
   },
   {
-   "name": "Desolate Mire",
-   "count": 1
+   "id": "3edf9201-265f-4cd9-b27b-8073bf1a4cf2",
+   "count": 1,
+   "print": "6a261c7d-38a4-4000-97b2-76e7ab9989c5"
   },
   {
-   "name": "Eclipsed Steppe",
-   "count": 1
+   "id": "6216635f-8e6e-40a3-9659-ef6352ab92ce",
+   "count": 1,
+   "print": "d890999a-dcc7-479e-b0f0-60388c737043"
   },
   {
-   "name": "Exotic Orchard",
-   "count": 1
+   "id": "27b047e3-0d41-45e2-98e9-9391d7923a1e",
+   "count": 1,
+   "print": "7db2934a-43a0-46ad-8380-ff6703f8fd6d"
   },
   {
-   "name": "Fabled Passage",
-   "count": 1
+   "id": "0c85b8f7-0bd0-4680-9ec5-d4b110460a54",
+   "count": 1,
+   "print": "8119d329-6ee5-433c-bd81-8579bb061162"
   },
   {
-   "name": "Fetid Heath",
-   "count": 1
+   "id": "42bf259d-4bb9-49c3-b4ec-223dca62f4d6",
+   "count": 1,
+   "print": "f465ded8-0d38-42ac-bafc-a12185013c5d"
   },
   {
-   "name": "Forum of Amity",
-   "count": 1
+   "id": "349ea6c7-6b3e-417f-b082-b712e2b1635b",
+   "count": 1,
+   "print": "1de6c6cc-0c55-4997-8623-d7f796bd9ab8"
   },
   {
-   "name": "Isolated Chapel",
-   "count": 1
+   "id": "7e5d9efe-48a9-434b-bb09-056e0e09cc9a",
+   "count": 1,
+   "print": "78814c92-b52c-462a-866f-3e7da9db9f70"
   },
   {
-   "name": "Path of Ancestry",
-   "count": 1
+   "id": "b473e293-59e3-4e04-acf2-622604aeb25f",
+   "count": 1,
+   "print": "9335e773-4b45-4b91-8140-5159fe7e0395"
   },
   {
-   "name": "Shineshadow Snarl",
-   "count": 1
+   "id": "c9fc13d6-bd10-47bc-b2b6-7f67a1f3371e",
+   "count": 1,
+   "print": "7a198106-4d31-4e10-884a-bdf2316f8088"
   },
   {
-   "name": "Silverquill Campus",
-   "count": 1
+   "id": "2b65eb80-6fb7-429f-81f2-2fe125eba634",
+   "count": 1,
+   "print": "354efff0-aea5-4274-94d6-9fce02430255"
   },
   {
-   "name": "Study Hall",
-   "count": 1
+   "id": "eb735501-19e7-4910-aa6a-6667fff6f4e5",
+   "count": 1,
+   "print": "93f812bc-7663-4504-b566-79e2c0a0f845"
   },
   {
-   "name": "Sunlit Marsh",
-   "count": 1
+   "id": "a5e5a259-5fa7-4b01-93cb-a2b4aaf80927",
+   "count": 1,
+   "print": "fa447616-db24-4729-bf66-7f72aba0272d"
   },
   {
-   "name": "Temple of Silence",
-   "count": 1
+   "id": "e6e6fce8-0f6a-4b84-865e-d4e4a4182f9f",
+   "count": 1,
+   "print": "f7d3770f-cde6-4e29-8cbf-fe841634a5d7"
   },
   {
-   "name": "Terramorphic Expanse",
-   "count": 1
+   "id": "1bd3e453-aa21-4ee6-95c2-d6d920ee8e7a",
+   "count": 1,
+   "print": "a81f924b-0527-4311-8120-9bfff71524f6"
   },
   {
-   "name": "Turbulent Moor",
-   "count": 1
+   "id": "2eb4da30-2600-4a7f-8e6c-6a090faa9a8d",
+   "count": 1,
+   "print": "da54562d-8c09-4728-bb2b-ae8d464106b8"
   },
   {
-   "name": "Umbral Expanse",
-   "count": 1
+   "id": "5a1dfc60-645d-4bc0-8883-e06ed9c80706",
+   "count": 1,
+   "print": "15848965-01a8-48bf-aa61-8a753339c761"
   },
   {
-   "name": "War Room",
-   "count": 1
+   "id": "71c52bf5-2a5d-488e-8b15-7ef290e4b77d",
+   "count": 1,
+   "print": "0775b4be-881c-4832-8954-d961064315b6"
   },
   {
-   "name": "Plains",
-   "count": 8
+   "id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99",
+   "count": 8,
+   "print": "5f9b6584-ad27-410d-b6f1-c25c91630aea"
   },
   {
-   "name": "Swamp",
-   "count": 8
+   "id": "56719f6a-1a6c-4c0a-8d21-18f7d7350b68",
+   "count": 8,
+   "print": "74414c62-4b68-4e1b-9241-feff3231b9ee"
   }
  ]
 }

@@ -3,6 +3,8 @@
 # among them onto the battlefield. If an Equipment is put onto the battlefield this way, you may attach it to a creature
 # you control. Put the rest of those cards on the bottom of your library in a random order.
 name = "Armored Skyhunter"
+id = "b4dbbf56-d7df-4183-bb48-cfc6b4d0468f"
+default_print = "707e9d2e-3934-4b90-878d-4699ac1cbe89"
 otags = ["attack-trigger", "attacking-matters-self", "evasion", "impulse-artifact-equipment", "impulse-enchantment-aura", "impulse-onto-battlefield", "quick-equip", "repeatable-impulse", "synergy-aura", "synergy-equipment"]
 oracle = "Flying\nWhenever this creature attacks, look at the top six cards of your library. You may put an Aura or Equipment card from among them onto the battlefield. If an Equipment is put onto the battlefield this way, you may attach it to a creature you control. Put the rest of those cards on the bottom of your library in a random order."
 set = "soc"

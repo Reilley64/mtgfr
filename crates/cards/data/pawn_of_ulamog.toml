@@ -1,6 +1,8 @@
 # Whenever this creature or another nontoken creature you control dies, you may create a 0/1 colorless Eldrazi Spawn
 # creature token. It has "Sacrifice this token: Add {C}."
 name = "Pawn of Ulamog"
+id = "9bcaf141-1f1f-491f-aced-13dc093b9e2c"
+default_print = "c1b0377c-efd6-4fab-89f0-b219ca2c4c22"
 otags = ["leaves-body-behind", "namesake-spell", "ramp", "repeatable-creature-tokens"]
 oracle = "Whenever this creature or another nontoken creature you control dies, you may create a 0/1 colorless Eldrazi Spawn creature token. It has \"Sacrifice this token: Add {C}.\""
 set = "soc"

@@ -4,6 +4,8 @@
 # Stormcatch Mentor {U}{R} — 1/1 Otter Wizard with haste.
 # "Instant and sorcery spells you cast cost {1} less to cast."
 name = "Stormcatch Mentor"
+id = "b2252471-01ca-4d58-aa99-4ab0aa5eae12"
+default_print = "f1bbb5ad-a293-48f3-a3d0-7ac85a7b8467"
 otags = ["cast-trigger-you", "cost-reducer-instant-sorcery", "cycle-blb-draft-signpost", "synergy-noncreature"]
 oracle = "Haste\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nInstant and sorcery spells you cast cost {1} less to cast."
 set = "soc"

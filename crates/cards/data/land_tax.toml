@@ -5,6 +5,8 @@
 #   search your library for up to three basic land cards, reveal them, put them into your hand,
 #   then shuffle."
 name = "Land Tax"
+id = "d2d9ecea-7925-420e-98b9-2f87f41f387c"
+default_print = "c70d3706-9d28-49ac-8718-4a516413e727"
 otags = ["catch-up", "intervening-if-clause", "tutor-land-basic", "tutor-to-hand"]
 oracle = "At the beginning of your upkeep, if an opponent controls more lands than you, you may search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle."
 set = "soc"

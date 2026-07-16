@@ -452,6 +452,8 @@ mod tests {
     fn spell_def(name: &'static str, cost: Cost, modal: bool) -> CardDef {
         CardDef {
             name,
+            id: "",
+            default_print: "",
             cost,
             kind: CardKind::Spell {
                 speed: SpellSpeed::Sorcery,

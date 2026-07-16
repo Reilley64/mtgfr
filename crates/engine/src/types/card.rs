@@ -392,6 +392,10 @@ pub struct Ability {
 /// straight from a card's TOML file — the `cards` crate loads the pool this way.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardDef {
+    /// Scryfall oracle id — canonical Card identity (ADR 0031). Empty for tokens / test stubs.
+    pub id: &'static str,
+    /// Scryfall card UUID for the Card's default Printing (art). Empty for tokens / test stubs.
+    pub default_print: &'static str,
     pub name: &'static str,
     pub cost: Cost,
     pub kind: CardKind,
@@ -952,6 +956,8 @@ pub fn treasure_token() -> CardDef {
     }];
     CardDef {
         name: "Treasure",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Artifact,
         legendary: false,
@@ -1003,6 +1009,8 @@ pub fn treasure_token() -> CardDef {
 pub(crate) fn rogue_token_stub() -> CardDef {
     CardDef {
         name: "Rogue",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Creature {
             power: 2,
@@ -1060,6 +1068,8 @@ pub(crate) fn rogue_token_stub() -> CardDef {
 pub(crate) fn illusion_token() -> CardDef {
     CardDef {
         name: "Illusion",
+        id: "",
+        default_print: "",
         cost: Cost::FREE,
         kind: CardKind::Creature {
             power: 0,

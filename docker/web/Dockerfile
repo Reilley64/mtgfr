@@ -6,8 +6,8 @@ WORKDIR /client
 COPY client/package.json client/bun.lock* ./
 RUN bun install --frozen-lockfile
 COPY client ./
-# Use committed `src/api/generated.ts` + `openapi.json` at this tag — skip `prebuild`/`gen`
-# (which shells out to `cargo run … openapi`). Release workflow verifies they match.
+# `src/api/generated.ts` is produced on the host/CI via `just server-codegen` before
+# `docker build` (gitignored — not committed). `tsc`/`vite` need it in the build context.
 # Build-args (not just ENV) so `docker build --build-arg …` can target a different API/CDN
 # without editing this file. Empty `VITE_CARD_CDN` → Scryfall `named` fallback in the client.
 ARG VITE_API_ORIGIN=https://api.edh.example.com

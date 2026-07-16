@@ -4,6 +4,8 @@
 #   "When this creature dies, you gain 2 life.
 #    {G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment."
 name = "Haywire Mite"
+id = "749d2994-44e7-40d3-8630-7bebed239e9e"
+default_print = "6f813bc3-6d81-4555-8e4b-6ecd9a6757b7"
 otags = ["activated-ability", "death-trigger-self", "disenchant-naturalize", "lifegain", "martyr", "misnomer", "removal-exile", "spot-removal"]
 oracle = "When this creature dies, you gain 2 life.\n{G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment."
 set = "soc"

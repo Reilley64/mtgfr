@@ -1,6 +1,8 @@
 # The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each +1/+1 counter on Zimone.
 # Whenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters on Zimone.
 name = "Zimone, Infinite Analyst"
+id = "977f9390-e01d-4e9d-8e9c-e543b1266972"
+default_print = "605afac4-d2e5-4e68-97d2-3ac2ead5f3a9"
 otags = ["cast-trigger-you", "cost-reducer", "cycle-soc-face-commander", "gains-pp-counters", "pp-counters-matter", "repeatable-pp-counters", "x-cost-matters"]
 oracle = "The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each +1/+1 counter on Zimone.\nWhenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters on Zimone."
 set = "soc"

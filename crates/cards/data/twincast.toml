@@ -2,6 +2,8 @@
 # Twincast (M10): {U}{U} Instant
 # "Copy target instant or sorcery spell. You may choose new targets for the copy."
 name = "Twincast"
+id = "8f878efc-850f-43d2-a6fe-5ea8d1dd5afb"
+default_print = "f38eec33-a40e-4739-ad2c-2f57008cef4e"
 otags = ["copy-instant", "copy-sorcery", "copy-spell", "single-target-instant-sorcery"]
 oracle = "Copy target instant or sorcery spell. You may choose new targets for the copy."
 set = "m10"

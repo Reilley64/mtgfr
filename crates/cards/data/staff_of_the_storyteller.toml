@@ -6,6 +6,8 @@
 #    Whenever you create one or more creature tokens, put a story counter on this artifact.
 #    {W}, {T}, Remove a story counter from this artifact: Draw a card."
 name = "Staff of the Storyteller"
+id = "0c4e2c90-c17b-42cc-b4d7-cf75970fbe90"
+default_print = "67083aca-b077-4b12-8218-876e22476f85"
 otags = ["activated-ability", "aesthetic-counter", "alliteration", "counter-fuel-aesthetic", "draw-engine", "evasion", "repeatable-pure-draw", "synergy-token-creature", "tome", "triggered-ability", "unique-counter"]
 oracle = "When this artifact enters, create a 1/1 white Spirit creature token with flying.\nWhenever you create one or more creature tokens, put a story counter on this artifact.\n{W}, {T}, Remove a story counter from this artifact: Draw a card."
 set = "soc"

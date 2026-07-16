@@ -2,6 +2,8 @@
 # Enchanted creature gets +1/+1.
 # You may cast this card from your graveyard by paying {2}{W} rather than paying its mana cost.
 name = "Raffine's Guidance"
+id = "ad3bf726-e0c2-4038-a66e-9a9dff439563"
+default_print = "8eb97e21-442b-4f23-a846-f0a0135a5c31"
 otags = ["castable-from-graveyard", "namesake-spell", "reanimate-cast", "reanimate-self"]
 oracle = "Enchant creature\nEnchanted creature gets +1/+1.\nYou may cast this card from your graveyard by paying {2}{W} rather than paying its mana cost."
 set = "soc"

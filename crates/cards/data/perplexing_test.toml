@@ -3,6 +3,8 @@
 # • Return all nontoken creatures to their owners' hands.
 # Perplexing Test (soc): {3}{U}{U} instant.
 name = "Perplexing Test"
+id = "8682266c-2b0f-496e-b1c6-1fb338feac24"
+default_print = "cf5fe687-91e0-4a2b-b973-3190c268a8e2"
 otags = ["hate-token", "modal-inverse-choices", "pseudo-fog", "removal-bounce", "removal-creature", "sweeper", "synergy-token-creature"]
 oracle = "Choose one —\n• Return all creature tokens to their owners' hands.\n• Return all nontoken creatures to their owners' hands."
 set = "soc"

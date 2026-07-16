@@ -10,6 +10,8 @@
 # identical for the pool: the mass bounce still reads post-counter power at resolution, and no
 # player can respond between the two picks.
 name = "Zimone's Hypothesis"
+id = "ae27fa09-ab73-44b4-8e86-44d626ec221d"
+default_print = "f91afbaf-e035-47cd-b493-0d5817fefa76"
 otags = ["even-odd-matters", "gives-pp-counters", "namesake-spell", "removal-bounce", "removal-creature", "sweeper-one-sided"]
 oracle = "You may put a +1/+1 counter on a creature. Then choose odd or even. Return each creature with power of the chosen quality to its owner's hand. (Zero is even.)"
 set = "soc"

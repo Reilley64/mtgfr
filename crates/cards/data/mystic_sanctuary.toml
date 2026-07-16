@@ -5,6 +5,8 @@
 # other Islands. When this land enters untapped, you may put target instant or sorcery card
 # from your graveyard on top of your library."
 name = "Mystic Sanctuary"
+id = "17b60106-a4c7-410a-8ac3-ec8e74e29a7c"
+default_print = "4cd86997-d7b9-4b5b-9488-11f5c679e4d3"
 otags = ["activated-ability", "cycle-eld-adamant-land", "nonbasic-basic-land-type", "restock-instant", "restock-sorcery", "restock-to-top", "synergy-island", "triggered-ability", "utility-land"]
 oracle = "({T}: Add {U}.)\nThis land enters tapped unless you control three or more other Islands.\nWhen this land enters untapped, you may put target instant or sorcery card from your graveyard on top of your library."
 set = "soc"

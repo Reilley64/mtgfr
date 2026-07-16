@@ -3,6 +3,8 @@
 # Dina, Soul Steeper: "Whenever you gain life, each opponent loses 1 life. {1}, Sacrifice
 # another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed creature's power."
 name = "Dina, Soul Steeper"
+id = "2121bcb4-f5fe-447f-9112-c7e5b5c45baf"
+default_print = "6ae992b6-506b-4667-884f-4f7fc075b71e"
 otags = ["activated-ability", "alliteration", "cycle-stx-student", "firebreathing", "group-slug", "lifegain-to-damage", "opponent-loses-life", "power-matters", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "triggered-ability"]
 oracle = "Whenever you gain life, each opponent loses 1 life.\n{1}, Sacrifice another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed creature's power."
 set = "soc"

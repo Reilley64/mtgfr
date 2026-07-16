@@ -2,6 +2,8 @@
 # Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)
 # Faithless Looting {R} — sorcery. "Draw two cards, then discard two cards. Flashback {2}{R}."
 name = "Faithless Looting"
+id = "3d6fa57a-aa53-4b5c-b8af-a7612c823117"
+default_print = "fc019ffa-4461-4f3d-ab8d-e4d20e77ca0c"
 otags = ["castable-from-graveyard", "color-break", "exile-self", "hand-negative", "loot", "more-expensive-than-mv"]
 oracle = "Draw two cards, then discard two cards.\nFlashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
 set = "soc"

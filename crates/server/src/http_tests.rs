@@ -136,15 +136,16 @@ mod tests {
         // A legal Tajic deck: the pool's RW nonbasics + 93 Plains.
         let deck_body = json!({
             "name": "deck",
-            "commander": "Tajic, Legion's Edge",
+            "commander": "ae6f21a2-e6b6-4793-8343-e27310c0bea1",
+            "commander_print": "45c4c3b3-be18-4d74-99d8-f137498673d7",
             "cards": [
-                {"name": "Savannah Lions", "count": 1},
-                {"name": "Goblin Guide", "count": 1},
-                {"name": "Serra Angel", "count": 1},
-                {"name": "Glorious Anthem", "count": 1},
-                {"name": "Shock", "count": 1},
-                {"name": "Brute Force", "count": 1},
-                {"name": "Plains", "count": 93}
+                {"id": "60ba93eb-39e6-4af2-9c66-cd38f72daff2", "count": 1, "print": "9c9ac1bc-cdf3-4fa6-8319-a7ea164e9e47"},
+                {"id": "51d9564b-44fc-4de1-9119-09d7b4089378", "count": 1, "print": "3c0f5411-1940-410f-96ce-6f92513f753a"},
+                {"id": "4b7ac066-e5c7-43e6-9e7e-2739b24a905d", "count": 1, "print": "b8c5e74c-96e7-4a1f-93b7-14d776fe4b2d"},
+                {"id": "e3886fe8-9b76-4613-8891-4ec74657c087", "count": 1, "print": "17d154d3-7ae5-43ff-9978-d974285e2c89"},
+                {"id": "a9d288b8-cdc1-4e55-a0c9-d6edfc95e65d", "count": 1, "print": "b23900fb-efe9-43ab-9f67-4545dd01fb9c"},
+                {"id": "9880ba09-d5b8-4675-bfb4-2161d86d2d41", "count": 1, "print": "89db7256-3bd0-4c1d-9c6f-de81f7d3c1a2"},
+                {"id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99", "count": 93, "print": "5f9b6584-ad27-410d-b6f1-c25c91630aea"}
             ]
         });
         let save = |cookie: &str| {
@@ -413,15 +414,16 @@ mod tests {
                     Some(&guest),
                     json!({
                         "name": "deck",
-                        "commander": "Tajic, Legion's Edge",
+                        "commander": "ae6f21a2-e6b6-4793-8343-e27310c0bea1",
+                        "commander_print": "45c4c3b3-be18-4d74-99d8-f137498673d7",
                         "cards": [
-                            {"name": "Savannah Lions", "count": 1},
-                            {"name": "Goblin Guide", "count": 1},
-                            {"name": "Serra Angel", "count": 1},
-                            {"name": "Glorious Anthem", "count": 1},
-                            {"name": "Shock", "count": 1},
-                            {"name": "Brute Force", "count": 1},
-                            {"name": "Plains", "count": 93}
+                            {"id": "60ba93eb-39e6-4af2-9c66-cd38f72daff2", "count": 1, "print": "9c9ac1bc-cdf3-4fa6-8319-a7ea164e9e47"},
+                            {"id": "51d9564b-44fc-4de1-9119-09d7b4089378", "count": 1, "print": "3c0f5411-1940-410f-96ce-6f92513f753a"},
+                            {"id": "4b7ac066-e5c7-43e6-9e7e-2739b24a905d", "count": 1, "print": "b8c5e74c-96e7-4a1f-93b7-14d776fe4b2d"},
+                            {"id": "e3886fe8-9b76-4613-8891-4ec74657c087", "count": 1, "print": "17d154d3-7ae5-43ff-9978-d974285e2c89"},
+                            {"id": "a9d288b8-cdc1-4e55-a0c9-d6edfc95e65d", "count": 1, "print": "b23900fb-efe9-43ab-9f67-4545dd01fb9c"},
+                            {"id": "9880ba09-d5b8-4675-bfb4-2161d86d2d41", "count": 1, "print": "89db7256-3bd0-4c1d-9c6f-de81f7d3c1a2"},
+                            {"id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99", "count": 93, "print": "5f9b6584-ad27-410d-b6f1-c25c91630aea"}
                         ]
                     }),
                 ))

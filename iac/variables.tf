@@ -21,7 +21,7 @@ variable "namespace_terraform" {
 }
 
 variable "namespace_edh" {
-  description = "Namespace holding all edh workloads (web, api, api-drain, api-proxy, postgresql, cloudflared)."
+  description = "Namespace holding all edh workloads (web, api, api-drain, api-proxy, postgres, cloudflared)."
   type        = string
   default     = "edh"
 }
@@ -110,10 +110,10 @@ variable "mtgfr_db_password" {
   sensitive   = true
 }
 
-variable "postgres_chart_version" {
-  description = "Bitnami `postgresql` Helm chart version."
+variable "postgres_image" {
+  description = "Official Postgres container image (pin a major tag; never floating latest)."
   type        = string
-  default     = "16.2.4"
+  default     = "postgres:17"
 }
 
 variable "postgres_storage_size" {

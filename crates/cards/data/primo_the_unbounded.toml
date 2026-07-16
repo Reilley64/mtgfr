@@ -3,6 +3,8 @@
 # Whenever one or more creatures you control with base power 0 deal combat damage to a player, create a 0/0 green and
 # blue Fractal creature token. Put a number of +1/+1 counters on it equal to the damage dealt.
 name = "Primo, the Unbounded"
+id = "65fb0e20-61f8-4c61-bc08-7f6f718ee9ee"
+default_print = "a2d14b99-15e2-4e96-89a2-7e0ee5dc059f"
 otags = ["cycle-soc-alt-commander", "exponential", "gains-pp-counters", "gives-pp-counters", "per-player", "repeatable-creature-tokens", "repeatable-pp-counters", "saboteur", "scales-with-damage-dealt", "triggered-ability", "unique-mana-cost", "unique-type-line"]
 oracle = "Trample\nPrimo enters with twice X +1/+1 counters on it.\nWhenever one or more creatures you control with base power 0 deal combat damage to a player, create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it equal to the damage dealt."
 set = "soc"

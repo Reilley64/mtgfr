@@ -3,6 +3,8 @@
 # {U/R}{U/R}, Discard this card: Create a Treasure token.
 # Magma Opus {6}{U}{R} — instant.
 name = "Magma Opus"
+id = "985f9dd7-e693-48ff-9dd6-a1a3cbaa236b"
+default_print = "0fd4a0f7-ba03-4158-95cd-4effe798aec0"
 otags = ["activate-from-hand", "burn-any", "cheaper-than-mv", "cycle-stx-m-college-spell", "cycle-stx-treasure-spell", "fun-ruling", "hand-positive", "multi-removal", "multiple-targets", "punny-name", "pure-draw", "ramp"]
 oracle = "Magma Opus deals 4 damage divided as you choose among any number of targets. Tap two target permanents. Create a 4/4 blue and red Elemental creature token. Draw two cards.\n{U/R}{U/R}, Discard this card: Create a Treasure token."
 set = "soc"

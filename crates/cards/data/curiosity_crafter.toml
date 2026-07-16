@@ -5,6 +5,8 @@
 # "Flying. You have no maximum hand size. Whenever a creature token you control deals combat
 # damage to a player, draw a card."
 name = "Curiosity Crafter"
+id = "0be907b2-54f9-4c8c-b6af-7c0093892e42"
+default_print = "930d830b-5e6a-422a-806e-fd7275517deb"
 otags = ["alliteration", "curiosity", "draw-engine", "evasion", "hand-size-increase", "repeatable-pure-draw", "synergy-token-creature", "triggered-ability"]
 oracle = "Flying\nYou have no maximum hand size.\nWhenever a creature token you control deals combat damage to a player, draw a card."
 set = "soc"

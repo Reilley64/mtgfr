@@ -2,6 +2,8 @@
 # Archmage Emeritus (SOC): {2}{U}{U} 2/2 Human Wizard.
 # "Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."
 name = "Archmage Emeritus"
+id = "8305d576-21d8-4ce7-8eda-a7cd9793aca5"
+default_print = "dd547601-d650-4a02-a3a4-890bcef03a7c"
 otags = ["draw-engine", "hand-positive", "magecraft", "repeatable-pure-draw"]
 oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."
 set = "soc"

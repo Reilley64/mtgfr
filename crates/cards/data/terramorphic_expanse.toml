@@ -2,6 +2,8 @@
 # Terramorphic Expanse: "{T}, Sacrifice this land: Search your library for a basic land card,
 # put it onto the battlefield tapped, then shuffle." — a fetchland with no life cost.
 name = "Terramorphic Expanse"
+id = "1bd3e453-aa21-4ee6-95c2-d6d920ee8e7a"
+default_print = "a81f924b-0527-4311-8120-9bfff71524f6"
 otags = ["activated-ability", "tutor-land-basic", "fetchland"]
 oracle = "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle."
 set = "msc"

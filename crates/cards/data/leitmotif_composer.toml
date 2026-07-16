@@ -1,4 +1,6 @@
 name = "Leitmotif Composer"
+id = "61816f98-9d1a-4b16-9194-cb7249880710"
+default_print = "2511b281-f822-427c-ac5f-d376b64fa6cf"
 otags = ["activated-ability", "cast-trigger-you", "copy-self", "curiosity", "exponential", "gives-unblockable", "mana-value-matters", "name-matters", "repeatable-creature-tokens", "repeatable-pure-draw", "synergy-instant", "synergy-sorcery"]
 oracle = "Whenever this creature deals combat damage to a player, draw a card.\nWhenever you cast an instant or sorcery spell with mana value 5 or greater, create a token that's a copy of this creature.\n{2}{U}: Creatures named Leitmotif Composer can't be blocked this turn."
 set = "soc"

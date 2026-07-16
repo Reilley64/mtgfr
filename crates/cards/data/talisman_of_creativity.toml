@@ -3,6 +3,8 @@
 # Talisman of Creativity: {2} Artifact. "{T}: Add {C}. / {T}: Add {U} or {R}. This artifact deals
 # 1 damage to you."
 name = "Talisman of Creativity"
+id = "14d2979d-5728-42d7-a027-0eb1f754655d"
+default_print = "3ed13229-bbbb-41a7-933e-8975a6b64226"
 otags = ["activated-ability", "burn-you", "cycle-mh1-talisman", "mana-ability-with-extra-effect", "mana-rock", "refund"]
 oracle = "{T}: Add {C}.\n{T}: Add {U} or {R}. This artifact deals 1 damage to you."
 set = "msc"

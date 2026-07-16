@@ -4,6 +4,8 @@
 # Spectacle Summit: "This land enters tapped. {T}: Add {U} or {R}. {2}{U}{R}, {T}: Surveil 1."
 # Spectacle Summit has no printed land type (a plain "Land"), so there's no subtype to model.
 name = "Spectacle Summit"
+id = "33a4e73d-d93a-4b6f-88ff-cd53f20d178c"
+default_print = "a0a66f7b-eab4-45da-8895-c2c2c7eb05f8"
 otags = ["activated-ability", "alliteration", "cycle-sos-surveil-dual", "mana-sink", "surveil", "utility-land", "virtual-legendary"]
 oracle = "This land enters tapped.\n{T}: Add {U} or {R}.\n{2}{U}{R}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
 set = "sos"

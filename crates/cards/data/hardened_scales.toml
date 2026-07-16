@@ -3,6 +3,8 @@
 # "If one or more +1/+1 counters would be put on a creature you control, that many
 # plus one +1/+1 counters are put on it instead." (Secrets of Strixhaven Commander)
 name = "Hardened Scales"
+id = "a1f3da21-af6d-450e-bf0b-985d158418e6"
+default_print = "99cfd1a8-49fd-4cc0-96f2-f9f159ce5d55"
 otags = ["counter-increaser", "pp-counters-matter"]
 oracle = "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead."
 set = "soc"

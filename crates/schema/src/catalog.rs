@@ -9,6 +9,10 @@ use crate::dto::{WireCost, WireKind};
 /// One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct CatalogCard {
+    /// Card id (Scryfall oracle id).
+    pub id: String,
+    /// Default Printing UUID (Scryfall card id) for art when a deck line hasn't chosen otherwise.
+    pub default_print: String,
     pub name: String,
     pub cost: WireCost,
     pub kind: WireKind,
@@ -363,6 +367,8 @@ pub fn catalog_card(def: &engine::CardDef) -> CatalogCard {
     let mut parts: Vec<String> = def.keywords.iter().copied().map(keyword_label).collect();
     parts.extend(def.abilities.iter().map(|a| a.effect.label()));
     CatalogCard {
+        id: def.id.to_string(),
+        default_print: def.default_print.to_string(),
         name: def.name.to_string(),
         cost: wire_cost(def.cost),
         kind: wire_kind(*def),

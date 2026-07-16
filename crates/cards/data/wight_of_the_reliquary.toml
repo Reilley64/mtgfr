@@ -3,6 +3,8 @@
 # {T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then
 # shuffle.
 name = "Wight of the Reliquary"
+id = "4507df69-6bf7-43d6-a609-c032b61835d5"
+default_print = "a8c6ee26-fa74-4859-9a94-89b476d218d2"
 otags = ["activated-ability", "cycle-mh3-r-m-two-color", "land-ramp", "punny-name", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "tutor-land-any", "tutor-land-to-battlefield", "undergrowth"]
 oracle = "Vigilance\nThis creature gets +1/+1 for each creature card in your graveyard.\n{T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then shuffle."
 set = "soc"

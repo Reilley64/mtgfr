@@ -3,6 +3,8 @@
 # When this land enters, sacrifice two lands.
 # {T}: Add three mana of any one color.
 name = "Lotus Field"
+id = "134d5b82-7940-4b33-a922-7f9d1f403e50"
+default_print = "ee5ac47c-e8b6-400e-b91e-a7cd0f952cf1"
 otags = ["activated-ability", "adds-multiple-mana", "drawback", "rainbow-land", "sacrifice-cost-land", "sacrifice-outlet-land", "tapland", "triggered-ability"]
 oracle = "Hexproof\nThis land enters tapped.\nWhen this land enters, sacrifice two lands.\n{T}: Add three mana of any one color."
 set = "soc"

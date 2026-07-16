@@ -8,6 +8,8 @@
 #   Whenever equipped creature attacks, double the number of +1/+1 counters on it.
 #   Equip {2}"
 name = "Fractal Harness"
+id = "09342fd7-3dad-431e-8b87-de8a9287e757"
+default_print = "8d196dcf-80bc-4a0a-83c9-ae87da5e74bf"
 otags = ["activated-ability", "attack-trigger", "attacking-matters", "counter-doubler", "exponential", "gives-pp-counters", "living-weapon", "out-of-color-token", "pp-counters-matter", "repeatable-pp-counters"]
 oracle = "When this Equipment enters, create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it and attach this Equipment to it.\nWhenever equipped creature attacks, double the number of +1/+1 counters on it.\nEquip {2}"
 set = "soc"

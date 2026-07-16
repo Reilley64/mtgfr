@@ -7,7 +7,7 @@ Deploy mtgfr to a **Kubernetes cluster** reached via a **Cloudflare Tunnel** (no
 1. **Reachable by friends** — client at `https://edh.example.com`, API at `https://api.edh.example.com`; stable share links on the client host.
 2. **Reproducible infra** — Terraform in **this repo** (`iac/`) owns the edh namespace workloads, Postgres, Cloudflare Tunnel/DNS, and deploy config. `terraform apply` is the deploy path.
 3. **Zero-downtime for active games** — during a release, players at a live table stay on the old server binary until that table is empty (game over or everyone left).
-4. **Traceable releases** — every merge to `main`/`master` runs [semantic-release](https://semantic-release.org/) (default config) on green verify; container images build on `release: published`.
+4. **Traceable releases** — every merge to `main`/`master` runs [semantic-release](https://semantic-release.org/) (default config) on green verify; container images build when the resulting `v*` tag is pushed (`docker.yml`).
 
 ## Non-goals (for this PRD)
 
@@ -48,7 +48,7 @@ Home k3s host (separate machine)
     │     ├─ Deployment edh-api-drain    (serve; during rolls only)
     │     ├─ Deployment edh-api-proxy    (nginx; cookie sticky on mtgfr-instance)
     │     ├─ Job edh-migrate             (server migration apply, before API roll)
-    │     ├─ Helm release postgresql     (Bitnami; mtgfr DB)
+    │     ├─ StatefulSet postgres        (official postgres image; mtgfr DB)
     │     └─ Deployment cloudflared      (tunnel connector)
     │
 Internet ── Cloudflare (DNS + Tunnel) ──► cloudflared ──► ClusterIP Services
@@ -120,7 +120,7 @@ provider "cloudflare" {
   api_token = var.cloudflare_api_token
 }
 
-# Helm is required — Bitnami postgresql lives here
+# Helm is not used — Postgres is a plain StatefulSet (postgres.tf).
 provider "helm" {
   kubernetes {
     config_path = var.kubeconfig_path
@@ -143,11 +143,11 @@ mtgfr Terraform **fully owns** the Zero Trust tunnel, public hostname routes, DN
 
 `cloudflared` runs in-cluster (Deployment, 2 replicas for connector HA). It authenticates with the tunnel token and forwards Cloudflare edge traffic to ClusterIP Services. The cluster needs **egress** to Cloudflare; it does **not** need inbound public ports for edh.
 
-### Postgres — Bitnami Helm
+### Postgres — official image StatefulSet
 
-Install **Bitnami `postgresql`** via the Helm provider into namespace `edh` (single primary, PVC on k3s local-path or whatever StorageClass the node has). Create role/database `mtgfr` via chart auth values / initdb scripts. `DATABASE_URL` points at the chart Service DNS name.
+Install a single-primary **Postgres StatefulSet** (`postgres:17` or pinned tag) into namespace `edh` with a PVC on k3s local-path (or whatever StorageClass the node has). Create role/database `mtgfr` via the image’s `POSTGRES_*` env. `DATABASE_URL` points at the Service DNS name `postgres`.
 
-Skip CloudNativePG for v1 — more operators than this friend-group deploy needs. **Backups for v1:** rely on k3s / PVC snapshots (and etcd/datastore backups that already protect cluster state). No separate Postgres dump cron until we need it.
+Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-catalog churn) than this friend-group deploy needs. **Backups for v1:** rely on k3s / PVC snapshots (and etcd/datastore backups that already protect cluster state). No separate Postgres dump cron until we need it.
 
 ### Sticky proxy — nginx
 
@@ -163,7 +163,7 @@ Skip CloudNativePG for v1 — more operators than this friend-group deploy needs
 | `edh-api` / `edh-api-drain` Deployments + Services | Active + draining peers; stable `INSTANCE_ID` per Deployment |
 | `edh-api-proxy` | nginx sticky router (tunnel origin for API) |
 | `edh-migrate` Job | Runs `server migration apply` before API rollout (`generateName`) |
-| Helm release `postgresql` | Bitnami; dedicated `mtgfr` role/DB; backups = k3s/PVC snapshots |
+| StatefulSet `postgres` | Official `postgres` image; dedicated `mtgfr` role/DB; backups = k3s/PVC snapshots |
 | NetworkPolicy | Deny public/tunnel access to `/admin/*` and drain health used by orchestrator |
 | Secrets | `DATABASE_URL`, tunnel token, etc. |
 | `cloudflared` Deployment + Secret | Tunnel connector |
@@ -601,7 +601,7 @@ mtgfr/
     web.tf               # edh-web Deployment + Service
     api.tf               # edh-api + edh-api-drain Deployments/Services
     api-proxy.tf         # nginx sticky on mtgfr-instance (tunnel origin)
-    postgres.tf          # helm_release bitnami/postgresql
+    postgres.tf          # StatefulSet + Service: official postgres image
     migrate.tf           # Job: toasty migration apply (generate_name + wait)
     tunnel.tf            # Cloudflare Tunnel + cloudflared + DNS records
     network-policy.tf    # cluster-internal only for admin/drain
@@ -655,10 +655,10 @@ After squash, **all** commits on `main` follow [Conventional Commits](https://ww
 | Git tag | `vMAJOR.MINOR.PATCH` — `@semantic-release/github` (default) |
 | `package.json` `version` | `@semantic-release/npm` (default) — root `package.json` is `private: true` (not published to npm; satisfies the default plugin) |
 | GitHub Release | release notes from `@semantic-release/release-notes-generator` (default) |
-| GHCR image tags | `docker.yml` on `release: published`, tagged with the release version |
+| GHCR image tags | `docker.yml` on `push` of `v*` tags, tagged with the release version |
 | `Cargo.toml` version | **not** managed by semantic-release — pin `VERSION` / Terraform image tags from the **git tag** / GitHub Release name |
 
-Commits that do not warrant a release under the default analyzer produce no tag and no image build (`release: published` does not fire).
+Commits that do not warrant a release under the default analyzer produce no tag and no image build (`docker.yml` does not fire).
 
 ### GitHub Actions
 
@@ -673,7 +673,7 @@ push to main/master ──► verify-and-release.yml
                             ├─ job: verify   (migrate + just check)
                             └─ job: release  (npx semantic-release — default config)
 
-release published ──► docker.yml           (build + push GHCR images)
+v* tag pushed ──────► docker.yml           (build + push GHCR images)
 
 workstation (apply machine) ──► terraform apply (iac/) → remote k3s API
 ```
@@ -752,11 +752,15 @@ jobs:
 }
 ```
 
-#### `docker.yml` — images after release
+#### `docker.yml` — images on `v*` tag push
 
-Triggers: `release: types: [published]` (fires when semantic-release creates the GitHub Release).
+Triggers: `push` of tags matching `v*`. semantic-release must push that tag with repo secret `RELEASE_TOKEN` (PAT: `contents` + `workflow`) — default `GITHUB_TOKEN` cannot cascade workflow runs. Verify already ran `just check` on the tagged commit — this workflow only builds and pushes images.
 
 ```yaml
+on:
+  push:
+    tags: ["v*"]
+
 permissions:
   contents: read
   packages: write
@@ -766,12 +770,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
-      - run: just check
-      - run: cargo run -p server -- openapi && diff -q openapi.json …
       # docker/login-action → ghcr.io (GITHUB_TOKEN)
-      # build-push mtgfr-server + mtgfr-web tagged ${{ github.event.release.tag_name }} (strip leading v)
+      # build-push mtgfr-server + mtgfr-web tagged ${GITHUB_REF_NAME#v} (lowercase owner)
 ```
 
 Do **not** push a moving `latest` tag — pin explicit versions in `terraform.tfvars`.
@@ -798,7 +798,8 @@ No `.releaserc.json`, `scripts/bump-version.sh`, or `CHANGELOG.md` committed by 
 
 | Name | Where | Purpose |
 |------|-------|---------|
-| `GITHUB_TOKEN` | built-in | semantic-release release job; GHCR push in `docker.yml` |
+| `GITHUB_TOKEN` | built-in | GHCR push in `docker.yml`; fallback for semantic-release if `RELEASE_TOKEN` unset |
+| `RELEASE_TOKEN` | repo secret | PAT (`contents` + `workflow`) for semantic-release so its `v*` tag push triggers `docker.yml` |
 
 No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token: write` unless npm trusted publishing is added later.
 
@@ -807,7 +808,7 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 1. Open PR with conventional commits; `ci.yml` runs migrate + `just check`.
 2. Merge to `main`.
 3. `verify-and-release.yml`: verify passes → `npx semantic-release` (default) → git tag + GitHub Release (if commits warrant a release).
-4. `docker.yml` builds and pushes GHCR images for that release tag.
+4. `docker.yml` builds and pushes GHCR images when that `v*` tag is pushed (requires `RELEASE_TOKEN` for semantic-release cascades).
 5. Bump **`server_image` only** in `iac/terraform.tfvars` and `terraform apply` (migrate + API roll + drain). Leave `web_image` on the previous tag.
 6. When drain reports `active_tables=0` and the old API Deployment is gone, bump **`web_image`** to the same release tag and apply again.
 
@@ -825,8 +826,8 @@ Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-api-proxy`. Image 
 | **1 — Migrations** | `toasty-cli`, `Toasty.toml`, initial `migration generate`, `server migration` subcommand, drop prod `push_schema` | `just migrate` + tests green against Postgres |
 | **2 — Containerize** | Distroless Dockerfiles, `mtgfr static` (**gzip** `CompressionLayer`), `config` crate + `Settings` | Local image smoke test (compose or kind); `Accept-Encoding: gzip` on a JS/CSS asset returns `Content-Encoding: gzip` |
 | **3 — CI** | `.github/workflows/ci.yml` (migrate + `just check`) | PRs and `main` run migrate then `just check` |
-| **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json` | Merge to `main` → semantic-release (default) → GHCR images on `release published` |
-| **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Bitnami Postgres, nginx sticky, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
+| **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json`, `RELEASE_TOKEN` | Merge to `main` → semantic-release (default) → `v*` tag push → GHCR images |
+| **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres StatefulSet, nginx sticky, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
 | **6 — Drain + affinity** | Health/drain + live `/admin/drain`, stable `INSTANCE_ID`, nginx cookie route, two-Deployment roll; **web image held until drain empties**; **wire backwards-compat doc** (ADR or `docs/`) | Deploy while a game runs on the prior version without disconnect; mid-game refresh keeps old SPA ↔ old API; schema authors have written expand/contract rules |
 | **7 — Deploy ergonomics** | `just deploy` recipe (API bump → drain wait → web bump); optional workflow PR for `terraform.tfvars` image bumps | Release → apply with minimal hand steps; cannot bump both images in one step |
 
@@ -836,7 +837,7 @@ Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-api-proxy`. Image 
 |-------|----------|
 | Cluster | Home **k3s** on its own host; Terraform / kubectl on a **separate apply machine** via remote kubeconfig |
 | Terraform state | **Kubernetes backend** on that k3s cluster (Secret + Lease in `terraform`); apply machine reaches it over the k3s API |
-| Postgres | **Bitnami `postgresql`** Helm release in `edh`; single primary + PVC |
+| Postgres | Official **`postgres` image** StatefulSet in `edh`; single primary + PVC |
 | Postgres backups (v1) | **k3s / PVC snapshots** (+ existing etcd/datastore backups); no dump cron yet |
 | Sticky proxy | **nginx** with cookie map/hash on `mtgfr-instance` (not nginx Plus `sticky`) |
 | Tunnel | **Fully Terraform-managed** Zero Trust tunnel + DNS + in-cluster `cloudflared` |
@@ -875,7 +876,7 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 
 - Home **k3s** — workload host; apply machine is separate and uses remote kubeconfig for Terraform providers + kubernetes state backend
 - [Terraform kubernetes backend](https://developer.hashicorp.com/terraform/language/backend/kubernetes) — state Secret + lock Lease
-- Bitnami `postgresql` Helm chart — in-cluster Postgres
+- Official `postgres` image StatefulSet — in-cluster Postgres
 - nginx cookie map/hash — sticky proxy for `mtgfr-instance`
 - Cloudflare Tunnel / Zero Trust — Terraform-managed public hostnames → in-cluster `cloudflared`
 - ADR 0005 — in-process fan-out (affinity extends this)

@@ -192,6 +192,8 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
         TokenSpec::Full(def) => def,
         TokenSpec::Sugar(token) => CardDef {
             name: Box::leak(token.name.into_boxed_str()),
+            id: "",
+            default_print: "",
             cost: Cost::FREE,
             kind: CardKind::Creature {
                 power: token.power,
@@ -284,6 +286,13 @@ impl<'de> Deserialize<'de> for CardDef {
         #[derive(Deserialize)]
         #[serde(deny_unknown_fields)]
         struct Card {
+            /// Scryfall oracle id — required on top-level pool TOMLs (enforced at registry load).
+            /// Nested faces/tokens may omit it (`""`).
+            #[serde(default)]
+            id: String,
+            /// Scryfall card UUID for the default Printing — required on top-level pool TOMLs.
+            #[serde(default)]
+            default_print: String,
             name: String,
             #[serde(default)]
             cost: Cost,
@@ -436,6 +445,8 @@ impl<'de> Deserialize<'de> for CardDef {
 
         let card = Card::deserialize(d)?;
         Ok(CardDef {
+            id: Box::leak(card.id.into_boxed_str()),
+            default_print: Box::leak(card.default_print.into_boxed_str()),
             name: Box::leak(card.name.into_boxed_str()),
             cost: card.cost,
             kind: card.kind,

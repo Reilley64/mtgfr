@@ -5,6 +5,8 @@
 # Quandrix Charm {G}{U} — a modal "choose one" instant (CR 700.2). Its spell-timed abilities are
 # its modes; the caster picks exactly one at cast (`modal = true`, choose defaults to 1).
 name = "Quandrix Charm"
+id = "f43e36ea-6bf5-45bd-a4ad-cc507ae45641"
+default_print = "318486e0-f255-40f5-8150-dc272eec9d7d"
 otags = ["counterspell-soft", "cycle-sos-charm", "removal-destroy", "removal-enchantment", "shapechange", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Choose one —\n• Counter target spell unless its controller pays {2}.\n• Destroy target enchantment.\n• Target creature has base power and toughness 5/5 until end of turn."
 set = "sos"

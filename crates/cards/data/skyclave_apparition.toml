@@ -1,5 +1,7 @@
 # ponytail: the "up to one" declinable target is modeled by optional = true.
 name = "Skyclave Apparition"
+id = "d90af00a-d322-4265-9954-7b1e80702e18"
+default_print = "e671de25-c47c-48a1-919b-6aa30dab142f"
 otags = ["donate-token", "leaves-trigger-self", "mana-value-matters", "out-of-color-token", "removal-exile", "removal-nonland", "spot-removal", "swap-removal"]
 oracle = "When this creature enters, exile up to one target nonland, nontoken permanent you don't control with mana value 4 or less.\nWhen this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion creature token, where X is the mana value of the exiled card."
 set = "soc"

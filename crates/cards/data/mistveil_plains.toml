@@ -3,6 +3,8 @@
 # {W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only if you control two or more
 # white permanents.
 name = "Mistveil Plains"
+id = "bb5c1817-ac22-4779-9005-251bc354f181"
+default_print = "c53028dd-efb5-486c-a7d3-45f2f6050c1d"
 otags = ["activated-ability", "cycle-shm-utilityland", "nonbasic-basic-land-type", "restock-to-bottom", "synergy-white", "utility-land"]
 oracle = "({T}: Add {W}.)\nThis land enters tapped.\n{W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only if you control two or more white permanents."
 set = "soc"

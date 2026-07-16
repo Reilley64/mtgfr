@@ -1,6 +1,8 @@
 # ponytail: "X can't be greater than the number of players in the game" isn't enforced as a
 # cast-time legality check — no effect in the pool bounds an X cost by player count yet.
 name = "Open the Way"
+id = "e07297c7-83bc-4162-bbb1-362bc737efe0"
+default_print = "5d928e0d-a586-4de1-a469-0591122659fa"
 otags = ["consult-onto-battlefield", "multi-land-ramp", "per-player"]
 oracle = "X can't be greater than the number of players in the game.\nReveal cards from the top of your library until you reveal X land cards. Put those land cards onto the battlefield tapped and the rest on the bottom of your library in a random order."
 set = "soc"

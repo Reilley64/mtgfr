@@ -1,6 +1,8 @@
 # {T}: Add {C}.
 # {T}: Add {W} or {B}. This artifact deals 1 damage to you.
 name = "Talisman of Hierarchy"
+id = "b693c3de-2eaf-4850-b405-e79d00adefda"
+default_print = "0c959368-2f58-48de-b7a5-2bab408652b5"
 otags = ["activated-ability", "burn-you", "cycle-mh1-talisman", "mana-ability-with-extra-effect", "mana-rock", "refund"]
 oracle = "{T}: Add {C}.\n{T}: Add {W} or {B}. This artifact deals 1 damage to you."
 set = "soc"

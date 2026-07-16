@@ -4,6 +4,8 @@
 # Seize the Spoils {2}{R} — sorcery. "As an additional cost to cast this spell, discard a card.
 # Draw two cards and create a Treasure token."
 name = "Seize the Spoils"
+id = "58f83528-9110-4895-b5ea-51b90af30a8d"
+default_print = "4ddf4e34-a1f9-4636-942d-0a08e9f94320"
 otags = ["alliteration", "hand-neutral", "mini-refund", "pillage-effect", "ramp", "tormenting-voice"]
 oracle = "As an additional cost to cast this spell, discard a card.\nDraw two cards and create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
 set = "sos"

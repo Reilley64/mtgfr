@@ -2,6 +2,8 @@
 # Three Visits {1}{G} — "Search your library for a Forest card, put it onto the
 # battlefield, then shuffle." A Nature's Lore–style untapped land ramp.
 name = "Three Visits"
+id = "1b882a0e-0ede-4d1a-bd1a-9b7cffbcde8e"
+default_print = "99bf792f-963e-4509-8d3c-7db129c6a77f"
 otags = ["land-ramp", "mini-refund", "tutor-land-forest", "tutor-land-to-battlefield"]
 oracle = "Search your library for a Forest card, put it onto the battlefield, then shuffle."
 set = "msc"

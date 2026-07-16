@@ -3,6 +3,8 @@
 # Eclipsed Steppe (soc): "Land — Plains Swamp. {T}: Add {W} or {B}. This land enters tapped
 # unless you control two or more basic lands."
 name = "Eclipsed Steppe"
+id = "6216635f-8e6e-40a3-9659-ef6352ab92ce"
+default_print = "d890999a-dcc7-479e-b0f0-60388c737043"
 otags = ["activated-ability", "cycle-tangoland", "nonbasic-basic-land-type"]
 oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped unless you control two or more basic lands."
 set = "soc"

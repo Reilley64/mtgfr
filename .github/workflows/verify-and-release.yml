@@ -10,6 +10,11 @@ on:
       - main
       - master
 
+# Queue pushes to main — never overlap semantic-release tag/release writes.
+concurrency:
+  group: verify-and-release
+  cancel-in-progress: false
+
 permissions:
   contents: read # verify job
 
@@ -40,9 +45,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install protobuf-compiler
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -55,14 +57,31 @@ jobs:
 
       - uses: extractions/setup-just@v3
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
       - name: Install client dependencies
         run: cd client && bun install --frozen-lockfile
 
       - name: Apply Toasty migrations
         run: cargo run -p server -- migration apply
 
-      - name: just check (format + lint + typecheck + test)
+      - name: just check (codegen + format + lint + typecheck + test)
         run: just check
+
+      - name: Upload Rust JUnit report
+        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-junit
+          path: target/nextest/ci/junit.xml
+
+      - name: Rust test summary
+        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: test-summary/action@v2
+        with:
+          paths: target/nextest/ci/junit.xml
 
   release:
     name: Release
@@ -76,6 +95,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # required — semantic-release needs full history
+          # PAT so git/API tag creation is attributed to RELEASE_TOKEN (cascades to docker.yml).
+          token: ${{ secrets.RELEASE_TOKEN }}
+          persist-credentials: true
 
       - uses: actions/setup-node@v4
         with:
@@ -84,7 +106,18 @@ jobs:
 
       - run: npm clean-install # installs semantic-release devDependencies from package.json
 
+      - name: Require RELEASE_TOKEN
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "Set repo secret RELEASE_TOKEN (PAT: contents + workflow)." >&2
+            echo "semantic-release must push v* tags with a PAT — GITHUB_TOKEN cannot trigger docker.yml." >&2
+            exit 1
+          fi
+
       - name: Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PAT only — never GITHUB_TOKEN. Tag push must be able to trigger docker.yml on v*.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: npx semantic-release

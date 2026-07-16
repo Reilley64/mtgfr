@@ -1,12 +1,15 @@
 name: Docker
 
-# Deploy PRD §GitHub Actions — build + push GHCR images after semantic-release publishes a
-# GitHub Release. Not part of the semantic-release pipeline itself; images are pinned to the
-# release tag, never `latest` (Terraform pins explicit versions in terraform.tfvars).
+# Build + push GHCR images for `v*` tags.
+# Verify already ran `just check` on this commit (verify-and-release → semantic-release).
+# semantic-release must create tags with `RELEASE_TOKEN` (PAT: contents + workflow) —
+# `GITHUB_TOKEN` cannot cascade workflow runs. Do not also listen for `create`: GitHub
+# emits both `create` and `push` for the same tag, which doubles the build.
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: read
@@ -14,65 +17,21 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
 
 jobs:
   docker:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: mtgfr
-          POSTGRES_PASSWORD: mtgfr
-          POSTGRES_DB: mtgfr
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U mtgfr -d mtgfr"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
 
-      - name: Install protobuf-compiler
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - uses: extractions/setup-just@v3
-
-      - name: Install client dependencies
-        run: cd client && bun install --frozen-lockfile
-
-      - name: Apply Toasty migrations
-        run: cargo run -p server -- migration apply
-
-      - name: just check (format + lint + typecheck + test)
-        run: just check
-
-      - name: Verify committed OpenAPI client matches the schema crate at this tag
+      - name: Image names (GHCR requires lowercase)
+        id: image
         run: |
-          just server-codegen
-          git diff --exit-code -- client/src/api/generated.ts
-
-      - name: Compute image version (strip leading v from the tag)
-        id: version
-        env:
-          TAG_NAME: ${{ github.event.release.tag_name }}
-        run: echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+          owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "server=ghcr.io/${owner}/mtgfr-server" >> "$GITHUB_OUTPUT"
+          echo "web=ghcr.io/${owner}/mtgfr-web" >> "$GITHUB_OUTPUT"
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -89,7 +48,7 @@ jobs:
           context: .
           file: docker/server/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/mtgfr-server:${{ steps.version.outputs.version }}
+          tags: ${{ steps.image.outputs.server }}:${{ steps.image.outputs.version }}
 
       - name: Build and push mtgfr-web
         uses: docker/build-push-action@v6
@@ -97,24 +56,22 @@ jobs:
           context: .
           file: docker/web/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/mtgfr-web:${{ steps.version.outputs.version }}
-          # Override via repo Actions variables `VITE_API_ORIGIN` / `VITE_CARD_CDN`.
-          # Defaults match the Dockerfile (example.com API; no card CDN → Scryfall fallback).
+          tags: ${{ steps.image.outputs.web }}:${{ steps.image.outputs.version }}
           build-args: |
             VITE_API_ORIGIN=${{ vars.VITE_API_ORIGIN || 'https://api.edh.example.com' }}
             VITE_CARD_CDN=${{ vars.VITE_CARD_CDN }}
 
       - name: Make GHCR packages public
-        # GHCR packages default to private on first push. Best-effort: flips visibility to public
-        # (deploy PRD — "public GHCR packages; no imagePullSecret on nodes"). Safe to re-run; a
-        # 404/403 here (e.g. insufficient token scope) does not fail the release — flip visibility
-        # by hand once in repo/org package settings if this step can't.
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
           for pkg in mtgfr-server mtgfr-web; do
             gh api --method PATCH \
               "/user/packages/container/${pkg}" \
+              -f visibility=public || \
+            gh api --method PATCH \
+              "/orgs/${owner}/packages/container/${pkg}" \
               -f visibility=public || true
           done

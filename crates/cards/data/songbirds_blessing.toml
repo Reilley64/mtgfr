@@ -3,6 +3,8 @@
 # put that card onto the battlefield. If you don't, put it into your hand. Put the rest on the bottom of your library in
 # a random order.
 name = "Songbirds' Blessing"
+id = "2598294c-a9a7-4bef-a562-23f297a80536"
+default_print = "4d1e229a-ed04-4d8d-90a9-5a451ca81470"
 otags = ["attack-trigger", "attacking-matters", "consult-onto-battlefield", "repeatable-card-advantage", "synergy-aura"]
 oracle = "Enchant creature\nWhenever enchanted creature attacks, reveal cards from the top of your library until you reveal an Aura card. You may put that card onto the battlefield. If you don't, put it into your hand. Put the rest on the bottom of your library in a random order."
 set = "soc"

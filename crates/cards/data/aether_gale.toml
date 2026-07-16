@@ -4,6 +4,8 @@
 # six distinct nonland permanents at cast (CR 601.2c), or as many as exist when fewer than six do,
 # and each surviving target is bounced independently at resolution (CR 608.2b).
 name = "Aether Gale"
+id = "b21d6482-1b3a-47e6-98a5-3067f5f3818b"
+default_print = "4e336e87-e5af-46a0-8caf-5d9ad8d671fd"
 otags = ["multi-removal", "multiple-targets", "removal-bounce", "removal-nonland", "rescue-nonland"]
 oracle = "Return six target nonland permanents to their owners' hands."
 set = "soc"

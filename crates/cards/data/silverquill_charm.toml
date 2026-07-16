@@ -5,6 +5,8 @@
 # Silverquill Charm {W}{B} — a modal "choose one" instant (CR 700.2). Its three spell-timed
 # abilities are its modes; the caster picks exactly one at cast (`modal = true`).
 name = "Silverquill Charm"
+id = "d985b12e-2731-4ccf-9f51-90218b20b42a"
+default_print = "3eb73579-f1c6-4762-81d2-9568ab501fac"
 otags = ["cycle-sos-charm", "drain-life", "gives-pp-counters", "opponent-loses-life", "power-matters", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Choose one —\n• Put two +1/+1 counters on target creature.\n• Exile target creature with power 2 or less.\n• Each opponent loses 3 life and you gain 3 life."
 set = "sos"

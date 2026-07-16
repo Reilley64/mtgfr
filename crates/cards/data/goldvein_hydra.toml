@@ -2,6 +2,8 @@
 # This creature enters with X +1/+1 counters on it.
 # When this creature dies, create a number of tapped Treasure tokens equal to its power.
 name = "Goldvein Hydra"
+id = "2b62543f-a475-457a-a96b-b5d070383d3c"
+default_print = "3baebc29-bc89-4b56-a821-b5d3ca0cd3b4"
 otags = ["death-trigger-self", "gains-pp-counters", "power-matters-self", "ramp"]
 oracle = "Vigilance, trample, haste\nThis creature enters with X +1/+1 counters on it.\nWhen this creature dies, create a number of tapped Treasure tokens equal to its power."
 set = "soc"

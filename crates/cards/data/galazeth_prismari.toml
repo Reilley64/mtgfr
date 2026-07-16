@@ -5,6 +5,8 @@
 # "Flying. When Galazeth Prismari enters, create a Treasure token. Artifacts you control have
 # '{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell.'"
 name = "Galazeth Prismari"
+id = "f9217532-f7cf-4436-b476-72d97a3147dc"
+default_print = "abdd3b41-6bdd-4b35-998c-0358ba72ca12"
 otags = ["cycle-stx-dragon-founder", "evasion", "gives-mana-ability", "gives-tap-ability", "mini-refund", "ramp", "restricted-mana", "synergy-instant", "synergy-sorcery", "tap-fuel-artifact", "triggered-ability"]
 oracle = "Flying\nWhen Galazeth Prismari enters, create a Treasure token.\nArtifacts you control have \"{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell.\""
 set = "soc"

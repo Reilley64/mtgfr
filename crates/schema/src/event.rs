@@ -743,7 +743,7 @@ mod tests {
             player: PlayerId(0),
             object: 7,
             from: 42,
-            card: cards::get("Shock").unwrap(),
+            card: cards::get_by_name("Shock").unwrap(),
         };
         let spec = spectator_redact(&ev);
         match spec {
@@ -819,7 +819,7 @@ mod tests {
             player: alice,
             object: 7,
             from: 3,
-            card: cards::get("Shock").expect("Shock is in the pool"),
+            card: cards::get_by_name("Shock").expect("Shock is in the pool"),
         };
 
         let for_alice = redact(&draw, alice);
@@ -856,7 +856,7 @@ mod tests {
             player: alice,
             object: 7,
             from: 3,
-            card: cards::get("Shock").expect("Shock is in the pool"),
+            card: cards::get_by_name("Shock").expect("Shock is in the pool"),
         };
 
         let for_alice = redact(&tutor, alice);

@@ -49,11 +49,9 @@ Within one release's changes to `crates/schema`, `crates/server`, and `openapi.j
   "snake_case")]` discriminator. Adding a new `kind` value is expand-only and safe. Renaming an
   existing `kind` string, or changing what payload shape an existing `kind` carries, is not — it
   is a hard break (§3).
-- **Run `just server-codegen`** after any schema change and commit the regenerated
-  `client/src/api/generated.ts` — `docker.yml` verifies the committed generated client still
-  matches the schema crate at the tag being built (deploy PRD §Container images —
-  "OpenAPI codegen in the client build must use the committed `openapi.json`... release workflow
-  checks they match").
+- **Run `just server-codegen`** after any schema change (gitignored `openapi.json` +
+  `client/src/api/generated.ts`). CI and `just check` regenerate them; docker image builds
+  expect codegen to have run on the host before `docker build` so the web stage can typecheck.
 
 ## 3. Hard breaks — `/v2`
 

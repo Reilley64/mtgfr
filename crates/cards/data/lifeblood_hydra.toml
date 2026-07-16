@@ -2,6 +2,8 @@
 # This creature enters with X +1/+1 counters on it.
 # When this creature dies, you gain life and draw cards equal to its power.
 name = "Lifeblood Hydra"
+id = "b14d05c0-fe10-4079-a90e-0aea1a8fd375"
+default_print = "3431a77c-2027-406b-9230-5d0f8837af62"
 otags = ["burst-draw", "death-trigger-self", "gains-pp-counters", "lifegain", "power-matters-self", "pure-draw"]
 oracle = "Trample\nThis creature enters with X +1/+1 counters on it.\nWhen this creature dies, you gain life and draw cards equal to its power."
 set = "soc"

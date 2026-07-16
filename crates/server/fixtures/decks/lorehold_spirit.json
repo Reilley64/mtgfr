@@ -1,341 +1,426 @@
 {
- "commander": "Quintorius, History Chaser",
+ "commander": "5c40a8d4-6969-4d71-aba5-5c7e4109b7d5",
+ "commander_print": "0742f19d-179c-43c4-ab95-4160c56b4384",
  "cards": [
   {
-   "name": "Angel of Indemnity",
-   "count": 1
+   "id": "4f57a320-b6b5-49de-af0a-f2e2649758a7",
+   "count": 1,
+   "print": "41163f43-7357-4bbc-a1e7-9c8070135c93"
   },
   {
-   "name": "Anger",
-   "count": 1
+   "id": "eaabd151-2160-4bff-82c0-3fa88659be98",
+   "count": 1,
+   "print": "e886a604-e3ce-4c6a-b63e-2c7f910a177a"
   },
   {
-   "name": "Ao, the Dawn Sky",
-   "count": 1
+   "id": "697ac261-263b-4879-bf45-6d10d23312ae",
+   "count": 1,
+   "print": "e002d351-3795-4cd9-b389-9ed81077845e"
   },
   {
-   "name": "Atsushi, the Blazing Sky",
-   "count": 1
+   "id": "535f405d-94df-4f45-aedc-b331103720b7",
+   "count": 1,
+   "print": "06658540-0104-428f-91b1-40552826e781"
   },
   {
-   "name": "Augusta, Order Returned",
-   "count": 1
+   "id": "a80a1f84-ea49-4c8d-912d-c7036b814a6c",
+   "count": 1,
+   "print": "a0d1df84-0cb6-44fb-9916-d766d93f1519"
   },
   {
-   "name": "Balefire Liege",
-   "count": 1
+   "id": "ee35ed62-d5a2-4e65-a7eb-fcdcb3665532",
+   "count": 1,
+   "print": "6f236f33-f6d2-4b07-a69d-42165670bd45"
   },
   {
-   "name": "Claim Jumper",
-   "count": 1
+   "id": "18f0cd0b-3e4f-4637-a62e-75dd1b2f3fce",
+   "count": 1,
+   "print": "11bda4c5-099f-489e-b64b-f4719241cf9d"
   },
   {
-   "name": "Conspiracy Theorist",
-   "count": 1
+   "id": "fa81e7ff-0f2c-40df-9169-c0a22f00cd76",
+   "count": 1,
+   "print": "dd6797f7-ecc4-4c45-b1e4-26963a1614dc"
   },
   {
-   "name": "Containment Construct",
-   "count": 1
+   "id": "54d48e54-be4a-4a78-a778-b28e74ef7134",
+   "count": 1,
+   "print": "feb09084-0fdb-4226-b536-56d856354b5a"
   },
   {
-   "name": "Drumbellower",
-   "count": 1
+   "id": "03dee43b-6377-4f7b-956b-a384160322e4",
+   "count": 1,
+   "print": "c19e0ebf-ca94-4684-8b2c-68e592b65a24"
   },
   {
-   "name": "Excava, the Risen Past",
-   "count": 1
+   "id": "77216636-f76d-4c5e-b1ac-ab1844753f05",
+   "count": 1,
+   "print": "d47ebf19-b3fa-48a2-851a-254d32b0305a"
   },
   {
-   "name": "Guardian of Faith",
-   "count": 1
+   "id": "8e04a5e0-e22c-430b-a39a-c9f38e16ea86",
+   "count": 1,
+   "print": "037739cd-e05c-4aae-9123-f924e420010c"
   },
   {
-   "name": "Guardian Scalelord",
-   "count": 1
+   "id": "d6c7d7a6-2d38-4c06-ab83-bee9cc18de52",
+   "count": 1,
+   "print": "8415c0b3-9bf7-4c45-a215-4a73f1a42cbd"
   },
   {
-   "name": "Hofri Ghostforge",
-   "count": 1
+   "id": "663d451b-f848-41cc-b541-0c6fe37d3d54",
+   "count": 1,
+   "print": "bc03cdb6-5ad0-452d-a698-bd19f5ebac83"
   },
   {
-   "name": "Kami of Ancient Law",
-   "count": 1
+   "id": "e937e0f5-ca35-4dce-9f05-8f2075731628",
+   "count": 1,
+   "print": "4edbce98-bfc1-4c66-bd04-16100d9e22d3"
   },
   {
-   "name": "Karmic Guide",
-   "count": 1
+   "id": "8c31fec9-e4b3-4761-990e-7be38eb05604",
+   "count": 1,
+   "print": "b26d50dd-54a1-43ce-9884-3999f698d97b"
   },
   {
-   "name": "Kirol, History Buff",
-   "count": 1
+   "id": "df1c0d06-2109-4297-9271-8a003fc892bc",
+   "count": 1,
+   "print": "676ba521-66e4-42cf-a315-70d03cb7334e"
   },
   {
-   "name": "Laelia, the Blade Reforged",
-   "count": 1
+   "id": "a0be9bb2-3234-4c6c-b8ce-0879b1f43003",
+   "count": 1,
+   "print": "2cb16354-1211-4230-90e2-4858ba68f348"
   },
   {
-   "name": "Lorehold Archivist",
-   "count": 1
+   "id": "a371d035-488e-4b3d-81de-ee7859452c0e",
+   "count": 1,
+   "print": "cb535433-f062-4c35-977e-2f896251b1d8"
   },
   {
-   "name": "Millikin",
-   "count": 1
+   "id": "fa4dffda-6f04-4d0b-829d-28a1a5794dee",
+   "count": 1,
+   "print": "c2073453-4108-4039-a8c2-0f94dd7bf237"
   },
   {
-   "name": "Moonshaker Cavalry",
-   "count": 1
+   "id": "b3f16f34-d78c-4b61-821b-05fc6bd0da37",
+   "count": 1,
+   "print": "ca90d382-7e13-4637-a624-2a1b82abe56c"
   },
   {
-   "name": "Naktamun Lorespinner",
-   "count": 1
+   "id": "c78783e5-868d-4a8b-a4f8-95a92853cf0a",
+   "count": 1,
+   "print": "acca1fd4-6384-460e-905f-118f01aa76ed"
   },
   {
-   "name": "Quintorius, Field Historian",
-   "count": 1
+   "id": "28b64167-b7ea-4b4f-8434-061298050366",
+   "count": 1,
+   "print": "8e3c7f00-e997-4b07-98af-45b9ea35d2d7"
   },
   {
-   "name": "Quintorius, Loremaster",
-   "count": 1
+   "id": "c3d38129-b955-4fb5-8486-095f918935b9",
+   "count": 1,
+   "print": "7a609e56-667d-48b5-a6e6-629f1d7a2f72"
   },
   {
-   "name": "Relic Retriever",
-   "count": 1
+   "id": "689c41e9-800a-4998-bb04-74bf90141035",
+   "count": 1,
+   "print": "a016463d-a0aa-44a5-97ca-17ff70c4eb95"
   },
   {
-   "name": "Remorseful Cleric",
-   "count": 1
+   "id": "c40bc9f6-2b72-4ae1-b912-50075af59628",
+   "count": 1,
+   "print": "665a1bd1-db82-4db9-af7d-af161d31a696"
   },
   {
-   "name": "Selfless Spirit",
-   "count": 1
+   "id": "71d785a9-ddc8-472e-a778-a551b444a4bd",
+   "count": 1,
+   "print": "9cd16dac-3bf9-4a71-a906-0cfbf98cdca5"
   },
   {
-   "name": "Serra Paragon",
-   "count": 1
+   "id": "ecd8d7f4-7b11-4097-afc0-ef3c81edd90c",
+   "count": 1,
+   "print": "8e77a410-a053-4349-950c-d59e76b17923"
   },
   {
-   "name": "Skyclave Apparition",
-   "count": 1
+   "id": "d90af00a-d322-4265-9954-7b1e80702e18",
+   "count": 1,
+   "print": "e671de25-c47c-48a1-919b-6aa30dab142f"
   },
   {
-   "name": "Spirit of Resilience",
-   "count": 1
+   "id": "ddc85b23-113a-46e9-ab09-fae9312c72fa",
+   "count": 1,
+   "print": "60584e5b-4138-405b-bd02-612cf175184e"
   },
   {
-   "name": "Squee, Goblin Nabob",
-   "count": 1
+   "id": "0ef760f4-bbec-4735-8d60-fc24d973452a",
+   "count": 1,
+   "print": "8aabc541-ff2a-416f-a973-44eda8ec4706"
   },
   {
-   "name": "Sun Titan",
-   "count": 1
+   "id": "b2e950fb-cb7e-40a0-a311-5bbdd0477b29",
+   "count": 1,
+   "print": "3d6eacf2-f6c7-4ede-b5a5-7463602699ae"
   },
   {
-   "name": "Teshar, Ancestor's Apostle",
-   "count": 1
+   "id": "d4193f50-33b5-4201-ba03-eb135eced7ff",
+   "count": 1,
+   "print": "6e80198c-cfae-46f9-84cb-584d091014c5"
   },
   {
-   "name": "Vanguard of the Restless",
-   "count": 1
+   "id": "5564c782-be40-49fc-abc0-6cdcbaaa575a",
+   "count": 1,
+   "print": "91211c56-b562-4889-8c5c-110c42be62c8"
   },
   {
-   "name": "Venerable Warsinger",
-   "count": 1
+   "id": "e286d1aa-bb74-4568-98b5-a693ac7a369d",
+   "count": 1,
+   "print": "cdd0062f-6b2a-49c4-bf47-9b05f16ca6eb"
   },
   {
-   "name": "White Orchid Phantom",
-   "count": 1
+   "id": "6edd2a36-3d65-4bf9-bd82-b6d03a7e8fea",
+   "count": 1,
+   "print": "e6cebc57-d7b0-4e86-bc9e-ebb1de58f932"
   },
   {
-   "name": "Lorehold Charm",
-   "count": 1
+   "id": "a5729f11-6cde-4830-b882-ab4c5251c1a9",
+   "count": 1,
+   "print": "5fe70295-e550-4577-a341-dab6c25aabfd"
   },
   {
-   "name": "Path to Exile",
-   "count": 1
+   "id": "d683d985-9888-4d21-8b5f-69e69ce4a03b",
+   "count": 1,
+   "print": "90b690f4-9647-4e67-b7cb-b2692ea149b1"
   },
   {
-   "name": "Swords to Plowshares",
-   "count": 1
+   "id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+   "count": 1,
+   "print": "68ec2aed-7662-48ae-ab25-04f74ece1e41"
   },
   {
-   "name": "Ceaseless Conflict",
-   "count": 1
+   "id": "2f109125-b743-4ecf-84da-690d8e8ddf9c",
+   "count": 1,
+   "print": "a0e18f74-7fa6-4e3a-bc80-390a25055205"
   },
   {
-   "name": "Faithless Looting",
-   "count": 1
+   "id": "3d6fa57a-aa53-4b5c-b8af-a7612c823117",
+   "count": 1,
+   "print": "fc019ffa-4461-4f3d-ab8d-e4d20e77ca0c"
   },
   {
-   "name": "Fateful Tempest",
-   "count": 1
+   "id": "9d2f02f7-adcd-4d23-a051-ebca70f22ba5",
+   "count": 1,
+   "print": "96ab4d23-14d7-429f-b62e-868c13997fb8"
   },
   {
-   "name": "Rip Apart",
-   "count": 1
+   "id": "cbdbf18f-0180-4ade-a79e-1e644dd42d6f",
+   "count": 1,
+   "print": "ab3443be-ab7f-4ab1-bc31-0ace68773f2d"
   },
   {
-   "name": "Secret Rendezvous",
-   "count": 1
+   "id": "34b90d3e-f48c-41ff-b3e4-5cab7a9cd597",
+   "count": 1,
+   "print": "9be712b3-14ed-4a73-b3d3-5b76b2c5db64"
   },
   {
-   "name": "Seize the Spoils",
-   "count": 1
+   "id": "58f83528-9110-4895-b5ea-51b90af30a8d",
+   "count": 1,
+   "print": "4ddf4e34-a1f9-4636-942d-0a08e9f94320"
   },
   {
-   "name": "Sevinne's Reclamation",
-   "count": 1
+   "id": "1b9f9f5b-8712-4f00-90cb-1b7b9970eccc",
+   "count": 1,
+   "print": "8deab1ef-4219-4767-a3c4-b61250d0ebe0"
   },
   {
-   "name": "Tragic Arrogance",
-   "count": 1
+   "id": "8a29bd35-33ef-4317-9fe5-8aaff5d7d64d",
+   "count": 1,
+   "print": "ac5a8ba5-90ab-4e5d-8aff-c72f88851990"
   },
   {
-   "name": "Wave of Reckoning",
-   "count": 1
+   "id": "24f7143c-d43a-4120-baa0-0235b15d8186",
+   "count": 1,
+   "print": "7be0c25a-5e65-48e1-9560-9391111bb912"
   },
   {
-   "name": "Arcane Signet",
-   "count": 1
+   "id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+   "count": 1,
+   "print": "7811dd72-61b9-4067-ac20-cea153e625d2"
   },
   {
-   "name": "Archaeomancer's Map",
-   "count": 1
+   "id": "ef833546-f755-4ac5-867a-3926984e68a0",
+   "count": 1,
+   "print": "3679b9c8-ebae-474a-b862-6397edbcc4ea"
   },
   {
-   "name": "Bitterthorn, Nissa's Animus",
-   "count": 1
+   "id": "5a57fba3-01e3-4852-8c45-7c910502bd03",
+   "count": 1,
+   "print": "926cbd68-3b66-4ccc-a7c9-fb20e38a3126"
   },
   {
-   "name": "Currency Converter",
-   "count": 1
+   "id": "981298e6-ddee-49c0-9377-f47f019b4138",
+   "count": 1,
+   "print": "2413e7e1-f9a5-4657-9375-2c30d32d7853"
   },
   {
-   "name": "Fellwar Stone",
-   "count": 1
+   "id": "95560508-7ac9-4be9-8a3f-3c7d5b52807b",
+   "count": 1,
+   "print": "385b9f5e-81dd-49f6-a644-59d53245e3dc"
   },
   {
-   "name": "Mind Stone",
-   "count": 1
+   "id": "c97361b5-af16-4a7b-af85-a429dbaf4ad2",
+   "count": 1,
+   "print": "ad881aa0-decc-447b-8c8a-983546a9a55a"
   },
   {
-   "name": "Patchwork Banner",
-   "count": 1
+   "id": "4fb00dbe-1f82-4ba6-b18c-97e816d10d3a",
+   "count": 1,
+   "print": "81669ca8-3f20-45e6-b088-65969dcd93d1"
   },
   {
-   "name": "Perpetual Timepiece",
-   "count": 1
+   "id": "17b4778b-82b1-4845-ad08-00f3ff66877b",
+   "count": 1,
+   "print": "6edbedf9-273f-4d7f-80a2-705858bd4d6d"
   },
   {
-   "name": "Sol Ring",
-   "count": 1
+   "id": "6ad8011d-3471-4369-9d68-b264cc027487",
+   "count": 1,
+   "print": "870ec754-a76c-40ea-9b81-81b3dca1f62c"
   },
   {
-   "name": "Staff of the Storyteller",
-   "count": 1
+   "id": "0c4e2c90-c17b-42cc-b4d7-cf75970fbe90",
+   "count": 1,
+   "print": "67083aca-b077-4b12-8218-876e22476f85"
   },
   {
-   "name": "Advanced Reconstruction",
-   "count": 1
+   "id": "f00bc101-8082-4459-b987-f0c4b7a12344",
+   "count": 1,
+   "print": "cc912fec-827d-4deb-8430-79f5ea31ca9b"
   },
   {
-   "name": "Monologue Tax",
-   "count": 1
+   "id": "ace8e88e-ca6a-4bdf-8c6d-1b914fc00259",
+   "count": 1,
+   "print": "7b88cb4c-8044-4e88-80f1-1688273ad0ec"
   },
   {
-   "name": "Primary Research",
-   "count": 1
+   "id": "51af3da5-0970-436e-baa6-3171889a40e0",
+   "count": 1,
+   "print": "f6fdb814-45c6-4d14-afff-7f5bd1bd10a1"
   },
   {
-   "name": "Tocasia's Welcome",
-   "count": 1
+   "id": "25c983e0-a8c9-4784-91a4-8fe04c6df882",
+   "count": 1,
+   "print": "90e38661-292a-45e7-bda9-51af53cf0f68"
   },
   {
-   "name": "Battlefield Forge",
-   "count": 1
+   "id": "6b75b94e-83b7-457e-ac41-7ca90b5a59aa",
+   "count": 1,
+   "print": "c47c1bf5-f11e-4f86-b20b-5d899a11dc56"
   },
   {
-   "name": "Clifftop Retreat",
-   "count": 1
+   "id": "d7faa3c8-46cf-46b2-bfa4-89000307cf18",
+   "count": 1,
+   "print": "09d0e0dd-28e6-4d78-b768-b08188681d92"
   },
   {
-   "name": "Command Tower",
-   "count": 1
+   "id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+   "count": 1,
+   "print": "c46a217c-0ed2-4b3c-9a01-ee38d12d76f3"
   },
   {
-   "name": "Emeria, the Sky Ruin",
-   "count": 1
+   "id": "cc999cf2-c99b-4911-8c52-6cc4a99fcc7b",
+   "count": 1,
+   "print": "90f148e6-1a5e-46fc-9557-40c5c0038069"
   },
   {
-   "name": "Exotic Orchard",
-   "count": 1
+   "id": "27b047e3-0d41-45e2-98e9-9391d7923a1e",
+   "count": 1,
+   "print": "7db2934a-43a0-46ad-8380-ff6703f8fd6d"
   },
   {
-   "name": "Fabled Passage",
-   "count": 1
+   "id": "0c85b8f7-0bd0-4680-9ec5-d4b110460a54",
+   "count": 1,
+   "print": "8119d329-6ee5-433c-bd81-8579bb061162"
   },
   {
-   "name": "Fields of Strife",
-   "count": 1
+   "id": "a32e08fa-bea4-4ba9-a126-9bf0a91f67e2",
+   "count": 1,
+   "print": "3dc7a4c3-c356-4fba-bea0-e8788da3eb57"
   },
   {
-   "name": "Furycalm Snarl",
-   "count": 1
+   "id": "651dea9c-2375-4e44-8e65-ba8e40f0c0ef",
+   "count": 1,
+   "print": "25a1cd4f-be6c-4e05-93ba-9e393cec76df"
   },
   {
-   "name": "Glittering Massif",
-   "count": 1
+   "id": "23732d20-aba6-46cc-89d0-0542629bc6b5",
+   "count": 1,
+   "print": "0f741296-c523-49bd-9ff4-ce2a1a70883e"
   },
   {
-   "name": "Lorehold Campus",
-   "count": 1
+   "id": "45773715-3f46-4671-b633-bf087e892e26",
+   "count": 1,
+   "print": "b6ad08da-c9e8-4061-a4a6-032d6957a403"
   },
   {
-   "name": "Lotus Field",
-   "count": 1
+   "id": "134d5b82-7940-4b33-a922-7f9d1f403e50",
+   "count": 1,
+   "print": "ee5ac47c-e8b6-400e-b91e-a7cd0f952cf1"
   },
   {
-   "name": "Mistveil Plains",
-   "count": 1
+   "id": "bb5c1817-ac22-4779-9005-251bc354f181",
+   "count": 1,
+   "print": "c53028dd-efb5-486c-a7d3-45f2f6050c1d"
   },
   {
-   "name": "Radiant Summit",
-   "count": 1
+   "id": "5dd0cc44-4647-4857-ad3b-22494099d08a",
+   "count": 1,
+   "print": "5ca0311f-6218-4c1c-ac5f-23b9708446f1"
   },
   {
-   "name": "Rugged Prairie",
-   "count": 1
+   "id": "8e7641e1-e814-4d5a-9cb3-71ad2f4ceee8",
+   "count": 1,
+   "print": "6bd21c9e-de16-4ee9-ae16-6e82b490109d"
   },
   {
-   "name": "Sacred Peaks",
-   "count": 1
+   "id": "fb69bc57-f05a-41c2-9b7b-9a9761ef0cd3",
+   "count": 1,
+   "print": "ee2d6798-b19d-4628-bb57-05663ab4af68"
   },
   {
-   "name": "Study Hall",
-   "count": 1
+   "id": "eb735501-19e7-4910-aa6a-6667fff6f4e5",
+   "count": 1,
+   "print": "93f812bc-7663-4504-b566-79e2c0a0f845"
   },
   {
-   "name": "Sunscorched Divide",
-   "count": 1
+   "id": "8d2b2675-19df-4f40-9e8e-196ec097b91c",
+   "count": 1,
+   "print": "eae999f9-9c58-4609-8ade-aca0acf07519"
   },
   {
-   "name": "Temple of Triumph",
-   "count": 1
+   "id": "6f0d94d9-64bb-4175-83bc-301e8f79f54f",
+   "count": 1,
+   "print": "d0e763f7-25b8-444f-8722-614297d0663f"
   },
   {
-   "name": "Terramorphic Expanse",
-   "count": 1
+   "id": "1bd3e453-aa21-4ee6-95c2-d6d920ee8e7a",
+   "count": 1,
+   "print": "a81f924b-0527-4311-8120-9bfff71524f6"
   },
   {
-   "name": "Turbulent Steppe",
-   "count": 1
+   "id": "db444f9d-4dde-4308-b0f2-7acfe6de871a",
+   "count": 1,
+   "print": "c0c73dd5-0a88-4a94-9c01-c1473433e46f"
   },
   {
-   "name": "Plains",
-   "count": 11
+   "id": "bc71ebf6-2056-41f7-be35-b2e5c34afa99",
+   "count": 11,
+   "print": "5f9b6584-ad27-410d-b6f1-c25c91630aea"
   },
   {
-   "name": "Mountain",
-   "count": 6
+   "id": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+   "count": 6,
+   "print": "426b0211-3d5d-4e53-bcf6-21823c655ffd"
   }
  ]
 }

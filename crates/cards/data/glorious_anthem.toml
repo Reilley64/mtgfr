@@ -1,5 +1,7 @@
 # Creatures you control get +1/+1.
 name = "Glorious Anthem"
+id = "e3886fe8-9b76-4613-8891-4ec74657c087"
+default_print = "17d154d3-7ae5-43ff-9978-d974285e2c89"
 otags = ["power-boost-to-all", "toughness-boost-to-all", "anthem"]
 oracle = "Creatures you control get +1/+1."
 set = "m21"

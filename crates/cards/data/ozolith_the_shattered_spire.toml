@@ -11,6 +11,8 @@
 # permanent-type gate) — a strict superset of the printed "artifact or creature you control",
 # indistinguishable while counters are never placed on a land/enchantment in this pool.
 name = "Ozolith, the Shattered Spire"
+id = "41fed659-237c-4d8e-ad31-d17fa0d3f764"
+default_print = "1d5bab94-362e-45e6-8988-69e2b2c681b1"
 otags = ["activate-from-hand", "alliteration", "counter-increaser", "gives-pp-counters", "hand-neutral", "pp-counters-matter", "pure-draw", "repeatable-pp-counters", "synergy-artifact"]
 oracle = "If one or more +1/+1 counters would be put on an artifact or creature you control, that many plus one +1/+1 counters are put on it instead.\n{1}{G}, {T}: Put a +1/+1 counter on target artifact or creature you control. Activate only as a sorcery.\nCycling {2} ({2}, Discard this card: Draw a card.)"
 set = "soc"

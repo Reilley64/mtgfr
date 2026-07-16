@@ -5,6 +5,8 @@
 # "When this creature enters, you may search your library for a basic land card, put it onto the
 #  battlefield tapped, then shuffle. When this creature dies, you may draw a card."
 name = "Solemn Simulacrum"
+id = "00c0543c-2a1f-4425-8283-4062d74a1637"
+default_print = "daafd816-f7c1-4630-9e5c-a1e5db570a35"
 otags = ["alliteration", "death-trigger-self", "invitational-card", "land-ramp", "pure-draw", "tutor-land-basic", "type-addition-from-none", "tutor-land-to-battlefield"]
 oracle = "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\nWhen this creature dies, you may draw a card."
 set = "msc"

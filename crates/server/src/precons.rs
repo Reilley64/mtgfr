@@ -18,6 +18,7 @@ use schema::{DeckCardEntry, DeckDetail, DeckSummary};
 #[derive(serde::Deserialize)]
 struct Fixture {
     commander: String,
+    commander_print: String,
     cards: Vec<DeckCardEntry>,
 }
 
@@ -68,6 +69,7 @@ static PRECONS: LazyLock<Vec<DeckDetail>> = LazyLock::new(|| {
                 id: s.id,
                 name: s.name.to_string(),
                 commander: f.commander,
+                commander_print: f.commander_print,
                 cards: f.cards,
             }
         })
@@ -92,6 +94,7 @@ pub fn summaries() -> Vec<DeckSummary> {
             id: d.id,
             name: d.name.clone(),
             commander: d.commander.clone(),
+            commander_print: d.commander_print.clone(),
         })
         .collect()
 }
@@ -106,6 +109,16 @@ mod tests {
         for d in PRECONS.iter() {
             assert!(is_precon(d.id), "{} should have a precon id", d.name);
             assert!(!d.commander.is_empty(), "{} needs a commander", d.name);
+            assert!(
+                !d.commander_print.is_empty(),
+                "{} needs a commander print",
+                d.name
+            );
+            assert!(
+                d.cards.iter().all(|c| !c.print.is_empty()),
+                "{} every card needs a print",
+                d.name
+            );
             assert_eq!(get(d.id).map(|g| &g.name), Some(&d.name));
         }
     }

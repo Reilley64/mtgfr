@@ -2,6 +2,8 @@
 # When this Aura enters, draw a card for each Aura you control that's attached to a creature.
 # Enchanted creature gets +1/+1 for each Aura you control that's attached to a creature.
 name = "Sage's Reverie"
+id = "bd92cacd-c7d8-43a2-a261-ea4754fefdc5"
+default_print = "5515393a-7d4d-454f-a550-156862ab02f1"
 otags = ["burst-draw", "cantrip", "ethereal-armor", "hand-positive", "triggered-ability", "uril-ability"]
 oracle = "Enchant creature\nWhen this Aura enters, draw a card for each Aura you control that's attached to a creature.\nEnchanted creature gets +1/+1 for each Aura you control that's attached to a creature."
 set = "soc"

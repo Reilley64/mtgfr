@@ -5,6 +5,8 @@
 #    Whenever an enchanted creature dies, draw a card for each Aura you controlled that was
 #    attached to it."
 name = "Hateful Eidolon"
+id = "a3b39590-34b7-4fd0-877f-748e6df30e88"
+default_print = "ff028d0b-066a-4769-89bc-f267d15eb707"
 otags = ["death-trigger", "draw-engine", "repeatable-lifegain", "synergy-aura"]
 oracle = "Lifelink\nWhenever an enchanted creature dies, draw a card for each Aura you controlled that was attached to it."
 set = "soc"

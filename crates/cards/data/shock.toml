@@ -1,5 +1,7 @@
 # Shock deals 2 damage to any target.
 name = "Shock"
+id = "a9d288b8-cdc1-4e55-a0c9-d6edfc95e65d"
+default_print = "b23900fb-efe9-43ab-9f67-4545dd01fb9c"
 otags = ["burn-any", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Shock deals 2 damage to any target."
 set = "msc"

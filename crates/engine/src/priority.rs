@@ -1593,6 +1593,8 @@ mod tests {
     fn forest() -> CardDef {
         CardDef {
             name: "Forest",
+            id: "",
+            default_print: "",
             cost: Cost::FREE,
             kind: CardKind::Land {
                 produces: Some(LandProduces::Mana(Mana::Color(Color::Green))),

@@ -10,9 +10,9 @@ A browser-based 4-player Commander (MTG) game for playing with friends. The **no
 
 ```
 cargo build
-cargo test                      # all tests
-cargo test <name>               # tests whose name matches <name>
-cargo test -- --nocapture       # show println! output from tests
+cargo nextest run --profile ci           # all tests (via `just server-test`)
+cargo nextest run --profile ci <name>    # tests whose name matches <name>
+cargo nextest run --profile ci --nocapture  # show println! output from tests
 cargo clippy --all-targets      # lint — treat warnings as failures
 cargo fmt                       # format before committing
 just check                      # format + lint + typecheck + test (both sides)
@@ -31,7 +31,7 @@ just dev                        # tmux: bacon server + client vite
 
 ## Commits & releases
 
-Commits on `main`/`master` follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, and `feat!:` / `BREAKING CHANGE:` for majors. [semantic-release](https://semantic-release.org/) (default config) tags GitHub Releases from those commits; GHCR images build on `release: published`. See [docs/prds/DEPLOYMENT.md](docs/prds/DEPLOYMENT.md).
+Commits on `main`/`master` follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, and `feat!:` / `BREAKING CHANGE:` for majors. [semantic-release](https://semantic-release.org/) is the **only** writer of `v*` tags and GitHub Releases — do not create or push version tags by hand. Repo secret `RELEASE_TOKEN` (PAT with `contents` + `workflow`) is required so that tag push can trigger `docker.yml` (default `GITHUB_TOKEN` cannot cascade workflows). See [docs/prds/DEPLOYMENT.md](docs/prds/DEPLOYMENT.md).
 
 ## Architecture commitments (do not relitigate without reason)
 

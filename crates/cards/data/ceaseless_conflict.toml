@@ -1,6 +1,8 @@
 # Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken creature you controlled
 # that was destroyed this way.
 name = "Ceaseless Conflict"
+id = "2f109125-b743-4ecf-84da-690d8e8ddf9c"
+default_print = "a0e18f74-7fa6-4e3a-bc80-390a25055205"
 otags = ["alliteration", "multiple-bodies", "out-of-color-token", "removal-creature", "removal-destroy", "sweeper"]
 oracle = "Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken creature you controlled that was destroyed this way."
 set = "soc"

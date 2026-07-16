@@ -6,6 +6,8 @@
 # per-creature watch-others death trigger capped once_each_turn — the cap collapses a
 # simultaneous batch to a single draw.
 name = "Morbid Opportunist"
+id = "322f44f0-e6da-4ee0-b474-e7d5e9a461c5"
+default_print = "08838865-a9b6-4323-96a2-0d3a7aba9d3d"
 otags = ["death-trigger", "draw-engine", "morbid", "repeatable-pure-draw"]
 oracle = "Whenever one or more other creatures die, draw a card. This ability triggers only once each turn."
 set = "soc"

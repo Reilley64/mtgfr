@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ARROW_DRAW_MS,
+  arrowDrawProgress,
   STACK_CARD_W,
   STACK_OVERLAY_RIGHT,
   STACK_PEEK,
-  arrowDrawProgress,
   stackAimOrigin,
   stagingAimFrom,
   TARGET_COLOR,

@@ -87,6 +87,10 @@ export interface RenderCard {
   w: number;
   h: number;
   name: string;
+  /** Card (oracle) id, when known — drives Alt-pin inspect's oracle-text lookup (ADR 0031). */
+  cardId: string;
+  /** Printing UUID for this object's art (ADR 0031); empty renders a broken image. */
+  print: string;
   pt: string;
   tapped: boolean;
   counters: number;
@@ -257,6 +261,8 @@ function toCard(o: ObjectView): RenderCard {
     w: CARD_W,
     h: CARD_H,
     name: o.name,
+    cardId: o.card_id ?? "",
+    print: o.print ?? "",
     pt: pt(o),
     tapped: o.tapped,
     counters: o.plus_counters,
@@ -304,6 +310,8 @@ function deckCard(owner: number, count: number): RenderCard | null {
     w: COL_W,
     h: COL_H,
     name: "Library",
+    cardId: "",
+    print: "",
     pt: "",
     tapped: false,
     counters: 0,
@@ -390,7 +398,7 @@ function rowSlots(objects: ObjectView[], hostsWithAttachments: Set<number>): Row
       order.push(k);
       groups.set(k, []);
     }
-    groups.get(k)!.push(o);
+    groups.get(k)?.push(o);
   }
   return order.map((k) => {
     const members = [...groups.get(k)!].sort((a, b) => a.id - b.id);
@@ -506,14 +514,22 @@ export function layout(state: VisibleState, viewer: number): RenderCard[] {
     const leftSlots = ncSlots.filter((s) => isNoncreatureLeft(s.members[0].kind.kind));
     const pwSlots = ncSlots.filter((s) => s.members[0].kind.kind === "planeswalker");
     const { left: leftXs, pws: pwXs } = noncreatureXs(o.x, leftSlots.length, pwSlots.length);
-    leftSlots.forEach((slot, i) => placeSlot(slot, leftXs[i], noncreatureY));
-    pwSlots.forEach((slot, i) => placeSlot(slot, pwXs[i], noncreatureY));
+    leftSlots.forEach((slot, i) => {
+      placeSlot(slot, leftXs[i], noncreatureY);
+    });
+    pwSlots.forEach((slot, i) => {
+      placeSlot(slot, pwXs[i], noncreatureY);
+    });
 
     const creatureSlots = rowSlots(creatures, hostsWithAttachments);
-    creatureSlots.forEach((slot, i) => placeSlot(slot, centerOutX(o.x, i, creatureSlots.length), creaturesY));
+    creatureSlots.forEach((slot, i) => {
+      placeSlot(slot, centerOutX(o.x, i, creatureSlots.length), creaturesY);
+    });
 
     const landSlots = rowSlots(lands, hostsWithAttachments);
-    landSlots.forEach((slot, i) => placeSlot(slot, centerOutX(o.x, i, landSlots.length), landsY));
+    landSlots.forEach((slot, i) => {
+      placeSlot(slot, centerOutX(o.x, i, landSlots.length), landsY);
+    });
   }
 
   // Attached Auras/Equipment stack on their host (any controller), under the host in draw/hit order.

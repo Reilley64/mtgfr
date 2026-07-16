@@ -3,6 +3,8 @@
 # it enters with a number of additional +1/+1 counters on it equal to the number of times it's been cast from the
 # command zone this game.
 name = "Opal Palace"
+id = "aa6723a2-75da-49f5-a1ba-cbfa82c55301"
+default_print = "912553e7-1e67-4045-84fd-0a791754cf6c"
 otags = ["activated-ability", "buff-mana", "commander-identity-matters", "filterland", "gives-pp-counters", "recasting-commander-matters", "repeatable-pp-counters", "synergy-commander", "utility-land"]
 oracle = "{T}: Add {C}.\n{1}, {T}: Add one mana of any color in your commander's color identity. If you spend this mana to cast your commander, it enters with a number of additional +1/+1 counters on it equal to the number of times it's been cast from the command zone this game."
 set = "soc"

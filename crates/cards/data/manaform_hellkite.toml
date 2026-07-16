@@ -2,6 +2,8 @@
 # Whenever you cast a noncreature spell, create an X/X red Dragon Illusion creature token with flying and haste, where X
 # is the amount of mana spent to cast that spell. Exile that token at the beginning of the next end step.
 name = "Manaform Hellkite"
+id = "f426aa1a-e1dc-4563-b450-2e23d6bd980b"
+default_print = "0a559655-0967-41b9-8248-170f95c05f84"
 otags = ["amount-spent-matters", "cast-trigger-you", "delayed-trigger", "evasion", "synergy-noncreature", "temporary-token", "young-pyromancer-ability"]
 oracle = "Flying\nWhenever you cast a noncreature spell, create an X/X red Dragon Illusion creature token with flying and haste, where X is the amount of mana spent to cast that spell. Exile that token at the beginning of the next end step."
 set = "soc"

@@ -1,6 +1,8 @@
 # At the beginning of your upkeep, create a 2/1 white and black Inkling creature token with flying. When you do, return
 # up to one target Aura or Equipment card from your graveyard to the battlefield attached to that token.
 name = "Forum Filibuster"
+id = "6a9cc11b-a223-46f0-bf58-c1e08ad1253d"
+default_print = "1c2fcf3e-63ce-45bd-afc4-2c11f54c70c4"
 otags = ["alliteration", "evasion", "quick-equip", "reanimate-aura", "reanimate-equipment", "reflexive-trigger", "repeatable-creature-tokens"]
 oracle = "At the beginning of your upkeep, create a 2/1 white and black Inkling creature token with flying. When you do, return up to one target Aura or Equipment card from your graveyard to the battlefield attached to that token."
 set = "soc"

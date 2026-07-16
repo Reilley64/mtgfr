@@ -5,7 +5,7 @@ use engine::{Game, PlayerId};
 
 #[cfg(test)]
 pub(crate) fn def(name: &str) -> engine::CardDef {
-    cards::get(name).unwrap_or_else(|| panic!("unknown card {name:?}"))
+    cards::get_by_name(name).unwrap_or_else(|| panic!("unknown card {name:?}"))
 }
 
 #[cfg(test)]

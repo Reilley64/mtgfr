@@ -6,6 +6,8 @@
 # rather than a real choice — revealing is strictly better with no downside, so there's nothing to
 # decide.
 name = "Necroblossom Snarl"
+id = "761ee6f9-b0fa-43c9-8d1f-9591ea18e52d"
+default_print = "4355ba23-de6a-4f18-baf4-82ae47cc2965"
 otags = ["activated-ability", "cycle-stx-reveal-land", "synergy-forest", "synergy-swamp"]
 oracle = "As this land enters, you may reveal a Swamp or Forest card from your hand. If you don't, this land enters tapped.\n{T}: Add {B} or {G}."
 set = "soc"

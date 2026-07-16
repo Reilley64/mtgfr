@@ -1,6 +1,8 @@
 # Exile all creatures. Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1
 # counters on it equal to the total power of creatures they controlled that were exiled this way.
 name = "Oversimplify"
+id = "25e1d5fe-c2d8-4a11-ad54-bf1626f9ab45"
+default_print = "4bfc75ff-3213-495d-9e46-3ba5e8b7b5d3"
 otags = ["cycle-c21-college-spell", "donate-token", "gives-pp-counters", "power-matters", "removal-creature", "removal-exile", "single-english-word-name", "swap-removal", "sweeper"]
 oracle = "Exile all creatures. Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1 counters on it equal to the total power of creatures they controlled that were exiled this way."
 set = "soc"

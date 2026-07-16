@@ -6,6 +6,8 @@
 # At the beginning of each end step, if a modified creature died under your control this turn, create a 2/1 white and
 # black Inkling creature token with flying. (Equipment, Auras you control, and counters are modifications.)
 name = "Intermediate Chirography"
+id = "6c948f71-5c86-450c-8828-df4d8deaf1dd"
+default_print = "d60c64aa-57a9-4082-82f4-af0d89c1a52d"
 otags = ["activated-ability", "evasion", "gives-pp-counters", "intervening-if-clause", "life-loss-matters", "morbid", "repeatable-creature-tokens", "repeatable-pp-counters", "synergy-modified"]
 oracle = "(Gain the next level as a sorcery to add its ability.)\nWhen this Class enters, create a 2/1 white and black Inkling creature token with flying.\n{1}{B}: Level 2\nWhenever you lose life for the first time each turn, put a +1/+1 counter on target creature you control.\n{2}{B}: Level 3\nAt the beginning of each end step, if a modified creature died under your control this turn, create a 2/1 white and black Inkling creature token with flying. (Equipment, Auras you control, and counters are modifications.)"
 set = "soc"

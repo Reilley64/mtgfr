@@ -1,4 +1,6 @@
 name = "Quintorius, History Chaser"
+id = "5c40a8d4-6969-4d71-aba5-5c7e4109b7d5"
+default_print = "0742f19d-179c-43c4-ab95-4160c56b4384"
 otags = ["activated-ability", "cycle-soc-face-commander", "gives-double-strike", "gives-vigilance", "leaves-graveyard-trigger", "mill-self", "repeatable-creature-tokens", "repeatable-rummage", "typal-spirit"]
 oracle = "Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token.\n+1: You may discard a card. If you do, draw two cards, then mill a card.\n−4: Spirits you control gain double strike and vigilance until end of turn.\nQuintorius, History Chaser can be your commander."
 set = "soc"

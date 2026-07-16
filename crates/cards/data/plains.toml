@@ -1,5 +1,7 @@
 # ({T}: Add {W}.)
 name = "Plains"
+id = "bc71ebf6-2056-41f7-be35-b2e5c34afa99"
+default_print = "5f9b6584-ad27-410d-b6f1-c25c91630aea"
 otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "single-english-word-name", "unique-type-line"]
 oracle = "({T}: Add {W}.)"
 set = "msc"

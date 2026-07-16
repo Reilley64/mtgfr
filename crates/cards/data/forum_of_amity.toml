@@ -3,6 +3,8 @@
 # {2}{W}{B}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)
 # Forum of Amity (sos): "This land enters tapped. {T}: Add {W} or {B}. {2}{W}{B}, {T}: Surveil 1."
 name = "Forum of Amity"
+id = "349ea6c7-6b3e-417f-b082-b712e2b1635b"
+default_print = "1de6c6cc-0c55-4997-8623-d7f796bd9ab8"
 otags = ["activated-ability", "cycle-sos-surveil-dual", "mana-sink", "surveil", "utility-land", "virtual-legendary"]
 oracle = "This land enters tapped.\n{T}: Add {W} or {B}.\n{2}{W}{B}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
 set = "sos"

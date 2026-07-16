@@ -1,7 +1,7 @@
 // Paint/hit overlays for overcrowded battlefields: hover-raise packed cards and fan
 // permanent clusters. Pure transforms over layout output — see ADR 0028.
 
-import { CARD_H, CARD_W, seatBand, type RenderCard } from "~/layout";
+import { CARD_H, CARD_W, type RenderCard, seatBand } from "~/layout";
 
 /** Peek step between fanned cluster members (less than full tidy spacing). */
 const FAN_STEP = CARD_W * 0.45;

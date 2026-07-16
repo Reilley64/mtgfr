@@ -79,9 +79,10 @@ describe("promptChrome", () => {
 
 describe("dedupeChoiceItems", () => {
   it("keeps the first object per card name", () => {
-    expect(
-      dedupeChoiceItems([item(1, "Forest"), item(2, "Island"), item(3, "Forest"), item(4, "Island")]),
-    ).toEqual([item(1, "Forest"), item(2, "Island")]);
+    expect(dedupeChoiceItems([item(1, "Forest"), item(2, "Island"), item(3, "Forest"), item(4, "Island")])).toEqual([
+      item(1, "Forest"),
+      item(2, "Island"),
+    ]);
   });
 
   it("returns an empty list unchanged", () => {
@@ -104,10 +105,7 @@ describe("filterChoiceItems", () => {
 describe("searchableChoiceItems", () => {
   it("dedupes then filters — a library full of basics stays one face per name", () => {
     expect(
-      searchableChoiceItems(
-        [item(1, "Forest"), item(2, "Forest"), item(3, "Sol Ring"), item(4, "Island")],
-        "for",
-      ),
+      searchableChoiceItems([item(1, "Forest"), item(2, "Forest"), item(3, "Sol Ring"), item(4, "Island")], "for"),
     ).toEqual([item(1, "Forest")]);
   });
 });

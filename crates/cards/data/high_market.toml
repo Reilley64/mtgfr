@@ -1,6 +1,8 @@
 # {T}: Add {C}.
 # {T}, Sacrifice a creature: You gain 1 life.
 name = "High Market"
+id = "86fb3749-37d6-48a6-8524-71e996850307"
+default_print = "894aa6b6-0d08-4c43-8734-9cb7b31359c6"
 otags = ["activated-ability", "repeatable-lifegain", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "utility-land"]
 oracle = "{T}: Add {C}.\n{T}, Sacrifice a creature: You gain 1 life."
 set = "soc"

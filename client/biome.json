@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!!**/dist", "!src/api/generated.ts"]
+    "includes": ["**", "!!**/dist", "!src/api/generated.ts", "!src/mana-oracle.css"]
   },
   "formatter": {
     "enabled": true,

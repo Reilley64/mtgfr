@@ -7,6 +7,8 @@
 # ponytail: the mode is chosen at resolution rather than as the ability goes on the stack (CR
 # 603.3d) — unobservable, nothing responds between placement and resolution.
 name = "Atsushi, the Blazing Sky"
+id = "535f405d-94df-4f45-aedc-b331103720b7"
+default_print = "06658540-0104-428f-91b1-40552826e781"
 otags = ["cycle-neo-dragon", "death-trigger-self", "evasion", "long-term-impulsive-draw", "modal", "ramp"]
 oracle = "Flying, trample\nWhen Atsushi dies, choose one —\n• Exile the top two cards of your library. Until the end of your next turn, you may play those cards.\n• Create three Treasure tokens."
 set = "soc"

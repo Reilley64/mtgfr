@@ -6,6 +6,8 @@
 #    Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature
 #    token."
 name = "Quintorius, Field Historian"
+id = "28b64167-b7ea-4b4f-8434-061298050366"
+default_print = "8e3c7f00-e997-4b07-98af-45b9ea35d2d7"
 otags = ["anthem", "cycle-stx-student", "leaves-graveyard-trigger", "power-boost-to-all", "repeatable-creature-tokens", "typal-spirit"]
 oracle = "Spirits you control get +1/+0.\nWhenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token."
 set = "soc"

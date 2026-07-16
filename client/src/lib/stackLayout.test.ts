@@ -4,13 +4,13 @@ import {
   STACK_EXPAND_COUNT,
   STACK_PEEK,
   STACK_STRIP_MIN_PEEK,
+  shouldAutoCollapseStackExpand,
   stackCardH,
   stackExpandAvailable,
   stackPeekFor,
   stackPresentation,
   stackStripFits,
   stackStripPeek,
-  shouldAutoCollapseStackExpand,
 } from "~/lib/boardDraw";
 
 describe("stackPeekFor", () => {

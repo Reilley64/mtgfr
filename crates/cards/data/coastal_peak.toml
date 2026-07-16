@@ -4,6 +4,8 @@
 # Coastal Peak: Land — Island Mountain. "({T}: Add {U} or {R}.) This land enters tapped.
 # Cycling {2}."
 name = "Coastal Peak"
+id = "0e25faa2-efb0-4ca5-b280-18c38faa860c"
+default_print = "d2a70a9d-2d9f-4afd-9393-8d6518936ee2"
 otags = ["activate-from-hand", "cycle-dual-cycling-land", "hand-neutral", "nonbasic-basic-land-type", "pure-draw", "utility-land"]
 oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped.\nCycling {2} ({2}, Discard this card: Draw a card.)"
 set = "msc"

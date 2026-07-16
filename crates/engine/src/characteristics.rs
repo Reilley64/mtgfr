@@ -96,6 +96,7 @@ impl Game {
                 }
                 groups.push(ModifierSourceGroup {
                     source_name,
+                    source_card_id: "",
                     contributions: vec![contribution],
                 });
             };
@@ -155,13 +156,12 @@ impl Game {
                         },
                     ) => {
                         if let (Amount::Fixed(power), Amount::Fixed(toughness)) = (power, toughness)
+                            && (power != 0 || toughness != 0)
                         {
-                            if power != 0 || toughness != 0 {
-                                push(
-                                    name,
-                                    ModifierContribution::PowerToughness { power, toughness },
-                                );
-                            }
+                            push(
+                                name,
+                                ModifierContribution::PowerToughness { power, toughness },
+                            );
                         }
                         for &keyword in keywords {
                             push(name, ModifierContribution::Keyword(keyword));
@@ -230,13 +230,13 @@ impl Game {
                         continue;
                     }
                     let name = p.def.name;
-                    if let (Amount::Fixed(power), Amount::Fixed(toughness)) = (power, toughness) {
-                        if power != 0 || toughness != 0 {
-                            push(
-                                name,
-                                ModifierContribution::PowerToughness { power, toughness },
-                            );
-                        }
+                    if let (Amount::Fixed(power), Amount::Fixed(toughness)) = (power, toughness)
+                        && (power != 0 || toughness != 0)
+                    {
+                        push(
+                            name,
+                            ModifierContribution::PowerToughness { power, toughness },
+                        );
                     }
                     for &keyword in keywords {
                         push(name, ModifierContribution::Keyword(keyword));
@@ -266,7 +266,24 @@ impl Game {
             }
         }
 
+        for group in &mut groups {
+            group.source_card_id = self.card_id_for_source_name(group.source_name);
+        }
         groups
+    }
+
+    /// First battlefield permanent whose def name matches `name`, else `""`.
+    fn card_id_for_source_name(&self, name: &'static str) -> &'static str {
+        if name.is_empty() {
+            return "";
+        }
+        for &id in &self.battlefield() {
+            let def = self.def_of(id);
+            if def.name == name {
+                return def.id;
+            }
+        }
+        ""
     }
 
     /// Whether a permanent is tapped.
@@ -1903,6 +1920,8 @@ mod cache_tests {
     fn creature(power: i32, toughness: i32) -> CardDef {
         CardDef {
             name: "Test Creature",
+            id: "",
+            default_print: "",
             cost: FREE,
             kind: CardKind::Creature {
                 power,
@@ -1981,6 +2000,8 @@ mod cache_tests {
         }];
         CardDef {
             name: "Test Anthem",
+            id: "",
+            default_print: "",
             cost: FREE,
             kind: CardKind::Enchantment,
             legendary: false,
@@ -2135,6 +2156,8 @@ mod cache_tests {
     fn forest() -> CardDef {
         CardDef {
             name: "Forest",
+            id: "",
+            default_print: "",
             cost: Cost::FREE,
             kind: CardKind::Land {
                 produces: Some(LandProduces::Mana(Mana::Color(Color::Green))),
@@ -2266,6 +2289,8 @@ mod characteristic_query_tests {
     fn creature_with(keywords: &'static [Keyword]) -> CardDef {
         CardDef {
             name: "Test Creature",
+            id: "",
+            default_print: "",
             cost: FREE,
             kind: CardKind::Creature {
                 power: 2,
@@ -2319,6 +2344,8 @@ mod characteristic_query_tests {
     fn land(produces: LandProduces) -> CardDef {
         CardDef {
             name: "Land",
+            id: "",
+            default_print: "",
             cost: Cost::FREE,
             kind: CardKind::Land {
                 produces: Some(produces),
@@ -2396,6 +2423,8 @@ mod characteristic_query_tests {
             P0,
             CardDef {
                 name: "Black",
+                id: "",
+                default_print: "",
                 cost: Cost {
                     colored: {
                         let mut pips = [0; Color::COUNT];
@@ -2468,6 +2497,8 @@ mod characteristic_query_tests {
             P1,
             CardDef {
                 name: "Black Creature",
+                id: "",
+                default_print: "",
                 cost: Cost {
                     colored: {
                         let mut pips = [0; Color::COUNT];
@@ -2538,6 +2569,8 @@ mod characteristic_query_tests {
             P0,
             CardDef {
                 name: "Mono-G",
+                id: "",
+                default_print: "",
                 cost: Cost {
                     colored: {
                         let mut pips = [0; Color::COUNT];

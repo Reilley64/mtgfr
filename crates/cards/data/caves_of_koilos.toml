@@ -1,6 +1,8 @@
 # {T}: Add {C}.
 # {T}: Add {W} or {B}. This land deals 1 damage to you.
 name = "Caves of Koilos"
+id = "33de01e9-ce5a-42d4-afcb-343cd54a6d80"
+default_print = "a8a57915-5226-4d3c-ae8e-a55c50f3c131"
 otags = ["activated-ability", "burn-you", "cycle-apc-painland", "mana-ability-with-extra-effect"]
 oracle = "{T}: Add {C}.\n{T}: Add {W} or {B}. This land deals 1 damage to you."
 set = "soc"

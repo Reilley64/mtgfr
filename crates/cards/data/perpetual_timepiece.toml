@@ -1,6 +1,8 @@
 # {T}: Mill two cards. (Put the top two cards of your library into your graveyard.)
 # {2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library.
 name = "Perpetual Timepiece"
+id = "17b4778b-82b1-4845-ad08-00f3ff66877b"
+default_print = "6edbedf9-273f-4d7f-80a2-705858bd4d6d"
 otags = ["activated-ability", "exile-self", "mill-self", "multiple-targets", "restock-any"]
 oracle = "{T}: Mill two cards. (Put the top two cards of your library into your graveyard.)\n{2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library."
 set = "soc"

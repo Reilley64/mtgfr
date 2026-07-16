@@ -1,5 +1,7 @@
 # You draw two cards and lose 2 life.
 name = "Night's Whisper"
+id = "7ffae8f8-3006-4969-a339-6d30678f87ea"
+default_print = "1ed2b60b-5f20-4ae6-93fb-51540ad9c9e7"
 otags = ["hand-positive", "life-for-cards", "pure-draw"]
 oracle = "You draw two cards and lose 2 life."
 set = "msc"

@@ -68,6 +68,7 @@ export type ActionChromeModel = {
   answerMode: (target: WireTarget) => void;
   continueAfterCostPick: (action: ActionView, card: ObjectView | null, picks: CostPicks, dropSeed: Vec) => void;
   objectName: (id: number) => string;
+  objectPrint: (id: number) => string;
   aim: (target: WireTarget) => void;
 };
 
@@ -102,6 +103,7 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
             title={stagedTargetTitle(props.model.staged())}
             targets={targets()}
             name={props.model.objectName}
+            print={props.model.objectPrint}
             playerName={props.playerName}
             onPick={props.model.aim}
             onCancel={() => props.model.setStaged(null)}
@@ -115,6 +117,7 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
             title={`Sacrifice a creature: ${sp().action.label}`}
             targets={(sp().action.sacrifice_choices ?? []).map((id) => ({ kind: "object" as const, id }))}
             name={props.model.objectName}
+            print={props.model.objectPrint}
             playerName={props.playerName}
             onPick={(t) => {
               if (t.kind !== "object") return;
@@ -137,6 +140,7 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
               id,
               label: props.model.objectName(id),
             }))}
+            print={props.model.objectPrint}
             count={dp().action.discard_count ?? 1}
             declineLabel="Cancel"
             onDecline={() => props.model.setDiscardPick(null)}
@@ -171,6 +175,7 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
                 id,
                 label: props.model.objectName(id),
               }))}
+              print={props.model.objectPrint}
               count={exact() ? min() : null}
               minCount={exact() ? undefined : min()}
               maxCount={exact() ? undefined : max()}
@@ -215,6 +220,7 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
                 title={`${mc().action.label} — ${mode().label}`}
                 targets={mode().targets}
                 name={props.model.objectName}
+                print={props.model.objectPrint}
                 playerName={props.playerName}
                 onPick={props.model.answerMode}
                 onCancel={() => props.model.setModalCast(null)}

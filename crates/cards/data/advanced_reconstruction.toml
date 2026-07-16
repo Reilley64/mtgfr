@@ -6,6 +6,8 @@
 # {1}{R}: Level 3
 # Spells you cast from anywhere other than your hand cost {2} less to cast.
 name = "Advanced Reconstruction"
+id = "f00bc101-8082-4459-b987-f0c4b7a12344"
+default_print = "cc912fec-827d-4deb-8430-79f5ea31ca9b"
 otags = ["activated-ability", "burn-player", "cost-reducer", "graveyard-fuel", "group-slug", "impulsive-recursion", "leaves-graveyard-trigger", "mill-self", "paradox", "pinger", "repeatable-impulsive-draw"]
 oracle = "(Gain the next level as a sorcery to add its ability.)\nAt the beginning of your first main phase, mill a card, then exile a card from your graveyard at random. You may play the exiled card this turn.\n{1}{R}: Level 2\nWhenever one or more cards leave your graveyard, this Class deals 2 damage to each opponent.\n{1}{R}: Level 3\nSpells you cast from anywhere other than your hand cost {2} less to cast."
 set = "soc"

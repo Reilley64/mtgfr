@@ -1,5 +1,7 @@
 # {1}, {T}: Add {R}{W}.
 name = "Sunscorched Divide"
+id = "8d2b2675-19df-4f40-9e8e-196ec097b91c"
+default_print = "eae999f9-9c58-4609-8ade-aca0acf07519"
 otags = ["activated-ability", "cycle-pip-enemy-filterland"]
 oracle = "{1}, {T}: Add {R}{W}."
 set = "soc"

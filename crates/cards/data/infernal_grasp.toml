@@ -1,5 +1,7 @@
 # Destroy target creature. You lose 2 life.
 name = "Infernal Grasp"
+id = "94f0a572-e91c-4b56-a5d1-6cbbeabd210d"
+default_print = "f67b323d-0dda-45f8-84b7-d883ce5045a8"
 otags = ["life-payment", "removal-creature", "removal-destroy", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Destroy target creature. You lose 2 life."
 set = "soc"

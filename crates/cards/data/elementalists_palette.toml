@@ -2,6 +2,8 @@
 # {T}: Add one mana of any color.
 # {T}: Add {C} for each charge counter on this artifact. Spend this mana only on costs that contain {X}.
 name = "Elementalist's Palette"
+id = "6d588e25-7b4d-43c0-b45b-1b0ffb277a78"
+default_print = "f892e316-95c9-4e68-8eb0-96f71a862f2b"
 otags = ["activated-ability", "adds-multiple-mana", "cast-trigger-you", "counters-matter", "mana-rock", "mini-refund", "restricted-mana", "x-cost-matters"]
 oracle = "Whenever you cast a spell with {X} in its mana cost, put two charge counters on this artifact.\n{T}: Add one mana of any color.\n{T}: Add {C} for each charge counter on this artifact. Spend this mana only on costs that contain {X}."
 set = "soc"

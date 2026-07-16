@@ -34,6 +34,7 @@
 /* Mana tray: drop the cost-pip glyph so a count can sit in the colored/split circle. */
 .ms.ms-cost.ms-tray-count::before,
 .ms.ms-cost.ms-tray-count::after {
+  /* biome-ignore lint/complexity/noImportantStyles: must beat mana-font's ::before content */
   content: none !important;
 }
 

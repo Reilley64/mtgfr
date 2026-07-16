@@ -2,6 +2,8 @@
 # "Chain Reaction deals X damage to each creature, where X is the number of creatures on the
 #  battlefield." — {2}{R}{R} sorcery. The damage is a board-derived count, read at resolution.
 name = "Chain Reaction"
+id = "086b2564-9114-4ba2-94fd-b490f98f38a7"
+default_print = "6f34d11e-8452-448f-be4f-838e0ace9904"
 otags = ["burn-creature", "creature-count-matters", "hate-wide", "sweeper", "symmetrical"]
 oracle = "Chain Reaction deals X damage to each creature, where X is the number of creatures on the battlefield."
 set = "soc"

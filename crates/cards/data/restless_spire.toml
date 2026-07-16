@@ -4,6 +4,8 @@
 # creature has first strike." It's still a land.
 # Whenever this land attacks, scry 1.
 name = "Restless Spire"
+id = "0ca4e80e-c19c-4b74-b531-c5a4dc5a8ba9"
+default_print = "fbf4552a-643a-4dc7-a2ae-8e3af5c1ceef"
 otags = ["activated-ability", "attack-trigger", "attacking-matters-self", "color-change-self", "creature-ability-noncreature", "cycle-woe-restless-land", "gains-first-strike", "mana-sink", "scry"]
 oracle = "This land enters tapped.\n{T}: Add {U} or {R}.\n{U}{R}: Until end of turn, this land becomes a 2/1 blue and red Elemental creature with \"During your turn, this creature has first strike.\" It's still a land.\nWhenever this land attacks, scry 1."
 set = "soc"

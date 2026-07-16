@@ -9,6 +9,8 @@
 #    Enchant creature
 #    When enchanted creature dies, return it to the battlefield under your control."
 name = "Changing Loyalty"
+id = "cdfa9de4-7d7d-4638-8ac4-793ece6372dd"
+default_print = "5c2e30d4-98ab-46a7-87ab-1c36c43ab34a"
 otags = ["cast-trigger-self", "cheat-death", "copy-self", "death-trigger", "intervening-if-clause", "protects-all", "protects-creature", "theft-creature"]
 oracle = "Flash\nReplicate {2} (When you cast this spell, copy it for each time you paid its replicate cost. You may choose new targets for the copies. Copies become tokens.)\nEnchant creature\nWhen enchanted creature dies, return it to the battlefield under your control."
 set = "soc"

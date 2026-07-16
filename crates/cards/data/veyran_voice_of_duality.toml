@@ -2,6 +2,8 @@
 # If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to
 # trigger, that ability triggers an additional time.
 name = "Veyran, Voice of Duality"
+id = "d57a6b19-bd06-4b07-8ee1-0b45612ba9e4"
+default_print = "1cb06c70-7ff2-4c88-9931-1bfe8a3226d9"
 otags = ["alliteration", "cycle-c21-alt-commander", "fun-ruling", "magecraft", "trigger-doubler"]
 oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end of turn.\nIf you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time."
 set = "soc"

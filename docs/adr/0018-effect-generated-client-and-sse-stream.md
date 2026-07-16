@@ -10,5 +10,5 @@ Status: **Accepted**; supersedes [0001](0001-rust-to-ts-via-utoipa-openapi-orval
 
 ## Consequences
 
-- `bun run gen` needs Rust toolchain. Generated file gitignored; two `sed` patches in `gen.sh`.
+- `bun run gen` / `just server-codegen` needs Rust toolchain. Generated `openapi.json` + `client/src/api/generated.ts` are gitignored; CI and `just check` regenerate them. Two `sed` patches in `gen.sh`. Biome excludes the generated client.
 - Pin `effect` to exact beta (matches 0019). utoipa/OpenAPI remains contract source.

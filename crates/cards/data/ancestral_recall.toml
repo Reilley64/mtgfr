@@ -1,5 +1,7 @@
 # Target player draws three cards.
 name = "Ancestral Recall"
+id = "550c74d4-1fcb-406a-b02a-639a760a4380"
+default_print = "2398892d-28e9-4009-81ec-0d544af79d2b"
 otags = ["burst-draw", "cycle-lea-boon", "force-draw", "hand-positive", "power-nine", "single-target-instant-sorcery", "pure-draw"]
 oracle = "Target player draws three cards."
 set = "vma"

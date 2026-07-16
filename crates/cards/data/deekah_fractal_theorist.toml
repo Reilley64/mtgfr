@@ -2,6 +2,8 @@
 # Put X +1/+1 counters on it, where X is that spell's mana value.
 # {3}{U}: Target creature token can't be blocked this turn.
 name = "Deekah, Fractal Theorist"
+id = "6b071146-2f83-4fda-a55a-46fcb74e6f28"
+default_print = "186e15a7-d97e-40df-adaa-96d9bd64f3ca"
 otags = ["activated-ability", "cycle-c21-mono-legend", "gives-pp-counters", "gives-unblockable", "magecraft", "mana-sink", "mana-value-matters", "out-of-color-token", "repeatable-crime", "repeatable-pp-counters", "synergy-token-creature", "young-pyromancer-ability"]
 oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it, where X is that spell's mana value.\n{3}{U}: Target creature token can't be blocked this turn."
 set = "soc"

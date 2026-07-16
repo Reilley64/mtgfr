@@ -5,6 +5,8 @@
 # [Channel]
 # Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}.
 name = "Yavimaya Bloomsage"
+id = "d9068051-b51c-4700-b492-30b148e3a72c"
+default_print = "fc962e45-ab71-47e2-b736-644901ffe7d6"
 otags = ["cycle-soc-guest-lecturer", "gives-castable-from-exile", "gives-pp-counters", "life-payment", "power-matters-individual", "repeatable-pp-counters", "ritual", "special-action", "triggered-ability"]
 oracle = "At the beginning of your end step, put a +1/+1 counter on target creature you control. Then if that creature has power 7 or greater, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}."
 set = "soc"

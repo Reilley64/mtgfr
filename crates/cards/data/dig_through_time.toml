@@ -5,6 +5,8 @@
 # hidden, so the order among bottomed cards is unobservable; a fixed order stands in for it (same
 # shortcut Quandrix Apprentice's `look_at_top` takes elsewhere in the pool).
 name = "Dig Through Time"
+id = "f8b17b89-26ce-4208-874a-9e1d66514640"
+default_print = "020939d6-72f0-4aa0-9ac2-d16cc896cd7f"
 otags = ["alliteration", "delve", "hand-positive", "impulse"]
 oracle = "Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)\nLook at the top seven cards of your library. Put two of them into your hand and the rest on the bottom of your library in any order."
 set = "soc"

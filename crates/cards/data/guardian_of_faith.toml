@@ -4,6 +4,8 @@
 # attached to them as though they don't exist until their controller's next turn.)
 # Guardian of Faith (soc): {1}{W}{W} 3/2 Spirit Knight with flash and vigilance.
 name = "Guardian of Faith"
+id = "8e04a5e0-e22c-430b-a39a-c9f38e16ea86"
+default_print = "037739cd-e05c-4aae-9123-f924e420010c"
 otags = ["dnd-spell", "multiple-targets", "phasing", "protects-all", "protects-creature", "triggered-ability", "virtual-french-vanilla"]
 oracle = "Flash\nVigilance\nWhen this creature enters, any number of other target creatures you control phase out. (Treat them and anything attached to them as though they don't exist until their controller's next turn.)"
 set = "soc"

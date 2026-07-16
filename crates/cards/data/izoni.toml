@@ -5,6 +5,8 @@
 # ponytail: the Undergrowth ETB creates one Insect per creature card in your graveyard (a
 # variable token count via per_permanent over the graveyard).
 name = "Izoni, Thousand-Eyed"
+id = "5a210b32-6e1f-4578-bd8b-4e481b761159"
+default_print = "75955b0e-12d6-40ba-aab5-b7b7e2bde121"
 otags = ["activated-ability", "cycle-grn-guild-champion", "draw-engine", "enters-in-company", "hand-positive", "repeatable-lifegain", "repeatable-plunder", "sacrifice-outlet-creature", "triggered-ability", "undergrowth"]
 oracle = "Undergrowth — When Izoni enters, create a 1/1 black and green Insect creature token for each creature card in your graveyard.\n{B}{G}, Sacrifice another creature: You gain 1 life and draw a card."
 set = "grn"

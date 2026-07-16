@@ -10,6 +10,8 @@ const card = (over: Partial<RenderCard> = {}): RenderCard => ({
   w: CARD_W,
   h: CARD_H,
   name: "c",
+  cardId: "",
+  print: "",
   pt: "",
   tapped: false,
   counters: 0,

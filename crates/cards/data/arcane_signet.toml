@@ -1,5 +1,7 @@
 # {T}: Add one mana of any color in your commander's color identity.
 name = "Arcane Signet"
+id = "0bc7f093-bef0-4f1a-852c-4b75ebf54838"
+default_print = "1cad1bd2-7c56-4ce0-99a6-b2a49c1288dd"
 otags = ["activated-ability", "commander-identity-matters", "mana-rock-with-set-s-mechanic", "mini-refund", "synergy-commander"]
 oracle = "{T}: Add one mana of any color in your commander's color identity."
 set = "msc"

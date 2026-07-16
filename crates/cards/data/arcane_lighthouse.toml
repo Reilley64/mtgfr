@@ -2,6 +2,8 @@
 # {1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or
 # shroud.
 name = "Arcane Lighthouse"
+id = "30ac68e6-160a-41f9-9f0f-0e0eef383150"
+default_print = "e2384e42-2442-4b40-9bae-8db470d2fb8c"
 otags = ["activated-ability", "removes-hexproof", "removes-shroud", "utility-land"]
 oracle = "{T}: Add {C}.\n{1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud."
 set = "soc"

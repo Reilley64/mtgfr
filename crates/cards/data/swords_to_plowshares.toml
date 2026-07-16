@@ -1,5 +1,7 @@
 # Exile target creature. Its controller gains life equal to its power.
 name = "Swords to Plowshares"
+id = "b1544f21-7e98-461b-aed5-e748b0168c52"
+default_print = "b4e9c870-23c0-413a-ae39-265f09da16d1"
 otags = ["bible-reference", "drawback", "lifegain", "opponent-lifegain", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal"]
 oracle = "Exile target creature. Its controller gains life equal to its power."
 set = "msc"

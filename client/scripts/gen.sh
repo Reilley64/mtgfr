@@ -9,6 +9,7 @@
 #    ergonomics, and fix two type-only quirks (a value used under `import type`; an `unknown` SSE
 #    stream element).
 set -e
+mkdir -p src/api
 cargo run -q -p server -- openapi > ../openapi.json
 openapigen -s ../openapi.json -f httpclient-type-only -n Mtgfr --log-level error \
   | sed -e 's/readonly //g' \

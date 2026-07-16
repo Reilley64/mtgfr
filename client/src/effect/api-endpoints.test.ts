@@ -10,11 +10,22 @@ import { bodyOf, json, recordingFetch, run, runEither, status, stubLocation } fr
 
 beforeAll(stubLocation);
 
-const req = { name: "Deck", commander: "Some Legend", cards: [{ name: "Forest", count: 40 }] };
+const req = {
+  name: "Deck",
+  commander: "some-legend-id",
+  commander_print: "some-legend-print",
+  cards: [{ id: "forest-id", count: 40, print: "forest-print" }],
+};
 
 describe("client.createDeck", () => {
   it("succeeds on a 200, returning the saved deck", async () => {
-    const deck: DeckDetail = { id: 1, name: "Deck", commander: "Some Legend", cards: [] };
+    const deck: DeckDetail = {
+      id: 1,
+      name: "Deck",
+      commander: "some-legend-id",
+      commander_print: "some-legend-print",
+      cards: [],
+    };
     const r = await run(recordingFetch(json(deck)).fetch, (c) => c.createDeck({ payload: req }));
     expect(r).toEqual(deck);
   });
@@ -92,11 +103,11 @@ describe("client.searchCards", () => {
 });
 
 describe("client.lookupCards", () => {
-  it("GETs /cards/lookup with one repeated names param per card", async () => {
+  it("GETs /cards/lookup with one repeated ids param per card", async () => {
     const { fetch, calls } = recordingFetch(json([]));
-    await run(fetch, (c) => c.lookupCards({ params: { names: ["Breena, the Demagogue", "Forest"] } }));
+    await run(fetch, (c) => c.lookupCards({ params: { ids: ["breena-id", "forest-id"] } }));
     const [url] = calls[0];
     expect(url.pathname).toBe("/api/cards/lookup/v1");
-    expect(url.searchParams.getAll("names")).toEqual(["Breena, the Demagogue", "Forest"]);
+    expect(url.searchParams.getAll("ids")).toEqual(["breena-id", "forest-id"]);
   });
 });

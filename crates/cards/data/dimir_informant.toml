@@ -1,6 +1,8 @@
 # When this creature enters, surveil 2. (Look at the top two cards of your library, then put any number of them into
 # your graveyard and the rest on top of your library in any order.)
 name = "Dimir Informant"
+id = "fa66d63b-dfb7-42b8-8249-4d60e89058ac"
+default_print = "0230afeb-5ce8-436e-9afc-73cdd7baf424"
 otags = ["surveil", "triggered-ability", "virtual-vanilla"]
 oracle = "When this creature enters, surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)"
 set = "grn"
