@@ -38,6 +38,11 @@ impl Game {
         if self.has_keyword(blocker, Keyword::CantBlock) {
             return false;
         }
+        // "Enchanted permanent/creature can't … block" (Faith's Fetters, Prison Term): a live
+        // attached Aura's continuous `cant_block` grant.
+        if self.host_cant_block(blocker) {
+            return false;
+        }
         // Decayed (CR 702.148b): "A creature with decayed can't block."
         if self.has_keyword(blocker, Keyword::Decayed) {
             return false;
@@ -150,6 +155,10 @@ impl Game {
             && !p.tapped
             && !self.is_sick_without_haste(creature)
             && !self.has_keyword(creature, Keyword::Defender)
+            // "Enchanted permanent/creature can't attack" (Faith's Fetters, Prison Term): the
+            // reverse of goad's "must attack", a live attached Aura's continuous `cant_attack`
+            // grant.
+            && !self.host_cant_attack(creature)
             && self
                 .living_players()
                 .any(|d| d != self.controller_of(creature))

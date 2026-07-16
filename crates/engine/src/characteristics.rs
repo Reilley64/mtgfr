@@ -643,6 +643,77 @@ impl Game {
         })
     }
 
+    /// Whether a live Aura attached to `host` carries a static [`Effect::GrantToAttached`]
+    /// with `cant_attack = true` (Faith's Fetters/Prison Term — "Enchanted permanent/creature
+    /// can't attack"), the reverse of [`Self::goaded_by_attachment`]'s "must attack". Continuous,
+    /// read off the attachment scan, so it lifts the instant the Aura leaves.
+    pub(crate) fn host_cant_attack(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect),
+                        (
+                            Timing::Static,
+                            Effect::GrantToAttached {
+                                cant_attack: true,
+                                ..
+                            }
+                        )
+                    )
+                })
+        })
+    }
+
+    /// The block-legality twin of [`Self::host_cant_attack`]: whether a live attached Aura's
+    /// [`Effect::GrantToAttached`] carries `cant_block = true`.
+    pub(crate) fn host_cant_block(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect),
+                        (
+                            Timing::Static,
+                            Effect::GrantToAttached {
+                                cant_block: true,
+                                ..
+                            }
+                        )
+                    )
+                })
+        })
+    }
+
+    /// The strictest [`AbilityRestriction`] a live attached Aura's [`Effect::GrantToAttached`]
+    /// imposes on `host`'s own activated abilities (Faith's Fetters' `mana_only` carve-out vs
+    /// Prison Term's unqualified `none`), or `None` if no attached Aura restricts them.
+    /// ponytail: takes the first such grant; the pool never stacks two ability-restricting Auras
+    /// on one host, so no ordering between competing restrictions is needed yet.
+    pub(crate) fn host_activated_ability_restriction(
+        &self,
+        host: ObjectId,
+    ) -> Option<AbilityRestriction> {
+        self.attachments(host).into_iter().find_map(|id| {
+            if self.is_phased_out(id) {
+                return None;
+            }
+            self.def_of(id)
+                .abilities
+                .iter()
+                .find_map(|a| match (a.timing, a.effect) {
+                    (
+                        Timing::Static,
+                        Effect::GrantToAttached {
+                            activated_abilities: Some(restriction),
+                            ..
+                        },
+                    ) => Some(restriction),
+                    _ => None,
+                })
+        })
+    }
+
     /// The `(power, toughness)` a [`Effect::SetAttachedBasePT`] Aura forces onto `host`'s base,
     /// if any is attached — the CR 613.3(7b) base-P/T-set entry [`Game::pt_layers`] emits, applied
     /// before the 7c counters/pumps/anthems/grants.
@@ -1769,6 +1840,7 @@ mod cache_tests {
             echo: None,
             bestow: None,
             morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -1840,6 +1912,7 @@ mod cache_tests {
             echo: None,
             bestow: None,
             morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -1925,6 +1998,7 @@ mod cache_tests {
                 serra_recursion: false,
                 bestowed: false,
                 face_down: false,
+                evoked: false,
             }),
         );
         let permanent = game.objects.len() as ObjectId;
@@ -1994,6 +2068,7 @@ mod cache_tests {
             echo: None,
             bestow: None,
             morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -2122,6 +2197,7 @@ mod characteristic_query_tests {
             echo: None,
             bestow: None,
             morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -2173,6 +2249,7 @@ mod characteristic_query_tests {
             echo: None,
             bestow: None,
             morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -2255,6 +2332,7 @@ mod characteristic_query_tests {
                 echo: None,
                 bestow: None,
                 morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -2325,6 +2403,7 @@ mod characteristic_query_tests {
                 echo: None,
                 bestow: None,
                 morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -2393,6 +2472,7 @@ mod characteristic_query_tests {
                 echo: None,
                 bestow: None,
                 morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,

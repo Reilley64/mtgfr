@@ -1213,6 +1213,22 @@ pub enum Effect {
             serde(default, deserialize_with = "de::opt_static_granted_ability")
         )]
         granted_ability: Option<&'static GrantedAbility>,
+        /// Faith's Fetters'/Prison Term's "Enchanted permanent/creature can't attack": the
+        /// reverse of [`Self::goad`]'s "must attack" — read live off the attachment scan by
+        /// [`Game::can_attack`] via [`Game::host_cant_attack`], so it vanishes the instant the
+        /// Aura leaves.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        cant_attack: bool,
+        /// Faith's Fetters'/Prison Term's "… or block": the block-legality twin of
+        /// [`Self::cant_attack`], read live by [`Game::can_block`] via [`Game::host_cant_block`].
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        cant_block: bool,
+        /// Faith's Fetters'/Prison Term's "its activated abilities can't be activated[, unless
+        /// they're mana abilities]" (CR 605): read live by [`Game::ability_activation_gate`] via
+        /// [`Game::host_activated_ability_restriction`], so it lifts the instant the Aura leaves.
+        /// `None` for a `GrantToAttached` that doesn't restrict activated abilities at all.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        activated_abilities: Option<AbilityRestriction>,
     },
     /// A static ability on an Aura: while it is attached, its host's *base* power/toughness
     /// becomes this fixed value (Darksteel Mutation's "base power and toughness 0/1"). Read
@@ -1858,6 +1874,18 @@ pub enum Effect {
     /// reveal-until-1; Chaos Warp is the only pool card that needs this exact shape today — split
     /// it only when a second card wants just the tuck half.
     ShuffleTargetPermanentIntoLibraryThenReveal { target: TargetSpec },
+    /// Put the targeted battlefield permanent into its owner's library at a fixed position — no
+    /// shuffle, no reveal (the standalone half of
+    /// [`ShuffleTargetPermanentIntoLibraryThenReveal`](Self::ShuffleTargetPermanentIntoLibraryThenReveal)'s
+    /// fused sentence, split out once a second card needed just the tuck). `to_top` selects the
+    /// top (Temporal Spring's "Put target permanent on top of its owner's library") or the
+    /// bottom (Condemn's "Put target attacking creature on the bottom of its owner's library").
+    /// A token ceases to exist instead (CR 111.7) — same rule its fused sibling already covers.
+    TuckPermanentIntoLibrary {
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        to_top: bool,
+    },
     /// Scry `count` (CR 701.42): the controller looks at the top `count` cards of their library,
     /// then puts any number of them on the bottom (in any order) and the rest back on top (in any
     /// order). Pauses on a [`PendingChoice::ArrangeTop`] rather than resolving to a fixed result.
@@ -2905,6 +2933,7 @@ impl Effect {
             | Effect::GainControlUntilEndOfTurn { target }
             | Effect::GainControl { target }
             | Effect::ShuffleTargetPermanentIntoLibraryThenReveal { target }
+            | Effect::TuckPermanentIntoLibrary { target, .. }
             | Effect::RegenerateShield { target }
             | Effect::AttachMintedAuraToTarget { target }
             | Effect::BecomeCopyOfTargetCreatureGainingMyriad { target }
@@ -3395,6 +3424,27 @@ impl CounterKind {
         CounterKind::Vow,
         CounterKind::Time,
     ];
+}
+
+/// The Pacifism-family "activated abilities can't be activated" restriction an
+/// [`Effect::GrantToAttached`] Aura imposes on its host (CR 605's mana-ability carve-out is the
+/// only axis the pool needs — Faith's Fetters exempts mana abilities, Prison Term exempts
+/// nothing).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum AbilityRestriction {
+    /// Prison Term: "Enchanted creature can't attack or block, and its activated abilities
+    /// can't be activated." No activated ability of the host's may be activated, mana or not.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "none"))]
+    NoActivatedAbilities,
+    /// Faith's Fetters: "… its activated abilities can't be activated unless they're mana
+    /// abilities." (CR 605.) A mana ability of the host's still activates; nothing else does.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "mana_only"))]
+    ManaAbilitiesOnly,
 }
 
 /// An *activated* ability an Aura grants its enchanted host (Fallen Ideal's "Sacrifice a

@@ -1,0 +1,23 @@
+# Put target permanent on top of its owner's library.
+name = "Temporal Spring"
+otags = ["removal-tuck", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Put target permanent on top of its owner's library."
+set = "soc"
+
+[cost]
+generic = 1
+green = 1
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Put target permanent on top of its owner's library.
+[[abilities]]
+timing = "spell"
+
+# Put target permanent on top of its owner's library.
+[[abilities.effects]]
+type = "tuck_permanent_into_library"
+target = { permanent = {} }
+to_top = true

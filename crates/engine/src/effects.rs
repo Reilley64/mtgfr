@@ -3672,6 +3672,28 @@ impl Game {
                     to_top,
                 }]
             }
+            // Temporal Spring ("Put target permanent on top of its owner's library") and
+            // Condemn's tuck half ("Put target attacking creature on the bottom of its owner's
+            // library"): put a targeted battlefield permanent into its owner's library at a fixed
+            // position. No shuffle — unlike its fused sibling `ShuffleTargetPermanentIntoLibraryThenReveal`
+            // above, this needs no `&mut self` and stays in the pure event-building path.
+            Effect::TuckPermanentIntoLibrary { to_top, .. } => {
+                let object = expect_object_target(target, "a permanent to tuck");
+                let owner = self.owner_of(object);
+                // CR 111.7: a token can't exist in a library — it ceases to exist instead.
+                if self.permanent(object).token {
+                    return vec![Event::TokenCeasedToExist {
+                        token: object,
+                        controller: owner,
+                        def: self.def_of(object),
+                    }];
+                }
+                vec![Event::TuckedToLibrary {
+                    card: self.next_object_id(),
+                    from: object,
+                    to_top,
+                }]
+            }
             // Replenish (Eiganjo Dynastorian's back face): every matching card in the
             // controller's own graveyard returns to the battlefield under their control, with no
             // finality counter. Ids are minted sequentially, matching the order `apply` will push

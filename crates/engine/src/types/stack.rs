@@ -34,6 +34,12 @@ pub enum Intent {
         /// default — decline) for a spell with no kicker. Recorded on the resulting
         /// [`Spell::kicked`].
         kicked: bool,
+        /// Whether the caster is casting the spell for its evoke cost (CR 702.74a —
+        /// [`CardDef::evoke`]), charged instead of the printed cost. `false` (the default) for a
+        /// spell with no evoke, or to cast it normally. Recorded on the resulting
+        /// [`Spell::evoked`]; the resulting permanent is sacrificed the instant it enters (see
+        /// [`Permanent::evoked`]).
+        evoked: bool,
         /// The caster's declared Strive target count ([`AdditionalCost::strive`] — CR 601.2c/
         /// 601.2f/702.42), settled before the stack since Strive's total cost depends on it (see
         /// [`AdditionalCost::strive`]'s own doc). 0 (the default) for a spell with no Strive, or
@@ -1455,6 +1461,9 @@ pub enum Event {
         /// Whether this was a face-down morph cast (CR 702.37b — [`Intent::CastFaceDown`]); see
         /// [`Spell::face_down`]. `false` for an ordinary face-up cast.
         face_down: bool,
+        /// Whether this was an evoke cast (CR 702.74a — for [`CardDef::evoke`]); see
+        /// [`Spell::evoked`]. `false` for an ordinary cast.
+        evoked: bool,
     },
     /// A multi-target spell's chosen targets (CR 601.2c) were recorded onto `spell` — either
     /// auto-filled at cast (when the choice was forced) or answered via [`Intent::ChooseTargets`].

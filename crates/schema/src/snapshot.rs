@@ -1234,6 +1234,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1350,6 +1351,7 @@ mod tests {
             echo: None,
             bestow: None,
             morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -1390,6 +1392,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1542,6 +1545,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1800,6 +1804,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1834,6 +1839,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1882,6 +1888,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1982,6 +1989,7 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })

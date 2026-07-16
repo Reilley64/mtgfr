@@ -397,6 +397,7 @@ impl Game {
                 replicate_count,
                 bestowed,
                 face_down,
+                evoked,
             } => {
                 let (def, commander) = match self.objects[from as usize] {
                     Object::Card(c) => (c.def, c.commander),
@@ -446,6 +447,7 @@ impl Game {
                         serra_recursion,
                         bestowed,
                         face_down,
+                        evoked,
                     }),
                 );
                 if serra_recursion {
@@ -519,6 +521,7 @@ impl Game {
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
+                        evoked: false,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -605,6 +608,7 @@ impl Game {
                             serra_recursion: false,
                             bestowed: false,
                             face_down: false,
+                            evoked: false,
                         },
                     }),
                 );
@@ -677,6 +681,7 @@ impl Game {
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
+                        evoked: false,
                     }),
                 );
                 assert_eq!(id, spell);
@@ -1319,6 +1324,7 @@ impl Game {
                     copy,
                     cast_target,
                     face_down,
+                    evoked,
                 ) = match self.objects[from as usize] {
                     Object::Spell(s) => (
                         s.def,
@@ -1330,6 +1336,7 @@ impl Game {
                         s.copy,
                         s.targets.primary(),
                         s.face_down,
+                        s.evoked,
                     ),
                     _ => panic!("PermanentEntered source {from} is not a spell"),
                 };
@@ -1357,6 +1364,11 @@ impl Game {
                 // its real characteristics stay hidden (the characteristics choke reads this flag)
                 // until it's turned face up.
                 self.permanent_mut(permanent).face_down = face_down;
+                // Evoke (CR 702.74a): an evoked spell's resulting permanent is sacrificed the
+                // instant it enters — the self-sacrifice fires as its own trigger, queued
+                // alongside the permanent's ETB triggers (`Game::enqueue_triggers`), so an ETB
+                // payoff (Mulldrifter's draw two) still resolves first.
+                self.permanent_mut(permanent).evoked = evoked;
                 // CR 707.10a: a copy of a permanent spell becomes a token as it resolves — it
                 // ceases to exist (rather than going to the graveyard) once it leaves the
                 // battlefield, via the same `Permanent::token` machinery any other token uses.

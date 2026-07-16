@@ -1,0 +1,39 @@
+# Enchant permanent
+# When this Aura enters, you gain 4 life.
+# Enchanted permanent can't attack or block, and its activated abilities can't be activated unless
+# they're mana abilities.
+name = "Faith's Fetters"
+otags = ["gain-life", "pacifism-effect", "removal-aura"]
+oracle = "Enchant permanent\nWhen this Aura enters, you gain 4 life.\nEnchanted permanent can't attack or block, and its activated abilities can't be activated unless they're mana abilities."
+set = "chk"
+subtypes = ["Aura"]
+enchant = {}
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "aura"
+
+# When this Aura enters, you gain 4 life.
+[[abilities]]
+timing = "etb"
+
+# you gain 4 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = 4
+
+# Enchanted permanent can't attack or block, and its activated abilities can't be activated
+# unless they're mana abilities.
+[[abilities]]
+timing = "static"
+
+# Enchanted permanent can't attack or block, and its activated abilities can't be activated
+# unless they're mana abilities.
+[[abilities.effects]]
+type = "grant_to_attached"
+cant_attack = true
+cant_block = true
+activated_abilities = "mana_only"

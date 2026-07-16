@@ -1,0 +1,23 @@
+# Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its
+# toughness.
+name = "Condemn"
+otags = ["lifegain-rider", "removal-tuck", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness."
+set = "soc"
+approximates = "the tuck half only — \"its controller gains life equal to its toughness\" awaits #136 toughness-amounts (Amount::TargetToughness + gain_life_target_controller)."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Put target attacking creature on the bottom of its owner's library. Its controller gains life
+# equal to its toughness.
+[[abilities]]
+timing = "spell"
+
+# Put target attacking creature on the bottom of its owner's library.
+[[abilities.effects]]
+type = "tuck_permanent_into_library"
+target = { permanent = { types = "creature", attacking = true } }

@@ -906,6 +906,12 @@ impl Effect {
                  battlefield"
                     .to_string()
             }
+            Effect::TuckPermanentIntoLibrary { to_top: true, .. } => {
+                "Put target permanent on top of its owner's library".to_string()
+            }
+            Effect::TuckPermanentIntoLibrary { to_top: false, .. } => {
+                "Put target permanent on the bottom of its owner's library".to_string()
+            }
             Effect::Mill { count, .. } => format!("Target player mills {}", amount_label(count)),
             Effect::ExileGraveyard => "Exile target player's graveyard".to_string(),
             Effect::ExileAllGraveyards => "Exile all graveyards".to_string(),

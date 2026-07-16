@@ -331,6 +331,7 @@ impl Game {
                 Zone::Battlefield,
                 0,
                 false,
+                false,
                 0,
                 0,
             );
@@ -347,6 +348,7 @@ impl Game {
                     0,
                     Zone::Battlefield,
                     0,
+                    false,
                     false,
                     0,
                     0,
@@ -1270,6 +1272,7 @@ mod permanent_filter_tests {
             echo: None,
             bestow: None,
             morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,

@@ -552,6 +552,14 @@ pub struct CardDef {
     /// printed cost a manifest pays. `[morph]` in TOML, the same `[cost]`-table shape as
     /// [`Self::bestow`].
     pub morph: Option<Cost>,
+    /// Evoke (CR 702.74 — Mulldrifter): "You may cast this spell for its evoke cost. If you do,
+    /// it's sacrificed when it enters." `None` for a card without evoke. `Some(cost)` is the
+    /// card's alternative evoke cost, charged instead of the printed `[cost]` when the caster
+    /// declares it (CR 702.74a — [`Spell::evoked`]); the resulting permanent is sacrificed the
+    /// instant it enters, via a self-sacrifice trigger queued alongside its own ETB triggers so
+    /// an ETB payoff (Mulldrifter's draw two) still resolves first (CR 702.74a, CR 603.3b — see
+    /// [`Permanent::evoked`]). `[evoke]` in TOML, the same `[cost]`-table shape as [`Self::echo`].
+    pub evoke: Option<Cost>,
     /// Delve (CR 702.66): "Each card you exile from your graveyard while casting this spell pays
     /// for {1}." `true` makes the card's cast accept a player-chosen number of graveyard cards to
     /// exile as part of casting (from hand, unlike flashback/escape), each reducing the cast's
@@ -842,6 +850,7 @@ pub(crate) fn fresh_permanent(
         serra_recursion: false,
         bestowed: false,
         face_down: false,
+        evoked: false,
         reverts_to_def_eot: None,
     }
 }
@@ -941,6 +950,7 @@ pub fn treasure_token() -> CardDef {
         echo: None,
         bestow: None,
         morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -994,6 +1004,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         echo: None,
         bestow: None,
         morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -1049,6 +1060,7 @@ pub(crate) fn illusion_token() -> CardDef {
         echo: None,
         bestow: None,
         morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -1191,6 +1203,10 @@ pub(crate) struct Spell {
     /// resulting [`Permanent::face_down`] when the spell resolves ([`Event::PermanentEntered`]),
     /// so the permanent enters face down (CR 708). `false` for an ordinary face-up cast.
     pub(crate) face_down: bool,
+    /// Whether this spell was cast for its evoke cost (CR 702.74a — [`CardDef::evoke`]). Copied
+    /// onto the resulting [`Permanent::evoked`] when the spell resolves ([`Event::PermanentEntered`]),
+    /// so the permanent is sacrificed the instant it enters. `false` for an ordinary cast.
+    pub(crate) evoked: bool,
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.
@@ -1405,6 +1421,12 @@ pub(crate) struct Permanent {
     /// morph / megamorph / disguise) — no morph card is in the pool, so only plain manifest is
     /// built; a morph card would add its face-down cost + the morph keyword on top of this status.
     pub(crate) face_down: bool,
+    /// Whether this permanent was cast for its evoke cost (CR 702.74a — [`CardDef::evoke`]): it is
+    /// sacrificed the instant it enters, via a self-sacrifice trigger queued alongside its own ETB
+    /// triggers so an ETB payoff (Mulldrifter's draw two) resolves first. Set as it enters from the
+    /// casting [`Spell::evoked`]; runtime state, not TOML-authored, defaulted `false` like
+    /// `bestowed`.
+    pub(crate) evoked: bool,
     /// The `def` to restore at cleanup for an *until-end-of-turn* enter-as-copy (Cursed Mirror,
     /// CR 706/613 — "become a copy … until end of turn"): when the copy is established, the
     /// permanent's original printed `def` is stashed here and `def` is overwritten with the copied

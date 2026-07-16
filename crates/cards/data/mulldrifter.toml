@@ -1,0 +1,31 @@
+# Flying
+# When this creature enters, draw two cards.
+# Evoke {2}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)
+name = "Mulldrifter"
+oracle = "Flying\nWhen this creature enters, draw two cards.\nEvoke {2}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)"
+set = "soc"
+subtypes = ["Elemental"]
+keywords = ["flying"]
+
+[cost]
+generic = 4
+blue = 1
+
+# Evoke {2}{U}
+[evoke]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, draw two cards.
+[[abilities]]
+timing = "etb"
+
+# draw two cards.
+[[abilities.effects]]
+type = "draw_cards"
+count = 2

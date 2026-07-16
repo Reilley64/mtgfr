@@ -3937,6 +3937,7 @@ mod tests {
                 echo: None,
                 bestow: None,
                 morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,

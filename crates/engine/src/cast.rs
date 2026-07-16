@@ -127,6 +127,9 @@ impl Game {
     /// `kicked` folds [`AdditionalCost::kicker`]'s cost on top (CR 702.33d) — `false` for a
     /// spell with no kicker, or when pricing without picking one (list/one-click never offer it,
     /// matching the declinable default).
+    /// `evoked` charges [`CardDef::evoke`] instead of the printed cost (CR 702.74a) — `false` for
+    /// a spell with no evoke, or when pricing without declaring it (list/one-click never offer
+    /// it, matching kicker's own declinable default above).
     /// `strive_count` folds [`AdditionalCost::strive`]'s cost on top, multiplied by
     /// `strive_count.saturating_sub(1)` (CR 702.42 — "for each target beyond the first") — 0 for
     /// a spell with no Strive, or when pricing without a declared count (list/one-click price at
@@ -146,6 +149,7 @@ impl Game {
         zone: Zone,
         delve_count: u8,
         kicked: bool,
+        evoked: bool,
         strive_count: u8,
         replicate_count: u8,
     ) -> Cost {
@@ -170,6 +174,11 @@ impl Game {
                 .or(def.escape.map(|escape| escape.cost))
                 .or(def.graveyard_cast_cost)
                 .unwrap_or(def.cost)
+        } else if evoked {
+            // Evoke (CR 702.74a): the caster's declared evoke cost replaces the printed cost —
+            // `validate_cast_cost_picks` already rejects `evoked` on a card with no evoke cost,
+            // so this only sees a real one.
+            def.evoke.unwrap_or(def.cost)
         } else {
             def.cost
         };
@@ -263,6 +272,7 @@ impl Game {
         graveyard_exile: Vec<ObjectId>,
         sacrifice_cost: Vec<ObjectId>,
         kicked: bool,
+        evoked: bool,
         strive_count: u8,
         replicate_count: u8,
     ) -> Result<Vec<Event>, Reject> {
@@ -276,6 +286,7 @@ impl Game {
             &graveyard_exile,
             &sacrifice_cost,
             kicked,
+            evoked,
             strive_count,
             replicate_count,
             playable::CastPlayKind::Full,
@@ -294,6 +305,7 @@ impl Game {
         graveyard_exile: &[ObjectId],
         sacrifice_cost: &[ObjectId],
         kicked: bool,
+        evoked: bool,
         strive_count: u8,
         replicate_count: u8,
         kind: CastPlayKind,
@@ -309,6 +321,7 @@ impl Game {
                 graveyard_exile,
                 sacrifice_cost,
                 kicked,
+                evoked,
                 strive_count,
                 replicate_count,
             },
@@ -423,6 +436,7 @@ impl Game {
                 replicate_count,
                 bestowed: false,
                 face_down: false,
+                evoked,
             },
         );
         if from_command {
@@ -1165,6 +1179,7 @@ impl Game {
             Zone::Battlefield,
             0,
             false,
+            false,
             0,
             0,
         );
@@ -1264,6 +1279,7 @@ impl Game {
             x,
             Zone::Hand,
             0,
+            false,
             false,
             0,
             0,
@@ -1367,6 +1383,7 @@ impl Game {
                 replicate_count: 0,
                 bestowed: true,
                 face_down: false,
+                evoked: false,
             },
         );
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
@@ -1432,6 +1449,7 @@ impl Game {
                 replicate_count: 0,
                 bestowed: false,
                 face_down: true,
+                evoked: false,
             },
         );
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
@@ -1489,6 +1507,16 @@ impl Game {
         let Timing::Activated(cost) = ability.timing else {
             return Err(Reject::CannotActivate);
         };
+        // A Pacifism-family Aura's "activated abilities can't be activated[, unless they're mana
+        // abilities]" restriction (Faith's Fetters, Prison Term; CR 605.3a exempts mana abilities
+        // under the `mana_only` axis, nothing exempts under `none`).
+        if let Some(restriction) = self.host_activated_ability_restriction(source) {
+            let mana_exempt = restriction == AbilityRestriction::ManaAbilitiesOnly
+                && ability.effect.is_mana_ability();
+            if !mana_exempt {
+                return Err(Reject::CannotActivate);
+            }
+        }
         // A Class's "Level N" ability (CR 717.2 — "Gain the next level as a sorcery"): activatable
         // only to gain the *next* level, so its source must currently sit at exactly `level - 1`
         // (each level gained exactly once). Supersedes the `min_level` gate below (level-up

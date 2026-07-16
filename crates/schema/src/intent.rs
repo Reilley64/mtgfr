@@ -115,6 +115,10 @@ pub enum WireIntent {
         /// spell with no kicker. See [`engine::Intent::Cast`].
         #[serde(default)]
         kicked: bool,
+        /// Whether the caster is casting the spell for its evoke cost (CR 702.74a); `false` for a
+        /// spell with no evoke, or to cast it normally. See [`engine::Intent::Cast`].
+        #[serde(default)]
+        evoked: bool,
         /// The caster's declared Strive target count (CR 702.42); 0 (default) for a spell with
         /// no Strive, or "choose zero targets." See [`engine::Intent::Cast`].
         #[serde(default)]
@@ -441,6 +445,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            evoked,
             strive_count,
             replicate_count,
             ..
@@ -454,6 +459,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            evoked,
             strive_count,
             replicate_count,
         },
@@ -586,6 +592,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            evoked,
             strive_count,
             replicate_count,
         } => Intent::Cast {
@@ -601,6 +608,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            evoked,
             strive_count,
             replicate_count,
         },

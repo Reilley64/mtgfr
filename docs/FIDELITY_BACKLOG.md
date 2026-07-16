@@ -1266,7 +1266,7 @@ From `docs/fidelity/enchantress-rubinia.md` (Archidekt 2209180 — commander Rub
 observability re-audit for this deck falsified six pool-absence claims — each is folded into the
 increment that clears it (#135, #146, #156, #160, #161, #163).
 
-### 135. `library-tuck-primitive` — 2 cards, S
+### 135. `library-tuck-primitive` — 2 cards, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 A standalone tuck-a-battlefield-permanent-into-the-library effect, split out of Chaos Warp's fused
 `shuffle_target_permanent_into_library_then_reveal` (whose ponytail names exactly this split
@@ -1274,6 +1274,21 @@ trigger). *Sketch:* `Effect::TuckPermanentIntoLibrary { target, to_top }` — ow
 (Temporal Spring) or bottom (Condemn); a token ceases to exist (CR 111.7); reuse the
 `TuckedToLibrary` event. Condemn pairs it with #136's toughness lifegain in one `effects` sequence.
 *Cards:* condemn, temporal_spring (also the substrate #160's Hinder rider reads).
+
+**Landed:** `Effect::TuckPermanentIntoLibrary { target, to_top }` (`type =
+"tuck_permanent_into_library"`) — the standalone tuck-only half of
+`ShuffleTargetPermanentIntoLibraryThenReveal`'s fused sentence: no shuffle, no reveal, just a
+fixed-position move to the target's owner's library (top when `to_top`, else bottom), reusing
+`Event::TuckedToLibrary`; a token target ceases to exist instead (CR 111.7), same as its fused
+sibling. Resolves through the pure `execute_effect` path (no PRNG needed, unlike Chaos Warp).
+**Temporal Spring fully faithful** (no `approximates`). **Condemn** authors the tuck-to-bottom half
+faithfully; `approximates` trims to exactly its residual "its controller gains life equal to its
+toughness" rider, awaiting #136 `toughness-amounts` (`Amount::TargetToughness` +
+`gain_life_target_controller`). #160 (`counter-with-tuck`, Hinder) is now unblocked — it reads this
+same `TuckedToLibrary`-based primitive for its countered-spell tuck destination. Tests:
+`temporal_spring_puts_permanent_on_top_of_owners_library`,
+`condemn_tucks_attacking_creature_to_bottom`, `condemn_only_targets_attacking_creatures`,
+`tuck_permanent_token_ceases_to_exist`.
 
 ### 136. `toughness-amounts` — 2 cards, S
 Depends on: nothing.
@@ -1400,12 +1415,27 @@ commander diverted to the command zone instead of exile was never exiled, so not
 it — no pool card exercises that edge (neither example targets a commander). Both cards fully
 faithful, no `approximates`.
 
-### 148. `evoke` — 1 card, M
+### 148. `evoke` — 1 card, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 Evoke (CR 702.74): an alternative cast cost (`[evoke]`, the `[flashback]`/`[bestow]` cost shape)
 plus "it's sacrificed when it enters" — a `Spell::evoked` flag carried onto the permanent whose
 entry queues an immediate self-sacrifice trigger stacking with (and after) its own ETB trigger,
 so Mulldrifter still draws two. *Cards:* mulldrifter.
+
+**Landed:** `CardDef::evoke: Option<Cost>` (the `[echo]`-shaped `[cost]` table); an `evoked: bool`
+on the cast intent (schema `#[serde(default)]`, mirroring `kicked`) that, when set, charges
+`cast_cost`'s `def.evoke` instead of `def.cost` and records `Spell::evoked` on the `SpellCast`
+event (rejected `CannotPayCost` if the card has no `[evoke]`, mirroring kicker's own gate).
+`Spell::evoked` copies onto `Permanent::evoked` at `Event::PermanentEntered`, same as `bestowed`/
+`face_down`. The self-sacrifice is `Game::queue_evoke_sacrifice` — a fabricated single-ability
+`TriggerGroup` (`Effect::SacrificeObject` against itself, the same synthetic-`then` shape a
+delayed sacrifice uses) queued in `enqueue_triggers` *before* the permanent's own `Etb` group, so
+it lands underneath it on the real stack and resolves *after* it — Mulldrifter's draw-two payoff
+fires first, then the sacrifice. ponytail: no `OrderTriggers` pause for the controller's own
+simultaneous triggers (CR 603.3b) — the two are separate single-ability groups, not one the
+controller orders; grow into a real choice if an evoke card ever needs the reverse order. No new
+`MeaningfulAction` — like kicked, evoke is a bool on the ordinary cast action. Mulldrifter fully
+faithful, no `approximates`.
 
 ### 149. `buyback` — 1 card, M
 Depends on: nothing.
@@ -1456,7 +1486,7 @@ twin, pausing the targeted opponent on a yes/no). The pump halves are already ex
 (`pump_self`, `pump_until_end_of_turn` `target = "this"` with `{ protection = … }` keywords).
 *Cards:* questing_phelddagrif.
 
-### 155. `attached-cant-attack-block` — 2 cards, M
+### 155. `attached-cant-attack-block` — 2 cards, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 Pacifism-family host restrictions on `grant_to_attached`: `cant_attack`, `cant_block` (consulted
 in `declare_attackers`/`can_block` like goad's reverse), and `no_activated_abilities`
@@ -1465,8 +1495,20 @@ vs Prison Term's unqualified ban — model the axis as
 `activated_abilities = "none" | "mana_only"`). Faith's Fetters' ETB lifegain and enchant-permanent
 are already expressible. *Cards:* faiths_fetters, prison_term.
 
+**Landed:** three continuous axes on `Effect::GrantToAttached` — `cant_attack: bool`, `cant_block:
+bool` (the reverse of `goad`'s "must attack", read live off the attachment scan by new
+`Game::host_cant_attack`/`Game::host_cant_block` helpers mirroring `goaded_by_attachment`, consulted
+in `Game::can_attack`/`Game::can_block`), and `activated_abilities: Option<AbilityRestriction>`
+(`NoActivatedAbilities`/`ManaAbilitiesOnly`, TOML `"none"`/`"mana_only"`), read by a new
+`Game::host_activated_ability_restriction` and guarded in `Game::ability_activation_gate` (mana
+ability exempted only under `mana_only`, via `Effect::is_mana_ability`). All three vanish the
+instant the Aura leaves, same as `goad`. Faith's Fetters fully faithful (no `approximates`).
+Prison Term's restriction half is faithful; `approximates` is trimmed to exactly the "Whenever a
+creature an opponent controls enters, you may attach this Aura to that creature" re-attach
+trigger — #156, now unblocked.
+
 ### 156. `aura-reattach` — 1 card, M
-Depends on: #155 (Prison Term's other half).
+Depends on: #155 (Prison Term's other half — **landed 2026-07-16, unblocked**).
 Prison Term's "Whenever a creature an opponent controls enters, you may attach this Aura to that
 creature" — the first pool Aura that re-attaches while already attached (falsified claim at
 `types/card.rs`: re-attach legality never consults `enchant`). *Sketch:* widen
@@ -1529,7 +1571,7 @@ controller, the steal reverts (CR 611.2b duration). The existing overrides are u
 forever; this is the first condition-scoped one — give the override record an optional
 `while: ControlCondition` rather than a third hardcoded variant. *Cards:* rubinia_soulsinger.
 
-### 163. `morph-face-down` — 2 cards, XL
+### 163. `morph-face-down` — 2 cards, XL — **LANDED (2026-07-16, illusionary_mask residual)**
 Depends on: #the landed manifest substrate (face-down 2/2 status, turn-face-up special action).
 Falsified claim: "no morph card is in the pool, so only plain manifest is built." Staged:
 **Slice 1 — morph:** `[morph]` cost on the card; cast face down from hand for {3} as a 2/2
@@ -1565,6 +1607,19 @@ target" half is unmodeled — activated/triggered abilities on the stack carry n
 `single_target_spell_on_stack` enumerates spells only. No pool card puts a single-target ability on the
 stack that an opponent would bend, so this stays a spell-only spec until one does (giving stack abilities
 object identity is its own cross-cutting increment). **Slice 3 (Illusionary Mask) remains.**
+
+**Progress (2026-07-16) — Slice 3 (Illusionary Mask) authored with a named residual:** evaluated honestly
+per the slice's judgment call — `illusionary_mask.toml` is authored as the faithful `{2}` artifact frame
+with a precise `approximates`; its entire `{X}` activated ability is deferred (no `[[abilities]]` block, so
+no engine change). Two clauses each need bespoke substrate disproportionate for one 1994 card: (1) the
+`{X}`-gated cast-from-hand-face-down (a new `Effect` + a pending hand-card pick redacting the private hand +
+a non-morph reuse of `cast_face_down`'s CR 708.2 entry path, with the exact "mana you spent on {X}"
+color-subset test approximated to mana value ≤ X) — a ~10-file new subsystem with a new `Intent`/`PendingChoice`
+schema round-trip; (2) the CR 615 turn-face-up-on-interaction replacement (per-object flag consulted at the two
+damage chokes and the tap choke). Building either for one card that stays approximated regardless is exactly the
+"do not contort the DSL for one 1994 card" the slice warns against. **#163 is otherwise complete — willbender is
+faithful and the morph/manifest substrate (slices 1–2) all landed — but NOT marked LANDED while
+illusionary_mask retains its residual `approximates` (per the XL convention).**
 
 ### 164. `cross-owner-anthem-cache` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.

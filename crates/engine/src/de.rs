@@ -223,6 +223,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             echo: None,
             bestow: None,
             morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -363,6 +364,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// card's morph cost); absent for a card without morph.
             #[serde(default)]
             morph: Option<Cost>,
+            /// Evoke (CR 702.74) — `[evoke]` with the same `[cost]`-table shape as `[echo]`;
+            /// absent for a card without evoke.
+            #[serde(default)]
+            evoke: Option<Cost>,
             /// Delve (CR 702.66) — `delve = true`; absent (`false`) for a card without delve.
             #[serde(default)]
             delve: bool,
@@ -458,6 +463,7 @@ impl<'de> Deserialize<'de> for CardDef {
             echo: card.echo,
             bestow: card.bestow,
             morph: card.morph,
+            evoke: card.evoke,
             delve: card.delve,
             escape: card.escape,
             retrace: card.retrace,

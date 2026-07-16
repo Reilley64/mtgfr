@@ -43,6 +43,17 @@ impl Game {
                 // "whenever a creature enters" watches see it.
                 | Event::Manifested { permanent, .. }
                 | Event::LandPlayed { permanent, .. } => {
+                    // Evoke (CR 702.74a): queued *before* the permanent's own `Etb` trigger below
+                    // so it lands underneath it on the stack and so resolves *after* — an ETB
+                    // payoff (Mulldrifter's draw two) still happens before the sacrifice.
+                    // ponytail: no ordering choice is raised for the controller's own simultaneous
+                    // triggers (CR 603.3b) — the two are queued as separate single-ability groups
+                    // rather than one multi-ability group, so `place_pending_triggers` places both
+                    // without pausing. Grow into a real `OrderTriggers` choice if an evoke card
+                    // ever needs the controller to choose the other order.
+                    if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
+                        self.queue_evoke_sacrifice(permanent);
+                    }
                     self.queue_self_trigger(permanent, Trigger::Etb);
                     // ponytail: watch-others companion to the self `Etb` above — constellation/
                     //   landfall watch *any other* permanent's entry, not their own.
@@ -567,6 +578,30 @@ impl Game {
             ..TriggerContext::of(self.owner_of(source))
         };
         self.queue_trigger_group(ctx, source, self.def_of(source), trigger);
+    }
+
+    /// Queue evoke's "sacrificed when it enters" (CR 702.74a) as its own single-ability
+    /// [`TriggerGroup`], reusing [`Effect::SacrificeObject`] against `evoked_permanent` itself —
+    /// the same synthetic-`then` shape a delayed sacrifice trigger uses (see that variant's doc),
+    /// fabricated here since it isn't one of the permanent's own printed abilities. Its
+    /// `timing`/`condition` are inert placeholders, like [`Game::fire_delayed_triggers`]'s.
+    pub(crate) fn queue_evoke_sacrifice(&mut self, evoked_permanent: ObjectId) {
+        self.pending_trigger_groups.push(TriggerGroup {
+            expanded: false,
+            controller: self.owner_of(evoked_permanent),
+            source: evoked_permanent,
+            abilities: vec![Ability {
+                timing: Timing::Triggered(Trigger::Etb),
+                effect: Effect::SacrificeObject {
+                    object: Some(evoked_permanent),
+                },
+                optional: false,
+                min_level: 0,
+                cost: Cost::FREE,
+                condition: None,
+                once_each_turn: false,
+            }],
+        });
     }
 
     /// Queue watch-others death triggers for the death of one creature (whose id was `dying`,
