@@ -1259,6 +1259,264 @@ Truly unique single-card gaps — real increments under the all-cards posture, o
 - **mass-exile-all-graveyards** (final_act) — the residual from the #105/Casualties-of-War modal landing above: "Exile all graveyards" was one of three dropped modes, blocked on there being no mass (untargeted) all-graveyards exile effect, only the single targeted-player `ExileGraveyard` (Bojuka Bog). S. **LANDED (2026-07-15).** New `Effect::ExileAllGraveyards` (`exile_all_graveyards`, fieldless, no target) — the mass twin of `ExileGraveyard`, looping every live object whose zone is `Graveyard` (dropping `ExileGraveyard`'s `owner_of(id) != player` filter) and emitting one `Event::MovedToExile` per card, same sequential-id-minting shape. Wired as Final Act's third mode; `choose_max` bumped `2` → `3`. final_act now scripts 3 of its 5 modes (destroy all creatures / destroy all planeswalkers / exile all graveyards); `approximates` trimmed to the two still-blocked modes (destroy all battles — no battle permanent type; each opponent loses all counters — no player-level counter tracking). Test: `final_act_exile_all_graveyards_mode_empties_every_graveyard` asserts every player's graveyard (including the caster's own) is exiled, contrasting the single-target `exile_target_players_graveyard_bojuka_bog` test which leaves other players' graveyards untouched.
 - **reflexive-trigger** (forum_filibuster) — a real reflexive "when you do" triggered ability (CR 603.3b), replacing the same-resolution sequenced-payoff shortcut #69's 2026-07-12 note left as forum_filibuster's residual: the token's creation and the Aura's return-and-attach must be two separate stack objects with a priority window between them. M. **LANDED (2026-07-15).** Reusable primitive `Effect::ReflexiveTrigger { then }` (`type = "reflexive_trigger"`, a `[[abilities.effects.then]]` sub-array): placed after a `create_token` step, its resolution enqueues each `then` effect as its *own* separate triggered ability via the normal APNAP placement path (`Game::queue_reflexive_trigger` pushes a fabricated single-ability `TriggerGroup` onto `pending_trigger_groups`, mid-resolution, exactly the way `fire_delayed_triggers` does — then the pipeline's `TriggerPlacement` phase puts it on the stack with a fresh priority window). The "you do" condition is that the parent's preceding `create_token` minted a token this resolution (read back from the latest `Event::TokenCreated`, the `AttachTriggeringAuraToMintedToken` idiom); that token's id is threaded into each `then` effect (`Effect::with_reflexive_token`, the `fill_entering_permanent` threading pattern). The body `Effect::ReturnFromGraveyardAttachedToToken { filter, token }` is a real targeted ability: `target()` → `TargetSpec::CardInGraveyard { whose: Yours, filter }`, `target_count()` → `{0,1}` ("up to one"), so it chooses its Aura/Equipment target through the ordinary `ChooseTarget`/`place_targeted_ability` path as it goes on the stack (CR 601.2c) — declining (empty target) or an empty graveyard drops it with the token intact, the standard "up to one" treatment. At resolution it reanimates the chosen card attached to `token`, guard-returning (CR 608.2b) if the token has left the battlefield. The old `Effect::ReanimateAttachedToMintedToken` + its resolution-time `PendingChoice::ReanimateAttachedToMintedToken`/`begin_`/`answer_` handlers and the schema `PendingChoiceView`/projection mirror are all deleted (no dead shortcut left). forum_filibuster fully faithful (`approximates` deleted). **Augusta, Order Returned NOT migrated** — its reflexive counter payoff's "you do" is its own graveyard-exile fan-out, not a token creation, so it isn't threadable through this token-scoped primitive without generalizing the "you do" condition; left inline with a `ponytail:` at `effects.rs`'s `EachPlayerExilesFromGraveyard` arm pointing at `ReflexiveTrigger` as the upgrade target. Tests: `forum_filibuster_reflexive_return_is_a_separate_stack_object` (load-bearing — the reflexive ability sits on the stack with the Aura still in the graveyard and the active player holding priority before it resolves), `_reflexive_declined`, `_reflexive_no_op_if_token_gone`, `_mints_the_token_with_nothing_to_return`.
 
+## Enchantress Rubinia deck increments (2026-07-16)
+
+From `docs/fidelity/enchantress-rubinia.md` (Archidekt 2209180 — commander Rubinia Soulsinger).
+35 of the deck's 64 new cards need engine work; ranked S-first within dependency order. The
+observability re-audit for this deck falsified six pool-absence claims — each is folded into the
+increment that clears it (#135, #146, #156, #160, #161, #163).
+
+### 135. `library-tuck-primitive` — 2 cards, S
+Depends on: nothing.
+A standalone tuck-a-battlefield-permanent-into-the-library effect, split out of Chaos Warp's fused
+`shuffle_target_permanent_into_library_then_reveal` (whose ponytail names exactly this split
+trigger). *Sketch:* `Effect::TuckPermanentIntoLibrary { target, to_top }` — owner's library, top
+(Temporal Spring) or bottom (Condemn); a token ceases to exist (CR 111.7); reuse the
+`TuckedToLibrary` event. Condemn pairs it with #136's toughness lifegain in one `effects` sequence.
+*Cards:* condemn, temporal_spring (also the substrate #160's Hinder rider reads).
+
+### 136. `toughness-amounts` — 2 cards, S
+Depends on: nothing.
+Two Amount arms the pool has power-side twins for: `Amount::TargetToughness` (Condemn's "its
+controller gains life equal to its toughness" — pair with `gain_life_target_controller`, reading
+the target pre-tuck like Swords to Plowshares' rider) and `Amount::SacrificedCreatureToughness`
+(Miren's "gain life equal to the sacrificed creature's toughness" — the `SacrificedCreaturePower`
+context-fill, toughness side). *Cards:* condemn, miren_the_moaning_well.
+
+### 137. `cards-in-hand-amount` — 1 card, S
+Depends on: nothing.
+`Amount::CardsInYourHand` — the effect controller's own live hand count (the only hand-count arm
+today is `CardsInTargetPlayerHand`, which needs a player target). Read live on every
+characteristic recompute so Empyrial Armor's `grant_to_attached` power/toughness track the hand.
+*Cards:* empyrial_armor.
+
+### 138. `global-anthem-scope` — 1 card, S
+Depends on: nothing.
+An `all_players: bool` axis on `anthem_static` widening the candidate scan from "creatures you
+control" to every creature on the battlefield ("All creatures have haste"). *Sketch:* one axis in
+`matching_anthems`' controller gate; keyword-only consumer first. The World-enchantment supertype
+rule (CR 704.5k) is NOT modeled — ponytail note on the card (single World card in the pool, the
+rule needs a second to observe). *Cards:* concordant_crossroads.
+
+### 139. `noncreature-keyword-anthem` — 1 card, S/M
+Depends on: nothing.
+A continuous keyword grant to matching noncreature permanents you control — "Other enchantments
+you control have shroud." *Sketch:* the static twin of
+`grant_keywords_to_permanents_you_control_until_end_of_turn` (same `filter` + `keywords` shape,
+read at the keyword recompute like `anthem_static` instead of resolved once); `other = true` via
+the filter's existing axis. Consulted by `untargetable_by` for shroud. *Cards:* sterling_grove.
+
+### 140. `library-top-search` — 2 cards, S
+Depends on: nothing.
+`SearchDest::LibraryTop` ("reveal it, then shuffle and put that card on top") plus
+`CardFilter::ArtifactOrEnchantment` (the card-filter union exists only for permanent filters
+today). Shuffle first, then place the found card on top — the existing search machinery plus one
+destination arm and one filter arm. *Cards:* enlightened_tutor, sterling_grove.
+
+### 141. `reveal-top-route` — 1 card, S
+Depends on: nothing.
+Coiling Oracle's "reveal the top card; if it's a land, put it onto the battlefield, otherwise put
+it into your hand." *Sketch:* a `rest_dest = "hand"` arm on `reveal_top_cards` (count 1, filter
+"land", matched_dest "battlefield") — the non-match routes to hand instead of bottom; no pause,
+fully deterministic. *Cards:* coiling_oracle.
+
+### 142. `target-player-graveyard-exile` — 1 card, S
+Depends on: nothing.
+"Target player exiles a card from their graveyard" — the targeted player (not the caster) picks
+one card from their own graveyard, mandatory when non-empty. *Sketch:* a player-targeted effect
+pausing on the picked player like `each_player_exiles_from_graveyard`'s per-player step, single
+player, no payoff. *Cards:* relic_of_progenitus.
+
+### 143. `etb-sacrifice-unless` — 2 cards, M
+Depends on: nothing.
+An as-enters "sacrifice it unless you [pay {1} | return a non-Lair land you control to its owner's
+hand]" pause — echo's pay-or-sacrifice choice shape, fired at the permanent's own ETB instead of
+upkeep. *Sketch:* `enters_sacrifice_unless = { pay = <cost> }` (Rupture Spire) and
+`{ return_land = <permanent filter> }` (Treva's Ruins — the decline arm names a land to bounce
+instead of mana); reuse `PayEchoOrSacrifice`'s intent shape with a second answer payload for the
+land pick. *Cards:* rupture_spire, trevas_ruins.
+
+### 144. `discard-unless-land` — 1 card, S/M
+Depends on: nothing.
+Compulsive Research's "that player discards two cards unless they discard a land card" — a
+resolution-time choice for the affected player: discard one land, or two cards. *Sketch:* a
+`discard` variant (`count`, `or_one_matching = <card filter>`) whose pending choice accepts either
+a 1-card land answer or a `count`-card answer; hand with no land collapses to the plain discard.
+*Cards:* compulsive_research.
+
+### 145. `cycling-triggers` — 2 cards, M
+Depends on: nothing.
+"When you cycle this card" triggered abilities (CR 702.29e — triggers from the hand-discard zone
+change, stacking above cycling's draw). *Sketch:* scan the cycled card's own abilities for a new
+`timing = "cycled"` at the cycling choke (the `when_you_cast_this` cast-scan idiom, not a
+battlefield watcher); Krosan Tusker's search rides directly; Decree of Justice adds an optional
+pay-`{X}` rider (`optional = true` + a cost carrying `x = true` — the first X "may" cost; clamp to
+the existing optional-trigger pay shape with a chosen X). *Cards:* decree_of_justice,
+krosan_tusker.
+
+### 146. `counter-activated-ability` — 1 card, L
+Depends on: #145 (cycling as a real stack object makes the counter observable).
+"Counter target activated ability." Falsified claim: cycling/hand-ability activations are resolved
+immediately, never on the stack ("no pool card responds to a cycling activation" — Azorius
+Guildmage now does). *Sketch:* (1) route cycling/`hand_ability` activations through the stack as
+`StackItem::Ability` entries with a priority window; (2) `Effect::CounterTargetActivatedAbility`
+targeting a non-mana activated ability on the stack (mana abilities can't be targeted, CR 605.3b —
+they stay stackless), removing it like `counter_spell` minus the card move. *Cards:*
+azorius_guildmage.
+
+### 147. `flicker` — 2 cards, M
+Depends on: nothing.
+Two slices. **Slice 1 (Momentary Blink):** `Effect::FlickerTarget` — exile target creature you
+control, then immediately return it to the battlefield under its owner's control as a new object
+(fresh ETBs fire, Auras fall off to graveyard, counters/damage wiped; a token ceases to exist).
+**Slice 2 (Mistmeadow Witch):** the delayed twin — exile now, schedule the return at the beginning
+of the next end step via the existing `DelayedTriggerScheduled` machinery (`fire_at = Step::End`),
+returning under the owner. *Cards:* momentary_blink, mistmeadow_witch.
+
+### 148. `evoke` — 1 card, M
+Depends on: nothing.
+Evoke (CR 702.74): an alternative cast cost (`[evoke]`, the `[flashback]`/`[bestow]` cost shape)
+plus "it's sacrificed when it enters" — a `Spell::evoked` flag carried onto the permanent whose
+entry queues an immediate self-sacrifice trigger stacking with (and after) its own ETB trigger,
+so Mulldrifter still draws two. *Cards:* mulldrifter.
+
+### 149. `buyback` — 1 card, M
+Depends on: nothing.
+Buyback (CR 702.27): an optional additional cost (`[cost.additional.buyback]`, the kicker
+skeleton) recorded on the spell; a bought-back instant/sorcery returns to its owner's hand at
+resolution instead of the graveyard (a `finish_instant_sorcery_resolution` fork beside
+flashback's exile). *Cards:* capsize.
+
+### 150. `fog` — 1 card, M
+Depends on: #130 (landed slice 1 — this is its named slice-3 scope generalization).
+"Prevent all combat damage that would be dealt this turn" — widen #130's per-player shield to a
+table-wide all-combat-damage shield consulted at both `damage_player` and `damage_creature`
+combat chokes, no token mint. Flashback on the card is already landed. *Cards:* moments_peace.
+
+### 151. `enchanted-deals-damage-lifegain` — 1 card, M
+Depends on: nothing.
+Armadillo Cloak's "Whenever enchanted creature deals damage, you gain that much life" — a new
+attached-host damage watch (`timing = "enchanted_creature_deals_damage"`, any damage: combat and
+noncombat creature damage both route through the two damage chokes) with the dealt amount in
+trigger context (`Amount::TriggeringDamageDealt`, the `combat_damage_dealt` LKI shape). NOT
+modeled as lifelink — separate trigger, stacks with real lifelink. *Cards:* armadillo_cloak.
+
+### 152. `tapped-for-mana-triggers` — 2 cards, L
+Depends on: nothing.
+A tapped-for-mana watch at the mana-ability resolution choke (both the `produces` sugar tap and
+explicit `add_mana` activations): Fertile Ground's "whenever enchanted land is tapped for mana,
+its controller adds an additional one mana of any color" (attached-host scope, a `ChooseManaColor`
+pause riding the tap — mana abilities don't stack, CR 605.3, so the bonus resolves inline) and
+Mirari's Wake's "whenever you tap a land for mana, add one mana of any type that land produced"
+(controller-scope, bonus color derived from the produced batch — no pause when unambiguous).
+*Sketch:* a `land_tapped_for_mana` hook scanned like the `spend_mana_to_cast` provenance path,
+resolving bonus credits into the same pool batch. *Cards:* fertile_ground, miraris_wake.
+
+### 153. `rhystic-punisher` — 1 card, M
+Depends on: nothing.
+Rhystic Study's "Whenever an opponent casts a spell, you may draw a card unless that player pays
+{1}" — a cast trigger whose resolution pauses the *triggering caster* (not the ability's
+controller) on a pay-or-let-it-happen choice; declining to pay hands the controller an optional
+draw. *Sketch:* reuse `PayOrCounter`'s opponent-addressed pay shape with a draw payload
+(`unless_pays` on a trigger effect rather than a counter). *Cards:* rhystic_study.
+
+### 154. `opponent-gift-riders` — 1 card, M
+Depends on: nothing.
+Questing Phelddagrif's three opponent compensations: "target opponent creates a 1/1 green Hippo
+token" (an opponent-restricted `target_player` on `create_token`), "target opponent gains 2 life"
+(`gain_life_target_player`, opponent-restricted), "target opponent may draw a card" (the may-draw
+twin, pausing the targeted opponent on a yes/no). The pump halves are already expressible
+(`pump_self`, `pump_until_end_of_turn` `target = "this"` with `{ protection = … }` keywords).
+*Cards:* questing_phelddagrif.
+
+### 155. `attached-cant-attack-block` — 2 cards, M
+Depends on: nothing.
+Pacifism-family host restrictions on `grant_to_attached`: `cant_attack`, `cant_block` (consulted
+in `declare_attackers`/`can_block` like goad's reverse), and `no_activated_abilities`
+(`activate_ability` guard on the host; Faith's Fetters' "unless they're mana abilities" carve-out
+vs Prison Term's unqualified ban — model the axis as
+`activated_abilities = "none" | "mana_only"`). Faith's Fetters' ETB lifegain and enchant-permanent
+are already expressible. *Cards:* faiths_fetters, prison_term.
+
+### 156. `aura-reattach` — 1 card, M
+Depends on: #155 (Prison Term's other half).
+Prison Term's "Whenever a creature an opponent controls enters, you may attach this Aura to that
+creature" — the first pool Aura that re-attaches while already attached (falsified claim at
+`types/card.rs`: re-attach legality never consults `enchant`). *Sketch:* widen
+`attach_self_to_entering` to move an already-attached Aura (emit `AttachedTo` with a detach from
+the old host) and re-check the `enchant` filter at the move. *Cards:* prison_term.
+
+### 157. `mana-spent-tracking` — 1 card, M
+Depends on: nothing.
+Court Hussar's "sacrifice it unless {W} was spent to cast it" (CR 606-adjacent): record the
+colors of mana actually spent on each cast (the payment planner knows them; snapshot onto
+`Spell`, carry onto the entering permanent like `entered_with_x`), read by a new condition
+`color_was_spent_to_cast_this = "white"` gating a `conditional` ETB self-sacrifice. *Cards:*
+court_hussar.
+
+### 158. `enter-as-copy-enchantment` — 1 card, S/M
+Depends on: #127 (landed).
+A type axis on `enter_as_copy` (`of = "enchantment"`, default `"creature"`): Copy Enchantment may
+enter as a copy of any enchantment on the battlefield. Same printed-`CardDef` copy snapshot as
+the creature arm; an Aura copy needs the deploy-time choose-host pause (the Armored Skyhunter
+attach path) since a copied Aura must enter attached. *Cards:* copy_enchantment.
+
+### 159. `phantom-prevention` — 1 card, M
+Depends on: #130 (prevention substrate).
+The Phantom replacement (CR 615): "If damage would be dealt to this creature, prevent that
+damage. Remove a +1/+1 counter from this creature." — a per-permanent static prevention shield at
+the `damage_creature` choke, removing one +1/+1 counter per prevented damage event (counter
+removal is not optional; fires even at zero counters where it prevents and removes nothing).
+*Cards:* phantom_centaur.
+
+### 160. `counter-with-tuck` — 1 card, M
+Depends on: #135.
+Hinder's "If that spell is countered this way, put that card on your choice of the top or bottom
+of its owner's library instead of into that player's graveyard" — a destination rider on
+`counter_target_spell` (`countered_dest = "library_top_or_bottom"`, pausing the caster on the
+top/bottom pick). Also closes the falsified claim at `effects.rs`: a countered flashback/escape
+spell must exile (CR 702.34e/702.19d) — wire that fork into `counter_spell`'s card move while
+touching it (Hinder countering a flashbacked Moment's Peace exiles it; the tuck rider then has
+nothing to move, CR 701.5b). *Cards:* hinder.
+
+### 161. `pile-split` — 1 card, M/L
+Depends on: nothing.
+Fact or Fiction: "Reveal the top five cards of your library. An opponent separates those cards
+into two piles. Put one pile into your hand and the other into your graveyard." *Sketch:* a
+reveal-5 → opponent-splits → controller-picks flow: the controller first chooses which opponent
+splits (falsified claim: `OpponentSplitsExilePiles` hardcodes next-in-APNAP — multiplayer FoF is
+"an opponent" of the controller's choice; add the chooser pause and share it with the existing
+effect), then that opponent answers a partition choice, then the controller picks the pile to
+take to hand (other to graveyard). New pending-choice surface for the partition (a subset pick
+over the five). *Cards:* fact_or_fiction.
+
+### 162. `conditioned-control-duration` — 1 card, L
+Depends on: nothing. **The commander — schedule early despite the L.**
+Rubinia Soulsinger: "You may choose not to untap Rubinia during your untap step" and "{T}: Gain
+control of target creature for as long as you control Rubinia and Rubinia remains tapped."
+*Sketch:* (1) `may_choose_not_to_untap = true` on the card — the untap turn-based action pauses
+its controller on a yes/no for each such permanent (CR 502.2); (2) a control override entry
+carrying a *condition* (source still controlled by the ability's controller AND source still
+tapped), re-evaluated at the SBA/recompute chokes — the moment Rubinia untaps, leaves, or changes
+controller, the steal reverts (CR 611.2b duration). The existing overrides are until-EOT or
+forever; this is the first condition-scoped one — give the override record an optional
+`while: ControlCondition` rather than a third hardcoded variant. *Cards:* rubinia_soulsinger.
+
+### 163. `morph-face-down` — 2 cards, XL
+Depends on: #the landed manifest substrate (face-down 2/2 status, turn-face-up special action).
+Falsified claim: "no morph card is in the pool, so only plain manifest is built." Staged:
+**Slice 1 — morph:** `[morph]` cost on the card; cast face down from hand for {3} as a 2/2
+(`Intent::CastFaceDown`), turn face up any time priority allows by paying the morph cost (reuse
+`turn_face_up`, paying `[morph]` instead of the printed cost); "when this is turned face up"
+triggers (`timing = "turned_face_up"`, scanned at the flip). **Slice 2 — Willbender's payload:**
+`Effect::ChangeTargetOfTargetSpellOrAbility` — retarget a single-target spell/ability on the
+stack to a new legal target (the copy-retarget machinery pointed at an existing stack object
+instead of a fresh copy). **Slice 3 — Illusionary Mask:** evaluate honestly once slices 1–2 land;
+its cast-from-hand-face-down-via-{X} replacement likely stays `approximates` (name the residual
+precisely) — do not contort the DSL for one 1994 card. *Cards:* willbender, illusionary_mask.
+
+---
+
 ## Top 5 next increments (build in this order)
 
 1. **`target-filter-adoption` (#66)** — 18 cards for an S: pure wiring of the already-landed `PermanentFilter` into the remaining targeted/mass effects. Highest leverage in the audit, zero new machinery.
