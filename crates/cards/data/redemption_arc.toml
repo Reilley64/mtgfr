@@ -1,0 +1,45 @@
+# Enchant creature
+# Enchanted creature has indestructible and is goaded. (It attacks each combat if able and attacks a player other than
+# you if able.)
+# {1}{W}: Exile enchanted creature.
+# Redemption Arc {2}{W} — Aura (soc). Real oracle text:
+#   "Enchant creature. Enchanted creature has indestructible and is goaded.
+#   {1}{W}: Exile enchanted creature."
+name = "Redemption Arc"
+otags = ["activated-ability", "force-attacker", "gives-indestructible", "protects-creature", "removal-creature", "removal-exile", "spot-removal"]
+oracle = "Enchant creature\nEnchanted creature has indestructible and is goaded. (It attacks each combat if able and attacks a player other than you if able.)\n{1}{W}: Exile enchanted creature."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature has indestructible and is goaded. (It attacks each combat if able and attacks
+# a player other than you if able.)
+[[abilities]]
+timing = "static"
+
+# Enchanted creature has indestructible and is goaded.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 0
+toughness = 0
+keywords = ["indestructible"]
+goad = true
+
+# {1}{W}: Exile enchanted creature.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 1
+white = 1
+
+# Exile enchanted creature.
+[[abilities.effects]]
+type = "exile_target"
+target = "enchanted_creature"

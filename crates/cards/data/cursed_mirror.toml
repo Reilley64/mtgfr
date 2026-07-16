@@ -1,0 +1,29 @@
+# {T}: Add {R}.
+# As this artifact enters, you may have it become a copy of any creature on the battlefield until end of turn, except it
+# has haste.
+# Cursed Mirror: {2}{R} Artifact.
+name = "Cursed Mirror"
+otags = ["activated-ability", "copy-creature", "gains-haste", "mini-refund", "utility-mana-rock"]
+oracle = "{T}: Add {R}.\nAs this artifact enters, you may have it become a copy of any creature on the battlefield until end of turn, except it has haste."
+set = "soc"
+
+# As this artifact enters, you may have it become a copy of any creature on the battlefield
+# until end of turn, except it has haste.
+enter_as_copy = { until_eot = true, gains_haste = true }
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "artifact"
+
+# {T}: Add {R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {R}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["red"]

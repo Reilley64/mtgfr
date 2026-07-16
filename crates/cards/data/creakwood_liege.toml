@@ -1,0 +1,57 @@
+# Other black creatures you control get +1/+1.
+# Other green creatures you control get +1/+1.
+# At the beginning of your upkeep, you may create a 1/1 black and green Worm creature token.
+# Creakwood Liege {1}{B/G}{B/G}{B/G} 2/2 Horror (soc).
+name = "Creakwood Liege"
+otags = ["anthem", "cycle-mm2-r-two-color", "cycle-shm-liege", "power-boost-to-all", "repeatable-creature-tokens", "synergy-black", "synergy-green", "toughness-boost-to-all", "triggered-ability", "unique-mana-cost"]
+oracle = "Other black creatures you control get +1/+1.\nOther green creatures you control get +1/+1.\nAt the beginning of your upkeep, you may create a 1/1 black and green Worm creature token."
+set = "soc"
+subtypes = ["Horror"]
+
+[cost]
+generic = 1
+hybrid = [["black", "green"], ["black", "green"], ["black", "green"]]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Other black creatures you control get +1/+1.
+[[abilities]]
+timing = "static"
+
+# Other black creatures you control get +1/+1.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 1
+colors = ["black"]
+exclude_source = true
+
+# Other green creatures you control get +1/+1.
+[[abilities]]
+timing = "static"
+
+# Other green creatures you control get +1/+1.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 1
+colors = ["green"]
+exclude_source = true
+
+# At the beginning of your upkeep, you may create a 1/1 black and green Worm creature token.
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+# create a 1/1 black and green Worm creature token
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Worm"
+power = 1
+toughness = 1

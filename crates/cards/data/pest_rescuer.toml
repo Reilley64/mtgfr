@@ -1,0 +1,61 @@
+# At the beginning of each upkeep, if you don't control a Pest creature token, create a 1/1 black and green Pest
+# creature token with "When this token dies, you gain 1 life."
+# If you would gain life, you gain that much life plus 1 instead.
+name = "Pest Rescuer"
+otags = ["intervening-if-clause", "lifegain-increaser", "repeatable-creature-tokens", "repeatable-lifegain"]
+oracle = "At the beginning of each upkeep, if you don't control a Pest creature token, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\"\nIf you would gain life, you gain that much life plus 1 instead."
+set = "soc"
+subtypes = ["Dryad", "Druid"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# At the beginning of each upkeep, if you don't control a Pest creature token, create a 1/1 black
+# and green Pest creature token with "When this token dies, you gain 1 life."
+[[abilities]]
+timing = "each_upkeep"
+
+[abilities.condition]
+type = "you_control_no_subtype"
+subtypes = ["Pest"]
+token = "token"
+types = "creature"
+
+# create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Pest"
+colors = ["black", "green"]
+subtypes = ["Pest"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# "When this token dies, you gain 1 life."
+[[abilities.effects.token.abilities]]
+timing = "dies"
+
+# you gain 1 life
+[[abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 1
+
+# If you would gain life, you gain that much life plus 1 instead.
+[[abilities]]
+timing = "static"
+
+# you gain that much life plus 1 instead
+[[abilities.effects]]
+type = "life_gain_replacement"
+plus = 1

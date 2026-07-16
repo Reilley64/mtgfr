@@ -1,0 +1,34 @@
+# Exile target nonland permanent. You lose 3 life.
+# Anguished Unmaking (soc). Real oracle text:
+#   "Exile target nonland permanent. You lose 3 life."
+name = "Anguished Unmaking"
+otags = ["cycle-soi-r-two-color", "life-payment", "removal-exile", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Exile target nonland permanent. You lose 3 life."
+set = "soc"
+
+[cost]
+generic = 1
+white = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# Exile target nonland permanent.
+# A non-modal spell runs all its `spell`-timed abilities, so the two halves are separate abilities.
+[[abilities]]
+timing = "spell"
+
+# Exile target nonland permanent.
+[[abilities.effects]]
+type = "exile_target"
+target = { permanent = "nonland" }
+
+# "You lose 3 life." — negative gain_life; amount < 0 does not fire the YouGainLife trigger.
+[[abilities]]
+timing = "spell"
+
+# You lose 3 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = -3

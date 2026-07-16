@@ -1,0 +1,41 @@
+# Whenever you gain life, each opponent loses 1 life.
+# {1}, Sacrifice another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed creature's power.
+# Dina, Soul Steeper: "Whenever you gain life, each opponent loses 1 life. {1}, Sacrifice
+# another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed creature's power."
+name = "Dina, Soul Steeper"
+otags = ["activated-ability", "alliteration", "cycle-stx-student", "firebreathing", "group-slug", "lifegain-to-damage", "opponent-loses-life", "power-matters", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "triggered-ability"]
+oracle = "Whenever you gain life, each opponent loses 1 life.\n{1}, Sacrifice another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed creature's power."
+set = "soc"
+subtypes = ["Dryad", "Druid"]
+legendary = true
+
+[cost]
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 3
+
+# Whenever you gain life, each opponent loses 1 life.
+[[abilities]]
+timing = "you_gain_life"
+
+# each opponent loses 1 life
+[[abilities.effects]]
+type = "each_opponent_loses_life"
+amount = 1
+
+# {1}, Sacrifice another creature: Dina gets +X/+0 until end of turn, where X is the sacrificed
+# creature's power.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+sacrifice = { creature = { other = true } }
+
+# Dina gets +X/+0 until end of turn, where X is the sacrificed creature's power
+[[abilities.effects]]
+type = "pump_self_until_end_of_turn"
+power = "sacrificed_creature_power"
+toughness = 0

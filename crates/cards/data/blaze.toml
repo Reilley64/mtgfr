@@ -1,0 +1,22 @@
+# Blaze deals X damage to any target.
+name = "Blaze"
+otags = ["burn-any", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Blaze deals X damage to any target."
+set = "bbd"
+
+[cost]
+x = true
+red = 1
+
+[kind]
+type = "sorcery"
+
+# Blaze deals X damage to any target.
+[[abilities]]
+timing = "spell"
+
+# Blaze deals X damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = "x"
+target = "any"

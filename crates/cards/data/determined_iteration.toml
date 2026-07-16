@@ -1,0 +1,34 @@
+# At the beginning of combat on your turn, populate. The token created this way gains haste. Sacrifice it at the
+# beginning of the next end step. (To populate, create a token that's a copy of a creature token you control.)
+# Determined Iteration {1}{R} enchantment (soc). Oracle:
+#   "At the beginning of combat on your turn, populate. The token created this way gains haste.
+#    Sacrifice it at the beginning of the next end step. (To populate, create a token that's a copy
+#    of a creature token you control.)"
+# If you control no creature token, the populate trigger has no legal choice and does nothing
+# (CR 603.3c).
+name = "Determined Iteration"
+otags = ["copy-token", "delayed-trigger", "repeatable-creature-tokens", "synergy-token-creature", "temporary-token"]
+oracle = "At the beginning of combat on your turn, populate. The token created this way gains haste. Sacrifice it at the beginning of the next end step. (To populate, create a token that's a copy of a creature token you control.)"
+set = "soc"
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "enchantment"
+
+# At the beginning of combat on your turn, populate. The token created this way gains haste.
+# Sacrifice it at the beginning of the next end step. (To populate, create a token that's a copy of
+# a creature token you control.)
+[[abilities]]
+timing = "begin_combat"
+
+# populate. (To populate, create a token that's a copy of a creature token you control.) The token
+# created this way gains haste. Sacrifice it at the beginning of the next end step.
+[[abilities.effects]]
+type = "create_token_copy"
+count = 1
+target = "creature_token_you_control"
+sacrifice_at_next_end_step = true
+haste = true

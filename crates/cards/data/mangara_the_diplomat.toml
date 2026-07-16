@@ -1,0 +1,42 @@
+# Lifelink
+# Whenever an opponent attacks with creatures, if two or more of those creatures are attacking you and/or planeswalkers
+# you control, draw a card.
+# Whenever an opponent casts their second spell each turn, draw a card.
+name = "Mangara, the Diplomat"
+otags = ["attack-trigger", "cast-trigger-other", "cycle-m21-mono-teferi-legend", "draw-engine", "hate-attacker", "intervening-if-clause", "repeatable-lifegain", "repeatable-pure-draw", "synergy-planeswalker", "toll", "anagram"]
+oracle = "Lifelink\nWhenever an opponent attacks with creatures, if two or more of those creatures are attacking you and/or planeswalkers you control, draw a card.\nWhenever an opponent casts their second spell each turn, draw a card."
+set = "soc"
+subtypes = ["Human", "Cleric"]
+legendary = true
+keywords = ["lifelink"]
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# Whenever an opponent attacks with creatures, if two or more of those creatures are attacking
+# you and/or planeswalkers you control, draw a card.
+[[abilities]]
+timing = "opponent_attacks_you_with_creatures"
+at_least = 2
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# Whenever an opponent casts their second spell each turn, draw a card.
+[[abilities]]
+timing = "cast_spell"
+caster = "opponent"
+nth_each_turn = 2
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

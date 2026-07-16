@@ -1,0 +1,45 @@
+# Vigilance
+# Whenever this creature enters or attacks, you may return target permanent card with mana value 3 or less from your
+# graveyard to the battlefield.
+# Sun Titan {4}{W}{W} — 6/6 Giant with vigilance.
+# "Whenever this creature enters or attacks, you may return target permanent card with mana
+#  value 3 or less from your graveyard to the battlefield."
+name = "Sun Titan"
+otags = ["attacking-matters-self", "cycle-m11-titan", "land-ramp", "mana-value-matters", "reanimate-permanent", "titan-trigger"]
+oracle = "Vigilance\nWhenever this creature enters or attacks, you may return target permanent card with mana value 3 or less from your graveyard to the battlefield."
+set = "soc"
+subtypes = ["Giant"]
+keywords = ["vigilance"]
+
+[cost]
+generic = 4
+white = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# Whenever this creature enters or attacks, you may return target permanent card with mana value 3
+# or less from your graveyard to the battlefield.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# you may return target permanent card with mana value 3 or less from your graveyard to the
+# battlefield.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = { permanent_with_mana_value_at_most = 3 } } }
+
+# Whenever this creature enters or attacks, you may return target permanent card with mana value 3
+# or less from your graveyard to the battlefield.
+[[abilities]]
+timing = "attacks"
+optional = true
+
+# you may return target permanent card with mana value 3 or less from your graveyard to the
+# battlefield.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = { permanent_with_mana_value_at_most = 3 } } }

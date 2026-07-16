@@ -1,0 +1,42 @@
+# Add {R} for each card in target opponent's hand. Until end of turn, you don't lose this mana as steps and phases end.
+# Exile Rousing Refrain with three time counters on it.
+# Suspend 3—{1}{R} (Rather than cast this card from your hand, you may pay {1}{R} and exile it with three time counters
+# on it. At the beginning of your upkeep, remove a time counter. When the last is removed, you may cast it without
+# paying its mana cost.)
+name = "Rousing Refrain"
+otags = ["adds-multiple-mana", "alliteration", "cast-on-resolution", "castable-from-exile", "cheaper-than-mv", "hate-full-hand", "intervening-if-clause", "recurring-suspend", "repeatable-crime", "ritual", "single-target-instant-sorcery", "trigger-from-exile"]
+oracle = "Add {R} for each card in target opponent's hand. Until end of turn, you don't lose this mana as steps and phases end. Exile Rousing Refrain with three time counters on it.\nSuspend 3—{1}{R} (Rather than cast this card from your hand, you may pay {1}{R} and exile it with three time counters on it. At the beginning of your upkeep, remove a time counter. When the last is removed, you may cast it without paying its mana cost.)"
+set = "soc"
+
+[cost]
+generic = 3
+red = 2
+
+[kind]
+type = "sorcery"
+
+[suspend]
+counters = 3
+
+[suspend.cost]
+generic = 1
+red = 1
+
+# Add {R} for each card in target opponent's hand. Until end of turn, you don't lose this mana as
+# steps and phases end. Exile Rousing Refrain with three time counters on it.
+[[abilities]]
+timing = "spell"
+
+# Add {R} for each card in target opponent's hand. Until end of turn, you don't lose this mana as
+# steps and phases end.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["red"]
+repeat = "cards_in_target_player_hand"
+target = "opponent"
+persist_until_end_of_turn = true
+
+# Exile Rousing Refrain with three time counters on it.
+[[abilities.effects]]
+type = "exile_self_with_time_counters"
+counters = 3

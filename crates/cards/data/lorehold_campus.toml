@@ -1,0 +1,27 @@
+# This land enters tapped.
+# {T}: Add {R} or {W}.
+# {4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)
+# Lorehold Campus: Campus lands enter tapped and have a {4},{T}: scry 1 activated ability.
+name = "Lorehold Campus"
+otags = ["activated-ability", "cycle-stx-campus", "mana-sink", "scry", "utility-land"]
+oracle = "This land enters tapped.\n{T}: Add {R} or {W}.\n{4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
+set = "soc"
+identity = ["red", "white"]
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["red", "white"]
+
+# {4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 4
+
+# Scry 1.
+[[abilities.effects]]
+type = "scry"
+count = 1

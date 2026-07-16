@@ -1,0 +1,27 @@
+# Flying
+# When this creature enters, scry 3. (Look at the top three cards of your library, then put any number of them on the
+# bottom and the rest on top in any order.)
+name = "Augury Owl"
+otags = ["evasion", "scry", "triggered-ability", "virtual-french-vanilla"]
+oracle = "Flying\nWhen this creature enters, scry 3. (Look at the top three cards of your library, then put any number of them on the bottom and the rest on top in any order.)"
+set = "pca"
+subtypes = ["Bird"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# "When this creature enters, scry 3."
+[[abilities]]
+timing = "etb"
+
+# scry 3
+[[abilities.effects]]
+type = "scry"
+count = 3

@@ -1,0 +1,28 @@
+# Exile the top four cards of your library in a face-down pile, then exile the top four cards of your library in a
+# face-up pile. An opponent chooses one of those piles. Put that pile into your graveyard. Look at the cards in the
+# other pile. You may cast a spell from among them without paying its mana cost. Put the rest into your hand.
+name = "Abstract Performance"
+otags = ["fact-or-fiction", "free-cast-another", "gives-castable-from-exile", "hand-positive", "minigame"]
+oracle = "Exile the top four cards of your library in a face-down pile, then exile the top four cards of your library in a face-up pile. An opponent chooses one of those piles. Put that pile into your graveyard. Look at the cards in the other pile. You may cast a spell from among them without paying its mana cost. Put the rest into your hand."
+set = "soc"
+
+[cost]
+generic = 5
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Exile the top four cards of your library in a face-down pile, then exile the top four cards of
+# your library in a face-up pile. An opponent chooses one of those piles. Put that pile into your
+# graveyard. Look at the cards in the other pile. You may cast a spell from among them without
+# paying its mana cost. Put the rest into your hand.
+[[abilities]]
+timing = "spell"
+
+# Exile the top four cards of your library in a face-down pile, then exile the top four cards of
+# your library in a face-up pile. An opponent chooses one of those piles. Put that pile into your
+# graveyard. Look at the cards in the other pile. You may cast a spell from among them without
+# paying its mana cost. Put the rest into your hand.
+[[abilities.effects]]
+type = "opponent_splits_exile_piles"

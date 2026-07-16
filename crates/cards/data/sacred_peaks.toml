@@ -1,0 +1,13 @@
+# ({T}: Add {R} or {W}.)
+# This land enters tapped.
+# Sacred Peaks (SOC): Land. "{T}: Add {R} or {W}. This land enters tapped."
+name = "Sacred Peaks"
+otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {R} or {W}.)\nThis land enters tapped."
+set = "soc"
+identity = ["red", "white"]
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["red", "white"]

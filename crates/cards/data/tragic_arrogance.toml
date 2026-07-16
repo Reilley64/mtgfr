@@ -1,0 +1,25 @@
+# For each player, you choose from among the permanents that player controls an artifact, a creature, an enchantment,
+# and a planeswalker. Then each player sacrifices all other nonland permanents they control.
+name = "Tragic Arrogance"
+otags = ["cycle-ori-pivotal-moment", "removal-nonland", "removal-sacrifice", "sweeper"]
+oracle = "For each player, you choose from among the permanents that player controls an artifact, a creature, an enchantment, and a planeswalker. Then each player sacrifices all other nonland permanents they control."
+set = "msc"
+
+[cost]
+generic = 3
+white = 2
+
+[kind]
+type = "sorcery"
+
+# For each player, you choose from among the permanents that player controls an artifact, a
+# creature, an enchantment, and a planeswalker. Then each player sacrifices all other nonland
+# permanents they control.
+[[abilities]]
+timing = "spell"
+
+# For each player, you choose from among the permanents that player controls an artifact, a
+# creature, an enchantment, and a planeswalker. Then each player sacrifices all other nonland
+# permanents they control.
+[[abilities.effects]]
+type = "caster_keeps_one_of_each_type_per_player"

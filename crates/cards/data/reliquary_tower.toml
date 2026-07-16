@@ -1,0 +1,19 @@
+# You have no maximum hand size.
+# {T}: Add {C}.
+# Reliquary Tower: "You have no maximum hand size. {T}: Add {C}."
+name = "Reliquary Tower"
+otags = ["activated-ability", "utility-land", "hand-size-increase"]
+oracle = "You have no maximum hand size.\n{T}: Add {C}."
+set = "soc"
+
+[kind]
+type = "land"
+produces = "colorless"
+
+# You have no maximum hand size.
+[[abilities]]
+timing = "static"
+
+# You have no maximum hand size.
+[[abilities.effects]]
+type = "no_maximum_hand_size"

@@ -1,0 +1,14 @@
+# ({T}: Add {W} or {B}.)
+# This land enters tapped.
+# Cycling {2} ({2}, Discard this card: Draw a card.)
+# Umbral Expanse (SOC): "{T}: Add {W} or {B}. This land enters tapped. Cycling {2}."
+name = "Umbral Expanse"
+otags = ["activate-from-hand", "cycle-dual-cycling-land", "hand-neutral", "nonbasic-basic-land-type", "pure-draw", "utility-land"]
+oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+set = "soc"
+enters_tapped = true
+cycling = { generic = 2 }
+
+[kind]
+type = "land"
+produces = ["white", "black"]

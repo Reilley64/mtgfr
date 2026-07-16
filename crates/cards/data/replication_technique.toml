@@ -1,0 +1,27 @@
+# Demonstrate (When you cast this spell, you may copy it. If you do, choose an opponent to also copy it. Players may
+# choose new targets for their copies.)
+# Create a token that's a copy of target permanent you control.
+# Replication Technique: {4}{U} Sorcery. "Demonstrate. Create a token that's a copy of target
+# permanent you control." Exercises Effect::CreateTokenCopy directly.
+name = "Replication Technique"
+otags = ["cast-trigger-self", "copy-aura", "copy-equipment", "copy-permanent", "cycle-c21-technique", "multi-land-ramp", "selective-group-hug", "single-target-instant-sorcery"]
+oracle = "Demonstrate (When you cast this spell, you may copy it. If you do, choose an opponent to also copy it. Players may choose new targets for their copies.)\nCreate a token that's a copy of target permanent you control."
+set = "soc"
+demonstrate = true
+
+[cost]
+generic = 4
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Create a token that's a copy of target permanent you control.
+[[abilities]]
+timing = "spell"
+
+# Create a token that's a copy of target permanent you control.
+[[abilities.effects]]
+type = "create_token_copy"
+count = 1
+target = { permanent = { controller = "you" } }

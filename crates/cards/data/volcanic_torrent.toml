@@ -1,0 +1,35 @@
+# Cascade (When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs
+# less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.)
+# Volcanic Torrent deals X damage to each creature and planeswalker your opponents control, where X is the number of
+# spells you've cast this turn.
+name = "Volcanic Torrent"
+otags = ["burn-creature", "burn-planeswalker", "cast-trigger-self", "consult-cast", "free-cast-another", "gives-castable-from-exile", "storm-count-matters", "sweeper-one-sided"]
+oracle = "Cascade (When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.)\nVolcanic Torrent deals X damage to each creature and planeswalker your opponents control, where X is the number of spells you've cast this turn."
+set = "soc"
+
+# Cascade (When you cast this spell, exile cards from the top of your library until you exile a
+# nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards
+# on the bottom in a random order.)
+cascade = true
+
+[cost]
+generic = 4
+red = 1
+
+[kind]
+type = "sorcery"
+
+# Volcanic Torrent deals X damage to each creature and planeswalker your opponents control,
+# where X is the number of spells you've cast this turn.
+[[abilities]]
+timing = "spell"
+
+# deals X damage to each creature ... your opponents control, where X is the number of spells
+# you've cast this turn.
+# ponytail: planeswalkers are dropped — no pool card fields a planeswalker permanent to damage
+# (mirrors #91's Mangara/Tomik planeswalker-attack gap; upgrade when a planeswalker permanent
+# type lands).
+[[abilities.effects]]
+type = "damage_each_creature"
+amount = "spells_cast_this_turn"
+opponents_only = true

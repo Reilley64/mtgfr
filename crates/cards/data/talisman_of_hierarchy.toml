@@ -1,0 +1,33 @@
+# {T}: Add {C}.
+# {T}: Add {W} or {B}. This artifact deals 1 damage to you.
+name = "Talisman of Hierarchy"
+otags = ["activated-ability", "burn-you", "cycle-mh1-talisman", "mana-ability-with-extra-effect", "mana-rock", "refund"]
+oracle = "{T}: Add {C}.\n{T}: Add {W} or {B}. This artifact deals 1 damage to you."
+set = "soc"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {T}: Add {W} or {B}. This artifact deals 1 damage to you.
+[[abilities]]
+timing = "activated"
+taps_self = true
+self_damage = 1
+
+# Add {W} or {B}. This artifact deals 1 damage to you.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["white", "black"]]

@@ -1,0 +1,33 @@
+# Target player draws X cards plus an additional card for each time they've cast a commander from the command zone this
+# game.
+# Commander's Insight {X}{U}{U}{U} — "Target player draws X cards plus an additional card
+# for each time they've cast a commander from the command zone this game."
+name = "Commander's Insight"
+otags = ["burst-draw", "force-draw", "hand-positive", "pure-draw", "recasting-commander-matters", "single-target-instant-sorcery", "synergy-commander"]
+oracle = "Target player draws X cards plus an additional card for each time they've cast a commander from the command zone this game."
+set = "soc"
+
+[cost]
+x = true
+blue = 3
+
+[kind]
+type = "instant"
+
+# Target player draws X cards plus an additional card for each time they've cast a commander from
+# the command zone this game.
+# One resolution: draw X, then draw one more per command-zone commander cast the target
+# player has made this game — both draws hit the same chosen player (the sequence shares
+# its target across steps).
+[[abilities]]
+timing = "spell"
+
+# Target player draws X cards
+[[abilities.effects]]
+type = "target_player_draws"
+count = "x"
+
+# plus an additional card for each time they've cast a commander from the command zone this game
+[[abilities.effects]]
+type = "target_player_draws"
+count = "commander_casts_from_command_zone"

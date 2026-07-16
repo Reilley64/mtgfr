@@ -1,0 +1,13 @@
+# (no rules text — vanilla creature)
+name = "Savannah Lions"
+otags = ["type-errata-lion"]
+set = "fdn"
+subtypes = ["Cat"]
+
+[cost]
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1

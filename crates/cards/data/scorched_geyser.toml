@@ -1,0 +1,17 @@
+# ({T}: Add {U} or {R}.)
+# This land enters tapped unless you control two or more basic lands.
+# Scorched Geyser (msc): Land — Island Mountain. "{T}: Add {U} or {R}. This land enters tapped
+# unless you control two or more basic lands."
+name = "Scorched Geyser"
+otags = ["activated-ability", "cycle-tangoland", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped unless you control two or more basic lands."
+set = "msc"
+
+[kind]
+type = "land"
+produces = ["blue", "red"]
+subtypes = ["Island", "Mountain"]
+
+[enters_tapped_unless]
+type = "controls_basic_lands"
+count = 2

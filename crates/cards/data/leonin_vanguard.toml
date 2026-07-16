@@ -1,0 +1,40 @@
+# At the beginning of combat on your turn, if you control three or more creatures, this creature gets +1/+1 until end of
+# turn and you gain 1 life.
+# Core Set 2019. Real oracle text:
+#   "At the beginning of combat on your turn, if you control three or more creatures, this
+#    creature gets +1/+1 until end of turn and you gain 1 life."
+# Exercises an intervening-if condition ("if you control three or more creatures") on a real card.
+name = "Leonin Vanguard"
+otags = ["creature-count-matters", "intervening-if-clause", "repeatable-lifegain"]
+oracle = "At the beginning of combat on your turn, if you control three or more creatures, this creature gets +1/+1 until end of turn and you gain 1 life."
+set = "m19"
+subtypes = ["Cat", "Soldier"]
+keywords = []
+
+[cost]
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# At the beginning of combat on your turn, if you control three or more creatures, this creature
+# gets +1/+1 until end of turn and you gain 1 life.
+[[abilities]]
+timing = "begin_combat"
+
+# this creature gets +1/+1 until end of turn
+[[abilities.effects]]
+type = "pump_self_until_end_of_turn"
+power = 1
+toughness = 1
+
+# you gain 1 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = 1
+
+[abilities.condition]
+type = "you_control_at_least_creatures"
+count = 3

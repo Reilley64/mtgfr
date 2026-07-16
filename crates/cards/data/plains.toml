@@ -1,0 +1,11 @@
+# ({T}: Add {W}.)
+name = "Plains"
+otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "single-english-word-name", "unique-type-line"]
+oracle = "({T}: Add {W}.)"
+set = "msc"
+
+[kind]
+type = "land"
+produces = "white"
+subtypes = ["Plains"]
+basic = true

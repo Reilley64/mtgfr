@@ -1,0 +1,38 @@
+# Whenever an enchantment you control enters, create a 2/2 white Cat creature token. If that enchantment is an Aura, you
+# may attach it to the token.
+name = "Ajani's Chosen"
+otags = ["cycle-m14-pw-signature", "enchantmentfall", "namesake-spell", "quick-enchant", "repeatable-creature-tokens", "synergy-aura", "triggered-ability"]
+oracle = "Whenever an enchantment you control enters, create a 2/2 white Cat creature token. If that enchantment is an Aura, you may attach it to the token."
+set = "soc"
+subtypes = ["Cat", "Soldier"]
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Whenever an enchantment you control enters, create a 2/2 white Cat creature token. If that
+# enchantment is an Aura, you may attach it to the token.
+[[abilities]]
+timing = "permanent_enters"
+filter = "enchantment"
+controller = "you"
+
+# create a 2/2 white Cat creature token
+[[abilities.effects]]
+type = "create_token"
+
+[abilities.effects.token]
+name = "Cat"
+power = 2
+toughness = 2
+colors = ["white"]
+subtypes = ["Cat"]
+
+# If that enchantment is an Aura, you may attach it to the token.
+[[abilities.effects]]
+type = "attach_triggering_aura_to_minted_token"

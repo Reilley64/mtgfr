@@ -1,0 +1,33 @@
+name = "Animist's Awakening"
+otags = ["alliteration", "cycle-ori-r-spell-mastery", "extra-land", "impulse-land", "impulse-onto-battlefield", "multi-land-ramp", "namesake-spell", "synergy-instant", "synergy-sorcery"]
+oracle = "Reveal the top X cards of your library. Put all land cards from among them onto the battlefield tapped and the rest on the bottom of your library in a random order.\nSpell mastery — If there are two or more instant and/or sorcery cards in your graveyard, untap those lands."
+set = "soc"
+
+[cost]
+x = true
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Reveal the top X cards of your library. Put all land cards from among them onto the battlefield
+# tapped and the rest on the bottom of your library in a random order.
+# Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, untap
+# those lands.
+[[abilities]]
+timing = "spell"
+
+# Reveal the top X cards of your library. Put all land cards from among them onto the battlefield
+# tapped and the rest on the bottom of your library in a random order.
+# Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, untap
+# those lands.
+# ponytail: "in a random order" — the engine is pure (no rand); non-matching reveals go to the
+# bottom in library order instead, the same deterministic stand-in `reveal_until` uses.
+[[abilities.effects]]
+type = "reveal_top_cards"
+count = "x"
+filter = "land"
+matched_dest = "battlefield"
+matched_tapped = true
+rest_dest = "bottom"
+deploy_untapped_if = { type = "instant_or_sorcery_cards_in_your_graveyard_at_least", count = 2 }

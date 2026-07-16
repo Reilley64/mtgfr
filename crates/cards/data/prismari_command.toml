@@ -1,0 +1,73 @@
+# Choose two —
+# • Prismari Command deals 2 damage to any target.
+# • Target player draws two cards, then discards two cards.
+# • Target player creates a Treasure token.
+# • Destroy target artifact.
+# Prismari Command {1}{U}{R} — a modal "choose two" instant (CR 700.2). Its four spell-timed
+# abilities are its modes; the caster picks two distinct ones at cast (`modal = true`, `choose = 2`).
+# Real modes:
+#   • Prismari Command deals 2 damage to any target.
+#   • Target player draws two cards, then discards two cards.
+#   • Target player creates a Treasure token.
+#   • Destroy target artifact.
+name = "Prismari Command"
+otags = ["abrade", "burn-any", "cycle-stx-command", "donate-token", "force-draw", "hand-negative", "loot", "mini-refund", "multi-removal", "multiple-targets", "pillage-effect", "ramp"]
+oracle = "Choose two —\n• Prismari Command deals 2 damage to any target.\n• Target player draws two cards, then discards two cards.\n• Target player creates a Treasure token.\n• Destroy target artifact."
+set = "soc"
+modal = true
+choose = 2
+
+[cost]
+generic = 1
+blue = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Prismari Command deals 2 damage to any target."
+[[abilities]]
+timing = "spell"
+
+# Prismari Command deals 2 damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 2
+target = "any"
+
+# Mode 1 — "Target player draws two cards, then discards two cards." A Sequence sharing the one
+# Player target (CR 111.4): the draw step supplies it, the discard step reads it back and pauses
+# on that same player's own DiscardCards choice.
+[[abilities]]
+timing = "spell"
+
+# Target player draws two cards
+[[abilities.effects]]
+type = "target_player_draws"
+count = 2
+
+# then discards two cards.
+[[abilities.effects]]
+type = "discard"
+count = 2
+target_player = true
+
+# Mode 2 — "Target player creates a Treasure token." The Treasure enters under the target
+# player's control (CR 111.4).
+[[abilities]]
+timing = "spell"
+
+# Target player creates a Treasure token.
+[[abilities.effects]]
+type = "create_treasure"
+count = 1
+target_player = true
+
+# Mode 3 — "Destroy target artifact."
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact" } }

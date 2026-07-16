@@ -1,0 +1,38 @@
+# Flying
+# Whenever you attack with two or more creatures, draw a card.
+# Whenever another player attacks with two or more creatures, they draw a card if none of those creatures attacked you.
+name = "Firemane Commando"
+otags = ["attack-trigger", "attacking-matters", "commander-set-booster-cards", "draw-engine", "evasion", "multiplayer", "repeatable-pure-draw"]
+oracle = "Flying\nWhenever you attack with two or more creatures, draw a card.\nWhenever another player attacks with two or more creatures, they draw a card if none of those creatures attacked you."
+set = "soc"
+subtypes = ["Angel", "Soldier"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 3
+
+# Whenever you attack with two or more creatures, draw a card.
+[[abilities]]
+timing = "you_attack_with_creatures"
+at_least = 2
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# Whenever another player attacks with two or more creatures, they draw a card if none of those creatures attacked you.
+[[abilities]]
+timing = "another_player_attacks_with_creatures"
+at_least = 2
+
+# they draw a card if none of those creatures attacked you.
+[[abilities.effects]]
+type = "attacking_player_draws"
+count = 1

@@ -1,0 +1,17 @@
+# ({T}: Add {G} or {U}.)
+# This land enters tapped unless you control two or more basic lands.
+# Sodden Verdure (MSC): Land — Forest Island. "{T}: Add {G} or {U}. This land enters tapped
+# unless you control two or more basic lands."
+name = "Sodden Verdure"
+otags = ["activated-ability", "cycle-tangoland", "lands-matter", "nonbasic-basic-land-type", "synergy-basic"]
+oracle = "({T}: Add {G} or {U}.)\nThis land enters tapped unless you control two or more basic lands."
+set = "msc"
+
+[kind]
+type = "land"
+produces = ["green", "blue"]
+subtypes = ["Forest", "Island"]
+
+[enters_tapped_unless]
+type = "controls_basic_lands"
+count = 2

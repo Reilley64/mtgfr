@@ -1,0 +1,24 @@
+# This land enters tapped.
+# {T}: Add {B} or {G}.
+# {2}{B}{G}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)
+# Titan's Grave (soc): "This land enters tapped. {T}: Add {B} or {G}. {2}{B}{G}, {T}: Surveil 1."
+name = "Titan's Grave"
+otags = ["activated-ability", "cycle-sos-surveil-dual", "mana-sink", "surveil", "utility-land", "virtual-legendary"]
+oracle = "This land enters tapped.\n{T}: Add {B} or {G}.\n{2}{B}{G}, {T}: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
+set = "sos"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["black", "green"]
+
+# {2}{B}{G}, {T}: Surveil 1.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 2, black = 1, green = 1 }
+
+# Surveil 1.
+[[abilities.effects]]
+type = "surveil"
+count = 1

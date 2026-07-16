@@ -1,0 +1,39 @@
+name = "Nev, the Practical Dean"
+otags = ["cast-trigger-you", "counters-matter", "gains-pp-counters", "gives-trample", "keyword-anthem", "repeatable-pp-counters", "x-cost-matters"]
+oracle = "Creatures you control with counters on them have trample.\nWhenever you cast your first spell with {X} in its mana cost each turn, put X +1/+1 counters on Nev."
+set = "soc"
+subtypes = ["Merfolk", "Wizard"]
+legendary = true
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Creatures you control with counters on them have trample.
+[[abilities]]
+timing = "static"
+
+# Creatures you control with counters on them have trample.
+[[abilities.effects]]
+type = "anthem_static"
+keywords = ["trample"]
+has_counters = true
+
+# Whenever you cast your first spell with {X} in its mana cost each turn, put X +1/+1 counters on
+# Nev.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "has_x"
+caster = "you"
+nth_each_turn = 1
+
+# put X +1/+1 counters on Nev.
+[[abilities.effects]]
+type = "put_counters"
+count = "x"
+target = "this"

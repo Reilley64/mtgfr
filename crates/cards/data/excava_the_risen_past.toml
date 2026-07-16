@@ -1,0 +1,38 @@
+# Flying, haste
+# Whenever Excava attacks, return up to one target artifact, creature, or non-Aura enchantment card with mana value 3 or
+# less from your graveyard to the battlefield with a finality counter on it. It's a 1/1 Spirit creature with flying in
+# addition to its other types. (If a creature with a finality counter on it would die, exile it instead.)
+name = "Excava, the Risen Past"
+otags = ["animate-artifact", "animate-enchantment", "attack-trigger", "attacking-matters-self", "cycle-soc-alt-commander", "evasion", "gives-flying", "reanimate-artifact", "reanimate-creature", "reanimate-enchantment", "shapechange", "unique-type-line"]
+oracle = "Flying, haste\nWhenever Excava attacks, return up to one target artifact, creature, or non-Aura enchantment card with mana value 3 or less from your graveyard to the battlefield with a finality counter on it. It's a 1/1 Spirit creature with flying in addition to its other types. (If a creature with a finality counter on it would die, exile it instead.)"
+set = "soc"
+subtypes = ["Spirit", "Horse"]
+legendary = true
+keywords = ["flying", "haste"]
+
+[cost]
+generic = 2
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Whenever Excava attacks, return up to one target artifact, creature, or non-Aura enchantment
+# card with mana value 3 or less from your graveyard to the battlefield with a finality counter on
+# it. It's a 1/1 Spirit creature with flying in addition to its other types. (If a creature with a
+# finality counter on it would die, exile it instead.)
+[[abilities]]
+timing = "attacks"
+optional = true
+
+# return up to one target artifact, creature, or non-Aura enchantment card with mana value 3 or
+# less from your graveyard to the battlefield with a finality counter on it. It's a 1/1 Spirit
+# creature with flying in addition to its other types.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = { artifact_creature_or_non_aura_enchantment_with_mana_value_at_most = 3 } } }
+finality = true
+becomes = { add_types = "creature", add_subtypes = ["Spirit"], base_power = 1, base_toughness = 1, keywords = ["flying"] }

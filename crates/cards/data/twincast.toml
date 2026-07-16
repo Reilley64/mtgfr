@@ -1,0 +1,21 @@
+# Copy target instant or sorcery spell. You may choose new targets for the copy.
+# Twincast (M10): {U}{U} Instant
+# "Copy target instant or sorcery spell. You may choose new targets for the copy."
+name = "Twincast"
+otags = ["copy-instant", "copy-sorcery", "copy-spell", "single-target-instant-sorcery"]
+oracle = "Copy target instant or sorcery spell. You may choose new targets for the copy."
+set = "m10"
+
+[cost]
+blue = 2
+
+[kind]
+type = "instant"
+
+# Copy target instant or sorcery spell. You may choose new targets for the copy.
+[[abilities]]
+timing = "spell"
+
+# Copy target instant or sorcery spell. You may choose new targets for the copy.
+[[abilities.effects]]
+type = "copy_target_spell"

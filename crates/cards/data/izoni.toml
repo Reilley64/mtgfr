@@ -1,0 +1,55 @@
+# Undergrowth — When Izoni enters, create a 1/1 black and green Insect creature token for each creature card in your
+# graveyard.
+# {B}{G}, Sacrifice another creature: You gain 1 life and draw a card.
+# GB commander.
+# ponytail: the Undergrowth ETB creates one Insect per creature card in your graveyard (a
+# variable token count via per_permanent over the graveyard).
+name = "Izoni, Thousand-Eyed"
+otags = ["activated-ability", "cycle-grn-guild-champion", "draw-engine", "enters-in-company", "hand-positive", "repeatable-lifegain", "repeatable-plunder", "sacrifice-outlet-creature", "triggered-ability", "undergrowth"]
+oracle = "Undergrowth — When Izoni enters, create a 1/1 black and green Insect creature token for each creature card in your graveyard.\n{B}{G}, Sacrifice another creature: You gain 1 life and draw a card."
+set = "grn"
+subtypes = ["Elf", "Shaman"]
+legendary = true
+
+[cost]
+generic = 2
+black = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Undergrowth — When Izoni enters, create a 1/1 black and green Insect creature token for each
+# creature card in your graveyard.
+[[abilities]]
+timing = "etb_triggered"
+
+# create a 1/1 black and green Insect creature token for each creature card in your graveyard.
+[[abilities.effects]]
+type = "create_token"
+count = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
+
+[abilities.effects.token]
+name = "Insect"
+power = 1
+toughness = 1
+colors = ["black", "green"]
+subtypes = ["Insect"]
+
+# {B}{G}, Sacrifice another creature: You gain 1 life and draw a card.
+[[abilities]]
+timing = "activated"
+sacrifice = { creature = { other = true } }
+activation_cost = { black = 1, green = 1 }
+
+# You gain 1 life
+[[abilities.effects]]
+type = "gain_life"
+amount = 1
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

@@ -1,0 +1,29 @@
+# Flash
+# Vigilance
+# When this creature enters, any number of other target creatures you control phase out. (Treat them and anything
+# attached to them as though they don't exist until their controller's next turn.)
+# Guardian of Faith (soc): {1}{W}{W} 3/2 Spirit Knight with flash and vigilance.
+name = "Guardian of Faith"
+otags = ["dnd-spell", "multiple-targets", "phasing", "protects-all", "protects-creature", "triggered-ability", "virtual-french-vanilla"]
+oracle = "Flash\nVigilance\nWhen this creature enters, any number of other target creatures you control phase out. (Treat them and anything attached to them as though they don't exist until their controller's next turn.)"
+set = "soc"
+subtypes = ["Spirit", "Knight"]
+keywords = ["flash", "vigilance"]
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# When this creature enters, any number of other target creatures you control phase out. (Treat
+# them and anything attached to them as though they don't exist until their controller's next turn.)
+[[abilities]]
+timing = "etb"
+
+# any number of other target creatures you control phase out
+[[abilities.effects]]
+type = "phase_out"

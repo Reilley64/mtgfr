@@ -1,0 +1,26 @@
+# Draw X cards, then discard a card.
+name = "Pull from Tomorrow"
+otags = ["burst-draw", "hand-positive", "loot"]
+oracle = "Draw X cards, then discard a card."
+set = "soc"
+
+[cost]
+x = true
+blue = 2
+
+[kind]
+type = "instant"
+
+# Draw X cards, then discard a card — one resolution (an ordered effect list).
+[[abilities]]
+timing = "spell"
+
+# Draw X cards
+[[abilities.effects]]
+type = "draw_cards"
+count = "x"
+
+# then discard a card.
+[[abilities.effects]]
+type = "discard"
+count = 1

@@ -1,0 +1,25 @@
+# This spell costs {X} less to cast, where X is the total power of creatures you control.
+# Volcanic Salvo deals 6 damage to each of up to two target creatures and/or planeswalkers.
+name = "Volcanic Salvo"
+otags = ["burn-creature", "burn-planeswalker", "burn-with-set-s-mechanic", "discount-self", "multi-removal", "multiple-targets", "power-matters", "single-target-instant-sorcery", "spot-removal", "unique-mana-cost"]
+oracle = "This spell costs {X} less to cast, where X is the total power of creatures you control.\nVolcanic Salvo deals 6 damage to each of up to two target creatures and/or planeswalkers."
+set = "soc"
+
+[cost]
+generic = 10
+red = 2
+reduce_own_generic = "total_power_you_control"
+
+[kind]
+type = "sorcery"
+
+# Volcanic Salvo deals 6 damage to each of up to two target creatures and/or planeswalkers.
+[[abilities]]
+timing = "spell"
+
+# Volcanic Salvo deals 6 damage to each of up to two target creatures and/or planeswalkers.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 6
+target = { permanent = { types = "creature_or_planeswalker" } }
+count = { max = 2 }

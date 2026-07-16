@@ -1,0 +1,95 @@
+# Flying
+# When this creature enters, create a Food token. (It's an artifact with "{2}, {T}, Sacrifice this token: You gain 3
+# life.")
+# {1}{G}, {T}: Create a Food token.
+# {T}, Sacrifice a Food: Add one mana of any color.
+name = "Gilded Goose"
+otags = ["activated-ability", "alliteration", "evasion", "mana-dork", "repeatable-food", "repeatable-sacrifice-outlet", "sacrifice-outlet-artifact", "synergy-food", "triggered-ability"]
+oracle = "Flying\nWhen this creature enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n{1}{G}, {T}: Create a Food token.\n{T}, Sacrifice a Food: Add one mana of any color."
+set = "soc"
+subtypes = ["Bird"]
+keywords = ["flying"]
+
+[cost]
+green = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 2
+
+# When this creature enters, create a Food token.
+[[abilities]]
+timing = "etb"
+
+# create a Food token
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Food"
+subtypes = ["Food"]
+
+[abilities.effects.token.kind]
+type = "artifact"
+
+# "{2}, {T}, Sacrifice this token: You gain 3 life."
+[[abilities.effects.token.abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.effects.token.abilities.activation_cost]
+generic = 2
+
+# You gain 3 life.
+[[abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 3
+
+# {1}{G}, {T}: Create a Food token.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 1
+green = 1
+
+# Create a Food token.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Food"
+subtypes = ["Food"]
+
+[abilities.effects.token.kind]
+type = "artifact"
+
+# "{2}, {T}, Sacrifice this token: You gain 3 life."
+[[abilities.effects.token.abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.effects.token.abilities.activation_cost]
+generic = 2
+
+# You gain 3 life.
+[[abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 3
+
+# {T}, Sacrifice a Food: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = { permanent = { subtypes = ["Food"] } }
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]

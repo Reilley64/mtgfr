@@ -1,0 +1,45 @@
+# Enchant creature
+# Enchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its other types.
+# When enchanted creature dies, return this card to its owner's hand.
+name = "Angelic Destiny"
+otags = ["enlarge", "gives-first-strike", "gives-flying", "perpetual-aura", "regrowth-self", "triggered-ability", "type-change"]
+oracle = "Enchant creature\nEnchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its other types.\nWhen enchanted creature dies, return this card to its owner's hand."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its
+# other types.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +4/+4, has flying and first strike
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 4
+toughness = 4
+keywords = ["flying", "first_strike"]
+
+# Enchanted creature gets +4/+4, has flying and first strike, and is an Angel in addition to its
+# other types.
+[[abilities]]
+timing = "static"
+
+# is an Angel in addition to its other types
+[[abilities.effects]]
+type = "set_attached_types"
+add_subtypes = ["Angel"]
+
+# When enchanted creature dies, return this card to its owner's hand.
+[[abilities]]
+timing = "enchanted_creature_dies"
+
+# return this card to its owner's hand
+[[abilities.effects]]
+type = "return_this_to_hand"

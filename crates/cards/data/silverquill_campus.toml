@@ -1,0 +1,27 @@
+# This land enters tapped.
+# {T}: Add {W} or {B}.
+# {4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)
+# Silverquill Campus (soc): "This land enters tapped. {T}: Add {W} or {B}. {4}, {T}: Scry 1."
+# Silverquill Campus has no printed land type (a plain "Land"), so there's no subtype to model.
+name = "Silverquill Campus"
+otags = ["activated-ability", "cycle-stx-campus", "mana-sink", "scry", "utility-land"]
+oracle = "This land enters tapped.\n{T}: Add {W} or {B}.\n{4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)"
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["white", "black"]
+
+# {4}, {T}: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 4
+
+# Scry 1.
+[[abilities.effects]]
+type = "scry"
+count = 1

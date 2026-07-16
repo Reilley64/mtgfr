@@ -1,0 +1,30 @@
+# Haste
+# As long as this card is in your graveyard and you control a Mountain, creatures you control have haste.
+name = "Anger"
+otags = ["cycle-jud-incarnation", "gives-haste", "keyword-anthem", "single-english-word-name", "synergy-mountain"]
+oracle = "Haste\nAs long as this card is in your graveyard and you control a Mountain, creatures you control have haste."
+set = "soc"
+subtypes = ["Incarnation"]
+keywords = ["haste"]
+functions_in_graveyard = true
+
+[cost]
+generic = 3
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# As long as this card is in your graveyard and you control a Mountain, creatures you control
+# have haste.
+[[abilities]]
+timing = "static"
+
+# creatures you control have haste
+[[abilities.effects]]
+type = "anthem_static"
+keywords = ["haste"]
+from_graveyard = true
+condition = { type = "controls_lands_with_subtype", subtypes = ["Mountain"], count = 1 }

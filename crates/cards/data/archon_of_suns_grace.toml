@@ -1,0 +1,54 @@
+# Flying
+# Lifelink (Damage dealt by this creature also causes you to gain that much life.)
+# Pegasus creatures you control have lifelink.
+# Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus creature token with flying.
+# Archon of Sun's Grace (soc). Real oracle text:
+#   "Flying
+#    Lifelink
+#    Pegasus creatures you control have lifelink.
+#    Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus
+#    creature token with flying."
+name = "Archon of Sun's Grace"
+otags = ["enchantmentfall", "evasion", "gives-lifelink", "keyword-anthem", "repeatable-creature-tokens", "repeatable-lifegain", "triggered-ability", "typal-pegasus"]
+oracle = "Flying\nLifelink (Damage dealt by this creature also causes you to gain that much life.)\nPegasus creatures you control have lifelink.\nConstellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus creature token with flying."
+set = "soc"
+subtypes = ["Archon"]
+keywords = ["flying", "lifelink"]
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# Pegasus creatures you control have lifelink.
+[[abilities]]
+timing = "static"
+
+# Pegasus creatures you control have lifelink.
+[[abilities.effects]]
+type = "anthem_static"
+keywords = ["lifelink"]
+subtypes = ["Pegasus"]
+
+# Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus creature
+# token with flying.
+[[abilities]]
+timing = "permanent_enters"
+filter = "enchantment"
+controller = "you"
+
+# create a 2/2 white Pegasus creature token with flying
+[[abilities.effects]]
+type = "create_token"
+
+[abilities.effects.token]
+name = "Pegasus"
+power = 2
+toughness = 2
+keywords = ["flying"]
+colors = ["white"]
+subtypes = ["Pegasus"]

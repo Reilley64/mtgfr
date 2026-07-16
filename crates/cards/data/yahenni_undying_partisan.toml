@@ -1,0 +1,42 @@
+# Haste
+# Whenever a creature an opponent controls dies, put a +1/+1 counter on Yahenni.
+# Sacrifice another creature: Yahenni gains indestructible until end of turn.
+name = "Yahenni, Undying Partisan"
+otags = ["activated-ability", "cycle-aer-legend", "death-trigger", "free-sacrifice-outlet", "gains-indestructible", "gains-pp-counters", "repeatable-pp-counters", "sacrifice-outlet-creature", "unique-type-line"]
+oracle = "Haste\nWhenever a creature an opponent controls dies, put a +1/+1 counter on Yahenni.\nSacrifice another creature: Yahenni gains indestructible until end of turn."
+set = "soc"
+subtypes = ["Aetherborn", "Vampire"]
+legendary = true
+keywords = ["haste"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever a creature an opponent controls dies, put a +1/+1 counter on Yahenni.
+[[abilities]]
+timing = "creature_an_opponent_controls_dies"
+
+# put a +1/+1 counter on Yahenni.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"
+
+# Sacrifice another creature: Yahenni gains indestructible until end of turn.
+[[abilities]]
+timing = "activated"
+sacrifice = { creature = { other = true } }
+
+# Yahenni gains indestructible until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = "this"
+keywords = ["indestructible"]

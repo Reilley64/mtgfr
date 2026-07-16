@@ -1,0 +1,32 @@
+# {T}: Add {C}.
+# {R/W}, {T}: Add {R}{R}, {R}{W}, or {W}{W}.
+# A filter land: feed it one mana and tap it for two {R}/{W} mana (a net +1). The two outputs
+# are {R/W} dual credits, so they can be spent as RR, RW, or WW.
+name = "Rugged Prairie"
+otags = ["activated-ability", "cycle-eve-filterland"]
+oracle = "{T}: Add {C}.\n{R/W}, {T}: Add {R}{R}, {R}{W}, or {W}{W}."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {R/W}, {T}: Add {R}{R}, {R}{W}, or {W}{W}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { hybrid = [["red", "white"]] }
+
+# Add {R}{R}, {R}{W}, or {W}{W}.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["red", "white"], ["red", "white"]]

@@ -1,0 +1,17 @@
+# ({T}: Add {B} or {G}.)
+# This land enters tapped unless you control two or more basic lands.
+# Vernal Fen (soc): Land — Swamp Forest. "({T}: Add {B} or {G}.) This land enters tapped unless
+# you control two or more basic lands."
+name = "Vernal Fen"
+otags = ["activated-ability", "cycle-tangoland", "lands-matter", "nonbasic-basic-land-type", "synergy-basic"]
+oracle = "({T}: Add {B} or {G}.)\nThis land enters tapped unless you control two or more basic lands."
+set = "soc"
+
+[kind]
+type = "land"
+produces = ["black", "green"]
+subtypes = ["Swamp", "Forest"]
+
+[enters_tapped_unless]
+type = "controls_basic_lands"
+count = 2

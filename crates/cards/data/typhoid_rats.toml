@@ -1,0 +1,15 @@
+# Deathtouch (Any amount of damage this deals to a creature is enough to destroy it.)
+name = "Typhoid Rats"
+otags = ["french-vanilla"]
+oracle = "Deathtouch (Any amount of damage this deals to a creature is enough to destroy it.)"
+set = "frf"
+subtypes = ["Rat"]
+keywords = ["deathtouch"]
+
+[cost]
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

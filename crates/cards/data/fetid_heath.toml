@@ -1,0 +1,32 @@
+# {T}: Add {C}.
+# {W/B}, {T}: Add {W}{W}, {W}{B}, or {B}{B}.
+# A filter land: feed it one mana and tap it for two {W}/{B} mana (a net +1). The two outputs
+# are {W/B} dual credits, so they can be spent as WW, WB, or BB.
+name = "Fetid Heath"
+otags = ["activated-ability", "cycle-eve-filterland"]
+oracle = "{T}: Add {C}.\n{W/B}, {T}: Add {W}{W}, {W}{B}, or {B}{B}."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {W/B}, {T}: Add {W}{W}, {W}{B}, or {B}{B}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { hybrid = [["white", "black"]] }
+
+# Add {W}{W}, {W}{B}, or {B}{B}.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["white", "black"], ["white", "black"]]

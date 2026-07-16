@@ -1,0 +1,18 @@
+# ({T}: Add {W} or {B}.)
+# This land enters tapped unless you control two or more basic lands.
+# Eclipsed Steppe (soc): "Land — Plains Swamp. {T}: Add {W} or {B}. This land enters tapped
+# unless you control two or more basic lands."
+name = "Eclipsed Steppe"
+otags = ["activated-ability", "cycle-tangoland", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped unless you control two or more basic lands."
+set = "soc"
+identity = ["black"]
+
+[kind]
+type = "land"
+produces = ["white", "black"]
+subtypes = ["Plains", "Swamp"]
+
+[enters_tapped_unless]
+type = "controls_basic_lands"
+count = 2

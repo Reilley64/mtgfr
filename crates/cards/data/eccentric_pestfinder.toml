@@ -1,0 +1,80 @@
+# [Eccentric Pestfinder]
+# Trample
+# At the beginning of each end step, if you gained life this turn, this creature becomes prepared. (While it's prepared,
+# you may cast a copy of its spell. Doing so unprepares it.)
+# [Turn Stones]
+# For each opponent, you create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."
+# Eccentric Pestfinder // Turn Stones (soc), a "prepare" double-faced card: {2}{B}{G} 5/5 Troll
+# Druid with trample whose front-face trigger makes it become prepared; while prepared, its
+# controller may cast a copy of the {B}{G} Turn Stones sorcery below, which unprepares it.
+name = "Eccentric Pestfinder"
+otags = ["cycle-soc-two-color-prepare", "gives-castable-from-exile", "infusion", "intervening-if-clause", "per-player", "repeatable-creature-tokens", "repeatable-lifegain"]
+oracle = "Trample\nAt the beginning of each end step, if you gained life this turn, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // For each opponent, you create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\""
+set = "soc"
+subtypes = ["Troll", "Druid"]
+keywords = ["trample"]
+
+[cost]
+generic = 2
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# At the beginning of each end step, if you gained life this turn, this creature becomes prepared.
+[[abilities]]
+timing = "each_end_step"
+
+[abilities.condition]
+type = "you_gained_life_this_turn"
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# Back face — Turn Stones ({B}{G} sorcery): "For each opponent, you create a 1/1 black and green
+# Pest creature token with 'When this token dies, you gain 1 life.'"
+[back]
+name = "Turn Stones"
+set = "soc"
+
+[back.cost]
+black = 1
+green = 1
+
+[back.kind]
+type = "sorcery"
+
+# For each opponent, you create a 1/1 black and green Pest creature token with "When this token
+# dies, you gain 1 life."
+[[back.abilities]]
+timing = "spell"
+
+# For each opponent, you create a 1/1 black and green Pest creature token with "When this token
+# dies, you gain 1 life."
+[[back.abilities.effects]]
+type = "create_token"
+count = 1
+controller = "one_per_opponent"
+
+[back.abilities.effects.token]
+name = "Pest"
+colors = ["black", "green"]
+subtypes = ["Pest"]
+
+[back.abilities.effects.token.kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# "When this token dies, you gain 1 life."
+[[back.abilities.effects.token.abilities]]
+timing = "dies"
+
+# you gain 1 life
+[[back.abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 1

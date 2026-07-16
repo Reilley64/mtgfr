@@ -1,0 +1,9 @@
+# Local defaults for `Settings::load()`. Prod overrides via env / Secrets — never put secrets here.
+host = "127.0.0.1"
+port = 8080
+database_url = "postgresql://mtgfr:mtgfr@localhost:5432/mtgfr"
+instance_id = "local"
+drain = false
+cookie_secure = false
+cookie_domain = ""
+cors_origin = ""

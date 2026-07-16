@@ -1,0 +1,52 @@
+# {T}: Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells with {X} in their mana
+# costs.
+# {U}, {T}: Draw a card, then discard a card.
+# Troyan, Gutsy Explorer (soc). Real oracle text:
+#   "{T}: Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells
+#    with {X} in their mana costs.
+#    {U}, {T}: Draw a card, then discard a card."
+name = "Troyan, Gutsy Explorer"
+otags = ["activated-ability", "adds-multiple-mana", "cycle-woe-draft-signpost", "mana-dork", "mana-value-matters", "repeatable-loot", "restricted-mana", "unique-type-line", "x-cost-matters"]
+oracle = "{T}: Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells with {X} in their mana costs.\n{U}, {T}: Draw a card, then discard a card."
+set = "soc"
+subtypes = ["Vedalken", "Scout"]
+legendary = true
+
+[cost]
+generic = 1
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 3
+
+# {T}: Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells with
+# {X} in their mana costs.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {G}{U}. Spend this mana only to cast spells with mana value 5 or greater or spells with {X}
+# in their mana costs.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["green", "blue"]
+restriction = { mana_value_at_least_or_has_x = 5 }
+
+# {U}, {T}: Draw a card, then discard a card.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { blue = 1 }
+
+# Draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# then discard a card.
+[[abilities.effects]]
+type = "discard"
+count = 1

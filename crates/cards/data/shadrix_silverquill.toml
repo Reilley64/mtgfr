@@ -1,0 +1,69 @@
+# Flying, double strike
+# At the beginning of combat on your turn, you may choose two. Each mode must target a different
+# player.
+# • Target player creates a 2/1 white and black Inkling creature token with flying.
+# • Target player draws a card and loses 1 life.
+# • Target player puts a +1/+1 counter on each creature they control.
+name = "Shadrix Silverquill"
+otags = ["alliteration", "cycle-stx-dragon-founder", "donate-token", "draw-engine", "evasion", "force-draw", "gains-pp-counters", "gives-pp-counters-to-all", "modal", "opponent-loses-life", "repeatable-creature-tokens", "repeatable-crime"]
+oracle = "Flying, double strike\nAt the beginning of combat on your turn, you may choose two. Each mode must target a different player.\n• Target player creates a 2/1 white and black Inkling creature token with flying.\n• Target player draws a card and loses 1 life.\n• Target player puts a +1/+1 counter on each creature they control."
+set = "soc"
+subtypes = ["Elder", "Dragon"]
+legendary = true
+keywords = ["flying", "double_strike"]
+modal = true
+choose = 2
+
+[cost]
+generic = 3
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 5
+
+# Mode 0 — "Target player creates a 2/1 white and black Inkling creature token with flying."
+[[abilities]]
+timing = "begin_combat"
+optional = true
+
+# Target player creates a 2/1 white and black Inkling creature token with flying.
+[[abilities.effects]]
+type = "create_token"
+controller = "target_player"
+[abilities.effects.token]
+name = "Inkling"
+power = 2
+toughness = 1
+colors = ["white", "black"]
+subtypes = ["Inkling"]
+keywords = ["flying"]
+
+# Mode 1 — "Target player draws a card and loses 1 life."
+[[abilities]]
+timing = "begin_combat"
+optional = true
+
+# Target player draws a card
+[[abilities.effects]]
+type = "target_player_draws"
+count = 1
+
+# and loses 1 life.
+[[abilities.effects]]
+type = "target_player_loses_life"
+amount = 1
+
+# Mode 2 — "Target player puts a +1/+1 counter on each creature they control."
+[[abilities]]
+timing = "begin_combat"
+optional = true
+
+# Target player puts a +1/+1 counter on each creature they control.
+[[abilities.effects]]
+type = "put_counters_each"
+filter = { types = "creature", controller = "you" }
+count = 1
+target_player = true

@@ -1,0 +1,39 @@
+# This artifact enters with X charge counters on it.
+# {T}: Choose a color. Add one mana of that color for each charge counter on this artifact.
+# Astral Cornucopia {X}{X}{X} — artifact (soc). Real oracle text:
+#   "This artifact enters with X charge counters on it.
+#   {T}: Choose a color. Add one mana of that color for each charge counter on this artifact."
+# Color choice is approximated as an any-color wildcard, matching every other "any color"
+# producer in the pool (a payment-time choice, not a targeting/mode choice).
+name = "Astral Cornucopia"
+otags = ["activated-ability", "adds-multiple-mana", "counters-matter", "mana-rock", "mini-refund", "unique-mana-cost"]
+oracle = "This artifact enters with X charge counters on it.\n{T}: Choose a color. Add one mana of that color for each charge counter on this artifact."
+set = "soc"
+
+[cost]
+x = 3
+
+[kind]
+type = "artifact"
+
+# This artifact enters with X charge counters on it.
+[[abilities]]
+timing = "static"
+
+# This artifact enters with X charge counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+kind = "charge"
+
+# {T}: Choose a color. Add one mana of that color for each charge counter on this artifact.
+# {T}: Add one mana of any color for each charge counter on this artifact.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of that color for each charge counter on this artifact.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]
+repeat = { per_counter_of_kind = "charge" }

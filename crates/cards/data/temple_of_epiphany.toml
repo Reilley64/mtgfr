@@ -1,0 +1,24 @@
+# This land enters tapped.
+# When this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)
+# {T}: Add {U} or {R}.
+# Temple of Epiphany: "This land enters tapped. When this land enters, scry 1.
+# {T}: Add {U} or {R}."
+name = "Temple of Epiphany"
+otags = ["activated-ability", "cycle-block-ths-scry-land", "scry", "triggered-ability", "utility-land"]
+oracle = "This land enters tapped.\nWhen this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n{T}: Add {U} or {R}."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["blue", "red"]
+
+# When this land enters, scry 1. (Look at the top card of your library. You may put that card on
+# the bottom.)
+[[abilities]]
+timing = "etb"
+
+# scry 1.
+[[abilities.effects]]
+type = "scry"
+count = 1

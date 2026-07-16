@@ -1,0 +1,15 @@
+# This land enters tapped unless you control a Forest or an Island.
+# {T}: Add {G} or {U}.
+name = "Hinterland Harbor"
+otags = ["activated-ability", "alliteration", "cycle-isd-checkland", "synergy-forest", "synergy-island"]
+oracle = "This land enters tapped unless you control a Forest or an Island.\n{T}: Add {G} or {U}."
+set = "msc"
+
+[kind]
+type = "land"
+produces = ["green", "blue"]
+
+[enters_tapped_unless]
+type = "controls_lands_with_subtype"
+subtypes = ["Forest", "Island"]
+count = 1

@@ -1,0 +1,18 @@
+# Indestructible (Damage and effects that say "destroy" don't destroy this creature. If its toughness is 0 or less, it
+# still dies.)
+# Darksteel Myr (som): a {3} 0/1 Artifact Creature with indestructible.
+name = "Darksteel Myr"
+otags = ["french-vanilla"]
+oracle = "Indestructible (Damage and effects that say \"destroy\" don't destroy this creature. If its toughness is 0 or less, it still dies.)"
+set = "som"
+subtypes = ["Myr"]
+keywords = ["indestructible"]
+
+[cost]
+generic = 3
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+also = ["artifact"]

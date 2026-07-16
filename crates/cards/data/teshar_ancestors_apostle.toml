@@ -1,0 +1,31 @@
+# Flying
+# Whenever you cast a historic spell, return target creature card with mana value 3 or less from your graveyard to the
+# battlefield. (Artifacts, legendaries, and Sagas are historic.)
+name = "Teshar, Ancestor's Apostle"
+otags = ["alliteration", "cast-trigger-you", "evasion", "mana-value-matters", "reanimate-creature", "synergy-historic"]
+oracle = "Flying\nWhenever you cast a historic spell, return target creature card with mana value 3 or less from your graveyard to the battlefield. (Artifacts, legendaries, and Sagas are historic.)"
+set = "soc"
+subtypes = ["Bird", "Cleric"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever you cast a historic spell, return target creature card with mana value 3 or less from
+# your graveyard to the battlefield.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "historic"
+caster = "you"
+
+# return target creature card with mana value 3 or less from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = { creature_with_mana_value_at_most = 3 } } }

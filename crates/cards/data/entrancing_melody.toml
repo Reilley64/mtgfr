@@ -1,0 +1,22 @@
+# Gain control of target creature with mana value X.
+# Entrancing Melody {X}{U}{U} — sorcery (soc).
+name = "Entrancing Melody"
+otags = ["single-target-instant-sorcery", "theft-creature", "untracked-indefinite-effect"]
+oracle = "Gain control of target creature with mana value X."
+set = "soc"
+
+[cost]
+blue = 2
+x = true
+
+[kind]
+type = "sorcery"
+
+# Gain control of target creature with mana value X.
+[[abilities]]
+timing = "spell"
+
+# Gain control of target creature with mana value X.
+[[abilities.effects]]
+type = "gain_control"
+target = { permanent = { types = "creature", mv_eq_x = true } }

@@ -1,0 +1,33 @@
+# Haste
+# Shadow (This creature can block or be blocked by only creatures with shadow.)
+# Whenever another creature is put into your graveyard from the battlefield, you may pay {B}. If you do, return this
+# card from your graveyard to the battlefield.
+name = "Nether Traitor"
+otags = ["death-trigger", "evasion", "reanimate-self", "restricted-blocker", "trigger-from-graveyard"]
+oracle = "Haste\nShadow (This creature can block or be blocked by only creatures with shadow.)\nWhenever another creature is put into your graveyard from the battlefield, you may pay {B}. If you do, return this card from your graveyard to the battlefield."
+set = "soc"
+subtypes = ["Spirit"]
+keywords = ["haste", "shadow"]
+# CR 603.6e — the death-watch recursion trigger functions from the graveyard.
+functions_in_graveyard = true
+
+[cost]
+black = 2
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Whenever another creature is put into your graveyard from the battlefield, you may pay {B}. If
+# you do, return this card from your graveyard to the battlefield.
+[[abilities]]
+timing = "creature_you_control_dies"
+optional = true
+
+[abilities.cost]
+black = 1
+
+# return this card from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "return_this_from_graveyard_to_battlefield"

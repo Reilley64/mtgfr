@@ -1,0 +1,28 @@
+# {T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield, then
+# shuffle.
+# Prismatic Vista: "{T}, Pay 1 life, Sacrifice this land: Search your library for a basic land
+# card, put it onto the battlefield, then shuffle." A pay-life fetchland — the basic enters
+# untapped (no `tapped` flag).
+name = "Prismatic Vista"
+otags = ["activated-ability", "fetchland", "life-payment", "tutor-land-basic"]
+oracle = "{T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield, then shuffle."
+set = "mh1"
+
+# A fetch-only land: no `produces`, so it has no tap-for-mana ability — it's played only to be
+# sacrificed for the fetch below.
+[kind]
+type = "land"
+
+# {T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto
+# the battlefield, then shuffle.
+[[abilities]]
+timing = "activated"
+taps_self = true
+pay_life = 1
+sacrifice = "this"
+
+# Search your library for a basic land card, put it onto the battlefield, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"

@@ -1,0 +1,11 @@
+# ({T}: Add {U}.)
+name = "Island"
+otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "meme", "single-english-word-name", "unique-type-line"]
+oracle = "({T}: Add {U}.)"
+set = "msh"
+
+[kind]
+type = "land"
+produces = "blue"
+subtypes = ["Island"]
+basic = true

@@ -1,0 +1,97 @@
+# (Gain the next level as a sorcery to add its ability.)
+# When this Class enters, create a 2/1 white and black Inkling creature token with flying.
+# {1}{B}: Level 2
+# Whenever you lose life for the first time each turn, put a +1/+1 counter on target creature you control.
+# {2}{B}: Level 3
+# At the beginning of each end step, if a modified creature died under your control this turn, create a 2/1 white and
+# black Inkling creature token with flying. (Equipment, Auras you control, and counters are modifications.)
+name = "Intermediate Chirography"
+otags = ["activated-ability", "evasion", "gives-pp-counters", "intervening-if-clause", "life-loss-matters", "morbid", "repeatable-creature-tokens", "repeatable-pp-counters", "synergy-modified"]
+oracle = "(Gain the next level as a sorcery to add its ability.)\nWhen this Class enters, create a 2/1 white and black Inkling creature token with flying.\n{1}{B}: Level 2\nWhenever you lose life for the first time each turn, put a +1/+1 counter on target creature you control.\n{2}{B}: Level 3\nAt the beginning of each end step, if a modified creature died under your control this turn, create a 2/1 white and black Inkling creature token with flying. (Equipment, Auras you control, and counters are modifications.)"
+set = "soc"
+subtypes = ["Class"]
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "enchantment"
+
+# When this Class enters, create a 2/1 white and black Inkling creature token with flying.
+[[abilities]]
+timing = "etb"
+
+# create a 2/1 white and black Inkling creature token with flying.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Inkling"
+power = 2
+toughness = 1
+keywords = ["flying"]
+colors = ["white", "black"]
+subtypes = ["Inkling"]
+
+# {1}{B}: Level 2
+[[abilities]]
+timing = "activated"
+sorcery_speed = true
+
+[abilities.activation_cost]
+generic = 1
+black = 1
+
+# Level 2
+[[abilities.effects]]
+type = "level_up"
+level = 2
+
+# Whenever you lose life for the first time each turn, put a +1/+1 counter on target creature you control.
+[[abilities]]
+timing = "you_lose_life_first_time_each_turn"
+min_level = 2
+
+# put a +1/+1 counter on target creature you control.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "creature_you_control"
+
+# {2}{B}: Level 3
+[[abilities]]
+timing = "activated"
+sorcery_speed = true
+
+[abilities.activation_cost]
+generic = 2
+black = 1
+
+# Level 3
+[[abilities.effects]]
+type = "level_up"
+level = 3
+
+# At the beginning of each end step, if a modified creature died under your control this turn, create a 2/1 white and
+# black Inkling creature token with flying.
+[[abilities]]
+timing = "each_end_step"
+min_level = 3
+
+[abilities.condition]
+type = "modified_creature_died_this_turn"
+
+# create a 2/1 white and black Inkling creature token with flying.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Inkling"
+power = 2
+toughness = 1
+keywords = ["flying"]
+colors = ["white", "black"]
+subtypes = ["Inkling"]

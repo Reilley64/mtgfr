@@ -1,0 +1,17 @@
+# ({T}: Add {U} or {R}.)
+# This land enters tapped unless your opponents control eight or more lands.
+# Turbulent Springs (soc): Land — Island Mountain. "{T}: Add {U} or {R}. This land enters tapped
+# unless your opponents control eight or more lands."
+name = "Turbulent Springs"
+otags = ["activated-ability", "cycle-soc-octoland", "multiplayer", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped unless your opponents control eight or more lands."
+set = "soc"
+
+[kind]
+type = "land"
+produces = ["blue", "red"]
+subtypes = ["Island", "Mountain"]
+
+[enters_tapped_unless]
+type = "opponents_control_lands"
+count = 8

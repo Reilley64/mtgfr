@@ -1,0 +1,25 @@
+# Search your library for a Forest card, put it onto the battlefield, then shuffle.
+# Three Visits {1}{G} — "Search your library for a Forest card, put it onto the
+# battlefield, then shuffle." A Nature's Lore–style untapped land ramp.
+name = "Three Visits"
+otags = ["land-ramp", "mini-refund", "tutor-land-forest", "tutor-land-to-battlefield"]
+oracle = "Search your library for a Forest card, put it onto the battlefield, then shuffle."
+set = "msc"
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Search your library for a Forest card, put it onto the battlefield, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# Search your library for a Forest card, put it onto the battlefield, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Forest"] }
+to_zone = "battlefield"
+tapped = false

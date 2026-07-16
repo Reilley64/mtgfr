@@ -1,0 +1,43 @@
+# Whenever a player casts a spell, you may put a +1/+1 counter on this creature.
+# At the beginning of your upkeep, you may move any number of +1/+1 counters from this creature onto other creatures.
+# Forgotten Ancient (SOC): {3}{G} 0/3 Creature — Elemental.
+name = "Forgotten Ancient"
+otags = ["gains-pp-counters", "gives-pp-counters", "mana-gorger", "move-counters", "pp-counters-matter", "repeatable-pp-counters", "toll", "you-make-the-card"]
+oracle = "Whenever a player casts a spell, you may put a +1/+1 counter on this creature.\nAt the beginning of your upkeep, you may move any number of +1/+1 counters from this creature onto other creatures."
+set = "soc"
+subtypes = ["Elemental"]
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 3
+
+# Whenever a player casts a spell, you may put a +1/+1 counter on this creature.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "all"
+caster = "any_player"
+optional = true
+
+# put a +1/+1 counter on this creature
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"
+
+# At the beginning of your upkeep, you may move any number of +1/+1 counters from this creature
+# onto other creatures.
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+# move any number of +1/+1 counters from this creature onto other creatures
+[[abilities.effects]]
+type = "move_counters"
+target = "this"
+to_filter = { types = "creature" }
+distributed = true

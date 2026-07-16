@@ -1,0 +1,27 @@
+# Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to that card's
+# mana value.
+name = "Reanimate"
+otags = ["life-payment", "mana-value-matters", "reanimate-creature", "reanimate-from-any", "single-english-word-name", "single-target-instant-sorcery"]
+oracle = "Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to that card's mana value."
+set = "dsc"
+
+[cost]
+black = 1
+
+[kind]
+type = "sorcery"
+
+# "Put target creature card from a graveyard onto the battlefield under your control.
+#  You lose life equal to that card's mana value." (per #65's TargetManaValue amount)
+[[abilities]]
+timing = "spell"
+
+# Put target creature card from a graveyard onto the battlefield under your control.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = "any_graveyard"
+
+# You lose life equal to that card's mana value.
+[[abilities.effects]]
+type = "lose_life"
+amount = "target_mana_value"

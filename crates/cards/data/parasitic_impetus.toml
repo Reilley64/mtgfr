@@ -1,0 +1,39 @@
+# Enchant creature
+# Enchanted creature gets +2/+2 and is goaded. (It attacks each combat if able and attacks a player other than you if
+# able.)
+# Whenever enchanted creature attacks, its controller loses 2 life and you gain 2 life.
+# Parasitic Impetus (soc): "Enchant creature. Enchanted creature gets +2/+2 and is goaded.
+# Whenever enchanted creature attacks, its controller loses 2 life and you gain 2 life."
+name = "Parasitic Impetus"
+otags = ["attack-trigger", "cycle-c20-impetus", "drain-life", "force-attacker", "hate-attacker", "opponent-loses-life", "parasitic-aura", "repeatable-lifegain", "toll"]
+oracle = "Enchant creature\nEnchanted creature gets +2/+2 and is goaded. (It attacks each combat if able and attacks a player other than you if able.)\nWhenever enchanted creature attacks, its controller loses 2 life and you gain 2 life."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +2/+2 and is goaded. (It attacks each combat if able and attacks a
+# player other than you if able.)
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +2/+2 and is goaded.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 2
+toughness = 2
+goad = true
+
+# Whenever enchanted creature attacks, its controller loses 2 life and you gain 2 life.
+[[abilities]]
+timing = "enchanted_creature_attacks"
+
+# its controller loses 2 life and you gain 2 life.
+[[abilities.effects]]
+type = "attacker_loses_life_you_gain"
+amount = 2

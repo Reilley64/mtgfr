@@ -1,0 +1,15 @@
+# This land enters tapped unless you control a Mountain or a Plains.
+# {T}: Add {R} or {W}.
+name = "Clifftop Retreat"
+otags = ["activated-ability", "cycle-isd-checkland", "synergy-mountain", "synergy-plains"]
+oracle = "This land enters tapped unless you control a Mountain or a Plains.\n{T}: Add {R} or {W}."
+set = "msc"
+
+[kind]
+type = "land"
+produces = ["red", "white"]
+
+[enters_tapped_unless]
+type = "controls_lands_with_subtype"
+subtypes = ["Mountain", "Plains"]
+count = 1

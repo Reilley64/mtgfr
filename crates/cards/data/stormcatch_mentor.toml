@@ -1,0 +1,30 @@
+# Haste
+# Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)
+# Instant and sorcery spells you cast cost {1} less to cast.
+# Stormcatch Mentor {U}{R} — 1/1 Otter Wizard with haste.
+# "Instant and sorcery spells you cast cost {1} less to cast."
+name = "Stormcatch Mentor"
+otags = ["cast-trigger-you", "cost-reducer-instant-sorcery", "cycle-blb-draft-signpost", "synergy-noncreature"]
+oracle = "Haste\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nInstant and sorcery spells you cast cost {1} less to cast."
+set = "soc"
+subtypes = ["Otter", "Wizard"]
+keywords = ["haste", "prowess"]
+
+[cost]
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Instant and sorcery spells you cast cost {1} less to cast.
+[[abilities]]
+timing = "static"
+
+# Instant and sorcery spells you cast cost {1} less to cast.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = 1
+filter = "instant_or_sorcery"

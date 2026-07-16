@@ -1,0 +1,27 @@
+# Flying
+# Sacrifice this creature: Exile target player's graveyard.
+# Secrets of Strixhaven Commander. {1}{W}, Creature — Spirit Cleric, 2/1.
+name = "Remorseful Cleric"
+otags = ["activated-ability", "evasion", "martyr", "sweeper-graveyard"]
+oracle = "Flying\nSacrifice this creature: Exile target player's graveyard."
+set = "soc"
+subtypes = ["Spirit", "Cleric"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# Sacrifice this creature: Exile target player's graveyard.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Exile target player's graveyard.
+[[abilities.effects]]
+type = "exile_graveyard"

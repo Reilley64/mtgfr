@@ -1,0 +1,30 @@
+# Exile target artifact or creature. Its controller creates a 4/4 blue and red Elemental creature token.
+# Resculpt {1}{U} — instant. "Exile target artifact or creature. Its controller creates a 4/4 blue
+# and red Elemental creature token."
+name = "Resculpt"
+otags = ["color-break", "donate-token", "out-of-color-token", "removal-artifact", "removal-creature", "removal-exile", "single-english-word-name", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
+oracle = "Exile target artifact or creature. Its controller creates a 4/4 blue and red Elemental creature token."
+set = "soc"
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Exile target artifact or creature. Its controller creates a 4/4 blue and red Elemental creature
+# token.
+[[abilities]]
+timing = "spell"
+
+# Exile target artifact or creature.
+[[abilities.effects]]
+type = "exile_target"
+target = { permanent = { types = ["artifact", "creature"] } }
+
+# Its controller creates a 4/4 blue and red Elemental creature token.
+[[abilities.effects]]
+type = "create_token"
+controller = "target_controller"
+token = { name = "Elemental", power = 4, toughness = 4, colors = ["blue", "red"], subtypes = ["Elemental"] }

@@ -1,0 +1,38 @@
+# Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.
+# At the beginning of your end step, each opponent loses X life and you gain X life, where X is the number of Auras you
+# control.
+name = "Eriette of the Charmed Apple"
+otags = ["drain-life", "group-slug", "opponent-loses-life", "prevent-attack", "repeatable-lifegain", "synergy-aura", "synergy-planeswalker", "triggered-ability"]
+oracle = "Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.\nAt the beginning of your end step, each opponent loses X life and you gain X life, where X is the number of Auras you control."
+set = "soc"
+subtypes = ["Human", "Warlock"]
+legendary = true
+
+[cost]
+generic = 1
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.
+[[abilities]]
+timing = "static"
+
+# Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.
+[[abilities.effects]]
+type = "cant_be_attacked_by"
+filter = { enchanted_by_you = true }
+
+# At the beginning of your end step, each opponent loses X life and you gain X life, where X is
+# the number of Auras you control.
+[[abilities]]
+timing = "end_step"
+
+# each opponent loses X life and you gain X life, where X is the number of Auras you control
+[[abilities.effects]]
+type = "each_opponent_drain"
+amount = { per_permanent = { subtypes = ["Aura"], controller = "you" } }

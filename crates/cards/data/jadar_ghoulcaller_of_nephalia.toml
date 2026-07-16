@@ -1,0 +1,40 @@
+# At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black Zombie creature token
+# with decayed. (It can't block. When it attacks, sacrifice it at end of combat.)
+name = "Jadar, Ghoulcaller of Nephalia"
+otags = ["intervening-if-clause", "repeatable-creature-tokens"]
+oracle = "At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black Zombie creature token with decayed. (It can't block. When it attacks, sacrifice it at end of combat.)"
+set = "soc"
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black
+# Zombie creature token with decayed. (It can't block. When it attacks, sacrifice it at end of
+# combat.)
+[[abilities]]
+timing = "end_step"
+
+[abilities.condition]
+type = "you_control_no_creature_with_keyword"
+keyword = "decayed"
+
+# create a 2/2 black Zombie creature token with decayed.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Zombie"
+power = 2
+toughness = 2
+colors = ["black"]
+subtypes = ["Zombie"]
+keywords = ["decayed"]

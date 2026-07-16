@@ -1,0 +1,33 @@
+# Equipped creature has haste and shroud. (It can't be the target of spells or abilities.)
+# Equip {0}
+# Lightning Greaves: {2} Artifact — Equipment. "Equipped creature has haste and shroud. Equip {0}."
+name = "Lightning Greaves"
+otags = ["activated-ability", "french-vanilla-equipment", "gives-haste", "gives-shroud", "protects-creature"]
+oracle = "Equipped creature has haste and shroud. (It can't be the target of spells or abilities.)\nEquip {0}"
+set = "msc"
+subtypes = ["Equipment"]
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# Equipped creature has haste and shroud.
+[[abilities]]
+timing = "static"
+
+# Equipped creature has haste and shroud.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 0
+toughness = 0
+keywords = ["haste", "shroud"]
+
+# Equip {0}
+[[abilities]]
+timing = "activated"
+
+# Equip {0}
+[[abilities.effects]]
+type = "equip"

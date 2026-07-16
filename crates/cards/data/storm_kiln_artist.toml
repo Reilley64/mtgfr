@@ -1,0 +1,36 @@
+# This creature gets +1/+0 for each artifact you control.
+# Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token. (It's an artifact with
+# "{T}, Sacrifice this token: Add one mana of any color.")
+name = "Storm-Kiln Artist"
+otags = ["artifact-matters", "cranial-plating", "cycle-stx-u-mono-magecraft", "magecraft", "ramp", "repeatable-treasures"]
+oracle = "This creature gets +1/+0 for each artifact you control.\nMagecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+set = "soc"
+subtypes = ["Dwarf", "Shaman"]
+
+[cost]
+generic = 3
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# This creature gets +1/+0 for each artifact you control.
+[[abilities]]
+timing = "static"
+
+# This creature gets +1/+0 for each artifact you control.
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+power = { per_permanent = { types = "artifact", controller = "you" } }
+
+# Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.
+[[abilities]]
+timing = "magecraft"
+
+# create a Treasure token.
+[[abilities.effects]]
+type = "create_treasure"
+count = 1

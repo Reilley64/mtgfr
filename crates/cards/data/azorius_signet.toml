@@ -1,0 +1,22 @@
+# {1}, {T}: Add {W}{U}.
+name = "Azorius Signet"
+otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
+oracle = "{1}, {T}: Add {W}{U}."
+set = "tdc"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {1}, {T}: Add {W}{U}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {W}{U}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["white", "blue"]

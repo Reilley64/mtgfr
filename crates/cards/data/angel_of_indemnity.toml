@@ -1,0 +1,35 @@
+# Flying, lifelink
+# When this creature enters, return target permanent card with mana value 4 or less from your graveyard to the
+# battlefield.
+# Encore {6}{W}{W} ({6}{W}{W}, Exile this card from your graveyard: For each opponent, create a token copy that attacks
+# that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only
+# as a sorcery.)
+name = "Angel of Indemnity"
+otags = ["copy-self", "delayed-trigger", "evasion", "gains-haste", "mana-value-matters", "multi-land-ramp", "per-player", "reanimate-permanent", "renew", "repeatable-lifegain", "temporary-token", "virtual-french-vanilla"]
+oracle = "Flying, lifelink\nWhen this creature enters, return target permanent card with mana value 4 or less from your graveyard to the battlefield.\nEncore {6}{W}{W} ({6}{W}{W}, Exile this card from your graveyard: For each opponent, create a token copy that attacks that opponent this turn if able. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.)"
+set = "soc"
+subtypes = ["Angel", "Warrior"]
+keywords = ["flying", "lifelink"]
+
+[cost]
+generic = 5
+white = 1
+
+[encore]
+generic = 6
+white = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# When this creature enters, return target permanent card with mana value 4 or less from your
+# graveyard to the battlefield.
+[[abilities]]
+timing = "etb"
+
+# return target permanent card with mana value 4 or less from your graveyard to the battlefield
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = { permanent_with_mana_value_at_most = 4 } } }

@@ -1,0 +1,42 @@
+name = "Tendershoot Dryad"
+otags = ["anthem", "per-player", "power-boost-to-all", "repeatable-creature-tokens", "toughness-boost-to-all", "triggered-ability", "typal-saproling"]
+oracle = "Ascend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nAt the beginning of each upkeep, create a 1/1 green Saproling creature token.\nSaprolings you control get +2/+2 as long as you have the city's blessing."
+set = "soc"
+subtypes = ["Dryad"]
+
+[cost]
+generic = 4
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# At the beginning of each upkeep, create a 1/1 green Saproling creature token.
+[[abilities]]
+timing = "each_upkeep"
+
+# create a 1/1 green Saproling creature token.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Saproling"
+power = 1
+toughness = 1
+colors = ["green"]
+subtypes = ["Saproling"]
+
+# Saprolings you control get +2/+2 as long as you have the city's blessing.
+[[abilities]]
+timing = "static"
+
+# Saprolings you control get +2/+2 as long as you have the city's blessing.
+[[abilities.effects]]
+type = "anthem_static"
+power = 2
+toughness = 2
+subtypes = ["Saproling"]
+condition = { type = "you_have_citys_blessing" }

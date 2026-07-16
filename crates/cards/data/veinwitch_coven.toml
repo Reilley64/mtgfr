@@ -1,0 +1,35 @@
+# Menace
+# Whenever you gain life, you may pay {B}. If you do, return target creature card from your graveyard to your hand.
+# Veinwitch Coven (soc). Real oracle text:
+#   "Menace
+#    Whenever you gain life, you may pay {B}. If you do, return target creature card from your
+#    graveyard to your hand."
+name = "Veinwitch Coven"
+otags = ["evasion", "lifegain-matters", "regrowth-creature", "repeatable-card-advantage", "triggered-ability"]
+oracle = "Menace\nWhenever you gain life, you may pay {B}. If you do, return target creature card from your graveyard to your hand."
+set = "soc"
+subtypes = ["Vampire", "Warlock"]
+keywords = ["menace"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Whenever you gain life, you may pay {B}. If you do, return target creature card from your
+# graveyard to your hand.
+[[abilities]]
+timing = "you_gain_life"
+optional = true
+
+[abilities.cost]
+black = 1
+
+# return target creature card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = "your_graveyard"

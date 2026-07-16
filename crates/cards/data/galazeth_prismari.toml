@@ -1,0 +1,51 @@
+# Flying
+# When Galazeth Prismari enters, create a Treasure token.
+# Artifacts you control have "{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell."
+# Galazeth Prismari (SOC): {2}{U}{R} 3/4 Legendary Elder Dragon.
+# "Flying. When Galazeth Prismari enters, create a Treasure token. Artifacts you control have
+# '{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell.'"
+name = "Galazeth Prismari"
+otags = ["cycle-stx-dragon-founder", "evasion", "gives-mana-ability", "gives-tap-ability", "mini-refund", "ramp", "restricted-mana", "synergy-instant", "synergy-sorcery", "tap-fuel-artifact", "triggered-ability"]
+oracle = "Flying\nWhen Galazeth Prismari enters, create a Treasure token.\nArtifacts you control have \"{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell.\""
+set = "soc"
+subtypes = ["Elder", "Dragon"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 2
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# When Galazeth Prismari enters, create a Treasure token.
+[[abilities]]
+timing = "etb"
+
+# create a Treasure token
+[[abilities.effects]]
+type = "create_treasure"
+count = 1
+
+# Artifacts you control have "{T}: Add one mana of any color. Spend this mana only to cast an
+# instant or sorcery spell."
+[[abilities]]
+timing = "static"
+
+# Artifacts you control have "{T}: Add one mana of any color. Spend this mana only to cast an
+# instant or sorcery spell."
+[[abilities.effects]]
+type = "grant_mana_ability"
+mana = ["any"]
+restriction = "instant_or_sorcery"
+
+[abilities.effects.filter]
+types = ["artifact"]
+controller = "you"
+
+[abilities.effects.cost]
+taps_self = true

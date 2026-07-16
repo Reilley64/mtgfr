@@ -1,0 +1,25 @@
+# {T}: Add {C}.
+# {1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or
+# shroud.
+name = "Arcane Lighthouse"
+otags = ["activated-ability", "removes-hexproof", "removes-shroud", "utility-land"]
+oracle = "{T}: Add {C}.\n{1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud."
+set = "soc"
+
+[kind]
+type = "land"
+produces = "colorless"
+
+# {1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and
+# can't have hexproof or shroud.
+[[abilities]]
+timing = "activated"
+taps_self = true
+[abilities.activation_cost]
+generic = 1
+
+# Until end of turn, creatures your opponents control lose hexproof and shroud and can't have
+# hexproof or shroud.
+[[abilities.effects]]
+type = "strip_keywords_from_opponents_creatures"
+keywords = ["hexproof", "shroud"]

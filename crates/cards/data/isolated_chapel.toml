@@ -1,0 +1,15 @@
+# This land enters tapped unless you control a Plains or a Swamp.
+# {T}: Add {W} or {B}.
+name = "Isolated Chapel"
+otags = ["activated-ability", "cycle-isd-checkland", "synergy-plains", "synergy-swamp"]
+oracle = "This land enters tapped unless you control a Plains or a Swamp.\n{T}: Add {W} or {B}."
+set = "soc"
+
+[kind]
+type = "land"
+produces = ["white", "black"]
+
+[enters_tapped_unless]
+type = "controls_lands_with_subtype"
+subtypes = ["Plains", "Swamp"]
+count = 1

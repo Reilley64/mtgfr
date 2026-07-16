@@ -1,0 +1,17 @@
+# ({T}: Add {W} or {B}.)
+# This land enters tapped unless your opponents control eight or more lands.
+# Turbulent Moor (SOC): Land — Plains Swamp. "{T}: Add {W} or {B}. This land enters tapped
+# unless your opponents control eight or more lands."
+name = "Turbulent Moor"
+otags = ["activated-ability", "cycle-soc-octoland", "multiplayer", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped unless your opponents control eight or more lands."
+set = "soc"
+
+[kind]
+type = "land"
+produces = ["white", "black"]
+subtypes = ["Plains", "Swamp"]
+
+[enters_tapped_unless]
+type = "opponents_control_lands"
+count = 8

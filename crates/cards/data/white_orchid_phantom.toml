@@ -1,0 +1,40 @@
+# Flying, first strike
+# When this creature enters, destroy up to one target nonbasic land. Its controller may search their library for a basic
+# land card, put it onto the battlefield tapped, then shuffle.
+name = "White Orchid Phantom"
+otags = ["evasion", "hate-nonbasic-land", "removal-destroy", "removal-land", "spot-removal", "swap-removal", "triggered-ability", "tutor-land-basic", "tutor-land-to-battlefield", "virtual-french-vanilla"]
+oracle = "Flying, first strike\nWhen this creature enters, destroy up to one target nonbasic land. Its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle."
+set = "soc"
+subtypes = ["Spirit", "Knight"]
+keywords = ["flying", "first_strike"]
+
+[cost]
+white = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, destroy up to one target nonbasic land. Its controller may search
+# their library for a basic land card, put it onto the battlefield tapped, then shuffle.
+# ponytail: the printed "may search" is modeled as fail-to-find (CR 701.19c) on the search step
+# itself, not a separate up-front opt-out — declining the search is indistinguishable from
+# searching and finding nothing.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# destroy up to one target nonbasic land.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "land", nonbasic = true } }
+
+# Its controller may search their library for a basic land card, put it onto the battlefield
+# tapped, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+tapped = true
+searcher = "target_controller"

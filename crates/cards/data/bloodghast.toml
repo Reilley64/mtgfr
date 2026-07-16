@@ -1,0 +1,41 @@
+# This creature can't block.
+# This creature has haste as long as an opponent has 10 or less life.
+# Landfall — Whenever a land you control enters, you may return this card from your graveyard to the battlefield.
+name = "Bloodghast"
+otags = ["drawback", "gains-haste", "landfall", "manaless-value", "reanimate-self", "trigger-from-graveyard"]
+oracle = "This creature can't block.\nThis creature has haste as long as an opponent has 10 or less life.\nLandfall — Whenever a land you control enters, you may return this card from your graveyard to the battlefield."
+set = "soc"
+subtypes = ["Vampire", "Spirit"]
+keywords = ["cant_block"]
+functions_in_graveyard = true
+
+[cost]
+black = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# This creature has haste as long as an opponent has 10 or less life.
+[[abilities]]
+timing = "static"
+
+# This creature has haste
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+keywords = ["haste"]
+condition = { type = "an_opponent_has_life_at_most", at_most = 10 }
+
+# Landfall — Whenever a land you control enters, you may return this card from your graveyard to
+# the battlefield.
+[[abilities]]
+timing = "permanent_enters"
+filter = "land"
+controller = "you"
+optional = true
+
+# return this card from your graveyard to the battlefield
+[[abilities.effects]]
+type = "return_this_from_graveyard_to_battlefield"

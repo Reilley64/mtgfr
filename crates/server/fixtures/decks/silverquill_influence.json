@@ -1,0 +1,345 @@
+{
+ "commander": "Killian, Decisive Mentor",
+ "cards": [
+  {
+   "name": "Ajani's Chosen",
+   "count": 1
+  },
+  {
+   "name": "Archon of Sun's Grace",
+   "count": 1
+  },
+  {
+   "name": "Armored Skyhunter",
+   "count": 1
+  },
+  {
+   "name": "Breena, the Demagogue",
+   "count": 1
+  },
+  {
+   "name": "Combat Calligrapher",
+   "count": 1
+  },
+  {
+   "name": "Defacing Duskmage",
+   "count": 1
+  },
+  {
+   "name": "Doomwake Giant",
+   "count": 1
+  },
+  {
+   "name": "Eidolon of Countless Battles",
+   "count": 1
+  },
+  {
+   "name": "Eiganjo Dynastorian",
+   "count": 1
+  },
+  {
+   "name": "Eriette of the Charmed Apple",
+   "count": 1
+  },
+  {
+   "name": "Firemane Commando",
+   "count": 1
+  },
+  {
+   "name": "Hateful Eidolon",
+   "count": 1
+  },
+  {
+   "name": "Herald of Amity",
+   "count": 1
+  },
+  {
+   "name": "Keen Duelist",
+   "count": 1
+  },
+  {
+   "name": "Killian, Ink Duelist",
+   "count": 1
+  },
+  {
+   "name": "Kor Spiritdancer",
+   "count": 1
+  },
+  {
+   "name": "Mangara, the Diplomat",
+   "count": 1
+  },
+  {
+   "name": "Nils, Discipline Enforcer",
+   "count": 1
+  },
+  {
+   "name": "Pearl-Ear, Imperial Advisor",
+   "count": 1
+  },
+  {
+   "name": "Scriv, the Obligator",
+   "count": 1
+  },
+  {
+   "name": "Shadrix Silverquill",
+   "count": 1
+  },
+  {
+   "name": "Sram, Senior Edificer",
+   "count": 1
+  },
+  {
+   "name": "Starfield Mystic",
+   "count": 1
+  },
+  {
+   "name": "Tomik, Wielder of Law",
+   "count": 1
+  },
+  {
+   "name": "Transcendent Envoy",
+   "count": 1
+  },
+  {
+   "name": "Anguished Unmaking",
+   "count": 1
+  },
+  {
+   "name": "Fracture",
+   "count": 1
+  },
+  {
+   "name": "Inkshield",
+   "count": 1
+  },
+  {
+   "name": "Vanishing Verse",
+   "count": 1
+  },
+  {
+   "name": "Promise of Loyalty",
+   "count": 1
+  },
+  {
+   "name": "Secret Rendezvous",
+   "count": 1
+  },
+  {
+   "name": "Winds of Rath",
+   "count": 1
+  },
+  {
+   "name": "Arcane Signet",
+   "count": 1
+  },
+  {
+   "name": "Fellwar Stone",
+   "count": 1
+  },
+  {
+   "name": "Sol Ring",
+   "count": 1
+  },
+  {
+   "name": "Talisman of Hierarchy",
+   "count": 1
+  },
+  {
+   "name": "Angelic Destiny",
+   "count": 1
+  },
+  {
+   "name": "Animate Dead",
+   "count": 1
+  },
+  {
+   "name": "Chains of Custody",
+   "count": 1
+  },
+  {
+   "name": "Changing Loyalty",
+   "count": 1
+  },
+  {
+   "name": "Coercive Impetus",
+   "count": 1
+  },
+  {
+   "name": "Darksteel Mutation",
+   "count": 1
+  },
+  {
+   "name": "Eldrazi Conscription",
+   "count": 1
+  },
+  {
+   "name": "Fallen Ideal",
+   "count": 1
+  },
+  {
+   "name": "Flickering Ward",
+   "count": 1
+  },
+  {
+   "name": "Forum Filibuster",
+   "count": 1
+  },
+  {
+   "name": "Ghostly Prison",
+   "count": 1
+  },
+  {
+   "name": "Ghoulish Impetus",
+   "count": 1
+  },
+  {
+   "name": "Gift of Immortality",
+   "count": 1
+  },
+  {
+   "name": "Intermediate Chirography",
+   "count": 1
+  },
+  {
+   "name": "Land Tax",
+   "count": 1
+  },
+  {
+   "name": "Martial Impetus",
+   "count": 1
+  },
+  {
+   "name": "Parasitic Impetus",
+   "count": 1
+  },
+  {
+   "name": "Raffine's Guidance",
+   "count": 1
+  },
+  {
+   "name": "Redemption Arc",
+   "count": 1
+  },
+  {
+   "name": "Sage's Reverie",
+   "count": 1
+  },
+  {
+   "name": "Screams from Within",
+   "count": 1
+  },
+  {
+   "name": "Sentinel's Eyes",
+   "count": 1
+  },
+  {
+   "name": "Sheltered by Ghosts",
+   "count": 1
+  },
+  {
+   "name": "Shielded by Faith",
+   "count": 1
+  },
+  {
+   "name": "Songbirds' Blessing",
+   "count": 1
+  },
+  {
+   "name": "Spirit Mantle",
+   "count": 1
+  },
+  {
+   "name": "Arcane Lighthouse",
+   "count": 1
+  },
+  {
+   "name": "Bojuka Bog",
+   "count": 1
+  },
+  {
+   "name": "Caves of Koilos",
+   "count": 1
+  },
+  {
+   "name": "Command Tower",
+   "count": 1
+  },
+  {
+   "name": "Desolate Mire",
+   "count": 1
+  },
+  {
+   "name": "Eclipsed Steppe",
+   "count": 1
+  },
+  {
+   "name": "Exotic Orchard",
+   "count": 1
+  },
+  {
+   "name": "Fabled Passage",
+   "count": 1
+  },
+  {
+   "name": "Fetid Heath",
+   "count": 1
+  },
+  {
+   "name": "Forum of Amity",
+   "count": 1
+  },
+  {
+   "name": "Isolated Chapel",
+   "count": 1
+  },
+  {
+   "name": "Path of Ancestry",
+   "count": 1
+  },
+  {
+   "name": "Shineshadow Snarl",
+   "count": 1
+  },
+  {
+   "name": "Silverquill Campus",
+   "count": 1
+  },
+  {
+   "name": "Study Hall",
+   "count": 1
+  },
+  {
+   "name": "Sunlit Marsh",
+   "count": 1
+  },
+  {
+   "name": "Temple of Silence",
+   "count": 1
+  },
+  {
+   "name": "Terramorphic Expanse",
+   "count": 1
+  },
+  {
+   "name": "Turbulent Moor",
+   "count": 1
+  },
+  {
+   "name": "Umbral Expanse",
+   "count": 1
+  },
+  {
+   "name": "War Room",
+   "count": 1
+  },
+  {
+   "name": "Plains",
+   "count": 8
+  },
+  {
+   "name": "Swamp",
+   "count": 8
+  }
+ ]
+}

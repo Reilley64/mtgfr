@@ -1,0 +1,27 @@
+# Sacrifice this creature: It deals 1 damage to any target.
+# A well-known self-sacrifice creature (not in the Witherbloom Pestilence list) standing in to
+# exercise a "{cost}, Sacrifice this: <effect>" cost with an already-supported effect (damage).
+name = "Mogg Fanatic"
+otags = ["activated-ability", "bombard-self", "burn-any", "martyr", "spot-removal"]
+oracle = "Sacrifice this creature: It deals 1 damage to any target."
+set = "ema"
+subtypes = ["Goblin"]
+
+[cost]
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Sacrifice this creature: It deals 1 damage to any target.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# It deals 1 damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 1
+target = "any"

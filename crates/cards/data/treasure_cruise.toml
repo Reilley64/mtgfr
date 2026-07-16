@@ -1,0 +1,24 @@
+# Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)
+# Draw three cards.
+# Treasure Cruise: {7}{U} Sorcery. "Delve. Draw three cards."
+name = "Treasure Cruise"
+otags = ["burst-draw", "delve", "hand-positive", "pure-draw"]
+oracle = "Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)\nDraw three cards."
+set = "soc"
+delve = true
+
+[cost]
+generic = 7
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Draw three cards.
+[[abilities]]
+timing = "spell"
+
+# Draw three cards.
+[[abilities.effects]]
+type = "draw_cards"
+count = 3

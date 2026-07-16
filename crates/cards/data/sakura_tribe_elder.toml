@@ -1,0 +1,33 @@
+# Sacrifice this creature: Search your library for a basic land card, put that card onto the battlefield tapped, then
+# shuffle.
+# Sakura-Tribe Elder (soc). Real oracle text:
+#   "Sacrifice this creature: Search your library for a basic land card, put that card onto
+#    the battlefield tapped, then shuffle."
+name = "Sakura-Tribe Elder"
+otags = ["activated-ability", "land-ramp", "martyr", "tutor-land-basic", "tutor-land-to-battlefield"]
+oracle = "Sacrifice this creature: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."
+set = "soc"
+subtypes = ["Snake", "Shaman"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Sacrifice this creature: Search your library for a basic land card, put that card onto the
+# battlefield tapped, then shuffle.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Search your library for a basic land card, put that card onto the battlefield tapped, then
+# shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+tapped = true

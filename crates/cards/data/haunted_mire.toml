@@ -1,0 +1,12 @@
+# ({T}: Add {B} or {G}.)
+# This land enters tapped.
+# Haunted Mire (soc): "({T}: Add {B} or {G}.) This land enters tapped."
+name = "Haunted Mire"
+otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {B} or {G}.)\nThis land enters tapped."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["black", "green"]

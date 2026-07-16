@@ -1,0 +1,40 @@
+---
+description: Ban Tailwind @apply — use SolidJS UI + cva beta variants
+globs: client/**/*.{tsx,ts,css}
+alwaysApply: false
+---
+
+# No Tailwind `@apply`
+
+Do **not** use Tailwind's `@apply` directive. DESIGN.md §5 surfaces are Solid components under `client/src/ui/`. Variants use [cva beta](https://cva.style/beta) (`cva@1.0.0-beta.*`) via `~/ui/cva`.
+
+## Do
+
+- Prefer `<Button>`, `<Field>`, `<Panel>`, `<Modal>`, `<Hud>`, `<ListRow>`, `<Felt>` from `~/ui`
+- Colocate variant recipes next to the component (see `button.tsx` + `cva({...})`)
+- Inline one-off chrome at the call site with `cn(...)` / JSX `class` — do not re-export shared `*Class` bags
+- Put placement, size, and overrides in the JSX `class` prop
+
+## Don't
+
+```css
+/* ❌ BAD */
+.btn {
+  @apply cursor-pointer rounded-control bg-llanowar;
+}
+```
+
+```tsx
+/* ❌ BAD — inventing a parallel class vocabulary */
+export const btnClass = "…";
+<button class={btnClass}>Save</button>
+```
+
+```tsx
+/* ✅ GOOD */
+import { Button } from "~/ui";
+<Button type="button">Save</Button>
+<Button variant="game-quiet" class="ml-auto">Flip</Button>
+```
+
+New surfaces: add a Solid component (and `cva` when it has variants) under `client/src/ui/` — never `@apply` in `global.css`.

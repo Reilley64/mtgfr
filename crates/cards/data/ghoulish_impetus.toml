@@ -1,0 +1,37 @@
+# Enchant creature
+# Enchanted creature gets +1/+1, has deathtouch, and is goaded. (It attacks each combat if able and attacks a player
+# other than you if able.)
+# When enchanted creature dies, return this card to the battlefield at the beginning of the next end step.
+name = "Ghoulish Impetus"
+otags = ["cheat-death-self", "death-trigger", "delayed-trigger", "force-attacker", "gives-deathtouch"]
+oracle = "Enchant creature\nEnchanted creature gets +1/+1, has deathtouch, and is goaded. (It attacks each combat if able and attacks a player other than you if able.)\nWhen enchanted creature dies, return this card to the battlefield at the beginning of the next end step."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +1/+1, has deathtouch, and is goaded.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +1/+1, has deathtouch, and is goaded
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 1
+toughness = 1
+keywords = ["deathtouch"]
+goad = true
+
+# When enchanted creature dies, return this card to the battlefield at the beginning of the next
+# end step.
+[[abilities]]
+timing = "enchanted_creature_dies"
+
+# return this card to the battlefield at the beginning of the next end step
+[[abilities.effects]]
+type = "schedule_return_this_aura_from_graveyard_attached_to_chosen_host"

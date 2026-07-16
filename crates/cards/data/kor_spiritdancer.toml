@@ -1,0 +1,55 @@
+# This creature gets +2/+2 for each Aura attached to it.
+# Whenever you cast an Aura spell, you may draw a card.
+# Kor Spiritdancer (soc). Real oracle text:
+#   "This creature gets +2/+2 for each Aura attached to it.
+#    Whenever you cast an Aura spell, you may draw a card."
+name = "Kor Spiritdancer"
+otags = ["cast-trigger-you", "color-break", "draw-engine", "enchantment-engine", "repeatable-pure-draw", "uril-ability"]
+oracle = "This creature gets +2/+2 for each Aura attached to it.\nWhenever you cast an Aura spell, you may draw a card."
+set = "soc"
+subtypes = ["Kor", "Wizard"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 2
+
+# ponytail: Amounts carry no per-unit coefficient, so the +2/+2-per-Aura is modeled as two
+# summed +1/+1-per-Aura self-statics (the pool's idiom — eidolon_of_countless_battles does the
+# same for a doubled anthem).
+# This creature gets +2/+2 for each Aura attached to it.
+[[abilities]]
+timing = "static"
+
+# This creature gets +2/+2 for each Aura attached to it.
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+power = { auras_attached_to_source = {} }
+toughness = { auras_attached_to_source = {} }
+
+# This creature gets +2/+2 for each Aura attached to it.
+[[abilities]]
+timing = "static"
+
+# This creature gets +2/+2 for each Aura attached to it.
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+power = { auras_attached_to_source = {} }
+toughness = { auras_attached_to_source = {} }
+
+# Whenever you cast an Aura spell, you may draw a card.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "aura"
+optional = true
+
+# you may draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

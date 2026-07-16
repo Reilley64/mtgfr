@@ -1,0 +1,48 @@
+# Whenever an enchantment you control enters, tap up to one target creature and goad it. (Until your next turn, that
+# creature attacks each combat if able and attacks a player other than you if able.)
+# Whenever one or more creatures that are enchanted by an Aura you control attack, draw a card.
+name = "Killian, Decisive Mentor"
+otags = ["attack-trigger", "attacking-matters", "cycle-soc-face-commander", "draw-engine", "enchantmentfall", "force-attacker", "repeatable-crime", "repeatable-pure-draw", "synergy-aura", "tapper-creature"]
+oracle = "Whenever an enchantment you control enters, tap up to one target creature and goad it. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)\nWhenever one or more creatures that are enchanted by an Aura you control attack, draw a card."
+set = "soc"
+subtypes = ["Human", "Warlock"]
+legendary = true
+
+[cost]
+generic = 1
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Whenever an enchantment you control enters, tap up to one target creature and goad it. (Until
+# your next turn, that creature attacks each combat if able and attacks a player other than you if
+# able.)
+[[abilities]]
+timing = "permanent_enters"
+filter = "enchantment"
+controller = "you"
+
+# tap up to one target creature
+[[abilities.effects]]
+type = "tap_target"
+target = "creature"
+count = { max = 1 }
+
+# goad it.
+[[abilities.effects]]
+type = "goad_target"
+target = "creature"
+
+# Whenever one or more creatures that are enchanted by an Aura you control attack, draw a card.
+[[abilities]]
+timing = "creature_enchanted_by_your_aura_attacks"
+at_least = 1
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

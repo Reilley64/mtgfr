@@ -1,0 +1,23 @@
+# Add {R} for each tapped land your opponents control.
+# Mana Geyser {3}{R}{R} — sorcery. "Add {R} for each tapped land your opponents control."
+name = "Mana Geyser"
+otags = ["adds-multiple-mana", "hate-tapped", "ritual"]
+oracle = "Add {R} for each tapped land your opponents control."
+set = "soc"
+
+[cost]
+generic = 3
+red = 2
+
+[kind]
+type = "sorcery"
+
+# Add {R} for each tapped land your opponents control.
+[[abilities]]
+timing = "spell"
+
+# Add {R} for each tapped land an opponent controls.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["red"]
+repeat = { per_permanent = { types = "land", controller = "opponent", tapped = true } }

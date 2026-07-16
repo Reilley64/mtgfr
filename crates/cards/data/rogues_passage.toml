@@ -1,0 +1,37 @@
+# {T}: Add {C}.
+# {4}, {T}: Target creature can't be blocked this turn.
+# Rogue's Passage (SOC): "{T}: Add {C}. {4}, {T}: Target creature can't be blocked this turn."
+name = "Rogue's Passage"
+otags = ["activated-ability", "gives-unblockable", "mana-sink", "repeatable-crime", "utility-land"]
+oracle = "{T}: Add {C}.\n{4}, {T}: Target creature can't be blocked this turn."
+set = "soc"
+
+[kind]
+type = "land"
+produces = "colorless"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {4}, {T}: Target creature can't be blocked this turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+generic = 4
+
+# Target creature can't be blocked this turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = "creature"
+keywords = ["unblockable"]

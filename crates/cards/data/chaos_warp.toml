@@ -1,0 +1,24 @@
+# The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a
+# permanent card, they put it onto the battlefield.
+name = "Chaos Warp"
+otags = ["color-break", "cost-ignorer", "drawback", "polymorph", "removal-permanent", "removal-tuck", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
+oracle = "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield."
+set = "msc"
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "instant"
+
+# The owner of target permanent shuffles it into their library, then reveals the top card of
+# their library. If it's a permanent card, they put it onto the battlefield.
+[[abilities]]
+timing = "spell"
+
+# The owner of target permanent shuffles it into their library, then reveals the top card of
+# their library. If it's a permanent card, they put it onto the battlefield.
+[[abilities.effects]]
+type = "shuffle_target_permanent_into_library_then_reveal"
+target = { permanent = {} }

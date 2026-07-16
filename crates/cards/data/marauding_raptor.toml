@@ -1,0 +1,46 @@
+# Creature spells you cast cost {1} less to cast.
+# Whenever another creature you control enters, this creature deals 2 damage to it. If a Dinosaur is dealt damage this
+# way, this creature gets +2/+0 until end of turn.
+name = "Marauding Raptor"
+otags = ["cost-reducer-creature", "creaturefall", "triggered-ability", "typal-dinosaur"]
+oracle = "Creature spells you cast cost {1} less to cast.\nWhenever another creature you control enters, this creature deals 2 damage to it. If a Dinosaur is dealt damage this way, this creature gets +2/+0 until end of turn."
+set = "lcc"
+subtypes = ["Dinosaur"]
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Creature spells you cast cost {1} less to cast.
+[[abilities]]
+timing = "static"
+
+# Creature spells you cast cost {1} less to cast.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = 1
+filter = "creature"
+
+# Whenever another creature you control enters, this creature deals 2 damage to it.
+[[abilities]]
+timing = "permanent_enters"
+filter = "creature"
+controller = "you"
+
+# this creature deals 2 damage to it. If a Dinosaur is dealt damage this way, this creature
+# gets +2/+0 until end of turn.
+[[abilities.effects]]
+type = "deal_damage_to_entering_permanent"
+amount = 2
+then_if_subtype = ["Dinosaur"]
+
+# this creature gets +2/+0 until end of turn.
+[[abilities.effects.then]]
+type = "pump_self_until_end_of_turn"
+power = 2
+toughness = 0

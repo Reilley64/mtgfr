@@ -1,0 +1,51 @@
+# Choose one —
+# • Surveil 2, then draw a card.
+# • Prismari Charm deals 1 damage to each of one or two targets.
+# • Return target nonland permanent to its owner's hand.
+# Prismari Charm {U}{R} — a modal "choose one" instant (CR 700.2).
+name = "Prismari Charm"
+otags = ["burn-any", "cantrip", "cycle-sos-charm", "hand-neutral", "multi-removal", "multiple-targets", "removal-bounce", "removal-nonland", "single-target-instant-sorcery", "spot-removal", "surveil"]
+oracle = "Choose one —\n• Surveil 2, then draw a card.\n• Prismari Charm deals 1 damage to each of one or two targets.\n• Return target nonland permanent to its owner's hand."
+set = "sos"
+modal = true
+
+[cost]
+blue = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Surveil 2, then draw a card." (surveil pauses, then the draw resumes)
+[[abilities]]
+timing = "spell"
+
+# Surveil 2
+[[abilities.effects]]
+type = "surveil"
+count = 2
+
+# then draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# Mode 1 — "Prismari Charm deals 1 damage to each of one or two targets."
+[[abilities]]
+timing = "spell"
+
+# Prismari Charm deals 1 damage to each of one or two targets.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 1
+target = "any"
+count = { min = 1, max = 2 }
+
+# Mode 2 — "Return target nonland permanent to its owner's hand."
+[[abilities]]
+timing = "spell"
+
+# Return target nonland permanent to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = { permanent = "nonland" }

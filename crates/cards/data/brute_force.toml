@@ -1,0 +1,22 @@
+# Target creature gets +3/+3 until end of turn.
+name = "Brute Force"
+otags = ["enlarge", "giant-growth-with-set-mechanic", "single-target-instant-sorcery"]
+oracle = "Target creature gets +3/+3 until end of turn."
+set = "tsr"
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# Target creature gets +3/+3 until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Target creature gets +3/+3 until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 3
+toughness = 3
+target = "creature"

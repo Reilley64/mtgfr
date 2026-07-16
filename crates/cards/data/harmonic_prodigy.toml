@@ -1,0 +1,30 @@
+# Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)
+# If a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers an additional time.
+# Harmonic Prodigy (SOC): {1}{R} 1/3 Human Wizard.
+name = "Harmonic Prodigy"
+otags = ["cast-trigger-you", "noncreature-typal", "synergy-noncreature", "trigger-doubler", "typal-coupling", "typal-shaman", "typal-wizard"]
+oracle = "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nIf a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers an additional time."
+set = "soc"
+subtypes = ["Human", "Wizard"]
+keywords = ["prowess"]
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 3
+
+# If a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers
+# an additional time.
+[[abilities]]
+timing = "static"
+
+# If a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers
+# an additional time.
+[[abilities.effects]]
+type = "trigger_doubling_static"
+source_subtypes = ["Shaman", "Wizard"]
+source_other = true

@@ -1,0 +1,33 @@
+name = "Furygale Flocking"
+otags = ["affinity-for-spells", "alliteration", "multiple-bodies", "per-player"]
+oracle = "This spell costs {1} less to cast for each instant and sorcery card in your graveyard.\nFor each opponent, create two 3/3 blue and red Elemental creature tokens with flying that attack that opponent this turn if able. They gain haste until end of turn."
+set = "soc"
+
+[cost]
+generic = 8
+red = 2
+reduce_own_generic = "instant_or_sorcery_cards_in_your_graveyard"
+
+[kind]
+type = "sorcery"
+
+# For each opponent, create two 3/3 blue and red Elemental creature tokens with flying that attack
+# that opponent this turn if able. They gain haste until end of turn.
+[[abilities]]
+timing = "spell"
+
+# create two 3/3 blue and red Elemental creature tokens with flying that attack that opponent this
+# turn if able
+[[abilities.effects]]
+type = "create_token"
+count = 2
+controller = "one_per_opponent"
+must_attack_defender = true
+
+[abilities.effects.token]
+name = "Elemental"
+power = 3
+toughness = 3
+keywords = ["flying", "haste"]
+colors = ["blue", "red"]
+subtypes = ["Elemental"]

@@ -1,0 +1,43 @@
+# Choose one. If you control a commander as you cast this spell, you may choose both instead.
+# • Move all counters from target nonland permanent you control onto another target nonland permanent you control.
+# • Remove all counters from target nonland permanent you control. Draw a card for each counter removed this way.
+# Nexus Mentality {3}{U} — a modal instant (soc).
+name = "Nexus Mentality"
+otags = ["burst-draw", "counter-fuel-any", "hand-positive", "modal", "move-counters", "multiple-targets", "pure-draw", "single-target-instant-sorcery", "synergy-commander"]
+oracle = "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Move all counters from target nonland permanent you control onto another target nonland permanent you control.\n• Remove all counters from target nonland permanent you control. Draw a card for each counter removed this way."
+set = "soc"
+modal = true
+choose = 1
+choose_max = 2
+choose_max_if_commander = true
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Move all counters from target nonland permanent you control onto another target
+# nonland permanent you control."
+[[abilities]]
+timing = "spell"
+
+# Move all counters from target nonland permanent you control onto another target nonland
+# permanent you control.
+[[abilities.effects]]
+type = "move_counters"
+target = { permanent = { types = "nonland", controller = "you" } }
+to_filter = { types = "nonland", controller = "you" }
+all_kinds = true
+
+# Mode 1 — "Remove all counters from target nonland permanent you control. Draw a card for each
+# counter removed this way."
+[[abilities]]
+timing = "spell"
+
+# Remove all counters from target nonland permanent you control. Draw a card for each counter
+# removed this way.
+[[abilities.effects]]
+type = "remove_all_counters_then_draw"
+target = { permanent = { types = "nonland", controller = "you" } }

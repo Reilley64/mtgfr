@@ -1,0 +1,47 @@
+# Flying, vigilance
+# When Ao dies, choose one —
+# • Look at the top seven cards of your library. Put any number of nonland permanent cards with total mana value 4 or
+# less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.
+# • Put two +1/+1 counters on each permanent you control that's a creature or Vehicle.
+name = "Ao, the Dawn Sky"
+otags = ["cycle-neo-dragon", "death-trigger-self", "evasion", "gives-pp-counters-to-all", "impulse-nonland", "impulse-onto-battlefield", "modal", "synergy-vehicle"]
+oracle = "Flying, vigilance\nWhen Ao dies, choose one —\n• Look at the top seven cards of your library. Put any number of nonland permanent cards with total mana value 4 or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.\n• Put two +1/+1 counters on each permanent you control that's a creature or Vehicle."
+set = "soc"
+subtypes = ["Dragon", "Spirit"]
+legendary = true
+keywords = ["flying", "vigilance"]
+
+[cost]
+generic = 3
+white = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 4
+
+# When Ao dies, choose one —
+# • Look at the top seven cards of your library. Put any number of nonland permanent cards with
+#   total mana value 4 or less from among them onto the battlefield. Put the rest on the bottom of
+#   your library in a random order.
+# • Put two +1/+1 counters on each permanent you control that's a creature or Vehicle.
+[[abilities]]
+timing = "dies"
+
+# choose one —
+# • Look at the top seven cards of your library. Put any number of nonland permanent cards with
+#   total mana value 4 or less from among them onto the battlefield. Put the rest on the bottom of
+#   your library in a random order.
+# • Put two +1/+1 counters on each permanent you control that's a creature or Vehicle.
+# ponytail: "put the rest on the bottom of your library in a random order" — the bottom of the
+# library is hidden, so the order among bottomed cards is unobservable; the deterministic
+# library-order stand-in every dig in this pool uses stands in for "random" (the pure engine has
+# no rand). The per-card filter caps each at mv 4 (any card over 4 alone busts the total-4 budget),
+# and mv_budget = 4 enforces the printed "total mana value 4 or less."
+# ponytail: "creature or Vehicle" is trimmed to "creature" — no Vehicle card type exists in the pool.
+[[abilities.effects]]
+type = "choose_one"
+modes = [
+    { type = "look_at_top", count = 7, filter = { nonland_permanent_with_mana_value_at_most = 4 }, up_to = 7, min = 0, dest = "battlefield", rest = "bottom", mv_budget = 4 },
+    { type = "put_counters_each", filter = { types = "creature", controller = "you" }, count = 2 },
+]

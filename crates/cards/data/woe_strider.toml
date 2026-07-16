@@ -1,0 +1,54 @@
+# When this creature enters, create a 0/1 white Goat creature token.
+# Sacrifice another creature: Scry 1.
+# Escape—{3}{B}{B}, Exile four other cards from your graveyard. (You may cast this card from your graveyard for its
+# escape cost.)
+# This creature escapes with two +1/+1 counters on it.
+name = "Woe Strider"
+otags = ["activated-ability", "castable-from-graveyard", "enters-in-company", "free-sacrifice-outlet", "gains-pp-counters", "graveyard-fuel", "more-expensive-than-mv", "out-of-color-token", "reanimate-cast", "reanimate-self", "sacrifice-outlet-creature", "scry"]
+oracle = "When this creature enters, create a 0/1 white Goat creature token.\nSacrifice another creature: Scry 1.\nEscape—{3}{B}{B}, Exile four other cards from your graveyard. (You may cast this card from your graveyard for its escape cost.)\nThis creature escapes with two +1/+1 counters on it."
+set = "soc"
+subtypes = ["Horror"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# Escape—{3}{B}{B}, Exile four other cards from your graveyard. Escapes with two +1/+1 counters.
+[escape]
+exile = 4
+plus_one_plus_one_counters = 2
+
+[escape.cost]
+generic = 3
+black = 2
+
+# When this creature enters, create a 0/1 white Goat creature token.
+[[abilities]]
+timing = "etb"
+
+# create a 0/1 white Goat creature token.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Goat"
+power = 0
+toughness = 1
+colors = ["white"]
+subtypes = ["Goat"]
+
+# Sacrifice another creature: Scry 1.
+[[abilities]]
+timing = "activated"
+sacrifice = { creature = { other = true } }
+
+# Scry 1.
+[[abilities.effects]]
+type = "scry"
+count = 1

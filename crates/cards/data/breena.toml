@@ -1,0 +1,39 @@
+# Flying
+# Whenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that
+# attacking player draws a card and you put two +1/+1 counters on a creature you control.
+# Silverquill Influence card (Secrets of Strixhaven). Real oracle text:
+#   "Flying
+#    Whenever a player attacks one of your opponents, if that opponent has more life than
+#    another of your opponents, that attacking player draws a card and you put two +1/+1
+#    counters on a creature you control."
+name = "Breena, the Demagogue"
+otags = ["attack-trigger", "attacking-opponents-matters", "bribery", "cycle-c21-face-commander", "draw-engine", "evasion", "gives-pp-counters", "hand-positive", "intervening-if-clause", "multiplayer", "pseudo-dethrone", "repeatable-pp-counters"]
+oracle = "Flying\nWhenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature you control."
+set = "soc"
+subtypes = ["Bird", "Warlock"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 1
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 3
+
+# Whenever a player attacks one of your opponents, if that opponent has more life than another of
+# your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature
+# you control.
+[[abilities]]
+timing = "player_attacks_your_opponent"
+
+[abilities.condition]
+type = "attacked_opponent_has_more_life_than_another_opponent"
+
+# that attacking player draws a card and you put two +1/+1 counters on a creature you control.
+[[abilities.effects]]
+type = "attacker_draws_controller_counters"
+counters = 2

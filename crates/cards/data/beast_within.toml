@@ -1,0 +1,29 @@
+# Destroy target permanent. Its controller creates a 3/3 green Beast creature token.
+# Beast Within (msc). Real oracle text:
+#   "Destroy target permanent. Its controller creates a 3/3 green Beast creature token."
+name = "Beast Within"
+otags = ["color-break", "donate-token", "removal-destroy", "removal-permanent", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
+oracle = "Destroy target permanent. Its controller creates a 3/3 green Beast creature token."
+set = "msc"
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "instant"
+
+# Destroy target permanent. Its controller creates a 3/3 green Beast creature token.
+[[abilities]]
+timing = "spell"
+
+# Destroy target permanent.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = {} }
+
+# Its controller creates a 3/3 green Beast creature token.
+[[abilities.effects]]
+type = "create_token"
+controller = "target_controller"
+token = { name = "Beast", power = 3, toughness = 3, colors = ["green"], subtypes = ["Beast"] }

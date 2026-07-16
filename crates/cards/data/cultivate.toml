@@ -1,0 +1,30 @@
+# Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the
+# other into your hand, then shuffle.
+# Cultivate {2}{G} — sorcery. "Search your library for up to two basic land cards, reveal
+# those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
+name = "Cultivate"
+otags = ["land-ramp", "single-english-word-name", "tutor-land-basic", "tutor-land-to-battlefield", "tutor-to-hand"]
+oracle = "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
+set = "msc"
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Search your library for up to two basic land cards, reveal those cards, put one onto the
+# battlefield tapped and the other into your hand, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# search your library for up to two basic land cards ... put one onto the battlefield tapped and
+# the other into your hand, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+count = 2
+to_zone = "battlefield"
+tapped = true
+overflow = "hand"

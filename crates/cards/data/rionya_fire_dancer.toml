@@ -1,0 +1,34 @@
+# At the beginning of combat on your turn, create X tokens that are copies of another target creature you control, where
+# X is one plus the number of instant and sorcery spells you've cast this turn. They gain haste. Exile them at the
+# beginning of the next end step.
+name = "Rionya, Fire Dancer"
+otags = ["copy-creature", "cycle-c21-mono-legend", "delayed-trigger", "repeatable-creature-tokens", "storm-count-matters", "synergy-instant", "synergy-sorcery", "temporary-token"]
+oracle = "At the beginning of combat on your turn, create X tokens that are copies of another target creature you control, where X is one plus the number of instant and sorcery spells you've cast this turn. They gain haste. Exile them at the beginning of the next end step."
+set = "soc"
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+generic = 3
+red = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# At the beginning of combat on your turn, create X tokens that are copies of another target
+# creature you control, where X is one plus the number of instant and sorcery spells you've
+# cast this turn. They gain haste. Exile them at the beginning of the next end step.
+[[abilities]]
+timing = "begin_combat"
+
+# create X tokens that are copies of another target creature you control, where X is one plus
+# the number of instant and sorcery spells you've cast this turn. They gain haste. Exile them
+# at the beginning of the next end step.
+[[abilities.effects]]
+type = "create_token_copy"
+target = { permanent = { types = "creature", controller = "you", other = true } }
+count = "one_plus_instants_and_sorceries_cast_this_turn"
+haste = true
+sacrifice_at_next_end_step = true

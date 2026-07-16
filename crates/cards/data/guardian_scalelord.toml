@@ -1,0 +1,46 @@
+# Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the
+# following abilities until end of turn.)
+# Flying
+# Whenever this creature attacks, return target nonland permanent card with mana value X or less from your graveyard to
+# the battlefield, where X is this creature's power.
+name = "Guardian Scalelord"
+otags = ["attack-trigger", "attacking-matters", "attacking-matters-self", "evasion", "gives-flying", "gives-pp-counters", "power-matters-self", "reanimate-nonland"]
+oracle = "Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another creature, it gains the following abilities until end of turn.)\nFlying\nWhenever this creature attacks, return target nonland permanent card with mana value X or less from your graveyard to the battlefield, where X is this creature's power."
+set = "soc"
+subtypes = ["Dragon"]
+keywords = ["flying"]
+
+[cost]
+generic = 4
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# Backup 1 (When this creature enters, put a +1/+1 counter on target creature. If that's another
+# creature, it gains the following abilities until end of turn.)
+[[abilities]]
+timing = "etb"
+
+# put a +1/+1 counter on target creature
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "creature"
+
+# If that's another creature, it gains the following abilities until end of turn.
+[[abilities.effects]]
+type = "grant_source_abilities_until_end_of_turn"
+
+# Whenever this creature attacks, return target nonland permanent card with mana value X or less
+# from your graveyard to the battlefield, where X is this creature's power.
+[[abilities]]
+timing = "attacks"
+
+# return target nonland permanent card with mana value X or less from your graveyard to the
+# battlefield, where X is this creature's power
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = "nonland_permanent_with_mana_value_at_most_source_power" } }

@@ -1,0 +1,14 @@
+# (no rules text — vanilla creature; printed card is "Grizzly Bears")
+name = "Grizzly Bear"
+otags = ["magic-term-name", "meme", "real-life-animal-name", "type-errata-summon-creature"]
+set = "10e"
+subtypes = ["Bear"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

@@ -1,0 +1,32 @@
+# Whenever you cast an instant or sorcery spell, Muddle becomes a copy of up to one target nonlegendary creature you
+# control until end of turn, except it has myriad. (Whenever it attacks, for each opponent other than defending player,
+# you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens
+# at end of combat.)
+name = "Muddle, the Ever-Changing"
+otags = ["cast-trigger-you", "copy-creature", "cycle-soc-alt-commander", "gains-myriad", "synergy-instant", "synergy-sorcery", "unique-type-line"]
+oracle = "Whenever you cast an instant or sorcery spell, Muddle becomes a copy of up to one target nonlegendary creature you control until end of turn, except it has myriad. (Whenever it attacks, for each opponent other than defending player, you may create a token copy that's tapped and attacking that player or a planeswalker they control. Exile the tokens at end of combat.)"
+set = "soc"
+subtypes = ["Elemental", "Otter", "Shapeshifter"]
+legendary = true
+
+[cost]
+generic = 2
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Whenever you cast an instant or sorcery spell, Muddle becomes a copy of up to one target
+# nonlegendary creature you control until end of turn, except it has myriad.
+[[abilities]]
+timing = "magecraft"
+optional = true
+
+# Muddle becomes a copy of up to one target nonlegendary creature you control until end of
+# turn, except it has myriad.
+[[abilities.effects]]
+type = "become_copy_of_target_creature_gaining_myriad"
+target = { permanent = { types = "creature", controller = "you", other = true, nonlegendary = true } }

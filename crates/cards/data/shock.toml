@@ -1,0 +1,21 @@
+# Shock deals 2 damage to any target.
+name = "Shock"
+otags = ["burn-any", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Shock deals 2 damage to any target."
+set = "msc"
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+# Shock deals 2 damage to any target.
+[[abilities]]
+timing = "spell"
+
+# Shock deals 2 damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 2
+target = "any"

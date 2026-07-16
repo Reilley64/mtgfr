@@ -1,0 +1,26 @@
+# Reach, trample, protection from multicolored
+# This creature enters with X +1/+1 counters on it.
+name = "Stonecoil Serpent"
+otags = ["alliteration", "evasion", "gains-pp-counters", "hate-multicolor", "misnomer", "virtual-french-vanilla"]
+oracle = "Reach, trample, protection from multicolored\nThis creature enters with X +1/+1 counters on it."
+set = "soc"
+subtypes = ["Snake"]
+keywords = ["reach", "trample", { protection = "multicolored" }]
+
+[cost]
+x = true
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+also = ["artifact"]
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"

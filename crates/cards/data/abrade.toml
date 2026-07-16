@@ -1,0 +1,35 @@
+# Choose one —
+# • Abrade deals 3 damage to target creature.
+# • Destroy target artifact.
+# Abrade {1}{R} — a modal "choose one" instant (CR 700.2).
+name = "Abrade"
+otags = ["cycle-hou-modal-spell", "modal", "quote-name", "removal-destroy", "single-english-word-name", "single-target-instant-sorcery", "spot-removal", "abrade"]
+oracle = "Choose one —\n• Abrade deals 3 damage to target creature.\n• Destroy target artifact."
+set = "soc"
+modal = true
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Mode 0 — "Abrade deals 3 damage to target creature."
+[[abilities]]
+timing = "spell"
+
+# Abrade deals 3 damage to target creature.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 3
+target = "creature"
+
+# Mode 1 — "Destroy target artifact."
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = "artifact" }

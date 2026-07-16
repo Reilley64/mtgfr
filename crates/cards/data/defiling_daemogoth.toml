@@ -1,0 +1,38 @@
+# Menace
+# Whenever a creature you control deals combat damage to a player, you gain 1 life.
+# At the beginning of your end step, each opponent loses X life, where X is the amount of life you gained this turn.
+name = "Defiling Daemogoth"
+otags = ["alliteration", "evasion", "group-slug", "lifegain-to-damage", "opponent-loses-life", "repeatable-lifegain", "saboteur", "triggered-ability", "unnoted-tracked-information"]
+oracle = "Menace\nWhenever a creature you control deals combat damage to a player, you gain 1 life.\nAt the beginning of your end step, each opponent loses X life, where X is the amount of life you gained this turn."
+set = "soc"
+subtypes = ["Demon"]
+keywords = ["menace"]
+
+[cost]
+generic = 3
+black = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 4
+
+# Whenever a creature you control deals combat damage to a player, you gain 1 life.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "your_creatures"
+
+# you gain 1 life
+[[abilities.effects]]
+type = "gain_life"
+amount = 1
+
+# At the beginning of your end step, each opponent loses X life, where X is the amount of life you
+# gained this turn.
+[[abilities]]
+timing = "end_step"
+
+# each opponent loses X life, where X is the amount of life you gained this turn
+[[abilities.effects]]
+type = "each_opponent_loses_life"
+amount = "life_gained_this_turn"
