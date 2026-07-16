@@ -638,6 +638,9 @@ pub enum PendingChoiceView {
     /// This player may put one hand land (`items`, private to them) onto the battlefield, or
     /// decline.
     PutLandFromHand { player: u8, items: Vec<ChoiceItem> },
+    /// This player may cast one hand creature (`items`, private to them — mana value at most the
+    /// paid `{X}`) face down as a 2/2 without paying its mana cost (Illusionary Mask), or decline.
+    CastCreatureFaceDown { player: u8, items: Vec<ChoiceItem> },
     /// This player may put one card exiled with `source` (`items`, public — exile-zone) into its
     /// owner's graveyard, or decline.
     ChooseExiledWithCard {

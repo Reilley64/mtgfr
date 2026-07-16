@@ -329,6 +329,9 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             keep_tapped,
         } => game.answer_decline_untap(player, keep_tapped),
         Intent::PutLandFromHand { player, choice } => game.put_land_from_hand(player, choice),
+        Intent::CastCreatureFaceDown { player, choice } => {
+            game.cast_creature_face_down(player, choice)
+        }
         Intent::ReturnLandOrSacrifice { player, land } => {
             game.return_land_or_sacrifice(player, land)
         }

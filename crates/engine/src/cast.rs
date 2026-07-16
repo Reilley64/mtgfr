@@ -1500,9 +1500,28 @@ impl Game {
         let mut events = Vec::new();
         self.settle_payment(player, face_down_cost, None, None, &mut events)?;
         let spent_colors = spent_colors_from(&events);
+        self.push_face_down_spell_cast(player, card, spent_colors, &mut events);
+        // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
+        self.consecutive_passes = 0;
+        self.priority = player;
+        Ok(events)
+    }
+
+    /// Put `card` onto the stack as a face-down 2/2 creature spell (CR 708.2) controlled by
+    /// `player`, `spent_colors` recording which colors (if any) were spent casting it. Shared by
+    /// morph's flat `{3}` cast ([`Game::cast_face_down`]) and Illusionary Mask's free `{X}` cast
+    /// ([`Game::cast_creature_face_down`]) — the two differ only in what (if anything) was paid,
+    /// so neither the priority reset nor the payment lives here.
+    pub(crate) fn push_face_down_spell_cast(
+        &mut self,
+        player: PlayerId,
+        card: ObjectId,
+        spent_colors: [bool; Color::COUNT],
+        events: &mut Vec<Event>,
+    ) {
         let spell = self.next_object_id();
         self.push_apply(
-            &mut events,
+            events,
             Event::SpellCast {
                 spell,
                 from: card,
@@ -1523,10 +1542,6 @@ impl Game {
                 spent_colors,
             },
         );
-        // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
-        self.consecutive_passes = 0;
-        self.priority = player;
-        Ok(events)
     }
 
     /// The gates on activating ability `index` of `source` that don't depend on the chosen

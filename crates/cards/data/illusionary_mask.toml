@@ -6,10 +6,23 @@
 name = "Illusionary Mask"
 oracle = "{X}: You may choose a creature card in your hand whose mana cost could be paid by some amount of, or all of, the mana you spent on {X}. If you do, you may cast that card face down as a 2/2 creature spell without paying its mana cost. If the creature that spell becomes as it resolves has not been turned face up and would assign or deal damage, be dealt damage, or become tapped, instead it's turned face up and assigns or deals damage, is dealt damage, or becomes tapped. Activate only as a sorcery."
 set = "lea"
-approximates = "the entire {X} activated ability is unmodeled (no [[abilities]] block); only the {2} artifact frame is faithful. Two clauses each need bespoke substrate disproportionate for one 1994 card. (1) The {X}-gated cast-from-hand-face-down — choose a creature card in hand payable by the mana spent on {X}, then cast it face down as a 2/2 without paying its cost — has no effect: it needs a new Effect, a pending hand-card pick that redacts the private hand, and a non-morph reuse of cast_face_down's entry path (CR 708.2 face-down 2/2), with the exact \"mana you spent on {X}\" color-subset test approximated to mana value <= X. (2) The turn-face-up-on-interaction replacement — the instant the face-down creature would assign/deal/be-dealt damage or become tapped it's first turned face up (CR 615) — needs a per-object replacement consulted at the two damage chokes and the tap choke. Upgrade path: build clause 1 as a new Effect + PendingChoice (mirroring PutLandFromHand) reusing cast_face_down; then clause 2 as a per-permanent \"turn face up when it would interact\" flag."
+approximates = "the CR 615 turn-face-up-on-interaction replacement is unmodeled: the {X} ability casts the creature face down (clause 1, faithful), but a face-down creature this way that would assign or deal damage, be dealt damage, or become tapped is not first turned face up (the printed \"instead it's turned face up and ...\" — a per-object replacement consulted at the two damage chokes and the tap choke). Also, the \"mana you spent on {X} could pay its cost\" color-subset test is approximated as mana value <= X (see the effect's ponytail). Upgrade path: a per-permanent \"turn face up when it would interact\" flag consulted at those chokes; and a spent-mana color-pool subset check."
 
 [cost]
 generic = 2
 
 [kind]
 type = "artifact"
+
+# {X}: You may choose a creature card in your hand whose mana cost could be paid by some amount of, or all of, the mana
+# you spent on {X}. If you do, you may cast that card face down as a 2/2 creature spell without paying its mana cost.
+# Activate only as a sorcery.
+[[abilities]]
+timing = "activated"
+activation_cost = { x = true }
+sorcery_speed = true
+
+# You may choose a creature card in your hand whose mana cost could be paid by some amount of, or all of, the mana you
+# spent on {X}. If you do, you may cast that card face down as a 2/2 creature spell without paying its mana cost.
+[[abilities.effects]]
+type = "cast_creature_face_down"

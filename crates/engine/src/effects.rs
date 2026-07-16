@@ -1648,6 +1648,10 @@ impl Game {
             // "You may put a land from hand onto the battlefield" pauses on a card-pick choice
             // (up to one hand land, or decline).
             Effect::PutLandFromHand { tapped } => self.begin_put_land_from_hand(controller, tapped),
+            // Illusionary Mask's "you may cast a creature card in hand … face down as a 2/2"
+            // pauses on a card-pick choice over the hand creatures with mana value at most the
+            // `{X}` this ability was activated for (`ctx.x`, CR 107.3).
+            Effect::CastCreatureFaceDown => self.begin_cast_creature_face_down(controller, x),
             // Rupture Spire's own ETB trigger: "sacrifice it unless you pay {1}." Pauses on the
             // same pay-or-sacrifice shape Echo's `PayEchoOrSacrifice` uses, under its own variant
             // (this is a real triggered ability, not Echo — CR 603.3b, not CR 702.31).
@@ -3904,6 +3908,7 @@ impl Game {
             | Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. }
             | Effect::Discard { .. }
             | Effect::PutLandFromHand { .. }
+            | Effect::CastCreatureFaceDown
             | Effect::CashOutExiledWithThis
             | Effect::CastExiledWithThisFree
             | Effect::Fight { .. }

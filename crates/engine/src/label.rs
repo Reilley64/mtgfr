@@ -993,6 +993,9 @@ impl Effect {
                 let suffix = if tapped { " tapped" } else { "" };
                 format!("Put a land from hand onto the battlefield{suffix}")
             }
+            Effect::CastCreatureFaceDown => {
+                "Cast a creature card from hand face down as a 2/2".to_string()
+            }
             // ponytail: generic pips only (Rupture Spire's {1}) — no pool card needs a colored
             // sacrifice-unless-pay cost yet; extend if one does.
             Effect::SacrificeSelfUnlessPay { cost } => {

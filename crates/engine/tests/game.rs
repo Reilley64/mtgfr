@@ -63557,6 +63557,170 @@ fn willbender_card_is_faithful() {
     assert_eq!(game.spell_target(bolt), Some(Target::Object(bystander)));
 }
 
+// --- Illusionary Mask (lea, CR 708.2 — {X}: cast a hand creature (MV <= X) face down as a 2/2) ---
+
+/// A {1}{G} 2/2 (mana value 2) — the creature Illusionary Mask casts face down.
+const MASK_CREATURE: CardDef = CardDef {
+    cost: flash_cost(1, [0, 0, 0, 0, 1], NO_ADD),
+    ..creature("Mask Test Creature", 2, 2, &[])
+};
+
+/// Illusionary Mask's `{X}` ability (clause 1): with X at least the creature's mana value, the
+/// controller may cast a creature card from hand face down as a 2/2 creature spell (CR 708.2)
+/// without paying its mana cost.
+#[test]
+fn illusionary_mask_casts_hand_creature_face_down() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    game.fund_mana(PlayerId(0));
+    let before = total_mana(&game, PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    assert_eq!(
+        before - total_mana(&game, PlayerId(0)),
+        2,
+        "activation pays the chosen {{X}} = 2"
+    );
+    // The ability resolves, pausing on the hand-creature pick.
+    resolve_top_of_stack(&mut game);
+    let Some(PendingChoice::CastCreatureFaceDown { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected a cast-creature-face-down pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+
+    let mana_before_cast = total_mana(&game, PlayerId(0));
+    game.submit(Intent::CastCreatureFaceDown {
+        player,
+        choice: Some(creature),
+    })
+    .unwrap();
+    assert_eq!(
+        mana_before_cast,
+        total_mana(&game, PlayerId(0)),
+        "the face-down cast pays no mana cost"
+    );
+    // The face-down creature spell resolves onto the battlefield.
+    resolve_top_of_stack(&mut game);
+
+    let perm = game.current_id(creature);
+    assert_eq!(game.zone_of(perm), Zone::Battlefield);
+    assert!(
+        game.is_face_down(perm),
+        "the chosen creature entered face down"
+    );
+    assert_eq!(
+        (game.power(perm), game.toughness(perm)),
+        (2, 2),
+        "a face-down permanent is a 2/2 (CR 708.2), not its printed 2/2 by coincidence — MV-2 body"
+    );
+}
+
+/// Declining Illusionary Mask's "you may" pick is a legal no-op: the creature stays in hand and
+/// nothing is cast.
+#[test]
+fn illusionary_mask_decline_is_a_no_op() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let Some(PendingChoice::CastCreatureFaceDown { player, .. }) = game.pending_choice() else {
+        panic!("expected the cast-creature-face-down pick");
+    };
+    game.submit(Intent::CastCreatureFaceDown {
+        player,
+        choice: None,
+    })
+    .unwrap();
+
+    assert!(
+        game.pending_choice().is_none(),
+        "the decline clears the pick"
+    );
+    assert_eq!(
+        game.zone_of(creature),
+        Zone::Hand,
+        "declining leaves the creature in hand"
+    );
+    assert!(game.stack_is_empty(), "nothing was cast");
+}
+
+/// The `mana value <= X` gate (approximating "the mana you spent on {X} could pay its cost"): a
+/// creature whose mana value exceeds the paid `{X}` is not offered, so the ability is a no-op.
+#[test]
+fn illusionary_mask_does_not_offer_a_creature_costing_more_than_x() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE); // mana value 2
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 1, // less than the creature's mana value
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "no creature is payable at X = 1, so the ability raises no pick"
+    );
+    assert_eq!(
+        game.zone_of(creature),
+        Zone::Hand,
+        "the too-expensive creature stays in hand"
+    );
+}
+
+/// "Activate only as a sorcery" (CR 602.5b): the `{X}` ability is not activatable outside a legal
+/// sorcery-speed moment (here, during the declare-attackers step).
+#[test]
+fn illusionary_mask_is_sorcery_speed_only() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    game.fund_mana(PlayerId(0));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    let rejected = game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    });
+    assert!(
+        rejected.is_err(),
+        "the sorcery-speed ability can't be activated during combat"
+    );
+}
+
 // --- Trigger doubling (CR 603.3c — Harmonic Prodigy, Veyran, Voice of Duality) ---
 
 /// A plain enter-the-battlefield draw, reused by the trigger-doubling test creatures.

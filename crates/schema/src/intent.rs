@@ -253,6 +253,13 @@ pub enum WireIntent {
         #[serde(default)]
         choice: Option<ObjectId>,
     },
+    /// Answer a cast-a-hand-creature-face-down choice (Illusionary Mask): `choice` is the hand
+    /// creature cast face down as a 2/2, or absent to decline.
+    CastCreatureFaceDown {
+        player: u8,
+        #[serde(default)]
+        choice: Option<ObjectId>,
+    },
     /// Answer a sacrifice-unless-return-a-land choice (Treva's Ruins): `land` is the offered
     /// non-Lair land returned to its owner's hand, or absent to decline and sacrifice the source.
     ReturnLandOrSacrifice {
@@ -527,6 +534,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             keep_tapped,
         },
         PutLandFromHand { choice, .. } => PutLandFromHand { player, choice },
+        CastCreatureFaceDown { choice, .. } => CastCreatureFaceDown { player, choice },
         ReturnLandOrSacrifice { land, .. } => ReturnLandOrSacrifice { player, land },
         ChooseExiledWithCard { choice, .. } => ChooseExiledWithCard { player, choice },
         ChooseExiledWithCardToCast { choice, .. } => ChooseExiledWithCardToCast { player, choice },
@@ -767,6 +775,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             keep_tapped,
         },
         WireIntent::PutLandFromHand { player, choice } => Intent::PutLandFromHand {
+            player: PlayerId(player),
+            choice,
+        },
+        WireIntent::CastCreatureFaceDown { player, choice } => Intent::CastCreatureFaceDown {
             player: PlayerId(player),
             choice,
         },

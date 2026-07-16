@@ -490,6 +490,14 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 items: private_items(player, self.viewer, candidates, |ids| self.label_items(ids)),
             },
+            engine::PendingChoice::CastCreatureFaceDown { player, candidates } => {
+                PendingChoiceView::CastCreatureFaceDown {
+                    player: player.0,
+                    items: private_items(player, self.viewer, candidates, |ids| {
+                        self.label_items(ids)
+                    }),
+                }
+            }
             engine::PendingChoice::ChooseExiledWithCard {
                 player,
                 source,
@@ -885,6 +893,13 @@ mod coverage_tests {
                 |view| matches!(view, PendingChoiceView::PutLandFromHand { .. }),
             ),
             (
+                PendingChoice::CastCreatureFaceDown {
+                    player: PlayerId(0),
+                    candidates: vec![hand_card],
+                },
+                |view| matches!(view, PendingChoiceView::CastCreatureFaceDown { .. }),
+            ),
+            (
                 PendingChoice::ChooseExiledWithCard {
                     player: PlayerId(0),
                     source,
@@ -908,6 +923,30 @@ mod coverage_tests {
             let view = project_pending_choice(&game, Some(PlayerId(0)), choice);
             assert!(check(view), "unexpected projection");
         }
+    }
+
+    /// Illusionary Mask's offered hand creatures are private (CR — a hidden hand): a non-owner
+    /// viewer sees the choice but not which cards, while the owner sees them.
+    #[test]
+    fn cast_creature_face_down_candidates_are_redacted_for_non_owner() {
+        let mut game = Game::new();
+        let hand_card = game.spawn_in_hand(PlayerId(0), def("Grizzly Bear"));
+        let choice = PendingChoice::CastCreatureFaceDown {
+            player: PlayerId(0),
+            candidates: vec![hand_card],
+        };
+
+        let owner_view = project_pending_choice(&game, Some(PlayerId(0)), choice.clone());
+        let PendingChoiceView::CastCreatureFaceDown { items, .. } = owner_view else {
+            panic!("expected CastCreatureFaceDown");
+        };
+        assert_eq!(items.len(), 1, "the owner sees the offered creature");
+
+        let opponent_view = project_pending_choice(&game, Some(PlayerId(1)), choice);
+        let PendingChoiceView::CastCreatureFaceDown { items, .. } = opponent_view else {
+            panic!("expected CastCreatureFaceDown");
+        };
+        assert!(items.is_empty(), "a non-owner sees no hand cards");
     }
 
     #[test]

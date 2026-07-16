@@ -223,6 +223,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::MayDiscard { player, .. }
         | PendingChoiceView::Discard { player, .. }
         | PendingChoiceView::PutLandFromHand { player, .. }
+        | PendingChoiceView::CastCreatureFaceDown { player, .. }
         | PendingChoiceView::ChooseExiledWithCard { player, .. }
         | PendingChoiceView::ChooseExiledWithCardToCast { player, .. }
         | PendingChoiceView::ChooseExiledDigToCastFree { player, .. }

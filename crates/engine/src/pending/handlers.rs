@@ -1802,6 +1802,51 @@ impl Game {
         Ok(events)
     }
 
+    /// Begin an [`Effect::CastCreatureFaceDown`] (Illusionary Mask): pause on a
+    /// [`PendingChoice::CastCreatureFaceDown`] over `player`'s hand creature cards whose mana
+    /// value is at most `x` (the `{X}` paid — CR 107.3). "You may," so no payable creature raises
+    /// no choice (a harmless no-op, same shape as [`Game::begin_put_land_from_hand`]).
+    /// ponytail: `mana_value <= x` approximates the printed "the mana you spent on {X} could pay
+    /// its cost" color-subset test — see [`Effect::CastCreatureFaceDown`]'s doc.
+    pub(crate) fn begin_cast_creature_face_down(&mut self, player: PlayerId, x: u32) {
+        let candidates: Vec<ObjectId> = self
+            .hand_of(player)
+            .into_iter()
+            .filter(|&id| matches!(self.def_of(id).kind, CardKind::Creature { .. }))
+            .filter(|&id| self.def_of(id).mana_value() <= x)
+            .collect();
+        if candidates.is_empty() {
+            return; // nothing payable — don't pause.
+        }
+        self.pause_for(PendingChoice::CastCreatureFaceDown { player, candidates });
+    }
+
+    /// Answer a [`PendingChoice::CastCreatureFaceDown`]: cast the chosen hand creature (one of the
+    /// offered candidates) face down as a 2/2 creature spell (CR 708.2) without paying its mana
+    /// cost, or decline (`choice = None`).
+    pub(crate) fn cast_creature_face_down(
+        &mut self,
+        player: PlayerId,
+        choice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::CastCreatureFaceDown { candidates, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.is_some_and(|c| !candidates.contains(&c)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        if let Some(card) = choice {
+            // No mana was spent casting it (cast "without paying its mana cost"), so no colors.
+            self.push_face_down_spell_cast(player, card, [false; Color::COUNT], &mut events);
+        }
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::ChooseMode`]: resolve the chosen mode of a "choose one" triggered
     /// ability ([`Effect::ChooseOne`]) through the ordinary resolution pipeline, carrying the
     /// trigger's own `source`/`target`/`x` context. The chosen sub-effect may itself pause.

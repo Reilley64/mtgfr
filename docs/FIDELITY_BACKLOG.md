@@ -1774,6 +1774,20 @@ damage chokes and the tap choke). Building either for one card that stays approx
 faithful and the morph/manifest substrate (slices 1–2) all landed — but NOT marked LANDED while
 illusionary_mask retains its residual `approximates` (per the XL convention).**
 
+**Progress (2026-07-17) — Slice 3 clause 1 (Illusionary Mask cast-from-hand-face-down) landed:** the
+`{X}` sorcery-speed activated ability is authored and modeled — new `Effect::CastCreatureFaceDown`
+opens a pending hand-creature pick (`PendingChoice`/`Intent::CastCreatureFaceDown`, mirroring
+`PutLandFromHand`, redacting the private hand) over creatures with `mana_value <= X` (the activation
+`{X}` read from the resolving ability's ctx, CR 107.3), then routes the chosen card through a new
+`push_face_down_spell_cast` helper (extracted from `cast_face_down`) so it enters as a face-down 2/2
+creature spell (CR 708.2) **without paying its mana cost**; declining is a legal no-op. Schema mirror
+(dto/intent/projection + non-owner redaction) and `sorcery_speed`/`{X}` activated shape are wired.
+**illusionary_mask retains a trimmed `approximates` for clause 2 only** — the CR 615
+turn-face-up-on-interaction replacement (per-object, consulted at the two damage chokes and the tap
+choke) — plus the noted `mana_value <= X` color-subset approximation. Still NOT marked LANDED while
+that residual stands. Follow-up noticed: `mana_value <= X` is an upside approximation (offers more
+creatures than the color-subset test would); tighten when a second `{X}` face-down caster lands.
+
 ### 164. `cross-owner-anthem-cache` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 

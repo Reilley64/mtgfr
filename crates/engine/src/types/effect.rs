@@ -2828,6 +2828,16 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         tapped: bool,
     },
+    /// Illusionary Mask's `{X}` ability (clause 1): the ability's controller may cast a creature
+    /// card from their hand — one whose mana value is at most the `{X}` paid to activate this
+    /// ability — face down as a 2/2 creature spell (CR 708.2), without paying its mana cost.
+    /// Pauses on a [`PendingChoice::CastCreatureFaceDown`] over the payable hand creatures, or
+    /// declines ("you may"); no payable creature is a no-op. Reads the activation `{X}` from the
+    /// resolving ability's context (CR 107.3), takes no target.
+    /// ponytail: the real "some amount of, or all of, the mana you spent on {X} could pay its
+    /// mana cost" is a color-subset test; approximated as `mana value <= X`. Upgrade to a
+    /// spent-mana color-pool subset check when a second card needs it.
+    CastCreatureFaceDown,
     /// Tap the target permanent(s) (CR 701.21) — Killian, Decisive Mentor's "tap up to one
     /// target creature [and goad it]"; Magma Opus's "tap two target permanents" (a
     /// `Timing::Spell` ability, `count = {2, 2}`). Tapping an already-tapped permanent is a
@@ -3293,6 +3303,7 @@ impl Effect {
                 ..
             }
             | Effect::PutLandFromHand { .. }
+            | Effect::CastCreatureFaceDown
             | Effect::UntapAll { .. }
             | Effect::EachPlayerDraws { .. }
             | Effect::SacrificeOwn { .. }

@@ -255,6 +255,12 @@ pub enum Intent {
         player: PlayerId,
         choice: Option<ObjectId>,
     },
+    /// Answer a [`PendingChoice::CastCreatureFaceDown`]: `choice` is the hand creature card cast
+    /// face down as a 2/2 (one of the offered candidates), or `None` to decline (Illusionary Mask).
+    CastCreatureFaceDown {
+        player: PlayerId,
+        choice: Option<ObjectId>,
+    },
     /// Answer a [`PendingChoice::SacrificeUnlessReturnLand`]: `land` is the offered non-Lair land
     /// returned to its owner's hand (keeping the source), or `None` to decline and sacrifice the
     /// source instead.
@@ -441,6 +447,7 @@ impl Intent {
                 .collect(),
             Intent::SearchLibrary { choice, .. }
             | Intent::PutLandFromHand { choice, .. }
+            | Intent::CastCreatureFaceDown { choice, .. }
             | Intent::ChooseExiledWithCard { choice, .. }
             | Intent::ChooseExiledWithCardToCast { choice, .. }
             | Intent::ChooseExiledDigToCastFree { choice, .. }
@@ -534,6 +541,7 @@ impl Intent {
             | Intent::ChooseSacrifices { player, .. }
             | Intent::Discard { player, .. }
             | Intent::PutLandFromHand { player, .. }
+            | Intent::CastCreatureFaceDown { player, .. }
             | Intent::ReturnLandOrSacrifice { player, .. }
             | Intent::ChooseExiledWithCard { player, .. }
             | Intent::ChooseExiledWithCardToCast { player, .. }
@@ -580,6 +588,7 @@ impl Intent {
             | Intent::ChooseSacrifices { .. }
             | Intent::Discard { .. }
             | Intent::PutLandFromHand { .. }
+            | Intent::CastCreatureFaceDown { .. }
             | Intent::ReturnLandOrSacrifice { .. }
             | Intent::ChooseExiledWithCard { .. }
             | Intent::ChooseExiledWithCardToCast { .. }
@@ -1079,6 +1088,14 @@ pub enum PendingChoice {
         tapped: bool,
         candidates: Vec<ObjectId>,
     },
+    /// `player` may cast one of `candidates` — the creature cards in their hand whose mana value
+    /// is at most the `{X}` paid — face down as a 2/2 creature spell without paying its mana cost,
+    /// or decline ("you may" — [`Effect::CastCreatureFaceDown`], Illusionary Mask, resolving).
+    /// Answered by [`Intent::CastCreatureFaceDown`]. The candidates are hand cards, so private.
+    CastCreatureFaceDown {
+        player: PlayerId,
+        candidates: Vec<ObjectId>,
+    },
     /// `player` must choose up to one of `candidates` — the cards exiled with `source`
     /// ([`Game::exiled_with`]) — to put into its owner's graveyard, or decline
     /// ([`Effect::CashOutExiledWithThis`]'s "put a card exiled with this" resolving). Answered by
@@ -1404,6 +1421,7 @@ impl PendingChoice {
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
             | PendingChoice::PutLandFromHand { player, .. }
+            | PendingChoice::CastCreatureFaceDown { player, .. }
             | PendingChoice::ChooseMode { player, .. }
             | PendingChoice::ChooseTriggerModes { player, .. }
             | PendingChoice::ChooseExiledWithCard { player, .. }
