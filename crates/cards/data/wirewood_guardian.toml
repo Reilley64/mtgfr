@@ -1,0 +1,28 @@
+# Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand,
+# then shuffle.)
+name = "Wirewood Guardian"
+oracle = "Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand, then shuffle.)"
+set = "scg"
+subtypes = ["Elf", "Mutant"]
+
+[cost]
+generic = 5
+green = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put
+# it into your hand, then shuffle.)
+[hand_ability]
+
+[hand_ability.cost]
+generic = 2
+
+# Search your library for a Forest card, reveal it, put it into your hand, then shuffle.
+[[hand_ability.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Forest"] }
+to_zone = "hand"

@@ -60721,3 +60721,338 @@ fn looter_il_kor_combat_damage_to_player_draws_then_discards() {
         "Looter il-Kor has shadow"
     );
 }
+
+// ── Typecycling (CR 702.29e — Noble Templar / Shoreline Ranger / Wirewood Guardian) ─────
+// "Plainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal
+// it, put it into your hand, then shuffle.)" — a typed-land search, not cycling's fixed draw,
+// so it rides the general hand-ability shape. A "Plains card" is any land with the subtype,
+// basic or not.
+
+#[test]
+fn noble_templar_plainscycling_fetches_any_plains_typed_land() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Island"), card("Eclipsed Steppe"), card("Plains")],
+    );
+    let templar = game.spawn_in_hand(PlayerId(0), card("Noble Templar"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: templar,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(templar),
+        Zone::Graveyard,
+        "the card was discarded as part of the ability's cost, not cast",
+    );
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "plainscycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand, "the found card goes to hand");
+    assert!(
+        !matches.contains(&lib[0]),
+        "an Island has no Plains subtype"
+    );
+    assert!(
+        matches.contains(&lib[1]),
+        "the nonbasic Plains-typed dual matches — 'a Plains card', not 'a basic Plains'"
+    );
+    assert!(matches.contains(&lib[2]), "the basic Plains matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(lib[2]),
+        Zone::Hand,
+        "the fetched Plains is in hand"
+    );
+}
+
+#[test]
+fn shoreline_ranger_islandcycling_fetches_any_island_typed_land() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Plains"), card("Tangled Islet"), card("Island")],
+    );
+    let ranger = game.spawn_in_hand(PlayerId(0), card("Shoreline Ranger"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: ranger,
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(ranger), Zone::Graveyard);
+    let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
+        panic!(
+            "islandcycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(!matches.contains(&lib[0]), "a Plains has no Island subtype");
+    assert!(
+        matches.contains(&lib[1]),
+        "the nonbasic Island-typed dual matches"
+    );
+    assert!(matches.contains(&lib[2]), "the basic Island matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[2]), Zone::Hand);
+}
+
+#[test]
+fn wirewood_guardian_forestcycling_fetches_any_forest_typed_land() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Plains"), card("Tangled Islet"), card("Forest")],
+    );
+    let guardian = game.spawn_in_hand(PlayerId(0), card("Wirewood Guardian"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: guardian,
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(guardian), Zone::Graveyard);
+    let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
+        panic!(
+            "forestcycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(!matches.contains(&lib[0]), "a Plains has no Forest subtype");
+    assert!(
+        matches.contains(&lib[1]),
+        "the nonbasic Forest-typed dual matches"
+    );
+    assert!(matches.contains(&lib[2]), "the basic Forest matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[2]), Zone::Hand);
+}
+
+// ── Raven Familiar (echo + a mandatory look-at-top-3 ETB) ────────────────────────────────
+
+#[test]
+fn raven_familiar_etb_puts_one_of_top_three_in_hand_rest_on_bottom() {
+    // "When this creature enters, look at the top three cards of your library. Put one of them
+    // into your hand and the rest on the bottom of your library in any order." — "Put one", not
+    // "you may put one": exactly one pick is mandatory.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Plains"),
+            card("Island"),
+            card("Forest"),
+            card("Mountain"),
+        ],
+    );
+    let raven = game.spawn_in_hand(PlayerId(0), card("Raven Familiar"));
+    game.cast(raven).resolve(); // enters; the ETB trigger goes on the stack
+    resolve_top_of_stack(&mut game); // the trigger resolves → the look pauses
+
+    let Some(PendingChoice::SelectFromTop {
+        cards,
+        up_to: 1,
+        min: 1,
+        dest: TopDest::Hand,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "the ETB pauses on a mandatory pick-one-of-three, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        cards,
+        vec![lib[0], lib[1], lib[2]],
+        "the look shows exactly the top three cards"
+    );
+    assert_eq!(
+        game.submit(Intent::SelectFromTop {
+            player: PlayerId(0),
+            cards: vec![],
+        }),
+        Err(Reject::IllegalChoice),
+        "\"Put one of them into your hand\" is mandatory — zero picks is illegal",
+    );
+
+    game.submit(Intent::SelectFromTop {
+        player: PlayerId(0),
+        cards: vec![lib[1]],
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(lib[1]), Zone::Hand, "the pick is in hand");
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Library,
+        "an unpicked card went to the bottom of the library"
+    );
+    assert_eq!(game.zone_of(lib[2]), Zone::Library);
+    assert_eq!(game.library_size(PlayerId(0)), 3);
+}
+
+#[test]
+fn raven_familiar_echo_paid_keeps_it() {
+    let mut game = Game::new();
+    let raven = game.spawn_on_battlefield(PlayerId(0), card("Raven Familiar"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayEchoOrSacrifice {
+                player: PlayerId(0),
+                source,
+                ..
+            }) if source == raven
+        ),
+        "echo pauses on a pay-or-sacrifice choice at the controller's first upkeep"
+    );
+
+    game.fund_mana(PlayerId(0)); // mana empties each step — fund at the pause
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(raven),
+        Zone::Battlefield,
+        "paying {{2}}{{U}} keeps Raven Familiar"
+    );
+}
+
+#[test]
+fn raven_familiar_echo_declined_sacrifices_it() {
+    let mut game = Game::new();
+    let raven = game.spawn_on_battlefield(PlayerId(0), card("Raven Familiar"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(raven),
+        Zone::Graveyard,
+        "declining echo sacrifices Raven Familiar"
+    );
+}
+
+// ── Auramancer (optional targeted graveyard return, enchantment cards only) ─────────────
+
+#[test]
+fn auramancer_returns_an_enchantment_or_aura_card_but_not_a_creature_card() {
+    // "When this creature enters, you may return target enchantment card from your graveyard to
+    // your hand." — an Aura is an enchantment card; a creature card is not a legal target.
+    let mut game = TestGame::new();
+    let enchantment = game.spawn_in_graveyard(PlayerId(0), card("Feral Appetite"));
+    let aura = game.spawn_in_graveyard(PlayerId(0), card("Chains of Custody"));
+    let creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let mancer = game.spawn_in_hand(PlayerId(0), card("Auramancer"));
+    game.cast(mancer).resolve(); // enters; the optional ETB pauses for yes/no
+
+    assert!(matches!(
+        game.pending_choice(),
+        Some(PendingChoice::MayYesNo {
+            player: PlayerId(0),
+            ..
+        })
+    ));
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the accepted trigger pauses to target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(enchantment)),
+        "an enchantment card in your graveyard is a legal target"
+    );
+    assert!(
+        legal.contains(&Target::Object(aura)),
+        "an Aura card is an enchantment card"
+    );
+    assert!(
+        !legal.contains(&Target::Object(creature_card)),
+        "a creature card is not an enchantment card"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(enchantment)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(enchantment),
+        Zone::Hand,
+        "the enchantment card returned to hand"
+    );
+}
+
+#[test]
+fn auramancer_declining_the_return_is_legal() {
+    let mut game = TestGame::new();
+    let enchantment = game.spawn_in_graveyard(PlayerId(0), card("Feral Appetite"));
+    let mancer = game.spawn_in_hand(PlayerId(0), card("Auramancer"));
+    game.cast(mancer).resolve();
+
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: false,
+    })
+    .unwrap();
+    assert!(game.pending_choice().is_none());
+    assert!(
+        game.stack().is_empty(),
+        "a declined trigger never hits the stack"
+    );
+    assert_eq!(
+        game.zone_of(enchantment),
+        Zone::Graveyard,
+        "declining returns nothing"
+    );
+}

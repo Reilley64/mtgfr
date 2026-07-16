@@ -1,0 +1,30 @@
+# Vigilance
+# Plainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put it into your hand,
+# then shuffle.)
+name = "Noble Templar"
+oracle = "Vigilance\nPlainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put it into your hand, then shuffle.)"
+set = "scg"
+subtypes = ["Human", "Cleric", "Soldier"]
+keywords = ["vigilance"]
+
+[cost]
+generic = 5
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 6
+
+# Plainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put
+# it into your hand, then shuffle.)
+[hand_ability]
+
+[hand_ability.cost]
+generic = 2
+
+# Search your library for a Plains card, reveal it, put it into your hand, then shuffle.
+[[hand_ability.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Plains"] }
+to_zone = "hand"

@@ -19,7 +19,7 @@ Commander: **Rubinia Soulsinger**. Backlog increments for section D: #135–#163
 
 None — every other deck card is new to the pool.
 
-## C. New, expressible today (28)
+## C. New, expressible today (27)
 
 - [ ] Auramancer — ETB optional `return_from_graveyard_to_hand`, `{ card_in_graveyard = { whose = "yours", filter = "enchantment" } }`
 - [ ] Azorius Chancery — `enters_tapped`, ETB targeted self-land bounce, `{T}: Add {W}{U}` via `add_mana`
@@ -46,11 +46,10 @@ None — every other deck card is new to the pool.
 - [ ] Shoreline Ranger — flying + Islandcycling via `hand_ability`
 - [ ] Simic Growth Chamber — karoo
 - [ ] Simic Signet — `{1}, {T}: Add {G}{U}`
-- [ ] Stonecloaker — flash/flying; ETB self-creature bounce; ETB `exile_target_graveyard_card_then_if_creature` with empty `then`
 - [ ] Wirewood Guardian — Forestcycling via `hand_ability`
 - [ ] Wood Elves — ETB `search_library` `{ land_with_subtype = ["Forest"] }` to battlefield untapped
 
-## D. New, needs engine work (36)
+## D. New, needs engine work (37)
 
 - [ ] Armadillo Cloak — #151 enchanted-deals-damage lifegain
 - [ ] Azorius Guildmage — #146 counter target activated ability (cycling/hand activations on the stack)
@@ -91,6 +90,9 @@ None — every other deck card is new to the pool.
   wave B: the TOML is expressible, but the characteristics cache invalidates owner-scoped, so an
   any-controller `per_permanent` count anthem goes stale when an opponent's enchantment
   enters/leaves)
+- [ ] Stonecloaker — #165 ordered-trigger targets (reclassified from C in wave C: its two
+  simultaneous targeted ETB triggers both fizzle — `choose_order` places ordered triggers with no
+  target)
 
 ## Observability re-audit (falsified pool-absence claims)
 

@@ -1,0 +1,30 @@
+# Flying
+# Islandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand,
+# then shuffle.)
+name = "Shoreline Ranger"
+oracle = "Flying\nIslandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand, then shuffle.)"
+set = "scg"
+subtypes = ["Bird", "Soldier", "Ranger"]
+keywords = ["flying"]
+
+[cost]
+generic = 5
+blue = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# Islandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it,
+# put it into your hand, then shuffle.)
+[hand_ability]
+
+[hand_ability.cost]
+generic = 2
+
+# Search your library for an Island card, reveal it, put it into your hand, then shuffle.
+[[hand_ability.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Island"] }
+to_zone = "hand"

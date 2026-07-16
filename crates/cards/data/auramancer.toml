@@ -1,0 +1,25 @@
+# When this creature enters, you may return target enchantment card from your graveyard to your hand.
+name = "Auramancer"
+oracle = "When this creature enters, you may return target enchantment card from your graveyard to your hand."
+set = "ody"
+subtypes = ["Human", "Wizard"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, you may return target enchantment card from your graveyard to your
+# hand.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# return target enchantment card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "enchantment" } }

@@ -1528,6 +1528,23 @@ or narrowly: any permanent whose anthem amount is a cross-owner `per_permanent`.
 opponent's enchantment entering/leaving moves her P/T without any owner-side event. Then author
 the card (TOML + test drafted and withdrawn in wave B). *Cards:* yavimaya_enchantress.
 
+### 165. `ordered-trigger-targets` — 1 card, M
+Depends on: nothing.
+Found in the wave-C authoring pass: when a permanent's entry queues TWO (or more) simultaneous
+triggered abilities and any of them is *targeted*, `Game::choose_order` places the ordered
+triggers with `target: None` (`// ponytail: ordered triggers carry no target yet` at
+`crates/engine/src/pending/handlers.rs`), so every targeted trigger in an ordered group silently
+fizzles at resolution — no `ChooseTarget` pause is ever raised. Stonecloaker (two targeted ETBs:
+"return a creature you control to its owner's hand" + "exile target card from a graveyard") is
+the first pool card to hit it, but the gap covers any multi-trigger permanent with a targeted
+member. *Sketch:* after `OrderTriggers` is answered, route each ordered ability through the same
+target-choosing placement path a lone targeted trigger uses (`place_targeted_ability` /
+`ChooseTarget`, CR 603.3d — targets chosen as each goes on the stack, in the chosen order) instead
+of pushing the group with bare `target: None`. Regression test: Stonecloaker's two ETBs both pause
+for targets and both resolve. Then author the card (draft worked otherwise: flash/flying, `return_to_hand`
+creature-you-control, `exile_target_graveyard_card_then_if_creature` with empty `then`).
+*Cards:* stonecloaker.
+
 ---
 
 ## Top 5 next increments (build in this order)
