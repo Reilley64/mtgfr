@@ -1,0 +1,6 @@
+# Nextest runs the workspace test suite (`just server-test` / CI).
+# The `ci` profile always writes JUnit XML for GitHub Actions summaries.
+
+[profile.ci.junit]
+path = "junit.xml"
+store-failure-output = true

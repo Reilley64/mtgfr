@@ -10,9 +10,9 @@ A browser-based 4-player Commander (MTG) game for playing with friends. The **no
 
 ```
 cargo build
-cargo test                      # all tests
-cargo test <name>               # tests whose name matches <name>
-cargo test -- --nocapture       # show println! output from tests
+cargo nextest run --profile ci           # all tests (via `just server-test`)
+cargo nextest run --profile ci <name>    # tests whose name matches <name>
+cargo nextest run --profile ci --nocapture  # show println! output from tests
 cargo clippy --all-targets      # lint — treat warnings as failures
 cargo fmt                       # format before committing
 just check                      # format + lint + typecheck + test (both sides)
