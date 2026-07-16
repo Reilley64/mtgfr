@@ -754,7 +754,7 @@ jobs:
 
 #### `docker.yml` — images on `v*` tag push
 
-Triggers: `push` of tags matching `v*`. semantic-release must push that tag with repo secret `RELEASE_TOKEN` (PAT: `contents` + `workflow`) — default `GITHUB_TOKEN` cannot cascade workflow runs.
+Triggers: `push` of tags matching `v*`. semantic-release must push that tag with repo secret `RELEASE_TOKEN` (PAT: `contents` + `workflow`) — default `GITHUB_TOKEN` cannot cascade workflow runs. Verify already ran `just check` on the tagged commit — this workflow only builds and pushes images.
 
 ```yaml
 on:
@@ -770,7 +770,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: just check
       # docker/login-action → ghcr.io (GITHUB_TOKEN)
       # build-push mtgfr-server + mtgfr-web tagged ${GITHUB_REF_NAME#v} (lowercase owner)
 ```
