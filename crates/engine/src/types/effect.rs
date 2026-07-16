@@ -1429,6 +1429,32 @@ pub enum Effect {
     /// ponytail: a token targeted this way ceases to exist instead of being exiled (CR 111.7),
     /// same as `ExileUntilSourceLeaves` — it's never linked, so nothing mints later.
     ExileTargetMintingIllusionOnLeave { target: TargetSpec },
+    /// Flicker (CR 400.7 — a new object): exile the target creature, then return it to the
+    /// battlefield under its **owner's** control as a fresh object (Momentary Blink, Mistmeadow
+    /// Witch). Unlike [`ExileUntilSourceLeaves`](Self::ExileUntilSourceLeaves) this isn't
+    /// O-Ring-linked — the return isn't conditioned on any other permanent leaving. `return_at`
+    /// absent resolves the return immediately, in this same resolution (Momentary Blink); present
+    /// schedules it as a real CR 603.7 delayed triggered ability at that [`Step`] instead
+    /// (Mistmeadow Witch's "at the beginning of the next end step"), via
+    /// [`ReturnFlickeredCard`](Self::ReturnFlickeredCard). A token ceases to exist rather than
+    /// being exiled (CR 111.7) — there's nothing left to flicker back. A commander diverted to the
+    /// command zone instead of exile (CR 903.9b) was never exiled either — nothing returns.
+    FlickerTarget {
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        return_at: Option<Step>,
+    },
+    /// The delayed payload [`FlickerTarget`](Self::FlickerTarget) schedules when it carries a
+    /// `return_at` (Mistmeadow Witch): return the specific card `exiled` names to the battlefield
+    /// under its owner's control, mirroring [`ReturnThisAuraAttachedTo`](Self::ReturnThisAuraAttachedTo)'s
+    /// synthetic-`then` shape — `exiled` is filled in when the delayed trigger is scheduled, never
+    /// authored directly, and is `None` only in a card template. Guard-returns with no return if
+    /// the card has since left exile some other way (CR 603.10a last-known information — it won't
+    /// return).
+    ReturnFlickeredCard {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        exiled: Option<ObjectId>,
+    },
     /// Impulse draw (CR 118.6 / 601.3e): exile the top `count` cards of the controller's library
     /// face-up and grant that controller permission to play them until end of turn. The cards stay
     /// in exile; the permission (tracked in [`Game::play_from_exile`]) expires at cleanup. Playing
@@ -2191,6 +2217,20 @@ pub enum Effect {
     /// (the copy `CopyThisSpell` just minted), never a card-template value — not meant to be
     /// authored directly in a card TOML.
     RetargetSpellCopy { copy: ObjectId },
+    /// Willbender's turned-face-up payload (CR 114.6 / 702.37f): "change the target of target spell
+    /// or ability with a single target." `target` (the spell to bend) is
+    /// [`TargetSpec::SingleTargetSpellOnStack`], chosen as this trigger goes on the stack (CR
+    /// 603.3d). At resolution the controller chooses a new legal target for that spell — one that
+    /// *differs* from its current target (CR 114.6b) — and it overwrites the stored one; if the
+    /// spell has left the stack (CR 608.2b already fizzles the trigger) or has no legal alternate,
+    /// nothing changes. The write-back reuses the spell-retarget pending surface
+    /// ([`PendingChoice::ChooseSpellTargets`] → [`Event::SpellTargetsChosen`]).
+    /// ponytail: CR's "or ability" half isn't modeled — stack abilities have no object identity to
+    /// target in this engine (see [`TargetSpec::SingleTargetSpellOnStack`]); spells only.
+    ChangeTargetOfTargetSpellOrAbility {
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        target: TargetSpec,
+    },
     /// A delayed one-shot's copy payoff (CR 603.7/707.10 — Thunderclap Drake's "when you next
     /// cast an instant or sorcery spell this turn, copy it for each time you've cast your
     /// commander from the command zone this game. You may choose new targets for the copies."):
@@ -2852,6 +2892,7 @@ impl Effect {
             | Effect::ExileTarget { target, .. }
             | Effect::ExileUntilSourceLeaves { target }
             | Effect::ExileTargetMintingIllusionOnLeave { target }
+            | Effect::FlickerTarget { target, .. }
             | Effect::ReturnFromGraveyardToHand { target }
             | Effect::ReanimateToBattlefield { target, .. }
             | Effect::TuckFromGraveyard { target, .. }
@@ -2867,6 +2908,7 @@ impl Effect {
             | Effect::RegenerateShield { target }
             | Effect::AttachMintedAuraToTarget { target }
             | Effect::BecomeCopyOfTargetCreatureGainingMyriad { target }
+            | Effect::ChangeTargetOfTargetSpellOrAbility { target }
             | Effect::DestroyTarget { target, .. } => target,
             Effect::ReturnToHand { target, .. } => target,
             // A sequence shares one target: the first step that needs one supplies it.
@@ -3143,6 +3185,9 @@ impl Effect {
             // schedule time, not a chosen target.
             | Effect::ScheduleReturnThisAuraAttachedToReanimated
             | Effect::ReturnThisAuraAttachedTo { .. }
+            // The specific exiled card was already resolved when the delayed trigger was
+            // scheduled — no chosen target of its own.
+            | Effect::ReturnFlickeredCard { .. }
             // The new host is chosen at resolution (`ChooseAttachHost`), not a cast/
             // activation target — same as `ReturnThisAuraAttachedTo` above.
             | Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost

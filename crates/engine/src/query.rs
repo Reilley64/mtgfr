@@ -796,6 +796,19 @@ impl Game {
                 })
                 .map(Target::Object)
                 .collect(),
+            // A spell on the stack with exactly one target (Willbender's "target spell … with a
+            // single target", CR 114.6). Any controller's spell — Willbender bends an opponent's
+            // just as readily as its controller's own.
+            TargetSpec::SingleTargetSpellOnStack => self
+                .stack
+                .iter()
+                .filter_map(|item| match *item {
+                    StackItem::Spell(id) => Some(id),
+                    _ => None,
+                })
+                .filter(|&id| self.spell_has_single_target(id))
+                .map(Target::Object)
+                .collect(),
             // A fixed reference to the ability's own source (Hangarback's "this creature",
             // Gorma's/Primordial Hydra's counter abilities) — empty only if `source` has since
             // left the battlefield (CR 608.2b: nothing left to refer to).

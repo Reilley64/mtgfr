@@ -153,6 +153,7 @@ impl Game {
             // coarse, same cross-owner reasoning as `PermanentEntered` above — a searched/
             // reanimated/manifested/put-onto-battlefield enchantment can belong to any player).
             Event::ReanimatedToBattlefield { .. }
+            | Event::FlickeredToBattlefield { .. }
             | Event::SearchedToBattlefield { .. }
             | Event::Manifested { .. }
             | Event::PutOntoBattlefieldFromHand { .. } => {

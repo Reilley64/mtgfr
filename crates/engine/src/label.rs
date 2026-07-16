@@ -760,6 +760,19 @@ impl Effect {
                 "Exile target until this leaves the battlefield".to_string()
             }
             Effect::ExileTargetMintingIllusionOnLeave { .. } => "Exile target".to_string(),
+            Effect::FlickerTarget {
+                return_at: None, ..
+            } => "Exile target creature, then return it to the battlefield under its owner's \
+                  control"
+                .to_string(),
+            Effect::FlickerTarget {
+                return_at: Some(_), ..
+            } => "Exile target creature. Return that card to the battlefield under its owner's \
+                  control at the beginning of the next end step"
+                .to_string(),
+            Effect::ReturnFlickeredCard { .. } => {
+                "Return that card to the battlefield under its owner's control".to_string()
+            }
             Effect::ExileTopMayPlay {
                 count,
                 until_next_turn,
@@ -971,6 +984,9 @@ impl Effect {
             Effect::CopyTargetSpell => "Copy target spell".to_string(),
             Effect::CopyThisSpell { .. } => "Copy this spell".to_string(),
             Effect::RetargetSpellCopy { .. } => "Choose new targets for the copy".to_string(),
+            Effect::ChangeTargetOfTargetSpellOrAbility { .. } => {
+                "Change the target of target spell or ability with a single target".to_string()
+            }
             Effect::CopyTriggeringSpell { count, .. } => {
                 format!("Copy it {} times", amount_label(count))
             }

@@ -1318,12 +1318,17 @@ Depends on: nothing.
 today). Shuffle first, then place the found card on top — the existing search machinery plus one
 destination arm and one filter arm. *Cards:* enlightened_tutor, sterling_grove.
 
-### 141. `reveal-top-route` — 1 card, S
+### 141. `reveal-top-route` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 Coiling Oracle's "reveal the top card; if it's a land, put it onto the battlefield, otherwise put
 it into your hand." *Sketch:* a `rest_dest = "hand"` arm on `reveal_top_cards` (count 1, filter
 "land", matched_dest "battlefield") — the non-match routes to hand instead of bottom; no pause,
 fully deterministic. *Cards:* coiling_oracle.
+
+**Landed:** `RestDest::Hand` (shared by `look_at_top`'s `rest`, `reveal_until`/`reveal_top_cards`'s
+`rest_dest`) — the non-matching revealed card goes to hand through the same `Event::SearchedToHand`
+zone-move `matched_dest = "hand"` already uses. `coiling_oracle.toml` authored faithfully:
+`reveal_top_cards { count = 1, filter = "land", matched_dest = "battlefield", rest_dest = "hand" }`.
 
 ### 142. `target-player-graveyard-exile` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
@@ -1374,7 +1379,7 @@ targeting a non-mana activated ability on the stack (mana abilities can't be tar
 they stay stackless), removing it like `counter_spell` minus the card move. *Cards:*
 azorius_guildmage.
 
-### 147. `flicker` — 2 cards, M
+### 147. `flicker` — 2 cards, M — **LANDED (2026-07-16)**
 Depends on: nothing.
 Two slices. **Slice 1 (Momentary Blink):** `Effect::FlickerTarget` — exile target creature you
 control, then immediately return it to the battlefield under its owner's control as a new object
@@ -1382,6 +1387,18 @@ control, then immediately return it to the battlefield under its owner's control
 **Slice 2 (Mistmeadow Witch):** the delayed twin — exile now, schedule the return at the beginning
 of the next end step via the existing `DelayedTriggerScheduled` machinery (`fire_at = Step::End`),
 returning under the owner. *Cards:* momentary_blink, mistmeadow_witch.
+
+**Landed:** `Effect::FlickerTarget { target, return_at: Option<Step> }` — exiles the target
+(`exile_or_command`, same CR 903.9b commander-diversion/CR 111.7 token-ceases-to-exist handling
+`exile_target` already uses), then either returns it immediately as a fresh `Event::
+FlickeredToBattlefield` permanent (`return_at` absent — Momentary Blink) or schedules that same
+return via the existing `DelayedTriggerScheduled`/`Step::End` machinery through the synthetic
+`Effect::ReturnFlickeredCard { exiled }` payload (`return_at = "end"` — Mistmeadow Witch), mirroring
+`ReturnThisAuraAttachedTo`'s schedule-time-filled-id shape. `FlickeredToBattlefield` rides the same
+ETB self-trigger/cache-invalidation arms as `ReanimatedToBattlefield`/`ReturnedFromLinkedExile`. A
+commander diverted to the command zone instead of exile was never exiled, so nothing returns for
+it — no pool card exercises that edge (neither example targets a commander). Both cards fully
+faithful, no `approximates`.
 
 ### 148. `evoke` — 1 card, M
 Depends on: nothing.
@@ -1535,6 +1552,20 @@ morph creature's ETB self-trigger would fire while face down (`queue_self_trigge
 `def.abilities`, not `functional_abilities`) — latent (shared with manifest; no pool morph/manifest
 card has an ETB), fix at the `queue_self_trigger` Etb site when one lands.
 
+**Progress (2026-07-16) — Slice 2 (Willbender retarget) landed:** `Effect::ChangeTargetOfTargetSpellOrAbility`
+(target = new `TargetSpec::SingleTargetSpellOnStack`) bends a single-target spell on the stack to a
+different legal target at trigger resolution (CR 114.6b — must change if able), reusing the
+`ChooseSpellTargets` → `SpellTargetsChosen` write-back; CR 608.2b's `target_still_legal` fizzles the
+trigger for free when the chosen spell has left the stack. Willbender's `turned_face_up` trigger goes
+on the stack through the existing targeted-placement path (`place_targeted_ability`), so it chooses
+its bent spell automatically — no #165 dependency for its lone trigger. **willbender.toml is faithful
+(no `approximates`).** Residual gap (flagged, NOT on the card): CR's "or **ability** with a single
+target" half is unmodeled — activated/triggered abilities on the stack carry no object identity
+(`StackItem::Ability` is keyed by `source`, not a chosen `Target`), so they can't be a `Target::Object`;
+`single_target_spell_on_stack` enumerates spells only. No pool card puts a single-target ability on the
+stack that an opponent would bend, so this stays a spell-only spec until one does (giving stack abilities
+object identity is its own cross-cutting increment). **Slice 3 (Illusionary Mask) remains.**
+
 ### 164. `cross-owner-anthem-cache` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.
 
@@ -1574,7 +1605,7 @@ for targets and both resolve. Then author the card (draft worked otherwise: flas
 creature-you-control, `exile_target_graveyard_card_then_if_creature` with empty `then`).
 *Cards:* stonecloaker.
 
-### 166. `noncreature-host-aura-legality` — 1 card, S/M
+### 166. `noncreature-host-aura-legality` — 1 card, S/M — **LANDED (2026-07-16)**
 Depends on: nothing (pairs naturally with #156's enchant re-check).
 Found in the wave-D authoring pass: the CR 704.5m/n attachment-legality SBA
 (`crates/engine/src/apply.rs`, the `Some(host) => !self.is_creature_on_battlefield(host)` arm)
@@ -1587,6 +1618,15 @@ enchant-creature case. Regression test: Confiscate stays on a land across SBA pa
 enchant-creature Aura still falls off a host that stops being a creature. Then author the card
 (TOML draft worked otherwise: `enchant = {}`, `control_attached`). Also a correctness prereq the
 #156 Prison-Term re-attach work will lean on.
+
+**Landed:** new shared helper `Game::attachment_host_legal(attachment, host)` (`apply.rs`) re-checks
+the attachment's own `def.enchant` filter (via `permanent_matches`) against its live host, falling
+back to the default enchant-creature filter when `enchant` is `None` (plain Auras and Equipment).
+The CR 704.5m/n SBA and the resolve-time re-check in `effects.rs` (CR 303.4f) both call it, deleting
+the duplicated filter-construction that used to live only in `effects.rs`. `confiscate.toml` authored
+faithfully (`enchant = {}`, `control_attached`, no `approximates`). Regression tests: Confiscate
+stays on a Forest across SBA passes; a default enchant-creature Aura still falls off a host that
+stops being a creature.
 *Cards:* confiscate.
 
 ---

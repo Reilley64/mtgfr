@@ -2074,6 +2074,16 @@ pub enum Event {
         controller: PlayerId,
         source: ObjectId,
     },
+    /// A flicker (CR 400.7 — a new object, [`Effect::FlickerTarget`]/
+    /// [`Effect::ReturnFlickeredCard`]): the exiled card `from` returns to the battlefield as the
+    /// fresh permanent `permanent`, under its owner's control (`controller`) — same shape as
+    /// [`Self::ReturnedFromLinkedExile`], but unconditioned on any other permanent leaving. Fires
+    /// ETB triggers like any other entry.
+    FlickeredToBattlefield {
+        permanent: ObjectId,
+        from: ObjectId,
+        controller: PlayerId,
+    },
     /// `from` was returned from the battlefield to its owner's hand as the card `card` (bounce).
     ReturnedToHand { card: ObjectId, from: ObjectId },
     /// `from` was put into its owner's library as the new library card `card` — the bottom

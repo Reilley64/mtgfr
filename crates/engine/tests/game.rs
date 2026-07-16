@@ -24626,6 +24626,81 @@ fn destroying_the_control_aura_returns_control_to_the_owner() {
     );
 }
 
+#[test]
+fn confiscate_stays_on_noncreature_host_across_sba() {
+    // Confiscate: "Enchant permanent. You control enchanted permanent." An unrestricted `enchant`
+    // filter (CR 303.4a) legally attaches to a noncreature host — the CR 704.5m/n legality SBA
+    // must re-check the Aura's own filter against its live host, not hardcode "host is a
+    // creature".
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let confiscate = game.spawn_in_hand(PlayerId(0), card("Confiscate"));
+    assert_eq!(
+        game.controller_of(forest),
+        PlayerId(1),
+        "P1 controls it to start"
+    );
+
+    cast_and_resolve(&mut game, confiscate, Some(Target::Object(forest)));
+
+    let aura_perm = game.attachments(forest)[0];
+    assert_eq!(
+        game.zone_of(aura_perm),
+        Zone::Battlefield,
+        "an Aura enchanting a permanent it's legally allowed to enchant stays attached (CR 704.5n)"
+    );
+    assert_eq!(
+        game.controller_of(forest),
+        PlayerId(0),
+        "P0 now controls the enchanted land"
+    );
+}
+
+#[test]
+fn enchant_creature_aura_falls_off_when_host_stops_being_creature() {
+    // The default "enchant creature" case (no explicit `enchant` filter) must still fall off a
+    // host that stops being a creature — proving the noncreature-host fix above isn't over-broad.
+    let mut game = Game::new();
+    let spire = game.spawn_on_battlefield(PlayerId(0), card("Restless Spire")); // a land
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: spire,
+        ability_index: 0, // {U}{R}: becomes a 2/1 creature until end of turn.
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.effective_types(spire).intersects(TypeSet::CREATURE),
+        "animated into a creature"
+    );
+
+    let aura = game.spawn_in_hand(PlayerId(0), CONTROL_ATTACHED_AURA);
+    cast_and_resolve(&mut game, aura, Some(Target::Object(spire)));
+    let aura_perm = game.attachments(spire)[0];
+    assert_eq!(
+        game.zone_of(aura_perm),
+        Zone::Battlefield,
+        "attached while animated"
+    );
+
+    // The animation reverts at cleanup; the land is no longer a creature.
+    pass_until_next_turn(&mut game);
+    assert!(
+        !game.effective_types(spire).intersects(TypeSet::CREATURE),
+        "reverted to a noncreature land"
+    );
+    assert_eq!(
+        game.zone_of(aura_perm),
+        Zone::Graveyard,
+        "a default enchant-creature Aura still falls off a host that stops being a creature \
+         (CR 704.5m)"
+    );
+}
+
 // ── Multi-player sacrifice edicts (CR 701.16) ────────────────────────────────────────
 
 /// Answer the pending sacrifice-edict choice for `player`, sacrificing `sacrifices`.
@@ -54411,6 +54486,45 @@ fn animists_awakening_no_spell_mastery_leaves_lands_tapped() {
     );
 }
 
+// ── Reveal-top-route (#141): coiling_oracle ────────────────────────────────────────────────
+
+#[test]
+fn coiling_oracle_reveals_land_to_battlefield_else_hand() {
+    // Coiling Oracle: "When this creature enters, reveal the top card of your library. If it's
+    // a land card, put it onto the battlefield. Otherwise, put that card into your hand." A land
+    // on top deploys to the battlefield; a nonland goes to hand instead of the library bottom.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let oracle = game.spawn_in_hand(PlayerId(0), card("Coiling Oracle"));
+    game.cast(oracle).resolve(); // the creature enters
+    resolve_top_of_stack(&mut game); // the ETB trigger resolves
+
+    let forest = game.current_id(lib[0]);
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Battlefield,
+        "a revealed land card goes onto the battlefield"
+    );
+    assert_eq!(game.library_size(PlayerId(0)), 0);
+}
+
+#[test]
+fn coiling_oracle_reveals_nonland_to_hand() {
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let oracle = game.spawn_in_hand(PlayerId(0), card("Coiling Oracle"));
+    game.cast(oracle).resolve(); // the creature enters
+    resolve_top_of_stack(&mut game); // the ETB trigger resolves
+
+    let bear = game.current_id(lib[0]);
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "a revealed nonland card goes into hand instead of the library bottom"
+    );
+    assert_eq!(game.library_size(PlayerId(0)), 0);
+}
+
 // ── Kicker (#?): optional additional cost, was-kicked flag readable at resolution ──────────
 
 #[test]
@@ -60056,6 +60170,280 @@ fn morph_turned_face_up_pays_morph_cost_and_triggers() {
     );
 }
 
+// --- Willbender (CR 114.6 / 702.37f — turned face up, change the target of a single-target spell) ---
+
+/// A single-target burn spell (CR 601.2c — "deal 3 damage to target creature"), the spell
+/// Willbender bends onto a new creature.
+const CREATURE_BOLT: CardDef = CardDef {
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    abilities: &[spell_ability(Effect::DealDamage {
+        amount: Amount::Fixed(3),
+        target: TargetSpec::Creature,
+        count: TargetCount {
+            min: 1,
+            max: 1,
+            x_scaled: false,
+            sacrifice_scaled: false,
+            strive_scaled: false,
+        },
+        divided: false,
+    })],
+    ..creature("Test Creature Bolt", 0, 0, &[])
+};
+
+/// A hard counter (CR 701.5 — "counter target spell"), used to send Willbender's chosen spell to
+/// the graveyard before its turned-face-up trigger resolves.
+const HARD_COUNTER: CardDef = CardDef {
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    abilities: &[spell_ability(Effect::CounterTargetSpell {
+        unless_pays: None,
+        filter: SpellFilter::AllSpells,
+    })],
+    ..creature("Test Hard Counter", 0, 0, &[])
+};
+
+/// Willbender's turned-face-up trigger (CR 702.37f): "When this creature is turned face up, change
+/// the target of target spell or ability with a single target."
+const WILLBENDER_RETARGET: Ability = Ability {
+    timing: Timing::Triggered(Trigger::TurnedFaceUp),
+    effect: Effect::ChangeTargetOfTargetSpellOrAbility {
+        target: TargetSpec::SingleTargetSpellOnStack,
+    },
+    optional: false,
+    min_level: 0,
+    once_each_turn: false,
+    condition: None,
+    cost: Cost::FREE,
+};
+
+/// A synthetic Willbender: a {1}{U} 1/2 Human Wizard with `Morph {1}{U}` and the retarget trigger.
+const WILLBENDER: CardDef = CardDef {
+    cost: flash_cost(1, [0, 1, 0, 0, 0], NO_ADD),
+    morph: Some(flash_cost(1, [0, 1, 0, 0, 0], NO_ADD)),
+    subtypes: &["Human", "Wizard"],
+    abilities: &[WILLBENDER_RETARGET],
+    ..creature("Test Willbender", 1, 2, &[])
+};
+
+/// Turn a face-down Willbender up and point its trigger at `spell` (the single-target spell to
+/// bend). Leaves the trigger on the stack above `spell`, ready to resolve.
+fn turn_willbender_up_targeting(game: &mut TestGame, willbender: ObjectId, spell: ObjectId) {
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::TurnFaceUp {
+        player: PlayerId(0),
+        permanent: willbender,
+    })
+    .unwrap();
+    advance_until(game, |g| g.pending_choice().is_some());
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the turned-face-up trigger pauses to choose the single-target spell to bend; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(spell)),
+        "a single-target spell on the stack is a legal trigger target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(spell)],
+    })
+    .unwrap();
+}
+
+/// Willbender's core: turned face up in response to a single-target spell, it moves that spell's
+/// target to a different legal creature, and the spell resolves onto the new creature.
+#[test]
+fn willbender_changes_target_of_single_target_spell() {
+    let mut game = TestGame::new();
+    let wb_card = game.spawn_in_hand(PlayerId(0), WILLBENDER);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: wb_card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let willbender = game.current_id(wb_card);
+    assert!(game.is_face_down(willbender));
+
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA); // the bolt's original target
+    let bystander = game.spawn_on_battlefield(PlayerId(1), VANILLA); // the redirect destination
+
+    let bolt = game.spawn_in_hand(PlayerId(0), CREATURE_BOLT);
+    game.cast(bolt).at(Target::Object(victim)).submit();
+    let bolt = game.current_id(bolt);
+    assert_eq!(game.spell_target(bolt), Some(Target::Object(victim)));
+
+    turn_willbender_up_targeting(&mut game, willbender, bolt);
+
+    // Resolving the trigger pauses for the bolt's new target.
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    let Some(PendingChoice::ChooseSpellTargets { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the retarget trigger pauses to choose the bolt's new target; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(bystander)),
+        "another creature is a legal new target"
+    );
+    assert!(
+        !legal.contains(&Target::Object(victim)),
+        "CR 114.6b: the current target isn't offered — the target must change"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bystander)],
+    })
+    .unwrap();
+    assert_eq!(
+        game.spell_target(bolt),
+        Some(Target::Object(bystander)),
+        "the bolt now targets the redirected creature"
+    );
+
+    advance_until(&mut game, |g| g.stack().is_empty());
+    assert_eq!(
+        game.zone_of(bystander),
+        Zone::Graveyard,
+        "the bolt resolved onto its new target, killing it"
+    );
+    assert_eq!(
+        game.zone_of(victim),
+        Zone::Battlefield,
+        "the original target was spared"
+    );
+}
+
+/// CR 114.6b: if the only legal target is the one the spell already has, the target is left
+/// unchanged — the retarget is a no-op (no pause, no change).
+#[test]
+fn willbender_leaves_target_unchanged_when_no_other_legal_target() {
+    let mut game = TestGame::new();
+    let wb_card = game.spawn_in_hand(PlayerId(0), WILLBENDER);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: wb_card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let willbender = game.current_id(wb_card);
+
+    // Willbender is the ONLY creature, so a creature bolt aimed at it has no other legal target.
+    let bolt = game.spawn_in_hand(PlayerId(0), CREATURE_BOLT);
+    game.cast(bolt).at(Target::Object(willbender)).submit();
+    let bolt = game.current_id(bolt);
+
+    turn_willbender_up_targeting(&mut game, willbender, bolt);
+
+    // Resolve only the trigger (top of the stack, above the bolt): with no alternate target it
+    // raises no ChooseSpellTargets pause and leaves the bolt's target intact.
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.pending_choice().is_none(),
+        "no legal alternate — the retarget raises no choice; got {:?}",
+        game.pending_choice()
+    );
+    assert_eq!(
+        game.spell_target(bolt),
+        Some(Target::Object(willbender)),
+        "the target is left unchanged (CR 114.6b)"
+    );
+}
+
+/// CR 608.2b: if Willbender's chosen spell has left the stack (here, countered) before the trigger
+/// resolves, the trigger does nothing — no retarget, no panic.
+#[test]
+fn willbender_retarget_noop_when_spell_gone() {
+    let mut game = TestGame::new();
+    let wb_card = game.spawn_in_hand(PlayerId(0), WILLBENDER);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: wb_card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let willbender = game.current_id(wb_card);
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    let bolt = game.spawn_in_hand(PlayerId(0), CREATURE_BOLT);
+    game.cast(bolt).at(Target::Object(victim)).submit();
+    let bolt = game.current_id(bolt);
+
+    turn_willbender_up_targeting(&mut game, willbender, bolt);
+
+    // Counter the bolt — it leaves the stack below the still-waiting retarget trigger.
+    let counter = game.spawn_in_hand(PlayerId(0), HARD_COUNTER);
+    game.cast(counter).at(Target::Object(bolt)).submit();
+    resolve_top_of_stack(&mut game); // the counter resolves, sending the bolt to the graveyard
+    assert_eq!(
+        game.zone_of(bolt),
+        Zone::Graveyard,
+        "the bolt was countered"
+    );
+
+    // The retarget trigger now resolves against a spell that's gone — a clean no-op.
+    advance_until(&mut game, |g| g.stack().is_empty());
+    assert!(
+        game.pending_choice().is_none(),
+        "a gone spell raises no retarget choice; got {:?}",
+        game.pending_choice()
+    );
+    assert_eq!(
+        game.zone_of(victim),
+        Zone::Battlefield,
+        "the countered bolt never dealt its damage"
+    );
+}
+
+/// The authored `willbender.toml` composes morph (slice 1) with the retarget payload (slice 2):
+/// cast face down, turn up for its morph cost, and bend a single-target spell.
+#[test]
+fn willbender_card_is_faithful() {
+    let mut game = TestGame::new();
+    let wb_card = game.spawn_in_hand(PlayerId(0), card("Willbender"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: wb_card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let willbender = game.current_id(wb_card);
+    assert!(game.is_face_down(willbender), "cast face down as a 2/2");
+
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let bystander = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let bolt = game.spawn_in_hand(PlayerId(0), CREATURE_BOLT);
+    game.cast(bolt).at(Target::Object(victim)).submit();
+    let bolt = game.current_id(bolt);
+
+    turn_willbender_up_targeting(&mut game, willbender, bolt);
+    assert!(!game.is_face_down(willbender), "now face up");
+    assert_eq!(
+        (game.power(willbender), game.toughness(willbender)),
+        (1, 2),
+        "revealed as the printed 1/2"
+    );
+
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bystander)],
+    })
+    .unwrap();
+    assert_eq!(game.spell_target(bolt), Some(Target::Object(bystander)));
+}
+
 // --- Trigger doubling (CR 603.3c — Harmonic Prodigy, Veyran, Voice of Duality) ---
 
 /// A plain enter-the-battlefield draw, reused by the trigger-doubling test creatures.
@@ -61928,5 +62316,122 @@ fn seal_of_cleansing_sacrifices_itself_to_destroy_an_artifact() {
         game.zone_of(stone),
         Zone::Graveyard,
         "the targeted artifact was destroyed"
+    );
+}
+
+// ── Flicker (CR 400.7 — a new object): #147 ─────────────────────────────────────────────
+
+/// A test-only creature whose single ETB gains its controller 2 life — a fresh-object flicker
+/// (CR 400.7) re-fires it, without `TWO_ETB`'s incidental simultaneous-trigger-ordering pause
+/// (two ETB abilities on one source raise a `PendingChoice::OrderTriggers`, unrelated to what
+/// these tests exercise).
+const ETB_GAIN_LIFE: CardDef = CardDef {
+    abilities: &[Ability {
+        timing: Timing::Triggered(Trigger::Etb),
+        effect: Effect::GainLife {
+            amount: Amount::Fixed(2),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("Test ETB Gain Life", 1, 1, &[])
+};
+
+#[test]
+fn momentary_blink_flickers_creature_you_control_immediately() {
+    // Momentary Blink: "Exile target creature you control, then return it to the battlefield
+    // under its owner's control."
+    let mut game = Game::new();
+    let target = game.spawn_on_battlefield(PlayerId(0), ETB_GAIN_LIFE);
+    let blink = game.spawn_in_hand(PlayerId(0), card("Momentary Blink"));
+    game.fund_mana(PlayerId(0));
+    let life_before = game.life(PlayerId(0));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: blink,
+        target: Some(Target::Object(target)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_whole_stack(&mut game); // the spell, then its fresh object's own ETB trigger
+
+    let flickered = game.current_id(target);
+    assert_ne!(
+        flickered, target,
+        "the returned permanent is a new object (CR 400.7), not the same one that left"
+    );
+    assert_eq!(
+        game.zone_of(target),
+        Zone::Battlefield,
+        "back on the battlefield in the same resolution"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before + 2,
+        "the fresh object's own ETB trigger fired again"
+    );
+    assert!(
+        game.is_summoning_sick(flickered),
+        "a freshly entered permanent is summoning sick"
+    );
+}
+
+#[test]
+fn mistmeadow_witch_delayed_flicker_returns_at_end_step() {
+    // Mistmeadow Witch: "{2}{W}{U}: Exile target creature. Return that card to the battlefield
+    // under its owner's control at the beginning of the next end step."
+    let mut game = Game::new();
+    let witch = game.spawn_on_battlefield(PlayerId(0), card("Mistmeadow Witch"));
+    let target = game.spawn_on_battlefield(PlayerId(1), ETB_GAIN_LIFE); // "target creature" — any
+    game.fund_mana(PlayerId(0));
+    let life_before = game.life(PlayerId(1));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: witch,
+        ability_index: 0,
+        target: Some(Target::Object(target)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(target),
+        Zone::Exile,
+        "exiled immediately on resolution"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    resolve_whole_stack(&mut game); // the delayed trigger resolves
+
+    let flickered = game.current_id(target);
+    assert_ne!(flickered, target, "returns as a new object (CR 400.7)");
+    assert_eq!(
+        game.zone_of(target),
+        Zone::Battlefield,
+        "back on the battlefield at the beginning of the next end step"
+    );
+    assert_eq!(
+        game.controller_of(flickered),
+        PlayerId(1),
+        "returns under its owner's control, not the activator's"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before + 2,
+        "the fresh object's own ETB trigger fired again"
     );
 }

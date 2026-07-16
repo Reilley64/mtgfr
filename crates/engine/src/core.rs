@@ -565,6 +565,18 @@ impl Game {
         }
     }
 
+    /// Whether the spell at `id` currently has exactly one target (CR 114.6's "single target" —
+    /// Willbender). Counts the chosen targets across both independent clauses; `false` if `id`
+    /// isn't a spell or targets zero/two-plus.
+    /// ponytail: a modal spell's per-mode targets aren't counted (they live on `modes`, not the
+    /// clause lists) — no pool card bends a modal spell, so the clause count is exact for what's here.
+    pub(crate) fn spell_has_single_target(&self, id: ObjectId) -> bool {
+        let Object::Spell(s) = &self.objects[id as usize] else {
+            return false;
+        };
+        s.targets.iter().count() + s.targets_second.iter().count() == 1
+    }
+
     /// How many permanents were sacrificed to pay a spell's additional sacrifice cost
     /// ([`AdditionalCost::sacrifice`] — Plumb the Forbidden's "you may sacrifice one or more
     /// creatures"), 0 if `id` isn't a spell, has no such cost, or the caster declined. The seam a

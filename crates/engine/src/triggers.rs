@@ -35,6 +35,7 @@ impl Game {
                 Event::PermanentEntered { permanent, .. }
                 | Event::ReanimatedToBattlefield { permanent, .. }
                 | Event::ReturnedFromLinkedExile { permanent, .. }
+                | Event::FlickeredToBattlefield { permanent, .. }
                 | Event::SearchedToBattlefield { permanent, .. }
                 | Event::PutOntoBattlefieldFromHand { permanent, .. }
                 // A manifest enters the battlefield as a creature (CR 701.34); its own `Etb` scans

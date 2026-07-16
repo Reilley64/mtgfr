@@ -1,0 +1,32 @@
+# {2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning
+# of the next end step.
+name = "Mistmeadow Witch"
+oracle = "{2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning of the next end step."
+set = "soc"
+subtypes = ["Kithkin", "Wizard"]
+
+[cost]
+generic = 1
+hybrid = [["white", "blue"]]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {2}{W}{U}: Exile target creature. Return that card to the battlefield under its owner's control at the beginning
+# of the next end step.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 2
+white = 1
+blue = 1
+
+# Exile target creature. Return that card to the battlefield under its owner's control at the beginning of the next
+# end step.
+[[abilities.effects]]
+type = "flicker_target"
+target = "creature"
+return_at = "end"

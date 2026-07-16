@@ -72,6 +72,14 @@ pub enum TargetSpec {
     /// "target noncreature spell" and Quandrix Command's "target artifact or enchantment spell"
     /// narrow it). [`Effect::CounterTargetSpell::filter`] supplies the filter.
     SpellOnStack(SpellFilter),
+    /// A spell currently on the stack that has exactly one target (Willbender's "target spell …
+    /// with a single target", CR 114.6). Targets the stack object; used by
+    /// [`Effect::ChangeTargetOfTargetSpellOrAbility`] to pick the spell to bend.
+    /// ponytail: CR's "spell or ability" also reaches a single-target activated/triggered ability
+    /// on the stack, but stack abilities carry no object identity in this engine (they're keyed by
+    /// source, not a chosen `Target`), so only spells are targetable here — see #163's residual gap.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "single_target_spell_on_stack"))]
+    SingleTargetSpellOnStack,
     /// A target artifact, enchantment, or planeswalker on the battlefield (Fracture). The
     /// noncreature-permanent removal set the pool needs; Auras count as enchantments.
     ArtifactEnchantmentOrPlaneswalker,
@@ -428,10 +436,11 @@ pub enum TopDest {
     Battlefield,
 }
 
-/// Where the *non-selected* looked-at cards go at the end of an [`Effect::LookAtTop`].
-/// ponytail: only `Bottom` is in scope ("put the rest on the bottom"). A `Graveyard` arm (a
-/// look-then-select whose rest is milled) is the next unlock; add it (routing through
-/// [`Event::Milled`], the surveil path) from the first card that needs it.
+/// Where the *non-matching* revealed/looked-at cards go, shared by [`Effect::LookAtTop`],
+/// [`Effect::RevealUntil`], and [`Effect::RevealTopCards`].
+/// ponytail: a `Graveyard` arm (a look-then-select whose rest is milled) is the next unlock;
+/// add it (routing through [`Event::Milled`], the surveil path) from the first card that needs
+/// it.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -442,6 +451,9 @@ pub enum RestDest {
     /// On the bottom of the selecting player's library (the common case).
     #[default]
     Bottom,
+    /// Into the selecting player's hand (Coiling Oracle's "Otherwise, put that card into your
+    /// hand").
+    Hand,
 }
 
 /// Whose library a [`Effect::SearchLibrary`] searches (CR 701.19 — "search their library").

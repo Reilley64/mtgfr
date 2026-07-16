@@ -1067,6 +1067,17 @@ impl Game {
             .collect();
         match rest {
             RestDest::Bottom => self.bottom_pile_in_library(player, &bottomed, &mut events),
+            RestDest::Hand => {
+                for from in bottomed {
+                    let event = Event::SearchedToHand {
+                        player,
+                        object: self.next_object_id(),
+                        from,
+                        card: self.def_of(from),
+                    };
+                    self.push_apply(&mut events, event);
+                }
+            }
         }
         Ok(events)
     }

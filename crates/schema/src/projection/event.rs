@@ -536,6 +536,15 @@ pub(crate) fn project_event(
             controller: controller.0,
             source,
         },
+        Event::FlickeredToBattlefield {
+            permanent,
+            from,
+            controller,
+        } => VisibleEvent::FlickeredToBattlefield {
+            permanent,
+            from,
+            controller: controller.0,
+        },
         Event::ReturnedToHand { card, from } => VisibleEvent::ReturnedToHand { card, from },
         Event::TuckedToLibrary { card, from, to_top } => {
             VisibleEvent::TuckedToLibrary { card, from, to_top }

@@ -7,6 +7,26 @@
 use crate::*;
 
 impl Game {
+    /// Whether `host` is a legal object for `attachment` (an Aura or Equipment) to be attached to
+    /// right now: `attachment`'s own `def.enchant` filter re-checked against its live host, or the
+    /// default "enchant creature" filter when it has none (a plain Aura, or Equipment — the DSL
+    /// has no attach-filter surface for Equipment beyond "must be a creature"). Used both at an
+    /// Aura's cast-time legality re-check (CR 303.4f) and by the CR 704.5m/n state-based action
+    /// below, so an Aura like Confiscate ("Enchant permanent") isn't held to the default
+    /// enchant-creature restriction its `enchant` filter doesn't actually impose.
+    pub(crate) fn attachment_host_legal(&self, attachment: ObjectId, host: ObjectId) -> bool {
+        let filter = self
+            .def_of(attachment)
+            .enchant
+            .unwrap_or(PermanentFilter::of(TypeSet::CREATURE));
+        self.permanent_matches(
+            &filter,
+            host,
+            self.controller_of(attachment),
+            Some(attachment),
+        )
+    }
+
     /// Re-check state-based actions and return the events they produce.
     /// A player at 0-or-less life loses; a creature with lethal marked damage dies.
     pub(crate) fn check_state_based_actions(&self) -> Vec<Event> {
@@ -76,7 +96,7 @@ impl Game {
             let host_illegal = match p.attached_to {
                 // unattached Aura is illegal, unless it's this Aura awaiting its host choice
                 None => matches!(p.def.kind, CardKind::Aura) && awaiting_host != Some(id),
-                Some(host) => !self.is_creature_on_battlefield(host) || leaving.contains(&host),
+                Some(host) => !self.attachment_host_legal(id, host) || leaving.contains(&host),
             };
             if !host_illegal {
                 continue;
@@ -1662,6 +1682,22 @@ impl Game {
                 self.exile_links
                     .until_source_leaves
                     .retain(|&(s, o)| !(s == source && o == from));
+            }
+            // A flicker's return (immediate `FlickerTarget` or the delayed `ReturnFlickeredCard`):
+            // the exiled card `from` returns as the fresh permanent `permanent`, same shape as
+            // `ReturnedFromLinkedExile` above.
+            Event::FlickeredToBattlefield {
+                permanent,
+                from,
+                controller,
+            } => {
+                let def = self.def_of(from);
+                let commander = self.is_commander(from);
+                let id = self.create_object(
+                    Some(from),
+                    Object::Permanent(fresh_permanent(def, controller, true, commander)),
+                );
+                assert_eq!(id, permanent);
             }
             Event::ReturnedToHand { card, from } => {
                 // A bounce sends the permanent to its *owner's* hand, not the caster's.

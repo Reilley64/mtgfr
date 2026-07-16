@@ -278,11 +278,7 @@ impl Game {
                 // (CR 702.19d), not go to the graveyard — always graveyard-bound for now. No pool
                 // escape Aura's target realistically fizzles in a test, so this residual is (CR 702.19, CR 303.4, CR 601.2c)
                 // untested; extend with an `spell.escape` check if one needs it. (CR 702.19, CR 601)
-                let enchant_filter = spell
-                    .def
-                    .enchant
-                    .unwrap_or(PermanentFilter::of(TypeSet::CREATURE));
-                if !self.permanent_matches(&enchant_filter, host, spell.controller, Some(object)) {
+                if !self.attachment_host_legal(object, host) {
                     // CR 707.10a/111.7: a copy that fails to resolve never becomes a card — it
                     // just ceases to exist, mirroring `finish_instant_sorcery_resolution`'s own
                     // copy guard (Changing Loyalty's Replicate copies, retargeted onto a creature
@@ -1266,6 +1262,57 @@ impl Game {
                     .map_or(TargetCount::default(), |a| a.effect.target_count());
                 self.choose_spell_targets(copy, spec, count, controller, events);
             }
+            // Willbender (CR 114.6 / 702.37f): "change the target of target spell … with a single
+            // target." The bent spell is this trigger's own chosen target (CR 603.3d), already
+            // re-checked legal by CR 608.2b before this ran (so a spell that left the stack fizzles
+            // the trigger). Guard the shape defensively.
+            Effect::ChangeTargetOfTargetSpellOrAbility { .. } => {
+                let Some(Target::Object(spell)) = target else {
+                    return;
+                };
+                if !matches!(self.objects[spell as usize], Object::Spell(_)) {
+                    return;
+                }
+                // The bent spell's own single target clause, and its currently-legal targets
+                // computed for the SPELL's controller (CR 114.6 — the new target must be legal for
+                // *that* spell), minus its current target (CR 114.6b — the target must change).
+                let def = self.def_of(spell);
+                let spec = def
+                    .abilities
+                    .iter()
+                    .find(|a| matches!(a.timing, Timing::Spell))
+                    .map_or(TargetSpec::None, |a| a.effect.target());
+                let spell_controller = self.spell(spell).controller;
+                let current = self.spell_target(spell);
+                let legal: Vec<Target> = self
+                    .legal_targets_for(
+                        spec,
+                        spell,
+                        spell_controller,
+                        color_identity(def),
+                        self.spell(spell).x,
+                    )
+                    .into_iter()
+                    .filter(|&t| Some(t) != current)
+                    .collect();
+                // CR 114.6b: no legal alternate — the target is left unchanged (no pause).
+                if legal.is_empty() {
+                    return;
+                }
+                // Willbender's controller chooses; the answer overwrites the stored single target
+                // via `Event::SpellTargetsChosen` (the same write-back a multi-target choice uses).
+                crate::pending::raise_choice(
+                    self,
+                    PendingChoice::ChooseSpellTargets {
+                        player: controller,
+                        spell,
+                        min: 1,
+                        max: 1,
+                        legal,
+                        clause: 0,
+                    },
+                );
+            }
             // Thunderclap Drake's delayed one-shot: copy the spell that fired the armed
             // `ScheduleNextCastTrigger` watch (baked in as `triggering_spell` at trigger
             // placement — see `fill_triggering_spell`), not a chosen target or this ability's
@@ -2233,6 +2280,15 @@ impl Game {
                                     card,
                                 });
                             }
+                            RestDest::Hand => {
+                                events.push(Event::SearchedToHand {
+                                    player: controller,
+                                    object: next,
+                                    from: card,
+                                    card: def,
+                                });
+                                next += 1;
+                            }
                         }
                         continue;
                     }
@@ -2297,6 +2353,15 @@ impl Game {
                                     player: controller,
                                     card,
                                 });
+                            }
+                            RestDest::Hand => {
+                                events.push(Event::SearchedToHand {
+                                    player: controller,
+                                    object: next,
+                                    from: card,
+                                    card: def,
+                                });
+                                next += 1;
                             }
                         }
                         continue;
@@ -2935,6 +3000,75 @@ impl Game {
                         object: exiled,
                     },
                 ]
+            }
+            // Flicker (CR 400.7 — a new object, Momentary Blink/Mistmeadow Witch): exile the
+            // target creature, then either return it immediately under its owner's control
+            // (`return_at` absent) or schedule that return as a real CR 603.7 delayed triggered
+            // ability at `return_at`'s step (`ReturnFlickeredCard`, carrying the specific card now
+            // sitting in exile).
+            Effect::FlickerTarget { return_at, .. } => {
+                let object = expect_object_target(target, "flicker");
+                // CR 111.7: a token that leaves the battlefield ceases to exist rather than
+                // changing zones — nothing to flicker back.
+                let permanent = self
+                    .as_permanent(object)
+                    .expect("flicker resolves against a battlefield permanent");
+                if permanent.token {
+                    return vec![Event::TokenCeasedToExist {
+                        token: object,
+                        controller: permanent.owner,
+                        def: permanent.def,
+                    }];
+                }
+                let owner = permanent.owner;
+                let mut next = self.next_object_id();
+                let exiled = next;
+                next += 1;
+                let exile_event = self.exile_or_command(object, exiled);
+                // CR 903.9b: a commander diverted to the command zone instead of exile was never
+                // exiled — nothing returns.
+                if matches!(exile_event, Event::MovedToCommandZone { .. }) {
+                    return vec![exile_event];
+                }
+                match return_at {
+                    None => vec![
+                        exile_event,
+                        Event::FlickeredToBattlefield {
+                            permanent: next,
+                            from: exiled,
+                            controller: owner,
+                        },
+                    ],
+                    Some(fire_at) => vec![
+                        exile_event,
+                        Event::DelayedTriggerScheduled {
+                            controller,
+                            source,
+                            fire_at,
+                            effect: Effect::ReturnFlickeredCard {
+                                exiled: Some(exiled),
+                            },
+                        },
+                    ],
+                }
+            }
+            // The delayed payload `FlickerTarget` schedules when it carries a `return_at`
+            // (Mistmeadow Witch): return the specific card `exiled` names to the battlefield under
+            // its owner's control. Guard-return with no return if it's since left exile some
+            // other way (CR 603.10a last-known information).
+            Effect::ReturnFlickeredCard { exiled } => {
+                let Some(exiled) = exiled else {
+                    return Vec::new();
+                };
+                let exiled = self.current_id(exiled);
+                if self.zone_of(exiled) != Zone::Exile {
+                    return Vec::new();
+                }
+                vec![Event::FlickeredToBattlefield {
+                    permanent: self.next_object_id(),
+                    from: exiled,
+                    controller: self.owner_of(exiled),
+                }]
             }
             // Bojuka Bog / Remorseful Cleric: exile every card in the target player's graveyard.
             // Ids are minted sequentially, matching the order `apply` will push them (same
@@ -3606,6 +3740,9 @@ impl Game {
             | Effect::CopyTargetSpell
             | Effect::CopyThisSpell { .. }
             | Effect::RetargetSpellCopy { .. }
+            // Pauses on `ChooseSpellTargets` to bend the chosen spell — only resolves via
+            // `Game::run`, never this pure path.
+            | Effect::ChangeTargetOfTargetSpellOrAbility { .. }
             | Effect::CopyTriggeringSpell { .. }
             | Effect::CopyTriggeringSpellForEachOtherCreatureYouControl { .. }
             // Needs `&mut self` to mint the ability copy (`push_ability_group_with_x`) — only

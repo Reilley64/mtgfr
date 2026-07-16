@@ -568,6 +568,13 @@ pub enum VisibleEvent {
         controller: u8,
         source: ObjectId,
     },
+    /// A flicker's return (immediate or the delayed end-step twin): the exiled card `from`
+    /// returned to the battlefield as `permanent`, under `controller`'s control.
+    FlickeredToBattlefield {
+        permanent: ObjectId,
+        from: ObjectId,
+        controller: u8,
+    },
     ReturnedToHand {
         card: ObjectId,
         from: ObjectId,
