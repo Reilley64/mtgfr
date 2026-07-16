@@ -1,14 +1,7 @@
-# Deploy PRD §Database migrations / §Deploy integration. The Job name is derived from a short
-# hash of the active API image rather than `generate_name` — a fixed image tag like `1.2.3` is
-# invalid/awkward as a sole DNS-1123 name, but `generate_name` also means Terraform creates (and
-# `wait_for_completion` blocks on) a brand-new Job on *every* apply, even when the active image
-# hasn't changed — pointless churn on every web-only deploy step.
-# Naming on the image hash makes the Job stable (and thus a no-op plan) when the image is
-# unchanged, and forces a fresh Job (name changes) whenever it is. `wait_for_completion` blocks
-# this resource until the Job finishes; `argocd.tf`'s Application `depends_on` this Job so helm
-# params (and thus Argo sync of the new image) only update after schema is current.
-# `ttl_seconds_after_finished` lets the completed Job/Pod get garbage collected instead of
-# accumulating one per release forever.
+# Deploy PRD §Database migrations. Job name = short hash of active API image so unchanged
+# images are a no-op plan; image bumps force a fresh Job. `wait_for_completion` + Application
+# `depends_on` in argocd.tf gate helm param updates on schema. `ttl_seconds_after_finished`
+# GC's completed Jobs.
 
 resource "kubernetes_job_v1" "edh_migrate" {
   wait_for_completion = true

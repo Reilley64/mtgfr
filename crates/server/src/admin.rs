@@ -1,5 +1,4 @@
-//! `AdminAuth` — defense in depth for cluster-internal admin/health routes when
-//! `settings.admin_token` is set.
+//! `AdminAuth` for `/health/drain` when `settings.admin_token` is set.
 
 use axum::extract::FromRequestParts;
 use axum::http::StatusCode;

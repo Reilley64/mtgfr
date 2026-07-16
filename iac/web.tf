@@ -1,4 +1,4 @@
-# SolidStart BFF Service. Deployment is Argo-owned (iac/charts/edh).
+# edh-web Service; Deployment is Argo-owned (iac/charts/edh).
 
 resource "kubernetes_service_v1" "edh_web" {
   wait_for_load_balancer = false

@@ -1,6 +1,4 @@
-# Headless Service stays in Terraform (stable selector). Active Service `edh-api` + API/web
-# Deployments are Argo-owned (iac/charts/edh) with sync-wave ordering so the Service selector
-# flips only after the new API Deployment is healthy; PruneLast drains the prior generation.
+# Headless Service only — Deployments + Service edh-api live in iac/charts/edh (Argo).
 
 locals {
   server_image_tag = element(split(":", var.server_image), length(split(":", var.server_image)) - 1)
@@ -13,7 +11,7 @@ locals {
   api_headless_service = "edh-api-headless"
 }
 
-# Sticky dial for Terminating pods (BFF uses pod DNS from table_routes).
+# Sticky dial for Terminating pods (table_routes → pod DNS).
 resource "kubernetes_service_v1" "edh_api_headless" {
   wait_for_load_balancer = false
 

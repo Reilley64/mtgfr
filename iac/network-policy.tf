@@ -1,12 +1,5 @@
-# Deploy PRD §Decisions (locked) — "/health/drain: Not public (NetworkPolicy blocks tunnel);
-# apply machine uses kubectl port-forward". NetworkPolicy filters by pod/port (L3/L4), not
-# HTTP path: `cloudflared` may only reach `edh-web`. `edh-web` (SolidStart BFF) may reach all API
-# pods (`mtgfr.io/component=api`). `/health/drain` is 404'd by the BFF and remains port-forward only.
-#
-# `kubectl port-forward` from the apply machine goes through the kubelet directly into the pod's
-# network namespace rather than over the pod's normal CNI-managed ingress path, so it is not
-# subject to these Ingress NetworkPolicies on most CNIs — consistent with the deploy PRD's
-# assumption that port-forward is the one path allowed to reach /health/drain.
+# `/health/drain` is not public: cloudflared → edh-web only; edh-web → API pods.
+# Port-forward (apply machine) bypasses these Ingress policies on most CNIs.
 
 resource "kubernetes_network_policy_v1" "edh_api_ingress" {
   metadata {

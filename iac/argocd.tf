@@ -1,7 +1,5 @@
-# Argo CD owns API + web Deployments and Service edh-api (iac/charts/edh). Terraform apply
-# updates Application helm params (images / grace / active instance id); it does not wait on
-# pod termination grace. Sync waves: Deployment (0) then edh-api Service (1). PruneLast deletes
-# the prior per-tag API Deployment after the new generation is up → SIGTERM drain.
+# Argo Application for iac/charts/edh (Deployments + edh-api). TF only bumps helm params.
+# Chart: sync-wave 0 Deployments, wave 1 edh-api Service, PruneLast → SIGTERM drain.
 
 resource "kubernetes_namespace_v1" "argocd" {
   metadata {
@@ -67,8 +65,7 @@ resource "kubernetes_manifest" "edh_application" {
     }
   }
 
-  # Image bumps recreate migrate Jobs (name = image hash); wait_for_completion finishes before
-  # this Application CR is updated, so Argo never syncs a new server image ahead of schema.
+  # Migrate Jobs (image-hash names) finish before helm params update.
   depends_on = [
     helm_release.argocd,
     kubernetes_job_v1.edh_migrate,

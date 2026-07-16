@@ -1,5 +1,4 @@
-# Newest-only seed / auth / decks. Sync-wave 1 runs after the API Deployment (wave 0) is
-# healthy so the selector never points at a missing instance id (no seed blackhole).
+# Wave 1: retarget after API Deployment (wave 0) is healthy — avoids selecting a missing app id.
 apiVersion: v1
 kind: Service
 metadata:
