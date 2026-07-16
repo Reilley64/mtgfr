@@ -1,6 +1,6 @@
 /* The design system, as Tailwind. DESIGN.md's frontmatter is the source of truth: its `colors`,
  * `typography`, `rounded` and `spacing` maps are the @theme below, and its `components` map is
- * realized as Solid wrappers + utility recipes in `client/src/ui/` — never via `@apply`.
+ * realized as Solid wrappers + utility recipes in `client/src/components/atoms/` — never via `@apply`.
  * A token that exists in one and not the other is drift.
  *
  * House rule for the TSX: classes carry styling, `style` carries only data — a dynamic value goes
@@ -338,5 +338,5 @@
   }
 }
 
-/* DESIGN.md §5 surfaces live in `client/src/ui/` (Solid components + utility recipes).
+/* DESIGN.md §5 surfaces live in `client/src/components/atoms/` (Solid components + utility recipes).
  * Do not reintroduce `@apply` or a parallel `@layer components` vocabulary. */

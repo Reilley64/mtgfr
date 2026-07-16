@@ -29,12 +29,9 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "edh" {
   config = {
     ingress = [
       {
+        # Single public origin: SolidStart serves the SPA and proxies `/api/*` in-cluster.
         hostname = var.edh_hostname
-        service  = "http://${kubernetes_service.edh_web.metadata[0].name}.${local.namespace}.svc:8080"
-      },
-      {
-        hostname = var.api_hostname
-        service  = "http://${kubernetes_service.edh_api_proxy.metadata[0].name}.${local.namespace}.svc:8080"
+        service  = "http://${kubernetes_service_v1.edh_web.metadata[0].name}.${local.namespace}.svc:8080"
       },
       {
         # Required catch-all — unmatched hostnames get a 404 instead of falling through.
@@ -58,30 +55,26 @@ resource "cloudflare_dns_record" "edh" {
   ttl     = 1 # "automatic" — required by the API when proxied = true
 }
 
-resource "cloudflare_dns_record" "api_edh" {
-  zone_id = var.cloudflare_zone_id
-  name    = "api.edh"
-  type    = "CNAME"
-  content = "${cloudflare_zero_trust_tunnel_cloudflared.edh.id}.cfargotunnel.com"
-  proxied = true
-  ttl     = 1
+# Preserve the existing ruleset in state when renaming from the old API-hostname rule.
+moved {
+  from = cloudflare_ruleset.api_edh_no_response_buffering
+  to   = cloudflare_ruleset.edh_no_response_buffering
 }
 
-# Deploy PRD §DNS & Cloudflare (SSE through Cloudflare, required) — stream responses on
-# api.edh.example.com must not be buffered at the edge, or SSE keepalives get held back and
-# players see stalled streams. `response_body_buffering = "none"` is the modern Configuration
-# Rules replacement for the legacy Page Rule "Disable Performance" response buffering toggle.
-resource "cloudflare_ruleset" "api_edh_no_response_buffering" {
+# Deploy PRD §DNS & Cloudflare (SSE through Cloudflare, required) — stream responses must not be
+# buffered at the edge, or SSE keepalives get held back and players see stalled streams.
+# Same-origin BFF: streams go through `edh` (`/api/.../stream/v1`), not a separate API hostname.
+resource "cloudflare_ruleset" "edh_no_response_buffering" {
   zone_id     = var.cloudflare_zone_id
-  name        = "mtgfr api.edh — disable response buffering"
-  description = "SSE (/tables/{table}/stream/v1) must stream through the edge unbuffered."
+  name        = "mtgfr edh — disable response buffering"
+  description = "SSE via SolidStart BFF (/api/tables/{table}/stream/v1) must stream unbuffered."
   kind        = "zone"
   phase       = "http_config_settings"
 
   rules = [
     {
-      description = "No response body buffering for api.edh.example.com"
-      expression  = "(http.host eq \"${var.api_hostname}\")"
+      description = "No response body buffering for edh hostname"
+      expression  = "(http.host eq \"${var.edh_hostname}\")"
       action      = "set_config"
 
       action_parameters = {
@@ -91,7 +84,9 @@ resource "cloudflare_ruleset" "api_edh_no_response_buffering" {
   ]
 }
 
-resource "kubernetes_deployment" "cloudflared" {
+resource "kubernetes_deployment_v1" "cloudflared" {
+  wait_for_rollout = true
+
   metadata {
     name      = "cloudflared"
     namespace = local.namespace
@@ -121,7 +116,7 @@ resource "kubernetes_deployment" "cloudflared" {
             name = "TUNNEL_TOKEN"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.cloudflared_token.metadata[0].name
+                name = kubernetes_secret_v1.cloudflared_token.metadata[0].name
                 key  = "TUNNEL_TOKEN"
               }
             }

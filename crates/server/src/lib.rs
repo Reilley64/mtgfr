@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use axum::{
     Json, Router,
@@ -23,15 +22,14 @@ use engine::PlayerId;
 use schema::{
     ActionView, CatalogCard, ChoiceItem, CombatView, CommanderDamageView, CreateTableResponse,
     DeltaEnvelope, IntentEnvelope, JoinRequest, LobbyView, ModalView, ModeView, ObjectView,
-    PendingChoiceView, PlayerView, ReadyRequest, SeatView, StackObjectView, StartRequest,
-    StreamFrame, VisibleEvent, VisibleState, WireAttack, WireBlock, WireCost, WireDamage,
-    WireIntent, WireKind, WireTarget, catalog_card, complete_visible,
+    PendingChoiceView, PlayerView, ReadyRequest, SeatView, SeedRequest, SeedResponse, SeedSeat,
+    StackObjectView, StartRequest, StreamFrame, VisibleEvent, VisibleState, WireAttack, WireBlock,
+    WireCost, WireDamage, WireIntent, WireKind, WireTarget, catalog_card, complete_visible,
 };
 use serde::Deserialize;
 use utoipa::OpenApi;
 
 mod action_log;
-pub mod admin;
 pub mod auth;
 pub mod catalog_search;
 pub mod db;
@@ -52,7 +50,6 @@ pub(crate) mod test_support;
 use auth::AuthUser;
 use decks::Table;
 use game_loop::{Ack, submit_intent};
-use lobby::{create_table, join_table, lobby_state, ready_up, start_game};
 use settings::Settings;
 
 /// The registry of live tables, keyed by `table_id`. Single instance, in-process — no Redis
@@ -63,14 +60,10 @@ pub struct Registry {
 }
 
 impl Registry {
-    /// Started games, or lobbies with a claimed seat inside the idle TTL.
+    /// Live games this instance holds (every table is born already seeded — see
+    /// [`decks::Table::seeded`] — so this is simply how many tables are registered).
     pub fn active_table_count(&self) -> usize {
-        self.tables.values().filter(|t| t.is_active()).count()
-    }
-
-    /// Drop never-started lobbies idle past `ttl`.
-    pub fn sweep_idle_lobbies(&mut self, ttl: Duration) {
-        self.tables.retain(|_, t| !t.is_idle_lobby(ttl));
+        self.tables.values().filter(|t| t.game.is_some()).count()
     }
 }
 
@@ -89,7 +82,7 @@ pub struct AppState {
     pub reg: Arc<Mutex<Registry>>,
     pub db: toasty::Db,
     pub settings: Arc<Settings>,
-    /// Live drain flag (startup from `settings.drain`; flipped by `/admin/drain` or SIGTERM).
+    /// Live drain flag (startup from `settings.drain`; flipped by SIGTERM).
     pub draining: Arc<AtomicBool>,
 }
 
@@ -332,11 +325,7 @@ fn cors_layer(origin: &str) -> Option<tower_http::cors::CorsLayer> {
 pub fn app(state: AppState) -> Router {
     let cors = cors_layer(&state.settings.cors_origin);
     let router = Router::new()
-        .route("/tables/v1", post(create_table))
-        .route("/tables/join/v1", post(join_table))
-        .route("/tables/ready/v1", post(ready_up))
-        .route("/tables/start/v1", post(start_game))
-        .route("/tables/{table}/lobby/v1", get(lobby_state))
+        .route("/tables/seed/v1", post(lobby::seed_table))
         .route("/cards/v1", get(catalog))
         .route("/cards/search/v1", get(search_cards))
         .route("/cards/lookup/v1", get(lookup_cards))
@@ -354,16 +343,21 @@ pub fn app(state: AppState) -> Router {
                 .put(decks_api::update_deck)
                 .delete(decks_api::delete_deck),
         )
-        .route("/intent/v1", post(submit_intent))
-        .route("/yield/v1", post(game_loop::set_yield))
-        .route("/turn-yield/v1", post(game_loop::set_turn_yield))
-        .route("/stack-dwell/v1", post(game_loop::set_stack_dwell))
+        .route("/tables/{table}/intent/v1", post(submit_intent))
+        .route("/tables/{table}/yield/v1", post(game_loop::set_yield))
+        .route(
+            "/tables/{table}/turn-yield/v1",
+            post(game_loop::set_turn_yield),
+        )
+        .route(
+            "/tables/{table}/stack-dwell/v1",
+            post(game_loop::set_stack_dwell),
+        )
         .route("/tables/{table}/stream/v1", get(stream))
         .route("/openapi.json", get(openapi_spec))
         .route("/health/live", get(health::live))
         .route("/health/ready", get(health::ready))
         .route("/health/drain", get(health::drain))
-        .route("/admin/drain", post(admin::drain))
         .with_state(state);
     match cors {
         Some(cors) => router.layer(cors),
@@ -393,11 +387,7 @@ async fn openapi_spec() -> Json<utoipa::openapi::OpenApi> {
         game_loop::set_turn_yield,
         game_loop::set_stack_dwell,
         stream,
-        lobby::create_table,
-        lobby::join_table,
-        lobby::ready_up,
-        lobby::start_game,
-        lobby::lobby_state,
+        lobby::seed_table,
         catalog,
         search_cards,
         lookup_cards,
@@ -441,6 +431,9 @@ async fn openapi_spec() -> Json<utoipa::openapi::OpenApi> {
         JoinRequest,
         ReadyRequest,
         StartRequest,
+        SeedRequest,
+        SeedResponse,
+        SeedSeat,
         SeatView,
         LobbyView,
         CatalogCard,
@@ -495,8 +488,8 @@ mod tests {
     fn openapi_document_exposes_the_endpoints_and_wire_types() {
         let doc = openapi_json();
         for needle in [
-            "/intent",
-            "/stream",
+            "/tables/{table}/intent",
+            "/tables/{table}/stream",
             "IntentEnvelope",
             "DeltaEnvelope",
             "VisibleState",
@@ -525,38 +518,16 @@ mod tests {
         );
     }
 
-    #[tokio::test(start_paused = true)]
-    async fn an_idle_claimed_lobby_stops_counting_as_active_and_gets_swept() {
-        use crate::decks::IDLE_LOBBY_TTL;
-
+    #[test]
+    fn active_table_count_counts_every_seeded_table() {
         let mut registry = Registry::default();
-        let mut table = Table::new_lobby();
-        table.seats[0].user_id = Some(1); // claimed, never started
-        registry.tables.insert("idle".to_string(), table);
-        assert_eq!(
-            registry.active_table_count(),
-            1,
-            "a freshly claimed lobby counts as active"
-        );
-
-        tokio::time::sleep(IDLE_LOBBY_TTL + Duration::from_secs(1)).await;
         assert_eq!(
             registry.active_table_count(),
             0,
-            "past the idle TTL a claimed-but-unstarted lobby no longer counts as active"
+            "a fresh registry is empty"
         );
 
-        registry.sweep_idle_lobbies(IDLE_LOBBY_TTL);
-        assert!(registry.tables.is_empty(), "the idle lobby was swept");
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn sweep_idle_lobbies_never_touches_a_started_game() {
-        use crate::decks::IDLE_LOBBY_TTL;
-
-        let mut registry = Registry::default();
-        let mut table = Table::new_lobby();
-        table.seats[0].user_id = Some(1);
+        let mut table = Table::empty();
         table.game = Some(crate::decks::seed_game(
             &[
                 (PlayerId(0), crate::test_support::seat_deck()),
@@ -565,18 +536,10 @@ mod tests {
             0,
         ));
         registry.tables.insert("live".to_string(), table);
-
-        tokio::time::sleep(IDLE_LOBBY_TTL + Duration::from_secs(1)).await;
         assert_eq!(
             registry.active_table_count(),
             1,
-            "a started game counts as active no matter how stale last_activity is"
-        );
-
-        registry.sweep_idle_lobbies(IDLE_LOBBY_TTL);
-        assert!(
-            registry.tables.contains_key("live"),
-            "the sweeper never evicts a started game"
+            "a seeded table counts as active"
         );
     }
 }

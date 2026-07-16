@@ -2,16 +2,18 @@
 
 Deploy mtgfr to a **Kubernetes cluster** reached via a **Cloudflare Tunnel** (no inbound ports on the cluster), with infrastructure-as-code, semver releases, and **draining** rolling deploys so in-progress games are not killed mid-hand.
 
+> **Routing / drain model:** [ADR 0030](../adr/0030-table-instance-affinity-for-drain-rolls.md) — BFF lobby on `mtgfr_web` (Drizzle / `@effect/sql-pg`), in-game `table_routes` → pod DNS on headless Service. `terraform apply` bumps Argo Application helm params (after migrate Jobs complete); Argo syncs Deployments then Service `edh-api` (sync waves + `PruneLast`); pruned API pods drain on SIGTERM.
+
 ## Goals
 
-1. **Reachable by friends** — client at `https://edh.example.com`, API at `https://api.edh.example.com`; stable share links on the client host.
-2. **Reproducible infra** — Terraform in **this repo** (`iac/`) owns the edh namespace workloads, Postgres, Cloudflare Tunnel/DNS, and deploy config. `terraform apply` is the deploy path.
+1. **Reachable by friends** — single public origin `https://edh.example.com` (SolidStart BFF: SPA + `/api` proxy); stable share links on that host.
+2. **Reproducible infra** — Terraform in **this repo** (`iac/`) owns headless/web Services, secrets, Postgres, Cloudflare Tunnel/DNS, migrate Jobs, and the Argo Application params. Argo owns API/web Deployments and Service `edh-api` (`iac/charts/edh`). `terraform apply` is the operator ship path.
 3. **Zero-downtime for active games** — during a release, players at a live table stay on the old server binary until that table is empty (game over or everyone left).
 4. **Traceable releases** — every merge to `main`/`master` runs [semantic-release](https://semantic-release.org/) (default config) on green verify; container images build when the resulting `v*` tag is pushed (`docker.yml`).
 
 ## Non-goals (for this PRD)
 
-- Multi-node horizontal scale beyond a two-instance rolling window (ADR 0005's Redis path stays future work).
+- Multi-node horizontal scale of the **same** image tag / Redis shared registry (ADR 0005) — still future work. Concurrent **Terminating** API pods during a roll (newest active + draining old) **are** in scope; same-tag horizontal replicas are not.
 - Durable game resume across server restart (explicitly out per ADR 0021).
 - Managing the Kubernetes control plane / node OS (cluster bootstrap is assumed done; this repo deploys *into* the cluster).
 - Automated card-art CDN deploy (ADR 0015; `cards.example.com` remains separate).
@@ -21,11 +23,11 @@ Deploy mtgfr to a **Kubernetes cluster** reached via a **Cloudflare Tunnel** (no
 
 | Concern | Current state | Deploy implication |
 |--------|---------------|-------------------|
-| Live games | In-memory `Registry` per process (ADR 0021) | Two server pods during a roll **must not share** a table; need **table/instance affinity**. |
+| Live games | In-memory `Registry` per process (ADR 0021) | Concurrent API pods **must not share** a table; BFF pins each table to the owning pod via `mtgfr_web.table_routes` → pod DNS. |
 | Fan-out | `tokio::broadcast` in-process (ADR 0005) | SSE streams are tied to the pod that owns the table. |
-| Durable data | Postgres: users, sessions, decks (ADR 0010) | In-cluster Postgres (dedicated `mtgfr` database); `DATABASE_URL` on both API pods. |
-| Client | Vite static bundle; dev uses `/api` Vite proxy | **Prod:** static on `edh.example.com`; API calls go to `https://api.edh.example.com` (build-time origin). **Dev:** unchanged `/api` → local server. SPA is global: a refresh always loads the current `edh-web` image, while mid-game API stays sticky on the draining binary — so **do not roll `edh-web` until API drain empties**. Gzip for the SPA is owned by `mtgfr static` — see [Compression](#compression-required) under `mtgfr-web`. |
-| Dev DB bootstrap | `push_schema()` at boot (`db.rs`) | **Toasty migrations** in prod/CI; `push_schema` only for in-memory SQLite tests (per [Toasty schema guide](https://tokio-rs.github.io/toasty/nightly/guide/schema-management.html)). |
+| Durable data | Postgres `mtgfr`: users, sessions, decks (ADR 0010); `mtgfr_web`: lobbies + routes | API uses `DATABASE_URL` → `mtgfr`; BFF uses `WEB_DATABASE_URL` → `mtgfr_web` (Drizzle). |
+| Client | SolidStart 1.3 (Vinxi, `ssr: false`); same-origin `/api` BFF | Browser always calls `/api`; lobby stays on BFF; game paths resolve `table_id` → pod DNS; auth/decks → Service `edh-api`. Web **may** roll with the API (expand-only wire). |
+| Dev DB bootstrap | `push_schema()` at boot (`db.rs`) | **Toasty** for `mtgfr` in prod/CI; **Drizzle** for `mtgfr_web`; `push_schema` only for in-memory SQLite tests (per [Toasty schema guide](https://tokio-rs.github.io/toasty/nightly/guide/schema-management.html)). |
 | Bind address | `127.0.0.1:8080` hard-coded | Load listen host/port from a `Settings` struct via the [`config`](https://docs.rs/config) crate. |
 | Public edge | Was Traefik on homelab LAN | **Cloudflare Tunnel** (`cloudflared`) in-cluster; no public NodePort / LoadBalancer required for edh. |
 | Cluster | Home **k3s** on a dedicated host | Terraform runs on a **different machine** (workstation / laptop), talking to the k3s API over the network via kubeconfig. Cluster bootstrap stays out of this repo. |
@@ -42,38 +44,39 @@ Apply machine (NOT the k3s host): terraform apply  (mtgfr/iac/)
 Home k3s host (separate machine)
     │
     ├─ Namespace: terraform          (tfstate Secret + lock Lease)
+    ├─ Namespace: argocd             (Helm argo-cd; Application edh — owns Deployments)
     ├─ Namespace: edh
-    │     ├─ Deployment edh-web          (mtgfr static, distroless)
-    │     ├─ Deployment edh-api          (serve; active)
-    │     ├─ Deployment edh-api-drain    (serve; during rolls only)
-    │     ├─ Deployment edh-api-proxy    (nginx; cookie sticky on mtgfr-instance)
-    │     ├─ Job edh-migrate             (server migration apply, before API roll)
-    │     ├─ StatefulSet postgres        (official postgres image; mtgfr DB)
-    │     └─ Deployment cloudflared      (tunnel connector)
+    │     ├─ Deployment edh-web              (SolidStart BFF; Argo-owned)
+    │     ├─ Deployment edh-api-<tag>        (newest active; prior generations Terminating + SIGTERM drain)
+    │     ├─ Service edh-api                 (Argo-owned; selects app=<apiActiveInstanceId> after new Deployment healthy)
+    │     ├─ Service edh-api-headless        (TF; publishNotReadyAddresses — in-game dial)
+    │     ├─ Job edh-migrate                 (Toasty apply on mtgfr)
+    │     ├─ Job edh-web-migrate             (Drizzle apply on mtgfr_web)
+    │     ├─ Job postgres-create-web-db      (CREATE DATABASE mtgfr_web)
+    │     ├─ StatefulSet postgres            (official postgres; mtgfr + mtgfr_web)
+    │     └─ Deployment cloudflared          (tunnel connector)
     │
-Internet ── Cloudflare (DNS + Tunnel) ──► cloudflared ──► ClusterIP Services
-           edh.example.com  ──────────────► edh-web:8080
-           api.edh.example.com ───────────► edh-api-proxy:8080
-                                                    │
-                                    nginx sticky on mtgfr-instance
-                                                    │
-                                          ┌─────────┴─────────┐
-                                          ▼                   ▼
-                                     edh-api (active)   edh-api-drain (during roll)
+Internet ── Cloudflare (DNS + Tunnel) ──► cloudflared ──► edh-web:8080
+                                              │
+                         lobby → mtgfr_web │ game → table_routes → pod DNS
+                                              │
+                         ┌────────────────────┼────────────────────┐
+                         ▼                    ▼                    ▼
+                      edh-api              Terminating          Terminating
+                   (newest only)            old pod               older pod
 ```
 
-**Apply machine vs cluster host:** `terraform` / `kubectl` always run on the apply machine. That machine needs network reachability to the k3s API server (LAN, VPN, or Tailscale — whatever you already use for remote kubeconfig). Do **not** install or run Terraform on the k3s node for this stack. Drain orchestration uses `kubectl port-forward` from the apply machine to in-cluster Services (still not via the public tunnel).
+**Apply machine vs cluster host:** `terraform` / `kubectl` always run on the apply machine. That machine needs network reachability to the k3s API server (LAN, VPN, or Tailscale — whatever you already use for remote kubeconfig). Do **not** install or run Terraform on the k3s node for this stack. `GET /health/drain` (observation) uses `kubectl port-forward` from the apply machine (not the public tunnel).
 
-**Hostnames** (both in Cloudflare `example.com` zone):
+**Hostname** (Cloudflare `example.com` zone):
 
 | Host | Serves | Tunnel ingress |
 |------|--------|----------------|
-| `edh.example.com` | Static client (distroless static server) | `http://edh-web.edh.svc:8080` |
-| `api.edh.example.com` | Axum API + SSE (`/intent/v1`, `/tables/{table}/stream/v1`, …) | `http://edh-api-proxy.edh.svc:8080` |
+| `edh.example.com` | SolidStart SPA + `/api` BFF | `http://edh-web.edh.svc:8080` |
 
-Cloudflare Tunnel maps each hostname to **one** origin URL. It does **not** do cookie-based sticky load balancing. Affinity lives in-cluster: **nginx** (`edh-api-proxy`) routes on `mtgfr-instance` to `edh-api` / `edh-api-drain`. Tunnel → `edh-api-proxy` only.
+Browser → tunnel → `edh-web`. Lobby CRUD hits Postgres `mtgfr_web`. Start seeds Service `edh-api` and writes `table_routes`. In-game `/api/tables/{table}/…` proxies to `http://{pod_dns}:8080` on the headless Service. Auth/decks/cards always go to `edh-api`. NetworkPolicy: `cloudflared` → `edh-web` only; `edh-web` → pods with `mtgfr.io/component=api`.
 
-No `/api` path prefix in production — the client calls the API origin directly. Dev keeps the Vite `/api` proxy (ADR 0018 local ergonomics).
+Browser paths keep the `/api` prefix; the BFF strips it before Axum (routes are `/auth/...`, `/tables/...`, not `/api/auth/...`). Public `/api/admin/*` and `/api/health/drain` are 404'd by the BFF.
 
 TLS terminates at **Cloudflare** (tunnel). In-cluster traffic is HTTP to ClusterIP Services (no mTLS between `cloudflared` and apps — accepted for friend-group v1). Pods do not need ACME or Traefik.
 
@@ -137,37 +140,40 @@ mtgfr Terraform **fully owns** the Zero Trust tunnel, public hostname routes, DN
 | Resource | Notes |
 |----------|-------|
 | Cloudflare Tunnel | Created/managed in Terraform |
-| Tunnel config / ingress rules | `edh` → web Service; `api.edh` → `edh-api-proxy` Service |
+| Tunnel config / ingress rules | `edh` → `edh-web` Service only (BFF proxies `/api` in-cluster) |
 | Tunnel token / credentials | K8s Secret consumed by `cloudflared` |
-| `cloudflare_dns_record` | `edh` + `api.edh` → `<tunnel-id>.cfargotunnel.com`, **proxied** |
+| `cloudflare_dns_record` | `edh` → `<tunnel-id>.cfargotunnel.com`, **proxied** |
 
 `cloudflared` runs in-cluster (Deployment, 2 replicas for connector HA). It authenticates with the tunnel token and forwards Cloudflare edge traffic to ClusterIP Services. The cluster needs **egress** to Cloudflare; it does **not** need inbound public ports for edh.
 
 ### Postgres — official image StatefulSet
 
-Install a single-primary **Postgres StatefulSet** (`postgres:17` or pinned tag) into namespace `edh` with a PVC on k3s local-path (or whatever StorageClass the node has). Create role/database `mtgfr` via the image’s `POSTGRES_*` env. `DATABASE_URL` points at the Service DNS name `postgres`.
+Install a single-primary **Postgres StatefulSet** (`postgres:17` or pinned tag) into namespace `edh` with a PVC on k3s local-path (or whatever StorageClass the node has). Create role/database `mtgfr` via the image’s `POSTGRES_*` env. `DATABASE_URL` points at the Service DNS name `postgres`. A one-shot Job creates database **`mtgfr_web`** on the same instance for the SolidStart BFF (Drizzle); API pods never see that DB.
 
 Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-catalog churn) than this friend-group deploy needs. **Backups for v1:** rely on k3s / PVC snapshots (and etcd/datastore backups that already protect cluster state). No separate Postgres dump cron until we need it.
 
-### Sticky proxy — nginx
+### Table routing — SolidStart BFF
 
-`edh-api-proxy` is an **nginx** Deployment + ConfigMap + Service. Route by cookie value (OSS-friendly — e.g. `map` / `hash $cookie_mtgfr_instance` onto named upstreams `edh-api` and `edh-api-drain`), with **default upstream = active (`edh-api`)** when the cookie is absent or unknown. Do not use nginx Plus–only `sticky` directive.
+`edh-web` sets `API_UPSTREAM` (Service `edh-api`) and `WEB_DATABASE_URL` (`mtgfr_web`). Lobby create/join/ready/start run in SolidStart against Drizzle. **Start** calls `POST /tables/seed/v1` on `edh-api` and writes `table_routes` (`table_id` → `pod_dns`). In-game `/api/tables/{table}/stream|intent|…` looks up that row and proxies to `http://{pod_dns}:8080` (headless Service keeps Terminating pods reachable). Auth/decks/cards always proxy to `API_UPSTREAM`. Dev without `WEB_DATABASE_URL` falls back to localhost for game paths. **No** `mtgfr-instance` cookie / `API_UPSTREAMS` map.
 
 ### What mtgfr Terraform owns
 
 | Resource | Notes |
 |----------|-------|
+| Cloudflare Tunnel + DNS | Single `edh` hostname → `edh-web` |
 | `kubernetes_namespace.terraform` | Optional if bootstrapped by hand; state Secret/Lease live here |
 | `kubernetes_namespace.edh` | Isolation boundary for workloads |
-| `edh-web` Deployment + Service | Static client |
-| `edh-api` / `edh-api-drain` Deployments + Services | Active + draining peers; stable `INSTANCE_ID` per Deployment |
-| `edh-api-proxy` | nginx sticky router (tunnel origin for API) |
-| `edh-migrate` Job | Runs `server migration apply` before API rollout (`generateName`) |
-| StatefulSet `postgres` | Official `postgres` image; dedicated `mtgfr` role/DB; backups = k3s/PVC snapshots |
-| NetworkPolicy | Deny public/tunnel access to `/admin/*` and drain health used by orchestrator |
-| Secrets | `DATABASE_URL`, tunnel token, etc. |
+| `kubernetes_namespace.argocd` + Helm `argo-cd` | Control plane; Application owns API/web Deployments (`argocd_repo_url` required) |
+| `edh-web` | SolidStart BFF (`API_UPSTREAM` + `WEB_DATABASE_URL`) |
+| `edh-api-<tag>` Deployment + Services | Desired `server_image` (Argo); Service selects `app=<instanceId>`; headless for pod DNS |
+| `edh-migrate` Job | Toasty `migration apply` on `mtgfr` before API roll |
+| `edh-web-migrate` Job | Drizzle migrate on `mtgfr_web` before web roll |
+| `postgres-create-web-db` Job | Idempotent `CREATE DATABASE mtgfr_web` |
+| StatefulSet `postgres` | Official `postgres` image; `mtgfr` + `mtgfr_web`; backups = k3s/PVC snapshots |
+| NetworkPolicy | tunnel→web; web→api; api+migrate+web(+web-migrate)→postgres |
+
+| Secrets | `DATABASE_URL`, tunnel token, admin token, etc. |
 | `cloudflared` Deployment + Secret | Tunnel connector |
-| Cloudflare Tunnel + DNS | Public hostnames → tunnel |
 
 ### Variables & secrets
 
@@ -177,9 +183,11 @@ Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-ca
 |----------|---------|
 | `kubeconfig_path` | Path on the **apply machine** to a kubeconfig that reaches remote k3s |
 | `cloudflare_api_token` | DNS + Zero Trust tunnel |
-| `mtgfr_db_password` | `DATABASE_URL` (composed in Terraform) |
+| `mtgfr_db_password` | `DATABASE_URL` / `WEB_DATABASE_URL` (composed in Terraform) |
 | `auth_secret` | reserved — session signing if added later |
-| `server_image` / `web_image` | Public GHCR tags |
+| `server_image` / `web_image` | Desired active API + web images |
+| `argocd_repo_url` | Required; git source for Argo Application (`iac/charts/edh`) |
+| `api_termination_grace_seconds` | SIGTERM drain ceiling (default 24h) |
 
 ### Apply
 
@@ -189,24 +197,32 @@ From the **apply machine** (repo checkout + Terraform CLI + network access to k3
 export KUBE_CONFIG_PATH=~/.kube/config   # example — remote k3s
 cd iac
 terraform init
-terraform plan
-terraform apply
+terraform apply          # migrate Jobs complete → bump Argo helm params; sync waves + PruneLast
 ```
 
-Optional `just deploy` recipe wrapping apply + image tag from latest GitHub Release (still runs on the apply machine).
+Drain is in-process on SIGTERM until `active_tables=0` or grace expires. Apply does not wait on grace.
+
+**Roll ordering (avoids seed blackhole):** Argo sync-wave `0` brings up the new API Deployment; wave `1` retargets Service `edh-api` to `app=<newId>`; `PruneLast` then deletes the prior Deployment (SIGTERM drain). Mid-game stays on headless pod DNS.
+
+**One-time cutover** from TF-owned Deployments / `edh-api` Service:
+
+1. Merge this chart (`iac/charts/edh` Deployments + `edh-api` Service) to the git revision in `argocd_target_revision` **before** apply — Argo reads the chart from git, not the apply machine working tree.
+2. `terraform state rm` old `kubernetes_deployment_v1.edh_api`, `kubernetes_deployment_v1.edh_web`, and `kubernetes_service_v1.edh_api_active` (if present) so Terraform does not destroy them before Argo adopts.
+3. Set required `argocd_repo_url` / `argocd_target_revision`, then `terraform apply`.
+
+**Failure mode:** If Service `edh-api` ever selects an instance id with no Ready pods (mis-ordered sync without waves), Start/seed/auth return connection errors until the new Deployment is healthy.
 
 ## DNS & Cloudflare
 
-DNS for both hosts is **owned by mtgfr Terraform** (with the tunnel resources in `tunnel.tf`):
+DNS for the public host is **owned by mtgfr Terraform** (with the tunnel resources in `tunnel.tf`):
 
 | Record | FQDN | Type | Target |
 |--------|------|------|--------|
 | `edh` | `edh.example.com` | CNAME | `<tunnel-id>.cfargotunnel.com` |
-| `api.edh` | `api.edh.example.com` | CNAME | `<tunnel-id>.cfargotunnel.com` |
 
 **Proxy mode:** Tunnel hostnames are **proxied (orange cloud)** — that is how Cloudflare Tunnel works. TLS is at the edge; origin is the in-cluster `cloudflared` connector.
 
-**SSE through Cloudflare (required):** Tunnel hostnames are orange-clouded, so Cloudflare's ~100s HTTP idle timeout applies. The server **must** send periodic SSE comments / keepalive events (e.g. every 15–30s) on `GET /tables/{table}/stream/v1` before phase 5 exit. Also confirm tunnel / hostname settings do not aggressively buffer the API host. If keepalives still drop streams in playtests, revisit (WebSocket upgrade or Cloudflare settings).
+**SSE through Cloudflare (required):** Tunnel hostnames are orange-clouded, so Cloudflare's ~100s HTTP idle timeout applies. The server **must** send periodic SSE comments / keepalive events (e.g. every 15–30s) on `GET /tables/{table}/stream/v1` before phase 5 exit. Configuration Rules disable response buffering on `edh.example.com` so the BFF stream is not held at the edge. If keepalives still drop streams in playtests, revisit (WebSocket upgrade or Cloudflare settings).
 
 **Table share links** use `https://edh.example.com/play/XXXXXX` — stable across deploys. Legacy `?table=` query links still parse on join.
 
@@ -216,73 +232,60 @@ DNS for both hosts is **owned by mtgfr Terraform** (with the tunnel resources in
 
 | Term | Meaning |
 |------|---------|
-| **Active table** | A `table_id` still in the in-memory registry that counts for drain: a **started** game not yet torn down, **or** a lobby with ≥1 claimed seat that has not exceeded the idle lobby TTL. |
-| **Drain mode** | Instance accepts traffic only for tables it already owns; rejects new table creation. |
-| **Idle lobby TTL** | **30 minutes** since last lobby activity (seat claim/vacate, ready toggle, deck select, etc.). When the TTL fires with no started game, the table is removed and no longer counts as active. |
-| **Finished** | Table removed because the game ended and no seats remain claimed, **or** the idle lobby TTL expired, **or** all seats vacated with no game. |
+| **Active table** | A `table_id` still in the in-memory registry that counts for drain: a **started** game not yet torn down. (Pre-game lobbies live on the BFF / `mtgfr_web` and do not block API drain.) |
+| **Drain mode** | Instance rejects new seeds (`POST /tables/seed/v1` → 503); keeps serving tables it already owns. |
+| **Idle lobby TTL** | **30 minutes** since last lobby activity on `mtgfr_web`. Swept by the BFF so abandoned lobbies do not linger. |
+| **Finished** | Table removed from the API registry because the game ended / seats vacated; BFF may `DELETE` the `table_routes` row (TTL is the safety net). |
 
 ### Flow
 
 ```mermaid
 sequenceDiagram
-    participant TF as Terraform / deploy script
-    participant Proxy as edh-api-proxy
-    participant Old as edh-api-drain (live process)
-    participant New as edh-api (active)
-    participant Web as edh-web
-    participant PG as Postgres
+    participant TF as terraform_apply
+    participant BFF as edh_web_BFF
+    participant Old as edh_api_old
+    participant New as edh_api_new
+    participant WebDB as mtgfr_web
 
-    Note over Web: Stay on previous image<br/>until drain empties
-    TF->>PG: Migrate Job (new server image)
-    TF->>New: Start v1.3.0 Deployment (DRAIN=false, INSTANCE_ID=edh-api)
-    TF->>Proxy: Default / uncookied traffic → New
-    TF->>Old: Live drain toggle (HTTP) — do not restart pod
-    Note over Old: Reject POST /tables/v1<br/>Keep existing tables + SSE
-    loop Until Old reports active_tables=0
-        TF->>Old: GET /health/drain via kubectl port-forward from apply machine
-    end
-    TF->>Old: Scale/delete Old Deployment
-    TF->>Web: Bump edh-web to v1.3.0
+    TF->>New: Roll Deployment server_image (role=active)
+    Note over Old: SIGTERM → in-process drain<br/>reject new seeds
+    TF->>BFF: May roll web_image same apply
+    BFF->>New: Start → POST /tables/seed/v1
+    New-->>BFF: pod_dns
+    BFF->>WebDB: INSERT table_routes
+    Note over BFF: Mid-game hops stay on Old<br/>via pod DNS + headless
+    Note over Old: Exit when active_tables=0<br/>or grace (default 24h)
 ```
 
-1. **Migrate**, then **start new API** alongside old as a second Deployment (`edh-api` active, rename/move prior to `edh-api-drain`). `edh-api-proxy` sends **new** / uncookied traffic to the non-draining instance. **Leave `edh-web` on the previous image** — do not bump `web_image` in this step.
-2. **Mark old instance draining** with a **live** toggle on the already-running process (`POST /admin/drain`, reachable **only in-cluster** — see NetworkPolicy). **Do not** flip `DRAIN` via Deployment env/annotation changes — that restarts the pod and wipes in-memory tables (ADR 0021).
-3. **Affinity:** every table is pinned to the instance that created it (see below). Players mid-game never cross instances.
-4. **Wait** until the old instance reports `active_tables: 0` on `GET /health/drain`, polled from the **apply machine** via `kubectl port-forward` to the drain pod/Service (apiserver path — allowed under the cluster-internal NetworkPolicy posture). Do **not** poll the public tunnel URL for drain orchestration.
-5. **Stop** the old Deployment / pods only after drain reports empty (or explicit hard timeout).
-6. **Then** roll `edh-web` to the matching release tag. Until this step, a mid-game refresh keeps the old SPA sticky to the draining API (matched pair). Shipping web earlier would load the new client against the old binary on refresh.
+1. **Migrate** `mtgfr` (Toasty Job) and `mtgfr_web` (Drizzle Job).
+2. **`terraform apply`** waits for image-keyed migrate Jobs, then updates Argo helm params. Argo syncs the new API Deployment (wave 0), retargets Service `edh-api` (wave 1), then `PruneLast` deletes the previous Deployment; pruned pods receive SIGTERM and drain in-process.
+3. **New tables** only seed on Service `edh-api` (active). BFF writes `table_routes` with the seed response’s `pod_dns`.
+4. **In-game** traffic uses path `{table}` → `table_routes` → headless pod DNS (Terminating pods stay dialable via `publishNotReadyAddresses`).
+5. **Web may roll with the API**; expand-only wire while old pods hold games ([WIRE_COMPAT.md](../WIRE_COMPAT.md)).
+6. Old pods exit when `active_tables=0` or `terminationGracePeriodSeconds` (default 24h) elapses.
 
-Games in progress on the old binary may run for hours — that is acceptable. Do **not** rely on a normal Kubernetes rolling update alone (it would kill in-memory tables). Drain orchestration is custom on top of Deployments.
-
-**Client/server roll order (locked):** API first (with drain), web only after `active_tables=0`. Same GitHub Release may build both images; Terraform must not apply the new `web_image` until the API drain window closes. New lobbies during the window use old SPA ↔ new API — keep wire/DB changes expand-only across that window (same rule as Postgres migrations).
+**Client/server roll order (locked):** Web may roll with newest API. Expand-only wire across concurrent binaries until Terminating pods exit.
 
 ### Wire backwards compatibility (required doc)
 
-Roll order reduces mid-game refresh skew; it does **not** remove the need for wire rules. During the drain window, **old SPA ↔ new API** still happens for new tables. Document durable backwards-compatibility rules for the OpenAPI / `crates/schema` contract (new ADR or short doc under `docs/`, linked from AGENTS.md and this PRD). At minimum cover:
+Roll order reduces mid-game refresh skew; it does **not** remove the need for wire rules. During the drain window, **new SPA ↔ old API** still happens for mid-game tables (and new SPA ↔ new API for new tables). Durable rules live in [WIRE_COMPAT.md](../WIRE_COMPAT.md):
 
-1. **Compatibility window** — N and N+1 must coexist until drain empties (`active_tables=0`); no longer multi-version support required.
-2. **Expand-only during that window** — additive optional fields (`#[serde(default)]`), new endpoints, new intent/event variants the old client never sends; no rename/remove/type-change of wire fields until the prior API is gone (mirror Postgres migration rule).
+1. **Compatibility window** — all concurrent API binaries until each Terminating pod exits.
+2. **Expand-only during that window** — additive optional fields (`#[serde(default)]`), new endpoints, new intent/event variants the old client never sends; no rename/remove/type-change of wire fields until older binaries are gone.
 3. **Hard breaks** — bump path version (`/v2`), run both until drain completes, then remove `/v1`; use sparingly.
-4. **SSE / snapshots** — same expand-only rule on `VisibleState` and stream frames; do not rearrange discriminators mid-window.
-5. **Authoring habit** — run `just server-codegen` with schema changes; prefer optional fields first, tighten only after a full drain cycle if desired.
+4. **SSE / snapshots** — same expand-only rule on `VisibleState` and stream frames.
+5. **Authoring habit** — run `just server-codegen` with schema changes; prefer optional fields first.
 
-This doc is an implementation deliverable of the deploy work, not optional follow-up.
+### Table → pod routing
 
-### Table / instance affinity
+ADR 0005 assumes a single instance. Rolling deploy requires:
 
-ADR 0005 assumes a single instance. Rolling deploy requires a minimal routing contract:
+1. Each API pod publishes **`POD_DNS`** (Downward API name + headless Service DNS) and returns it from `POST /tables/seed/v1`.
+2. BFF stores `table_id` → `pod_dns` in `mtgfr_web.table_routes` (explicit delete + TTL).
+3. In-game `/api/tables/{table}/…` proxies to that pod; missing/expired route → 404 `UnknownTable`.
+4. Guests join lobbies on the BFF only (no Axum lobby / no join fan-out across peers).
 
-1. Each server process has a **stable** `instance_id` set once per Deployment (`INSTANCE_ID=edh-api` / `INSTANCE_ID=edh-api-drain`). **Not** the pod name — pod names change on restart/reschedule and would invalidate sticky cookies.
-2. On `POST /tables/v1`, `POST /tables/join/v1`, and any response that binds a user to a table, the server sets a **host-only** affinity cookie (no `Domain` attribute — scoped to `api.edh.example.com` only):
-   ```
-   Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
-   ```
-3. **`edh-api-proxy` (nginx)** routes on `mtgfr-instance` to the matching API Service, with **fallback to the non-draining** instance when the cookie is absent. Cloudflare Tunnel points `api.edh.example.com` only at this proxy Service.
-4. If a request hits the wrong instance (cookie points at a peer that no longer has the table), the server returns `404` / `410` and the client reconnects without the stale cookie (existing stream reconnect path).
-
-This avoids reshaping the wire API (no `table_id` in every path). Document the decision in a new ADR when implemented.
-
-**Session cookies** (auth), if shared across `edh.example.com` and `api.edh.example.com`, must use `Domain=.example.com` — **not** `.edh.example.com` (that domain does not include sibling host `api.edh.example.com`). Affinity stays host-only on the API.
+**Session cookies** (auth) are host-only on `edh.example.com` when `COOKIE_DOMAIN` is empty.
 
 ### Graceful shutdown
 
@@ -292,7 +295,7 @@ On `SIGTERM` (K8s pod termination):
 2. Stop accepting new tables immediately.
 3. Keep the process alive while `active_tables > 0` (poll every few seconds; configurable timeout with loud logging).
 4. Close idle HTTP connections; **do not** cut active SSE streams until the table is finished or the hard timeout fires (hard timeout is a last resort — prefer waiting).
-5. Prefer an explicit pre-delete drain wait (`active_tables=0`) over relying on a huge `terminationGracePeriodSeconds`. If a draining instance is still up after **24 hours**, **log loudly** (error-level, repeating) but do not auto-kill for v1 — operator decides. Force-kill after grace period is a last resort, not the happy path.
+5. Prefer waiting for `active_tables=0` over relying on a huge grace alone. Drain is in-process on SIGTERM (distroless has no shell `preStop`). Default `terminationGracePeriodSeconds` is **24h**; if still draining after that, kube SIGKILLs. Loud logs while draining are expected for long games.
 
 ## Server changes required
 
@@ -316,7 +319,7 @@ pub struct Settings {
     pub port: u16,              // default 8080
     pub database_url: String,
     pub instance_id: String,    // stable per Deployment, e.g. "edh-api" — not pod name
-    pub drain: bool,            // default false; also toggled live via admin endpoint
+    pub drain: bool,            // default false; flipped live by SIGTERM
     pub cookie_secure: bool,    // default false; true behind HTTPS (Cloudflare)
     pub cookie_domain: String,   // default ""; prod ".example.com" for auth session only
     pub cors_origin: String,     // default ""; prod "https://edh.example.com"
@@ -368,17 +371,17 @@ No secrets in the TOML file — production credentials come only from Terraform-
 | `host` | `HOST` | `0.0.0.0` |
 | `port` | `PORT` | `8080` |
 | `database_url` | `DATABASE_URL` | `postgresql://mtgfr:<secret>@postgres:5432/mtgfr` |
-| `instance_id` | `INSTANCE_ID` | stable Deployment id: `edh-api` or `edh-api-drain` |
-| `drain` | `DRAIN` | startup default `false`; live drain via admin API, not Deployment env churn |
+| `instance_id` | `INSTANCE_ID` | stable Deployment id, e.g. `edh-api-1-2-3` |
+| `drain` | `DRAIN` | startup default `false`; live drain via SIGTERM |
 | `cookie_secure` | `COOKIE_SECURE` | `true` |
-| `cookie_domain` | `COOKIE_DOMAIN` | `.example.com` (auth session cookie only) |
-| `cors_origin` | `CORS_ORIGIN` | `https://edh.example.com` |
-| `admin_token` | `ADMIN_TOKEN` | shared secret guarding `/admin/drain` + `/health/drain`; empty leaves them unauthenticated behind the NetworkPolicy |
+| `cookie_domain` | `COOKIE_DOMAIN` | empty (host-only session cookie on edh) |
+| `cors_origin` | `CORS_ORIGIN` | empty (browser is same-origin via BFF) |
 | `version` | `VERSION` | image release tag |
+| `pod_dns` | `POD_DNS` | Downward API + headless DNS; returned by seed |
 
 `RUST_LOG` stays a standard tracing env var (not part of `Settings`) — set alongside the above in Terraform.
 
-Affinity cookie value comes from `settings.instance_id` and is **host-only** (ignore `cookie_domain` for `mtgfr-instance`). Auth session cookies use `cookie_domain=.example.com`. Health endpoints expose `settings.version` and `settings.drain`.
+Auth session cookies are host-only when `cookie_domain` is empty. Health endpoints expose `settings.version` and `settings.drain`. Seed returns `pod_dns` for BFF `table_routes` (no affinity cookie).
 
 ## Database migrations
 
@@ -453,16 +456,16 @@ First-time bootstrap: `migration generate --name initial` against Postgres, add 
 ### Deploy integration
 
 ```
-terraform apply / roll script
+terraform apply
     │
-    ├─ 1. Job: mtgfr-server:<tag> server migration apply
-    ├─ 2. roll / update edh-api Deployment(s)  (web_image unchanged)
-    ├─ 3. catalog projection runs on server boot (data only)
-    ├─ 4. wait until edh-api-drain active_tables=0; tear down drain
-    └─ 5. bump edh-web to the same release tag
+    ├─ 1. Job: mtgfr-server:<tag> server migration apply (mtgfr)
+    ├─ 2. Job: drizzle migrate (mtgfr_web) before edh-web
+    ├─ 3. roll edh-api Deployment (SIGTERM drain on old pods)
+    ├─ 4. catalog projection runs on server boot (data only)
+    └─ 5. roll edh-web (may be same apply as API)
 ```
 
-**Terraform** — Kubernetes Job before API roll. Use `generate_name` (not a fixed name with the image tag): Job names are immutable, and tags like `1.2.3` are awkward/invalid as sole DNS-1123 names. Wait for completion before updating API Deployments.
+**Terraform** — Kubernetes Jobs before API/web rolls. Image-hash Job names stay stable when the image is unchanged. Wait for completion before updating Deployments.
 
 ```hcl
 resource "kubernetes_job" "edh_migrate" {
@@ -504,19 +507,21 @@ cargo run -p server
 
 CI: Postgres service → `just migrate` → `just check`.
 
-- Server enables **CORS** for `cors_origin` with `credentials: true` on all API routes including SSE (`GET /tables/{table}/stream/v1`).
-- Auth **session** cookies use `Domain=.example.com` so `fetch(..., { credentials: "include" })` from `edh.example.com` sends them to `api.edh.example.com`.
-- Affinity cookie `mtgfr-instance` is host-only on `api.edh.example.com` (no `Domain`); the sticky proxy reads it on the API hop.
+- Server may enable **CORS** for `cors_origin` when set; same-origin BFF leaves it empty (browser does not need CORS).
+- Auth **session** cookies are host-only on `edh.example.com` so `fetch(..., { credentials: "include" })` to `/api` sends them.
+- In-game routing is **`table_routes` → pod DNS** (no affinity cookie).
 
 ### Client (production build)
 
-Bake the API origin at image build time:
+Same-origin `/api` always — no separate API hostname bake:
 
-| Env | Dev (`bun run dev`) | Prod (image build) |
-|-----|---------------------|---------------------|
-| `VITE_API_ORIGIN` | unset → use `/api` (Vite proxy) | `https://api.edh.example.com` |
+| Env | Dev (`bun run dev`) | Prod (runtime) |
+|-----|---------------------|----------------|
+| API | `/api` → BFF → `http://127.0.0.1:8080` | `/api` → BFF → `API_UPSTREAM` / `table_routes` |
+| `WEB_DATABASE_URL` | local `mtgfr_web` for lobby | composed DSN to in-cluster `mtgfr_web` |
+| `VITE_CARD_CDN` | optional | optional build-arg |
 
-`client/src/effect/client.ts` prepends `VITE_API_ORIGIN` when set, otherwise `/api` for local dev. SSE stream URL follows the same origin.
+`client/src/effect/client.ts` always prepends `/api`. SSE stream URL follows the same origin.
 
 ### Other server work
 
@@ -524,16 +529,15 @@ Bake the API origin at image build time:
 |------|--------|
 | `Settings::load()` | Called once in `mtgfr serve`; bind `settings.listen_addr()`. |
 | CORS middleware | Axum layer: allow `cors_origin`, credentials, needed methods/headers. |
-| Cookie `Domain` | Auth session: `cookie_domain=.example.com`. Affinity `mtgfr-instance`: host-only on API. |
-| `POST /admin/drain` | Live drain toggle — must not restart the pod. **Not on the public tunnel hostname.** NetworkPolicy blocks ingress from `cloudflared` / public paths. The apply machine reaches it via `kubectl port-forward` (through the k3s API), not by opening NodePorts on the k3s host. |
+| Cookie `Domain` | Auth session: empty `cookie_domain` (host-only on edh). |
+| `GET /health/drain` | JSON `{ "active_tables": N, "draining": bool }` — observation only (SIGTERM sets `draining`). **Not on the public tunnel hostname.** NetworkPolicy blocks ingress from `cloudflared` / public paths. The apply machine reaches it via `kubectl port-forward` (through the k3s API). |
 | `GET /health/live` | `200` if process is up; body includes `version`. |
 | `GET /health/ready` | `200` if accepting traffic (not draining, or draining with tables — still "ready" for those tables). |
-| `GET /health/drain` | JSON `{ "active_tables": N, "draining": bool }` — polled from the apply machine via port-forward; same NetworkPolicy posture as admin. |
-| Active table count | Registry helper: started games, plus lobbies still inside the **30 min** idle TTL. |
-| Affinity cookie | Set on table create/join; value = stable `instance_id`; host-only. |
-| Idle lobby TTL | **30 min** — tear down idle lobbies so drain can finish. |
+| Active table count | Registry helper: started games only (lobbies are on the BFF). |
+| `POST /tables/seed/v1` | BFF Start → seed seats/decks; response includes `pod_dns`. |
+| Idle lobby TTL | **30 min** on `mtgfr_web` — BFF sweep so abandoned lobbies drop. |
 | SSE keepalive | **Required** — periodic comment/event so Cloudflare Tunnel idle timeout does not drop streams. |
-| Migrations | See [Database migrations](#database-migrations) — not at request time in prod. |
+| Migrations | Toasty for `mtgfr`; Drizzle for `mtgfr_web` — see [Database migrations](#database-migrations). |
 
 ## Container images
 
@@ -557,25 +561,21 @@ Card pool and engine are compiled in — no runtime volume for `crates/cards/dat
 
 ### `mtgfr-web`
 
-nginx has no maintained distroless image. Serve the Vite `dist/` with a **minimal Rust static-file binary** on distroless instead of nginx.
+SolidStart (Vinxi / Nitro `node_server`) on distroless Node — SPA (`ssr: false`) plus same-origin `/api` BFF.
 
 Multi-stage `docker/web/Dockerfile`:
 
-1. **Build (assets):** `oven/bun` — `VITE_API_ORIGIN=https://api.edh.example.com bun run build`.
-2. **Build (server):** same `rust:1-bookworm` stage — `cargo build -p server --release` (`server static`: Axum + `tower_http::ServeDir` + **`CompressionLayer` (gzip)** for text assets, SPA fallback `index.html` for extensionless paths).
-3. **Runtime:** `gcr.io/distroless/cc-debian12:nonroot` — copy `server` + `dist/`; listen `:8080`; `CMD ["/server", "static"]`.
+1. **Deps:** `oven/bun` — `bun install --frozen-lockfile`.
+2. **Build:** `node:22-bookworm` — `vinxi build` → `.output/` (optional `VITE_CARD_CDN` build-arg).
+3. **Runtime:** `gcr.io/distroless/nodejs22-debian12:nonroot` — copy `.output`; `ENV HOST=0.0.0.0 PORT=8080`; sticky map from k8s env; `CMD [".output/server/index.mjs"]`.
 
-`server static` reads `PORT` (default `8080`) and `STATIC_ROOT` (default `/dist`) from env if needed; no config files required in the image.
-
-#### Compression (required)
+#### Compression / streaming
 
 | Hop | What |
 |-----|------|
-| Origin (`mtgfr static` → `cloudflared`) | **gzip** via `tower_http::CompressionLayer` on compressible types (`text/html`, `text/css`, `application/javascript`, `application/json`, SVG, WASM, source maps). Shrinks tunnel payload for the SPA bundle. |
-| Edge (Cloudflare → browser) | Cloudflare may re-encode with **gzip or brotli** on the orange-cloud hostname — expected; do not disable. |
-| API (`serve`) | Optional gzip on JSON responses is fine later; **never** gzip `text/event-stream` (SSE) — buffering breaks keepalives through the tunnel. |
-
-Client class strings are sorted for gzip-friendly repetition (ADR 0023 `useSortedClasses`); that only pays off when the wire actually compresses — hence gzip on `mtgfr static`, not only at the edge.
+| Edge (Cloudflare → browser) | Cloudflare may encode with **gzip or brotli** on the orange-cloud hostname — expected. |
+| BFF → API | Do **not** buffer `text/event-stream` (SSE); Configuration Rules disable response buffering on `edh`. |
+| API (`serve`) | Optional gzip on JSON later; **never** gzip SSE. |
 
 OpenAPI codegen in the client build must use the **committed** `openapi.json` at the image tag being built (release workflow checks they match).
 
@@ -583,9 +583,9 @@ OpenAPI codegen in the client build must use the **committed** `openapi.json` at
 
 | Avoid | Use instead |
 |-------|-------------|
-| `debian:bookworm-slim`, `alpine` runtime | `gcr.io/distroless/cc-debian12:nonroot` |
-| `nginx:alpine` for static SPA | `mtgfr static` on distroless |
-| Shell-based entrypoint scripts | single `server` binary + subcommand (`serve` / `static` / `migration`) via Job/Deployment `command` |
+| `debian:bookworm-slim`, `alpine` runtime | distroless (`cc` for Rust API; `nodejs22` for web) |
+| `nginx:alpine` or Rust `server static` for the SPA | SolidStart Node BFF on distroless |
+| Shell-based entrypoint scripts | Node `.output/server/index.mjs` / `server` binary subcommands |
 
 ## Terraform layout
 
@@ -598,13 +598,16 @@ mtgfr/
     providers.tf         # kubernetes + helm + cloudflare
     variables.tf
     namespace.tf          # edh (+ terraform if not bootstrapped by hand)
-    web.tf               # edh-web Deployment + Service
-    api.tf               # edh-api + edh-api-drain Deployments/Services
-    api-proxy.tf         # nginx sticky on mtgfr-instance (tunnel origin)
+    api.tf               # edh-api-headless Service (Deployments + edh-api Service in charts/edh)
+    web.tf               # edh-web Service (Deployment in charts/edh)
+    web-migrate.tf       # Drizzle Job for mtgfr_web
+    postgres-web-db.tf   # CREATE DATABASE mtgfr_web
     postgres.tf          # StatefulSet + Service: official postgres image
-    migrate.tf           # Job: toasty migration apply (generate_name + wait)
+    migrate.tf           # Job: toasty migration apply (gates Application image bumps)
+    argocd.tf            # Argo CD Helm + Application (owns API/web Deployments + edh-api)
+    charts/edh/          # API/web Deployments + edh-api Service (sync waves + PruneLast)
     tunnel.tf            # Cloudflare Tunnel + cloudflared + DNS records
-    network-policy.tf    # cluster-internal only for admin/drain
+    network-policy.tf    # cluster-internal only for /health/drain
     secrets.tf           # DATABASE_URL, etc.
     terraform.tfvars     # gitignored secrets + image tags
   docker/
@@ -623,13 +626,25 @@ env = [
   { name = "HOST", value = "0.0.0.0" },
   { name = "PORT", value = "8080" },
   { name = "DATABASE_URL", value_from = secret_key_ref … },
-  { name = "INSTANCE_ID", value = "edh-api" },  # or "edh-api-drain" on the peer
-  { name = "DRAIN", value = "false" },          # startup only; live drain via POST /admin/drain
+  { name = "INSTANCE_ID", value = "edh-api-1-2-3" },  # Deployment name
+  { name = "POD_DNS", value = "$(POD_NAME).edh-api-headless.$(POD_NAMESPACE).svc.cluster.local" },
+  { name = "DRAIN", value = "false" },          # startup only; SIGTERM for live drain
   { name = "COOKIE_SECURE", value = "true" },
-  { name = "COOKIE_DOMAIN", value = ".example.com" },
-  { name = "CORS_ORIGIN", value = "https://edh.example.com" },
-  { name = "VERSION", value = var.server_image_tag },
+  { name = "COOKIE_DOMAIN", value = "" },
+  { name = "CORS_ORIGIN", value = "" },
+  { name = "VERSION", value = var.server_image },
   { name = "RUST_LOG", value = "info" },
+]
+```
+
+**Web Deployment env (illustrative):**
+
+```hcl
+env = [
+  { name = "HOST", value = "0.0.0.0" },
+  { name = "PORT", value = "8080" },
+  { name = "API_UPSTREAM", value = "http://edh-api.edh.svc:8080" },
+  { name = "WEB_DATABASE_URL", value = "postgresql://mtgfr:…@postgres:5432/mtgfr_web" },
 ]
 ```
 
@@ -809,14 +824,12 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 2. Merge to `main`.
 3. `verify-and-release.yml`: verify passes → `npx semantic-release` (default) → git tag + GitHub Release (if commits warrant a release).
 4. `docker.yml` builds and pushes GHCR images when that `v*` tag is pushed (requires `RELEASE_TOKEN` for semantic-release cascades).
-5. Bump **`server_image` only** in `iac/terraform.tfvars` and `terraform apply` (migrate + API roll + drain). Leave `web_image` on the previous tag.
-6. When drain reports `active_tables=0` and the old API Deployment is gone, bump **`web_image`** to the same release tag and apply again.
-
-Steps 5–6 stay manual for v1; a future `just deploy` / workflow can enforce “web after drain” rather than bumping both tags in one apply.
+5. Set **`server_image`** / **`web_image`** in `iac/terraform.tfvars` and run **`terraform apply`** from the apply machine.
+6. Old API pods drain on SIGTERM; mid-game traffic stays on them via `table_routes` → headless pod DNS until tables clear or grace expires.
 
 ### Deploy
 
-Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-api-proxy`. Image digests pinned in Terraform. From the apply machine: live `POST /admin/drain` and `GET /health/drain` via `kubectl port-forward` — not a plain `kubectl rollout`, and not via the public tunnel URL. **Do not** update `edh-web` in the same apply as the API roll; wait until drain empties so a mid-game refresh cannot pair a new SPA with the draining binary.
+`terraform apply` updates Argo helm params after migrate Jobs. Argo sync-wave 0 = new Deployments; wave 1 = Service `edh-api` → `app=<apiActiveInstanceId>`; `PruneLast` then drains the prior API Deployment. Terminating pods remain reachable on the headless Service. From the apply machine: optional `GET /health/drain` via `kubectl port-forward`. Web may roll with the API.
 
 ## Phases
 
@@ -824,12 +837,12 @@ Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-api-proxy`. Image 
 |-------|-------------|---------------|
 | **0 — Bootstrap** | History squash, `v0.1.0` tag, conventional-commit note in AGENTS.md | Tag exists; CI green |
 | **1 — Migrations** | `toasty-cli`, `Toasty.toml`, initial `migration generate`, `server migration` subcommand, drop prod `push_schema` | `just migrate` + tests green against Postgres |
-| **2 — Containerize** | Distroless Dockerfiles, `mtgfr static` (**gzip** `CompressionLayer`), `config` crate + `Settings` | Local image smoke test (compose or kind); `Accept-Encoding: gzip` on a JS/CSS asset returns `Content-Encoding: gzip` |
+| **2 — Containerize** | Distroless Dockerfiles (API `cc`, web `nodejs22` SolidStart), `config` crate + `Settings` | Local image smoke test (compose or kind) |
 | **3 — CI** | `.github/workflows/ci.yml` (migrate + `just check`) | PRs and `main` run migrate then `just check` |
 | **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json`, `RELEASE_TOKEN` | Merge to `main` → semantic-release (default) → `v*` tag push → GHCR images |
-| **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres StatefulSet, nginx sticky, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
-| **6 — Drain + affinity** | Health/drain + live `/admin/drain`, stable `INSTANCE_ID`, nginx cookie route, two-Deployment roll; **web image held until drain empties**; **wire backwards-compat doc** (ADR or `docs/`) | Deploy while a game runs on the prior version without disconnect; mid-game refresh keeps old SPA ↔ old API; schema authors have written expand/contract rules |
-| **7 — Deploy ergonomics** | `just deploy` recipe (API bump → drain wait → web bump); optional workflow PR for `terraform.tfvars` image bumps | Release → apply with minimal hand steps; cannot bump both images in one step |
+| **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres, BFF, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
+| **6 — Drain + routing** | SIGTERM drain, `POD_DNS`, BFF lobby + `table_routes`, active + headless Services, [WIRE_COMPAT.md](../WIRE_COMPAT.md) | Deploy while a game runs on the prior binary without disconnect; mid-game hops stay on old pod DNS |
+| **7 — Deploy ergonomics** | `terraform apply` of images; Argo Application owns Deployments (`prune` on) | Release → bump images → apply |
 
 ## Decisions (locked)
 
@@ -839,15 +852,16 @@ Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-api-proxy`. Image 
 | Terraform state | **Kubernetes backend** on that k3s cluster (Secret + Lease in `terraform`); apply machine reaches it over the k3s API |
 | Postgres | Official **`postgres` image** StatefulSet in `edh`; single primary + PVC |
 | Postgres backups (v1) | **k3s / PVC snapshots** (+ existing etcd/datastore backups); no dump cron yet |
-| Sticky proxy | **nginx** with cookie map/hash on `mtgfr-instance` (not nginx Plus `sticky`) |
+| Sticky routing | **SolidStart BFF**: lobby on `mtgfr_web` (Drizzle); in-game `table_routes` → pod DNS on headless Service (ADR 0030) |
 | Tunnel | **Fully Terraform-managed** Zero Trust tunnel + DNS + in-cluster `cloudflared` |
 | Idle lobby TTL | **30 minutes** — idle lobbies drop so drain can complete |
-| Drain stuck >24h | **Log loudly**; no auto-kill for v1 — operator decides |
+| Drain stuck >24h | **`terminationGracePeriodSeconds` default 24h** then SIGKILL; SIGTERM waits for `active_tables=0` in-process |
 | GHCR | **Public** packages; no `imagePullSecret` on nodes |
 | Admin / drain endpoints | **Not public** (NetworkPolicy blocks tunnel); apply machine uses `kubectl port-forward` |
-| Client vs API roll order | **API (+ drain) first; `edh-web` only after `active_tables=0`** — avoids new SPA ↔ draining old API on refresh |
-| Wire backwards compatibility | **Documented rules required** (expand-only across N↔N+1 drain window; `/v2` for hard breaks) — see [Wire backwards compatibility](#wire-backwards-compatibility-required-doc) |
-| Static asset compression | **`mtgfr static` gzip** (`tower_http::CompressionLayer`); Cloudflare edge gzip/brotli OK; **no SSE gzip** on the API |
+| Client vs API roll order | **Web may roll with API**; expand-only wire while Terminating pods hold tables |
+| Wire backwards compatibility | **Expand-only** across concurrent binaries — see [WIRE_COMPAT.md](../WIRE_COMPAT.md) |
+| Static asset compression | Cloudflare edge gzip/brotli OK; **no SSE buffering/gzip** through the BFF |
+| Control plane | **`terraform apply`** bumps Argo helm params after migrate Jobs; Argo owns API/web Deployments + `edh-api` (`argocd_repo_url` required; sync waves + `PruneLast`) |
 
 ## Open questions
 
@@ -855,20 +869,20 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 
 ## Success criteria
 
-- [ ] `https://edh.example.com/` loads the client; API calls reach `https://api.edh.example.com`; auth, deck builder, and lobby work against prod Postgres.
-- [ ] Origin `mtgfr static` (port-forward or in-cluster probe — not only the public Cloudflare URL) returns `Content-Encoding: gzip` for a JS/CSS/HTML asset when sent `Accept-Encoding: gzip`. Edge brotli/gzip alone does not satisfy this.
+- [ ] `https://edh.example.com/` loads the client; `/api` reaches Axum via the BFF; auth, deck builder, and lobby work against prod Postgres (`mtgfr` + `mtgfr_web`).
 - [ ] Traffic reaches the cluster via Cloudflare Tunnel only (no public NodePort/LB required for edh).
-- [ ] Auth session cookies use `Domain=.example.com`; affinity cookie is host-only on the API; sticky proxy routes `mtgfr-instance`.
+- [ ] Auth session cookies are host-only on edh; in-game hops use `table_routes` → pod DNS (no affinity cookie).
 - [ ] SSE keepalives keep streams alive through the tunnel under idle play (≥2 min without user actions).
 - [x] `just migrate` runs Toasty `migration apply` on dev Postgres; server starts without `push_schema`.
+- [ ] `just client-migrate` applies Drizzle migrations to `mtgfr_web`.
 - [ ] `terraform apply` from the apply machine (not the k3s host) uses the kubernetes backend on home k3s and reproduces the edh stack; plan fails clearly if the cluster/tunnel prerequisites are missing.
-- [ ] Migrate Job (`generate_name` + wait) completes before `edh-api` rolls; schema version matches the deployed image.
-- [ ] Live `POST /admin/drain` marks the old Deployment draining **without** restarting it; `GET /health/drain` is polled from the apply machine via port-forward; neither is reachable via the public tunnel.
-- [ ] Idle lobbies expire after 30 minutes and stop blocking drain.
+- [ ] Migrate Jobs complete before `edh-api` / `edh-web` roll; schema versions match the deployed images.
+- [ ] SIGTERM drain rejects new seeds with 503 while existing tables keep SSE; `/health/drain` is not reachable via the public tunnel.
+- [ ] Idle lobbies expire after 30 minutes on `mtgfr_web`.
 - [ ] Deploying `vX.Y.Z+1` while a four-player game runs on `vX.Y.Z` completes without SSE drop or `UnknownAction` spikes.
-- [ ] During that roll, `edh-web` stays on `vX.Y.Z` until drain empties; a mid-game refresh still serves the old SPA against the draining API; web bumps to `vX.Y.Z+1` only afterward.
-- [x] Wire backwards-compatibility rules are documented (ADR or `docs/`) and linked from AGENTS.md — expand-only across the drain window, `/v2` for hard breaks.
-- [ ] Old server pods exit within minutes after the last table clears (or stay up harmlessly if a game runs long; loud logs after 24h draining).
+- [ ] During that roll, mid-game traffic stays on the Terminating pod via headless DNS; new tables seed on active; web may roll with newest.
+- [x] Wire backwards-compatibility rules are documented ([WIRE_COMPAT.md](../WIRE_COMPAT.md)) — expand-only across the drain window, `/v2` for hard breaks.
+- [ ] Old server pods exit within minutes after the last table clears (or stay up harmlessly if a game runs long; SIGKILL after default 24h grace).
 - [ ] Every production deploy is a semver GitHub Release with changelog; **public** GHCR images exist for that version.
 - [ ] Merging releasable conventional commits to `main` triggers semantic-release (default rules) → GitHub Release → GHCR images.
 
@@ -876,16 +890,16 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 
 - Home **k3s** — workload host; apply machine is separate and uses remote kubeconfig for Terraform providers + kubernetes state backend
 - [Terraform kubernetes backend](https://developer.hashicorp.com/terraform/language/backend/kubernetes) — state Secret + lock Lease
-- Official `postgres` image StatefulSet — in-cluster Postgres
-- nginx cookie map/hash — sticky proxy for `mtgfr-instance`
+- Official `postgres` image StatefulSet — in-cluster Postgres (`mtgfr` + `mtgfr_web`)
+- SolidStart BFF + `table_routes` → pod DNS — [ADR 0030](../adr/0030-table-instance-affinity-for-drain-rolls.md)
 - Cloudflare Tunnel / Zero Trust — Terraform-managed public hostnames → in-cluster `cloudflared`
-- ADR 0005 — in-process fan-out (affinity extends this)
+- ADR 0005 — in-process fan-out (routing extends this)
 - ADR 0010 — Postgres via Toasty (`push_schema` dev-only; migrations in prod)
 - [Toasty schema management](https://tokio-rs.github.io/toasty/nightly/guide/schema-management.html) — `migration generate` / `migration apply`
-- ADR 0018 — Effect client + SSE stream; dev `/api` proxy, prod `VITE_API_ORIGIN`
+- ADR 0018 — Effect client + SSE stream; same-origin `/api` (SolidStart BFF)
 - ADR 0021 — live games in-memory (motivates drain deploy)
 - `docker-compose.yml` — dev Postgres defaults
 - [`config`](https://docs.rs/config) — layered server `Settings` (TOML + env)
-- `justfile` — `migrate`, `build-server`, `build-client`, `check`
+- `justfile` — `migrate`, `client-migrate`, `check`
 - [Google distroless](https://github.com/GoogleContainerTools/distroless) — production runtime base images
 - [semantic-release GitHub Actions recipe](https://semantic-release.org/recipes/ci-configurations/github-actions/) — `verify-and-release.yml` template
