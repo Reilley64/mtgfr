@@ -306,6 +306,11 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
                 game.choose_exiled_to_cast_free(player, sacrifices)
             } else if matches!(
                 game.pending_choice,
+                Some(PendingChoice::PartitionRevealed { .. })
+            ) {
+                game.partition_revealed(player, sacrifices)
+            } else if matches!(
+                game.pending_choice,
                 Some(PendingChoice::ExileFromGraveyard { .. })
             ) {
                 game.choose_graveyard_exile(player, sacrifices)
@@ -351,6 +356,14 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
         }
         Intent::ChooseExiledDigToCastFree { player, choice } => {
             game.choose_exiled_dig_to_cast_free(player, choice)
+        }
+        Intent::ChooseOpponentPile { player, pile }
+            if matches!(
+                game.pending_choice,
+                Some(PendingChoice::ChoosePileForHand { .. })
+            ) =>
+        {
+            game.choose_pile_for_hand(player, pile)
         }
         Intent::ChooseOpponentPile { player, pile } => game.choose_opponent_pile(player, pile),
         Intent::RevealedCardToBattlefieldOrHand { player, choice } => {
@@ -405,15 +418,26 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
             player,
             hand,
             count,
-        }
-        | PendingChoice::DiscardCards {
-            player,
-            hand,
-            count,
         } => (*count == hand.len()).then(|| Intent::Discard {
             player: *player,
             cards: hand.clone(),
         }),
+        PendingChoice::DiscardCards {
+            player,
+            hand,
+            count,
+            or_one_matching,
+        } => {
+            // A land-escape-valve filter with a matching card in hand is a genuine choice (discard
+            // the whole hand vs. the single land) even when `count` happens to equal the hand
+            // size — only force the whole-hand answer when that alternative isn't on the table.
+            let land_escape_available = or_one_matching
+                .is_some_and(|filter| hand.iter().any(|&id| filter.matches(game.def_of(id))));
+            (!land_escape_available && *count == hand.len()).then(|| Intent::Discard {
+                player: *player,
+                cards: hand.clone(),
+            })
+        }
         PendingChoice::ChooseTarget {
             player,
             legal,

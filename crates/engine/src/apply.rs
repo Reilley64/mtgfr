@@ -426,6 +426,7 @@ impl Game {
                 replicate_count,
                 bestowed,
                 face_down,
+                masked,
                 evoked,
                 spent_colors,
             } => {
@@ -478,6 +479,7 @@ impl Game {
                         serra_recursion,
                         bestowed,
                         face_down,
+                        masked,
                         evoked,
                         spent_colors,
                     }),
@@ -554,6 +556,7 @@ impl Game {
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
+                        masked: false,
                         evoked: false,
                         // ponytail: an adventure cast still pays real mana (`settle_payment` runs
                         // above), but no adventure card checks color-spent yet — wire this from
@@ -647,6 +650,7 @@ impl Game {
                             serra_recursion: false,
                             bestowed: false,
                             face_down: false,
+                            masked: false,
                             evoked: false,
                             // A copy pays no cost (CR 707.10) — nothing was spent to "cast" it.
                             spent_colors: [false; Color::COUNT],
@@ -723,6 +727,7 @@ impl Game {
                         serra_recursion: false,
                         bestowed: false,
                         face_down: false,
+                        masked: false,
                         evoked: false,
                         // ponytail: a prepared cast still pays real mana (`settle_payment` runs
                         // in `Game::cast_prepared`), but no prepare card checks color-spent yet —
@@ -1384,6 +1389,7 @@ impl Game {
                     copy,
                     cast_target,
                     face_down,
+                    masked,
                     evoked,
                     spent_colors,
                 ) = match self.objects[from as usize] {
@@ -1397,6 +1403,7 @@ impl Game {
                         s.copy,
                         s.targets.primary(),
                         s.face_down,
+                        s.masked,
                         s.evoked,
                         s.spent_colors,
                     ),
@@ -1426,6 +1433,10 @@ impl Game {
                 // its real characteristics stay hidden (the characteristics choke reads this flag)
                 // until it's turned face up.
                 self.permanent_mut(permanent).face_down = face_down;
+                // Masked (CR 615 — Illusionary Mask): a face-down creature it put onto the
+                // battlefield turns face up when it would assign or deal damage, be dealt damage,
+                // or become tapped. `false` for a plain morph/manifest face-down permanent.
+                self.permanent_mut(permanent).masked = masked;
                 // Evoke (CR 702.74a): an evoked spell's resulting permanent is sacrificed the
                 // instant it enters — the self-sacrifice fires as its own trigger, queued
                 // alongside the permanent's ETB triggers (`Game::enqueue_triggers`), so an ETB

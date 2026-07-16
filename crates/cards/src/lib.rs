@@ -839,6 +839,7 @@ keywords = ["flying"]
                     Effect::Discard {
                         count: 2,
                         target_player: true,
+                        or_one_matching: None,
                     },
                 ],
             }
@@ -1473,6 +1474,7 @@ keywords = ["flying"]
                 Effect::Discard {
                     count: 2,
                     target_player: false,
+                    or_one_matching: None,
                 },
             ],
             "draw two, then discard two — in order"

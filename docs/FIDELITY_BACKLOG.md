@@ -1412,13 +1412,25 @@ choose-one-of-three would have added nothing). `schema::catalog::land_colors` ga
 `of_colors` branch for the mana-dot display. Fully faithful (no notes): rupture_spire,
 trevas_ruins.
 
-### 144. `discard-unless-land` — 1 card, S/M
+### 144. `discard-unless-land` — 1 card, S/M — **LANDED (2026-07-17)**
 Depends on: nothing.
 Compulsive Research's "that player discards two cards unless they discard a land card" — a
 resolution-time choice for the affected player: discard one land, or two cards. *Sketch:* a
 `discard` variant (`count`, `or_one_matching = <card filter>`) whose pending choice accepts either
 a 1-card land answer or a `count`-card answer; hand with no land collapses to the plain discard.
 *Cards:* compulsive_research.
+
+**Landed:** `Effect::Discard` gained `or_one_matching: Option<CardFilter>` (default `None`, every
+existing discard TOML unchanged); `PendingChoice::DiscardCards` carries the same filter through to
+`Game::answer_discard`, which now accepts either the plain `count`-card answer or a single card
+matching the filter — no wire/schema change (the client already sees the full hand and `count`;
+submitting one matching card is simply a second legal shape). `forced()` only auto-picks the
+whole-hand answer when the land escape isn't on the table (a matching card in hand is a real choice
+even when `count == hand.len()`). Card authored fresh (was absent from the pool): the oracle text
+is "Target player draws three cards. Then that player discards two cards unless they discard a
+land card." (verified against Scryfall, not the backlog's paraphrase) — `target_player_draws` +
+`discard { target_player = true, or_one_matching = "land" }`, the same target-threading `Effect::
+Sequence` shape as Prismari Command. Fully faithful (no notes): compulsive_research.
 
 ### 145. `cycling-triggers` — 2 cards, M — **LANDED (2026-07-16)**
 Depends on: nothing.
@@ -1694,7 +1706,7 @@ flashback/escape spell (CR 702.34e/702.19d), checked ahead of the Quintorius gra
 the stale ponytail claiming no pool card counters one is deleted. Fully faithful: hinder. Still
 blocked: nothing.
 
-### 161. `pile-split` — 1 card, M/L
+### 161. `pile-split` — 1 card, M/L — **LANDED (2026-07-17)**
 Depends on: nothing.
 Fact or Fiction: "Reveal the top five cards of your library. An opponent separates those cards
 into two piles. Put one pile into your hand and the other into your graveyard." *Sketch:* a
@@ -1704,6 +1716,22 @@ splits (falsified claim: `OpponentSplitsExilePiles` hardcodes next-in-APNAP — 
 effect), then that opponent answers a partition choice, then the controller picks the pile to
 take to hand (other to graveyard). New pending-choice surface for the partition (a subset pick
 over the five). *Cards:* fact_or_fiction.
+
+**Landed:** `Effect::RevealTopSplitPiles` reveals the top five (public, CR 701.16), then hands off
+to a new shared chooser — `PendingChoice::ChooseSplittingOpponent`/`Game::begin_choose_splitting_opponent`
+— that `OpponentSplitsExilePiles` (Abstract Performance) now uses too, closing the falsified
+next-in-APNAP claim: with two or more opponents alive the controller picks which one (answered by
+`Intent::ChooseTargets`, reusing its single-`Target::Player` wire shape); with one, it resumes
+immediately (no behavior change for 2-player games). The chosen opponent partitions the revealed
+five into two piles on a `PendingChoice::PartitionRevealed` (a free subset split, either pile may
+be empty — answered by `Intent::ChooseSacrifices`, reusing its "name the subset" shape), then the
+controller picks which pile to keep in hand on a `PendingChoice::ChoosePileForHand` (reusing
+`Intent::ChooseOpponentPile`'s wire shape); the other pile is milled (`Event::Milled`) since the
+revealed cards never left the library. Fully faithful: fact_or_fiction. Abstract Performance stays
+faithful — its existing tests updated to exercise the real controller-choice (was locked to the
+old hardcoded default). Still blocked: nothing (Plargg and Nassari's own "an opponent" pick is
+left on the old next-in-APNAP approximation — no pool card needs it as a genuine controller
+choice yet; migrate it to the shared chooser when one does).
 
 ### 162. `conditioned-control-duration` — 1 card, L — **LANDED (2026-07-16)**
 Depends on: nothing. **The commander — schedule early despite the L.**
@@ -1724,7 +1752,7 @@ needs_tapped }`, consulted by `controller_of` and swept by `check_conditioned_co
 (new SBA). Fully faithful: rubinia_soulsinger. Still blocked: client catch-up (Phase 5) still owed
 for the `DeclineUntap` choice/intent and `ConditionedControl*` events.
 
-### 163. `morph-face-down` — 2 cards, XL — **LANDED (2026-07-16, illusionary_mask residual)**
+### 163. `morph-face-down` — 2 cards, XL — **note-only (deliberate illusionary_mask color-subset residual)**
 Depends on: #the landed manifest substrate (face-down 2/2 status, turn-face-up special action).
 Falsified claim: "no morph card is in the pool, so only plain manifest is built." Staged:
 **Slice 1 — morph:** `[morph]` cost on the card; cast face down from hand for {3} as a 2/2
@@ -1787,6 +1815,31 @@ turn-face-up-on-interaction replacement (per-object, consulted at the two damage
 choke) — plus the noted `mana_value <= X` color-subset approximation. Still NOT marked LANDED while
 that residual stands. Follow-up noticed: `mana_value <= X` is an upside approximation (offers more
 creatures than the color-subset test would); tighten when a second `{X}` face-down caster lands.
+
+**Progress (2026-07-17) — Slice 3 clause 2 (Illusionary Mask CR 615 turn-face-up-on-interaction)
+landed:** a per-permanent `masked` flag (runtime `Permanent`/`Spell`/`Event::SpellCast` state, so
+`CardDef: Copy` is preserved) is set only on Illusionary Mask's `{X}` face-down cast path
+(`push_face_down_spell_cast` gained a `masked` param — morph passes `false`, IM passes `true`);
+it threads onto the resulting permanent at `PermanentEntered`, and morph/manifest leave it `false`.
+A free-flip helper `turn_face_up_free` (the reveal tail of `turn_face_up`, minus payment/priority/
+pass bookkeeping) plus `flip_masked` (guard: `masked && face_down`) implement the self-replacement,
+consulted at the three chokes before the interaction resolves: **would be dealt damage**
+(`deal_creature_damage`, covering fight/noncombat and combat-via-`damage_creature`) and
+`assign_attacker_damage`'s blocker marks; **would assign or deal combat damage** (`fight`,
+`combat_damage_substep` attacker + blocker, before power is read so the real power is dealt); and
+**would become tapped** (`Game::tap` and the declare-attackers tap). Schema mirror: `masked: _`
+projected off `Event::SpellCast` (not secret; the reveal arrives as the existing public
+`TurnedFaceUp`). Plain morph/manifest face-down creatures are unaffected (regression test). Tests:
+`illusionary_mask_creature_flips_when_dealt_damage` / `_when_tapped` /
+`_when_assigning_combat_damage` (as a non-tapping blocker) + `plain_morph_creature_does_not_flip_on_damage`.
+**#163 stays note-only, NOT LANDED** — the sole remaining residual is the deliberate `mana_value <= X`
+color-subset approximation (see the `begin_cast_creature_face_down` ponytail and the trimmed
+`illusionary_mask.toml` `approximates`): a flag-don't-force deferral, since no second `{X}`
+face-down caster exists to justify the spent-mana color-pool subset machinery. Follow-ups noticed:
+effect-sourced damage/tap (`Effect` emitting `Event::DamageMarked`/`Event::Tapped` directly, e.g. a
+burn or "tap target" spell) doesn't route through these combat chokes, so a masked creature so
+targeted wouldn't flip — no pool card exercises it (flag-don't-force); wire a shared flip guard at
+those `Event` emit sites when one lands.
 
 ### 164. `cross-owner-anthem-cache` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.

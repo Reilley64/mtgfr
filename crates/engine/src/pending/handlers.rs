@@ -85,6 +85,15 @@ impl Game {
         {
             return self.choose_spell_targets_answer(spell, clause, min, max, &legal, targets);
         }
+        if let Some(PendingChoice::ChooseSplittingOpponent {
+            player: controller,
+            source,
+            legal,
+            then,
+        }) = self.pending_choice.clone()
+        {
+            return self.choose_splitting_opponent_answer(controller, source, legal, then, targets);
+        }
         if let Some(PendingChoice::ChooseAbilityTargets {
             player: chooser,
             source,
@@ -1145,8 +1154,16 @@ impl Game {
 
     /// Begin an [`Effect::Discard`]: pause on a [`PendingChoice::DiscardCards`] for `player` to
     /// pick which `count` cards to pitch. Fewer than `count` in hand discards the whole hand; an
-    /// empty hand raises no choice (a harmless no-op).
-    pub(crate) fn begin_discard(&mut self, player: PlayerId, count: u32) {
+    /// empty hand raises no choice (a harmless no-op). `or_one_matching` carries the effect's
+    /// land-escape-valve filter (`None` for a plain discard) straight through to the pending
+    /// choice — [`Game::answer_discard`] is where a hand with no matching card collapses back to
+    /// the plain `count`-card shape.
+    pub(crate) fn begin_discard(
+        &mut self,
+        player: PlayerId,
+        count: u32,
+        or_one_matching: Option<CardFilter>,
+    ) {
         let hand = self.hand_of(player);
         let count = (count as usize).min(hand.len());
         if count == 0 {
@@ -1156,6 +1173,7 @@ impl Game {
             player,
             hand,
             count,
+            or_one_matching,
         });
     }
 
@@ -1842,7 +1860,9 @@ impl Game {
         let mut events = Vec::new();
         if let Some(card) = choice {
             // No mana was spent casting it (cast "without paying its mana cost"), so no colors.
-            self.push_face_down_spell_cast(player, card, [false; Color::COUNT], &mut events);
+            // Masked (CR 615): Illusionary Mask's face-down creature turns face up when it would
+            // assign or deal damage, be dealt damage, or become tapped.
+            self.push_face_down_spell_cast(player, card, [false; Color::COUNT], true, &mut events);
         }
         Ok(events)
     }
@@ -2223,11 +2243,15 @@ impl Game {
         }
     }
 
-    /// The opponent who makes an "an opponent chooses" decision on `controller`'s behalf (Abstract
-    /// Performance's pile pick, Plargg and Nassari's nonland pick): the next living player reached
-    /// walking turn order forward from `controller` — CR 101.4's APNAP/turn-order tie-break gives a
-    /// multiplayer "an opponent" a single well-defined answer, not a controller pick among several.
-    /// `None` only if `controller` is the sole living player left (unreachable in a real game).
+    /// The opponent who makes an "an opponent chooses" decision on `controller`'s behalf (Plargg
+    /// and Nassari's nonland pick): the next living player reached walking turn order forward
+    /// from `controller`.
+    /// ponytail: hardcodes the next opponent in turn order rather than the controller's own pick
+    /// (the same approximation [`Self::begin_choose_splitting_opponent`] used to carry for
+    /// Abstract Performance and Fact or Fiction, before their shared chooser fixed it) — migrate
+    /// Plargg and Nassari to that chooser if a pool card ever needs "an opponent" here to be a
+    /// genuine choice. `None` only if `controller` is the sole living player left (unreachable in
+    /// a real game).
     pub(crate) fn next_opponent_in_turn_order(&self, controller: PlayerId) -> Option<PlayerId> {
         let n = self.players.len();
         (1..n)
@@ -2471,8 +2495,8 @@ impl Game {
 
     /// Begin Abstract Performance ([`Effect::OpponentSplitsExilePiles`]): exile the top four
     /// (CR 701.9 face-down — hidden from every viewer but `controller`) then the next four
-    /// (face-up) of `controller`'s library into two piles, then pause on an
-    /// [`PendingChoice::OpponentChoosesPile`] for the next opponent in turn order to pick one.
+    /// (face-up) of `controller`'s library into two piles, then hand off to the shared
+    /// [`Self::begin_choose_splitting_opponent`] chooser to pick who picks a pile.
     pub(crate) fn begin_opponent_splits_exile_piles(
         &mut self,
         controller: PlayerId,
@@ -2481,16 +2505,208 @@ impl Game {
     ) {
         let pile_a = self.exile_top_into_pile(controller, 4, true, events);
         let pile_b = self.exile_top_into_pile(controller, 4, false, events);
-        let Some(opponent) = self.next_opponent_in_turn_order(controller) else {
-            return; // ponytail: no opponent to choose — cards stay exiled (unreachable in a game).
-        };
-        self.pause_for(PendingChoice::OpponentChoosesPile {
-            player: opponent,
+        self.begin_choose_splitting_opponent(
             controller,
+            source,
+            SplittingContinuation::ExilePiles { pile_a, pile_b },
+        );
+    }
+
+    /// Begin Fact or Fiction ([`Effect::RevealTopSplitPiles`]): reveal the top five of
+    /// `controller`'s library (all public, CR 701.16; a short library reveals only what's there,
+    /// CR 120.3 "as many as possible" — an empty library reveals nothing and raises no pause),
+    /// then hand off to the shared [`Self::begin_choose_splitting_opponent`] chooser to pick who
+    /// partitions them.
+    pub(crate) fn begin_reveal_top_split_piles(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        events: &mut Vec<Event>,
+    ) {
+        let revealed: Vec<ObjectId> = self.players[controller.0 as usize]
+            .library
+            .iter()
+            .take(5)
+            .copied()
+            .collect();
+        for &card in &revealed {
+            self.push_apply(
+                events,
+                Event::RevealedTopOfLibrary {
+                    player: controller,
+                    card,
+                    def: self.def_of(card),
+                },
+            );
+        }
+        if revealed.is_empty() {
+            return; // an empty library reveals nothing — no pile to split.
+        }
+        self.begin_choose_splitting_opponent(
+            controller,
+            source,
+            SplittingContinuation::Partition { revealed },
+        );
+    }
+
+    /// The shared "an opponent ..." chooser for [`Effect::OpponentSplitsExilePiles`] and
+    /// [`Effect::RevealTopSplitPiles`]: with more than one opponent alive, `controller` picks
+    /// which one on a [`PendingChoice::ChooseSplittingOpponent`]; with at most one, resume
+    /// immediately (the "single-legal-choice" collapse — no real choice to offer). `then` carries
+    /// the split data already computed, so it's ready the instant the opponent is known.
+    fn begin_choose_splitting_opponent(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        then: SplittingContinuation,
+    ) {
+        let legal: Vec<PlayerId> = self.living_players().filter(|&p| p != controller).collect();
+        match legal.as_slice() {
+            [] => {} // ponytail: no opponent to choose or split — unreachable in a real game.
+            [only] => self.resume_splitting_opponent(*only, controller, source, then),
+            _ => self.pause_for(PendingChoice::ChooseSplittingOpponent {
+                player: controller,
+                source,
+                legal,
+                then,
+            }),
+        }
+    }
+
+    /// Answer a [`PendingChoice::ChooseSplittingOpponent`]: `opponent` must be one of the choice's
+    /// `legal` candidates. Resumes via [`Self::resume_splitting_opponent`].
+    fn choose_splitting_opponent_answer(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        legal: Vec<PlayerId>,
+        then: SplittingContinuation,
+        targets: Vec<Target>,
+    ) -> Result<Vec<Event>, Reject> {
+        let [Target::Player(opponent)] = targets[..] else {
+            return Err(Reject::IllegalChoice);
+        };
+        if !legal.contains(&opponent) {
+            return Err(Reject::IllegalTarget);
+        }
+        self.finish_answer();
+        self.resume_splitting_opponent(opponent, controller, source, then);
+        Ok(Vec::new())
+    }
+
+    /// Resume [`Self::begin_choose_splitting_opponent`] once the splitting opponent is known:
+    /// pause `opponent` on whichever pause `then` names.
+    fn resume_splitting_opponent(
+        &mut self,
+        opponent: PlayerId,
+        controller: PlayerId,
+        source: ObjectId,
+        then: SplittingContinuation,
+    ) {
+        match then {
+            SplittingContinuation::ExilePiles { pile_a, pile_b } => {
+                self.pause_for(PendingChoice::OpponentChoosesPile {
+                    player: opponent,
+                    controller,
+                    source,
+                    pile_a,
+                    pile_b,
+                });
+            }
+            SplittingContinuation::Partition { revealed } => {
+                self.pause_for(PendingChoice::PartitionRevealed {
+                    player: opponent,
+                    controller,
+                    source,
+                    revealed,
+                });
+            }
+        }
+    }
+
+    /// Answer a [`PendingChoice::PartitionRevealed`] (Fact or Fiction): `pile_a` names the subset
+    /// of `revealed` the chosen opponent puts into pile A (reusing
+    /// [`Intent::ChooseSacrifices`]'s "name the subset" wire shape); everything else in `revealed`
+    /// forms pile B. Either may be empty. Pauses `controller` on a
+    /// [`PendingChoice::ChoosePileForHand`] to pick which pile to keep.
+    pub(crate) fn partition_revealed(
+        &mut self,
+        _player: PlayerId,
+        pile_a: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PartitionRevealed {
+            controller,
+            source,
+            revealed,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        for (i, id) in pile_a.iter().enumerate() {
+            // Each card in pile A must be one of the revealed five, named at most once.
+            if !revealed.contains(id) || pile_a[..i].contains(id) {
+                return Err(Reject::IllegalChoice);
+            }
+        }
+        self.finish_answer();
+        let pile_b: Vec<ObjectId> = revealed
+            .into_iter()
+            .filter(|id| !pile_a.contains(id))
+            .collect();
+        self.pause_for(PendingChoice::ChoosePileForHand {
+            player: controller,
             source,
             pile_a,
             pile_b,
         });
+        Ok(Vec::new())
+    }
+
+    /// Answer a [`PendingChoice::ChoosePileForHand`] (Fact or Fiction): the chosen pile goes to
+    /// `player`'s hand (CR "Put one pile into your hand"), the other is milled into their
+    /// graveyard (CR "and the other into your graveyard" — [`Event::Milled`], since these cards
+    /// never left the library).
+    pub(crate) fn choose_pile_for_hand(
+        &mut self,
+        player: PlayerId,
+        pile: u8,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChoosePileForHand { pile_a, pile_b, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        let (to_hand, to_graveyard) = match pile {
+            0 => (pile_a, pile_b),
+            1 => (pile_b, pile_a),
+            _ => return Err(Reject::IllegalChoice),
+        };
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        for from in to_hand {
+            self.push_apply(
+                &mut events,
+                Event::SearchedToHand {
+                    player,
+                    object: self.next_object_id(),
+                    from,
+                    card: self.def_of(from),
+                },
+            );
+        }
+        for from in to_graveyard {
+            self.push_apply(
+                &mut events,
+                Event::Milled {
+                    player,
+                    card: self.next_object_id(),
+                    from,
+                },
+            );
+        }
+        Ok(events)
     }
 
     /// Answer a [`PendingChoice::OpponentChoosesPile`]: the chosen pile goes to `controller`'s
@@ -4173,23 +4389,30 @@ impl Game {
         player: PlayerId,
         cards: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
-        let (chooser, hand, count, is_cleanup) = match self.pending_choice.clone() {
+        let (chooser, hand, count, or_one_matching, is_cleanup) = match self.pending_choice.clone()
+        {
             Some(PendingChoice::DiscardToHandSize {
                 player,
                 hand,
                 count,
-            }) => (player, hand, count, true),
+            }) => (player, hand, count, None, true),
             Some(PendingChoice::DiscardCards {
                 player,
                 hand,
                 count,
-            }) => (player, hand, count, false),
+                or_one_matching,
+            }) => (player, hand, count, or_one_matching, false),
             _ => return Err(Reject::IllegalChoice),
         };
-        // Exactly `count` distinct cards, each currently in this player's hand.
+        // Exactly `count` distinct cards, each currently in this player's hand — or, when the
+        // effect carries a land-escape-valve filter, a single matching card instead (Compulsive
+        // Research's "unless they discard a land card").
         let distinct = cards.iter().collect::<std::collections::HashSet<_>>().len();
         let all_in_hand = cards.iter().all(|c| hand.contains(c));
-        if player != chooser || cards.len() != count || distinct != cards.len() || !all_in_hand {
+        let full_discard = cards.len() == count && distinct == cards.len();
+        let land_escape = or_one_matching
+            .is_some_and(|filter| cards.len() == 1 && filter.matches(self.def_of(cards[0])));
+        if player != chooser || !all_in_hand || !(full_discard || land_escape) {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
 

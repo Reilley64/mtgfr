@@ -626,6 +626,20 @@ impl Intent {
     }
 }
 
+/// What [`PendingChoice::ChooseSplittingOpponent`] resumes into once the opponent is chosen. The
+/// split data (piles/reveal) was already computed before the chooser pause — it doesn't depend on
+/// which opponent answers — so this just carries it across that pause to the next one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SplittingContinuation {
+    /// Abstract Performance: the chosen opponent picks one of the two already-exiled piles.
+    ExilePiles {
+        pile_a: Vec<ObjectId>,
+        pile_b: Vec<ObjectId>,
+    },
+    /// Fact or Fiction: the chosen opponent partitions the five already-revealed cards.
+    Partition { revealed: Vec<ObjectId> },
+}
+
 /// A decision the engine is waiting on. While one is pending, only the matching
 /// [`Intent::ChooseOrder`] from `player` is legal.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1075,10 +1089,14 @@ pub enum PendingChoice {
     /// rummage half, Faithless Looting): choose `count` of `hand` (their whole hand, kept for
     /// stable validation) to put into the graveyard. Answered by [`Intent::Discard`], like a
     /// cleanup discard — but resuming the resolving ability's sequence rather than a step change.
+    /// `or_one_matching` mirrors [`Effect::Discard::or_one_matching`]: when `Some`, a one-card
+    /// answer matching the filter is accepted instead of the full `count`-card answer
+    /// (Compulsive Research's land escape valve).
     DiscardCards {
         player: PlayerId,
         hand: Vec<ObjectId>,
         count: usize,
+        or_one_matching: Option<CardFilter>,
     },
     /// `player` may put one of `candidates` (their hand's land cards) onto the battlefield
     /// (`tapped` if it enters tapped), or decline ("up to one" — CR 305.9 special action, an
@@ -1155,6 +1173,49 @@ pub enum PendingChoice {
         source: ObjectId,
         nonlands: Vec<ObjectId>,
         exiled: Vec<ObjectId>,
+    },
+    /// `player` (the ability's controller) must choose which opponent makes an "an opponent ..."
+    /// decision on their behalf — shared by Abstract Performance's pile split
+    /// ([`Effect::OpponentSplitsExilePiles`]) and Fact or Fiction's partition
+    /// ([`Effect::RevealTopSplitPiles`]): a settled ruling (not a numbered CR section) gives the
+    /// ability's controller the pick of *which* opponent "an opponent" means, when more than one
+    /// is alive. `legal` lists the living opponents; only raised when there are at least two
+    /// ([`Game::begin_choose_splitting_opponent`] resumes immediately with the sole opponent
+    /// otherwise — the same collapse this choice's predecessor hardcoded). Answered by
+    /// [`Intent::ChooseTargets`] (reusing its "single `Target::Player`" wire shape —
+    /// [`Game::choose_targets`] special-cases this pause the same way it already does
+    /// `Effect::Fight`/`Effect::Demonstrate`'s mid-resolution picks). Resumes into whichever pause
+    /// `then` names, now addressed to the chosen opponent.
+    ChooseSplittingOpponent {
+        player: PlayerId,
+        source: ObjectId,
+        legal: Vec<PlayerId>,
+        then: SplittingContinuation,
+    },
+    /// `player` (the opponent [`Self::ChooseSplittingOpponent`] named) must assign each of
+    /// `revealed` — the cards [`Effect::RevealTopSplitPiles`] revealed off `controller`'s library
+    /// (still library-resident and public, CR 701.16 "reveal" makes them visible to everyone) —
+    /// to one of two piles: the answer names pile A's subset (reusing
+    /// [`Intent::ChooseSacrifices`]'s "name the subset" wire shape), everything else in `revealed`
+    /// forms pile B. Either pile may be empty (CR "separates ... into two piles" allows a 0/5
+    /// split). `controller` then picks which pile to keep on a [`Self::ChoosePileForHand`].
+    PartitionRevealed {
+        player: PlayerId,
+        controller: PlayerId,
+        source: ObjectId,
+        revealed: Vec<ObjectId>,
+    },
+    /// `player` (the controller of [`Effect::RevealTopSplitPiles`]) picks one of the two piles
+    /// [`Self::PartitionRevealed`] just made to put into their hand (CR "Put one pile into your
+    /// hand"); the other goes to their graveyard (CR "and the other into your graveyard").
+    /// Answered by [`Intent::ChooseOpponentPile`] (reusing Abstract Performance's "pick pile 0 or
+    /// 1" wire shape — the addressee here is the controller, not an opponent; the name is kept
+    /// for wire reuse).
+    ChoosePileForHand {
+        player: PlayerId,
+        source: ObjectId,
+        pile_a: Vec<ObjectId>,
+        pile_b: Vec<ObjectId>,
     },
     /// `player` (the ability's controller) may choose up to `count` of `candidates` — castable
     /// cards among the exile pile `exiled` — to grant the free-cast permission (CR 118.5). Answered
@@ -1430,6 +1491,9 @@ impl PendingChoice {
             | PendingChoice::DanceExileMore { player, .. }
             | PendingChoice::OpponentChoosesPile { player, .. }
             | PendingChoice::OpponentChoosesExiledNonland { player, .. }
+            | PendingChoice::ChooseSplittingOpponent { player, .. }
+            | PendingChoice::PartitionRevealed { player, .. }
+            | PendingChoice::ChoosePileForHand { player, .. }
             | PendingChoice::ChooseExiledToCastFree { player, .. }
             | PendingChoice::RevealedCardToBattlefieldOrHand { player, .. }
             | PendingChoice::ChooseOwnSacrifices { player, .. }
@@ -1578,6 +1642,9 @@ pub enum Event {
         /// Whether this was a face-down morph cast (CR 702.37b — [`Intent::CastFaceDown`]); see
         /// [`Spell::face_down`]. `false` for an ordinary face-up cast.
         face_down: bool,
+        /// Whether this face-down cast was Illusionary Mask's `{X}` (CR 615); see [`Spell::masked`].
+        /// `false` for a plain morph/manifest face-down cast.
+        masked: bool,
         /// Whether this was an evoke cast (CR 702.74a — for [`CardDef::evoke`]); see
         /// [`Spell::evoked`]. `false` for an ordinary cast.
         evoked: bool,

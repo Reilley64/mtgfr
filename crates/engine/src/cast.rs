@@ -460,6 +460,7 @@ impl Game {
                 replicate_count,
                 bestowed: false,
                 face_down: false,
+                masked: false,
                 evoked,
                 spent_colors,
             },
@@ -1157,13 +1158,35 @@ impl Game {
         let mut events = Vec::new();
         self.settle_payment(player, cost, None, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
-        let reveal = Event::TurnedFaceUp { permanent };
-        self.apply(&reveal);
-        events.push(reveal);
+        self.turn_face_up_free(permanent, &mut events);
         // A special action resets the pass count; the player keeps priority (CR 117.3c).
         self.consecutive_passes = 0;
         self.priority = player;
         Ok(events)
+    }
+
+    /// Reveal a face-down `permanent` — emit and apply [`Event::TurnedFaceUp`] with none of the
+    /// special-action bookkeeping (no payment, no priority/pass reset). This is the shared reveal
+    /// tail of the [`Game::turn_face_up`] special action and also the free flip driven by
+    /// Illusionary Mask's CR 615 replacement (see [`Game::flip_masked`]), which reveals a masked
+    /// creature mid-event without it being an action.
+    pub(crate) fn turn_face_up_free(&mut self, permanent: ObjectId, events: &mut Vec<Event>) {
+        self.push_apply(events, Event::TurnedFaceUp { permanent });
+    }
+
+    /// Illusionary Mask's CR 615 self-replacement: if `object` is a masked face-down permanent, it
+    /// "is turned face up" first (for free) the instant it would assign or deal damage, be dealt
+    /// damage, or become tapped — so the interaction then proceeds on the revealed creature (its
+    /// real characteristics come from `def` once `face_down` clears). A no-op for a plain
+    /// morph/manifest face-down permanent (not `masked`) or an already-face-up one.
+    pub(crate) fn flip_masked(&mut self, object: ObjectId, events: &mut Vec<Event>) {
+        let Some(perm) = self.as_permanent(object) else {
+            return;
+        };
+        if !perm.masked || !perm.face_down {
+            return;
+        }
+        self.turn_face_up_free(object, events);
     }
 
     /// Cast a copy of a prepared permanent's back-face spell (soc/sos prepare DFCs — Kirol,
@@ -1450,6 +1473,7 @@ impl Game {
                 replicate_count: 0,
                 bestowed: true,
                 face_down: false,
+                masked: false,
                 evoked: false,
                 spent_colors,
             },
@@ -1500,7 +1524,8 @@ impl Game {
         let mut events = Vec::new();
         self.settle_payment(player, face_down_cost, None, None, &mut events)?;
         let spent_colors = spent_colors_from(&events);
-        self.push_face_down_spell_cast(player, card, spent_colors, &mut events);
+        // A morph cast is not masked — only Illusionary Mask sets the CR 615 replacement.
+        self.push_face_down_spell_cast(player, card, spent_colors, false, &mut events);
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
         self.consecutive_passes = 0;
         self.priority = player;
@@ -1510,13 +1535,15 @@ impl Game {
     /// Put `card` onto the stack as a face-down 2/2 creature spell (CR 708.2) controlled by
     /// `player`, `spent_colors` recording which colors (if any) were spent casting it. Shared by
     /// morph's flat `{3}` cast ([`Game::cast_face_down`]) and Illusionary Mask's free `{X}` cast
-    /// ([`Game::cast_creature_face_down`]) — the two differ only in what (if anything) was paid,
-    /// so neither the priority reset nor the payment lives here.
+    /// ([`Game::cast_creature_face_down`]) — the two differ only in what (if anything) was paid and
+    /// whether the result is `masked` (Illusionary Mask's CR 615 turn-face-up-on-interaction
+    /// replacement), so neither the priority reset nor the payment lives here.
     pub(crate) fn push_face_down_spell_cast(
         &mut self,
         player: PlayerId,
         card: ObjectId,
         spent_colors: [bool; Color::COUNT],
+        masked: bool,
         events: &mut Vec<Event>,
     ) {
         let spell = self.next_object_id();
@@ -1538,6 +1565,7 @@ impl Game {
                 replicate_count: 0,
                 bestowed: false,
                 face_down: true,
+                masked,
                 evoked: false,
                 spent_colors,
             },

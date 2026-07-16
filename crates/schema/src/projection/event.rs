@@ -79,6 +79,11 @@ pub(crate) fn project_event(
             // redacted catalog entry, not this event. Add a `face_down` here when a UI wants to
             // badge the stack item itself as a morph cast.
             face_down: _,
+            // ponytail: whether the face-down cast was Illusionary Mask's (CR 615 `masked`) isn't
+            // surfaced on the wire — the client reads face-down status off the redacted catalog
+            // entry, and the reveal arrives as its own `TurnedFaceUp` event. Add a `masked` here
+            // only if a UI wants to badge the stack item itself.
+            masked: _,
             // ponytail: whether the spell was cast for evoke (CR 702.74a) isn't surfaced on the
             // wire either, same reasoning as `bestowed`/`face_down` above — no UI reads it yet
             // (the client reads the resulting sacrifice off its own event). Add an `evoked` here

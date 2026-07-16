@@ -875,6 +875,7 @@ pub(crate) fn fresh_permanent(
         serra_recursion: false,
         bestowed: false,
         face_down: false,
+        masked: false,
         evoked: false,
         reverts_to_def_eot: None,
         spent_colors: [false; Color::COUNT],
@@ -1237,6 +1238,12 @@ pub(crate) struct Spell {
     /// resulting [`Permanent::face_down`] when the spell resolves ([`Event::PermanentEntered`]),
     /// so the permanent enters face down (CR 708). `false` for an ordinary face-up cast.
     pub(crate) face_down: bool,
+    /// Whether this face-down spell was cast by Illusionary Mask's `{X}` ability (CR 615). Copied
+    /// onto the resulting [`Permanent::masked`], which carries the card's self-replacement: a
+    /// masked face-down creature that would assign or deal damage, be dealt damage, or become
+    /// tapped is turned face up first. Only Illusionary Mask sets it; a plain morph/manifest
+    /// face-down cast leaves it `false`.
+    pub(crate) masked: bool,
     /// Whether this spell was cast for its evoke cost (CR 702.74a — [`CardDef::evoke`]). Copied
     /// onto the resulting [`Permanent::evoked`] when the spell resolves ([`Event::PermanentEntered`]),
     /// so the permanent is sacrificed the instant it enters. `false` for an ordinary cast.
@@ -1464,6 +1471,13 @@ pub(crate) struct Permanent {
     /// morph / megamorph / disguise) — no morph card is in the pool, so only plain manifest is
     /// built; a morph card would add its face-down cost + the morph keyword on top of this status.
     pub(crate) face_down: bool,
+    /// Whether this face-down permanent was put onto the battlefield by Illusionary Mask (CR 615):
+    /// while `masked && face_down`, it turns face up for free (no morph/manifest cost) the instant
+    /// it would assign or deal damage, be dealt damage, or become tapped (the printed "instead it's
+    /// turned face up and ..." self-replacement — consulted at the damage/tap chokes). Set from the
+    /// casting [`Spell::masked`]; `false` for a plain morph/manifest face-down permanent, which is
+    /// never turned face up by interaction. Runtime state, not TOML-authored.
+    pub(crate) masked: bool,
     /// Whether this permanent was cast for its evoke cost (CR 702.74a — [`CardDef::evoke`]): it is
     /// sacrificed the instant it enters, via a self-sacrifice trigger queued alongside its own ETB
     /// triggers so an ETB payoff (Mulldrifter's draw two) resolves first. Set as it enters from the

@@ -473,6 +473,7 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 hand,
                 count,
+                ..
             } => PendingChoiceView::Discard {
                 player: player.0,
                 count: count as u32,
@@ -560,6 +561,38 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: self.label_items(nonlands),
+            },
+            engine::PendingChoice::ChooseSplittingOpponent {
+                player,
+                source,
+                legal,
+                ..
+            } => PendingChoiceView::ChooseSplittingOpponent {
+                player: player.0,
+                source,
+                label: self.game.def_of(source).name.to_string(),
+                items: self.label_players(legal),
+            },
+            engine::PendingChoice::PartitionRevealed {
+                player,
+                source,
+                revealed,
+                ..
+            } => PendingChoiceView::PartitionRevealed {
+                player: player.0,
+                source,
+                items: self.label_items(revealed),
+            },
+            engine::PendingChoice::ChoosePileForHand {
+                player,
+                source,
+                pile_a,
+                pile_b,
+            } => PendingChoiceView::ChoosePileForHand {
+                player: player.0,
+                source,
+                pile_a: self.label_items(pile_a),
+                pile_b: self.label_items(pile_b),
             },
             engine::PendingChoice::ChooseExiledToCastFree {
                 player,
@@ -881,6 +914,7 @@ mod coverage_tests {
                     player: PlayerId(0),
                     hand: vec![hand_card],
                     count: 2,
+                    or_one_matching: None,
                 },
                 |view| matches!(view, PendingChoiceView::Discard { count: 2, .. }),
             ),

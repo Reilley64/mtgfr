@@ -45651,6 +45651,7 @@ const DISCARD_ONE: CardDef = sorcery(
     &[spell_ability(Effect::Discard {
         count: 1,
         target_player: false,
+        or_one_matching: None,
     })],
 );
 
@@ -48103,6 +48104,7 @@ const LOOT: CardDef = sorcery(
             Effect::Discard {
                 count: 2,
                 target_player: false,
+                or_one_matching: None,
             },
         ],
     })],
@@ -48203,6 +48205,124 @@ fn pull_from_tomorrow_draws_x_for_caster() {
         "drew two, discarded one, net one card in hand"
     );
     assert_eq!(game.zone_of(drawn_top), Zone::Graveyard);
+}
+
+// Compulsive Research: "Target player draws three cards. Then that player discards two cards
+// unless they discard a land card." — the discard's land escape valve (CR 608.2b resolution-time
+// choice): a hand holding a land may satisfy the whole discard with that single land instead of
+// the plain two-card count.
+
+#[test]
+fn compulsive_research_discard_two_or_one_land() {
+    let mut game = TestGame::new();
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    game.stack_library(
+        PlayerId(0),
+        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+    );
+    let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
+
+    game.cast(research)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        4,
+        "drew three cards on top of the Forest already in hand"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::DiscardCards {
+                player: PlayerId(0),
+                count: 2,
+                ..
+            })
+        ),
+        "pauses on a two-card discard choice, got {:?}",
+        game.pending_choice(),
+    );
+
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![forest],
+    })
+    .expect("a single land card satisfies the discard in place of the full two-card count");
+
+    let hand = hand_ids(&game, PlayerId(0));
+    assert_eq!(hand.len(), 3, "only the one land card left the hand");
+    assert!(!hand.contains(&forest));
+    assert_eq!(game.zone_of(forest), Zone::Graveyard);
+}
+
+#[test]
+fn compulsive_research_discard_two_nonland() {
+    let mut game = TestGame::new();
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+    );
+    let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
+
+    game.cast(research)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+
+    let drawn = vec![game.current_id(lib[0]), game.current_id(lib[1])];
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: drawn,
+    })
+    .expect("discarding two of the drawn nonland cards satisfies the plain count");
+
+    let hand = hand_ids(&game, PlayerId(0));
+    assert_eq!(
+        hand.len(),
+        2,
+        "discarded two cards; the Forest and one draw remain"
+    );
+    assert!(
+        hand.contains(&forest),
+        "the land wasn't forced out by the plain two-card discard"
+    );
+}
+
+#[test]
+fn compulsive_research_no_land_collapses() {
+    let mut game = TestGame::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+    );
+    let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
+
+    game.cast(research)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+
+    let drawn_top = game.current_id(lib[0]);
+    assert_eq!(
+        game.submit(Intent::Discard {
+            player: PlayerId(0),
+            cards: vec![drawn_top],
+        }),
+        Err(Reject::IllegalChoice),
+        "no land in hand — a lone nonland card can't stand in for the two-card discard"
+    );
+
+    let drawn = vec![drawn_top, game.current_id(lib[1])];
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: drawn,
+    })
+    .expect("the full two-card discard is still legal");
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        1,
+        "discarded two, one draw remains"
+    );
 }
 
 // Prismari Charm mode 0's shape: "surveil 2, then draw a card" — the draw is deferred past
@@ -60514,14 +60634,15 @@ fn opponent_chooses_pile_answer_from_the_controller_is_rejected() {
 }
 
 #[test]
-fn abstract_performance_next_opponent_in_turn_order_chooses() {
+fn abstract_performance_controller_chooses_which_opponent_splits() {
+    // With 3+ players, "an opponent" is the controller's own pick (a settled ruling, not a
+    // hardcoded next-in-turn-order default) — P2 (controller) can name P0 even though P0 is the
+    // *active* player and would have been the accidental pick under the old APNAP-tie-break
+    // approximation this test used to lock in.
+    //
     // A flash-granted cast can put a *non-active* player in the controller seat: Alchemist's
     // Refuge ("You may cast spells this turn as though they had flash") lets P2 cast Abstract
-    // Performance during P0's turn. With controller = P2 and active_player = P0, the old
-    // `an_opponent` (the first non-controller player in APNAP order, which starts from the
-    // *active* player) picked P0 — an accident of whoever's turn it happened to be, not a
-    // turn-order rule. CR 101.4's tie-break makes a multiplayer "an opponent" the next opponent
-    // in turn order after the controller: P3, not P0.
+    // Performance during P0's turn.
     let mut game = Game::with_players(4, 0);
     let refuge = game.spawn_on_battlefield(PlayerId(2), card("Alchemist's Refuge"));
     let ap = game.spawn_in_hand(PlayerId(2), card("Abstract Performance"));
@@ -60578,6 +60699,35 @@ fn abstract_performance_next_opponent_in_turn_order_chooses() {
         game.submit(Intent::PassPriority { player: p }).unwrap();
     }
 
+    let Some(PendingChoice::ChooseSplittingOpponent {
+        player: chooser,
+        legal,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-splitting-opponent pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        chooser,
+        PlayerId(2),
+        "P2 cast (and controls) Abstract Performance"
+    );
+    assert_eq!(
+        legal,
+        vec![PlayerId(0), PlayerId(1), PlayerId(3)],
+        "every living opponent is a legal pick, including the active player P0"
+    );
+
+    // P2 names P0 — the pick the old hardcoded APNAP-next default could never reach.
+    game.submit(Intent::ChooseTargets {
+        player: chooser,
+        targets: vec![Target::Player(PlayerId(0))],
+    })
+    .unwrap();
+
     let Some(PendingChoice::OpponentChoosesPile {
         player, controller, ..
     }) = game.pending_choice()
@@ -60587,17 +60737,210 @@ fn abstract_performance_next_opponent_in_turn_order_chooses() {
             game.pending_choice()
         );
     };
-    assert_eq!(
-        controller,
-        PlayerId(2),
-        "P2 cast (and controls) Abstract Performance"
-    );
+    assert_eq!(controller, PlayerId(2));
     assert_eq!(
         player,
-        PlayerId(3),
-        "the next opponent in turn order after P2 chooses — not the active player P0, which the \
-         old APNAP-order-based an_opponent would have picked"
+        PlayerId(0),
+        "the controller's chosen opponent (P0) makes the pile pick, not a hardcoded default"
     );
+}
+
+#[test]
+fn fact_or_fiction_opponent_splits_controller_takes_pile() {
+    // Fact or Fiction (inv): "Reveal the top five cards of your library. An opponent separates
+    // those cards into two piles. Put one pile into your hand and the other into your
+    // graveyard."
+    let mut game = TestGame::new();
+    let revealed = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Forest"),
+            card("Grizzly Bear"),
+            card("Forest"),
+            card("Forest"),
+        ],
+    );
+    let ff = game.spawn_in_hand(PlayerId(0), card("Fact or Fiction"));
+    game.cast(ff).resolve(); // the instant resolves, revealing the top five
+
+    // Only one opponent (P1) — the splitting-opponent chooser collapses, going straight to the
+    // partition pause.
+    let Some(PendingChoice::PartitionRevealed {
+        player,
+        controller,
+        revealed: paused_revealed,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the partition-revealed pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        player,
+        PlayerId(1),
+        "the opponent, not the caster, partitions"
+    );
+    assert_eq!(controller, PlayerId(0));
+    assert_eq!(
+        paused_revealed, revealed,
+        "all five revealed cards are offered"
+    );
+
+    // The opponent splits 3/2: the two Grizzly Bears plus one Forest into pile A.
+    let pile_a_choice = vec![revealed[0], revealed[2], revealed[1]];
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: pile_a_choice.clone(),
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChoosePileForHand {
+        player,
+        pile_a,
+        pile_b,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-pile-for-hand pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        player,
+        PlayerId(0),
+        "the controller, not the opponent, picks the pile to keep"
+    );
+    assert_eq!(pile_a.len(), 3);
+    assert_eq!(pile_b.len(), 2);
+
+    // The controller takes pile A (three cards) to hand; pile B (two) is milled.
+    game.submit(Intent::ChooseOpponentPile {
+        player: PlayerId(0),
+        pile: 0,
+    })
+    .unwrap();
+    for &id in &pile_a {
+        assert_eq!(game.zone_of(id), Zone::Hand, "the chosen pile goes to hand");
+        assert_eq!(game.owner_of(id), PlayerId(0));
+    }
+    for &id in &pile_b {
+        assert_eq!(
+            game.zone_of(id),
+            Zone::Graveyard,
+            "the other pile is milled into the graveyard"
+        );
+        assert_eq!(game.owner_of(id), PlayerId(0));
+    }
+}
+
+#[test]
+fn fact_or_fiction_controller_chooses_which_opponent_splits() {
+    // 3+ players: "an opponent" is the controller's own pick, not a hardcoded next-in-turn-order
+    // default (the same fix Abstract Performance's chooser shares).
+    let mut game = Game::with_players(3, 0);
+    game.fund_mana(PlayerId(0));
+    let revealed = game.stack_library(PlayerId(0), &[card("Forest"); 5]);
+    let ff = game.spawn_in_hand(PlayerId(0), card("Fact or Fiction"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: ff,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    while game.pending_choice().is_none() && !game.stack_is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+
+    let Some(PendingChoice::ChooseSplittingOpponent {
+        player: chooser,
+        legal,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-splitting-opponent pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(chooser, PlayerId(0));
+    assert_eq!(legal, vec![PlayerId(1), PlayerId(2)]);
+
+    // P0 names P2 — not P1, the next-in-turn-order opponent the old hardcoded default picked.
+    game.submit(Intent::ChooseTargets {
+        player: chooser,
+        targets: vec![Target::Player(PlayerId(2))],
+    })
+    .unwrap();
+
+    let Some(PendingChoice::PartitionRevealed {
+        player,
+        revealed: paused_revealed,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the partition-revealed pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        player,
+        PlayerId(2),
+        "the controller's chosen opponent partitions, not a hardcoded default"
+    );
+    assert_eq!(paused_revealed, revealed);
+}
+
+#[test]
+fn fact_or_fiction_empty_pile() {
+    // CR "separates those cards into two piles" allows a 0/5 split; the controller may still
+    // take the empty pile (nothing to hand, everything milled).
+    let mut game = TestGame::new();
+    let revealed = game.stack_library(PlayerId(0), &[card("Forest"); 5]);
+    let ff = game.spawn_in_hand(PlayerId(0), card("Fact or Fiction"));
+    game.cast(ff).resolve();
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![], // every card goes into pile B
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChoosePileForHand { pile_a, pile_b, .. }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-pile-for-hand pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(pile_a.is_empty());
+    assert_eq!(pile_b, revealed);
+
+    // The controller takes the empty pile A: nothing to hand, all five milled.
+    game.submit(Intent::ChooseOpponentPile {
+        player: PlayerId(0),
+        pile: 0,
+    })
+    .unwrap();
+    for &id in &revealed {
+        assert_eq!(game.zone_of(id), Zone::Graveyard);
+    }
 }
 
 #[test]
@@ -63718,6 +64061,159 @@ fn illusionary_mask_is_sorcery_speed_only() {
     assert!(
         rejected.is_err(),
         "the sorcery-speed ability can't be activated during combat"
+    );
+}
+
+// --- Illusionary Mask CR 615 turn-face-up-on-interaction replacement (slice 3, clause 2) ---
+
+/// Cast `MASK_CREATURE` face down via Illusionary Mask's `{X}` ability (clause 1), resolve it onto
+/// the battlefield, and return the resulting face-down (masked) permanent's id. The reveal
+/// replacement (this clause) applies only because it entered this way, not via morph/manifest.
+fn illusionary_mask_a_face_down_creature(game: &mut TestGame) -> ObjectId {
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+    game.submit(Intent::CastCreatureFaceDown {
+        player: PlayerId(0),
+        choice: Some(creature),
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+    let perm = game.current_id(creature);
+    assert!(game.is_face_down(perm), "it entered face down (clause 1)");
+    perm
+}
+
+/// CR 615: a face-down creature Illusionary Mask put onto the battlefield that would be dealt
+/// damage is turned face up first (the printed "instead it's turned face up and ... is dealt
+/// damage"). It fights an opponent's creature — the damage lands on the revealed creature.
+#[test]
+fn illusionary_mask_creature_flips_when_dealt_damage() {
+    let mut game = TestGame::new();
+    let masked = illusionary_mask_a_face_down_creature(&mut game);
+    let enemy = game.spawn_on_battlefield(PlayerId(1), creature("Enemy 3/3", 3, 3, &[]));
+    let fight = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL);
+
+    // Fight: the opponent's creature is the cast target, then the masked creature is chosen.
+    game.cast(fight).at(Target::Object(enemy)).resolve();
+    let events = game
+        .submit(Intent::ChooseTargets {
+            player: PlayerId(0),
+            targets: vec![Target::Object(masked)],
+        })
+        .unwrap();
+
+    // The reveal (TurnedFaceUp) must precede the masked creature being dealt damage (DamageMarked).
+    let flip = events
+        .iter()
+        .position(|e| matches!(e, Event::TurnedFaceUp { permanent } if *permanent == masked));
+    let hit = events
+        .iter()
+        .position(|e| matches!(e, Event::DamageMarked { object, .. } if *object == masked));
+    assert!(
+        flip.is_some(),
+        "the masked creature is turned face up when it would be dealt damage; got {events:?}"
+    );
+    assert!(
+        matches!((flip, hit), (Some(f), Some(h)) if f < h),
+        "the reveal comes before the damage lands; got {events:?}"
+    );
+}
+
+/// CR 615: a masked face-down creature that would become tapped is turned face up first.
+#[test]
+fn illusionary_mask_creature_flips_when_tapped() {
+    let mut game = TestGame::new();
+    let masked = illusionary_mask_a_face_down_creature(&mut game);
+
+    game.tap(masked);
+
+    assert!(
+        !game.is_face_down(masked),
+        "tapping the masked creature turned it face up first"
+    );
+}
+
+/// CR 615: a masked face-down creature that would assign or deal combat damage is turned face up
+/// first (and deals its real power). It blocks — a blocker taps for nothing, so the reveal is
+/// driven by the combat-damage assignment, not by a tap.
+#[test]
+fn illusionary_mask_creature_flips_when_assigning_combat_damage() {
+    let mut game = TestGame::new();
+    let masked = illusionary_mask_a_face_down_creature(&mut game);
+    // A weak attacker so the revealed 2/2 survives being blocked (marks 1) but kills the 1/1 with
+    // its real 2 power — proving the reveal preceded the combat-damage assignment. A blocker never
+    // taps, so the reveal here is driven by the combat damage, not by a tap.
+    let attacker = game.spawn_on_battlefield(PlayerId(1), creature("Enemy 1/1", 1, 1, &[]));
+    // Stack P1's library so drawing into its turn doesn't deck it out (and take its board with it).
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA]);
+
+    advance_until(&mut game, |g| {
+        g.current_step() == Step::DeclareAttackers && g.active_player() == PlayerId(1)
+    });
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(attacker, PlayerId(0))],
+    })
+    .unwrap();
+    // The defending player (P0) declares the block with its masked creature.
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(0),
+        blocks: vec![(masked, attacker)],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert!(
+        !game.is_face_down(game.current_id(masked)),
+        "the blocking masked creature turned face up to deal combat damage"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(attacker)),
+        Zone::Graveyard,
+        "the revealed 2/2 dealt its real 2 power, killing the 1/1 attacker"
+    );
+}
+
+/// The reveal replacement is scoped to Illusionary Mask by the `masked` flag: a plain morph-cast
+/// face-down creature (not masked) is dealt damage and stays face down.
+#[test]
+fn plain_morph_creature_does_not_flip_on_damage() {
+    let mut game = TestGame::new();
+    let card = game.spawn_in_hand(PlayerId(0), MORPH_CREATURE);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let morphed = game.current_id(card);
+    assert!(game.is_face_down(morphed));
+
+    let enemy = game.spawn_on_battlefield(PlayerId(1), creature("Enemy 1/1", 1, 1, &[]));
+    let fight = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL);
+    game.cast(fight).at(Target::Object(enemy)).resolve();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(morphed)],
+    })
+    .unwrap();
+
+    assert!(
+        game.is_face_down(game.current_id(morphed)),
+        "a plain morph creature is not masked, so it stays face down when dealt damage"
     );
 }
 

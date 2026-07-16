@@ -825,6 +825,11 @@ impl Effect {
                  the other pile without paying its mana cost; put the rest into your hand"
                     .to_string()
             }
+            Effect::RevealTopSplitPiles => {
+                "Reveal the top five cards of your library. An opponent separates those cards \
+                 into two piles. Put one pile into your hand and the other into your graveyard"
+                    .to_string()
+            }
             Effect::EachPlayerExilesUntilNonlandOpponentPicks => {
                 "Each player exiles cards from the top of their library until they exile a nonland \
                  card. An opponent chooses a nonland card exiled this way. You may cast up to two \
@@ -984,11 +989,23 @@ impl Effect {
             Effect::Discard {
                 count,
                 target_player: false,
+                or_one_matching: None,
             } => format!("Discard {count}"),
             Effect::Discard {
                 count,
                 target_player: true,
+                or_one_matching: None,
             } => format!("Target player discards {count}"),
+            Effect::Discard {
+                count,
+                target_player: false,
+                or_one_matching: Some(_),
+            } => format!("Discard {count} unless you discard a land card"),
+            Effect::Discard {
+                count,
+                target_player: true,
+                or_one_matching: Some(_),
+            } => format!("Target player discards {count} unless they discard a land card"),
             Effect::PutLandFromHand { tapped } => {
                 let suffix = if tapped { " tapped" } else { "" };
                 format!("Put a land from hand onto the battlefield{suffix}")
@@ -1314,6 +1331,7 @@ mod tests {
                     Effect::Discard {
                         count: 2,
                         target_player: false,
+                        or_one_matching: None,
                     },
                 ],
             }

@@ -1,0 +1,30 @@
+# Target player draws three cards. Then that player discards two cards unless they discard a
+# land card.
+name = "Compulsive Research"
+otags = ["burst-draw", "force-draw", "hand-negative", "loot", "single-target-instant-sorcery"]
+oracle = "Target player draws three cards. Then that player discards two cards unless they discard a land card."
+set = "rav"
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Target player draws three cards. Then that player discards two cards unless they discard a
+# land card.
+[[abilities]]
+timing = "spell"
+
+# Target player draws three cards.
+[[abilities.effects]]
+type = "target_player_draws"
+count = 3
+
+# Then that player discards two cards unless they discard a land card.
+[[abilities.effects]]
+type = "discard"
+count = 2
+target_player = true
+or_one_matching = "land"

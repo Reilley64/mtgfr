@@ -230,6 +230,9 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::DanceExileMore { player, .. }
         | PendingChoiceView::OpponentChoosesPile { player, .. }
         | PendingChoiceView::OpponentChoosesExiledNonland { player, .. }
+        | PendingChoiceView::ChooseSplittingOpponent { player, .. }
+        | PendingChoiceView::PartitionRevealed { player, .. }
+        | PendingChoiceView::ChoosePileForHand { player, .. }
         | PendingChoiceView::ChooseExiledToCastFree { player, .. }
         | PendingChoiceView::RevealedCardToBattlefieldOrHand { player, .. }
         | PendingChoiceView::ChooseMode { player, .. }

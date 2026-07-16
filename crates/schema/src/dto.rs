@@ -692,6 +692,33 @@ pub enum PendingChoiceView {
         source: ObjectId,
         items: Vec<ChoiceItem>,
     },
+    /// This player (the ability's controller) must choose which opponent makes an "an opponent
+    /// ..." decision on their behalf (Abstract Performance's pile split, Fact or Fiction's
+    /// partition) — `items` are the living opponents (as player-only [`ChoiceItem`]s, `label`
+    /// the ability source's name. Only raised with two or more opponents alive.
+    ChooseSplittingOpponent {
+        player: u8,
+        source: ObjectId,
+        label: String,
+        items: Vec<ChoiceItem>,
+    },
+    /// This player (the opponent `ChooseSplittingOpponent` named) must assign each of `items`
+    /// (Fact or Fiction's five revealed cards, public) to one of two piles: the answer names pile
+    /// A's subset, the rest form pile B. Either pile may be empty.
+    PartitionRevealed {
+        player: u8,
+        source: ObjectId,
+        items: Vec<ChoiceItem>,
+    },
+    /// This player (the controller of Fact or Fiction) picks one of the two piles
+    /// `PartitionRevealed` just made to put into their hand; the other is milled into their
+    /// graveyard.
+    ChoosePileForHand {
+        player: u8,
+        source: ObjectId,
+        pile_a: Vec<ChoiceItem>,
+        pile_b: Vec<ChoiceItem>,
+    },
     /// This player (the controller) may choose up to `count` of `items` (public — exile-zone) to
     /// grant the free-cast permission (CR 118.5); the rest go to hand or stay exiled per the card
     /// (Abstract Performance's kept pile, Plargg and Nassari's other exiled cards).

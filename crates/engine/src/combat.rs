@@ -233,8 +233,10 @@ impl Game {
     }
 
     /// Test/setup helper: tap `object` (routed through an event so state stays mutated only
-    /// by [`Game::apply`]).
+    /// by [`Game::apply`]). A masked Illusionary Mask creature (CR 615) is turned face up first.
     pub fn tap(&mut self, object: ObjectId) {
+        let mut events = Vec::new();
+        self.flip_masked(object, &mut events);
         self.apply(&Event::Tapped { object });
     }
 
@@ -434,6 +436,8 @@ impl Game {
                 },
             );
             if !self.has_keyword(a, Keyword::Vigilance) {
+                // CR 615: a masked Illusionary Mask attacker becoming tapped is turned face up first.
+                self.flip_masked(a, &mut events);
                 self.push_apply(&mut events, Event::Tapped { object: a });
             }
             // Decayed (CR 702.148c): "When it attacks, sacrifice it at the beginning of the end
@@ -560,6 +564,12 @@ impl Game {
             if self.as_permanent(attacker).is_none() {
                 continue;
             }
+            // CR 615: a masked attacker that would assign or deal combat damage is turned face up
+            // first — before its power is read below, so it deals its real power. (An attacker is
+            // normally revealed earlier by the declare-time tap; this covers a vigilant one.)
+            if self.deals_this_batch(attacker, first_strike_batch) {
+                self.flip_masked(attacker, events);
+            }
             // The defending player may have been eliminated by the between-substeps SBA sweep (CR 704)
             // (first strike killed them); their attackers stay in combat but have nothing to hit. (CR 702.7, CR 506)
             let Some(defender) = self.defender_of(attacker) else {
@@ -578,6 +588,9 @@ impl Game {
                 if self.as_permanent(blocker).is_some()
                     && self.deals_this_batch(blocker, first_strike_batch)
                 {
+                    // CR 615: a masked blocker that would deal combat damage is turned face up
+                    // first — before its power is read, so it deals its real power.
+                    self.flip_masked(blocker, events);
                     self.damage_creature(blocker, attacker, events);
                 }
             }
@@ -594,6 +607,11 @@ impl Game {
         defender: PlayerId,
         events: &mut Vec<Event>,
     ) {
+        // CR 615: a masked blocker that would be dealt combat damage is turned face up first, before
+        // the lethal-damage split reads its (now real) toughness below.
+        for &blocker in blockers {
+            self.flip_masked(blocker, events);
+        }
         let deathtouch = self.has_keyword(attacker, Keyword::Deathtouch);
         let power = self.power(attacker);
 
@@ -685,6 +703,9 @@ impl Game {
         if amount <= 0 {
             return;
         }
+        // CR 615: a masked Illusionary Mask creature that would be dealt damage is turned face up
+        // first, then the damage lands on the revealed creature (prevention still checks it).
+        self.flip_masked(target, events);
         if self.damage_prevented_by_protection(target, Some(source)) {
             return;
         }
@@ -712,6 +733,11 @@ impl Game {
     /// other, simultaneously — both powers are read before either amount is applied (CR
     /// 510.2/701.12c), so neither side's damage affects how much the other deals.
     pub(crate) fn fight(&mut self, a: ObjectId, b: ObjectId, events: &mut Vec<Event>) {
+        // CR 615: a masked Illusionary Mask creature that would deal damage is turned face up first
+        // — before its power is read, so it deals its real power (its being-dealt-damage flip rides
+        // on `deal_creature_damage` below).
+        self.flip_masked(a, events);
+        self.flip_masked(b, events);
         let power_a = self.power(a);
         let power_b = self.power(b);
         // Fight damage is noncombat (CR 701.12), so it passes `combat = false` — Tajic's static

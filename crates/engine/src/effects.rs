@@ -824,6 +824,11 @@ impl Game {
             Effect::OpponentSplitsExilePiles => {
                 self.begin_opponent_splits_exile_piles(controller, source, events)
             }
+            // Fact or Fiction: reveal the top five, an opponent splits them into two piles,
+            // pausing on a PartitionRevealed choice.
+            Effect::RevealTopSplitPiles => {
+                self.begin_reveal_top_split_piles(controller, source, events)
+            }
             // Plargg and Nassari: each player exiles from the top until a nonland, an opponent
             // picks one, pausing on an OpponentChoosesExiledNonland choice.
             Effect::EachPlayerExilesUntilNonlandOpponentPicks => {
@@ -1634,6 +1639,7 @@ impl Game {
             Effect::Discard {
                 count,
                 target_player,
+                or_one_matching,
             } => {
                 let discarder = if target_player {
                     let Some(Target::Player(player)) = target else {
@@ -1643,7 +1649,7 @@ impl Game {
                 } else {
                     controller
                 };
-                self.begin_discard(discarder, count)
+                self.begin_discard(discarder, count, or_one_matching)
             }
             // "You may put a land from hand onto the battlefield" pauses on a card-pick choice
             // (up to one hand land, or decline).
@@ -3889,6 +3895,7 @@ impl Game {
             | Effect::EachPlayerControllerChoosesCounterTarget
             | Effect::CouncilsDilemmaVote { .. }
             | Effect::OpponentSplitsExilePiles
+            | Effect::RevealTopSplitPiles
             | Effect::EachPlayerExilesUntilNonlandOpponentPicks
             | Effect::EachPlayerCreatesFractalFromExiledPower { .. }
             | Effect::EachOtherTokenBecomesCopyOfChosen

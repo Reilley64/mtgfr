@@ -1612,14 +1612,33 @@ pub enum Effect {
     /// hand ([`PendingChoice::ChooseExiledToCastFree`](crate::PendingChoice::ChooseExiledToCastFree)
     /// with `rest_to_hand`). Takes no target; only resolves via [`Game::run`] (needs the
     /// real library order and pauses).
+    /// The opponent who makes the pile pick is chosen by the controller when more than one is
+    /// alive ([`Game::begin_choose_splitting_opponent`], shared with
+    /// [`RevealTopSplitPiles`](Self::RevealTopSplitPiles) — a settled ruling, not a numbered CR
+    /// section: "an opponent" with no other qualifier is the ability's controller's pick),
+    /// collapsing to the sole opponent with no pause in a 2-player/1-opponent game.
     /// ponytail: the "face-down" first pile is modeled as an ordinary face-up exile pile — nothing
     /// in this engine observes an exiled card's face-down hidden-ness, and the mechanically
     /// meaningful part is which pile the opponent picks (CR 713 face-down cosmetics unmodeled).
-    /// ponytail: "an opponent chooses" picks the next opponent in APNAP order; the controller does
-    /// not get to choose *which* opponent when there are several (CR — you choose the opponent).
     /// The free cast is offered at a later priority window, not mid-resolution (same approximation
     /// the dig/free-cast family already carries). (CR 117, CR 108.3, CR 406.5)
     OpponentSplitsExilePiles,
+    /// Fact or Fiction: "Reveal the top five cards of your library. An opponent separates those
+    /// cards into two piles. Put one pile into your hand and the other into your graveyard."
+    /// Reveals the top five (all public, CR 701.16 "reveal"; a short library reveals only what's
+    /// there, CR 120.3 "as many as possible" — the reveal never moves the cards' zone, so the
+    /// same library-resident object ids ride through the whole flow), then hands off to
+    /// [`Game::begin_choose_splitting_opponent`] — the same "an opponent" chooser
+    /// [`OpponentSplitsExilePiles`](Self::OpponentSplitsExilePiles) uses. The chosen opponent
+    /// partitions the revealed cards into two piles
+    /// ([`PendingChoice::PartitionRevealed`](crate::PendingChoice::PartitionRevealed) — either may
+    /// be empty), then the controller picks which pile to keep in hand
+    /// ([`PendingChoice::ChoosePileForHand`](crate::PendingChoice::ChoosePileForHand)); the other
+    /// pile is milled ([`Event::Milled`](crate::Event::Milled), the same library-to-graveyard
+    /// event a mill effect uses — CR "into your graveyard", and these cards are still
+    /// library-resident, so this is the real zone change, not a second move). Takes no target;
+    /// only resolves via [`Game::run`] (needs the real library order and pauses).
+    RevealTopSplitPiles,
     /// Plargg and Nassari's upkeep trigger: each player (APNAP order) exiles cards from the top of
     /// their own library until they exile a nonland card (all face-up, public), an **opponent**
     /// chooses one of the nonland cards exiled this way (pausing on a
@@ -2811,10 +2830,16 @@ pub enum Effect {
     /// cleanup discard).
     /// `target_player`: `false` (default) is the ability's controller; `true` is a chosen target
     /// player instead (Prismari Command's "target player … discards two cards" — CR 111.4).
+    /// `or_one_matching`: an escape valve letting the discarding player satisfy the whole discard
+    /// with a single card matching this filter instead of `count` cards (Compulsive Research's
+    /// "discards two cards unless they discard a land card"). `None` (default) is the plain
+    /// `count`-card discard, no escape valve.
     Discard {
         count: u32,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         target_player: bool,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        or_one_matching: Option<CardFilter>,
     },
     /// The ability's controller may put a land card from their hand onto the battlefield (CR
     /// 305.9 — a "put onto the battlefield" effect, not "play a land"), tapped iff `tapped`
@@ -3287,6 +3312,7 @@ impl Effect {
             | Effect::EachPlayerControllerChoosesCounterTarget
             | Effect::CouncilsDilemmaVote { .. }
             | Effect::OpponentSplitsExilePiles
+            | Effect::RevealTopSplitPiles
             | Effect::EachPlayerExilesUntilNonlandOpponentPicks
             | Effect::EachPlayerCreatesFractalFromExiledPower { .. }
             | Effect::EachOtherTokenBecomesCopyOfChosen

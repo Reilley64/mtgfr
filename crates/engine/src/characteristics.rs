@@ -2069,6 +2069,7 @@ mod cache_tests {
                 serra_recursion: false,
                 bestowed: false,
                 face_down: false,
+                masked: false,
                 evoked: false,
                 spent_colors: [false; Color::COUNT],
             }),
