@@ -25,6 +25,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      # `client/src/api/generated.ts` is gitignored; web Dockerfile typechecks against it.
+      - name: Generate OpenAPI client
+        run: |
+          cd client
+          bun install --frozen-lockfile
+          bun run gen
+
       - name: Image names (GHCR requires lowercase)
         id: image
         run: |

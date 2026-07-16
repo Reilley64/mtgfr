@@ -566,7 +566,7 @@ SolidStart (Vinxi / Nitro `node_server`) on distroless Node — SPA (`ssr: false
 Multi-stage `docker/web/Dockerfile`:
 
 1. **Deps:** `oven/bun` — `bun install --frozen-lockfile`.
-2. **Build:** `node:22-bookworm` — `vinxi build` → `.output/` (optional `VITE_CARD_CDN` build-arg).
+2. **Build:** `node:22-bookworm` — requires `src/api/generated.ts` in the build context (`docker.yml` runs `bun run gen` first; locally `just server-codegen`) → `tsc` + `vinxi build` → `.output/` (optional `VITE_CARD_CDN` build-arg).
 3. **Runtime:** `gcr.io/distroless/nodejs22-debian12:nonroot` — copy `.output`; `ENV HOST=0.0.0.0 PORT=8080`; sticky map from k8s env; `CMD [".output/server/index.mjs"]`.
 
 #### Compression / streaming
@@ -577,8 +577,7 @@ Multi-stage `docker/web/Dockerfile`:
 | BFF → API | Do **not** buffer `text/event-stream` (SSE); Configuration Rules disable response buffering on `edh`. |
 | API (`serve`) | Optional gzip on JSON later; **never** gzip SSE. |
 
-OpenAPI codegen in the client build must use the **committed** `openapi.json` at the image tag being built (release workflow checks they match).
-
+OpenAPI `openapi.json` and `client/src/api/generated.ts` are gitignored; `docker.yml` regenerates them on the runner before `docker build` so the web image typechecks against the schema at that tag.
 ### What not to use
 
 | Avoid | Use instead |
