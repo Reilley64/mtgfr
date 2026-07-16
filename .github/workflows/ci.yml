@@ -40,9 +40,10 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # Pin — `latest` resolves via GitHub API and fails when API is degraded.
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: .bun-version
 
       - uses: extractions/setup-just@v3
 
