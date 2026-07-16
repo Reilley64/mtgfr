@@ -56,6 +56,18 @@ variable "edh_hostname" {
   default     = "edh.example.com"
 }
 
+variable "argocd_repo_url" {
+  description = "Git repo URL for the optional Argo Application (iac/charts/edh). Empty skips the Application CR."
+  type        = string
+  default     = ""
+}
+
+variable "argocd_target_revision" {
+  description = "Git revision for the Argo Application when argocd_repo_url is set."
+  type        = string
+  default     = "HEAD"
+}
+
 variable "tunnel_name" {
   description = "Display name for the Cloudflare Zero Trust tunnel."
   type        = string
@@ -71,21 +83,21 @@ variable "cloudflared_replicas" {
 # ── Images / API instances ───────────────────────────────────────────────────────────────────────
 # Public GHCR packages (deploy PRD — no imagePullSecrets). Never a moving `latest` tag; pin
 # explicit release versions. Operator sets only `server_image` (desired active) + `web_image`.
-# Drain peers live in ConfigMap edh-api-peers (scripts via kubectl); not in tfvars.
+# Rolls: terraform apply updates Deployments; Terminating API pods drain in-process (ADR 0030).
 
 variable "server_image" {
-  description = "Desired active mtgfr-server image. INSTANCE_ID is derived as edh-api-<slug(tag)>. Drain peers are not listed here."
+  description = "Desired active mtgfr-server image. INSTANCE_ID is derived as edh-api-<slug(tag)>."
   type        = string
 }
 
-variable "api_max_instances" {
-  description = "Max concurrent API Deployments (1 active + drain peers). Nested rolls block when at cap until a drainer GCs."
+variable "api_termination_grace_seconds" {
+  description = "Max game length ceiling: SIGTERM drain wait before kube SIGKILL (default 24h)."
   type        = number
-  default     = 4
+  default     = 86400
 }
 
 variable "web_image" {
-  description = "mtgfr-web (SolidStart BFF) image. Hold at the previous tag while any drain peer remains; deploy.sh bumps only when no peers remain."
+  description = "mtgfr-web (SolidStart BFF) image. May roll with server_image (expand-only wire across Terminating API pods)."
   type        = string
 }
 
@@ -118,7 +130,7 @@ variable "postgres_storage_class" {
 # ── Server runtime (Settings — deploy PRD §Configuration) ──────────────────────────────────────
 
 variable "cookie_domain" {
-  description = "Domain attribute for the auth session cookie. Empty = host-only on edh (same-origin BFF). NOT used for mtgfr-instance affinity (also host-only)."
+  description = "Domain attribute for the auth session cookie. Empty = host-only on edh (same-origin BFF)."
   type        = string
   default     = ""
 }

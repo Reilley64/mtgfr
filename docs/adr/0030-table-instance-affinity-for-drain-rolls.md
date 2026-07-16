@@ -1,51 +1,22 @@
-# 0030 — Table/instance affinity for drain rolls
+# 0030 — Table routing for drain rolls (supersedes cookie affinity)
 
-Status: **Accepted**; extends [0005](0005-in-process-fanout-ndjson-snapshot.md) (single-instance fan-out) to an **N-instance** rolling deploy (1 active + many draining); deploy PRD §Table / instance affinity and §Rolling deployment model.
+Status: **Accepted**; extends [0005](0005-in-process-fanout-ndjson-snapshot.md) / [0021](0021-process-local-in-memory-game-registry.md). Replaces the ConfigMap-peer + `mtgfr-instance` cookie model.
 
 ## Context
 
-ADR 0005 assumes one server process per table for the life of that table — `tokio::broadcast` and
-the in-memory `Registry` (ADR 0021) are process-local, so a table's SSE stream and game state live
-and die with the pod that created it. Rolling deploy needs new server binaries without killing
-tables still running on older ones. A single drain slot cannot nest rolls: shipping again while a
-peer is still draining would replace that peer and wipe its tables. Affinity must therefore scale
-to **multiple concurrent draining instances**.
+Live games remain process-local. Nested rolls need N Terminating API versions while new tables land only on newest. Cookie sticky + join fan-out across peers was replaced by BFF-owned lobby + Postgres routing.
 
 ## Decision
 
-- Each release is its own Kubernetes Deployment+Service whose name is a stable **`INSTANCE_ID`**
-  derived from the image tag (e.g. `ghcr.io/…/mtgfr-server:1.2.3` → `edh-api-1-2-3`) — **not** the
-  pod name. The image on a draining Deployment is never rewritten (that would restart the pod).
-- Exactly one instance is **active**, derived from operator `server_image` (`edh-api-<slug(tag)>`);
-  it accepts new tables. Drain peers live in ConfigMap **`edh-api-peers`** (scripts update via
-  kubectl; Terraform refreshes and `ignore_changes` on `data` so bare apply does not wipe them).
-  Live drain is `POST /admin/drain` (never env/image churn).
-- Cap: `api_max_instances` (default 4). A nested roll that would exceed the cap waits until a
-  drain peer reports `active_tables=0` and is removed from the peer ConfigMap.
-- On table create/join (and other bind responses), the server sets a host-only affinity cookie:
-  ```
-  Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
-  ```
-- **SolidStart BFF** (`edh-web`, `API_UPSTREAMS` + `API_ACTIVE_INSTANCE_ID`) routes `/api/*` by that
-  cookie (unknown/missing → active). `POST /tables/join/v1` **fans out** across all live peers
-  until a non-`UnknownTable` lobby response (so cookieless guests can join a table on a drain
-  peer); the winning `Set-Cookie` pins later requests. Public `/api/admin/*` and
-  `/api/health/drain` return 404 after path normalization (reject `..`); apply-machine drain uses
-  `kubectl port-forward` to the instance Service.
-- Deploy cutover (`just deploy`): stage the new image as a peer while `server_image` stays on the
-  previous tag → live-drain the previous active → flip `server_image` (old becomes a peer). GC
-  removes a peer only when `active_tables=0` (never on probe failure). Cap waits time out
-  (`API_CAP_WAIT_SECONDS`). Bare `terraform apply` is safe for infra edits; peers come from the
-  ConfigMap, not a TF variable.
-- There is **no** nginx sticky proxy. NetworkPolicy: `cloudflared` → `edh-web` only; `edh-web` →
-  pods labeled `mtgfr.io/component=api`.
-- Auth session cookies are host-only on edh when `COOKIE_DOMAIN` is empty; the BFF forwards
-  `Cookie` / `Set-Cookie` to the chosen API Service.
-- `edh-web` image bumps only when **zero** drain peers remain (SPA pairing with mid-game tables).
+- Pre-game lobby lives on **SolidStart** against database **`mtgfr_web`** (Drizzle migrations; same Postgres instance as Axum `mtgfr`, separate schema).
+- At **Start**, BFF calls `POST /tables/seed/v1` on Service **`edh-api`** (`mtgfr.io/api-role=active`). Response includes **`pod_dns`**; BFF writes `table_routes` (explicit delete + TTL).
+- In-game `/api/tables/{table}/…` is proxied by looking up `table_routes` → `http://{pod_dns}:8080`. Headless Service **`edh-api-headless`** uses `publishNotReadyAddresses` so Terminating pods stay reachable. **No affinity cookie.**
+- Intent/yield/dwell routes use **path** `{table}` (not body-only).
+- Ship: `terraform apply` updates `server_image` / `web_image`. API Deployment gets SIGTERM; process drains until `active_tables=0` or `terminationGracePeriodSeconds` (default 24h). Argo CD is installed; optional Application mirrors `iac/charts/edh` when `argocd_repo_url` is set. ConfigMap `edh-api-peers` and the peer drain sequencer are retired.
+- Web may roll with the API; expand-only wire across concurrent binaries ([WIRE_COMPAT.md](../WIRE_COMPAT.md)). Lobby UI shows active API image tag.
 
 ## Consequences
 
-- Nested API rolls are safe up to the cap: older drain peers keep their process memory until empty.
-- Expand-only wire rules must hold across **all** concurrent instance versions until GC.
-- Horizontal replicas of the same `INSTANCE_ID` remain out of scope (still one pod per instance).
-- Redis / shared table registry remains future work (ADR 0005).
+- Guests join lobbies on newest only (no fan-out). Mid-game survives via Postgres → pod DNS.
+- Distroless API has no shell `preStop`; drain wait is in-process on SIGTERM.
+- Horizontal same-tag replicas remain out of scope.

@@ -1,57 +1,157 @@
-// Same-origin `/api` BFF: sticky cookie → versioned API; join fans out across peers.
+// Same-origin `/api` BFF: lobby on SolidStart/Drizzle; game traffic by table→pod DNS;
+// auth/decks/cards → active API_UPSTREAM.
 
 import type { APIEvent } from "@solidjs/start/server";
 import { getRequestHeader, getRequestURL, proxyRequest } from "vinxi/http";
+import { createWebDb } from "~/db/client";
+import { normalizePublicApiPath, tableIdFromGamePath, upstreamFromPodDns } from "~/lib/apiUpstream";
+import { apiUpstream, fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "~/lib/apiUpstreamAuth";
 import {
-  isUnknownTableLobbyBody,
-  normalizePublicApiPath,
-  upstreamBasesInOrder,
-} from "~/lib/apiUpstream";
+  createLobby,
+  deleteTableRoute,
+  joinLobby,
+  loadLobby,
+  lookupTableRoute,
+  markStarted,
+  putTableRoute,
+  setReady,
+  startError,
+  sweepWebDb,
+  toLobbyView,
+} from "~/lib/lobbyStore";
 
-function upstreamRequestHeaders(req: Request): Headers {
-  const out = new Headers();
-  for (const name of ["cookie", "content-type", "accept", "authorization"] as const) {
-    const value = req.headers.get(name);
-    if (value) out.set(name, value);
-  }
-  return out;
-}
-
-function responseFromUpstream(res: Response, body: string): Response {
-  const headers = new Headers();
-  res.headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") return;
-    headers.set(key, value);
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json" },
   });
-  const out = new Response(body, { status: res.status, statusText: res.statusText, headers });
-  for (const cookie of res.headers.getSetCookie()) {
-    out.headers.append("set-cookie", cookie);
-  }
-  return out;
 }
 
-async function fanOutJoin(
-  event: APIEvent,
-  path: string,
-  search: string,
-  bases: string[],
-): Promise<Response> {
-  const body = await event.request.arrayBuffer();
-  const headers = upstreamRequestHeaders(event.request);
-  let last!: Response;
+function webDb() {
+  return createWebDb(process.env.WEB_DATABASE_URL);
+}
 
-  for (const base of bases) {
-    const res = await fetch(`${base}/${path}${search}`, {
-      method: "POST",
-      headers,
-      body: body.byteLength > 0 ? body.slice(0) : undefined,
-    });
-    const text = await res.text();
-    last = responseFromUpstream(res, text);
-    if (!isUnknownTableLobbyBody(text)) return last;
+async function handleLobby(event: APIEvent, path: string): Promise<Response | null> {
+  const method = event.request.method;
+  const cookie = getRequestHeader(event.nativeEvent, "cookie") ?? null;
+
+  if (method === "GET" && path === "meta/version/v1") {
+    const version = (await fetchApiVersion()) ?? "unknown";
+    return json({ version });
   }
 
-  return last;
+  // Explicit route teardown (game over / leave) — seated player or host may clear routing.
+  const routeDelete = method === "DELETE" && /^tables\/[^/]+\/route\/v1$/.test(path);
+  const isCreate = method === "POST" && path === "tables/v1";
+  const isJoin = method === "POST" && path === "tables/join/v1";
+  const isReady = method === "POST" && path === "tables/ready/v1";
+  const isStart = method === "POST" && path === "tables/start/v1";
+  const lobbyGet = method === "GET" && /^tables\/[^/]+\/lobby\/v1$/.test(path);
+
+  if (!routeDelete && !isCreate && !isJoin && !isReady && !isStart && !lobbyGet) return null;
+
+  if (!process.env.WEB_DATABASE_URL) {
+    return json({ error: "WebDbNotConfigured" }, 503);
+  }
+
+  const me = await fetchMe(cookie);
+  if (!me) return new Response("Unauthorized", { status: 401 });
+
+  const db = webDb();
+  await sweepWebDb(db);
+
+  if (routeDelete) {
+    const tableId = path.split("/")[1]!;
+    const snap = await loadLobby(db, tableId);
+    if (snap && !snap.seats.some((s) => s.userId === me.id) && snap.hostUserId !== me.id) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    await deleteTableRoute(db, tableId);
+    return new Response(null, { status: 204 });
+  }
+
+  if (isCreate) {
+    const tableId = await createLobby(db, me.id);
+    return json({ table_id: tableId });
+  }
+
+  if (lobbyGet) {
+    const tableId = path.split("/")[1]!;
+    const snap = await loadLobby(db, tableId);
+    if (!snap) return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, "UnknownTable"));
+    return json(toLobbyView(snap, me.id));
+  }
+
+  const body = (await event.request.json()) as Record<string, unknown>;
+
+  if (isJoin) {
+    const tableId = String(body.table_id ?? "");
+    const deckId = Number(body.deck_id);
+    const deckName = (await fetchDeckName(cookie, deckId)) ?? "Deck";
+    const result = await joinLobby(db, {
+      tableId,
+      userId: me.id,
+      username: me.username,
+      deckId,
+      deckName,
+    });
+    if (!result.snap) {
+      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, result.error));
+    }
+    return json(toLobbyView(result.snap, me.id, result.error));
+  }
+
+  if (isReady) {
+    const tableId = String(body.table_id ?? "");
+    const ready = Boolean(body.ready);
+    const result = await setReady(db, tableId, me.id, ready);
+    if (!result.snap) {
+      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, result.error));
+    }
+    return json(toLobbyView(result.snap, me.id, result.error));
+  }
+
+  if (isStart) {
+    const tableId = String(body.table_id ?? "");
+    const snap = await loadLobby(db, tableId);
+    if (!snap) {
+      return json(toLobbyView({ tableId, hostUserId: 0, startedAt: null, seats: [] }, me.id, "UnknownTable"));
+    }
+    const err = startError(snap, me.id);
+    if (err) return json(toLobbyView(snap, me.id, err));
+
+    const seeded = await seedGame(cookie, {
+      table_id: tableId,
+      host_user_id: snap.hostUserId,
+      seats: snap.seats
+        .slice()
+        .sort((a, b) => a.seat - b.seat)
+        .map((s) => ({
+          user_id: s.userId,
+          username: s.username,
+          deck_id: s.deckId,
+        })),
+    });
+    if (!seeded.ok) {
+      return json(toLobbyView(snap, me.id, seeded.status === 503 ? "Draining" : "SeedFailed"));
+    }
+    await putTableRoute(db, tableId, seeded.data.pod_dns);
+    await markStarted(db, tableId);
+    const started = (await loadLobby(db, tableId))!;
+    return json(toLobbyView(started, me.id));
+  }
+
+  return null;
+}
+
+async function resolveGameUpstream(path: string): Promise<string | null> {
+  const tableId = tableIdFromGamePath(path);
+  if (!tableId) return null;
+  if (!process.env.WEB_DATABASE_URL) return apiUpstream();
+  const db = webDb();
+  const pod = await lookupTableRoute(db, tableId);
+  if (!pod) return null;
+  return upstreamFromPodDns(pod);
 }
 
 async function forward(event: APIEvent) {
@@ -60,19 +160,17 @@ async function forward(event: APIEvent) {
     return new Response("Not Found", { status: 404 });
   }
 
-  const search = getRequestURL(event.nativeEvent).search;
-  const bases = upstreamBasesInOrder({
-    upstreamsJson: process.env.API_UPSTREAMS,
-    activeInstanceId: process.env.API_ACTIVE_INSTANCE_ID,
-    cookieHeader: getRequestHeader(event.nativeEvent, "cookie"),
-    fallbackUpstream: process.env.API_UPSTREAM,
-  });
+  const lobby = await handleLobby(event, path);
+  if (lobby) return lobby;
 
-  if (event.request.method === "POST" && path === "tables/join/v1" && bases.length > 1) {
-    return fanOutJoin(event, path, search, bases);
+  const search = getRequestURL(event.nativeEvent).search;
+  if (tableIdFromGamePath(path)) {
+    const gameBase = await resolveGameUpstream(path);
+    if (!gameBase) return new Response("UnknownTable", { status: 404 });
+    return proxyRequest(event.nativeEvent, `${gameBase}/${path}${search}`);
   }
 
-  return proxyRequest(event.nativeEvent, `${bases[0]}/${path}${search}`);
+  return proxyRequest(event.nativeEvent, `${apiUpstream()}/${path}${search}`);
 }
 
 export const GET = forward;

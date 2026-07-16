@@ -1,68 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  cookieValue,
-  DEV_UPSTREAM,
-  isUnknownTableLobbyBody,
-  normalizePublicApiPath,
-  parseUpstreamsJson,
-  resolveUpstreamBase,
-  upstreamBasesInOrder,
-} from "~/lib/apiUpstream";
-
-describe("parseUpstreamsJson", () => {
-  it("returns empty for missing or invalid JSON", () => {
-    expect(parseUpstreamsJson(undefined)).toEqual({});
-    expect(parseUpstreamsJson("not-json")).toEqual({});
-    expect(parseUpstreamsJson("[]")).toEqual({});
-  });
-
-  it("strips trailing slashes", () => {
-    expect(parseUpstreamsJson('{"a":"http://x:8080/"}')).toEqual({ a: "http://x:8080" });
-  });
-});
-
-describe("cookieValue", () => {
-  it("reads a named cookie", () => {
-    expect(cookieValue("a=1; mtgfr-instance=edh-api-1-2-3; b=2", "mtgfr-instance")).toBe("edh-api-1-2-3");
-  });
-});
-
-describe("resolveUpstreamBase", () => {
-  const upstreams = JSON.stringify({
-    "edh-api-1-2-0": "http://edh-api-1-2-0.edh.svc:8080",
-    "edh-api-1-1-0": "http://edh-api-1-1-0.edh.svc:8080",
-  });
-
-  it("falls back to localhost when the map is unset", () => {
-    expect(resolveUpstreamBase({})).toBe(DEV_UPSTREAM);
-  });
-
-  it("routes by mtgfr-instance cookie when known", () => {
-    expect(
-      resolveUpstreamBase({
-        upstreamsJson: upstreams,
-        activeInstanceId: "edh-api-1-2-0",
-        cookieHeader: "mtgfr-instance=edh-api-1-1-0",
-      }),
-    ).toBe("http://edh-api-1-1-0.edh.svc:8080");
-  });
-
-  it("uses the active instance when the cookie is missing or unknown", () => {
-    expect(
-      resolveUpstreamBase({
-        upstreamsJson: upstreams,
-        activeInstanceId: "edh-api-1-2-0",
-      }),
-    ).toBe("http://edh-api-1-2-0.edh.svc:8080");
-    expect(
-      resolveUpstreamBase({
-        upstreamsJson: upstreams,
-        activeInstanceId: "edh-api-1-2-0",
-        cookieHeader: "mtgfr-instance=gone",
-      }),
-    ).toBe("http://edh-api-1-2-0.edh.svc:8080");
-  });
-});
+import { normalizePublicApiPath, tableIdFromGamePath, upstreamFromPodDns } from "~/lib/apiUpstream";
 
 describe("normalizePublicApiPath", () => {
   it("rejects traversal, encoding tricks, and admin/drain", () => {
@@ -78,32 +15,27 @@ describe("normalizePublicApiPath", () => {
   });
 });
 
-describe("upstreamBasesInOrder", () => {
-  const upstreams = JSON.stringify({
-    "edh-api-1-2-0": "http://edh-api-1-2-0.edh.svc:8080",
-    "edh-api-1-1-0": "http://edh-api-1-1-0.edh.svc:8080",
-    "edh-api-1-0-0": "http://edh-api-1-0-0.edh.svc:8080",
-  });
-
-  it("orders sticky cookie, then active, then remaining peers", () => {
-    expect(
-      upstreamBasesInOrder({
-        upstreamsJson: upstreams,
-        activeInstanceId: "edh-api-1-2-0",
-        cookieHeader: "mtgfr-instance=edh-api-1-1-0",
-      }),
-    ).toEqual([
-      "http://edh-api-1-1-0.edh.svc:8080",
-      "http://edh-api-1-2-0.edh.svc:8080",
-      "http://edh-api-1-0-0.edh.svc:8080",
-    ]);
+describe("tableIdFromGamePath", () => {
+  it("extracts table ids from game routes only", () => {
+    expect(tableIdFromGamePath("tables/ABC123/stream/v1")).toBe("ABC123");
+    expect(tableIdFromGamePath("tables/ABC123/intent/v1")).toBe("ABC123");
+    expect(tableIdFromGamePath("tables/ABC123/yield/v1")).toBe("ABC123");
+    expect(tableIdFromGamePath("tables/ABC123/turn-yield/v1")).toBe("ABC123");
+    expect(tableIdFromGamePath("tables/ABC123/stack-dwell/v1")).toBe("ABC123");
+    expect(tableIdFromGamePath("tables/join/v1")).toBeNull();
+    expect(tableIdFromGamePath("auth/me/v1")).toBeNull();
   });
 });
 
-describe("isUnknownTableLobbyBody", () => {
-  it("detects lobby UnknownTable errors only", () => {
-    expect(isUnknownTableLobbyBody('{"error":"UnknownTable","table_id":"ABC"}')).toBe(true);
-    expect(isUnknownTableLobbyBody('{"error":null}')).toBe(false);
-    expect(isUnknownTableLobbyBody("not-json")).toBe(false);
+describe("upstreamFromPodDns", () => {
+  it("builds http://{pod}:8080 for bare pod DNS from seed", () => {
+    expect(upstreamFromPodDns("edh-api-1-2-3-abc.edh-api-headless.edh.svc.cluster.local")).toBe(
+      "http://edh-api-1-2-3-abc.edh-api-headless.edh.svc.cluster.local:8080",
+    );
+  });
+
+  it("accepts an absolute URL and strips a trailing slash", () => {
+    expect(upstreamFromPodDns("http://127.0.0.1:8080/")).toBe("http://127.0.0.1:8080");
+    expect(upstreamFromPodDns("https://api.example/")).toBe("https://api.example");
   });
 });

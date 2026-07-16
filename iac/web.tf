@@ -1,6 +1,4 @@
-# Deploy PRD §Client/server roll order (locked). `web_image` always applies as given — the
-# holding pattern that keeps `edh-web` on the previous release while any API drain peer remains
-# is owned by the caller (`iac/scripts/deploy.sh`).
+# SolidStart BFF: API_UPSTREAM → edh-api (active); WEB_DATABASE_URL → mtgfr_web (Drizzle).
 
 resource "kubernetes_deployment_v1" "edh_web" {
   wait_for_rollout = true
@@ -25,9 +23,8 @@ resource "kubernetes_deployment_v1" "edh_web" {
 
       spec {
         container {
-          name  = "edh-web"
-          image = var.web_image
-          # Tags like :1.2.2 are rebuilt in place; IfNotPresent keeps the old digest forever.
+          name              = "edh-web"
+          image             = var.web_image
           image_pull_policy = "Always"
 
           port {
@@ -44,23 +41,25 @@ resource "kubernetes_deployment_v1" "edh_web" {
             value = "8080"
           }
 
-          # SolidStart BFF: cookie sticky → versioned API Services (strip `/api`).
           env {
-            name = "API_UPSTREAMS"
-            value = jsonencode({
-              for id, svc in kubernetes_service_v1.edh_api :
-              id => "http://${svc.metadata[0].name}.${local.namespace}.svc:8080"
-            })
+            name  = "WEB_DATABASE_URL"
+            value = local.web_database_url
           }
 
           env {
-            name  = "API_ACTIVE_INSTANCE_ID"
-            value = local.api_active_instance_id
+            name  = "API_UPSTREAM"
+            value = "http://edh-api.${local.namespace}.svc:8080"
           }
         }
       }
     }
   }
+
+  depends_on = [
+    kubernetes_job_v1.postgres_create_web_db,
+    kubernetes_job_v1.edh_web_migrate,
+    kubernetes_service_v1.edh_api_active,
+  ]
 }
 
 resource "kubernetes_service_v1" "edh_web" {

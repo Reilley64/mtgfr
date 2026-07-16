@@ -1,25 +1,7 @@
-# N versioned API Deployments (1 active, many draining). Each release is its own Deployment+Service
-# with INSTANCE_ID = map key (e.g. edh-api-1-2-3). Never rewrite a draining peer's image — that would
-# restart the pod and wipe in-memory tables (ADR 0021). Live drain is POST /admin/drain only.
-#
-# Operator sets `server_image` only. Drain peers live in ConfigMap edh-api-peers (kubectl from
-# deploy/GC); Terraform refreshes that map and ignores local `data` so bare apply does not wipe peers.
-# Cookie sticky lives in the SolidStart BFF on edh-web.
-
-resource "kubernetes_config_map_v1" "edh_api_peers" {
-  metadata {
-    name      = "edh-api-peers"
-    namespace = local.namespace
-    labels    = merge(local.common_labels, { app = "edh-api-peers" })
-  }
-
-  # Bootstrap only — deploy.sh / wait-drain.sh own the map via kubectl.
-  data = {}
-
-  lifecycle {
-    ignore_changes = [data]
-  }
-}
+# One desired API Deployment for server_image (active). Old pods linger as Terminating while
+# the process drains on SIGTERM (distroless — no preStop shell). BFF routes in-game via
+# Postgres table_routes → pod DNS on the headless Service (publishNotReadyAddresses).
+# New tables only hit Service edh-api (mtgfr.io/api-role=active).
 
 locals {
   api_env_common = {
@@ -31,48 +13,26 @@ locals {
     RUST_LOG      = var.log_level
   }
 
-  # Same slug rules as iac/scripts/deploy.sh instance_id_from_image.
   server_image_tag = element(split(":", var.server_image), length(split(":", var.server_image)) - 1)
   api_active_instance_id = format(
     "edh-api-%s",
     trimsuffix(trimprefix(replace(lower(local.server_image_tag), "/[^a-z0-9]+/", "-"), "-"), "-")
   )
 
-  # Refreshed from the cluster; ignore_changes keeps scripts' kubectl updates.
-  api_peer_images = coalesce(kubernetes_config_map_v1.edh_api_peers.data, {})
-
-  api_instances = merge(
-    {
-      for id, img in local.api_peer_images : id => { image = img }
-      if id != local.api_active_instance_id
-    },
-    {
-      (local.api_active_instance_id) = { image = var.server_image }
-    }
-  )
-
-  api_active_image = var.server_image
-}
-
-check "api_instances_cap" {
-  assert {
-    condition     = length(local.api_instances) <= var.api_max_instances
-    error_message = "api instance count (active + peers) exceeds api_max_instances (${var.api_max_instances})."
-  }
+  api_active_image     = var.server_image
+  api_headless_service = "edh-api-headless"
 }
 
 resource "kubernetes_deployment_v1" "edh_api" {
-  for_each = local.api_instances
-
   wait_for_rollout = true
 
   metadata {
-    name      = each.key
+    name      = local.api_active_instance_id
     namespace = local.namespace
     labels = merge(local.common_labels, {
-      app                  = each.key
+      app                  = local.api_active_instance_id
       "mtgfr.io/component" = "api"
-      "mtgfr.io/api-role"  = each.key == local.api_active_instance_id ? "active" : "drain"
+      "mtgfr.io/api-role"  = "active"
     })
   }
 
@@ -80,21 +40,24 @@ resource "kubernetes_deployment_v1" "edh_api" {
     replicas = 1
 
     selector {
-      match_labels = { app = each.key }
+      match_labels = { app = local.api_active_instance_id }
     }
 
     template {
       metadata {
         labels = merge(local.common_labels, {
-          app                  = each.key
+          app                  = local.api_active_instance_id
           "mtgfr.io/component" = "api"
+          "mtgfr.io/api-role"  = "active"
         })
       }
 
       spec {
+        termination_grace_period_seconds = var.api_termination_grace_seconds
+
         container {
           name              = "edh-api"
-          image             = each.value.image
+          image             = var.server_image
           image_pull_policy = "Always"
 
           port {
@@ -103,15 +66,38 @@ resource "kubernetes_deployment_v1" "edh_api" {
 
           dynamic "env" {
             for_each = merge(local.api_env_common, {
-              INSTANCE_ID = each.key
-              # Startup default only — live drain via POST /admin/drain (never flip this to restart).
-              DRAIN   = "false"
-              VERSION = each.value.image
+              INSTANCE_ID = local.api_active_instance_id
+              DRAIN       = "false"
+              VERSION     = var.server_image
             })
             content {
               name  = env.key
               value = env.value
             }
+          }
+
+          env {
+            name = "POD_NAME"
+            value_from {
+              field_ref {
+                field_path = "metadata.name"
+              }
+            }
+          }
+
+          env {
+            name = "POD_NAMESPACE"
+            value_from {
+              field_ref {
+                field_path = "metadata.namespace"
+              }
+            }
+          }
+
+          # k8s expands $(VAR) from earlier env entries in the same container.
+          env {
+            name  = "POD_DNS"
+            value = "$(POD_NAME).${local.api_headless_service}.$(POD_NAMESPACE).svc.cluster.local"
           }
 
           env {
@@ -156,28 +142,54 @@ resource "kubernetes_deployment_v1" "edh_api" {
     }
   }
 
-  depends_on = [
-    kubernetes_job_v1.edh_migrate,
-    kubernetes_config_map_v1.edh_api_peers,
-  ]
+  depends_on = [kubernetes_job_v1.edh_migrate]
 }
 
-resource "kubernetes_service_v1" "edh_api" {
-  for_each = local.api_instances
-
+# Newest-only: new tables / lobby Start seed.
+resource "kubernetes_service_v1" "edh_api_active" {
   wait_for_load_balancer = false
 
   metadata {
-    name      = each.key
+    name      = "edh-api"
     namespace = local.namespace
     labels = merge(local.common_labels, {
-      app                  = each.key
+      app                  = "edh-api"
       "mtgfr.io/component" = "api"
     })
   }
 
   spec {
-    selector = { app = each.key }
+    selector = {
+      "mtgfr.io/component" = "api"
+      "mtgfr.io/api-role"  = "active"
+    }
+
+    port {
+      port        = 8080
+      target_port = 8080
+    }
+  }
+}
+
+# Sticky dial for Terminating pods (BFF uses pod DNS from table_routes).
+resource "kubernetes_service_v1" "edh_api_headless" {
+  wait_for_load_balancer = false
+
+  metadata {
+    name      = local.api_headless_service
+    namespace = local.namespace
+    labels = merge(local.common_labels, {
+      app                  = local.api_headless_service
+      "mtgfr.io/component" = "api"
+    })
+  }
+
+  spec {
+    cluster_ip                  = "None"
+    publish_not_ready_addresses = true
+    selector = {
+      "mtgfr.io/component" = "api"
+    }
 
     port {
       port        = 8080

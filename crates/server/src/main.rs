@@ -4,7 +4,7 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 use toasty_cli::{Config, ToastyCli};
 use tokio::net::TcpListener;
@@ -77,31 +77,21 @@ async fn run_serve() {
     }
 
     let version = settings.version.clone();
-    // Tables are created on demand via POST /tables (lobby); the registry starts empty.
-    // Action traces land at data/actions.<table_id>.toon (gitignored) for post-hoc debugging.
+    // Tables are born already seeded via POST /tables/seed/v1 (the BFF owns the pre-game lobby);
+    // the registry starts empty. Action traces land at data/actions.<table_id>.toon (gitignored)
+    // for post-hoc debugging.
     let state = server::AppState::new(db, Arc::new(settings));
-    spawn_idle_lobby_sweeper(state.clone());
     println!("mtgfr server v{version} listening on http://{addr}");
     println!("action traces: ./data/actions.<table>.toon");
     axum::serve(listener, server::app(state.clone()))
-        .with_graceful_shutdown(await_shutdown_signal(state.draining.clone()))
+        .with_graceful_shutdown(await_shutdown_signal(state.clone()))
         .await
         .expect("serve");
 }
 
-fn spawn_idle_lobby_sweeper(state: server::AppState) {
-    const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(SWEEP_INTERVAL);
-        loop {
-            interval.tick().await;
-            server::lock(&state.reg).sweep_idle_lobbies(server::decks::IDLE_LOBBY_TTL);
-        }
-    });
-}
-
-/// On SIGTERM/Ctrl-C, enter drain then let axum finish in-flight requests.
-async fn await_shutdown_signal(draining: Arc<AtomicBool>) {
+/// On SIGTERM/Ctrl-C: enter drain, then wait until in-memory tables are gone (or kube
+/// hits `terminationGracePeriodSeconds` and SIGKILLs). Distroless has no preStop shell.
+async fn await_shutdown_signal(state: server::AppState) {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
@@ -121,7 +111,14 @@ async fn await_shutdown_signal(draining: Arc<AtomicBool>) {
         _ = ctrl_c => {}
         _ = terminate => {}
     }
-    draining.store(true, Ordering::Relaxed);
+    state.draining.store(true, Ordering::Relaxed);
+    loop {
+        let n = server::lock(&state.reg).active_table_count();
+        if n == 0 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
 }
 
 fn run_openapi(opts: OpenapiOpts) {

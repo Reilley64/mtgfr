@@ -8,24 +8,27 @@ import { useParams, useSearchParams } from "@solidjs/router";
 import * as Effect from "effect/Effect";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, onCleanup, Show, useContext } from "solid-js";
-import type { LobbyView } from "~/api/generated";
 import { decksAtom } from "~/atoms";
 import { Button, Felt, Field, Panel } from "~/components/atoms";
-import { client, orNull } from "~/effect/client";
 import { cn } from "~/lib/cn";
 import { lobbyIsHost } from "~/lib/lobby";
+import * as lobbyClient from "~/lib/lobbyClient";
+import type { LobbyView } from "~/lib/lobbyTypes";
 import { lobbyPollFamily, startLobbyPoll } from "~/lobbyPoll";
 import { parseTableCode, setTableUrl } from "~/net";
 
-// The three seat-claiming wire actions plus table creation, as function atoms. Logical outcomes
-// (TableFull, NotHost, …) come back as a 200 `LobbyView` with an `error` field; a *transport*
-// failure (500, network drop) would otherwise reject the promise, so `orNull` folds it to `null`
-// here. Every one of these promises resolves — the component branches on the value, and never
-// wraps an `await` in a `try`/`catch` (ADR 0019).
-const createTableFn = Atom.fn(() => orNull(client.createTable({})));
-const joinTableFn = Atom.fn((p: { table_id: string; deck_id: number }) => orNull(client.joinTable({ payload: p })));
-const readyUpFn = Atom.fn((p: { table_id: string; ready: boolean }) => orNull(client.readyUp({ payload: p })));
-const startGameFn = Atom.fn((p: { table_id: string }) => orNull(client.startGame({ payload: p })));
+const createTableFn = Atom.fn(() =>
+  Effect.tryPromise(() => lobbyClient.createTable()).pipe(Effect.catch(() => Effect.succeed(null))),
+);
+const joinTableFn = Atom.fn((p: { table_id: string; deck_id: number }) =>
+  Effect.tryPromise(() => lobbyClient.joinTable(p)).pipe(Effect.catch(() => Effect.succeed(null))),
+);
+const readyUpFn = Atom.fn((p: { table_id: string; ready: boolean }) =>
+  Effect.tryPromise(() => lobbyClient.readyUp(p)).pipe(Effect.catch(() => Effect.succeed(null))),
+);
+const startGameFn = Atom.fn((p: { table_id: string }) =>
+  Effect.tryPromise(() => lobbyClient.startGame(p)).pipe(Effect.catch(() => Effect.succeed(null))),
+);
 
 // Copy the table code. A browser with no Clipboard API (older, or an insecure context) throws
 // synchronously on `navigator.clipboard.writeText`; a denied permission rejects. `tryPromise`
@@ -64,6 +67,12 @@ export default function Lobby(props: { onStarted: () => void }) {
   const [code, setCode] = createSignal(""); // the table code typed on the Join path
   const [error, setError] = createSignal<string | null>(null);
   const [copied, setCopied] = createSignal(false); // "Copy code" feedback flip
+  const [apiTag, setApiTag] = createSignal<string | null>(null);
+  createEffect(() => {
+    void lobbyClient.apiVersion().then((v) => {
+      if (v?.version) setApiTag(v.version);
+    });
+  });
   // Only rendered when the Clipboard API is unavailable/denied — a readonly input the guest can
   // select-and-Ctrl+C by hand, in place of the one-click copy.
   const [clipboardFallback, setClipboardFallback] = createSignal(false);
@@ -211,6 +220,7 @@ export default function Lobby(props: { onStarted: () => void }) {
         <span class="text-label text-lichen">
           Bring: <b>{pickedDeck()?.name ?? "your deck"}</b>
         </span>
+        <Show when={apiTag()}>{(v) => <span class="text-label text-lichen/70">API {v()}</span>}</Show>
       </div>
       <div class="flex items-center gap-sm">
         <Button type="button" onClick={onHost}>

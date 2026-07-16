@@ -15,12 +15,15 @@ edh_hostname = "edh.example.com"
 cookie_domain = ""
 cors_origin   = ""
 
-# Versioned API: set only the desired active image. Drain peers live in
-# ConfigMap `edh-api-peers` (owned by `just deploy` / wait-drain via kubectl).
+# Versioned API: set desired active + web images. Drain = SIGTERM + grace on the old Deployment.
 server_image = "ghcr.io/OWNER/mtgfr-server:0.1.0"
-# api_max_instances = 4
+# api_termination_grace_seconds = 86400
 
 web_image = "ghcr.io/OWNER/mtgfr-web:0.1.0"
+
+# Optional Argo Application git mirror (empty = install Argo only, TF owns Deployments).
+# argocd_repo_url = "https://github.com/OWNER/mtgfr.git"
+# argocd_target_revision = "main"
 
 mtgfr_db_password = "e5db11cd56bb69063d88f6434463198837d33f9cadd5d8fb70f20ccbd2a5945d"
 
@@ -28,8 +31,7 @@ mtgfr_db_password = "e5db11cd56bb69063d88f6434463198837d33f9cadd5d8fb70f20ccbd2a
 auth_secret = ""
 
 # Bearer token for /admin/drain + /health/drain (empty = unauthenticated, matching the server's
-# default). Set a strong value once the cluster is stable, and export the same value as
-# MTGFR_ADMIN_TOKEN when running `just deploy` / scripts/wait-drain.sh directly.
+# default). Set a strong value once the cluster is stable.
 admin_token = ""
 
 # Pin cloudflared to an explicit release — never "latest". Check

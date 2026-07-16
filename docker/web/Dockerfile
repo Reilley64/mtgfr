@@ -23,8 +23,8 @@ WORKDIR /app
 COPY --from=build /client/.output ./.output
 ENV HOST=0.0.0.0
 ENV PORT=8080
-# Sticky upstreams are set at runtime by web.tf (`API_UPSTREAMS` + `API_ACTIVE_INSTANCE_ID`).
-# Dev / unset map falls back to localhost in the BFF route.
+# Runtime: web.tf sets `API_UPSTREAM` (active edh-api) + `WEB_DATABASE_URL` (mtgfr_web).
+# Game traffic is routed by BFF `table_routes` → pod DNS (ADR 0030).
 EXPOSE 8080
 USER nonroot:nonroot
 CMD [".output/server/index.mjs"]

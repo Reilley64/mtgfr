@@ -1,0 +1,6 @@
+serverImage: ""
+webImage: ""
+namespace: edh
+apiActiveInstanceId: edh-api
+apiTerminationGraceSeconds: 86400
+apiHeadlessService: edh-api-headless

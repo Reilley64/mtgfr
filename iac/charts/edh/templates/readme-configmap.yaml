@@ -1,0 +1,13 @@
+# Mirror of iac/api.tf + iac/web.tf for optional Argo sync (prune disabled while TF owns live objects).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edh-chart-readme
+  namespace: {{ .Values.namespace }}
+data:
+  README: |
+    Live Deployments are applied by Terraform (api.tf / web.tf).
+    This chart tracks the same desired images for gitops cutover.
+    serverImage={{ .Values.serverImage }}
+    webImage={{ .Values.webImage }}
+    apiActiveInstanceId={{ .Values.apiActiveInstanceId }}

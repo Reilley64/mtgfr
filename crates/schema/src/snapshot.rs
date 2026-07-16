@@ -707,7 +707,10 @@ mod tests {
         let default_print = game.def_of(shock).default_print.to_string();
 
         let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
-        prints[0].insert(shock_id.clone(), "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".into());
+        prints[0].insert(
+            shock_id.clone(),
+            "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee".into(),
+        );
         prints[0].insert("unused".into(), String::new());
 
         let extras = ViewExtras {

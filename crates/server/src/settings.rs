@@ -5,7 +5,7 @@ use axum::http::HeaderValue;
 use serde::Deserialize;
 
 /// Runtime settings. Env mapping: `HOST`, `PORT`, `DATABASE_URL`, `INSTANCE_ID`, `DRAIN`,
-/// `COOKIE_SECURE`, `COOKIE_DOMAIN`, `CORS_ORIGIN`, `ADMIN_TOKEN`, `VERSION`.
+/// `COOKIE_SECURE`, `COOKIE_DOMAIN`, `CORS_ORIGIN`, `ADMIN_TOKEN`, `VERSION`, `POD_DNS`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
     /// Default `127.0.0.1`; prod `0.0.0.0`.
@@ -16,6 +16,10 @@ pub struct Settings {
     pub database_url: String,
     /// Stable per-Deployment id (e.g. `edh-api`), not the pod name. Default `local`.
     pub instance_id: String,
+    /// This pod's routable DNS name, handed back by `POST /tables/seed/v1` so the BFF can pin
+    /// later hops for the table to the pod that owns its in-memory game. Default `""` — the seed
+    /// handler falls back to `instance_id` (dev, single pod).
+    pub pod_dns: String,
     /// Startup default only; live drain is `POST /admin/drain`.
     pub drain: bool,
     /// Session cookie `Secure`. Default `false` (localhost http).
@@ -40,6 +44,7 @@ impl Settings {
             .set_default("host", "127.0.0.1")?
             .set_default("port", 8080)?
             .set_default("instance_id", "local")?
+            .set_default("pod_dns", "")?
             .set_default("drain", false)?
             .set_default("cookie_secure", false)?
             .set_default("cookie_domain", "")?
@@ -77,6 +82,7 @@ pub(crate) fn for_test() -> Settings {
         port: 0,
         database_url: "sqlite::memory:".to_string(),
         instance_id: "test".to_string(),
+        pod_dns: String::new(),
         drain: false,
         cookie_secure: false,
         cookie_domain: String::new(),
@@ -137,6 +143,7 @@ mod tests {
             "postgresql://mtgfr:mtgfr@localhost:5432/mtgfr"
         );
         assert_eq!(settings.instance_id, "local");
+        assert_eq!(settings.pod_dns, "");
         assert!(!settings.drain);
         assert!(!settings.cookie_secure);
         assert_eq!(settings.cookie_domain, "");

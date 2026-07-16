@@ -44,6 +44,11 @@ server-codegen:
 # ── Client ───────────────────────────────────────────────────────────────────────────
 
 [group('client')]
+[doc("Apply Drizzle migrations to mtgfr_web (WEB_DATABASE_URL)")]
+client-migrate:
+    cd client && bun run migrate
+
+[group('client')]
 [doc("Format client code")]
 client-format:
     cd client && bun run format
@@ -88,10 +93,6 @@ client-run: client-build
 [doc("Apply Toasty migrations against DATABASE_URL (default: compose Postgres)")]
 migrate:
     DATABASE_URL="${DATABASE_URL:-postgresql://mtgfr:mtgfr@localhost:5432/mtgfr}" cargo run -p server -- migration apply
-
-[doc("Apply-machine deploy: roll to tfvars server_image/web_image (or SERVER_IMAGE/WEB_IMAGE env). See docs/prds/DEPLOYMENT.md.")]
-deploy:
-    ./iac/scripts/deploy.sh
 
 # ── Workspace ────────────────────────────────────────────────────────────────────────
 
