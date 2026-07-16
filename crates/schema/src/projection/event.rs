@@ -167,6 +167,7 @@ pub(crate) fn project_event(
             target: target.map(WireTarget::of),
         },
         Event::AbilityResolved { source } => VisibleEvent::AbilityResolved { source },
+        Event::AbilityCountered { source } => VisibleEvent::AbilityCountered { source },
         Event::LandPlayed {
             permanent,
             from,

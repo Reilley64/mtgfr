@@ -39,6 +39,7 @@ impl Game {
                 target,
                 targets_second,
                 x: activation_x,
+                activated: _,
             } => {
                 // CR 608.2b: an ability whose stored target is no longer legal fizzles —
                 // it leaves the stack with no effect. Targeted abilities pass no source
@@ -1526,25 +1527,29 @@ impl Game {
                 // response) before this watch's trigger resolved — nothing left to copy. The watch
                 // sits directly above the original (CR 603.3b), so it's the topmost stack ability
                 // with that source.
-                let Some((copied_effect, copied_target, copied_x)) =
+                let Some((copied_effect, copied_target, copied_x, copied_activated)) =
                     self.stack.iter().rev().find_map(|item| match *item {
                         StackItem::Ability {
                             source,
                             effect,
                             target,
                             x,
+                            activated,
                             ..
-                        } if source == original => Some((effect, target, x)),
+                        } if source == original => Some((effect, target, x, activated)),
                         _ => None,
                     })
                 else {
                     return;
                 };
+                // The copy is the same kind of ability as the original (CR 707.10c) — an activated
+                // copy stays activated, a triggered copy stays triggered.
                 self.push_ability_group_with_x(
                     controller,
                     original,
                     &[(copied_effect, copied_target)],
                     copied_x,
+                    copied_activated,
                     events,
                 );
             }
@@ -2174,6 +2179,12 @@ impl Game {
                 .combat_extras
                 .combat_damage_prevention_shields
                 .push((controller, token)),
+            // Moment's Peace (#150): arm the this-turn table-wide combat-damage shield — every
+            // player's combat damage, not just this ability's controller's, and no token mint.
+            // Runtime orchestration state (like Inkshield's shield above), not an event.
+            Effect::PreventAllCombatDamageThisTurn => {
+                self.combat_extras.prevent_all_combat_damage_this_turn = true;
+            }
             _ => {
                 let evs = self.execute_effect(effect, controller, source, target, x);
                 self.apply_all(&evs);
@@ -3880,6 +3891,7 @@ impl Game {
             // Needs `&mut self` to arm the prevention shield on `Game::combat_extras` — only
             // resolves via `Game::run`.
             | Effect::PreventCombatDamageToYouCreatingTokens { .. }
+            | Effect::PreventAllCombatDamageThisTurn
             | Effect::Surveil { .. }
             | Effect::LookAtTop { .. }
             | Effect::DistributeTop { .. }
@@ -4168,6 +4180,21 @@ impl Game {
             Effect::CounterTargetSpell { .. } => {
                 let original = expect_object_target(target, "a spell to counter");
                 self.counter_spell(original)
+            }
+            // Counter target activated ability (CR 701.5c/112.7a — Azorius Guildmage). The target
+            // is the ability's source id (see `TargetSpec::ActivatedAbilityOnStack`); the
+            // `AbilityCountered` apply removes the topmost matching stack ability. A guard-return
+            // (CR 608.2b) if it already left the stack is handled upstream by `target_still_legal`,
+            // which fizzles this ability before it runs; this stays a no-op if nothing matches.
+            Effect::CounterTargetActivatedAbility => {
+                let source_id = expect_object_target(target, "an activated ability to counter");
+                let on_stack = self.stack.iter().any(|item| {
+                    matches!(item, StackItem::Ability { source, activated: true, .. } if *source == source_id)
+                });
+                if !on_stack {
+                    return Vec::new();
+                }
+                vec![Event::AbilityCountered { source: source_id }]
             }
             // Schedule a CR 603.7 delayed trigger: resolve `who` to a concrete player now (the
             // effect itself doesn't fire until the matching step begins — see

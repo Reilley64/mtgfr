@@ -119,6 +119,12 @@ pub enum VisibleEvent {
     AbilityResolved {
         source: ObjectId,
     },
+    /// An activated ability on the stack was countered (CR 701.5c/112.7a — Azorius Guildmage). It
+    /// leaves the stack and ceases to exist; nothing is hidden (which ability was countered is
+    /// public), so this is a straight passthrough of the engine event's `source`.
+    AbilityCountered {
+        source: ObjectId,
+    },
     LandPlayed {
         permanent: ObjectId,
         from: ObjectId,

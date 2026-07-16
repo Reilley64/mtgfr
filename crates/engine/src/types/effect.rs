@@ -861,6 +861,15 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::token_profile"))]
         token: CardDef,
     },
+    /// "Prevent all combat damage that would be dealt this turn." (Moment's Peace, CR 615 — #150,
+    /// the table-wide, no-token scope generalization of [`PreventCombatDamageToYouCreatingTokens`](Self::PreventCombatDamageToYouCreatingTokens)'s
+    /// per-player Inkshield shield.) No target — the shield covers every player's combat damage,
+    /// not just the ability's controller's. Resolving it arms the this-turn
+    /// [`prevent_all_combat_damage_this_turn`](crate::state::CombatExtras::prevent_all_combat_damage_this_turn)
+    /// flag, consulted at both combat-damage chokes
+    /// ([`Game::deal_creature_damage`](crate::Game::deal_creature_damage),
+    /// [`Game::damage_player`](crate::Game::damage_player)); it mints nothing.
+    PreventAllCombatDamageThisTurn,
     /// Place a vow counter on each battlefield creature matching `filter`, marking the ability's
     /// controller as the player it "can't attack … for as long as it has a vow counter on it"
     /// (Promise of Loyalty's rider, run as the sacrifice edict's `then`). Emits an
@@ -2511,6 +2520,13 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         countered_dest: Option<CounteredDest>,
     },
+    /// Counter the target activated ability on the stack (CR 701.5c / 112.7a — Azorius Guildmage's
+    /// "Counter target activated ability"): remove it from the stack so it never resolves. Unlike
+    /// [`CounterTargetSpell`](Self::CounterTargetSpell), a countered ability isn't a card — it just
+    /// ceases to exist, with no zone move. The target ([`TargetSpec::ActivatedAbilityOnStack`]) is
+    /// intrinsic, so no `target` field is needed. Mana abilities never reach the stack (CR 605.3b),
+    /// so they're naturally unreachable; triggered abilities are excluded by the target spec.
+    CounterTargetActivatedAbility,
     /// Fight (CR 701.12): the ability's controller's creature and a target creature they don't
     /// control each deal damage equal to their power to the other, simultaneously. The printed
     /// card targets both creatures at cast; the engine only threads one target through a
@@ -3183,6 +3199,7 @@ impl Effect {
             }
             Effect::CopyTargetSpell => TargetSpec::InstantOrSorcerySpellOnStack,
             Effect::CounterTargetSpell { filter, .. } => TargetSpec::SpellOnStack(filter),
+            Effect::CounterTargetActivatedAbility => TargetSpec::ActivatedAbilityOnStack,
             // The cast-time target is the *opponent's* creature; the controller's own creature
             // is chosen at resolution (see `Effect::Fight`'s doc comment).
             Effect::Fight {
@@ -3362,6 +3379,7 @@ impl Effect {
             | Effect::CounterScaledAttackTax
             | Effect::CantBeAttackedBy { .. }
             | Effect::PreventCombatDamageToYouCreatingTokens { .. }
+            | Effect::PreventAllCombatDamageThisTurn
             | Effect::PlaceVowCounters { .. }
             | Effect::LoseLife { .. }
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target.

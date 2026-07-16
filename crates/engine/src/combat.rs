@@ -612,6 +612,12 @@ impl Game {
         for &blocker in blockers {
             self.flip_masked(blocker, events);
         }
+        // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
+        // shield cancels the attacker's damage to every blocker before any is assigned, so no
+        // trample overflow is computed either — same silent guard as `deal_creature_damage`'s.
+        if self.combat_extras.prevent_all_combat_damage_this_turn {
+            return;
+        }
         let deathtouch = self.has_keyword(attacker, Keyword::Deathtouch);
         let power = self.power(attacker);
 
@@ -715,6 +721,12 @@ impl Game {
         if !combat && self.noncombat_damage_prevented_to_creature(target) {
             return;
         }
+        // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
+        // shield silently cancels combat damage to a creature — same silent-prevention style as
+        // the noncombat guard above (no event; nothing in the pool reads a prevented total here).
+        if combat && self.combat_extras.prevent_all_combat_damage_this_turn {
+            return;
+        }
         self.push_apply(
             events,
             Event::DamageMarked {
@@ -764,6 +776,13 @@ impl Game {
         // one of the shield's tokens under `player`. Consulted before the life loss so the
         // prevention wholly replaces it.
         if self.prevent_combat_damage_to_player(player, amount, events) {
+            return;
+        }
+        // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like
+        // Inkshield's above, but every player and no token mint. Still surfaced as the same
+        // `Event::CombatDamagePrevented` for observability.
+        if self.combat_extras.prevent_all_combat_damage_this_turn {
+            self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
         self.push_apply(

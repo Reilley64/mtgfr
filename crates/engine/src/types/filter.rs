@@ -80,6 +80,16 @@ pub enum TargetSpec {
     /// source, not a chosen `Target`), so only spells are targetable here — see #163's residual gap.
     #[cfg_attr(feature = "card-dsl", serde(rename = "single_target_spell_on_stack"))]
     SingleTargetSpellOnStack,
+    /// An *activated* ability currently on the stack (Azorius Guildmage's "Counter target
+    /// activated ability", CR 112.7a). Targets the ability's stack item by its `source` id, not a
+    /// card in a zone. Mana abilities never reach the stack (CR 605.3b); triggered abilities are
+    /// excluded here (only `StackItem::Ability { activated: true }` entries are yielded).
+    /// ponytail: keyed by the ability's `source` id — stack abilities carry no object identity of
+    /// their own in this engine (same gap #163's `SingleTargetSpellOnStack` note names). If two
+    /// activated abilities on the stack shared a source, resolution counters the topmost match; no
+    /// pool card produces that, and Azorius counters exactly one. Give stack abilities real object
+    /// identity when a card forces the distinction.
+    ActivatedAbilityOnStack,
     /// A target artifact, enchantment, or planeswalker on the battlefield (Fracture). The
     /// noncreature-permanent removal set the pool needs; Auras count as enchantments.
     ArtifactEnchantmentOrPlaneswalker,

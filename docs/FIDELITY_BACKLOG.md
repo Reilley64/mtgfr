@@ -1459,7 +1459,7 @@ placed ability's stack item via `push_ability_group_with_x`, the same mechanism 
 ability's own `{X}` cost already uses — so `Amount::X` in "create X 1/1 white Soldier creature
 tokens" resolves it with no new `Amount` variant. Both cards fully faithful, no `approximates`.
 
-### 146. `counter-activated-ability` — 1 card, L
+### 146. `counter-activated-ability` — 1 card, L — **LANDED (2026-07-17)**
 Depends on: #145 (cycling as a real stack object makes the counter observable).
 "Counter target activated ability." Falsified claim: cycling/hand-ability activations are resolved
 immediately, never on the stack ("no pool card responds to a cycling activation" — Azorius
@@ -1468,6 +1468,25 @@ Guildmage now does). *Sketch:* (1) route cycling/`hand_ability` activations thro
 targeting a non-mana activated ability on the stack (mana abilities can't be targeted, CR 605.3b —
 they stay stackless), removing it like `counter_spell` minus the card move. *Cards:*
 azorius_guildmage.
+
+**Landed:** `Effect::CounterTargetActivatedAbility` (no fields — its target is intrinsic) targets
+the new `TargetSpec::ActivatedAbilityOnStack`, which walks the stack for `StackItem::Ability`
+entries flagged `activated`. Both `StackItem::Ability` and the `Event::TriggeredAbilityOnStack` that
+mints it gained an `activated: bool` — set `true` on the activation paths (`activate_ability`,
+cycling's draw, `activate_hand_ability`, and an activated copy), `false` on every trigger placement —
+so "counter target *activated* ability" never reaches a triggered ability on the stack (mana
+abilities are naturally excluded, CR 605.3b). Resolution mints a new public
+`Event::AbilityCountered { source }` whose apply removes the topmost matching stack ability with no
+zone move (CR 701.5c/112.7a — an ability just ceases to exist). `Game::cycle` and
+`Game::activate_hand_ability` now push their payload as a real activated `StackItem::Ability`
+(cycling → a fixed draw-1; hand_ability → its authored `effects`, `Sequence`-wrapped when multiple)
+instead of resolving inline — the two stale "resolved immediately … put it on the stack if a
+responder ever needs to interact with it" ponytails are gone. Cycling's Cycled trigger (#145) still
+lands above the draw: the draw ability is pushed first (bottom), the trigger placed by the ordinary
+`after_events` pipeline on top. ponytail: a stack ability is targeted by its `source` id (no object
+identity of its own — the same gap #163's `SingleTargetSpellOnStack` note names); two activated
+abilities sharing a source would counter the topmost, which no pool card produces. azorius_guildmage
+fully faithful, no `approximates`.
 
 ### 147. `flicker` — 2 cards, M — **LANDED (2026-07-16)**
 Depends on: nothing.
@@ -1529,11 +1548,23 @@ beside the flashback/escape exile fork: it emits `Event::ReturnedToHand` instead
 `return_to_hand` effect with an unfiltered `target = { permanent = {} }`. Fully faithful (no note):
 capsize.
 
-### 150. `fog` — 1 card, M
+### 150. `fog` — 1 card, M — **LANDED (2026-07-17)**
 Depends on: #130 (landed slice 1 — this is its named slice-3 scope generalization).
 "Prevent all combat damage that would be dealt this turn" — widen #130's per-player shield to a
 table-wide all-combat-damage shield consulted at both `damage_player` and `damage_creature`
 combat chokes, no token mint. Flashback on the card is already landed. *Cards:* moments_peace.
+
+**Landed:** new fieldless `Effect::PreventAllCombatDamageThisTurn` (no target — the shield covers
+every player's combat damage, not just the ability's controller's) arms a this-turn
+`CombatExtras::prevent_all_combat_damage_this_turn` flag, the table-wide, no-token scope
+generalization of #130's per-player Inkshield shield. Consulted at **three** combat-damage chokes,
+not the two the sketch named: `Game::deal_creature_damage` (fight/single-blocker damage),
+`Game::damage_player` (which still emits `Event::CombatDamagePrevented` for observability, amount
+only, no token), and — the third, inlined choke — `Game::assign_attacker_damage`, the blocked
+attacker's own `Event::DamageMarked` path that doesn't route through `deal_creature_damage`; without
+the guard there a blocker died to a lethal trade despite the shield. Cleared at the next turn's Untap
+step, the same "this turn" = "until the next untap" idiom as the per-player shield. moments_peace
+fully faithful, no `approximates`.
 
 ### 151. `enchanted-deals-damage-lifegain` — 1 card, M — **LANDED (2026-07-16)**
 Depends on: nothing.

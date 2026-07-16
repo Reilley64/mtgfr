@@ -685,7 +685,7 @@ impl Game {
         // into generic per CR 107.3); unaffordable leaves the choice pending with nothing tapped.
         self.settle_payment(player, cost.with_x(x), None, None, &mut events)?;
         self.finish_answer();
-        self.push_ability_group_with_x(player, source, &[(effect, None)], x, &mut events);
+        self.push_ability_group_with_x(player, source, &[(effect, None)], x, false, &mut events);
         Ok(events)
     }
 
@@ -1973,7 +1973,7 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        self.push_ability_group(player, source, &resolved, &mut events);
+        self.push_ability_group(player, source, &resolved, false, &mut events);
         Ok(events)
     }
 

@@ -755,11 +755,13 @@ impl Game {
                 target,
                 targets_second,
                 x,
+                activated,
             } => {
                 self.stack.push(StackItem::Ability {
                     controller,
                     source,
                     effect,
+                    activated,
                     target,
                     targets_second,
                     x,
@@ -769,6 +771,16 @@ impl Game {
                 // The resolving ability is always the top of the stack.
                 debug_assert!(matches!(self.stack.last(), Some(StackItem::Ability { .. })));
                 self.stack.pop();
+            }
+            // CR 701.5c/112.7a: a countered activated ability ceases to exist — remove the
+            // topmost stack ability with this source (the target this counter resolved against;
+            // see `TargetSpec::ActivatedAbilityOnStack`'s identity ponytail). No card moves.
+            Event::AbilityCountered { source } => {
+                if let Some(i) = self.stack.iter().rposition(
+                    |item| matches!(item, StackItem::Ability { source: s, .. } if *s == source),
+                ) {
+                    self.stack.remove(i);
+                }
             }
             Event::StepBegan {
                 step,
@@ -826,6 +838,10 @@ impl Game {
                     // cleared here is behavior-exact for "this turn", the same idiom `must_attack`
                     // and `pending_next_cast` use.
                     self.combat_extras.combat_damage_prevention_shields.clear();
+                    // ponytail: "Prevent all combat damage … this turn" (Moment's Peace, #150)
+                    // expires at the next Untap — same behavior-exact turn-boundary idiom as the
+                    // per-player Inkshield shield just above.
+                    self.combat_extras.prevent_all_combat_damage_this_turn = false;
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) expires at
                     // the same turn boundary — every battlefield permanent's, not just the
                     // active player's (a new turn, anyone's, ends "this turn").

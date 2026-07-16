@@ -813,6 +813,23 @@ impl Game {
                 .filter(|&id| self.spell_has_single_target(id))
                 .map(Target::Object)
                 .collect(),
+            // An activated ability on the stack (Azorius Guildmage's "counter target activated
+            // ability", CR 112.7a). Any controller's — Azorius counters an opponent's just as
+            // readily. Keyed by the ability's `source` id (see the spec's identity ponytail); only
+            // `activated` entries are yielded, so a triggered ability on the stack is not a legal
+            // target, and a mana ability never reaches the stack to be one.
+            TargetSpec::ActivatedAbilityOnStack => self
+                .stack
+                .iter()
+                .filter_map(|item| match *item {
+                    StackItem::Ability {
+                        source,
+                        activated: true,
+                        ..
+                    } => Some(Target::Object(source)),
+                    _ => None,
+                })
+                .collect(),
             // A fixed reference to the ability's own source (Hangarback's "this creature",
             // Gorma's/Primordial Hydra's counter abilities) — empty only if `source` has since
             // left the battlefield (CR 608.2b: nothing left to refer to).
@@ -849,6 +866,10 @@ impl Game {
             TargetSpec::ThisPermanent
                 | TargetSpec::EnchantedCreature
                 | TargetSpec::ThisAurasGraveyardTarget
+                // The ability on the stack is the target, not its source permanent — the source's
+                // own shroud/hexproof/protection (CR 702.11/702.16b/702.18) doesn't shield its
+                // ability, so don't run the battlefield-permanent filter against the source id.
+                | TargetSpec::ActivatedAbilityOnStack
         ) {
             return targets;
         }

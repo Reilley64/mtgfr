@@ -49,6 +49,16 @@ pub(crate) struct CombatExtras {
     /// creatures (Tajic), noncombat damage, per-source and N-point shields await the scope
     /// generalization (#130 slice 3).
     pub combat_damage_prevention_shields: Vec<(PlayerId, CardDef)>,
+    /// "Prevent all combat damage that would be dealt this turn" (Moment's Peace, #150 — the
+    /// table-wide, no-token scope generalization of [`combat_damage_prevention_shields`](Self::combat_damage_prevention_shields)'s
+    /// per-player Inkshield shield): every player's combat damage, to creatures and to players
+    /// alike, is prevented for the rest of the turn. Consulted at all three combat-damage chokes
+    /// ([`Game::deal_creature_damage`](crate::Game::deal_creature_damage) for fight/single-blocker
+    /// damage, [`Game::assign_attacker_damage`](crate::Game::assign_attacker_damage) for a blocked
+    /// attacker's own inlined damage-marking path, and [`Game::damage_player`](crate::Game::damage_player)).
+    /// Cleared at the next turn's Untap step, the same "this turn" idiom as
+    /// `combat_damage_prevention_shields`.
+    pub prevent_all_combat_damage_this_turn: bool,
 }
 
 /// Active play and control permissions stored outside `Card`/`Permanent` so they stay `Copy`.

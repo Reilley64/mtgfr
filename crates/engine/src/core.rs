@@ -146,6 +146,7 @@ impl Game {
                     target,
                     targets_second: _,
                     x: _,
+                    activated: _,
                 } => StackEntry::Ability {
                     controller,
                     source,

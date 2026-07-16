@@ -42198,6 +42198,8 @@ fn cycling_discards_the_card_and_draws_glittering_massif() {
         Zone::Graveyard,
         "the cycled card was discarded to the graveyard, not cast",
     );
+    // CR 702.29a: cycling is an activated ability — its draw resolves off the stack, not inline.
+    resolve_top_of_stack(&mut game);
     assert_eq!(
         hand_ids(&game, PlayerId(0)).len(),
         hand_before,
@@ -42471,6 +42473,8 @@ fn magma_opus_hand_ability_makes_treasure() {
         Zone::Graveyard,
         "the card was discarded as part of the ability's cost, not cast",
     );
+    // CR 113.6/602: a hand-activated ability resolves off the stack, not inline.
+    resolve_top_of_stack(&mut game);
     assert_eq!(
         battlefield_named(&game, PlayerId(0), "Treasure").len(),
         1,
@@ -42516,6 +42520,194 @@ fn magma_opus_hand_ability_rejected_from_wrong_zone() {
         Err(Reject::CannotActivate),
         "the ability functions only from hand (CR 113.6)",
     );
+}
+
+#[test]
+fn azorius_guildmage_counters_an_activated_ability_on_the_stack() {
+    // Azorius Guildmage: "{2}{U}: Counter target activated ability." P0 activates a creature's
+    // "{0}: Draw a card" — a non-mana activated ability (CR 602), so it uses the stack — and P1
+    // counters it. The draw never resolves.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[VANILLA]);
+    let drawer = game.spawn_on_battlefield(PlayerId(0), FIXED_DRAW_PERMANENT);
+    let guildmage = game.spawn_on_battlefield(PlayerId(1), card("Azorius Guildmage"));
+    let draw_index = only_activated_ability_index(&game, drawer);
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: drawer,
+        ability_index: draw_index,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("the {0} draw ability is activatable");
+
+    // The activated ability is now a stack object — the counter's one legal target.
+    const COUNTER_ABILITY: usize = 1; // {2}{U}: Counter target activated ability.
+    assert_eq!(
+        game.legal_targets(guildmage, Some(COUNTER_ABILITY)),
+        vec![Target::Object(drawer)],
+        "the draw ability on the stack is the counter's one legal target",
+    );
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: guildmage,
+        ability_index: COUNTER_ABILITY,
+        target: Some(Target::Object(drawer)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("Azorius Guildmage counters the activated ability");
+
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "the countered draw never resolved — P0 drew nothing",
+    );
+}
+
+#[test]
+fn azorius_guildmage_cannot_counter_a_mana_ability() {
+    // "(Mana abilities can't be targeted.)" — CR 605.3b: a mana ability never uses the stack, so
+    // it is never a legal target for "counter target activated ability".
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let guildmage = game.spawn_on_battlefield(PlayerId(1), card("Azorius Guildmage"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .expect("a basic land taps for mana");
+
+    assert!(
+        game.stack().is_empty(),
+        "tapping a land for mana never puts an ability on the stack (CR 605.3b)",
+    );
+    assert!(
+        game.legal_targets(guildmage, Some(1)).is_empty(),
+        "a mana ability is not a legal target for 'counter target activated ability'",
+    );
+}
+
+#[test]
+fn azorius_guildmage_counters_a_cycling_activation() {
+    // Cycling is an activated ability (CR 702.29a): P0 cycles a card, putting its draw on the
+    // stack; P1 counters it. The card stays discarded (the cost was already paid), but the draw
+    // never resolves.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[VANILLA]);
+    let massif = game.spawn_in_hand(PlayerId(0), card("Glittering Massif"));
+    let guildmage = game.spawn_on_battlefield(PlayerId(1), card("Azorius Guildmage"));
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: massif,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(massif),
+        Zone::Graveyard,
+        "cycling's discard cost was paid immediately",
+    );
+
+    // The cycling draw is a stack object, targetable by the counter.
+    let target = match game.legal_targets(guildmage, Some(1)).as_slice() {
+        [only] => *only,
+        other => panic!("expected the cycling ability as the sole counter target, got {other:?}"),
+    };
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: guildmage,
+        ability_index: 1,
+        target: Some(target),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("Azorius Guildmage counters the cycling activation");
+
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before - 1,
+        "the card was discarded but the countered draw never resolved — net minus one",
+    );
+}
+
+#[test]
+fn cycling_still_draws_when_uncountered() {
+    // Regression for the stack-routing change: with no response, cycling's draw is a real stack
+    // ability that resolves to a normal draw (net zero).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let massif = game.spawn_in_hand(PlayerId(0), card("Glittering Massif"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: massif,
+    })
+    .unwrap();
+    // The draw is on the stack (not yet resolved), so the discard nets minus one for now.
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before - 1,
+        "the draw is queued on the stack, not resolved inline",
+    );
+    assert!(
+        !game.stack().is_empty(),
+        "cycling's draw is a real stack ability",
+    );
+
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "the draw resolved — discard (-1) + draw (+1), net zero",
+    );
+}
+
+#[test]
+fn azorius_guildmage_taps_target_creature() {
+    // The {2}{W} half: "Tap target creature."
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let guildmage = game.spawn_on_battlefield(PlayerId(0), card("Azorius Guildmage"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: guildmage,
+        ability_index: 0, // {2}{W}: Tap target creature.
+        target: Some(Target::Object(bear)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("the tap ability is activatable");
+    resolve_top_of_stack(&mut game);
+
+    assert!(game.is_tapped(bear), "the target creature is tapped");
 }
 
 #[test]
@@ -48684,6 +48876,8 @@ fn take_action_cycles_a_hand_card() {
         .id;
     game.submit(take(PlayerId(0), id, None)).unwrap();
     assert_eq!(game.zone_of(massif), Zone::Graveyard);
+    // CR 702.29a: cycling's draw resolves off the stack.
+    resolve_top_of_stack(&mut game);
     assert_eq!(
         hand_ids(&game, PlayerId(0)).len(),
         1,
@@ -64656,6 +64850,170 @@ fn inkshield_prevents_each_attacker_and_tallies_tokens() {
     );
 }
 
+// ── Moment's Peace (soc): table-wide fog, no token payoff (#150, scope generalization of #130) ──
+
+/// Moment's Peace: "Prevent all combat damage that would be dealt this turn." A 3/3 attacker and
+/// a 3/3 blocker would normally trade lethal damage; after Moment's Peace resolves neither is
+/// dealt any (the `deal_creature_damage` choke).
+#[test]
+fn moments_peace_prevents_combat_damage_to_creatures() {
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), RAIDER_3_3);
+    let blocker = game.spawn_on_battlefield(PlayerId(1), RAIDER_3_3);
+    let moments_peace = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, PlayerId(1))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(1),
+        blocks: vec![(blocker, attacker)],
+    })
+    .unwrap();
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.marked_damage(attacker),
+        0,
+        "the attacker is dealt no combat damage"
+    );
+    assert_eq!(
+        game.marked_damage(blocker),
+        0,
+        "the blocker is dealt no combat damage"
+    );
+    assert_eq!(
+        game.zone_of(attacker),
+        Zone::Battlefield,
+        "the attacker survives the prevented trade"
+    );
+    assert_eq!(
+        game.zone_of(blocker),
+        Zone::Battlefield,
+        "the blocker survives the prevented trade"
+    );
+}
+
+/// An unblocked attacker's combat damage to the defending player is also prevented (the
+/// `damage_player` choke).
+#[test]
+fn moments_peace_prevents_combat_damage_to_a_player() {
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), RAIDER_3_3);
+    let moments_peace = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, PlayerId(1))],
+    })
+    .unwrap();
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
+
+    let life_before = game.life(PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before,
+        "the unblocked attacker's combat damage to the defending player is prevented"
+    );
+}
+
+/// The shield is combat-only (the `combat` gate): a direct-damage spell to a player still
+/// connects with the shield up.
+#[test]
+fn moments_peace_does_not_prevent_noncombat_damage() {
+    let mut game = Game::new();
+    let moments_peace = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
+    fund_cast_resolve(
+        &mut game,
+        PlayerId(0),
+        bolt,
+        Some(Target::Player(PlayerId(0))),
+    );
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        17,
+        "noncombat damage is unaffected by the table-wide combat-damage shield"
+    );
+}
+
+/// "this turn": the shield expires at the next untap, so combat on the following turn deals
+/// damage normally.
+#[test]
+fn moments_peace_shield_expires_next_turn() {
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA, VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA, VANILLA]);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), RAIDER_3_3);
+    let moments_peace = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None); // shield placed on P0's turn 1
+    pass_until_next_turn(&mut game); // → P1's turn, past its untap (which clears the shield)
+    pass_until_next_turn(&mut game); // → P0's turn again, so `attacker` can attack
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, PlayerId(1))],
+    })
+    .unwrap();
+
+    let life_before = game.life(PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before - 3,
+        "the expired shield does not prevent next turn's combat damage"
+    );
+}
+
+/// Flashback {2}{G} (CR 702.34): cast from the graveyard, it still prevents that turn's combat
+/// damage, then exiles instead of returning to the graveyard.
+#[test]
+fn moments_peace_flashback_from_graveyard() {
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA, VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA, VANILLA]);
+    let attacker = game.spawn_on_battlefield(PlayerId(1), RAIDER_3_3);
+    let moments_peace = game.spawn_in_graveyard(PlayerId(0), card("Moment's Peace"));
+
+    pass_until_next_turn(&mut game); // → P1's turn
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(attacker, PlayerId(0))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.priority_holder() == PlayerId(0));
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
+
+    let life_before = game.life(PlayerId(0));
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "the flashback cast prevents this turn's combat damage same as casting from hand"
+    );
+    assert_eq!(
+        game.zone_of(moments_peace),
+        Zone::Exile,
+        "CR 702.34e: a resolved flashback spell is exiled, not put into the graveyard"
+    );
+}
+
 // ── Tajic, Legion's Edge — noncombat-damage prevention static (CR 615) ──────────────────
 // "Prevent all noncombat damage that would be dealt to other creatures you control." A
 // durationless permanent static: effect damage and fight damage (CR 701.12) to the
@@ -65561,6 +65919,8 @@ fn noble_templar_plainscycling_fetches_any_plains_typed_land() {
         Zone::Graveyard,
         "the card was discarded as part of the ability's cost, not cast",
     );
+    // CR 113.6/602: the landcycling ability resolves off the stack before it searches.
+    resolve_top_of_stack(&mut game);
     let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
         panic!(
             "plainscycling pauses on a library search, got {:?}",
@@ -65607,6 +65967,8 @@ fn shoreline_ranger_islandcycling_fetches_any_island_typed_land() {
     .unwrap();
 
     assert_eq!(game.zone_of(ranger), Zone::Graveyard);
+    // CR 113.6/602: the landcycling ability resolves off the stack before it searches.
+    resolve_top_of_stack(&mut game);
     let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
         panic!(
             "islandcycling pauses on a library search, got {:?}",
@@ -65645,6 +66007,8 @@ fn wirewood_guardian_forestcycling_fetches_any_forest_typed_land() {
     .unwrap();
 
     assert_eq!(game.zone_of(guardian), Zone::Graveyard);
+    // CR 113.6/602: the landcycling ability resolves off the stack before it searches.
+    resolve_top_of_stack(&mut game);
     let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
         panic!(
             "forestcycling pauses on a library search, got {:?}",

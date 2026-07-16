@@ -3396,7 +3396,7 @@ impl Game {
     ) -> Placement {
         let spec = effect.target();
         if spec == TargetSpec::None {
-            self.push_ability_group(player, source, &[(effect, None)], events);
+            self.push_ability_group(player, source, &[(effect, None)], false, events);
             return Placement::Placed;
         }
         let x = self.ability_source_x(source);
@@ -3413,7 +3413,7 @@ impl Game {
             let Some(&fixed) = legal.first() else {
                 return Placement::NoLegalTarget;
             };
-            self.push_ability_group(player, source, &[(effect, Some(fixed))], events);
+            self.push_ability_group(player, source, &[(effect, Some(fixed))], false, events);
             return Placement::Placed;
         }
         let legal = self.legal_targets_for(spec, source, player, [false; Color::COUNT], x);
@@ -3578,22 +3578,25 @@ impl Game {
         controller: PlayerId,
         source: ObjectId,
         abilities: &[(Effect, Option<Target>)],
+        activated: bool,
         events: &mut Vec<Event>,
     ) {
         // Triggered abilities carry no `{X}` — an activated (or copied) `{X}` ability goes on the
         // stack via `push_activated_ability` instead, which threads its chosen X.
-        self.push_ability_group_with_x(controller, source, abilities, 0, events);
+        self.push_ability_group_with_x(controller, source, abilities, 0, activated, events);
     }
 
     /// [`push_ability_group`](Self::push_ability_group) threading a chosen `{X}` (CR 107.3) onto
     /// each ability — for an activated ability whose cost contains `{X}`, or a CR 707.10c copy of
-    /// one, whose `Amount::X` reads that value at resolution.
+    /// one, whose `Amount::X` reads that value at resolution. `activated` marks the placed item as
+    /// an activated (vs triggered) ability — see [`StackItem::Ability::activated`].
     pub(crate) fn push_ability_group_with_x(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
         abilities: &[(Effect, Option<Target>)],
         x: u32,
+        activated: bool,
         events: &mut Vec<Event>,
     ) {
         for &(effect, target) in abilities {
@@ -3606,6 +3609,7 @@ impl Game {
                     target,
                     targets_second: TargetList::default(),
                     x,
+                    activated,
                 },
             );
         }
@@ -3635,6 +3639,9 @@ impl Game {
                 target,
                 targets_second,
                 x: 0,
+                // Only a triggered ability (CR 603.3d — Kinetic Ooze's second target clause) ever
+                // goes on the stack with a `targets_second`; never an activated one.
+                activated: false,
             },
         );
         self.consecutive_passes = 0;

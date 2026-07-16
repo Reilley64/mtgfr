@@ -1569,6 +1569,11 @@ pub(crate) enum StackItem {
         controller: PlayerId,
         source: ObjectId,
         effect: Effect,
+        /// Whether this is an *activated* ability (CR 602 — a permanent's activated ability,
+        /// cycling/hand activation, or a copy of one) rather than a *triggered* ability (CR 603).
+        /// Read by [`TargetSpec::ActivatedAbilityOnStack`](crate::TargetSpec) so "counter target
+        /// activated ability" (Azorius Guildmage) never reaches a triggered ability on the stack.
+        activated: bool,
         /// The chosen target of the ability's first target clause, if it targets.
         target: Option<Target>,
         /// The chosen targets of a *second* independent target clause (CR 603.3d — Kinetic Ooze's
@@ -1738,9 +1743,17 @@ pub enum Event {
         /// doubling rider); empty for a single-clause ability.
         targets_second: TargetList,
         x: u32,
+        /// Whether this is an *activated* ability (CR 602) rather than a triggered one (CR 603) —
+        /// carried onto [`StackItem::Ability::activated`] so "counter target activated ability"
+        /// (Azorius Guildmage) can tell the two apart. `false` for every triggered ability.
+        activated: bool,
     },
     /// The top ability of the stack finished resolving and left the stack.
     AbilityResolved { source: ObjectId },
+    /// An activated ability on the stack was countered (CR 701.5c / 112.7a — Azorius Guildmage):
+    /// the topmost `StackItem::Ability` with this `source` is removed and ceases to exist. Unlike
+    /// a countered spell there is no card to move to a graveyard.
+    AbilityCountered { source: ObjectId },
     /// A new step began (also carries the active player, which changes each turn).
     StepBegan { step: Step, active_player: PlayerId },
     /// A land `from` was played from hand and became the permanent `permanent`.

@@ -853,10 +853,7 @@ impl Game {
         };
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
-        // before the discard) and "discard this card" (CR 702.29a) — before the draw.
-        // ponytail: CR 702.29 — cycling's ability uses the stack; resolved immediately here
-        // since no pool card responds to a cycling activation. Put it on the stack (a real (CR 702.28, CR 405)
-        // source-less activated ability) if a responder ever needs to interact with it. (CR 602, CR 113)
+        // before the discard) and "discard this card" (CR 702.29a) — before the ability resolves.
         let mut events = Vec::new();
         self.settle_payment(player, cost, None, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
@@ -867,48 +864,35 @@ impl Game {
                 from: card,
             },
         );
-        // CR 702.29e: "when you cycle this card" triggers off the discard above, stacking above
-        // the fixed draw below (Krosan Tusker's "(Do this before you draw.)"). Scanned off the
-        // cycled card's own def (not a battlefield watcher), mirroring `Trigger::YouCastThis`'s
-        // self-scan. `card` still resolves through the `MovedToGraveyard` move's lineage (like
-        // any other post-move last-known-information source).
-        let cycled_trigger = c
-            .def
+        // CR 702.29a: cycling is an activated ability — its "Draw a card" goes on the stack as a
+        // real (source-less) activated ability, so a responder (Azorius Guildmage's "counter
+        // target activated ability") can interact with it before it resolves. `card` is the
+        // now-discarded card, last-known information like any other post-move source.
+        self.push_ability_group(
+            player,
+            card,
+            &[(
+                Effect::DrawCards {
+                    count: Amount::Fixed(1),
+                },
+                None,
+            )],
+            true,
+            &mut events,
+        );
+        // CR 702.29e: "when you cycle this card" triggers off the discard above and — placed by
+        // the ordinary trigger pipeline in `after_events` — lands on top of the draw already on
+        // the stack, so it resolves first (Krosan Tusker's "(Do this before you draw.)"). Scanned
+        // off the cycled card's own def, mirroring `Trigger::YouCastThis`'s self-scan.
+        if c.def
             .abilities
             .iter()
-            .any(|a| a.timing == Timing::Triggered(Trigger::Cycled));
-        if cycled_trigger {
-            // Queue the draw *first* so it lands underneath the cycled trigger once both are
-            // placed onto the stack (the ordinary APNAP placement in `Game::place_pending_triggers`
-            // pushes queued groups in order, so the first-pushed sits at the bottom) — the same
-            // "queue the thing that must resolve *after*" idiom `Game::enqueue_triggers` uses to
-            // place evoke's sacrifice underneath its ETB.
-            self.pending_trigger_groups.push(TriggerGroup {
-                expanded: false,
-                controller: player,
-                source: card,
-                // ponytail: `timing` is an inert placeholder here (like `fire_delayed_triggers`'s
-                // fabricated groups) — `place_pending_triggers` only reads `effect`/`optional`/
-                // `cost`/`once_each_turn` off a queued ability, never its `timing`.
-                abilities: vec![Ability {
-                    timing: Timing::Triggered(Trigger::Cycled),
-                    effect: Effect::DrawCards {
-                        count: Amount::Fixed(1),
-                    },
-                    optional: false,
-                    min_level: 0,
-                    cost: Cost::FREE,
-                    condition: None,
-                    once_each_turn: false,
-                }],
-            });
+            .any(|a| a.timing == Timing::Triggered(Trigger::Cycled))
+        {
             self.queue_trigger_group(TriggerContext::of(player), card, c.def, Trigger::Cycled);
-        } else {
-            for event in self.draw_events(player, 1) {
-                self.push_apply(&mut events, event);
-            }
         }
-        // An action resets the pass count; the cycler keeps priority (CR 117.3c).
+        // An action resets the pass count; the cycler keeps priority (CR 117.3c) — overriding the
+        // active-player default `push_ability_group` set.
         self.consecutive_passes = 0;
         self.priority = player;
         Ok(events)
@@ -942,10 +926,7 @@ impl Game {
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
         // before the discard) and "discard this card" (the rest of the cost) — before the
-        // ability's effects run.
-        // ponytail: CR 113.6/602 — like cycling, this ability uses the stack; resolved
-        // immediately here since no pool card responds to its activation. Put it on the stack
-        // (a real source-less activated ability) if a responder ever needs to interact with it.
+        // ability goes on the stack.
         let mut events = Vec::new();
         self.settle_payment(player, ability.cost, None, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
@@ -956,17 +937,20 @@ impl Game {
                 from: card,
             },
         );
-        let ctx = ResolveCtx {
-            controller: player,
-            source: card,
-            target: None,
-            targets_second: TargetList::default(),
-            x: 0,
+        // CR 113.6/602: this is an activated ability — its authored payload goes on the stack (a
+        // single stack ability, `Sequence`-wrapped when it has more than one step) so a responder
+        // (Azorius Guildmage) can interact with it, just like cycling's draw above. `card` is the
+        // now-discarded source, last-known information.
+        // ponytail: a hand ability's payload takes no target in the pool (Magma Opus's Treasure,
+        // the landcyclers' library search); pushed with `None`. Thread a chosen target through
+        // here if a targeted hand ability ever appears.
+        let effect = match ability.effects {
+            [single] => *single,
+            steps => Effect::Sequence { steps },
         };
-        for effect in ability.effects {
-            self.run(*effect, ctx, &mut events);
-        }
-        // An action resets the pass count; the activator keeps priority (CR 117.3c).
+        self.push_ability_group(player, card, &[(effect, None)], true, &mut events);
+        // An action resets the pass count; the activator keeps priority (CR 117.3c) — overriding
+        // the active-player default `push_ability_group` set.
         self.consecutive_passes = 0;
         self.priority = player;
         Ok(events)
@@ -1772,7 +1756,13 @@ impl Game {
                     active: true,
                 },
             );
-            self.push_ability_group(player, object, &[(ability.effect, target)], &mut events);
+            self.push_ability_group(
+                player,
+                object,
+                &[(ability.effect, target)],
+                true,
+                &mut events,
+            );
             return Ok(events);
         }
         // Equip targets a creature you control (CR 702.6e; its timing is gated above).
@@ -2017,7 +2007,7 @@ impl Game {
 
         // Non-mana activated abilities go on the stack, reusing the trigger placement path,
         // threading the chosen `{X}` so `Amount::X` resolves against it (CR 107.3).
-        self.push_ability_group_with_x(player, object, &[(effect, target)], x, &mut events);
+        self.push_ability_group_with_x(player, object, &[(effect, target)], x, true, &mut events);
         // CR 707.10: "Whenever you … activate an ability, if that ability's activation cost
         // contains {X}, copy that ability" (Unbound Flourishing). Fire the watch off the just-
         // placed ability — the copy trigger lands above it (CR 603.3b) and, on resolution, mints

@@ -1,0 +1,25 @@
+# Prevent all combat damage that would be dealt this turn.
+# Flashback {2}{G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)
+name = "Moment's Peace"
+oracle = "Prevent all combat damage that would be dealt this turn.\nFlashback {2}{G} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+set = "soc"
+
+[cost]
+generic = 1
+green = 1
+
+# Flashback {2}{G} (CR 702.34) — cast from the graveyard for this cost, then exiled on resolve.
+[flashback]
+generic = 2
+green = 1
+
+[kind]
+type = "instant"
+
+# Prevent all combat damage that would be dealt this turn.
+[[abilities]]
+timing = "spell"
+
+# Prevent all combat damage that would be dealt this turn.
+[[abilities.effects]]
+type = "prevent_all_combat_damage_this_turn"

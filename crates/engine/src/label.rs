@@ -576,6 +576,9 @@ impl Effect {
             Effect::PreventCombatDamageToYouCreatingTokens { .. } => {
                 "Prevent all combat damage that would be dealt to you this turn, creating a token per point prevented".to_string()
             }
+            Effect::PreventAllCombatDamageThisTurn => {
+                "Prevent all combat damage that would be dealt this turn".to_string()
+            }
             Effect::PlaceVowCounters { .. } => "Put a vow counter on each surviving creature".to_string(),
             Effect::DestroyTarget { .. } => "Destroy target".to_string(),
             Effect::RegenerateShield { .. } => "Regenerate target".to_string(),
@@ -1095,6 +1098,9 @@ impl Effect {
                 counter_target_spell_noun(filter),
                 amount_label(amount)
             ),
+            Effect::CounterTargetActivatedAbility => {
+                "Counter target activated ability".to_string()
+            }
             Effect::ScheduleAtNextUpkeep { then, fire_at, .. } => {
                 let when = match fire_at {
                     Step::End => "the next end step",
