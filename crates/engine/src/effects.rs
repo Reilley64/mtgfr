@@ -2312,6 +2312,11 @@ impl Game {
                         if self.damage_prevented_by_protection(object, Some(source)) {
                             return Vec::new();
                         }
+                        // Phantom Centaur's self-shield prevents this damage outright and
+                        // removes one of its own +1/+1 counters instead (CR 615).
+                        if self.phantom_shield_active(object) {
+                            return self.phantom_shield_counter_removal(object).into_iter().collect();
+                        }
                         // Damage to a planeswalker removes that many loyalty counters instead of
                         // being marked (CR 120.3c/306.9) — checked ahead of Tajic's creature-only
                         // prevention below, since a planeswalker is never "another creature".
@@ -2924,7 +2929,9 @@ impl Game {
             // Static abilities are read during recompute, never resolved from the stack.
             Effect::AnthemStatic { .. }
             | Effect::KeywordAnthemStatic { .. }
+            | Effect::TappedForManaBonus { .. }
             | Effect::PreventNoncombatDamageToOtherCreaturesYouControl
+            | Effect::PreventDamageToSelfRemovingCounter
             | Effect::TriggerDoublingStatic { .. }
             | Effect::GrantManaAbility { .. }
             | Effect::GrantToAttached { .. }
@@ -3070,10 +3077,18 @@ impl Game {
                 .filter(|&id| !self.damage_prevented_by_protection(id, Some(source)))
                 // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
                 .filter(|&id| !self.noncombat_damage_prevented_to_creature(id))
-                .map(|object| Event::DamageMarked {
-                    object,
-                    amount: self.resolve_amount(amount, controller, object, target, x),
-                    source: Some(source),
+                // Phantom Centaur's self-shield prevents its own share and removes one of its
+                // own +1/+1 counters instead (CR 615) — a shielded creature swaps its
+                // `DamageMarked` for that counter removal rather than being filtered out outright.
+                .flat_map(|object| {
+                    if self.phantom_shield_active(object) {
+                        return self.phantom_shield_counter_removal(object).into_iter().collect();
+                    }
+                    vec![Event::DamageMarked {
+                        object,
+                        amount: self.resolve_amount(amount, controller, object, target, x),
+                        source: Some(source),
+                    }]
                 })
                 .collect(),
             // Mass weaken: every creature gets -power/-toughness until end of turn (a negative
@@ -3599,6 +3614,11 @@ impl Game {
                 let object = entering.expect("the entering permanent is filled in at placement");
                 if self.damage_prevented_by_protection(object, Some(source)) {
                     return Vec::new();
+                }
+                // Phantom Centaur's self-shield prevents this damage outright and removes one
+                // of its own +1/+1 counters instead (CR 615).
+                if self.phantom_shield_active(object) {
+                    return self.phantom_shield_counter_removal(object).into_iter().collect();
                 }
                 // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
                 if self.noncombat_damage_prevented_to_creature(object) {

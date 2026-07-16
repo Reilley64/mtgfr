@@ -1,0 +1,26 @@
+# Enchant land
+# Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.
+name = "Fertile Ground"
+oracle = "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional one mana of any color."
+set = "m19"
+subtypes = ["Aura"]
+
+# Enchant land
+enchant = { types = "land" }
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "aura"
+
+# Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.
+[[abilities]]
+timing = "static"
+
+# Whenever enchanted land is tapped for mana, its controller adds an additional one mana of any color.
+[[abilities.effects]]
+type = "tapped_for_mana_bonus"
+scope = "enchanted_host"
+bonus_color = "any_color"

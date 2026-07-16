@@ -1587,8 +1587,16 @@ last-known information) carries the dealt amount into the queued `GainLife` effe
 lifelink (a static replacement bundled into the damage event) — a separate stack-going triggered
 ability, so it stacks additively rather than doubling. Fully faithful (no note): armadillo_cloak.
 
-### 152. `tapped-for-mana-triggers` — 2 cards, L
+### 152. `tapped-for-mana-triggers` — 2 cards, L — **LANDED (2026-07-17)**
 Depends on: nothing.
+Landed as `Effect::TappedForManaBonus { scope, bonus_color }` (a static-marker watch, like
+`AnthemStatic`), read at both land-tap-for-mana chokes by `Game::land_tapped_for_mana`: the
+`produces` sugar tap (`tap_for_mana`) and an `add_mana` land activation (`activate_ability`). Both
+`fertile_ground.toml` (`enchanted_host` / `any_color` — pauses on the existing `ChooseManaColor`)
+and `miraris_wake.toml` (`controller` / `produced` — copies the tapped land's produced type, no
+pause) are fully faithful, no `approximates`. Residual gaps carry `ponytail:` notes only (no pool
+card hits them): a second `any_color` Aura on one land drops its pause, and a `single_color` land
+(Lotus Field) taps before the watch so a Fertile Ground on it fires nothing.
 A tapped-for-mana watch at the mana-ability resolution choke (both the `produces` sugar tap and
 explicit `add_mana` activations): Fertile Ground's "whenever enchanted land is tapped for mana,
 its controller adds an additional one mana of any color" (attached-host scope, a `ChooseManaColor`
@@ -1712,13 +1720,40 @@ after the `BecameCopy` overwrite, so the copy enters unattached and pauses on `C
 before it counts as validly on the battlefield — fully faithful, no residual. Fully faithful (no
 `approximates`): copy_enchantment (authored fresh).
 
-### 159. `phantom-prevention` — 1 card, M
+### 159. `phantom-prevention` — 1 card, M — **LANDED (2026-07-17)**
 Depends on: #130 (prevention substrate).
 The Phantom replacement (CR 615): "If damage would be dealt to this creature, prevent that
 damage. Remove a +1/+1 counter from this creature." — a per-permanent static prevention shield at
 the `damage_creature` choke, removing one +1/+1 counter per prevented damage event (counter
 removal is not optional; fires even at zero counters where it prevents and removes nothing).
 *Cards:* phantom_centaur.
+**Landed:** New fieldless `Effect::PreventDamageToSelfRemovingCounter` (TOML
+`prevent_damage_to_self_removing_counter`, `timing = "static"`, never resolved off the stack —
+the `AnthemStatic`/Tajic posture), the self-only, all-damage sibling of #130's
+`PreventNoncombatDamageToOtherCreaturesYouControl`: it shields only the permanent that carries it
+(not "other creatures"), and unlike Tajic's noncombat-only scope it also prevents combat damage.
+Two new `characteristics.rs` helpers beside Tajic's predicate: `Game::phantom_shield_active`
+(the static scan, self-only) and `Game::phantom_shield_counter_removal` (mints the "remove a
++1/+1 counter" `Event::CountersPlaced { count: -1, .. }`, `None` when there's no counter left —
+CR 615's removal always "fires" but has nothing to take at zero). Both are `&self` reads (no
+mutation needed to mint an event), so — unlike the brief's sketch — no `&mut self`
+predicate-plus-push helper was needed and no borrow-checker workaround was required in the mass
+`DamageEachCreature` filter; it became a plain `flat_map` swapping a shielded creature's
+`DamageMarked` for its counter-removal event. Wired at all five creature-damage chokes: `combat.rs`'s
+`deal_creature_damage` (the blocker-to-attacker / fight path, checked regardless of the `combat`
+flag, unlike Tajic's noncombat-only guard, right after `damage_prevented_by_protection`) and
+`assign_attacker_damage` (the separate attacker-to-blocker path, so a *blocking* Phantom Centaur is
+shielded too), and the three effect-damage sites in `effects.rs` — `DealDamage`'s single-object arm,
+`DamageEachCreature`'s mass filter/map, and `DealDamageToEnteringPermanent`. No new `Event`/schema surface — a prevented hit is silent (same
+`ponytail:` convention as Tajic), and the counter removal is the already-schema-mirrored
+`CountersPlaced`. phantom_centaur fully faithful (all three oracle clauses: protection from black
+via the existing `{ protection = "black" }` keyword, "enters with two +1/+1 counters" via the
+existing `enters_with_counters` sugar, and the new shield) — no `approximates`. Tests in
+`crates/engine/tests/game.rs`: `phantom_centaur_prevents_combat_damage_and_removes_a_counter`,
+`phantom_centaur_prevents_combat_damage_as_a_blocker`,
+`phantom_centaur_prevents_noncombat_damage_and_removes_a_counter`,
+`phantom_centaur_prevents_at_zero_counters_removing_nothing`,
+`phantom_centaur_shield_does_not_protect_other_creatures`.
 
 ### 160. `counter-with-tuck` — 1 card, M — **LANDED (2026-07-16)**
 Depends on: #135.

@@ -272,6 +272,40 @@ pub enum AmountZone {
     Graveyard,
 }
 
+/// Which land taps an [`Effect::TappedForManaBonus`] watch reacts to (CR "whenever … is tapped
+/// for mana").
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum LandTapScope {
+    /// Only the land this watcher (an Aura) is attached to — Fertile Ground's "enchanted land".
+    #[default]
+    EnchantedHost,
+    /// Every land the watcher's controller taps for mana — Mirari's Wake's "whenever you tap a
+    /// land for mana".
+    Controller,
+}
+
+/// What color the bonus mana of an [`Effect::TappedForManaBonus`] watch is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum LandTapBonusColor {
+    /// "One mana of any color" — the controller names it, so the bonus pauses on a
+    /// [`PendingChoice::ChooseManaColor`](crate::PendingChoice::ChooseManaColor) (Fertile Ground).
+    #[default]
+    AnyColor,
+    /// "One mana of any type that land produced" — copied from the type the tap just produced, no
+    /// pause when the tap made a single concrete credit (Mirari's Wake).
+    Produced,
+}
+
 /// A single parametrized game action. The enum grows only as the pool demands it.
 ///
 /// In TOML an effect is a table tagged by `type = "<snake_case variant>"` — adding a
@@ -729,6 +763,22 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         all_players: bool,
     },
+    /// An inline "whenever [a land] is tapped for mana, add mana" watch (CR 605.3 — mana abilities
+    /// don't stack, so the bonus resolves into the tap's own pool batch, no stack, no priority).
+    /// A static marker read at the land-tap-for-mana choke ([`Game::land_tapped_for_mana`]), never
+    /// resolved off the stack — like [`AnthemStatic`](Self::AnthemStatic), which is read at
+    /// characteristic recompute. Fertile Ground (`scope = EnchantedHost`, `bonus_color = AnyColor`:
+    /// "whenever enchanted land is tapped for mana, its controller adds an additional one mana of
+    /// any color") and Mirari's Wake (`scope = Controller`, `bonus_color = Produced`: "whenever you
+    /// tap a land for mana, add one mana of any type that land produced").
+    TappedForManaBonus {
+        /// Which tapped lands this watch reacts to.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        scope: LandTapScope,
+        /// The color of the bonus mana added.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        bonus_color: LandTapBonusColor,
+    },
     /// A static ability that makes certain triggered abilities trigger an *additional* time (CR
     /// 603.3c — Harmonic Prodigy's "a triggered ability of a Shaman or another Wizard you control
     /// … triggers an additional time"; Veyran's magecraft-cause doubling). Read at trigger
@@ -768,6 +818,18 @@ pub enum Effect {
     /// source itself ("*other* creatures") and to opponents' creatures. Fieldless, so `CardDef`
     /// stays `Copy`.
     PreventNoncombatDamageToOtherCreaturesYouControl,
+    /// A continuous static prevention-replacement, self-only (CR 615 — Phantom Centaur: "If
+    /// damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter
+    /// from Phantom Centaur."). A durationless permanent static, never resolved off the stack —
+    /// the self-only sibling of [`PreventNoncombatDamageToOtherCreaturesYouControl`](Self::PreventNoncombatDamageToOtherCreaturesYouControl):
+    /// unlike Tajic's "other creatures", this shields only the permanent that carries it, and
+    /// unlike Tajic's noncombat-only scope, it prevents ALL damage to itself (combat and
+    /// noncombat). Scanned by [`Game::phantom_shield_active`] at every creature-damage choke
+    /// (combat, effect damage, fight damage); each prevented damage-dealing event also removes
+    /// one +1/+1 counter from the source (CR 615: the removal always happens, even when there's
+    /// no counter left to remove — see [`Game::phantom_shield_counter_removal`]). Fieldless, so
+    /// `CardDef` stays `Copy`.
+    PreventDamageToSelfRemovingCounter,
     /// A static ability granting a matching permanent the controller controls an activated
     /// *mana* ability it doesn't otherwise have (CR 113.3/605 — Goldspan Dragon's "Treasures
     /// you control have '{T}, Sacrifice this artifact: Add two mana of any one color.'").
@@ -3360,6 +3422,7 @@ impl Effect {
             | Effect::ExileRandomFromGraveyardMayPlay
             | Effect::AnthemStatic { .. }
             | Effect::KeywordAnthemStatic { .. }
+            | Effect::TappedForManaBonus { .. }
             | Effect::TriggerDoublingStatic { .. }
             | Effect::GrantManaAbility { .. }
             | Effect::ScheduleAtNextUpkeep { .. }
@@ -3441,6 +3504,7 @@ impl Effect {
             | Effect::GrantSourceAbilitiesUntilEndOfTurn
             | Effect::PlayFromGraveyardOncePerTurn
             | Effect::PreventNoncombatDamageToOtherCreaturesYouControl
+            | Effect::PreventDamageToSelfRemovingCounter
             // Redoubled Stormsinger enumerates matching tokens internally — no chosen target.
             | Effect::SetBasePtCreaturesYouControlUntilEndOfTurn { .. }
             // A self-animation always affects the ability's own source (Restless Spire), no target.

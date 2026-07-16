@@ -661,6 +661,17 @@ impl Game {
             if self.damage_prevented_by_protection(blocker, Some(attacker)) {
                 continue;
             }
+            // A blocking Phantom Centaur prevents this share and removes one of its own +1/+1
+            // counters instead (CR 615) — the same self-shield `deal_creature_damage` applies
+            // on the blocker-to-attacker path. ponytail: like the protection guard above, the
+            // prevented share isn't counted as dealt, so a trampler carries it to the player — a
+            // minor inaccuracy no pool card exercises (a trampler blocked by Phantom Centaur).
+            if self.phantom_shield_active(blocker) {
+                if let Some(removal) = self.phantom_shield_counter_removal(blocker) {
+                    self.push_apply(events, removal);
+                }
+                continue;
+            }
             dealt += amount;
             self.push_apply(
                 events,
@@ -713,6 +724,16 @@ impl Game {
         // first, then the damage lands on the revealed creature (prevention still checks it).
         self.flip_masked(target, events);
         if self.damage_prevented_by_protection(target, Some(source)) {
+            return;
+        }
+        // Phantom Centaur (CR 615): "If damage would be dealt to Phantom Centaur, prevent that
+        // damage. Remove a +1/+1 counter from Phantom Centaur." Self-only, but unlike Tajic's
+        // noncombat-only static, this applies to combat damage too — checked regardless of
+        // `combat`.
+        if self.phantom_shield_active(target) {
+            if let Some(removal) = self.phantom_shield_counter_removal(target) {
+                self.push_apply(events, removal);
+            }
             return;
         }
         // ponytail: silent prevention — a prevented noncombat hit just produces no `DamageMarked`

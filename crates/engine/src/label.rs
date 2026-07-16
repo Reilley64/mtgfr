@@ -539,11 +539,27 @@ impl Effect {
                     format!("{scope} have {}", keyword_list_label(keywords))
                 }
             }
+            Effect::TappedForManaBonus { scope, bonus_color } => match (scope, bonus_color) {
+                (LandTapScope::EnchantedHost, _) => {
+                    "Whenever enchanted land is tapped for mana, its controller adds an additional \
+                     one mana of any color"
+                        .to_string()
+                }
+                (LandTapScope::Controller, _) => {
+                    "Whenever you tap a land for mana, add one mana of any type that land produced"
+                        .to_string()
+                }
+            },
             Effect::TriggerDoublingStatic { .. } => {
                 "That triggered ability triggers an additional time".to_string()
             }
             Effect::PreventNoncombatDamageToOtherCreaturesYouControl => {
                 "Prevent all noncombat damage that would be dealt to other creatures you control"
+                    .to_string()
+            }
+            Effect::PreventDamageToSelfRemovingCounter => {
+                "If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 \
+                 counter from this creature"
                     .to_string()
             }
             Effect::NoMaximumHandSize => "You have no maximum hand size".to_string(),

@@ -1,0 +1,34 @@
+# Protection from black
+# Phantom Centaur enters with two +1/+1 counters on it.
+# If damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter from Phantom Centaur.
+name = "Phantom Centaur"
+oracle = "Protection from black\nPhantom Centaur enters with two +1/+1 counters on it.\nIf damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter from Phantom Centaur."
+set = "tsp"
+subtypes = ["Illusion", "Centaur"]
+keywords = [{ protection = "black" }]
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# Phantom Centaur enters with two +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# Phantom Centaur enters with two +1/+1 counters on it
+[[abilities.effects]]
+type = "enters_with_counters"
+count = 2
+
+# If damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter from Phantom Centaur.
+[[abilities]]
+timing = "static"
+
+# If damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter from Phantom Centaur.
+[[abilities.effects]]
+type = "prevent_damage_to_self_removing_counter"

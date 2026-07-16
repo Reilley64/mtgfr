@@ -166,7 +166,99 @@ impl Game {
             });
         }
         self.apply_all(&events);
+        // Fertile Ground / Mirari's Wake fire off the same tap (CR 605.3 — inline, no stack).
+        self.land_tapped_for_mana(object, player, &mut events);
         Ok(events)
+    }
+
+    /// The CR "whenever [a land] is tapped for mana" watch: each matching static
+    /// [`Effect::TappedForManaBonus`] on the battlefield adds a bonus credit into the tap's own
+    /// pool batch. Mana abilities don't stack (CR 605.3), so the bonus resolves inline — no stack,
+    /// no priority. Called at both land-tap-for-mana chokes ([`Self::tap_for_mana`]'s `produces`
+    /// sugar and an `add_mana` activation on a land). `land` is the just-tapped land, `player` its
+    /// controller, `events` the tap's already-applied events (its [`Event::ManaAdded`]s, from which
+    /// the produced type for a `Produced` bonus is read). Inline bonuses are `push_apply`ed onto
+    /// `events`; an `AnyColor` bonus instead raises a [`PendingChoice::ChooseManaColor`] the caller
+    /// returns on.
+    pub(crate) fn land_tapped_for_mana(
+        &mut self,
+        land: ObjectId,
+        player: PlayerId,
+        events: &mut Vec<Event>,
+    ) {
+        // Only a *land* tapped for mana is watched (Mirari's Wake: "tap a **land**"; Fertile
+        // Ground enchants a land) — a mana rock (Sol Ring) tapping fires nothing. Read the source
+        // as a live permanent: a mana ability that sacrifices its own source as a cost (a Treasure)
+        // has already removed it by now, and it's no land either way.
+        let Some(perm) = self.as_permanent(land) else {
+            return;
+        };
+        if !matches!(perm.def.kind, CardKind::Land { .. }) {
+            return;
+        }
+        // "Tapped for mana" means it produced mana (CR 106.11) — the type this tap made, read back
+        // from its own event. A tap that added nothing (empty commander identity) fires no watch.
+        let Some(produced) = events.iter().find_map(|e| match e {
+            Event::ManaAdded { mana, .. } => Some(*mana),
+            _ => None,
+        }) else {
+            return;
+        };
+
+        // Scan the battlefield for matching watchers. `scope` says which taps a watch reacts to
+        // (Mirari's Wake's controller — "whenever **you** tap a land", the tapper being the land's
+        // controller; Fertile Ground's enchanted host — an Aura on the tapped land); `bonus_color`
+        // says what mana it adds (a `Produced` credit inline, or an `AnyColor` credit the
+        // controller names via a pause).
+        let mut produced_bonuses = 0usize;
+        let mut any_color_source: Option<ObjectId> = None;
+        for id in self.battlefield() {
+            for ability in self.def_of(id).abilities {
+                let (Timing::Static, Effect::TappedForManaBonus { scope, bonus_color }) =
+                    (ability.timing, ability.effect)
+                else {
+                    continue;
+                };
+                let watches = match scope {
+                    LandTapScope::Controller => self.controller_of(id) == player,
+                    LandTapScope::EnchantedHost => self.attached_to(id) == Some(land),
+                };
+                if !watches {
+                    continue;
+                }
+                match bonus_color {
+                    LandTapBonusColor::Produced => produced_bonuses += 1,
+                    // ponytail: only the FIRST any-color watch raises its pause — a second on the
+                    // same tap is dropped (the `ChooseManaColor` answer path doesn't re-enter this
+                    // watch to queue another). No pool board stacks two. Queue them if one ever does.
+                    LandTapBonusColor::AnyColor => {
+                        any_color_source.get_or_insert(id);
+                    }
+                }
+            }
+        }
+
+        for _ in 0..produced_bonuses {
+            self.push_apply(
+                events,
+                Event::ManaAdded {
+                    player,
+                    mana: produced,
+                    amount: 1,
+                    persist: false,
+                },
+            );
+        }
+        if let Some(source) = any_color_source {
+            pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseManaColor {
+                    player,
+                    source,
+                    amount: 1,
+                },
+            );
+        }
     }
 
     /// Pay 1 life to add {C} under Yavimaya Bloomsage's Channel grant (a CR 605 mana ability —

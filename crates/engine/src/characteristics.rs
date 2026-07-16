@@ -1274,6 +1274,31 @@ impl Game {
         false
     }
 
+    /// Whether `target` itself carries Phantom Centaur's self-shield (CR 615: "If damage would
+    /// be dealt to Phantom Centaur, prevent that damage."). Unlike
+    /// [`Game::noncombat_damage_prevented_to_creature`]'s "other creatures you control" scan,
+    /// this is self-only — true iff `target` has a `(Timing::Static,
+    /// PreventDamageToSelfRemovingCounter)` ability of its own — and applies to combat damage
+    /// too (Tajic's static skips combat; Phantom Centaur's doesn't).
+    pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
+        self.functional_abilities(target).iter().any(|ability| {
+            ability.timing == Timing::Static
+                && matches!(ability.effect, Effect::PreventDamageToSelfRemovingCounter)
+        })
+    }
+
+    /// The "remove a +1/+1 counter" event Phantom Centaur's shield fires alongside each
+    /// prevented damage-dealing event (CR 615) — `None` when there's no counter left to remove
+    /// (the shield still applies; it just has nothing to take, CR 615's replacement effect
+    /// doesn't create counters from nothing).
+    pub(crate) fn phantom_shield_counter_removal(&self, target: ObjectId) -> Option<Event> {
+        (self.plus_counters(target) > 0).then_some(Event::CountersPlaced {
+            object: target,
+            count: -1,
+            source_name: self.def_of(target).name,
+        })
+    }
+
     /// The total (power, toughness) bonus [`Game::matching_anthems`] grants to `candidate`.
     pub(crate) fn anthem_pt_bonus(&self, candidate: ObjectId) -> (i32, i32) {
         let owner = self.owner_of(candidate);

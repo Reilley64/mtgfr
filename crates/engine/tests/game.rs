@@ -65156,6 +65156,154 @@ fn tajic_prevents_fight_damage_to_your_creature() {
     );
 }
 
+// Phantom Centaur (CR 615): "Protection from black / Phantom Centaur enters with two +1/+1
+// counters on it. / If damage would be dealt to Phantom Centaur, prevent that damage. Remove a
+// +1/+1 counter from Phantom Centaur." A self-only shield, disjoint from Tajic's "other
+// creatures" static: it prevents ALL damage (combat and noncombat) to ITSELF, and each prevented
+// damage-dealing event removes one +1/+1 counter (still applies, removing nothing, at zero).
+
+#[test]
+fn phantom_centaur_prevents_combat_damage_and_removes_a_counter() {
+    let mut g = TestGame::new();
+    let centaur = g.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur"));
+    g.add_plus_counter(centaur); // entered with two +1/+1 counters (2/2)
+    g.add_plus_counter(centaur);
+    let blocker = g.spawn_on_battlefield(PlayerId(1), creature("Blocker 3/3", 3, 3, &[]));
+
+    attack_with(&mut g, vec![centaur]);
+    block_with(&mut g, vec![(blocker, centaur)]).unwrap();
+    advance_until(&mut g, |g| g.current_step() == Step::EndCombat);
+
+    let centaur = g.current_id(centaur);
+    assert_eq!(
+        g.marked_damage(centaur),
+        0,
+        "the combat damage is prevented"
+    );
+    assert_eq!(
+        g.zone_of(centaur),
+        Zone::Battlefield,
+        "Phantom Centaur survives the prevented hit"
+    );
+    assert_eq!(
+        g.plus_counters(centaur),
+        1,
+        "one +1/+1 counter is removed for the prevented damage event"
+    );
+}
+
+#[test]
+fn phantom_centaur_prevents_combat_damage_as_a_blocker() {
+    // CR 615's shield is symmetric across combat roles: it prevents the damage an attacker
+    // assigns to a *blocking* Phantom Centaur too, removing one +1/+1 counter. The
+    // attacker-to-blocker damage path is separate from the blocker-to-attacker one.
+    let mut g = TestGame::new();
+    let attacker = g.spawn_on_battlefield(PlayerId(0), creature("Attacker 3/3", 3, 3, &[]));
+    let centaur = g.spawn_on_battlefield(PlayerId(1), card("Phantom Centaur"));
+    g.add_plus_counter(centaur); // entered with two +1/+1 counters (2/2)
+    g.add_plus_counter(centaur);
+
+    attack_with(&mut g, vec![attacker]);
+    block_with(&mut g, vec![(centaur, attacker)]).unwrap();
+    advance_until(&mut g, |g| g.current_step() == Step::EndCombat);
+
+    let centaur = g.current_id(centaur);
+    assert_eq!(
+        g.marked_damage(centaur),
+        0,
+        "the attacker's combat damage is prevented while Phantom Centaur blocks"
+    );
+    assert_eq!(
+        g.zone_of(centaur),
+        Zone::Battlefield,
+        "Phantom Centaur survives blocking the attacker"
+    );
+    assert_eq!(
+        g.plus_counters(centaur),
+        1,
+        "one +1/+1 counter is removed while blocking for the prevented damage event"
+    );
+}
+
+#[test]
+fn phantom_centaur_prevents_noncombat_damage_and_removes_a_counter() {
+    let mut g = TestGame::new();
+    let centaur = g.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur"));
+    g.add_plus_counter(centaur);
+    g.add_plus_counter(centaur);
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_2);
+
+    g.cast(burn).at(Target::Object(centaur)).resolve();
+
+    let centaur = g.current_id(centaur);
+    assert_eq!(g.marked_damage(centaur), 0, "the burn damage is prevented");
+    assert_eq!(
+        g.plus_counters(centaur),
+        1,
+        "one +1/+1 counter is removed for the prevented damage event"
+    );
+}
+
+#[test]
+fn phantom_centaur_prevents_at_zero_counters_removing_nothing() {
+    // At zero +1/+1 counters Phantom Centaur is a 0/0, but CR 615 says the shield still
+    // applies — prevention doesn't stop, it just has nothing left to remove. Assert the
+    // prevention itself (no `DamageMarked`, no `CountersPlaced`), not survival — a 0/0 dies
+    // to the toughness SBA regardless of whether damage ever landed.
+    let mut game = Game::new();
+    let centaur = game.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur")); // 0/0, no counters
+    let burn = game.spawn_in_hand(PlayerId(0), BURN_FIXED_2);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: burn,
+        target: Some(Target::Object(centaur)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    let events = resolve_top_of_stack_events(&mut game);
+
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::DamageMarked { object, .. } if *object == centaur)),
+        "damage to Phantom Centaur is still prevented at zero counters: {events:?}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::CountersPlaced { object, .. } if *object == centaur)),
+        "there is no counter left to remove, so no counter event fires: {events:?}"
+    );
+}
+
+#[test]
+fn phantom_centaur_shield_does_not_protect_other_creatures() {
+    // The shield is self-only (CR 615 reads "Phantom Centaur", not "other creatures you
+    // control" like Tajic) — a second creature under the same controller is unprotected.
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur"));
+    let ally = g.spawn_on_battlefield(PlayerId(0), creature("Ally 3/3", 3, 3, &[]));
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_2);
+
+    g.cast(burn).at(Target::Object(ally)).resolve();
+
+    assert_eq!(
+        g.marked_damage(g.current_id(ally)),
+        2,
+        "Phantom Centaur's shield doesn't extend to other creatures you control"
+    );
+}
+
 // ── Guild/shard mana lands: taplands, Signets, a Panorama fetch, and the karoos ────────
 
 #[test]
@@ -67267,4 +67415,208 @@ fn questing_phelddagrif_blue_lets_opponent_may_draw() {
         "accepting draws the targeted opponent a card"
     );
     assert!(hand.contains(&game.current_id(lib[0])));
+}
+
+/// Cast an Aura from `player`'s hand at `host`, resolving it onto the battlefield attached.
+/// Assumes the mana is already in `player`'s pool.
+fn cast_aura_at(game: &mut Game, player: PlayerId, aura: ObjectId, host: ObjectId) {
+    game.submit(Intent::Cast {
+        player,
+        object: aura,
+        target: Some(Target::Object(host)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("the Aura is castable at its host");
+    resolve_top_of_stack(game);
+}
+
+// Fertile Ground: "Whenever enchanted land is tapped for mana, its controller adds an additional
+// one mana of any color." The bonus is "any color", so it pauses on ChooseManaColor riding the tap.
+#[test]
+fn fertile_ground_adds_bonus_mana_of_chosen_color_when_enchanted_land_taps() {
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Fertile Ground"));
+    tap_forests(&mut game, 2); // {1}{G}
+    cast_aura_at(&mut game, PlayerId(0), aura, forest);
+    assert_eq!(
+        game.attachments(forest).len(),
+        1,
+        "Fertile Ground resolves attached to the land it enchants"
+    );
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        1,
+        "the enchanted Forest's own tap still adds its {{G}} first"
+    );
+    let Some(PendingChoice::ChooseManaColor { player, .. }) = game.pending_choice() else {
+        panic!("the 'any color' bonus pauses on ChooseManaColor");
+    };
+    assert_eq!(player, PlayerId(0), "the land's controller names the color");
+
+    game.submit(Intent::ChooseManaColor {
+        player: PlayerId(0),
+        color: Color::Blue,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Blue),
+        1,
+        "the chosen color's bonus mana lands in the pool"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        1,
+        "the base {{G}} is untouched by the bonus"
+    );
+}
+
+// Fertile Ground only watches the land it enchants — tapping any other land you control adds no bonus.
+#[test]
+fn fertile_ground_bonus_only_on_enchanted_land() {
+    let mut game = Game::new();
+    let enchanted = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let other = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Fertile Ground"));
+    tap_forests(&mut game, 2); // {1}{G}
+    cast_aura_at(&mut game, PlayerId(0), aura, enchanted);
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: other,
+    })
+    .unwrap();
+
+    assert!(
+        game.pending_choice().is_none(),
+        "tapping an unenchanted land raises no bonus choice"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        1,
+        "only the land's own {{G}} is added"
+    );
+}
+
+// Mirari's Wake: "Whenever you tap a land for mana, add one mana of any type that land produced."
+// A Forest produces {G}, so the bonus is {G} — no pause (the produced type is a single concrete color).
+#[test]
+fn miraris_wake_adds_matching_bonus_when_you_tap_a_land() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+
+    assert!(
+        game.pending_choice().is_none(),
+        "a single-color produced bonus needs no choice"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        2,
+        "the Forest's own {{G}} plus one matching {{G}} bonus"
+    );
+}
+
+// Mirari's Wake also fires off an `add_mana` land's tap (the second land-tap choke): Caves of
+// Koilos taps for {C} via its free ability, so the bonus copies {C}.
+#[test]
+fn miraris_wake_bonus_fires_on_an_add_mana_land_tap() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let caves = game.spawn_on_battlefield(PlayerId(0), card("Caves of Koilos"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: caves,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        2,
+        "the land's own {{C}} plus one matching {{C}} bonus"
+    );
+}
+
+// Mirari's Wake is controller-scoped ("whenever YOU tap a land") — an opponent tapping a land triggers nothing.
+#[test]
+fn miraris_wake_no_bonus_when_opponent_taps() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: forest,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.mana_in_pool(PlayerId(1), Color::Green),
+        1,
+        "an opponent's land tap gets no Mirari's Wake bonus"
+    );
+}
+
+// Mirari's Wake watches only LAND taps ("tap a land for mana") — a mana rock (Sol Ring) triggers nothing.
+#[test]
+fn miraris_wake_no_bonus_when_non_land_taps_for_mana() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let sol_ring = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: sol_ring,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        2,
+        "Sol Ring adds its own {{C}}{{C}}"
+    );
+    for color in Color::ALL {
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), color),
+            0,
+            "no colored bonus from a non-land mana source"
+        );
+    }
+}
+
+// Mirari's Wake's other half is a plain anthem: "Creatures you control get +1/+1."
+#[test]
+fn miraris_wake_anthem_gives_your_creatures_plus_one_plus_one() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // printed 2/2
+
+    assert_eq!(
+        (game.power(bear), game.toughness(bear)),
+        (3, 3),
+        "the anthem buffs your creatures +1/+1"
+    );
 }

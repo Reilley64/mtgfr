@@ -2002,6 +2002,13 @@ impl Game {
                     }
                 }
             }
+            // Fertile Ground / Mirari's Wake fire off an `add_mana` land's tap too (a painland,
+            // filter land, or any land whose mana is an explicit ability rather than `produces`
+            // sugar). The helper's land-guard skips a non-land mana source (Sol Ring, a dork).
+            // ponytail: a `single_color` land (Lotus Field) returns above before reaching here, so
+            // its tap fires no watch — no pool land is both `single_color` and a watch host; move
+            // this call above that early return if one ever is.
+            self.land_tapped_for_mana(object, player, &mut events);
             return Ok(events);
         }
 
