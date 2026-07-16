@@ -46,7 +46,7 @@ Home k3s host (separate machine)
     │     ├─ Deployment edh-web          (SolidStart Node BFF, distroless)
     │     ├─ Deployment edh-api          (serve; active)
     │     ├─ Deployment edh-api-drain    (serve; during rolls only)
-    │     ├─ Deployment edh-api-proxy    (nginx; cookie sticky on mtgfr-instance)
+    │     ├─ Deployment edh-proxy    (nginx; cookie sticky on mtgfr-instance)
     │     ├─ Job edh-migrate             (server migration apply, before API roll)
     │     ├─ StatefulSet postgres        (official postgres image; mtgfr DB)
     │     └─ Deployment cloudflared      (tunnel connector)
@@ -56,7 +56,7 @@ Internet ── Cloudflare (DNS + Tunnel) ──► cloudflared ──► Cluste
                     │                         │
                     │              /api/* → API_UPSTREAM
                     │                         ▼
-                    │                   edh-api-proxy:8080
+                    │                   edh-proxy:8080
                     │                         │
                                     nginx sticky on mtgfr-instance
                                                     │
@@ -71,9 +71,9 @@ Internet ── Cloudflare (DNS + Tunnel) ──► cloudflared ──► Cluste
 
 | Host | Serves | Tunnel ingress |
 |------|--------|----------------|
-| `edh.example.com` | SolidStart SPA + `/api` BFF → `edh-api-proxy` | `http://edh-web.edh.svc:8080` |
+| `edh.example.com` | SolidStart SPA + `/api` BFF → `edh-proxy` | `http://edh-web.edh.svc:8080` |
 
-Cloudflare Tunnel maps the hostname to **one** origin URL. Cookie sticky load balancing lives in-cluster: **nginx** (`edh-api-proxy`) routes on `mtgfr-instance` to `edh-api` / `edh-api-drain`. Browser → tunnel → `edh-web` → (ClusterIP) `edh-api-proxy` → API pods. NetworkPolicy allows `edh-web` (and not the public internet) to reach the proxy.
+Cloudflare Tunnel maps the hostname to **one** origin URL. Cookie sticky load balancing lives in-cluster: **nginx** (`edh-proxy`) routes on `mtgfr-instance` to `edh-api` / `edh-api-drain`. Browser → tunnel → `edh-web` → (ClusterIP) `edh-proxy` → API pods. NetworkPolicy allows `edh-web` (and not the public internet) to reach the proxy.
 
 Browser paths keep the `/api` prefix; the BFF strips it before Axum (routes are `/auth/...`, `/tables/...`, not `/api/auth/...`).
 
@@ -153,7 +153,7 @@ Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-ca
 
 ### Sticky proxy — nginx
 
-`edh-api-proxy` is an **nginx** Deployment + ConfigMap + Service. Route by cookie value (OSS-friendly — e.g. `map` / `hash $cookie_mtgfr_instance` onto named upstreams `edh-api` and `edh-api-drain`), with **default upstream = active (`edh-api`)** when the cookie is absent or unknown. Do not use nginx Plus–only `sticky` directive.
+`edh-proxy` is an **nginx** Deployment + ConfigMap + Service. Route by cookie value (OSS-friendly — e.g. `map` / `hash $cookie_mtgfr_instance` onto named upstreams `edh-api` and `edh-api-drain`), with **default upstream = active (`edh-api`)** when the cookie is absent or unknown. Do not use nginx Plus–only `sticky` directive.
 
 ### What mtgfr Terraform owns
 
@@ -163,7 +163,7 @@ Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-ca
 | `kubernetes_namespace.edh` | Isolation boundary for workloads |
 | `edh-web` Deployment + Service | Static client |
 | `edh-api` / `edh-api-drain` Deployments + Services | Active + draining peers; stable `INSTANCE_ID` per Deployment |
-| `edh-api-proxy` | nginx sticky router (tunnel origin for API) |
+| `edh-proxy` | nginx sticky router (tunnel origin for API) |
 | `edh-migrate` Job | Runs `server migration apply` before API rollout (`generateName`) |
 | StatefulSet `postgres` | Official `postgres` image; dedicated `mtgfr` role/DB; backups = k3s/PVC snapshots |
 | NetworkPolicy | Deny public/tunnel access to `/admin/*` and drain health used by orchestrator |
@@ -227,7 +227,7 @@ DNS for the public host is **owned by mtgfr Terraform** (with the tunnel resourc
 ```mermaid
 sequenceDiagram
     participant TF as Terraform / deploy script
-    participant Proxy as edh-api-proxy
+    participant Proxy as edh-proxy
     participant Old as edh-api-drain (live process)
     participant New as edh-api (active)
     participant Web as edh-web
@@ -246,7 +246,7 @@ sequenceDiagram
     TF->>Web: Bump edh-web to v1.3.0
 ```
 
-1. **Migrate**, then **start new API** alongside old as a second Deployment (`edh-api` active, rename/move prior to `edh-api-drain`). `edh-api-proxy` sends **new** / uncookied traffic to the non-draining instance. **Leave `edh-web` on the previous image** — do not bump `web_image` in this step.
+1. **Migrate**, then **start new API** alongside old as a second Deployment (`edh-api` active, rename/move prior to `edh-api-drain`). `edh-proxy` sends **new** / uncookied traffic to the non-draining instance. **Leave `edh-web` on the previous image** — do not bump `web_image` in this step.
 2. **Mark old instance draining** with a **live** toggle on the already-running process (`POST /admin/drain`, reachable **only in-cluster** — see NetworkPolicy). **Do not** flip `DRAIN` via Deployment env/annotation changes — that restarts the pod and wipes in-memory tables (ADR 0021).
 3. **Affinity:** every table is pinned to the instance that created it (see below). Players mid-game never cross instances.
 4. **Wait** until the old instance reports `active_tables: 0` on `GET /health/drain`, polled from the **apply machine** via `kubectl port-forward` to the drain pod/Service (apiserver path — allowed under the cluster-internal NetworkPolicy posture). Do **not** poll the public tunnel URL for drain orchestration.
@@ -278,7 +278,7 @@ ADR 0005 assumes a single instance. Rolling deploy requires a minimal routing co
    ```
    Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
    ```
-3. **`edh-api-proxy` (nginx)** routes on `mtgfr-instance` to the matching API Service, with **fallback to the non-draining** instance when the cookie is absent. `edh-web` sets `API_UPSTREAM` to this proxy Service (not exposed on the public tunnel).
+3. **`edh-proxy` (nginx)** routes on `mtgfr-instance` to the matching API Service, with **fallback to the non-draining** instance when the cookie is absent. `edh-web` sets `API_UPSTREAM` to this proxy Service (not exposed on the public tunnel).
 4. If a request hits the wrong instance (cookie points at a peer that no longer has the table), the server returns `404` / `410` and the client reconnects without the stale cookie (existing stream reconnect path).
 
 This avoids reshaping the wire API (no `table_id` in every path). Document the decision in a new ADR when implemented.
@@ -515,7 +515,7 @@ Same-origin `/api` always — no separate API hostname bake:
 
 | Env | Dev (`bun run dev`) | Prod (runtime) |
 |-----|---------------------|----------------|
-| (API origin) | `/api` → BFF → `API_UPSTREAM` (default `http://127.0.0.1:8080`) | `/api` → BFF → `API_UPSTREAM=http://edh-api-proxy…:8080` |
+| (API origin) | `/api` → BFF → `API_UPSTREAM` (default `http://127.0.0.1:8080`) | `/api` → BFF → `API_UPSTREAM=http://edh-proxy…:8080` |
 | `VITE_CARD_CDN` | optional | optional build-arg |
 
 `client/src/effect/client.ts` always prepends `/api`. SSE stream URL follows the same origin.
@@ -598,7 +598,7 @@ mtgfr/
     namespace.tf          # edh (+ terraform if not bootstrapped by hand)
     web.tf               # edh-web Deployment + Service
     api.tf               # edh-api + edh-api-drain Deployments/Services
-    api-proxy.tf         # nginx sticky on mtgfr-instance (tunnel origin)
+    proxy.tf             # nginx sticky on mtgfr-instance (edh-web API_UPSTREAM)
     postgres.tf          # StatefulSet + Service: official postgres image
     migrate.tf           # Job: toasty migration apply (generate_name + wait)
     tunnel.tf            # Cloudflare Tunnel + cloudflared + DNS records
@@ -637,7 +637,7 @@ env = [
 env = [
   { name = "HOST", value = "0.0.0.0" },
   { name = "PORT", value = "8080" },
-  { name = "API_UPSTREAM", value = "http://edh-api-proxy.edh.svc:8080" },
+  { name = "API_UPSTREAM", value = "http://edh-proxy.edh.svc:8080" },
 ]
 ```
 
@@ -824,7 +824,7 @@ Steps 5–6 stay manual for v1; a future `just deploy` / workflow can enforce �
 
 ### Deploy
 
-Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-api-proxy`. Image digests pinned in Terraform. From the apply machine: live `POST /admin/drain` and `GET /health/drain` via `kubectl port-forward` — not a plain `kubectl rollout`, and not via the public tunnel URL. **Do not** update `edh-web` in the same apply as the API roll; wait until drain empties so a mid-game refresh cannot pair a new SPA with the draining binary.
+Rolling sequence uses `edh-api` + `edh-api-drain` behind `edh-proxy`. Image digests pinned in Terraform. From the apply machine: live `POST /admin/drain` and `GET /health/drain` via `kubectl port-forward` — not a plain `kubectl rollout`, and not via the public tunnel URL. **Do not** update `edh-web` in the same apply as the API roll; wait until drain empties so a mid-game refresh cannot pair a new SPA with the draining binary.
 
 ## Phases
 

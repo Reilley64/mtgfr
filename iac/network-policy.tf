@@ -2,14 +2,19 @@
 # tunnel); apply machine uses kubectl port-forward". NetworkPolicy filters by pod/port (L3/L4), not
 # HTTP path, so the effective control here is narrower and stronger than just /admin* + drain: the
 # `cloudflared` pods (the only route from the public internet) are only ever allowed to reach
-# `edh-web` — never `edh-api` / `edh-api-drain` / `edh-api-proxy` directly. `edh-web` may reach
-# `edh-api-proxy` for the SolidStart `/api` BFF. The L7 half (nginx 404s `/admin/*` and
-# `/health/drain`) lives in api-proxy.tf.
+# `edh-web` — never `edh-api` / `edh-api-drain` / `edh-proxy` directly. `edh-web` may reach
+# `edh-proxy` for the SolidStart `/api` BFF. The L7 half (nginx 404s `/admin/*` and
+# `/health/drain`) lives in proxy.tf.
 #
 # `kubectl port-forward` from the apply machine goes through the kubelet directly into the pod's
 # network namespace rather than over the pod's normal CNI-managed ingress path, so it is not
 # subject to these Ingress NetworkPolicies on most CNIs — consistent with the deploy PRD's
 # assumption that port-forward is the one path allowed to reach /admin and /health/drain.
+
+moved {
+  from = kubernetes_network_policy_v1.edh_api_proxy_ingress
+  to   = kubernetes_network_policy_v1.edh_proxy_ingress
+}
 
 resource "kubernetes_network_policy_v1" "edh_api_ingress" {
   metadata {
@@ -29,7 +34,7 @@ resource "kubernetes_network_policy_v1" "edh_api_ingress" {
     ingress {
       from {
         pod_selector {
-          match_labels = { app = "edh-api-proxy" }
+          match_labels = { app = "edh-proxy" }
         }
       }
 
@@ -43,15 +48,15 @@ resource "kubernetes_network_policy_v1" "edh_api_ingress" {
   }
 }
 
-resource "kubernetes_network_policy_v1" "edh_api_proxy_ingress" {
+resource "kubernetes_network_policy_v1" "edh_proxy_ingress" {
   metadata {
-    name      = "edh-api-proxy-ingress"
+    name      = "edh-proxy-ingress"
     namespace = local.namespace
   }
 
   spec {
     pod_selector {
-      match_labels = { app = "edh-api-proxy" }
+      match_labels = { app = "edh-proxy" }
     }
 
     # Public traffic reaches the API only via edh-web's `/api` BFF (or historically via

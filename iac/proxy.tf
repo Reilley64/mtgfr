@@ -1,10 +1,28 @@
-# Sticky proxy for the API host: cookie `mtgfr-instance` → edh-api / edh-api-drain.
+# Sticky proxy for the API: cookie `mtgfr-instance` → edh-api / edh-api-drain.
 # When api_drain_enabled is false, map drain cookie → edh-api (stale cookies after teardown).
 # 404 /admin/* and /health/drain on the public path (NetworkPolicy is L3/L4 only).
+#
+# Terraform address renames (state continuity). Kubernetes object names still change from
+# `edh-api-proxy*` → `edh-proxy*` on apply (replace), which is intentional.
 
-resource "kubernetes_config_map_v1" "edh_api_proxy" {
+moved {
+  from = kubernetes_config_map_v1.edh_api_proxy
+  to   = kubernetes_config_map_v1.edh_proxy
+}
+
+moved {
+  from = kubernetes_deployment_v1.edh_api_proxy
+  to   = kubernetes_deployment_v1.edh_proxy
+}
+
+moved {
+  from = kubernetes_service_v1.edh_api_proxy
+  to   = kubernetes_service_v1.edh_proxy
+}
+
+resource "kubernetes_config_map_v1" "edh_proxy" {
   metadata {
-    name      = "edh-api-proxy-nginx"
+    name      = "edh-proxy-nginx"
     namespace = local.namespace
   }
 
@@ -53,25 +71,25 @@ resource "kubernetes_config_map_v1" "edh_api_proxy" {
   }
 }
 
-resource "kubernetes_deployment_v1" "edh_api_proxy" {
+resource "kubernetes_deployment_v1" "edh_proxy" {
   wait_for_rollout = true
 
   metadata {
-    name      = "edh-api-proxy"
+    name      = "edh-proxy"
     namespace = local.namespace
-    labels    = merge(local.common_labels, { app = "edh-api-proxy" })
+    labels    = merge(local.common_labels, { app = "edh-proxy" })
   }
 
   spec {
     replicas = 1
 
     selector {
-      match_labels = { app = "edh-api-proxy" }
+      match_labels = { app = "edh-proxy" }
     }
 
     template {
       metadata {
-        labels = merge(local.common_labels, { app = "edh-api-proxy" })
+        labels = merge(local.common_labels, { app = "edh-proxy" })
       }
 
       spec {
@@ -94,7 +112,7 @@ resource "kubernetes_deployment_v1" "edh_api_proxy" {
           name = "nginx-conf"
 
           config_map {
-            name = kubernetes_config_map_v1.edh_api_proxy.metadata[0].name
+            name = kubernetes_config_map_v1.edh_proxy.metadata[0].name
           }
         }
       }
@@ -102,17 +120,17 @@ resource "kubernetes_deployment_v1" "edh_api_proxy" {
   }
 }
 
-resource "kubernetes_service_v1" "edh_api_proxy" {
+resource "kubernetes_service_v1" "edh_proxy" {
   wait_for_load_balancer = false
 
   metadata {
-    name      = "edh-api-proxy"
+    name      = "edh-proxy"
     namespace = local.namespace
-    labels    = merge(local.common_labels, { app = "edh-api-proxy" })
+    labels    = merge(local.common_labels, { app = "edh-proxy" })
   }
 
   spec {
-    selector = { app = "edh-api-proxy" }
+    selector = { app = "edh-proxy" }
 
     port {
       port        = 8080

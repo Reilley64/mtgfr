@@ -24,7 +24,7 @@ COPY --from=build /client/.output ./.output
 ENV HOST=0.0.0.0
 ENV PORT=8080
 # In-cluster Axum behind nginx sticky (overridden in web.tf).
-ENV API_UPSTREAM=http://edh-api-proxy.edh.svc.cluster.local:8080
+ENV API_UPSTREAM=http://edh-proxy.edh.svc.cluster.local:8080
 EXPOSE 8080
 USER nonroot:nonroot
 CMD [".output/server/index.mjs"]

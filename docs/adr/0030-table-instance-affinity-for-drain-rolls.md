@@ -22,7 +22,7 @@ ADR 0005's single-instance assumption doesn't say how a client finds the *right*
   ```
   Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
   ```
-- `edh-api-proxy` (nginx, `iac/api-proxy.tf`) reads `mtgfr-instance` and routes to the matching
+- `edh-proxy` (nginx, `iac/proxy.tf`) reads `mtgfr-instance` and routes to the matching
   Service, defaulting to the **active** instance (`edh-api`) when the cookie is absent or names a
   peer that no longer exists. Public traffic reaches the proxy only through `edh-web` (`API_UPSTREAM`).
 - If a request lands on the wrong instance (cookie points at a peer that doesn't have the table),
@@ -30,7 +30,8 @@ ADR 0005's single-instance assumption doesn't say how a client finds the *right*
   cookie and retries.
 - The affinity cookie is independent of the **auth session** cookie: both are host-only on edh
   when `COOKIE_DOMAIN` is empty; `mtgfr-instance` ignores `cookie_domain` either way. The BFF
-  forwards `Cookie` / `Set-Cookie` on the ClusterIP hop to nginx.- Terraform models the outgoing peer as a second Deployment/Service (`edh-api-drain`), gated by a
+  forwards `Cookie` / `Set-Cookie` on the ClusterIP hop to nginx.
+- Terraform models the outgoing peer as a second Deployment/Service (`edh-api-drain`), gated by a
   variable (`api_drain_enabled`) rather than always present — it exists only for the duration of a
   roll (`iac/api.tf`).
 
@@ -51,6 +52,6 @@ ADR 0005's single-instance assumption doesn't say how a client finds the *right*
   API version its table cookie points at, and only the previous SPA build is guaranteed to.
 - Admin/drain endpoints (`POST /admin/drain`, `GET /health/drain`) are deliberately **not** routed
   by the sticky proxy at all — `iac/network-policy.tf` blocks `cloudflared` from reaching
-  `edh-api`/`edh-api-drain` directly, and `iac/api-proxy.tf` 404s those paths even for the one
-  Service (`edh-api-proxy`) the tunnel can reach. The apply machine reaches them only via
-  `kubectl port-forward`.
+  `edh-api`/`edh-api-drain` (and `edh-proxy` is only reachable from `edh-web`), and
+  `iac/proxy.tf` 404s those paths even if something hits the proxy. The apply machine reaches
+  them only via `kubectl port-forward`.

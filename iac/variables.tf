@@ -21,7 +21,7 @@ variable "namespace_terraform" {
 }
 
 variable "namespace_edh" {
-  description = "Namespace holding all edh workloads (web, api, api-drain, api-proxy, postgres, cloudflared)."
+  description = "Namespace holding all edh workloads (web, api, api-drain, proxy, postgres, cloudflared)."
   type        = string
   default     = "edh"
 }

@@ -50,7 +50,7 @@ resource "kubernetes_deployment_v1" "edh_web" {
           # SolidStart BFF proxies same-origin `/api/*` to the sticky nginx (strip `/api`).
           env {
             name  = "API_UPSTREAM"
-            value = "http://${kubernetes_service_v1.edh_api_proxy.metadata[0].name}.${local.namespace}.svc:8080"
+            value = "http://${kubernetes_service_v1.edh_proxy.metadata[0].name}.${local.namespace}.svc:8080"
           }
         }
       }

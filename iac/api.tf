@@ -1,7 +1,7 @@
 # Deploy PRD §Rolling deployment model / §Table-instance affinity. Two peer Deployments —
 # `edh-api` (active) and `edh-api-drain` (present only mid-roll) — each with a stable INSTANCE_ID
 # env var (not the pod name; pod names change on restart/reschedule and would invalidate sticky
-# cookies). `edh-api-proxy` (api-proxy.tf) routes on the `mtgfr-instance` cookie between them.
+# cookies). `edh-proxy` (proxy.tf) routes on the `mtgfr-instance` cookie between them.
 #
 # `DRAIN` here is a *startup* default only — the live drain toggle is `POST /admin/drain` against
 # the already-running process (deploy PRD §Rolling deployment model step 2). Flipping this env var
