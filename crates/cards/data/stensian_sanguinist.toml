@@ -1,0 +1,60 @@
+# [Stensian Sanguinist]
+# Whenever you attack, target creature gains deathtouch until end of turn. Whenever that creature deals combat damage to
+# a player this combat, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so
+# unprepares it.)
+# [Exsanguinate]
+# Each opponent loses X life. You gain life equal to the life lost this way.
+name = "Stensian Sanguinist"
+otags = ["alliteration", "attack-trigger", "attacking-matters", "cycle-soc-guest-lecturer", "delayed-trigger", "drain-life", "gives-castable-from-exile", "gives-deathtouch", "group-slug", "opponent-loses-life", "per-player", "repeatable-crime"]
+oracle = "Whenever you attack, target creature gains deathtouch until end of turn. Whenever that creature deals combat damage to a player this combat, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Each opponent loses X life. You gain life equal to the life lost this way."
+set = "soc"
+subtypes = ["Vampire", "Cleric"]
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever you attack, target creature gains deathtouch until end of turn. Whenever that creature
+# deals combat damage to a player this combat, this creature becomes prepared.
+[[abilities]]
+timing = "you_attack_with_creatures"
+at_least = 1
+
+# target creature gains deathtouch until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+target = "creature"
+power = 0
+toughness = 0
+keywords = ["deathtouch"]
+
+# Whenever that creature deals combat damage to a player this combat, this creature becomes
+# prepared.
+[[abilities.effects]]
+type = "arm_combat_damage_watch"
+
+[back]
+name = "Exsanguinate"
+set = "soc"
+
+[back.cost]
+x = true
+black = 2
+
+[back.kind]
+type = "sorcery"
+
+# Each opponent loses X life. You gain life equal to the life lost this way.
+[[back.abilities]]
+timing = "spell"
+
+# Each opponent loses X life. You gain life equal to the life lost this way.
+[[back.abilities.effects]]
+type = "each_opponent_drain"
+amount = "x"
+sum_gain = true

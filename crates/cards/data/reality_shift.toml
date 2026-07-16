@@ -1,0 +1,27 @@
+# Exile target creature. Its controller manifests the top card of their library. (That player puts the top card of their
+# library onto the battlefield face down as a 2/2 creature. If it's a creature card, it can be turned face up any time
+# for its mana cost.)
+name = "Reality Shift"
+otags = ["drawback", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
+oracle = "Exile target creature. Its controller manifests the top card of their library. (That player puts the top card of their library onto the battlefield face down as a 2/2 creature. If it's a creature card, it can be turned face up any time for its mana cost.)"
+set = "soc"
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Exile target creature. Its controller manifests the top card of their library.
+[[abilities]]
+timing = "spell"
+
+# Exile target creature.
+[[abilities.effects]]
+type = "exile_target"
+target = "creature"
+
+# Its controller manifests the top card of their library.
+[[abilities.effects]]
+type = "manifest"

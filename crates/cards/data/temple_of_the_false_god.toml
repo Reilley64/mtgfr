@@ -1,0 +1,25 @@
+# {T}: Add {C}{C}. Activate only if you control five or more lands.
+# Temple of the False God: "{T}: Add {C}{C}. Activate only if you control five or more lands."
+# No `produces`, so the only mana ability is the exact "{T}: Add {C}{C}" below, gated on the
+# five-land activation restriction (checked at activation legality).
+name = "Temple of the False God"
+otags = ["activated-ability", "adds-multiple-mana", "lands-matter", "ramp", "sol-land"]
+oracle = "{T}: Add {C}{C}. Activate only if you control five or more lands."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}{C}. Activate only if you control five or more lands.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.condition]
+type = "you_control_lands"
+at_least = 5
+
+# Add {C}{C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless", "colorless"]

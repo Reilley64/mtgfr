@@ -1,0 +1,34 @@
+# If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead.
+# If an effect would put one or more counters on a permanent you control, it puts twice that many of those counters on
+# that permanent instead.
+name = "Doubling Season"
+otags = ["synergy-planeswalker", "synergy-token", "token-doubler", "counter-doubler"]
+oracle = "If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead.\nIf an effect would put one or more counters on a permanent you control, it puts twice that many of those counters on that permanent instead."
+set = "fdn"
+
+[cost]
+generic = 4
+green = 2
+
+[kind]
+type = "enchantment"
+
+# If an effect would create one or more tokens under your control, it creates twice that many
+# of those tokens instead.
+[[abilities]]
+timing = "static"
+
+# it creates twice that many of those tokens instead
+[[abilities.effects]]
+type = "token_replacement"
+times = 2
+
+# If an effect would put one or more counters on a permanent you control, it puts twice that many
+# of those counters on that permanent instead.
+[[abilities]]
+timing = "static"
+
+# it puts twice that many of those counters on that permanent instead
+[[abilities.effects]]
+type = "counter_replacement"
+times = 2

@@ -1,0 +1,17 @@
+# ({T}: Add {R} or {W}.)
+# This land enters tapped unless you control two or more basic lands.
+# Radiant Summit (msc): Land — Mountain Plains.
+name = "Radiant Summit"
+otags = ["activated-ability", "cycle-tangoland", "lands-matter", "nonbasic-basic-land-type", "synergy-basic"]
+oracle = "({T}: Add {R} or {W}.)\nThis land enters tapped unless you control two or more basic lands."
+set = "msc"
+identity = ["red", "white"]
+
+[kind]
+type = "land"
+produces = ["red", "white"]
+subtypes = ["Mountain", "Plains"]
+
+[enters_tapped_unless]
+type = "controls_basic_lands"
+count = 2

@@ -1,0 +1,47 @@
+# Council's dilemma — Starting with you, each player votes for past or present. You mill a card for each past vote, then
+# Fateful Tempest deals damage to each opponent equal to the total mana value of cards milled this way. Exile the top
+# card of your library for each present vote. Until the end of your next turn, you may play the exiled cards.
+name = "Fateful Tempest"
+otags = ["burn-player", "group-slug", "long-term-impulsive-draw", "mana-value-matters", "mill-self", "named-choice", "voting"]
+oracle = "Council's dilemma — Starting with you, each player votes for past or present. You mill a card for each past vote, then Fateful Tempest deals damage to each opponent equal to the total mana value of cards milled this way. Exile the top card of your library for each present vote. Until the end of your next turn, you may play the exiled cards."
+set = "soc"
+# ponytail: "deals damage to each opponent" is modeled as each opponent losing life — the engine
+# uniformly resolves damage to a player as life loss (Effect::DealDamage's Target::Player arm), so
+# no player-damage prevention/redirection or "deals damage" watch is expressible in the pool.
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "sorcery"
+
+# Council's dilemma — Starting with you, each player votes for past or present. You mill a card for
+# each past vote, then Fateful Tempest deals damage to each opponent equal to the total mana value
+# of cards milled this way. Exile the top card of your library for each present vote. Until the end
+# of your next turn, you may play the exiled cards.
+[[abilities]]
+timing = "spell"
+
+# Starting with you, each player votes for past or present.
+[[abilities.effects]]
+type = "councils_dilemma_vote"
+options = ["past", "present"]
+
+# You mill a card for each past vote,
+[[abilities.effects]]
+type = "mill_self"
+count = "past_votes"
+
+# then Fateful Tempest deals damage to each opponent equal to the total mana value of cards milled
+# this way.
+[[abilities.effects]]
+type = "each_opponent_loses_life"
+amount = "total_mana_value_milled_this_way"
+
+# Exile the top card of your library for each present vote. Until the end of your next turn, you
+# may play the exiled cards.
+[[abilities.effects]]
+type = "exile_top_may_play"
+count = "present_votes"
+until_next_turn = true

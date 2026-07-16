@@ -1,0 +1,61 @@
+# This creature enters with X +1/+1 counters on it.
+# When this creature dies, create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter on
+# this creature.
+# {1}, {T}: Put a +1/+1 counter on this creature.
+name = "Hangarback Walker"
+otags = ["activated-ability", "evasion", "gains-pp-counters", "pp-counters-matter", "repeatable-pp-counters", "splits-on-death", "virtual-legendary"]
+oracle = "This creature enters with X +1/+1 counters on it.\nWhen this creature dies, create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter on this creature.\n{1}, {T}: Put a +1/+1 counter on this creature."
+set = "soc"
+subtypes = ["Construct"]
+
+[cost]
+x = 2
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+also = ["artifact"]
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+
+# When this creature dies, create a 1/1 colorless Thopter artifact creature token with flying
+# for each +1/+1 counter on this creature.
+[[abilities]]
+timing = "dies"
+
+# create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter
+# on this creature
+[[abilities.effects]]
+type = "create_token"
+count = "per_counter_on_source"
+
+[abilities.effects.token]
+name = "Thopter"
+subtypes = ["Thopter"]
+keywords = ["flying"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 1
+toughness = 1
+also = ["artifact"]
+
+# {1}, {T}: Put a +1/+1 counter on this creature.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Put a +1/+1 counter on this creature.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"

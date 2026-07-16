@@ -1,0 +1,20 @@
+# Target player draws three cards.
+name = "Ancestral Recall"
+otags = ["burst-draw", "cycle-lea-boon", "force-draw", "hand-positive", "power-nine", "single-target-instant-sorcery", "pure-draw"]
+oracle = "Target player draws three cards."
+set = "vma"
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Target player draws three cards.
+[[abilities]]
+timing = "spell"
+
+# Target player draws three cards.
+[[abilities.effects]]
+type = "target_player_draws"
+count = 3

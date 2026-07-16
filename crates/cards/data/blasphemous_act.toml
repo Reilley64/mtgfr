@@ -1,0 +1,25 @@
+# This spell costs {1} less to cast for each creature on the battlefield.
+# Blasphemous Act deals 13 damage to each creature.
+# "This spell costs {1} less to cast for each creature on the battlefield.
+#  Blasphemous Act deals 13 damage to each creature." — {8}{R} sorcery.
+name = "Blasphemous Act"
+otags = ["affinity-for-creatures", "burn-creature", "hate-wide", "sweeper", "symmetrical"]
+oracle = "This spell costs {1} less to cast for each creature on the battlefield.\nBlasphemous Act deals 13 damage to each creature."
+set = "msc"
+
+[cost]
+generic = 8
+red = 1
+reduce_own_generic = "per_creature_on_battlefield"
+
+[kind]
+type = "sorcery"
+
+# Blasphemous Act deals 13 damage to each creature.
+[[abilities]]
+timing = "spell"
+
+# Blasphemous Act deals 13 damage to each creature.
+[[abilities.effects]]
+type = "damage_each_creature"
+amount = 13

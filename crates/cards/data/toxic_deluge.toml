@@ -1,0 +1,33 @@
+# As an additional cost to cast this spell, pay X life.
+# All creatures get -X/-X until end of turn.
+# "As an additional cost to cast this spell, pay X life. All creatures get -X/-X until end of
+#  turn." — {2}{B} sorcery.
+#
+# ponytail: `x = true` is the CR 601.2b chooser (X is chosen when the spell is cast); `[cost.
+# additional] pay_life = "x"` redirects that chosen X to the CR 601.2f additional cost — paid as
+# life, not mana — instead of folding it into the mana cost.
+name = "Toxic Deluge"
+otags = ["life-payment", "removal-toughness", "sweeper", "symmetrical"]
+oracle = "As an additional cost to cast this spell, pay X life.\nAll creatures get -X/-X until end of turn."
+set = "msc"
+
+[cost]
+generic = 2
+black = 1
+x = true
+
+[cost.additional]
+pay_life = "x"
+
+[kind]
+type = "sorcery"
+
+# All creatures get -X/-X until end of turn.
+[[abilities]]
+timing = "spell"
+
+# All creatures get -X/-X until end of turn.
+[[abilities.effects]]
+type = "weaken_each_creature"
+power = "x"
+toughness = "x"

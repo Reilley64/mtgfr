@@ -1,0 +1,24 @@
+# Search your library for a card, put that card into your hand, then shuffle.
+# Diabolic Tutor: "Search your library for a card, put that card into your hand, then shuffle."
+# The canonical unrestricted tutor — an any-card search to hand.
+name = "Diabolic Tutor"
+otags = ["tutor-card", "tutor-to-hand"]
+oracle = "Search your library for a card, put that card into your hand, then shuffle."
+set = "cma"
+
+[cost]
+generic = 2
+black = 2
+
+[kind]
+type = "sorcery"
+
+# Search your library for a card, put that card into your hand, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# Search your library for a card, put that card into your hand, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "any_card"
+to_zone = "hand"

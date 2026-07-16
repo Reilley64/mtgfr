@@ -1,0 +1,26 @@
+# Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.
+# Rampant Growth: "Search your library for a basic land card, put that card onto the
+# battlefield tapped, then shuffle." — the canonical two-mana ramp spell.
+name = "Rampant Growth"
+otags = ["tutor-land-basic", "tutor-land-to-battlefield", "land-ramp"]
+oracle = "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."
+set = "tdc"
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# Search your library for a basic land card, put that card onto the battlefield tapped, then
+# shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+tapped = true

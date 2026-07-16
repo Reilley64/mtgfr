@@ -1,0 +1,25 @@
+# This spell can't be countered.
+# You may have this creature enter as a copy of any creature on the battlefield, except it enters with X additional
+# +1/+1 counters on it.
+# Altered Ego (SOC): {X}{2}{G}{U} 0/0 Creature — Shapeshifter.
+name = "Altered Ego"
+otags = ["clone", "copy-creature", "cycle-inr-r-two-color", "cycle-soi-r-two-color", "gains-pp-counters", "hate-counterspell", "punny-name", "unique-mana-cost"]
+oracle = "This spell can't be countered.\nYou may have this creature enter as a copy of any creature on the battlefield, except it enters with X additional +1/+1 counters on it."
+set = "soc"
+subtypes = ["Shapeshifter"]
+uncounterable = true
+
+# You may have this creature enter as a copy of any creature on the battlefield, except it
+# enters with X additional +1/+1 counters on it.
+enter_as_copy = { extra_counters = "x" }
+
+[cost]
+generic = 2
+green = 1
+blue = 1
+x = true
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0

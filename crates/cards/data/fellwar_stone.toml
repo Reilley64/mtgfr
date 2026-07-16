@@ -1,0 +1,22 @@
+# {T}: Add one mana of any color that a land an opponent controls could produce.
+name = "Fellwar Stone"
+otags = ["activated-ability", "mana-rock", "refund"]
+oracle = "{T}: Add one mana of any color that a land an opponent controls could produce."
+set = "soc"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {T}: Add one mana of any color that a land an opponent controls could produce (CR intent):
+# resolved at tap time to the exact union of colors any opponent's lands could produce.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color that a land an opponent controls could produce.
+[[abilities.effects]]
+type = "add_mana"
+opponent_colors = 1

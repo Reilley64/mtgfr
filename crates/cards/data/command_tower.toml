@@ -1,0 +1,11 @@
+# {T}: Add one mana of any color in your commander's color identity.
+name = "Command Tower"
+otags = ["activated-ability", "rainbow-land", "synergy-color-share", "synergy-commander", "tutored-by-name", "virtual-legendary", "commander-identity-matters"]
+oracle = "{T}: Add one mana of any color in your commander's color identity."
+set = "msc"
+
+# {T}: Add one mana of any color in your commander's color identity (CR 903.4). Resolved to a
+# real Color/Either credit at tap time from the controller's commander.
+[kind]
+type = "land"
+produces = "commander_identity"

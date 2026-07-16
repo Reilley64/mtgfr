@@ -1,0 +1,60 @@
+# When this artifact enters, create a 1/1 white Spirit creature token with flying.
+# Whenever you create one or more creature tokens, put a story counter on this artifact.
+# {W}, {T}, Remove a story counter from this artifact: Draw a card.
+# Staff of the Storyteller {1}{W} — Artifact. Real oracle text:
+#   "When this artifact enters, create a 1/1 white Spirit creature token with flying.
+#    Whenever you create one or more creature tokens, put a story counter on this artifact.
+#    {W}, {T}, Remove a story counter from this artifact: Draw a card."
+name = "Staff of the Storyteller"
+otags = ["activated-ability", "aesthetic-counter", "alliteration", "counter-fuel-aesthetic", "draw-engine", "evasion", "repeatable-pure-draw", "synergy-token-creature", "tome", "triggered-ability", "unique-counter"]
+oracle = "When this artifact enters, create a 1/1 white Spirit creature token with flying.\nWhenever you create one or more creature tokens, put a story counter on this artifact.\n{W}, {T}, Remove a story counter from this artifact: Draw a card."
+set = "soc"
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "artifact"
+
+# When this artifact enters, create a 1/1 white Spirit creature token with flying.
+[[abilities]]
+timing = "etb"
+
+# create a 1/1 white Spirit creature token with flying.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Spirit"
+power = 1
+toughness = 1
+keywords = ["flying"]
+
+# {W}, {T}, Remove a story counter from this artifact: Draw a card.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { white = 1 }
+remove_counters = 1
+remove_counters_kind = "story"
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# Whenever you create one or more creature tokens, put a story counter on this artifact.
+# CR 603.3b: this fires once no matter how many creature tokens are made in one event, and only
+# for creature tokens (a Treasure/Clue doesn't accrue). Appended last (not oracle order) so the
+# earlier-landed draw ability keeps its index.
+[[abilities]]
+timing = "you_create_token"
+
+# put a story counter on this artifact.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"
+kind = "story"

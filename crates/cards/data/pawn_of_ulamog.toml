@@ -1,0 +1,46 @@
+# Whenever this creature or another nontoken creature you control dies, you may create a 0/1 colorless Eldrazi Spawn
+# creature token. It has "Sacrifice this token: Add {C}."
+name = "Pawn of Ulamog"
+otags = ["leaves-body-behind", "namesake-spell", "ramp", "repeatable-creature-tokens"]
+oracle = "Whenever this creature or another nontoken creature you control dies, you may create a 0/1 colorless Eldrazi Spawn creature token. It has \"Sacrifice this token: Add {C}.\""
+set = "soc"
+subtypes = ["Vampire", "Shaman"]
+
+[cost]
+generic = 1
+black = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever this creature or another nontoken creature you control dies, you may create a 0/1
+# colorless Eldrazi Spawn creature token. It has "Sacrifice this token: Add {C}."
+[[abilities]]
+timing = "creature_you_control_dies_including_this_nontoken"
+optional = true
+
+# create a 0/1 colorless Eldrazi Spawn creature token.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Eldrazi Spawn"
+subtypes = ["Eldrazi", "Spawn"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# "Sacrifice this token: Add {C}."
+[[abilities.effects.token.abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Add {C}.
+[[abilities.effects.token.abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]

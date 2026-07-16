@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scryfall Oracle Tags × mtgfr — Analysis Report</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --surface: #1a2332;
+    --surface2: #243044;
+    --text: #e8edf4;
+    --muted: #8b9cb3;
+    --accent: #5b9fd4;
+    --accent2: #c9a227;
+    --danger: #e07a6a;
+    --ok: #6bc98a;
+    --border: #2d3a4f;
+    --mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem clamp(1rem, 4vw, 3rem) 4rem;
+    font-family: var(--sans); background: var(--bg); color: var(--text);
+    line-height: 1.55; font-size: 15px;
+  }
+  h1 { font-size: 1.75rem; font-weight: 600; margin: 0 0 0.25rem; letter-spacing: -0.02em; }
+  h2 { font-size: 1.25rem; margin: 2.5rem 0 0.75rem; color: var(--accent); font-weight: 600; }
+  h3 { font-size: 1rem; margin: 1.5rem 0 0.5rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8rem; }
+  p, li { color: var(--text); }
+  .subtitle { color: var(--muted); margin-bottom: 2rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1rem 1.1rem;
+  }
+  .stat .n { font-size: 1.75rem; font-weight: 700; color: var(--accent2); font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+  .callout {
+    background: var(--surface); border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem; margin: 1.25rem 0; border-radius: 0 8px 8px 0;
+  }
+  .callout.warn { border-left-color: var(--danger); }
+  .callout.ok { border-left-color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 0.75rem 0 1.5rem; }
+  th, td { text-align: left; padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  tr:hover td { background: var(--surface2); }
+  code, .mono { font-family: var(--mono); font-size: 0.85em; background: var(--surface2); padding: 0.1em 0.35em; border-radius: 4px; }
+  .tag { display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 0.15em 0.55em; margin: 0.1em 0.15em 0.1em 0; font-size: 0.78rem; }
+  .tag.cluster { border-color: var(--accent); color: var(--accent); }
+  .tag.gap { border-color: var(--danger); color: var(--danger); }
+  .bar-wrap { background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; min-width: 60px; }
+  .bar { height: 100%; background: var(--accent); border-radius: 4px; }
+  .bar.warn { background: var(--danger); }
+  details { margin: 0.5rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  summary { cursor: pointer; padding: 0.65rem 1rem; font-weight: 500; }
+  details > div { padding: 0 1rem 1rem; }
+  .rec { counter-reset: rec; list-style: none; padding: 0; }
+  .rec li { counter-increment: rec; padding: 0.75rem 0 0.75rem 2.5rem; position: relative; border-bottom: 1px solid var(--border); }
+  .rec li::before {
+    content: counter(rec); position: absolute; left: 0; top: 0.75rem;
+    width: 1.6rem; height: 1.6rem; background: var(--accent); color: var(--bg);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+  }
+  a { color: var(--accent); }
+  .mermaid { background: var(--surface); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<h1>Scryfall Oracle Tags × mtgfr</h1>
+<p class="subtitle">How community-maintained <code>otag:</code> labels from <a href="https://scryfall.com/docs/tagger-tags">Scryfall Tagger</a> map to the card pool and engine backlog. Generated 2026-07-09T15:27:06.486Z.</p>
+
+<div class="grid">
+  <div class="stat"><div class="n">429</div><div class="l">Cards in pool</div></div>
+  <div class="stat"><div class="n">429</div><div class="l">Pool cards with ≥1 otag (100%)</div></div>
+  <div class="stat"><div class="n">640</div><div class="l">Distinct otags touching pool</div></div>
+  <div class="stat"><div class="n">259</div><div class="l">Cards with <code>approximates</code></div></div>
+  <div class="stat"><div class="n">259</div><div class="l">Approx cards also tagged (100%)</div></div>
+  <div class="stat"><div class="n">4,495</div><div class="l">Total Scryfall oracle tags</div></div>
+</div>
+
+<h2>Executive summary</h2>
+
+<div class="callout ok">
+  <strong>Oracle tags are a useful <em>authoring and prioritization</em> layer, not a runtime dependency.</strong>
+  They cluster cards by mechanical theme (Historic, enchantment-matters, tribal, sacrifice) in ways that align with
+  <code>FIDELITY_BACKLOG.md</code> increments #63–#90 — but they do <em>not</em> replace the explicit card DSL.
+  The project's ADR 0002 posture (grow filters from real cards) still applies: import otags as <strong>catalog hints</strong>
+  and <strong>gap detectors</strong>, not as executable rules.
+</div>
+
+<div class="callout warn">
+  <strong>0 pool cards have no oracle tags</strong> — full Scryfall ID coverage in this pool, but tag <em>precision</em> varies: e.g. only 1 card carries <code>synergy-historic</code> while Sram's historic-adjacent payoff is tagged <code>synergy-aura</code>.
+  Tag coverage is community-driven and thematically inconsistent — never gate engine work on tag presence alone.
+</div>
+
+<h2>Recommended uses</h2>
+<ol class="rec">
+  <li><strong>Backlog triage.</strong> When landing <code>SpellFilter::Historic</code> (#67), query otag <code>historic</code> to find all pool cards that care — not just the 13 listed in the increment table.</li>
+  <li><strong>Approximate-card clustering.</strong> 259 of 259 <code>approximates</code> cards carry otags; group them by shared tag to spot batch authoring wins (e.g. all Spirit-tribal anthems).</li>
+  <li><strong>Deck-builder search (ADR 0017 extension).</strong> Store top-weight otags on <code>CatalogCard</code> for "enchantment matters" / "tokens" browse filters — orthogonal to <code>subtypes</code>.</li>
+  <li><strong>CI validation tooling.</strong> A card tagged <code>historic-matters</code> without a <code>cast_spell</code> trigger using <code>historic</code> filter → lint warning.</li>
+  <li><strong>Do not:</strong> auto-generate <code>[[abilities]]</code> from otags; import the full 4,495-tag ontology; or treat tag weights as rules priority.</li>
+</ol>
+
+<h2>Case studies: otags → engine gaps</h2>
+<p>Six high-signal cards where Scryfall otags name the exact mechanical themes blocked by current engine limits.</p>
+<table>
+  <thead><tr><th>Card</th><th>Key otags</th><th>Backlog</th><th>Gap</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Teshar, Ancestor's Apostle</strong><br><code>teshar_ancestors_apostle.toml</code></td>
+      <td><span class="tag">synergy-historic</span> <span class="tag">reanimate-creature</span> <span class="tag">cast-trigger-you</span></td>
+      <td><code>#67</code></td>
+      <td style="font-size:0.85rem">Historic cast trigger dropped — no SpellFilter::Historic</td>
+    </tr>
+    <tr>
+      <td><strong>Starfield Mystic</strong><br><code>starfield_mystic.toml</code></td>
+      <td><span class="tag">cost-reducer-enchantment</span> <span class="tag">death-trigger</span> <span class="tag">gains-pp-counters</span></td>
+      <td><code>#67, #81</code></td>
+      <td style="font-size:0.85rem">Reducer broadened to noncreature; enchantment-dies trigger dropped</td>
+    </tr>
+    <tr>
+      <td><strong>Sram, Senior Edificer</strong><br><code>sram_senior_edificer.toml</code></td>
+      <td><span class="tag">synergy-aura</span> <span class="tag">synergy-equipment</span> <span class="tag">synergy-vehicle</span> <span class="tag">cast-trigger-you</span></td>
+      <td><code>#67</code></td>
+      <td style="font-size:0.85rem">Aura/Equipment/Vehicle cast trigger dropped entirely</td>
+    </tr>
+    <tr>
+      <td><strong>Vanguard of the Restless</strong><br><code>vanguard_of_the_restless.toml</code></td>
+      <td><span class="tag">typal-spirit</span> <span class="tag">anthem</span> <span class="tag">creaturefall</span> <span class="tag">trigger-from-graveyard</span></td>
+      <td><code>#64, #90</code></td>
+      <td style="font-size:0.85rem">Spirit anthem + Spirit-ETB recursion both dropped/approximated</td>
+    </tr>
+    <tr>
+      <td><strong>Quintorius, Field Historian</strong><br><code>quintorius_field_historian.toml</code></td>
+      <td><span class="tag">typal-spirit</span> <span class="tag">anthem</span> <span class="tag">repeatable-creature-tokens</span></td>
+      <td><code>#64</code></td>
+      <td style="font-size:0.85rem">Spirit anthem works; minted Spirit token lacks subtype/color</td>
+    </tr>
+    <tr>
+      <td><strong>Feral Appetite</strong><br><code>feral_appetite.toml</code></td>
+      <td><span class="tag">typal-pest</span> <span class="tag">anthem</span> <span class="tag">attacking-matters</span></td>
+      <td><code>#64, #90</code></td>
+      <td style="font-size:0.85rem">Pest + attacking + deathtouch anthem inexpressible</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Engine cluster rollup</h2>
+<p>Hand-mapped clusters linking otag themes → engine hooks → backlog increments. Sorted by approx-card count (highest leverage first).</p>
+
+<table>
+  <thead><tr>
+    <th>Cluster</th><th>Backlog</th><th>Engine hook</th><th>Pool cards</th><th>Approx</th><th>Otags</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>tribal</strong><br><span style="color:var(--muted);font-size:0.82rem">Creature-type payoffs (Spirit, Pest, Goblin, etc.)</span></td>
+      <td><code>#64, #90</code></td>
+      <td><code>PermanentFilter.subtypes, AnthemStatic.subtypes</code></td>
+      <td>88</td>
+      <td>79 <div class="bar-wrap"><div class="bar warn" style="width:90%"></div></div></td>
+      <td>36</td>
+    </tr>
+    <tr>
+      <td><strong>removal</strong><br><span style="color:var(--muted);font-size:0.82rem">Targeted and mass removal</span></td>
+      <td><code>#66</code></td>
+      <td><code>destroy, exile, bounce TargetSpec filters</code></td>
+      <td>87</td>
+      <td>71 <div class="bar-wrap"><div class="bar warn" style="width:82%"></div></div></td>
+      <td>20</td>
+    </tr>
+    <tr>
+      <td><strong>mana</strong><br><span style="color:var(--muted);font-size:0.82rem">Ramp, mana dorks, treasure/food/clue</span></td>
+      <td><code>existing AddMana</code></td>
+      <td><code>AddMana, GrantManaAbility</code></td>
+      <td>110</td>
+      <td>69 <div class="bar-wrap"><div class="bar warn" style="width:63%"></div></div></td>
+      <td>26</td>
+    </tr>
+    <tr>
+      <td><strong>counter</strong><br><span style="color:var(--muted);font-size:0.82rem">+1/+1 counters and named counter kinds</span></td>
+      <td><code>#75</code></td>
+      <td><code>Counter kinds map, put_counters</code></td>
+      <td>66</td>
+      <td>60 <div class="bar-wrap"><div class="bar warn" style="width:91%"></div></div></td>
+      <td>23</td>
+    </tr>
+    <tr>
+      <td><strong>draw</strong><br><span style="color:var(--muted);font-size:0.82rem">Card draw and impulse</span></td>
+      <td><code>existing draw effects</code></td>
+      <td><code>draw, impulse</code></td>
+      <td>86</td>
+      <td>58 <div class="bar-wrap"><div class="bar warn" style="width:67%"></div></div></td>
+      <td>22</td>
+    </tr>
+    <tr>
+      <td><strong>token</strong><br><span style="color:var(--muted);font-size:0.82rem">Token creation and token payoffs</span></td>
+      <td><code>#64, #70, #88</code></td>
+      <td><code>Token profiles, PermanentFilter.token</code></td>
+      <td>57</td>
+      <td>53 <div class="bar-wrap"><div class="bar warn" style="width:93%"></div></div></td>
+      <td>13</td>
+    </tr>
+    <tr>
+      <td><strong>combat</strong><br><span style="color:var(--muted);font-size:0.82rem">Combat restrictions, attack/block payoffs</span></td>
+      <td><code>#80, #88</code></td>
+      <td><code>combat.rs restrictions, attack triggers</code></td>
+      <td>54</td>
+      <td>46 <div class="bar-wrap"><div class="bar warn" style="width:85%"></div></div></td>
+      <td>15</td>
+    </tr>
+    <tr>
+      <td><strong>enchantment</strong><br><span style="color:var(--muted);font-size:0.82rem">Enchantment spells, enchantment ETB/dies payoffs</span></td>
+      <td><code>#67, #81</code></td>
+      <td><code>SpellFilter::Enchantment, watch-trigger enchantment-dies</code></td>
+      <td>51</td>
+      <td>44 <div class="bar-wrap"><div class="bar warn" style="width:86%"></div></div></td>
+      <td>23</td>
+    </tr>
+    <tr>
+      <td><strong>graveyard</strong><br><span style="color:var(--muted);font-size:0.82rem">Graveyard recursion and graveyard-as-resource</span></td>
+      <td><code>#69</code></td>
+      <td><code>CardFilter graveyard, reanimate</code></td>
+      <td>47</td>
+      <td>37 <div class="bar-wrap"><div class="bar warn" style="width:79%"></div></div></td>
+      <td>29</td>
+    </tr>
+    <tr>
+      <td><strong>sacrifice</strong><br><span style="color:var(--muted);font-size:0.82rem">Sacrifice outlets and sacrifice payoffs</span></td>
+      <td><code>#78</code></td>
+      <td><code>SacrificeCost + PermanentFilter</code></td>
+      <td>31</td>
+      <td>27 <div class="bar-wrap"><div class="bar warn" style="width:87%"></div></div></td>
+      <td>12</td>
+    </tr>
+    <tr>
+      <td><strong>copy</strong><br><span style="color:var(--muted);font-size:0.82rem">Spell/permanent copying</span></td>
+      <td><code>#83</code></td>
+      <td><code>SpellCopied, storm</code></td>
+      <td>19</td>
+      <td>18 <div class="bar-wrap"><div class="bar warn" style="width:95%"></div></div></td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <td><strong>equipment</strong><br><span style="color:var(--muted);font-size:0.82rem">Equipment and Vehicle matters</span></td>
+      <td><code>#67</code></td>
+      <td><code>SpellFilter artifact subtypes</code></td>
+      <td>6</td>
+      <td>4 <div class="bar-wrap"><div class="bar warn" style="width:67%"></div></div></td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td><strong>modified</strong><br><span style="color:var(--muted);font-size:0.82rem">Modified creature payoffs</span></td>
+      <td><code>#90</code></td>
+      <td><code>PermanentFilter modified predicate</code></td>
+      <td>3</td>
+      <td>3 <div class="bar-wrap"><div class="bar warn" style="width:100%"></div></div></td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td><strong>historic</strong><br><span style="color:var(--muted);font-size:0.82rem">Artifacts, legendaries, and Sagas — cast triggers and cost reducers</span></td>
+      <td><code>#67 spell-filter-extensions</code></td>
+      <td><code>SpellFilter::Historic</code></td>
+      <td>1</td>
+      <td>1 <div class="bar-wrap"><div class="bar warn" style="width:100%"></div></div></td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Top oracle tags in the pool</h2>
+<p>Most frequent otags among the 429 Scryfall-mapped cards (by pool card hits).</p>
+
+<table>
+  <thead><tr><th>Tag</th><th>Cluster</th><th>Pool</th><th>Approx</th><th>Example cards</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:activated-ability">activated ability</a><br><code>activated-ability</code></td>
+      <td>—</td>
+      <td>144</td>
+      <td>56</td>
+      <td>Brass Infiniscope, Alchemist's Refuge, Arcane Lighthouse, Arcane Signet…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:triggered-ability">triggered ability</a><br><code>triggered-ability</code></td>
+      <td>—</td>
+      <td>67</td>
+      <td>48</td>
+      <td>Tomakul Honor Guard, Ajani's Chosen, Angelic Destiny, Archon of Sun's Grace…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:single-target-instant-sorcery">single target instant/sorcery</a><br><code>single-target-instant-sorcery</code></td>
+      <td>—</td>
+      <td>63</td>
+      <td>41</td>
+      <td>Swords to Plowshares, Path to Exile, Beast Within, Chaos Warp…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:evasion">evasion</a><br><code>evasion</code></td>
+      <td>—</td>
+      <td>57</td>
+      <td>44</td>
+      <td>Breena, the Demagogue, Hangarback Walker, Staff of the Storyteller, Karmic Guide…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:spot-removal">spot removal</a><br><code>spot-removal</code></td>
+      <td><span class="tag cluster">removal</span></td>
+      <td>52</td>
+      <td>40</td>
+      <td>Casualties of War, Infernal Grasp, Rapid Hybridization, Curse of the Swine…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:alliteration">alliteration</a><br><code>alliteration</code></td>
+      <td>—</td>
+      <td>45</td>
+      <td>34</td>
+      <td>Animist's Awakening, Bojuka Bog, Decisive Denial, Gilded Goose…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:repeatable-creature-tokens">repeatable creature tokens</a><br><code>repeatable-creature-tokens</code></td>
+      <td><span class="tag cluster">token</span></td>
+      <td>36</td>
+      <td>34</td>
+      <td>Tendershoot Dryad, Combat Calligrapher, Beledros Witherbloom, Creakwood Liege…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:utility-land">utility land</a><br><code>utility-land</code></td>
+      <td>—</td>
+      <td>36</td>
+      <td>10</td>
+      <td>Alchemist's Refuge, Grim Backwoods, Arcane Lighthouse, War Room…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:draw-engine">draw engine</a><br><code>draw-engine</code></td>
+      <td><span class="tag cluster">draw</span></td>
+      <td>32</td>
+      <td>25</td>
+      <td>Staff of the Storyteller, Curiosity Crafter, Ohran Frostfang, Archmage Emeritus…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:attack-trigger">attack trigger</a><br><code>attack-trigger</code></td>
+      <td><span class="tag cluster">combat</span></td>
+      <td>31</td>
+      <td>28</td>
+      <td>Goblin Guide, Martial Impetus, Parasitic Impetus, Mangara, the Diplomat…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:repeatable-pp-counters">repeatable pp counters</a><br><code>repeatable-pp-counters</code></td>
+      <td><span class="tag cluster">counter</span></td>
+      <td>31</td>
+      <td>28</td>
+      <td>Laelia, the Blade Reforged, Primordial Hydra, Starfield Mystic, Yahenni, Undying Partisan…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:repeatable-pure-draw">repeatable pure draw</a><br><code>repeatable-pure-draw</code></td>
+      <td><span class="tag cluster">draw</span></td>
+      <td>29</td>
+      <td>22</td>
+      <td>Dina, Essence Brewer, Killian, Decisive Mentor, Archmage Emeritus, Breena, the Demagogue…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:gives-pp-counters">gives pp counters</a><br><code>gives-pp-counters</code></td>
+      <td><span class="tag cluster">counter</span></td>
+      <td>27</td>
+      <td>24</td>
+      <td>Tanazir Quandrix, Elusive Otter, Forgotten Ancient, Oran-Rief, the Vastwood…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:intervening-if-clause">intervening if clause</a><br><code>intervening-if-clause</code></td>
+      <td>—</td>
+      <td>27</td>
+      <td>25</td>
+      <td>Breena, the Demagogue, Rousing Refrain, Claim Jumper, Ingenious Prodigy…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:repeatable-lifegain">repeatable lifegain</a><br><code>repeatable-lifegain</code></td>
+      <td>—</td>
+      <td>27</td>
+      <td>24</td>
+      <td>Angel of Indemnity, Archon of Sun's Grace, Hateful Eidolon, Killian, Ink Duelist…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:unique-type-line">unique type line</a><br><code>unique-type-line</code></td>
+      <td>—</td>
+      <td>26</td>
+      <td>19</td>
+      <td>Plargg and Nassari, Breena, the Demagogue, Guardian Augmenter, Claim Jumper…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:gains-pp-counters">gains pp counters</a><br><code>gains-pp-counters</code></td>
+      <td><span class="tag cluster">counter</span></td>
+      <td>25</td>
+      <td>24</td>
+      <td>Goldvein Hydra, Forgotten Ancient, Primordial Hydra, Mazirek, Kraul Death Priest…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:cast-trigger-you">cast trigger-you</a><br><code>cast-trigger-you</code></td>
+      <td>—</td>
+      <td>24</td>
+      <td>23</td>
+      <td>Harmonic Prodigy, Elusive Otter, Thunderclap Drake, Balefire Liege…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:removal-creature">removal-creature</a><br><code>removal-creature</code></td>
+      <td><span class="tag cluster">removal</span></td>
+      <td>24</td>
+      <td>20</td>
+      <td>Darksteel Mutation, Infernal Grasp, Rapid Hybridization, Casualties of War…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:hand-positive">hand-positive</a><br><code>hand-positive</code></td>
+      <td>—</td>
+      <td>23</td>
+      <td>13</td>
+      <td>Dig Through Time, Archmage Emeritus, Breena, the Demagogue, Sage's Reverie…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:pure-draw">pure draw</a><br><code>pure-draw</code></td>
+      <td><span class="tag cluster">draw</span></td>
+      <td>23</td>
+      <td>7</td>
+      <td>Night's Whisper, Mind Stone, Stroke of Genius, Deep Analysis…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:removal-destroy">removal-destroy</a><br><code>removal-destroy</code></td>
+      <td><span class="tag cluster">removal</span></td>
+      <td>23</td>
+      <td>19</td>
+      <td>Infernal Grasp, Rapid Hybridization, Casualties of War, Witherbloom Command…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:multiple-targets">multiple targets</a><br><code>multiple-targets</code></td>
+      <td>—</td>
+      <td>22</td>
+      <td>21</td>
+      <td>Casualties of War, Aether Gale, Magma Opus, Curse of the Swine…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:nonbasic-basic-land-type">nonbasic-basic-land-type</a><br><code>nonbasic-basic-land-type</code></td>
+      <td>—</td>
+      <td>22</td>
+      <td>2</td>
+      <td>Haunted Mire, Molten Tributary, Sacred Peaks, Sunlit Marsh…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:mana-value-matters">mana value matters</a><br><code>mana-value-matters</code></td>
+      <td><span class="tag cluster">mana</span></td>
+      <td>21</td>
+      <td>20</td>
+      <td>Teshar, Ancestor's Apostle, Angel of Indemnity, Skyclave Apparition, Troyan, Gutsy Explorer…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:gives-castable-from-exile">gives castable from exile</a><br><code>gives-castable-from-exile</code></td>
+      <td><span class="tag cluster">removal</span></td>
+      <td>19</td>
+      <td>18</td>
+      <td>Plargg and Nassari, Quintorius, Loremaster, Dance with Calamity, Creative Technique…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:hand-neutral">hand-neutral</a><br><code>hand-neutral</code></td>
+      <td>—</td>
+      <td>19</td>
+      <td>7</td>
+      <td>Raise Dead, Elvish Visionary, Arcane Denial, Big Score…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:sacrifice-outlet-creature">sacrifice outlet-creature</a><br><code>sacrifice-outlet-creature</code></td>
+      <td><span class="tag cluster">sacrifice</span></td>
+      <td>19</td>
+      <td>16</td>
+      <td>Plumb the Forbidden, Dina, Soul Steeper, Deadly Brew, Viscera Seer…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:attacking-matters-self">attacking matters-self</a><br><code>attacking-matters-self</code></td>
+      <td><span class="tag cluster">tribal</span></td>
+      <td>18</td>
+      <td>17</td>
+      <td>Sun Titan, The Goose Mother, Restless Spire, Tajic, Legion's Edge…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:repeatable-crime">repeatable crime</a><br><code>repeatable-crime</code></td>
+      <td>—</td>
+      <td>18</td>
+      <td>13</td>
+      <td>Rogue's Passage, Gyome, Master Chef, Shadrix Silverquill, Deep Analysis…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:attacking-matters">attacking matters</a><br><code>attacking-matters</code></td>
+      <td><span class="tag cluster">combat</span></td>
+      <td>17</td>
+      <td>15</td>
+      <td>Songbirds' Blessing, Eldrazi Conscription, Bitterthorn, Nissa's Animus, Tajic, Legion's Edge…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:delayed-trigger">delayed trigger</a><br><code>delayed-trigger</code></td>
+      <td>—</td>
+      <td>16</td>
+      <td>16</td>
+      <td>Thunderclap Drake, Manaform Hellkite, Angel of Indemnity, Animate Dead…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:mana-sink">mana sink</a><br><code>mana-sink</code></td>
+      <td><span class="tag cluster">mana</span></td>
+      <td>16</td>
+      <td>4</td>
+      <td>Rogue's Passage, Silverquill Campus, Witherbloom Campus, Lorehold Campus…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:opponent-loses-life">opponent loses life</a><br><code>opponent-loses-life</code></td>
+      <td>—</td>
+      <td>16</td>
+      <td>12</td>
+      <td>Tomik, Wielder of Law, Blood Artist, Eriette of the Charmed Apple, Zulaport Cutthroat…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:ramp">ramp</a><br><code>ramp</code></td>
+      <td><span class="tag cluster">mana</span></td>
+      <td>16</td>
+      <td>11</td>
+      <td>Beledros Witherbloom, Galazeth Prismari, Monologue Tax, Storm-Kiln Artist…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:scry">scry</a><br><code>scry</code></td>
+      <td>—</td>
+      <td>16</td>
+      <td>4</td>
+      <td>Augury Owl, Lorehold Campus, Path of Ancestry, Prismari Campus…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:single-english-word-name">single english word name</a><br><code>single-english-word-name</code></td>
+      <td>—</td>
+      <td>15</td>
+      <td>5</td>
+      <td>Plains, Island, Swamp, Mountain…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:death-trigger">death trigger</a><br><code>death-trigger</code></td>
+      <td><span class="tag cluster">enchantment</span></td>
+      <td>14</td>
+      <td>13</td>
+      <td>Hofri Ghostforge, Blight Mound, Ghoulish Impetus, Moldervine Reclamation…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:land-ramp">land ramp</a><br><code>land-ramp</code></td>
+      <td><span class="tag cluster">mana</span></td>
+      <td>14</td>
+      <td>8</td>
+      <td>Solemn Simulacrum, Rampant Growth, Archaeomancer's Map, Zimone, Quandrix Prodigy…</td>
+    </tr>
+    <tr>
+      <td><a href="https://scryfall.com/search?q=otag:multi-removal">multi removal</a><br><code>multi-removal</code></td>
+      <td><span class="tag cluster">removal</span></td>
+      <td>14</td>
+      <td>13</td>
+      <td>Aether Gale, Casualties of War, Deadly Brew, Pest Infestation…</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Approximate cards × otags (gap radar)</h2>
+<p>Cards with fidelity gaps whose Scryfall otags point at missing engine capabilities — prime batch-unblock candidates.</p>
+
+<table>
+  <thead><tr><th>Card</th><th>Engine clusters</th><th>Top otags</th><th>Approximates</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>The Goose Mother</strong><br><code>the_goose_mother.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">sacrifice</span> <span class="tag cluster">mana</span> <span class="tag cluster">counter</span> <span class="tag cluster">tribal</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">draw engine</span> <span class="tag">sacrifice outlet-artifact</span> <span class="tag">division</span> <span class="tag">repeatable plunder</span> <span class="tag">unique type line</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">Food tokens are unsupported (artifact tokens with an ability), so the ETB \</td>
+    </tr>
+    <tr>
+      <td><strong>Ao, the Dawn Sky</strong><br><code>ao_the_dawn_sky.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">equipment</span> <span class="tag cluster">counter</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">impulse-onto-battlefield</span> <span class="tag">death trigger-self</span> <span class="tag">impulse-nonland</span> <span class="tag">synergy-vehicle</span> <span class="tag">modal</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the dies trigger is unauthored: mode 2 (mass +2/+2 counters) is now expressible, but mode 1 (dig top 7, put nonland perm…</td>
+    </tr>
+    <tr>
+      <td><strong>Armored Skyhunter</strong><br><code>armored_skyhunter.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">equipment</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">repeatable impulse</span> <span class="tag">synergy-equipment</span> <span class="tag">impulse-artifact-equipment</span> <span class="tag">impulse-onto-battlefield</span> <span class="tag">impulse-enchantment-aura</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the attack-trigger library dig / put-Aura-or-Equipment onto the battlefield is dropped — no effect tag expresses a filte…</td>
+    </tr>
+    <tr>
+      <td><strong>Herald of Amity</strong><br><code>herald_of_amity.toml</code></td>
+      <td><span class="tag cluster">enchantment</span> <span class="tag cluster">removal</span> <span class="tag cluster">draw</span> <span class="tag cluster">tribal</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">free-cast-another</span> <span class="tag">impulse-enchantment-aura</span> <span class="tag">gives castable from exile</span> <span class="tag">impulse-cast</span> <span class="tag">synergy-aura</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the ETB dig-and-cast-an-Aura and the +X/+X attack pump (X = number of Auras) are dropped — no filtered reveal-and-cast e…</td>
+    </tr>
+    <tr>
+      <td><strong>Hofri Ghostforge</strong><br><code>hofri_ghostforge.toml</code></td>
+      <td><span class="tag cluster">combat</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">copy</span> <span class="tag cluster">token</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">cycle-stx-m-college-spell</span> <span class="tag">anthem</span> <span class="tag">gives trample</span> <span class="tag">keyword anthem</span> <span class="tag">death trigger</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">body only. Dropped: \</td>
+    </tr>
+    <tr>
+      <td><strong>Quintorius, History Chaser</strong><br><code>quintorius_history_chaser.toml</code></td>
+      <td><span class="tag cluster">graveyard</span> <span class="tag cluster">draw</span> <span class="tag cluster">combat</span> <span class="tag cluster">tribal</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">cycle-soc-face-commander</span> <span class="tag">gives vigilance</span> <span class="tag">leaves graveyard trigger</span> <span class="tag">repeatable rummage</span> <span class="tag">gives double strike</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">only the +1's card draw is scripted. The real +1 is \</td>
+    </tr>
+    <tr>
+      <td><strong>Quintorius, Loremaster</strong><br><code>quintorius_loremaster.toml</code></td>
+      <td><span class="tag cluster">graveyard</span> <span class="tag cluster">sacrifice</span> <span class="tag cluster">removal</span> <span class="tag cluster">token</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">free-cast-another</span> <span class="tag">triggered ability</span> <span class="tag">synergy-noncreature</span> <span class="tag">graveyard fuel-nonland</span> <span class="tag">repeatable sacrifice outlet</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">dropped — the \</td>
+    </tr>
+    <tr>
+      <td><strong>Woe Strider</strong><br><code>woe_strider.toml</code></td>
+      <td><span class="tag cluster">sacrifice</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">tribal</span> <span class="tag cluster">token</span> <span class="tag cluster">counter</span></td>
+      <td><span class="tag">free sacrifice outlet</span> <span class="tag">more expensive than mv</span> <span class="tag">triggered ability</span> <span class="tag">graveyard fuel</span> <span class="tag">reanimate-self</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">The Goat token's white color isn't modeled (tokens are P/T + evergreen keywords only), and \</td>
+    </tr>
+    <tr>
+      <td><strong>Angel of Indemnity</strong><br><code>angel_of_indemnity.toml</code></td>
+      <td><span class="tag cluster">mana</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">tribal</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">renew</span> <span class="tag">mana value matters</span> <span class="tag">repeatable lifegain</span> <span class="tag">per-player</span> <span class="tag">virtual french vanilla</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the ETB reanimation is modeled as reanimate_to_battlefield targeting a creature card in your graveyard — the \</td>
+    </tr>
+    <tr>
+      <td><strong>Atsushi, the Blazing Sky</strong><br><code>atsushi_the_blazing_sky.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">mana</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">long term impulsive draw</span> <span class="tag">ramp</span> <span class="tag">death trigger-self</span> <span class="tag">modal</span> <span class="tag">evasion</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the impulse-exile mode's play permission lasts only until end of this turn, not until the end of your next turn.</td>
+    </tr>
+    <tr>
+      <td><strong>Augusta, Order Returned</strong><br><code>augusta_order_returned.toml</code></td>
+      <td><span class="tag cluster">graveyard</span> <span class="tag cluster">counter</span> <span class="tag cluster">combat</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">reflexive trigger</span> <span class="tag">hate-graveyard</span> <span class="tag">graveyard fuel</span> <span class="tag">repeatable pp counters</span> <span class="tag">gives pp counters</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the attack trigger is dropped — the \</td>
+    </tr>
+    <tr>
+      <td><strong>Blight Mound</strong><br><code>blight_mound.toml</code></td>
+      <td><span class="tag cluster">tribal</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">combat</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">keyword anthem</span> <span class="tag">repeatable lifegain</span> <span class="tag">typal-pest</span> <span class="tag">death trigger</span> <span class="tag">gives menace</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the \</td>
+    </tr>
+    <tr>
+      <td><strong>Bloodghast</strong><br><code>bloodghast.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">tribal</span> <span class="tag cluster">mana</span></td>
+      <td><span class="tag">drawback</span> <span class="tag">trigger from graveyard</span> <span class="tag">reanimate-self</span> <span class="tag">gains haste</span> <span class="tag">landfall</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">all three abilities are inexpressible and dropped — \</td>
+    </tr>
+    <tr>
+      <td><strong>Conspiracy Theorist</strong><br><code>conspiracy_theorist.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">tribal</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">repeatable rummage</span> <span class="tag">discarded type matters</span> <span class="tag">impulsive recursion</span> <span class="tag">self-discard matters</span> <span class="tag">attacking matters-self</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">both abilities are dropped — the attack loot (pay {1}, discard, draw) and the discard-to-impulse-cast trigger have no ou…</td>
+    </tr>
+    <tr>
+      <td><strong>Currency Converter</strong><br><code>currency_converter.toml</code></td>
+      <td><span class="tag cluster">mana</span> <span class="tag cluster">draw</span> <span class="tag cluster">tribal</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">ramp</span> <span class="tag">repeatable treasures</span> <span class="tag">hate-discard</span> <span class="tag">triggered ability</span> <span class="tag">discarded type matters</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the cash-out's nonland payoff is a plain colorless, subtype-less 2/2 creature token — its black color and Rogue subtype …</td>
+    </tr>
+    <tr>
+      <td><strong>Excava, the Risen Past</strong><br><code>excava_the_risen_past.toml</code></td>
+      <td><span class="tag cluster">combat</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">gives flying</span> <span class="tag">reanimate-artifact</span> <span class="tag">animate enchantment</span> <span class="tag">unique type line</span> <span class="tag">reanimate-enchantment</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">two residuals: it doesn't become a 1/1 Spirit creature with flying (a dynamic base-P/T set + subtype add — a type-change…</td>
+    </tr>
+    <tr>
+      <td><strong>Fallen Ideal</strong><br><code>fallen_ideal.toml</code></td>
+      <td><span class="tag cluster">combat</span> <span class="tag cluster">sacrifice</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">gives flying</span> <span class="tag">free sacrifice outlet</span> <span class="tag">death trigger-self</span> <span class="tag">shade pump</span> <span class="tag">cycle-tsp-perpetual-aura</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">dropped the granted \</td>
+    </tr>
+    <tr>
+      <td><strong>Feral Appetite</strong><br><code>feral_appetite.toml</code></td>
+      <td><span class="tag cluster">tribal</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">token</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">anthem</span> <span class="tag">keyword anthem</span> <span class="tag">repeatable lifegain</span> <span class="tag">typal-pest</span> <span class="tag">hate-graveyard</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">body only — both abilities are inexpressible. The static is a Pest-tribal, attacking- only anthem that also grants death…</td>
+    </tr>
+    <tr>
+      <td><strong>Forum Filibuster</strong><br><code>forum_filibuster.toml</code></td>
+      <td><span class="tag cluster">enchantment</span> <span class="tag cluster">equipment</span> <span class="tag cluster">token</span> <span class="tag cluster">graveyard</span></td>
+      <td><span class="tag">reflexive trigger</span> <span class="tag">reanimate-aura</span> <span class="tag">quick equip</span> <span class="tag">alliteration</span> <span class="tag">evasion</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the reflexive \</td>
+    </tr>
+    <tr>
+      <td><strong>Goldvein Hydra</strong><br><code>goldvein_hydra.toml</code></td>
+      <td><span class="tag cluster">mana</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span> <span class="tag cluster">counter</span></td>
+      <td><span class="tag">ramp</span> <span class="tag">death trigger-self</span> <span class="tag">power matters-self</span> <span class="tag">gains pp counters</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the death -&gt; Treasure-tokens trigger is deferred. Its blockers are reading a dead creature's power (source_power needs l…</td>
+    </tr>
+    <tr>
+      <td><strong>Guardian Scalelord</strong><br><code>guardian_scalelord.toml</code></td>
+      <td><span class="tag cluster">graveyard</span> <span class="tag cluster">combat</span> <span class="tag cluster">counter</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">reanimate-nonland</span> <span class="tag">gives flying</span> <span class="tag">gives pp counters</span> <span class="tag">evasion</span> <span class="tag">attacking matters</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">dropped — Backup's \</td>
+    </tr>
+    <tr>
+      <td><strong>Inspired Skypainter</strong><br><code>inspired_skypainter.toml</code></td>
+      <td><span class="tag cluster">token</span> <span class="tag cluster">copy</span> <span class="tag cluster">removal</span> <span class="tag cluster">mana</span></td>
+      <td><span class="tag">cycle-soc-two-color-prepare</span> <span class="tag">synergy-token-creature</span> <span class="tag">single target instant/sorcery</span> <span class="tag">triggered ability</span> <span class="tag">gives haste</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the \</td>
+    </tr>
+    <tr>
+      <td><strong>Laelia, the Blade Reforged</strong><br><code>laelia_the_blade_reforged.toml</code></td>
+      <td><span class="tag cluster">counter</span> <span class="tag cluster">draw</span> <span class="tag cluster">tribal</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">repeatable pp counters</span> <span class="tag">synergy-exiling</span> <span class="tag">cycle-c21-mono-legend</span> <span class="tag">repeatable impulsive draw</span> <span class="tag">gains pp counters</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the growth trigger (+1/+1 counter whenever cards are put into exile from your library and/or graveyard) is dropped — the…</td>
+    </tr>
+    <tr>
+      <td><strong>Leitmotif Composer</strong><br><code>leitmotif_composer.toml</code></td>
+      <td><span class="tag cluster">mana</span> <span class="tag cluster">draw</span> <span class="tag cluster">tribal</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">mana value matters</span> <span class="tag">repeatable pure draw</span> <span class="tag">synergy-instant</span> <span class="tag">curiosity</span> <span class="tag">synergy-sorcery</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the copy-self-on-cast trigger and the {2}{U} unblockable-grant activated ability are both dropped.</td>
+    </tr>
+    <tr>
+      <td><strong>Lifeblood Hydra</strong><br><code>lifeblood_hydra.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span> <span class="tag cluster">counter</span></td>
+      <td><span class="tag">burst draw</span> <span class="tag">pure draw</span> <span class="tag">lifegain</span> <span class="tag">death trigger-self</span> <span class="tag">power matters-self</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the death trigger (gain life and draw cards equal to its power) is dropped — no power-scaled gain/draw effect exists in …</td>
+    </tr>
+    <tr>
+      <td><strong>Lorehold Archivist</strong><br><code>lorehold_archivist.toml</code></td>
+      <td><span class="tag cluster">copy</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">token</span> <span class="tag cluster">removal</span></td>
+      <td><span class="tag">cycle-soc-two-color-prepare</span> <span class="tag">single target instant/sorcery</span> <span class="tag">copy-artifact</span> <span class="tag">reanimate copy</span> <span class="tag">repeatable artifact tokens</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">body only. The DSL has no Prepared mechanic (cast a copy of an alternate spell face), no upkeep-count-graveyard conditio…</td>
+    </tr>
+    <tr>
+      <td><strong>Lorehold Charm</strong><br><code>lorehold_charm.toml</code></td>
+      <td><span class="tag cluster">graveyard</span> <span class="tag cluster">mana</span> <span class="tag cluster">removal</span> <span class="tag cluster">sacrifice</span></td>
+      <td><span class="tag">reanimate-artifact</span> <span class="tag">single target instant/sorcery</span> <span class="tag">mana value matters</span> <span class="tag">toughness boost to all</span> <span class="tag">cycle-sos-charm</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">mode 2's \</td>
+    </tr>
+    <tr>
+      <td><strong>Priest of Forgotten Gods</strong><br><code>priest_of_forgotten_gods.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">mana</span> <span class="tag cluster">removal</span> <span class="tag cluster">sacrifice</span></td>
+      <td><span class="tag">draw engine</span> <span class="tag">repeatable plunder</span> <span class="tag">adds multiple mana</span> <span class="tag">repeatable crime</span> <span class="tag">multiple targets</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the activation cost is modeled as \</td>
+    </tr>
+    <tr>
+      <td><strong>Prismari Command</strong><br><code>prismari_command.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">mana</span> <span class="tag cluster">token</span> <span class="tag cluster">removal</span></td>
+      <td><span class="tag">single target instant/sorcery</span> <span class="tag">abrade</span> <span class="tag">loot</span> <span class="tag">ramp</span> <span class="tag">donate token</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">mode 1 drops the \</td>
+    </tr>
+    <tr>
+      <td><strong>Promise of Loyalty</strong><br><code>promise_of_loyalty.toml</code></td>
+      <td><span class="tag cluster">combat</span> <span class="tag cluster">counter</span> <span class="tag cluster">sacrifice</span> <span class="tag cluster">removal</span></td>
+      <td><span class="tag">prevent attack</span> <span class="tag">functional reminder counter</span> <span class="tag">sweeper</span> <span class="tag">fun ruling</span> <span class="tag">unique counter</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the vow counter and its \</td>
+    </tr>
+    <tr>
+      <td><strong>Quandrix Command</strong><br><code>quandrix_command.toml</code></td>
+      <td><span class="tag cluster">removal</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">counter</span> <span class="tag cluster">enchantment</span></td>
+      <td><span class="tag">single target instant/sorcery</span> <span class="tag">removal-bounce</span> <span class="tag">hate-graveyard</span> <span class="tag">removal-planeswalker</span> <span class="tag">cycle-stx-command</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the fourth mode (shuffle graveyard cards into library) is dropped entirely — no such effect exists, leaving three modes;…</td>
+    </tr>
+    <tr>
+      <td><strong>Renegade Bull</strong><br><code>renegade_bull.toml</code></td>
+      <td><span class="tag cluster">mana</span> <span class="tag cluster">graveyard</span> <span class="tag cluster">tribal</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">mana value matters</span> <span class="tag">demilich effect</span> <span class="tag">graveyard fuel-instant</span> <span class="tag">free-cast-another</span> <span class="tag">synergy-instant</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">both riders are dropped — \</td>
+    </tr>
+    <tr>
+      <td><strong>Replication Technique</strong><br><code>replication_technique.toml</code></td>
+      <td><span class="tag cluster">tribal</span> <span class="tag cluster">copy</span> <span class="tag cluster">mana</span> <span class="tag cluster">enchantment</span></td>
+      <td><span class="tag">single target instant/sorcery</span> <span class="tag">cast trigger-self</span> <span class="tag">selective group hug</span> <span class="tag">cycle-c21-technique</span> <span class="tag">copy-equipment</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">Demonstrate (copy-and-give-an-opponent-a-copy on cast) isn't modeled — no such cast trigger. Target is narrowed from \</td>
+    </tr>
+    <tr>
+      <td><strong>Scriv, the Obligator</strong><br><code>scriv_the_obligator.toml</code></td>
+      <td><span class="tag cluster">combat</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">hate-attacker</span> <span class="tag">unique type line</span> <span class="tag">titan trigger</span> <span class="tag">cycle-soc-alt-commander</span> <span class="tag">attacking opponents matters</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the enter/attack \</td>
+    </tr>
+    <tr>
+      <td><strong>Shadrix Silverquill</strong><br><code>shadrix_silverquill.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">token</span> <span class="tag cluster">counter</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">draw engine</span> <span class="tag">triggered ability</span> <span class="tag">repeatable pure draw</span> <span class="tag">donate token</span> <span class="tag">repeatable crime</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the begin-combat \</td>
+    </tr>
+    <tr>
+      <td><strong>Skyclave Apparition</strong><br><code>skyclave_apparition.toml</code></td>
+      <td><span class="tag cluster">tribal</span> <span class="tag cluster">mana</span> <span class="tag cluster">removal</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">leaves trigger-self</span> <span class="tag">mana value matters</span> <span class="tag">removal-exile</span> <span class="tag">donate token</span> <span class="tag">swap removal</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the leaves-battlefield drawback is dropped — the exiled card's owner never gets the X/X blue Illusion token sized to its…</td>
+    </tr>
+    <tr>
+      <td><strong>Striding Shotcaller</strong><br><code>striding_shotcaller.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">combat</span> <span class="tag cluster">counter</span> <span class="tag cluster">removal</span></td>
+      <td><span class="tag">cycle-soc-two-color-prepare</span> <span class="tag">draw engine</span> <span class="tag">gives flying</span> <span class="tag">single target instant/sorcery</span> <span class="tag">jump</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">body only. Prepared is an unsupported keyword/mechanic and the DSL is one face per card, so the \</td>
+    </tr>
+    <tr>
+      <td><strong>Advanced Reconstruction</strong><br><code>advanced_reconstruction.toml</code></td>
+      <td><span class="tag cluster">graveyard</span> <span class="tag cluster">tribal</span> <span class="tag cluster">draw</span></td>
+      <td><span class="tag">burn player</span> <span class="tag">cost reducer</span> <span class="tag">graveyard fuel</span> <span class="tag">leaves graveyard trigger</span> <span class="tag">group slug</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">approximated as an upkeep self-mill of one (upkeep stands in for first main phase; \</td>
+    </tr>
+    <tr>
+      <td><strong>Altered Ego</strong><br><code>altered_ego.toml</code></td>
+      <td><span class="tag cluster">copy</span> <span class="tag cluster">mana</span> <span class="tag cluster">counter</span></td>
+      <td><span class="tag">copy-creature</span> <span class="tag">clone</span> <span class="tag">cycle-soi-r-two-color</span> <span class="tag">cycle-inr-r-two-color</span> <span class="tag">unique mana cost</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the clone-on-enter (copy any creature on the battlefield) and \</td>
+    </tr>
+    <tr>
+      <td><strong>Angelic Destiny</strong><br><code>angelic_destiny.toml</code></td>
+      <td><span class="tag cluster">combat</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">gives flying</span> <span class="tag">enlarge</span> <span class="tag">triggered ability</span> <span class="tag">perpetual aura</span> <span class="tag">gives first strike</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the \</td>
+    </tr>
+    <tr>
+      <td><strong>Archon of Sun's Grace</strong><br><code>archon_of_suns_grace.toml</code></td>
+      <td><span class="tag cluster">enchantment</span> <span class="tag cluster">tribal</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">keyword anthem</span> <span class="tag">repeatable lifegain</span> <span class="tag">triggered ability</span> <span class="tag">enchantmentfall</span> <span class="tag">evasion</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the token's white color + Pegasus subtype aren't modeled (no color/creature-subtype axis on a token profile), so the min…</td>
+    </tr>
+    <tr>
+      <td><strong>Beledros Witherbloom</strong><br><code>beledros_witherbloom.toml</code></td>
+      <td><span class="tag cluster">mana</span> <span class="tag cluster">token</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">untapper-land</span> <span class="tag">repeatable lifegain</span> <span class="tag">ramp</span> <span class="tag">per-player</span> <span class="tag">triggered ability</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">The Pest token's \</td>
+    </tr>
+    <tr>
+      <td><strong>Brazen Borrower</strong><br><code>brazen_borrower.toml</code></td>
+      <td><span class="tag cluster">removal</span> <span class="tag cluster">combat</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">single target instant/sorcery</span> <span class="tag">removal-bounce</span> <span class="tag">castable from exile</span> <span class="tag">cheaper than mv</span> <span class="tag">removal-nonland</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">adventure is unsupported (no split/exile-and-cast-later), so only the creature half is modeled. The \</td>
+    </tr>
+    <tr>
+      <td><strong>Combat Calligrapher</strong><br><code>combat_calligrapher.toml</code></td>
+      <td><span class="tag cluster">token</span> <span class="tag cluster">tribal</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">donate token</span> <span class="tag">hate-typal-inkling</span> <span class="tag">out of color token</span> <span class="tag">multiplayer</span> <span class="tag">alliteration</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the \</td>
+    </tr>
+    <tr>
+      <td><strong>Deekah, Fractal Theorist</strong><br><code>deekah_fractal_theorist.toml</code></td>
+      <td><span class="tag cluster">token</span> <span class="tag cluster">mana</span> <span class="tag cluster">counter</span></td>
+      <td><span class="tag">synergy-token-creature</span> <span class="tag">mana value matters</span> <span class="tag">repeatable crime</span> <span class="tag">out of color token</span> <span class="tag">magecraft</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">Magecraft token kept but coarsened — real token is a 0/0 Fractal that enters with X +1/+1 counters (X = spell's mana val…</td>
+    </tr>
+    <tr>
+      <td><strong>Dina, Essence Brewer</strong><br><code>dina_essence_brewer.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">sacrifice</span> <span class="tag cluster">counter</span></td>
+      <td><span class="tag">draw engine</span> <span class="tag">synergy-sacrifice</span> <span class="tag">repeatable lifegain</span> <span class="tag">cycle-soc-face-commander</span> <span class="tag">triggered ability</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the {2}, {T}, Sacrifice another creature: gain X life / put X +1/+1 counters ability is inexpressible (X = the sacrifice…</td>
+    </tr>
+    <tr>
+      <td><strong>Dirgur Focusmage</strong><br><code>dirgur_focusmage.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">mana</span> <span class="tag cluster">removal</span></td>
+      <td><span class="tag">draw engine</span> <span class="tag">cost-reducer-instant-sorcery</span> <span class="tag">mana value matters</span> <span class="tag">burst draw</span> <span class="tag">hand-positive</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the \</td>
+    </tr>
+    <tr>
+      <td><strong>Eiganjo Dynastorian</strong><br><code>eiganjo_dynastorian.toml</code></td>
+      <td><span class="tag cluster">enchantment</span> <span class="tag cluster">removal</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">mass reanimation</span> <span class="tag">unique type line</span> <span class="tag">reanimate-enchantment</span> <span class="tag">cycle-soc-guest-lecturer</span> <span class="tag">gives castable from exile</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the \</td>
+    </tr>
+    <tr>
+      <td><strong>Eldrazi Conscription</strong><br><code>eldrazi_conscription.toml</code></td>
+      <td><span class="tag cluster">combat</span> <span class="tag cluster">removal</span> <span class="tag cluster">sacrifice</span></td>
+      <td><span class="tag">gives trample</span> <span class="tag">enlarge</span> <span class="tag">unique type line</span> <span class="tag">gives annihilator</span> <span class="tag">mixed subtypes</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">annihilator 2 (an attack trigger forcing the defending player to sacrifice two permanents) isn't expressible — dropped. …</td>
+    </tr>
+    <tr>
+      <td><strong>Elusive Otter</strong><br><code>elusive_otter.toml</code></td>
+      <td><span class="tag cluster">removal</span> <span class="tag cluster">tribal</span> <span class="tag cluster">counter</span></td>
+      <td><span class="tag">hate-low-power</span> <span class="tag">single target instant/sorcery</span> <span class="tag">castable from exile</span> <span class="tag">more expensive than mv</span> <span class="tag">howlgeist ability</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the \</td>
+    </tr>
+    <tr>
+      <td><strong>Fateful Tempest</strong><br><code>fateful_tempest.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">mana</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">long term impulsive draw</span> <span class="tag">burn player</span> <span class="tag">mana value matters</span> <span class="tag">voting</span> <span class="tag">named choice</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">body only — the DSL has no council's-dilemma voting mechanic, and both outcomes scale with the (variable) vote tallies, …</td>
+    </tr>
+    <tr>
+      <td><strong>Final Act</strong><br><code>final_act.toml</code></td>
+      <td><span class="tag cluster">counter</span> <span class="tag cluster">removal</span> <span class="tag cluster">graveyard</span></td>
+      <td><span class="tag">remove counters-other</span> <span class="tag">sweeper</span> <span class="tag">removal-battle</span> <span class="tag">removal-planeswalker</span> <span class="tag">remove counters-player</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">only the \</td>
+    </tr>
+    <tr>
+      <td><strong>Fractal Harness</strong><br><code>fractal_harness.toml</code></td>
+      <td><span class="tag cluster">counter</span> <span class="tag cluster">token</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">living weapon</span> <span class="tag">counter doubler</span> <span class="tag">out of color token</span> <span class="tag">exponential</span> <span class="tag">repeatable pp counters</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the ETB (create a Fractal token, put X +1/+1 counters on it, and attach to it) and the attack-trigger \</td>
+    </tr>
+    <tr>
+      <td><strong>Ghoulish Impetus</strong><br><code>ghoulish_impetus.toml</code></td>
+      <td><span class="tag cluster">tribal</span> <span class="tag cluster">enchantment</span> <span class="tag cluster">combat</span></td>
+      <td><span class="tag">cheat death-self</span> <span class="tag">death trigger</span> <span class="tag">force attacker</span> <span class="tag">delayed trigger</span> <span class="tag">gives deathtouch</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the dies-return trigger is dropped. #43 landed Trigger::EnchantedCreatureDies (an Aura's \</td>
+    </tr>
+    <tr>
+      <td><strong>Hydroid Krasis</strong><br><code>hydroid_krasis.toml</code></td>
+      <td><span class="tag cluster">tribal</span> <span class="tag cluster">draw</span> <span class="tag cluster">counter</span></td>
+      <td><span class="tag">cast trigger-self</span> <span class="tag">division</span> <span class="tag">unique type line</span> <span class="tag">burst draw</span> <span class="tag">pure draw</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the \</td>
+    </tr>
+    <tr>
+      <td><strong>Intermediate Chirography</strong><br><code>intermediate_chirography.toml</code></td>
+      <td><span class="tag cluster">modified</span> <span class="tag cluster">counter</span> <span class="tag cluster">token</span></td>
+      <td><span class="tag">intervening if clause</span> <span class="tag">synergy-modified</span> <span class="tag">life loss matters</span> <span class="tag">repeatable pp counters</span> <span class="tag">activated ability</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the entire leveling structure is dropped — level 2 ({1}{B}: \</td>
+    </tr>
+    <tr>
+      <td><strong>Kami of Whispered Hopes</strong><br><code>kami_of_whispered_hopes.toml</code></td>
+      <td><span class="tag cluster">mana</span> <span class="tag cluster">counter</span> <span class="tag cluster">tribal</span></td>
+      <td><span class="tag">adds multiple mana</span> <span class="tag">counter increaser</span> <span class="tag">pp counters matter</span> <span class="tag">activated ability</span> <span class="tag">mana dork</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the mana ability should make X mana (= this creature's power) of one color; variable mana output isn't expressible, so i…</td>
+    </tr>
+    <tr>
+      <td><strong>Killian, Decisive Mentor</strong><br><code>killian_decisive_mentor.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">combat</span> <span class="tag cluster">enchantment</span></td>
+      <td><span class="tag">draw engine</span> <span class="tag">force attacker</span> <span class="tag">cycle-soc-face-commander</span> <span class="tag">repeatable pure draw</span> <span class="tag">repeatable crime</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the pool has no \</td>
+    </tr>
+    <tr>
+      <td><strong>Lotus Field</strong><br><code>lotus_field.toml</code></td>
+      <td><span class="tag cluster">draw</span> <span class="tag cluster">sacrifice</span> <span class="tag cluster">mana</span></td>
+      <td><span class="tag">drawback</span> <span class="tag">sacrifice cost land</span> <span class="tag">adds multiple mana</span> <span class="tag">triggered ability</span> <span class="tag">rainbow land</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">\</td>
+    </tr>
+    <tr>
+      <td><strong>Magma Opus</strong><br><code>magma_opus.toml</code></td>
+      <td><span class="tag cluster">mana</span> <span class="tag cluster">draw</span> <span class="tag cluster">removal</span></td>
+      <td><span class="tag">cycle-stx-m-college-spell</span> <span class="tag">ramp</span> <span class="tag">fun ruling</span> <span class="tag">cheaper than mv</span> <span class="tag">pure draw</span></td>
+      <td style="font-size:0.82rem;color:var(--muted)">the damage-division across multiple targets is flattened to 4 damage to one target (the DSL's deal_damage is single-targ…</td>
+    </tr>
+  </tbody>
+</table>
+<p><em>Showing 60 of 259 tagged approximate cards.</em></p>
+
+<h2>Architecture: where otags fit</h2>
+<div class="mermaid">
+flowchart LR
+  subgraph scryfall [Scryfall Tagger]
+    OT[Oracle Tags bulk]
+    OC[Oracle Cards bulk]
+  end
+  subgraph tooling [mtgfr tooling]
+    BF[backfill-card-meta.mjs]
+    OTAG[analyze-otags.mjs]
+    LINT[future: otag-lint.mjs]
+  end
+  subgraph data [Card data]
+    TOML["crates/cards/data/*.toml"]
+    IDS[card-ids.json]
+  end
+  subgraph engine [Engine - unchanged runtime]
+    DSL[CardDef + abilities]
+    FILT[SpellFilter / PermanentFilter]
+  end
+  subgraph catalog [Catalog / deck builder]
+    CAT[CatalogCard]
+    PG[(Postgres catalog_cards)]
+  end
+  OT --> OTAG
+  OC --> OTAG
+  IDS --> OTAG
+  IDS --> BF
+  BF --> TOML
+  OTAG -->|hints + report| TOML
+  OTAG -->|proposed otags field| CAT
+  TOML --> DSL
+  TOML --> CAT
+  CAT --> PG
+  LINT --> TOML
+  OTAG -.->|cluster → increment map| LINT
+</div>
+
+<h2>Proposed schema extension</h2>
+<div class="callout">
+  Add optional catalog-only field to <code>CardDef</code> / <code>CatalogCard</code>:
+  <pre style="margin:0.5rem 0 0;overflow-x:auto"><code># tooling/backfill-otags.mjs — catalog only, engine ignores
+otags = ["historic-matters", "recursion", "flying"]
+
+# Store weight for deck-builder ranking (optional)
+# otag_weights = { "historic-matters" = "high", "flying" = "medium" }</code></pre>
+  Join path: <code>name → card-ids.json → scryfall id → oracle_id → oracle-tags bulk taggings</code>.
+  Re-run nightly or on pool changes; same idempotency pattern as <code>backfill-oracle.mjs</code>.
+</div>
+
+<h2>Untagged pool cards</h2>
+<details>
+  <summary>0 cards with Scryfall IDs but no oracle tags</summary>
+  <div><p></p></div>
+</details>
+
+<h2>Concrete next steps</h2>
+<table>
+  <thead><tr><th>Step</th><th>Effort</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr><td><code>tooling/backfill-otags.mjs</code> — write top-N weighted otags to TOML</td><td>S</td><td>Deck-builder thematic search; authoring reference</td></tr>
+    <tr><td>Otag-aware fidelity linter — flag tag/engine mismatches</td><td>M</td><td>Catch dropped triggers before playtesting</td></tr>
+    <tr><td>Map otag clusters → backlog increment IDs in tooling</td><td>S</td><td>Auto-generate increment card lists for validation</td></tr>
+    <tr><td>Land <code>SpellFilter::Historic</code> (#67) using otag-derived card set as test matrix</td><td>S (engine) + S (tooling)</td><td>Unblocks Teshar, Sram, Starfield Mystic batch</td></tr>
+    <tr><td>Do <em>not</em> add otags to engine <code>Game</code> state</td><td>—</td><td>Preserves determinism and ADR 0002</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  Data sources: <a href="https://api.scryfall.com/bulk-data/oracle-tags">Scryfall oracle-tags bulk</a>,
+  <a href="https://api.scryfall.com/bulk-data/oracle-cards">oracle-cards bulk</a>.
+  Pool: <code>crates/cards/data/</code> (429 TOMLs).
+  Script: <code>tooling/analyze-otags.mjs</code>.
+</footer>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark", themeVariables: { primaryColor: "#5b9fd4", lineColor: "#8b9cb3", textColor: "#e8edf4" } });
+</script>
+</body>
+</html>

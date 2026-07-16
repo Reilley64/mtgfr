@@ -1,0 +1,23 @@
+# This land enters tapped.
+# {T}: Add {G}.
+# {T}: Put a +1/+1 counter on each green creature that entered this turn.
+name = "Oran-Rief, the Vastwood"
+otags = ["activated-ability", "cycle-zen-namedland", "gives-pp-counters", "repeatable-pp-counters", "synergy-green", "utility-land", "virtual-legendary"]
+oracle = "This land enters tapped.\n{T}: Add {G}.\n{T}: Put a +1/+1 counter on each green creature that entered this turn."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = "green"
+
+# {T}: Put a +1/+1 counter on each green creature that entered this turn.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Put a +1/+1 counter on each green creature that entered this turn.
+[[abilities.effects]]
+type = "put_counters_each"
+count = 1
+filter = { types = "creature", color = "green", entered_this_turn = true }

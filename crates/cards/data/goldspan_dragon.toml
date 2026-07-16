@@ -1,0 +1,61 @@
+# Flying, haste
+# Whenever this creature attacks or becomes the target of a spell, create a Treasure token.
+# Treasures you control have "{T}, Sacrifice this artifact: Add two mana of any one color."
+# Goldspan Dragon (SOC): {3}{R}{R} 4/4 Dragon.
+# "Flying, haste. Whenever this creature attacks or becomes the target of a spell, create a
+# Treasure token. Treasures you control have '{T}, Sacrifice this artifact: Add two mana of any
+# one color.'"
+# ponytail: "two mana of any *one* color" (both credits the same color) is modeled as two
+# independently-any credits (mana = ["any", "any"]) — a harmless over-permissiveness; no pool
+# card can tell the difference (nothing forces one Treasure's output to match colors).
+name = "Goldspan Dragon"
+otags = ["attacking-matters-self", "evasion", "firebend-like", "gives-mana-ability", "hate-target", "heroic", "refund", "repeatable-treasures", "synergy-treasure"]
+oracle = "Flying, haste\nWhenever this creature attacks or becomes the target of a spell, create a Treasure token.\nTreasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\""
+set = "soc"
+subtypes = ["Dragon"]
+keywords = ["flying", "haste"]
+
+[cost]
+generic = 3
+red = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# Whenever this creature attacks or becomes the target of a spell, create a Treasure token.
+[[abilities]]
+timing = "attacks"
+
+# create a Treasure token
+[[abilities.effects]]
+type = "create_treasure"
+count = 1
+
+# Whenever this creature attacks or becomes the target of a spell, create a Treasure token.
+[[abilities]]
+timing = "becomes_targeted"
+
+# create a Treasure token
+[[abilities.effects]]
+type = "create_treasure"
+count = 1
+
+# Treasures you control have "{T}, Sacrifice this artifact: Add two mana of any one color."
+[[abilities]]
+timing = "static"
+
+# Treasures you control have "{T}, Sacrifice this artifact: Add two mana of any one color."
+[[abilities.effects]]
+type = "grant_mana_ability"
+mana = ["any", "any"]
+
+[abilities.effects.filter]
+types = ["artifact"]
+subtypes = ["Treasure"]
+controller = "you"
+
+[abilities.effects.cost]
+taps_self = true
+sacrifice = "this"

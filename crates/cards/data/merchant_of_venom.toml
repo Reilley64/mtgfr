@@ -1,0 +1,39 @@
+# Menace
+# When this creature enters, each player sacrifices a creature of their choice.
+# Whenever a player sacrifices a permanent, put a +1/+1 counter on this creature.
+name = "Merchant of Venom"
+otags = ["evasion", "gains-pp-counters", "marauder", "multi-removal", "removal-creature", "repeatable-pp-counters", "spot-removal", "synergy-sacrifice", "triggered-ability", "unique-type-line"]
+oracle = "Menace\nWhen this creature enters, each player sacrifices a creature of their choice.\nWhenever a player sacrifices a permanent, put a +1/+1 counter on this creature."
+set = "soc"
+subtypes = ["Cat", "Warlock"]
+keywords = ["menace"]
+
+[cost]
+generic = 3
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature enters, each player sacrifices a creature of their choice.
+[[abilities]]
+timing = "etb"
+
+# each player sacrifices a creature of their choice.
+[[abilities.effects]]
+type = "each_player_sacrifices"
+scope = "all_players"
+filter = "creature"
+
+# Whenever a player sacrifices a permanent, put a +1/+1 counter on this creature.
+[[abilities]]
+timing = "any_player_sacrifices"
+filter = {}
+
+# put a +1/+1 counter on this creature.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"

@@ -1,0 +1,35 @@
+# ({T}: Add {U}.)
+# This land enters tapped unless you control three or more other Islands.
+# When this land enters untapped, you may put target instant or sorcery card from your graveyard on top of your library.
+# Mystic Sanctuary: "{T}: Add {U}. This land enters tapped unless you control three or more
+# other Islands. When this land enters untapped, you may put target instant or sorcery card
+# from your graveyard on top of your library."
+name = "Mystic Sanctuary"
+otags = ["activated-ability", "cycle-eld-adamant-land", "nonbasic-basic-land-type", "restock-instant", "restock-sorcery", "restock-to-top", "synergy-island", "triggered-ability", "utility-land"]
+oracle = "({T}: Add {U}.)\nThis land enters tapped unless you control three or more other Islands.\nWhen this land enters untapped, you may put target instant or sorcery card from your graveyard on top of your library."
+set = "soc"
+
+[kind]
+type = "land"
+produces = "blue"
+subtypes = ["Island"]
+
+[enters_tapped_unless]
+type = "controls_lands_with_subtype"
+subtypes = ["Island"]
+count = 3
+
+# "When this land enters untapped, you may put target instant or sorcery card from your
+# graveyard on top of your library."
+[[abilities]]
+timing = "etb"
+optional = true
+
+[abilities.condition]
+type = "this_permanent_entered_untapped"
+
+# put target instant or sorcery card from your graveyard on top of your library.
+[[abilities.effects]]
+type = "tuck_from_graveyard"
+target = { card_in_graveyard = { whose = "yours", filter = "instant_or_sorcery" } }
+to_top = true

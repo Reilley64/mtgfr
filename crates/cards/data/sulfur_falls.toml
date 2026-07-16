@@ -1,0 +1,15 @@
+# This land enters tapped unless you control an Island or a Mountain.
+# {T}: Add {U} or {R}.
+name = "Sulfur Falls"
+otags = ["activated-ability", "cycle-isd-checkland", "synergy-island", "synergy-mountain"]
+oracle = "This land enters tapped unless you control an Island or a Mountain.\n{T}: Add {U} or {R}."
+set = "msc"
+
+[kind]
+type = "land"
+produces = ["blue", "red"]
+
+[enters_tapped_unless]
+type = "controls_lands_with_subtype"
+subtypes = ["Island", "Mountain"]
+count = 1

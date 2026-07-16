@@ -1,0 +1,25 @@
+# Search your library for a Forest card, put that card onto the battlefield, then shuffle.
+# Nature's Lore: "Search your library for a Forest card, put that card onto the
+# battlefield, then shuffle." — untapped land ramp (unlike Rampant Growth's tapped basic).
+name = "Nature's Lore"
+otags = ["land-ramp", "refund", "tutor-land-forest", "tutor-land-to-battlefield"]
+oracle = "Search your library for a Forest card, put that card onto the battlefield, then shuffle."
+set = "msc"
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Search your library for a Forest card, put that card onto the battlefield, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# Search your library for a Forest card, put that card onto the battlefield, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Forest"] }
+to_zone = "battlefield"
+tapped = false

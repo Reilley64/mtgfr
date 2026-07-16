@@ -1,0 +1,29 @@
+# Enchant creature
+# Whenever enchanted creature attacks, reveal cards from the top of your library until you reveal an Aura card. You may
+# put that card onto the battlefield. If you don't, put it into your hand. Put the rest on the bottom of your library in
+# a random order.
+name = "Songbirds' Blessing"
+otags = ["attack-trigger", "attacking-matters", "consult-onto-battlefield", "repeatable-card-advantage", "synergy-aura"]
+oracle = "Enchant creature\nWhenever enchanted creature attacks, reveal cards from the top of your library until you reveal an Aura card. You may put that card onto the battlefield. If you don't, put it into your hand. Put the rest on the bottom of your library in a random order."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "aura"
+
+# Whenever enchanted creature attacks, reveal cards from the top of your library until you reveal
+# an Aura card. You may put that card onto the battlefield. If you don't, put it into your hand.
+# Put the rest on the bottom of your library in a random order.
+[[abilities]]
+timing = "enchanted_creature_attacks"
+
+# reveal cards from the top of your library until you reveal an Aura card. You may put that card
+# onto the battlefield. If you don't, put it into your hand. Put the rest on the bottom of your
+# library in a random order.
+[[abilities.effects]]
+type = "reveal_until_may_deploy"
+filter = "aura"

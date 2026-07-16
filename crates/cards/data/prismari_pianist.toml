@@ -1,0 +1,37 @@
+# Whenever you cast an instant or sorcery spell, create a 1/1 blue and red Elemental creature token. If that spell's
+# mana value is 5 or greater, create three of those tokens instead.
+# Prismari Pianist {1}{R}{R} — 2/1 Djinn Bard.
+name = "Prismari Pianist"
+otags = ["alliteration", "cast-trigger-you", "mana-value-matters", "self-replacement-effect", "young-pyromancer-ability"]
+oracle = "Whenever you cast an instant or sorcery spell, create a 1/1 blue and red Elemental creature token. If that spell's mana value is 5 or greater, create three of those tokens instead."
+set = "soc"
+subtypes = ["Djinn", "Bard"]
+
+[cost]
+generic = 1
+red = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# Whenever you cast an instant or sorcery spell, create a 1/1 blue and red Elemental creature token.
+# If that spell's mana value is 5 or greater, create three of those tokens instead.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "instant_or_sorcery"
+
+# create a 1/1 blue and red Elemental creature token.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+token = { name = "Elemental", power = 1, toughness = 1, colors = ["blue", "red"], subtypes = ["Elemental"] }
+
+# If that spell's mana value is 5 or greater, create three of those tokens instead.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "triggering_spell_mana_value_at_least", at_least = 5 }
+then = [
+        { type = "create_token", count = 2, token = { name = "Elemental", power = 1, toughness = 1, colors = ["blue", "red"], subtypes = ["Elemental"] } },
+    ]

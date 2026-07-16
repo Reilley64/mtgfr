@@ -1,0 +1,63 @@
+# Vigilance
+# At the beginning of your end step, exile target noncreature, nonland card from your graveyard. Create a 3/2 red and
+# white Spirit creature token.
+# {1}{R}{W}, {T}, Sacrifice a Spirit: Choose target card exiled with Quintorius. You may cast that card this turn
+# without paying its mana cost. If that spell would be put into a graveyard, put it on the bottom of its owner's library
+# instead.
+name = "Quintorius, Loremaster"
+otags = ["activated-ability", "free-cast-another", "gives-castable-from-exile", "graveyard-fuel-noncreature", "graveyard-fuel-nonland", "noncreature-typal", "repeatable-creature-tokens", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "synergy-noncreature", "triggered-ability", "typal-spirit"]
+oracle = "Vigilance\nAt the beginning of your end step, exile target noncreature, nonland card from your graveyard. Create a 3/2 red and white Spirit creature token.\n{1}{R}{W}, {T}, Sacrifice a Spirit: Choose target card exiled with Quintorius. You may cast that card this turn without paying its mana cost. If that spell would be put into a graveyard, put it on the bottom of its owner's library instead."
+set = "soc"
+subtypes = ["Elephant", "Cleric"]
+legendary = true
+keywords = ["vigilance"]
+
+[cost]
+generic = 3
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 5
+
+# At the beginning of your end step, exile target noncreature, nonland card from your graveyard.
+# Create a 3/2 red and white Spirit creature token.
+[[abilities]]
+timing = "end_step"
+
+# exile target noncreature, nonland card from your graveyard
+[[abilities.effects]]
+type = "exile_target_from_graveyard_with_this"
+
+# Create a 3/2 red and white Spirit creature token.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Spirit"
+power = 3
+toughness = 2
+colors = ["red", "white"]
+subtypes = ["Spirit"]
+
+# {1}{R}{W}, {T}, Sacrifice a Spirit: Choose target card exiled with Quintorius. You may cast
+# that card this turn without paying its mana cost. If that spell would be put into a graveyard,
+# put it on the bottom of its owner's library instead.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = { creature = { subtypes = ["Spirit"] } }
+
+[abilities.activation_cost]
+generic = 1
+red = 1
+white = 1
+
+# Choose target card exiled with Quintorius. You may cast that card this turn without paying its
+# mana cost. If that spell would be put into a graveyard, put it on the bottom of its owner's
+# library instead.
+[[abilities.effects]]
+type = "cast_exiled_with_this_free"

@@ -1,0 +1,28 @@
+# Secrets of Strixhaven Commander printing. {2}{W}{W}, Creature — Angel, 3/4.
+name = "Serra Paragon"
+otags = ["crucible-of-worlds", "death-trigger", "evasion", "gives-castable-from-graveyard", "mana-value-matters", "namesake-spell", "reanimate-cast", "reanimate-permanent", "repeatable-lifegain"]
+oracle = "Flying\nOnce during each of your turns, you may play a land from your graveyard or cast a permanent spell with mana value 3 or less from your graveyard. If you do, it gains \"When this permanent is put into a graveyard from the battlefield, exile it and you gain 2 life.\""
+set = "soc"
+subtypes = ["Angel"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# Once during each of your turns, you may play a land from your graveyard or cast a permanent spell with mana value 3 or
+# less from your graveyard. If you do, it gains "When this permanent is put into a graveyard from the battlefield, exile
+# it and you gain 2 life."
+[[abilities]]
+timing = "static"
+
+# Once during each of your turns, you may play a land from your graveyard or cast a permanent spell with mana value 3 or
+# less from your graveyard. If you do, it gains "When this permanent is put into a graveyard from the battlefield, exile
+# it and you gain 2 life."
+[[abilities.effects]]
+type = "play_from_graveyard_once_per_turn"

@@ -1,0 +1,74 @@
+# Trample
+# At the beginning of your end step, create a number of Food tokens equal to the number of nontoken creatures you had
+# enter the battlefield under your control this turn.
+# {1}, Sacrifice a Food: Target creature gains indestructible until end of turn. Tap it.
+name = "Gyome, Master Chef"
+otags = ["activated-ability", "combat-trick", "creaturefall", "cycle-c21-alt-commander", "fun-ruling", "gives-indestructible", "neo-regenerate", "protects-creature", "repeatable-crime", "repeatable-food", "synergy-food", "tapper-creature"]
+oracle = "Trample\nAt the beginning of your end step, create a number of Food tokens equal to the number of nontoken creatures you had enter the battlefield under your control this turn.\n{1}, Sacrifice a Food: Target creature gains indestructible until end of turn. Tap it."
+set = "soc"
+subtypes = ["Troll", "Warlock"]
+legendary = true
+keywords = ["trample"]
+
+[cost]
+generic = 2
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 3
+
+# At the beginning of your end step, create a number of Food tokens equal to the number of
+# nontoken creatures you had enter the battlefield under your control this turn.
+[[abilities]]
+timing = "end_step"
+
+# create a number of Food tokens equal to the number of nontoken creatures you had enter the
+# battlefield under your control this turn.
+[[abilities.effects]]
+type = "create_token"
+count = "nontoken_creatures_entered_this_turn"
+
+[abilities.effects.token]
+name = "Food"
+subtypes = ["Food"]
+
+[abilities.effects.token.kind]
+type = "artifact"
+
+# "{2}, {T}, Sacrifice this token: You gain 3 life."
+[[abilities.effects.token.abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.effects.token.abilities.activation_cost]
+generic = 2
+
+# You gain 3 life.
+[[abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 3
+
+# {1}, Sacrifice a Food: Target creature gains indestructible until end of turn. Tap it.
+[[abilities]]
+timing = "activated"
+sacrifice = { permanent = { subtypes = ["Food"] } }
+
+[abilities.activation_cost]
+generic = 1
+
+# Target creature gains indestructible until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+target = "creature"
+power = 0
+toughness = 0
+keywords = ["indestructible"]
+
+# Tap it.
+[[abilities.effects]]
+type = "tap_target"
+target = "creature"

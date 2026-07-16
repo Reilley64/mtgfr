@@ -1,0 +1,27 @@
+# Flying
+# Untap all creatures you control during each other player's untap step.
+# Drumbellower (soc): {2}{W} 2/1 Spirit with flying.
+name = "Drumbellower"
+otags = ["evasion", "extra-untap", "untapper-creature"]
+oracle = "Flying\nUntap all creatures you control during each other player's untap step."
+set = "soc"
+subtypes = ["Spirit"]
+keywords = ["flying"]
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# Untap all creatures you control during each other player's untap step.
+[[abilities]]
+timing = "each_other_player_untap_step"
+
+# Untap all creatures you control
+[[abilities.effects]]
+type = "untap_all"
+filter = "creature"

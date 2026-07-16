@@ -1,0 +1,46 @@
+# [Elusive Otter]
+# Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)
+# Creatures with power less than this creature's power can't block it.
+# [Grove's Bounty]
+# Distribute X +1/+1 counters among any number of target creatures you control. (Then exile this card. You may cast the
+# creature later from exile.)
+name = "Elusive Otter"
+otags = ["cast-trigger-you", "castable-from-exile", "cycle-woe-r-2c-adventurer", "exile-self", "gives-pp-counters", "hate-low-power", "howlgeist-ability", "more-expensive-than-mv", "multiple-targets", "power-matters-self", "single-target-instant-sorcery", "synergy-noncreature"]
+oracle = "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nCreatures with power less than this creature's power can't block it. // Distribute X +1/+1 counters among any number of target creatures you control. (Then exile this card. You may cast the creature later from exile.)"
+set = "soc"
+subtypes = ["Otter"]
+keywords = ["prowess", "lesser_power_cant_block"]
+
+[cost]
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Adventure — Grove's Bounty {X}{G} sorcery: "Distribute X +1/+1 counters among any number of
+# target creatures you control."
+[adventure]
+name = "Grove's Bounty"
+oracle = "Distribute X +1/+1 counters among any number of target creatures you control."
+set = "soc"
+
+[adventure.cost]
+green = 1
+x = true
+
+[adventure.kind]
+type = "sorcery"
+
+# Distribute X +1/+1 counters among any number of target creatures you control.
+[[adventure.abilities]]
+timing = "spell"
+
+# Distribute X +1/+1 counters among any number of target creatures you control.
+[[adventure.abilities.effects]]
+type = "put_counters"
+count = "x"
+divided = true
+target = { permanent = { types = "creature", controller = "you" } }
+targets = { min = 0, x_scaled = true }

@@ -1,0 +1,62 @@
+name = "Quintorius, History Chaser"
+otags = ["activated-ability", "cycle-soc-face-commander", "gives-double-strike", "gives-vigilance", "leaves-graveyard-trigger", "mill-self", "repeatable-creature-tokens", "repeatable-rummage", "typal-spirit"]
+oracle = "Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token.\n+1: You may discard a card. If you do, draw two cards, then mill a card.\n−4: Spirits you control gain double strike and vigilance until end of turn.\nQuintorius, History Chaser can be your commander."
+set = "soc"
+subtypes = ["Quintorius"]
+legendary = true
+
+[cost]
+generic = 2
+red = 1
+white = 1
+
+[kind]
+type = "planeswalker"
+loyalty = 5
+
+# +1: You may discard a card. If you do, draw two cards, then mill a card.
+[[abilities]]
+timing = "activated"
+loyalty = 1
+
+# You may discard a card. If you do, draw two cards, then mill a card.
+[[abilities.effects]]
+type = "may_discard"
+
+# draw two cards
+[[abilities.effects.then]]
+type = "draw_cards"
+count = 2
+
+# then mill a card.
+[[abilities.effects.then]]
+type = "mill_self"
+count = 1
+
+# −4: Spirits you control gain double strike and vigilance until end of turn.
+[[abilities]]
+timing = "activated"
+loyalty = -4
+
+# Spirits you control gain double strike and vigilance until end of turn.
+[[abilities.effects]]
+type = "pump_creatures_you_control_until_end_of_turn"
+power = 0
+toughness = 0
+keywords = ["double_strike", "vigilance"]
+filter = { subtypes = ["Spirit"] }
+
+# Whenever one or more cards leave your graveyard, create a 3/2 red and white Spirit creature token.
+[[abilities]]
+timing = "cards_leave_your_graveyard"
+
+# create a 3/2 red and white Spirit creature token.
+[[abilities.effects]]
+type = "create_token"
+
+[abilities.effects.token]
+name = "Spirit"
+power = 3
+toughness = 2
+colors = ["red", "white"]
+subtypes = ["Spirit"]

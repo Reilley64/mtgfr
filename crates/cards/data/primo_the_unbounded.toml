@@ -1,0 +1,50 @@
+# Trample
+# Primo enters with twice X +1/+1 counters on it.
+# Whenever one or more creatures you control with base power 0 deal combat damage to a player, create a 0/0 green and
+# blue Fractal creature token. Put a number of +1/+1 counters on it equal to the damage dealt.
+name = "Primo, the Unbounded"
+otags = ["cycle-soc-alt-commander", "exponential", "gains-pp-counters", "gives-pp-counters", "per-player", "repeatable-creature-tokens", "repeatable-pp-counters", "saboteur", "scales-with-damage-dealt", "triggered-ability", "unique-mana-cost", "unique-type-line"]
+oracle = "Trample\nPrimo enters with twice X +1/+1 counters on it.\nWhenever one or more creatures you control with base power 0 deal combat damage to a player, create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it equal to the damage dealt."
+set = "soc"
+subtypes = ["Fractal", "Wolf"]
+legendary = true
+keywords = ["trample"]
+
+[cost]
+x = true
+green = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# Primo enters with twice X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# Primo enters with twice X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "twice_x"
+
+# Whenever one or more creatures you control with base power 0 deal combat damage to a player,
+# create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it equal
+# to the damage dealt.
+[[abilities]]
+timing = "zero_base_power_creatures_deal_combat_damage"
+
+# create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it equal
+# to the damage dealt.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+enters_with = "combat_damage_dealt"
+
+[abilities.effects.token]
+name = "Fractal"
+power = 0
+toughness = 0
+colors = ["green", "blue"]
+subtypes = ["Fractal"]

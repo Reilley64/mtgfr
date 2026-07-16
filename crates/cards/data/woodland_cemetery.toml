@@ -1,0 +1,15 @@
+# This land enters tapped unless you control a Swamp or a Forest.
+# {T}: Add {B} or {G}.
+name = "Woodland Cemetery"
+otags = ["activated-ability", "cycle-isd-checkland", "synergy-forest", "synergy-swamp"]
+oracle = "This land enters tapped unless you control a Swamp or a Forest.\n{T}: Add {B} or {G}."
+set = "soc"
+
+[kind]
+type = "land"
+produces = ["black", "green"]
+
+[enters_tapped_unless]
+type = "controls_lands_with_subtype"
+subtypes = ["Swamp", "Forest"]
+count = 1

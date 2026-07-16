@@ -1,0 +1,28 @@
+# Draw two cards. You may put a land card from your hand onto the battlefield.
+# Eureka Moment {2}{G}{U} — "Draw two cards. You may put a land card from your hand onto
+# the battlefield."
+name = "Eureka Moment"
+otags = ["cycle-stx-c-2c-noncreature", "hand-neutral", "hand-positive", "land-ramp", "pure-draw", "sneak-land"]
+oracle = "Draw two cards. You may put a land card from your hand onto the battlefield."
+set = "soc"
+
+[cost]
+generic = 2
+green = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Draw two cards, then may put a land from hand onto the battlefield — one resolution.
+[[abilities]]
+timing = "spell"
+
+# Draw two cards.
+[[abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# You may put a land card from your hand onto the battlefield.
+[[abilities.effects]]
+type = "put_land_from_hand"

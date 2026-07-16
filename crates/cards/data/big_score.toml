@@ -1,0 +1,40 @@
+# As an additional cost to cast this spell, discard a card.
+# Draw two cards and create two Treasure tokens. (They're artifacts with "{T}, Sacrifice this token: Add one mana of any
+# color.")
+# Big Score {3}{R} — instant. "As an additional cost to cast this spell, discard a card. Draw two
+# cards and create two Treasure tokens."
+name = "Big Score"
+otags = ["hand-neutral", "mini-refund", "pillage-effect", "ramp", "shares-name-with-a-set", "tormenting-voice"]
+oracle = "As an additional cost to cast this spell, discard a card.\nDraw two cards and create two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+set = "msc"
+
+[cost]
+generic = 3
+red = 1
+
+[cost.additional]
+discard = 1
+
+[kind]
+type = "instant"
+
+# Draw two cards and create two Treasure tokens. (They're artifacts with "{T}, Sacrifice this
+# token: Add one mana of any color.")
+# A non-modal spell runs all its `spell`-timed abilities, so the two halves are separate abilities.
+[[abilities]]
+timing = "spell"
+
+# Draw two cards
+[[abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# Draw two cards and create two Treasure tokens. (They're artifacts with "{T}, Sacrifice this
+# token: Add one mana of any color.")
+[[abilities]]
+timing = "spell"
+
+# create two Treasure tokens
+[[abilities.effects]]
+type = "create_treasure"
+count = 2

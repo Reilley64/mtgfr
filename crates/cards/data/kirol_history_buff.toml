@@ -1,0 +1,74 @@
+# [Kirol, History Buff]
+# Whenever one or more cards leave your graveyard, Kirol becomes prepared. (While it's prepared, you may cast a copy of
+# its spell. Doing so unprepares it.)
+# [Pack a Punch]
+# Mill a card. Put two +1/+1 counters on target creature. It gains trample until end of turn.
+# Kirol, History Buff // Pack a Punch (sos): {R}{W} legendary 2/3 Vampire Cleric.
+# The front creature becomes prepared on a graveyard-exit; while prepared, its controller may cast
+# a copy of the Pack a Punch back face (the [back] table below), which unprepares it.
+# ponytail: "cast a *copy* of its spell" is modeled as casting the back-face spell itself from the
+#   battlefield, paying its cost (Game::cast_prepared). The front permanent stays put and the copy
+#   ceases to exist on resolve, so it's functionally identical to a copy here — unobservable for the
+#   pool. (The prepared copy also doesn't fire cast-spell/magecraft triggers; no prepare card cares.)
+name = "Kirol, History Buff"
+otags = ["alliteration", "cycle-sos-student", "gives-castable-from-exile", "gives-pp-counters", "gives-trample", "leaves-graveyard-trigger", "mill-self", "repeatable-crime", "repeatable-pp-counters", "single-target-instant-sorcery"]
+oracle = "Whenever one or more cards leave your graveyard, Kirol becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Mill a card. Put two +1/+1 counters on target creature. It gains trample until end of turn."
+set = "sos"
+subtypes = ["Vampire", "Cleric"]
+legendary = true
+
+[cost]
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Front trigger: "Whenever one or more cards leave your graveyard, Kirol becomes prepared."
+[[abilities]]
+timing = "cards_leave_your_graveyard"
+
+# Kirol becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# Back face — Pack a Punch {1}{R}{W} sorcery: "Mill a card. Put two +1/+1 counters on target
+# creature. It gains trample until end of turn." One resolution (a sequence) sharing one creature
+# target between the counters and the trample grant.
+[back]
+name = "Pack a Punch"
+oracle = "Mill a card. Put two +1/+1 counters on target creature. It gains trample until end of turn."
+set = "sos"
+
+[back.cost]
+generic = 1
+red = 1
+white = 1
+
+[back.kind]
+type = "sorcery"
+
+# Mill a card. Put two +1/+1 counters on target creature.
+[[back.abilities]]
+timing = "spell"
+
+# Mill a card.
+[[back.abilities.effects]]
+type = "mill_self"
+count = 1
+
+# Put two +1/+1 counters on target creature.
+[[back.abilities.effects]]
+type = "put_counters"
+count = 2
+target = "creature"
+
+# It gains trample until end of turn.
+[[back.abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = "creature"
+keywords = ["trample"]

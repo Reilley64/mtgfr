@@ -1,0 +1,12 @@
+# ({T}: Add {W} or {B}.)
+# This land enters tapped.
+# Sunlit Marsh (SOC): "{T}: Add {W} or {B}. This land enters tapped."
+name = "Sunlit Marsh"
+otags = ["activated-ability", "cycle-dmu-dual-land", "nonbasic-basic-land-type"]
+oracle = "({T}: Add {W} or {B}.)\nThis land enters tapped."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["white", "black"]

@@ -1,0 +1,40 @@
+# {T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature of their
+# choice. You add {B}{B} and draw a card.
+name = "Priest of Forgotten Gods"
+otags = ["activated-ability", "adds-multiple-mana", "draw-engine", "mana-dork", "multiple-targets", "non-mana-ability-mana", "opponent-loses-life", "removal-creature", "removal-sacrifice", "repeatable-crime", "repeatable-plunder", "repeatable-removal"]
+oracle = "{T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature of their choice. You add {B}{B} and draw a card."
+set = "soc"
+subtypes = ["Human", "Cleric"]
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+
+# {T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice
+# a creature of their choice. You add {B}{B} and draw a card.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = { creature = { other = true }, count = 2 }
+
+# Any number of target players each lose 2 life and sacrifice a creature of their choice.
+[[abilities.effects]]
+type = "each_player_sacrifices"
+scope = "targeted_players"
+filter = "creature"
+life_loss = 2
+
+# You add {B}{B}
+[[abilities.effects.then]]
+type = "add_mana"
+mana = ["black", "black"]
+
+# and draw a card.
+[[abilities.effects.then]]
+type = "draw_cards"
+count = 1

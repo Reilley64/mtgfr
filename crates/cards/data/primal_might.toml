@@ -1,0 +1,30 @@
+# Target creature you control gets +X/+X until end of turn. Then it fights up to one target creature you don't control.
+# (Each deals damage equal to its power to the other.)
+name = "Primal Might"
+otags = ["multiple-targets", "removal-fight", "single-target-instant-sorcery"]
+oracle = "Target creature you control gets +X/+X until end of turn. Then it fights up to one target creature you don't control. (Each deals damage equal to its power to the other.)"
+set = "fdn"
+
+[cost]
+green = 1
+x = true
+
+[kind]
+type = "sorcery"
+
+# Target creature you control gets +X/+X until end of turn. Then it fights up to one target
+# creature you don't control.
+[[abilities]]
+timing = "spell"
+
+# Target creature you control gets +X/+X until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = "x"
+toughness = "x"
+target = "creature_you_control"
+
+# Then it fights up to one target creature you don't control.
+[[abilities.effects]]
+type = "fight"
+ally_is_shared_target = true

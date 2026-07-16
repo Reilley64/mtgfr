@@ -1,0 +1,25 @@
+name = "Umbral Collar Zealot"
+otags = ["activated-ability", "free-sacrifice-outlet", "sacrifice-outlet-artifact", "sacrifice-outlet-creature", "surveil", "synergy-artifact"]
+oracle = "Sacrifice another creature or artifact: Surveil 1. (Look at the top card of your library. You may put it into your graveyard.)"
+set = "soc"
+subtypes = ["Human", "Cleric"]
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# Sacrifice another creature or artifact: Surveil 1. (Look at the top card of your library. You
+# may put it into your graveyard.)
+[[abilities]]
+timing = "activated"
+sacrifice = { permanent = { types = "artifact_or_creature", other = true } }
+
+# Surveil 1.
+[[abilities.effects]]
+type = "surveil"
+count = 1

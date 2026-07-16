@@ -1,0 +1,44 @@
+# Flying, trample
+# When Tanazir Quandrix enters, double the number of +1/+1 counters on target creature you control.
+# Whenever Tanazir Quandrix attacks, you may have the base power and toughness of other creatures you control become
+# equal to Tanazir Quandrix's power and toughness until end of turn.
+name = "Tanazir Quandrix"
+otags = ["attack-trigger", "attacking-matters-self", "counter-doubler", "cycle-stx-dragon-founder", "evasion", "gives-pp-counters", "power-matters-self", "pp-counters-matter", "shapechange", "toughness-matters-self"]
+oracle = "Flying, trample\nWhen Tanazir Quandrix enters, double the number of +1/+1 counters on target creature you control.\nWhenever Tanazir Quandrix attacks, you may have the base power and toughness of other creatures you control become equal to Tanazir Quandrix's power and toughness until end of turn."
+set = "soc"
+subtypes = ["Elder", "Dragon"]
+legendary = true
+keywords = ["flying", "trample"]
+
+[cost]
+generic = 3
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# When Tanazir Quandrix enters, double the number of +1/+1 counters on target creature you control.
+[[abilities]]
+timing = "etb"
+
+# double the number of +1/+1 counters on target creature you control.
+[[abilities.effects]]
+type = "double_counters"
+target = "creature_you_control"
+
+# Whenever Tanazir Quandrix attacks, you may have the base power and toughness of other creatures
+# you control become equal to Tanazir Quandrix's power and toughness until end of turn.
+[[abilities]]
+timing = "attacks"
+optional = true
+
+# have the base power and toughness of other creatures you control become equal to Tanazir
+# Quandrix's power and toughness until end of turn.
+[[abilities.effects]]
+type = "set_base_pt_creatures_you_control_until_end_of_turn"
+power = "source_power"
+toughness = "source_toughness"
+other = true

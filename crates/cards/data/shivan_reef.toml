@@ -1,0 +1,30 @@
+# {T}: Add {C}.
+# {T}: Add {U} or {R}. This land deals 1 damage to you.
+name = "Shivan Reef"
+otags = ["activated-ability", "burn-you", "cycle-apc-painland", "mana-ability-with-extra-effect"]
+oracle = "{T}: Add {C}.\n{T}: Add {U} or {R}. This land deals 1 damage to you."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {T}: Add {U} or {R}. This land deals 1 damage to you.
+[[abilities]]
+timing = "activated"
+taps_self = true
+self_damage = 1
+
+# Add {U} or {R}. This land deals 1 damage to you.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["blue", "red"]]

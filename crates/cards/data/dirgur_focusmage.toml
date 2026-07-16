@@ -1,0 +1,67 @@
+# [Dirgur Focusmage]
+# Instant and sorcery spells you cast cost {1} less to cast.
+# Whenever you cast an instant or sorcery spell with mana value 5 or greater from your hand, this creature becomes
+# prepared.
+# [Braingeyser]
+# Target player draws X cards.
+name = "Dirgur Focusmage"
+otags = ["burst-draw", "cast-trigger-you", "cost-reducer-instant-sorcery", "cycle-soc-guest-lecturer", "draw-engine", "force-draw", "gives-castable-from-exile", "hand-positive", "mana-value-matters", "repeatable-pure-draw"]
+oracle = "Instant and sorcery spells you cast cost {1} less to cast.\nWhenever you cast an instant or sorcery spell with mana value 5 or greater from your hand, this creature becomes prepared. // Target player draws X cards."
+set = "soc"
+subtypes = ["Djinn", "Monk"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 4
+
+# Instant and sorcery spells you cast cost {1} less to cast.
+[[abilities]]
+timing = "static"
+
+# Instant and sorcery spells you cast cost {1} less to cast.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = 1
+filter = "instant_or_sorcery"
+
+# Whenever you cast an instant or sorcery spell with mana value 5 or greater from your hand, this
+# creature becomes prepared.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "instant_or_sorcery"
+caster = "you"
+from_hand = true
+
+[abilities.condition]
+type = "triggering_spell_mana_value_at_least"
+at_least = 5
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# Back face — Braingeyser ({X}{U}{U} sorcery): "Target player draws X cards."
+[back]
+name = "Braingeyser"
+set = "soc"
+
+[back.cost]
+x = true
+blue = 2
+
+[back.kind]
+type = "sorcery"
+
+# Target player draws X cards.
+[[back.abilities]]
+timing = "spell"
+
+# Target player draws X cards.
+[[back.abilities.effects]]
+type = "target_player_draws"
+count = "x"

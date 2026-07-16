@@ -1,0 +1,103 @@
+# Flying, deathtouch
+# Whenever Scriv enters or attacks, create a white Aura enchantment token named Contract attached to target creature an
+# opponent controls. The token has enchant creature and "Whenever enchanted creature attacks, it gets +2/+0 until end of
+# turn if it's attacking one of your opponents. Otherwise, its controller loses 2 life."
+# Scriv, the Obligator (soc). Real oracle text:
+#   "Flying, deathtouch
+#    Whenever Scriv enters or attacks, create a white Aura enchantment token named Contract
+#    attached to target creature an opponent controls. The token has enchant creature and
+#    'Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one
+#    of your opponents. Otherwise, its controller loses 2 life.'"
+name = "Scriv, the Obligator"
+otags = ["attacking-matters-self", "attacking-opponents-matters", "cycle-soc-alt-commander", "evasion", "hate-attacker", "opponent-loses-life", "repeatable-enchantment-tokens", "repeatable-noncreature-tokens", "titan-trigger", "unique-type-line"]
+oracle = "Flying, deathtouch\nWhenever Scriv enters or attacks, create a white Aura enchantment token named Contract attached to target creature an opponent controls. The token has enchant creature and \"Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its controller loses 2 life.\""
+set = "soc"
+subtypes = ["Inkling", "Bird"]
+legendary = true
+keywords = ["flying", "deathtouch"]
+
+[cost]
+generic = 2
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Whenever Scriv enters or attacks, create a white Aura enchantment token named Contract attached
+# to target creature an opponent controls. The token has enchant creature and "Whenever enchanted
+# creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents.
+# Otherwise, its controller loses 2 life."
+[[abilities]]
+timing = "etb"
+
+# create a white Aura enchantment token named Contract
+[[abilities.effects]]
+type = "create_token"
+
+[abilities.effects.token]
+name = "Contract"
+colors = ["white"]
+subtypes = ["Aura"]
+enchant = { types = "creature" }
+
+[abilities.effects.token.kind]
+type = "aura"
+
+# "Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of
+# your opponents. Otherwise, its controller loses 2 life."
+[[abilities.effects.token.abilities]]
+timing = "enchanted_creature_attacks"
+
+# it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its
+# controller loses 2 life.
+[[abilities.effects.token.abilities.effects]]
+type = "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life"
+power = 2
+toughness = 0
+life = 2
+
+# attached to target creature an opponent controls
+[[abilities.effects]]
+type = "attach_minted_aura_to_target"
+target = { permanent = { types = "creature", controller = "opponent" } }
+
+# Whenever Scriv enters or attacks, create a white Aura enchantment token named Contract attached
+# to target creature an opponent controls. The token has enchant creature and "Whenever enchanted
+# creature attacks, it gets +2/+0 until end of turn if it's attacking one of your opponents.
+# Otherwise, its controller loses 2 life."
+[[abilities]]
+timing = "attacks"
+
+# create a white Aura enchantment token named Contract
+[[abilities.effects]]
+type = "create_token"
+
+[abilities.effects.token]
+name = "Contract"
+colors = ["white"]
+subtypes = ["Aura"]
+enchant = { types = "creature" }
+
+[abilities.effects.token.kind]
+type = "aura"
+
+# "Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of
+# your opponents. Otherwise, its controller loses 2 life."
+[[abilities.effects.token.abilities]]
+timing = "enchanted_creature_attacks"
+
+# it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its
+# controller loses 2 life.
+[[abilities.effects.token.abilities.effects]]
+type = "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life"
+power = 2
+toughness = 0
+life = 2
+
+# attached to target creature an opponent controls
+[[abilities.effects]]
+type = "attach_minted_aura_to_target"
+target = { permanent = { types = "creature", controller = "opponent" } }

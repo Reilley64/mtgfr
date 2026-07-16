@@ -1,0 +1,40 @@
+# As an additional cost to cast this spell, discard a card.
+# Draw two cards and create a Treasure token. (It's an artifact with "{T}, Sacrifice this token: Add one mana of any
+# color.")
+# Seize the Spoils {2}{R} — sorcery. "As an additional cost to cast this spell, discard a card.
+# Draw two cards and create a Treasure token."
+name = "Seize the Spoils"
+otags = ["alliteration", "hand-neutral", "mini-refund", "pillage-effect", "ramp", "tormenting-voice"]
+oracle = "As an additional cost to cast this spell, discard a card.\nDraw two cards and create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+set = "sos"
+
+[cost]
+generic = 2
+red = 1
+
+[cost.additional]
+discard = 1
+
+[kind]
+type = "sorcery"
+
+# Draw two cards and create a Treasure token. (It's an artifact with "{T}, Sacrifice this token:
+# Add one mana of any color.")
+# A non-modal spell runs all its `spell`-timed abilities, so the two halves are separate abilities.
+[[abilities]]
+timing = "spell"
+
+# Draw two cards
+[[abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# Draw two cards and create a Treasure token. (It's an artifact with "{T}, Sacrifice this token:
+# Add one mana of any color.")
+[[abilities]]
+timing = "spell"
+
+# create a Treasure token.
+[[abilities.effects]]
+type = "create_treasure"
+count = 1

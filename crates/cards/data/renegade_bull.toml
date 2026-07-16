@@ -1,0 +1,40 @@
+name = "Renegade Bull"
+otags = ["attack-trigger", "attacking-matters-self", "cast-trigger-you", "demilich-effect", "free-cast-another", "graveyard-fuel-instant", "graveyard-fuel-sorcery", "mana-value-matters", "synergy-instant", "synergy-sorcery"]
+oracle = "Trample\nWhenever you cast an instant or sorcery spell, this creature gets +X/+0 until end of turn, where X is that spell's mana value.\nWhenever this creature attacks, exile up to one target instant or sorcery card from your graveyard and copy it. You may cast the copy without paying its mana cost."
+set = "soc"
+subtypes = ["Ox"]
+keywords = ["trample"]
+
+[cost]
+generic = 4
+red = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 5
+
+# Whenever you cast an instant or sorcery spell, this creature gets +X/+0 until end of turn, where
+# X is that spell's mana value.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "instant_or_sorcery"
+
+# this creature gets +X/+0 until end of turn, where X is that spell's mana value.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = "triggering_spell_mana_value"
+toughness = 0
+target = "this"
+
+# Whenever this creature attacks, exile up to one target instant or sorcery card from your
+# graveyard and copy it. You may cast the copy without paying its mana cost.
+[[abilities]]
+timing = "attacks"
+
+# exile up to one target instant or sorcery card from your graveyard and copy it. You may cast
+# the copy without paying its mana cost.
+[[abilities.effects]]
+type = "exile_target_graveyard_spell_cast_free"
+filter = "instant_or_sorcery"
+count = { min = 0, max = 1 }

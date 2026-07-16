@@ -1,0 +1,6 @@
+/dist
+/node_modules
+.solid
+.output
+.vinxi
+src/api/generated.ts

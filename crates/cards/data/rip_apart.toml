@@ -1,0 +1,37 @@
+# Choose one —
+# • Rip Apart deals 3 damage to target creature or planeswalker.
+# • Destroy target artifact or enchantment.
+# Rip Apart {R}{W} — sorcery, "Choose one —
+#   • Rip Apart deals 3 damage to target creature or planeswalker.
+#   • Destroy target artifact or enchantment."
+name = "Rip Apart"
+otags = ["abrade", "burn-planeswalker", "disenchant-naturalize", "modal", "removal-destroy", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Choose one —\n• Rip Apart deals 3 damage to target creature or planeswalker.\n• Destroy target artifact or enchantment."
+set = "msc"
+modal = true
+
+[cost]
+red = 1
+white = 1
+
+[kind]
+type = "sorcery"
+
+# Mode 0 — "Rip Apart deals 3 damage to target creature or planeswalker."
+[[abilities]]
+timing = "spell"
+
+# Rip Apart deals 3 damage to target creature or planeswalker.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 3
+target = "creature_or_planeswalker"
+
+# Mode 1 — "Destroy target artifact or enchantment."
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact or enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact_or_enchantment" } }

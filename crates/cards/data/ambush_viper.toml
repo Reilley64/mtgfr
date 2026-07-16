@@ -1,0 +1,18 @@
+# Flash
+# Deathtouch
+# Ambush Viper (inr): {1}{G} 2/1 with flash and deathtouch.
+name = "Ambush Viper"
+otags = ["color-break", "french-vanilla"]
+oracle = "Flash\nDeathtouch"
+set = "inr"
+subtypes = ["Snake"]
+keywords = ["flash", "deathtouch"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1

@@ -1,0 +1,37 @@
+# As an additional cost to cast this spell, you may sacrifice one or more creatures. When you do, copy this spell for
+# each creature sacrificed this way.
+# You draw a card and lose 1 life.
+name = "Plumb the Forbidden"
+otags = ["copy-self", "delayed-trigger", "hand-neutral", "hand-positive", "life-for-cards", "plunder", "pure-draw", "sacrifice-outlet-creature"]
+oracle = "As an additional cost to cast this spell, you may sacrifice one or more creatures. When you do, copy this spell for each creature sacrificed this way.\nYou draw a card and lose 1 life."
+set = "soc"
+
+[cost]
+generic = 1
+black = 1
+
+[cost.additional]
+sacrifice = { count = "one_or_more", filter = "creature" }
+
+[kind]
+type = "instant"
+
+# You draw a card and lose 1 life. When you do, copy this spell for each creature sacrificed
+# this way.
+[[abilities]]
+timing = "spell"
+
+# You draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# and lose 1 life.
+[[abilities.effects]]
+type = "lose_life"
+amount = 1
+
+# copy this spell for each creature sacrificed this way.
+[[abilities.effects]]
+type = "copy_this_spell"
+count = "spell_sacrifice_count"

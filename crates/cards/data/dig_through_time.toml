@@ -1,0 +1,33 @@
+# Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)
+# Look at the top seven cards of your library. Put two of them into your hand and the rest on the bottom of your library
+# in any order.
+# ponytail: "the rest on the bottom of your library in any order" — the bottom of the library is
+# hidden, so the order among bottomed cards is unobservable; a fixed order stands in for it (same
+# shortcut Quandrix Apprentice's `look_at_top` takes elsewhere in the pool).
+name = "Dig Through Time"
+otags = ["alliteration", "delve", "hand-positive", "impulse"]
+oracle = "Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)\nLook at the top seven cards of your library. Put two of them into your hand and the rest on the bottom of your library in any order."
+set = "soc"
+delve = true
+
+[cost]
+generic = 6
+blue = 2
+
+[kind]
+type = "instant"
+
+# Look at the top seven cards of your library. Put two of them into your hand and the rest on the
+# bottom of your library in any order.
+[[abilities]]
+timing = "spell"
+
+# Look at the top seven cards of your library. Put two of them into your hand and the rest on
+# the bottom of your library in any order.
+[[abilities.effects]]
+type = "look_at_top"
+count = 7
+up_to = 2
+min = 2
+dest = "hand"
+rest = "bottom"

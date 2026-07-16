@@ -1,0 +1,42 @@
+# At the beginning of combat on your turn, if you've cast an instant or sorcery spell this turn, create an X/X blue and
+# red Elemental creature token with flying and haste, where X is the greatest mana value among instant and sorcery
+# spells you've cast this turn.
+name = "Rootha, Mastering the Moment"
+otags = ["alliteration", "cycle-soc-face-commander", "evasion", "intervening-if-clause", "mana-value-matters", "repeatable-creature-tokens", "synergy-instant", "synergy-sorcery", "unique-type-line", "unnoted-tracked-information"]
+oracle = "At the beginning of combat on your turn, if you've cast an instant or sorcery spell this turn, create an X/X blue and red Elemental creature token with flying and haste, where X is the greatest mana value among instant and sorcery spells you've cast this turn."
+set = "soc"
+subtypes = ["Orc", "Sorcerer"]
+legendary = true
+
+[cost]
+generic = 2
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# At the beginning of combat on your turn, if you've cast an instant or sorcery spell this turn,
+# create an X/X blue and red Elemental creature token with flying and haste, where X is the
+# greatest mana value among instant and sorcery spells you've cast this turn.
+[[abilities]]
+timing = "begin_combat"
+
+[abilities.condition]
+type = "cast_instant_or_sorcery_this_turn"
+
+# create an X/X blue and red Elemental creature token with flying and haste, where X is the
+# greatest mana value among instant and sorcery spells you've cast this turn.
+[[abilities.effects]]
+type = "create_token"
+count = 1
+set_base_pt = "greatest_instant_or_sorcery_mana_value_cast_this_turn"
+[abilities.effects.token]
+name = "Elemental"
+power = 0
+toughness = 0
+colors = ["blue", "red"]
+subtypes = ["Elemental"]
+keywords = ["flying", "haste"]

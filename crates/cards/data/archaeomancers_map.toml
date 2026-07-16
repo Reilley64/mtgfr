@@ -1,0 +1,42 @@
+# When this artifact enters, search your library for up to two basic Plains cards, reveal them, put them into your hand,
+# then shuffle.
+# Whenever a land an opponent controls enters, if that player controls more lands than you, you may put a land card from
+# your hand onto the battlefield.
+name = "Archaeomancer's Map"
+otags = ["catch-up", "intervening-if-clause", "land-ramp", "landfall-other", "sneak-land", "toll", "tutor-land-basic-plains", "tutor-to-hand"]
+oracle = "When this artifact enters, search your library for up to two basic Plains cards, reveal them, put them into your hand, then shuffle.\nWhenever a land an opponent controls enters, if that player controls more lands than you, you may put a land card from your hand onto the battlefield."
+set = "soc"
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "artifact"
+
+# When this artifact enters, search your library for up to two basic Plains cards, reveal them,
+# put them into your hand, then shuffle.
+[[abilities]]
+timing = "etb"
+
+# search your library for up to two basic Plains cards, reveal them, put them into your hand,
+# then shuffle
+[[abilities.effects]]
+type = "search_library"
+filter = { basic_land_with_subtype = ["Plains"] }
+to_zone = "hand"
+count = 2
+
+# Whenever a land an opponent controls enters, if that player controls more lands than you, you
+# may put a land card from your hand onto the battlefield.
+[[abilities]]
+timing = "permanent_enters"
+filter = "land"
+controller = "opponent"
+
+[abilities.condition]
+type = "opponent_controls_more_lands"
+
+# you may put a land card from your hand onto the battlefield
+[[abilities.effects]]
+type = "put_land_from_hand"

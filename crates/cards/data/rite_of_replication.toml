@@ -1,0 +1,26 @@
+name = "Rite of Replication"
+otags = ["alliteration", "copy-creature", "cycle-zen-strong-kicker", "more-expensive-than-mv", "multiple-bodies", "self-replacement-effect", "single-target-instant-sorcery"]
+oracle = "Kicker {5} (You may pay an additional {5} as you cast this spell.)\nCreate a token that's a copy of target creature. If this spell was kicked, create five of those tokens instead."
+set = "soc"
+
+[cost]
+generic = 2
+blue = 2
+
+[cost.additional.kicker]
+generic = 5
+
+[kind]
+type = "sorcery"
+
+# Create a token that's a copy of target creature. If this spell was kicked, create five of those
+# tokens instead.
+[[abilities]]
+timing = "spell"
+
+# Create a token that's a copy of target creature. If this spell was kicked, create five of those
+# tokens instead.
+[[abilities.effects]]
+type = "create_token_copy"
+count = { if_kicked = 5, else = 1 }
+target = "creature"

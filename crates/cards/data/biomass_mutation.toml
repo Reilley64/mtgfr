@@ -1,0 +1,23 @@
+# Creatures you control have base power and toughness X/X until end of turn.
+# Biomass Mutation {X}{G/U}{G/U} — Instant.
+name = "Biomass Mutation"
+otags = ["cycle-block-rtr-r-hybrid", "cycle-gtc-x-spell", "power-boost-to-all", "toughness-boost-to-all", "shapechange"]
+oracle = "Creatures you control have base power and toughness X/X until end of turn."
+set = "soc"
+
+[cost]
+x = true
+hybrid = [["green", "blue"], ["green", "blue"]]
+
+[kind]
+type = "instant"
+
+# Creatures you control have base power and toughness X/X until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Creatures you control have base power and toughness X/X until end of turn.
+[[abilities.effects]]
+type = "set_base_pt_creatures_you_control_until_end_of_turn"
+power = "x"
+toughness = "x"

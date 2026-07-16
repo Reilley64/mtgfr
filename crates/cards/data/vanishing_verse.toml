@@ -1,0 +1,21 @@
+# Exile target monocolored permanent.
+name = "Vanishing Verse"
+otags = ["alliteration", "hate-monocolor", "removal-exile", "removal-nonland", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Exile target monocolored permanent."
+set = "soc"
+
+[cost]
+white = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# Exile target monocolored permanent.
+[[abilities]]
+timing = "spell"
+
+# Exile target monocolored permanent.
+[[abilities.effects]]
+type = "exile_target"
+target = { permanent = { color = "monocolored" } }

@@ -1,0 +1,32 @@
+# {T}: Add {C}.
+# {B/G}, {T}: Add {B}{B}, {B}{G}, or {G}{G}.
+# A filter land: feed it one mana and tap it for two {B}/{G} mana (a net +1). The two outputs
+# are {B/G} dual credits, so they can be spent as BB, BG, or GG.
+name = "Twilight Mire"
+otags = ["activated-ability", "cycle-eve-filterland"]
+oracle = "{T}: Add {C}.\n{B/G}, {T}: Add {B}{B}, {B}{G}, or {G}{G}."
+set = "soc"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {B/G}, {T}: Add {B}{B}, {B}{G}, or {G}{G}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { hybrid = [["black", "green"]] }
+
+# Add {B}{B}, {B}{G}, or {G}{G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["black", "green"], ["black", "green"]]

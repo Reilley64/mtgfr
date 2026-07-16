@@ -1,0 +1,32 @@
+# {T}: Add {C}.
+# {T}, Sacrifice a creature: You gain 1 life.
+name = "High Market"
+otags = ["activated-ability", "repeatable-lifegain", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "utility-land"]
+oracle = "{T}: Add {C}.\n{T}, Sacrifice a creature: You gain 1 life."
+set = "soc"
+
+# A colorless utility land and a sacrifice outlet (a Witherbloom Pestilence land).
+[kind]
+type = "land"
+produces = "colorless"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {T}, Sacrifice a creature: You gain 1 life.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "creature"
+
+# You gain 1 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = 1

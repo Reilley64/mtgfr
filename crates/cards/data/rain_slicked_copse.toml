@@ -1,0 +1,15 @@
+# ({T}: Add {G} or {U}.)
+# This land enters tapped.
+# Cycling {2} ({2}, Discard this card: Draw a card.)
+# Rain-Slicked Copse (SOC): Land — Forest Island. "{T}: Add {G} or {U}. This land enters
+# tapped. Cycling {2}."
+name = "Rain-Slicked Copse"
+otags = ["activate-from-hand", "cycle-dual-cycling-land", "hand-neutral", "nonbasic-basic-land-type", "pure-draw", "utility-land"]
+oracle = "({T}: Add {G} or {U}.)\nThis land enters tapped.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+set = "soc"
+enters_tapped = true
+cycling = { generic = 2 }
+
+[kind]
+type = "land"
+produces = ["green", "blue"]

@@ -1,0 +1,67 @@
+# [Defacing Duskmage]
+# Deathtouch
+# Whenever an opponent draws their second card each turn, this creature becomes prepared. (While it's prepared, you may
+# cast a copy of its spell. Doing so unprepares it.)
+# [Vandal's Edit]
+# Draw two cards. Each player loses 2 life.
+# Defacing Duskmage // Vandal's Edit (soc), a "prepare" double-faced card: {W}{B} 2/2 Dog
+# Warlock with deathtouch whose front-face trigger makes it become prepared; while prepared, its
+# controller may cast a copy of the {1}{W}{B} Vandal's Edit instant below, which unprepares it.
+name = "Defacing Duskmage"
+otags = ["alliteration", "cycle-soc-two-color-prepare", "draw-engine", "draw-hate", "gives-castable-from-exile", "group-slug", "hand-positive", "life-for-cards", "opponent-loses-life", "repeatable-pure-draw", "second-draw-matters", "triggered-ability"]
+oracle = "Deathtouch\nWhenever an opponent draws their second card each turn, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Draw two cards. Each player loses 2 life."
+set = "soc"
+subtypes = ["Dog", "Warlock"]
+keywords = ["deathtouch"]
+
+[cost]
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever an opponent draws their second card each turn, this creature becomes prepared.
+[[abilities]]
+timing = "player_draws"
+drawer = "opponent"
+nth_each_turn = 2
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# Back face — Vandal's Edit ({1}{W}{B} instant): "Draw two cards. Each player loses 2 life."
+[back]
+name = "Vandal's Edit"
+set = "soc"
+
+[back.cost]
+generic = 1
+white = 1
+black = 1
+
+[back.kind]
+type = "instant"
+
+# ponytail: "each player loses 2 life" (CR-simultaneous) is composed as each-opponent-then-you
+# sequential — the resulting life totals are identical and no pool card observes the ordering.
+[[back.abilities]]
+timing = "spell"
+
+# Draw two cards.
+[[back.abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# Each player loses 2 life (opponents' share).
+[[back.abilities.effects]]
+type = "each_opponent_loses_life"
+amount = 2
+
+# Each player loses 2 life (the caster's own share).
+[[back.abilities.effects]]
+type = "lose_life"
+amount = 2

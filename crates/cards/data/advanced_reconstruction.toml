@@ -1,0 +1,86 @@
+# (Gain the next level as a sorcery to add its ability.)
+# At the beginning of your first main phase, mill a card, then exile a card from your graveyard at random. You may play
+# the exiled card this turn.
+# {1}{R}: Level 2
+# Whenever one or more cards leave your graveyard, this Class deals 2 damage to each opponent.
+# {1}{R}: Level 3
+# Spells you cast from anywhere other than your hand cost {2} less to cast.
+name = "Advanced Reconstruction"
+otags = ["activated-ability", "burn-player", "cost-reducer", "graveyard-fuel", "group-slug", "impulsive-recursion", "leaves-graveyard-trigger", "mill-self", "paradox", "pinger", "repeatable-impulsive-draw"]
+oracle = "(Gain the next level as a sorcery to add its ability.)\nAt the beginning of your first main phase, mill a card, then exile a card from your graveyard at random. You may play the exiled card this turn.\n{1}{R}: Level 2\nWhenever one or more cards leave your graveyard, this Class deals 2 damage to each opponent.\n{1}{R}: Level 3\nSpells you cast from anywhere other than your hand cost {2} less to cast."
+set = "soc"
+subtypes = ["Class"]
+
+[cost]
+generic = 3
+red = 1
+
+[kind]
+type = "enchantment"
+
+# Level 1 (base): "At the beginning of your first main phase, mill a card, then exile a card from
+# your graveyard at random. You may play the exiled card this turn."
+# ponytail: approximated as an upkeep trigger (upkeep stands in for first main phase — no
+# first-main-phase-only trigger timing).
+[[abilities]]
+timing = "upkeep"
+
+# mill a card,
+[[abilities.effects]]
+type = "mill_self"
+count = 1
+
+# then exile a card from your graveyard at random. You may play the exiled card this turn.
+[[abilities.effects]]
+type = "exile_random_from_graveyard_may_play"
+
+# {1}{R}: Level 2
+[[abilities]]
+timing = "activated"
+sorcery_speed = true
+
+[abilities.activation_cost]
+generic = 1
+red = 1
+
+# Level 2
+[[abilities.effects]]
+type = "level_up"
+level = 2
+
+# Whenever one or more cards leave your graveyard, this Class deals 2 damage to each opponent.
+[[abilities]]
+timing = "cards_leave_your_graveyard"
+min_level = 2
+
+# this Class deals 2 damage to each opponent.
+# ponytail: modeled as each opponent losing 2 life (the engine models player damage as life
+# loss); no combat/prevention interaction distinguishes the two for this card.
+[[abilities.effects]]
+type = "each_opponent_loses_life"
+amount = 2
+
+# {1}{R}: Level 3
+[[abilities]]
+timing = "activated"
+sorcery_speed = true
+
+[abilities.activation_cost]
+generic = 1
+red = 1
+
+# Level 3
+[[abilities.effects]]
+type = "level_up"
+level = 3
+
+# Spells you cast from anywhere other than your hand cost {2} less to cast.
+[[abilities]]
+timing = "static"
+min_level = 3
+
+# Spells you cast from anywhere other than your hand cost {2} less to cast.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = 2
+filter = "cast_from_non_hand_zone"

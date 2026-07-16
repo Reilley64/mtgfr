@@ -1,0 +1,13 @@
+.git
+.github
+client/node_modules
+client/dist
+target
+iac/.terraform
+iac/*.tfstate*
+**/*.md
+!docs/**
+agent-transcripts
+.cursor
+*.toon
+data

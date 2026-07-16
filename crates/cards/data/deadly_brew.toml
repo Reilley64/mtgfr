@@ -1,0 +1,31 @@
+# Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent this way, you may
+# return another permanent card from your graveyard to your hand.
+name = "Deadly Brew"
+otags = ["hand-neutral", "multi-removal", "mutual-sacrifice", "regrowth-permanent", "removal-creature", "removal-planeswalker", "sacrifice-outlet-creature", "sacrifice-outlet-planeswalker", "spot-removal"]
+oracle = "Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent this way, you may return another permanent card from your graveyard to your hand."
+set = "soc"
+
+[cost]
+black = 1
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent
+# this way, you may return another permanent card from your graveyard to your hand.
+[[abilities]]
+timing = "spell"
+
+# Each player sacrifices a creature or planeswalker of their choice.
+[[abilities.effects]]
+type = "each_player_sacrifices"
+scope = "all_players"
+filter = "creature_or_planeswalker"
+
+# If you sacrificed a permanent this way, you may return another permanent card from your
+# graveyard to your hand.
+[[abilities.effects]]
+type = "may_return_from_graveyard"
+filter = "permanent"
+if_you_sacrificed_this_way = true

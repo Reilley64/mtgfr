@@ -1,0 +1,31 @@
+# Exile target creature. Its controller may search their library for a basic land card, put that card onto the
+# battlefield tapped, then shuffle.
+name = "Path to Exile"
+otags = ["donate-rampant-growth", "drawback", "land-ramp", "removal-creature", "removal-exile", "single-target-instant-sorcery", "spot-removal", "swap-removal", "tutor-land-basic", "tutor-land-to-battlefield"]
+oracle = "Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle."
+set = "msc"
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Exile target creature. Its controller may search their library for a basic land card, put that
+# card onto the battlefield tapped, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# Exile target creature.
+[[abilities.effects]]
+type = "exile_target"
+target = "creature"
+
+# Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then
+# shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+tapped = true
+searcher = "target_controller"

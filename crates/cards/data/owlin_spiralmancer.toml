@@ -1,0 +1,30 @@
+name = "Owlin Spiralmancer"
+otags = ["cast-trigger-you", "copy-spell", "evasion", "x-cost-matters"]
+oracle = "Flying, vigilance\nWhenever you cast your first spell with {X} in its mana cost each turn, you may copy it. You may choose new targets for the copy. (A copy of a permanent spell becomes a token.)"
+set = "soc"
+subtypes = ["Bird", "Wizard"]
+keywords = ["flying", "vigilance"]
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# Whenever you cast your first spell with {X} in its mana cost each turn, you may copy it. You
+# may choose new targets for the copy.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "has_x"
+caster = "you"
+nth_each_turn = 1
+optional = true
+
+# you may copy it. You may choose new targets for the copy.
+[[abilities.effects]]
+type = "copy_triggering_spell"
+count = 1
+may_choose_new_targets = true

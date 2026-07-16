@@ -1,0 +1,22 @@
+# Destroy target artifact, enchantment, or planeswalker.
+# "Destroy target artifact, enchantment, or planeswalker." — {W}{B} instant. Noncreature removal.
+name = "Fracture"
+otags = ["disenchant-naturalize", "removal-destroy", "removal-planeswalker", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Destroy target artifact, enchantment, or planeswalker."
+set = "soc"
+
+[cost]
+white = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# Destroy target artifact, enchantment, or planeswalker.
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact, enchantment, or planeswalker.
+[[abilities.effects]]
+type = "destroy_target"
+target = "artifact_enchantment_or_planeswalker"

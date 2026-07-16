@@ -1,0 +1,42 @@
+# Magecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end of turn.
+# If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to
+# trigger, that ability triggers an additional time.
+name = "Veyran, Voice of Duality"
+otags = ["alliteration", "cycle-c21-alt-commander", "fun-ruling", "magecraft", "trigger-doubler"]
+oracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end of turn.\nIf you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time."
+set = "soc"
+subtypes = ["Efreet", "Wizard"]
+legendary = true
+
+[cost]
+generic = 1
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Magecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end
+# of turn.
+[[abilities]]
+timing = "magecraft"
+
+# Veyran gets +1/+1 until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 1
+toughness = 1
+target = "this"
+
+# If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent
+# you control to trigger, that ability triggers an additional time.
+[[abilities]]
+timing = "static"
+
+# If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent
+# you control to trigger, that ability triggers an additional time.
+[[abilities.effects]]
+type = "trigger_doubling_static"
+caused_by_instant_or_sorcery_cast = true

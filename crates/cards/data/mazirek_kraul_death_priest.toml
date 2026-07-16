@@ -1,0 +1,34 @@
+# Flying
+# Whenever a player sacrifices another permanent, put a +1/+1 counter on each creature you control.
+# Mazirek, Kraul Death Priest (soc). Real oracle text:
+#   "Flying
+#    Whenever a player sacrifices another permanent, put a +1/+1 counter on each creature you
+#    control."
+name = "Mazirek, Kraul Death Priest"
+otags = ["cycle-2xm-r-two-color", "cycle-c15-alt-commander", "evasion", "gains-pp-counters", "gives-pp-counters-to-all", "hate-sacrifice", "repeatable-pp-counters", "synergy-sacrifice", "triggered-ability"]
+oracle = "Flying\nWhenever a player sacrifices another permanent, put a +1/+1 counter on each creature you control."
+set = "soc"
+subtypes = ["Insect", "Shaman"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 3
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever a player sacrifices another permanent, put a +1/+1 counter on each creature you control.
+[[abilities]]
+timing = "any_player_sacrifices"
+filter = { other = true }
+
+# put a +1/+1 counter on each creature you control.
+[[abilities.effects]]
+type = "put_counters_each"
+filter = { types = "creature", controller = "you" }
+count = 1

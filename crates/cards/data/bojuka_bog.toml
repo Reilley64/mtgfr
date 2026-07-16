@@ -1,0 +1,22 @@
+# This land enters tapped.
+# When this land enters, exile target player's graveyard.
+# {T}: Add {B}.
+# Bojuka Bog (soc): "This land enters tapped. When this land enters, exile target player's
+# graveyard. {T}: Add {B}."
+name = "Bojuka Bog"
+otags = ["activated-ability", "alliteration", "cycle-wwk-utilityland", "sweeper-graveyard", "triggered-ability", "utility-land"]
+oracle = "This land enters tapped.\nWhen this land enters, exile target player's graveyard.\n{T}: Add {B}."
+set = "soc"
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = "black"
+
+# When this land enters, exile target player's graveyard.
+[[abilities]]
+timing = "etb"
+
+# exile target player's graveyard
+[[abilities.effects]]
+type = "exile_graveyard"

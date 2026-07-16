@@ -1,0 +1,46 @@
+# Enchant creature
+# Enchanted creature gets +1/+1 and is goaded. (It attacks each combat if able and attacks a player other than you if
+# able.)
+# Whenever enchanted creature attacks, you draw a card and lose 1 life.
+# Coercive Impetus (soc). Real oracle text:
+#   "Enchant creature
+#    Enchanted creature gets +1/+1 and is goaded.
+#    Whenever enchanted creature attacks, you draw a card and lose 1 life."
+name = "Coercive Impetus"
+otags = ["attack-trigger", "attacking-matters", "force-attacker", "life-for-cards", "repeatable-pure-draw"]
+oracle = "Enchant creature\nEnchanted creature gets +1/+1 and is goaded. (It attacks each combat if able and attacks a player other than you if able.)\nWhenever enchanted creature attacks, you draw a card and lose 1 life."
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +1/+1 and is goaded. (It attacks each combat if able and attacks a
+# player other than you if able.)
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +1/+1 and is goaded.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 1
+toughness = 1
+goad = true
+
+# Whenever enchanted creature attacks, you draw a card and lose 1 life.
+[[abilities]]
+timing = "enchanted_creature_attacks"
+
+# you draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# lose 1 life
+[[abilities.effects]]
+type = "gain_life"
+amount = -1

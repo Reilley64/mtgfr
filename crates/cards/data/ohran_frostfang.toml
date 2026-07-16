@@ -1,0 +1,41 @@
+# Attacking creatures you control have deathtouch.
+# Whenever a creature you control deals combat damage to a player, draw a card.
+# Ohran Frostfang (soc), a Snow Creature. Real oracle text:
+#   "Attacking creatures you control have deathtouch.
+#    Whenever a creature you control deals combat damage to a player, draw a card."
+# ponytail: the snow supertype is flattened away (cosmetic — Ohran has no snow-matters ability
+# that would read it).
+name = "Ohran Frostfang"
+otags = ["attacking-matters", "curiosity", "draw-engine", "gives-deathtouch", "keyword-anthem", "repeatable-pure-draw", "triggered-ability"]
+oracle = "Attacking creatures you control have deathtouch.\nWhenever a creature you control deals combat damage to a player, draw a card."
+set = "soc"
+subtypes = ["Snake"]
+
+[cost]
+generic = 3
+green = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 6
+
+# Attacking creatures you control have deathtouch.
+[[abilities]]
+timing = "static"
+
+# Attacking creatures you control have deathtouch.
+[[abilities.effects]]
+type = "anthem_static"
+keywords = ["deathtouch"]
+attacking_only = true
+
+# Whenever a creature you control deals combat damage to a player, draw a card.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "your_creatures"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

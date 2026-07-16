@@ -1,0 +1,74 @@
+# Bitterthorn, Nissa's Animus {3} — Legendary Artifact — Equipment. Real oracle text:
+#   "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token,
+#    then attach this to it.)
+#    Equipped creature gets +1/+1.
+#    Whenever equipped creature attacks, you may search your library for a basic land card, put it
+#    onto the battlefield tapped, then shuffle.
+#    Equip {3}"
+name = "Bitterthorn, Nissa's Animus"
+otags = ["activated-ability", "attack-trigger", "attacking-matters", "combat-ramp", "land-ramp", "living-weapon", "namesake-spell", "tutor-land-basic", "tutor-land-to-battlefield"]
+oracle = "Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token, then attach this to it.)\nEquipped creature gets +1/+1.\nWhenever equipped creature attacks, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\nEquip {3}"
+set = "soc"
+subtypes = ["Equipment"]
+legendary = true
+
+[cost]
+generic = 3
+
+[kind]
+type = "artifact"
+
+# Living weapon (When this Equipment enters, create a 0/0 black Phyrexian Germ creature token,
+# then attach this to it.)
+[[abilities]]
+timing = "etb"
+
+# create a 0/0 black Phyrexian Germ creature token
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Germ"
+power = 0
+toughness = 0
+colors = ["black"]
+subtypes = ["Phyrexian", "Germ"]
+
+# then attach this to it.
+[[abilities.effects]]
+type = "attach_self_to_minted_token"
+
+# Equipped creature gets +1/+1.
+[[abilities]]
+timing = "static"
+
+# Equipped creature gets +1/+1.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 1
+toughness = 1
+
+# Whenever equipped creature attacks, you may search your library for a basic land card, put it
+# onto the battlefield tapped, then shuffle.
+[[abilities]]
+timing = "equipped_creature_attacks"
+optional = true
+
+# search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+tapped = true
+
+# Equip {3}
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 3
+
+# Equip {3}
+[[abilities.effects]]
+type = "equip"

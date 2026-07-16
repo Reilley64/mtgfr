@@ -1,0 +1,50 @@
+# Whenever you cast a spell with {X} in its mana cost, put two charge counters on this artifact.
+# {T}: Add one mana of any color.
+# {T}: Add {C} for each charge counter on this artifact. Spend this mana only on costs that contain {X}.
+name = "Elementalist's Palette"
+otags = ["activated-ability", "adds-multiple-mana", "cast-trigger-you", "counters-matter", "mana-rock", "mini-refund", "restricted-mana", "x-cost-matters"]
+oracle = "Whenever you cast a spell with {X} in its mana cost, put two charge counters on this artifact.\n{T}: Add one mana of any color.\n{T}: Add {C} for each charge counter on this artifact. Spend this mana only on costs that contain {X}."
+set = "soc"
+
+[cost]
+generic = 3
+
+[kind]
+type = "artifact"
+
+# {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]
+
+# Whenever you cast a spell with {X} in its mana cost, put two charge counters on this artifact.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "has_x"
+caster = "you"
+
+# put two charge counters on this artifact.
+[[abilities.effects]]
+type = "put_counters"
+count = 2
+kind = "charge"
+target = "this"
+
+# {T}: Add {C} for each charge counter on this artifact. Spend this mana only on costs that
+# contain {X}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C} for each charge counter on this artifact. Spend this mana only on costs that contain
+# {X}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+repeat = { per_counter_of_kind = "charge" }
+restriction = "has_x"

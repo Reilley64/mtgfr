@@ -1,0 +1,33 @@
+# You draw two cards and lose 2 life.
+name = "Night's Whisper"
+otags = ["hand-positive", "life-for-cards", "pure-draw"]
+oracle = "You draw two cards and lose 2 life."
+set = "msc"
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "sorcery"
+
+# A non-modal spell runs all its `spell`-timed abilities, so the two halves are separate abilities.
+# You draw two cards and lose 2 life.
+[[abilities]]
+timing = "spell"
+
+# You draw two cards
+[[abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# You draw two cards and lose 2 life.
+# (gain_life with a negative amount decrements life; amount > 0 guards the
+# lifegain trigger, so this does not false-fire "whenever you gain life").
+[[abilities]]
+timing = "spell"
+
+# lose 2 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = -2

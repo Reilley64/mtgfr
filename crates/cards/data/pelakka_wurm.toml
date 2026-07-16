@@ -1,0 +1,36 @@
+# Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)
+# When this creature enters, you gain 7 life.
+# When this creature dies, draw a card.
+name = "Pelakka Wurm"
+otags = ["death-trigger-self", "lifegain", "pure-draw"]
+oracle = "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nWhen this creature enters, you gain 7 life.\nWhen this creature dies, draw a card."
+set = "fdn"
+subtypes = ["Wurm"]
+keywords = ["trample"]
+
+[cost]
+generic = 4
+green = 3
+
+[kind]
+type = "creature"
+power = 7
+toughness = 7
+
+# When this creature enters, you gain 7 life.
+[[abilities]]
+timing = "etb"
+
+# you gain 7 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = 7
+
+# When this creature dies, draw a card.
+[[abilities]]
+timing = "dies"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

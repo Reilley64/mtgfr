@@ -1,0 +1,81 @@
+name: CI
+
+# Deploy PRD §GitHub Actions — PR verify: Postgres service, migrate, then `just check`.
+# Mirrors the verify job in verify-and-release.yml; no release steps here.
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+env:
+  DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mtgfr
+          POSTGRES_PASSWORD: mtgfr
+          POSTGRES_DB: mtgfr
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mtgfr -d mtgfr"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: extractions/setup-just@v3
+
+      - name: Install client dependencies
+        run: cd client && bun install --frozen-lockfile
+
+      - name: Apply Toasty migrations
+        run: cargo run -p server -- migration apply
+
+      - name: just check (format + lint + typecheck + test)
+        run: just check
+
+  terraform:
+    name: Terraform (iac/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: terraform fmt -check
+        working-directory: iac
+        run: terraform fmt -check -recursive
+
+      - name: terraform init (no backend — this only validates syntax/config, no state access)
+        working-directory: iac
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        working-directory: iac
+        run: terraform validate

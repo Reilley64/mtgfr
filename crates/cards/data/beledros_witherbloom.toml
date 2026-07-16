@@ -1,0 +1,61 @@
+# Flying
+# At the beginning of each upkeep, create a 1/1 black and green Pest creature token with "When this token dies, you gain
+# 1 life."
+# Pay 10 life: Untap all lands you control. Activate only once each turn.
+name = "Beledros Witherbloom"
+otags = ["activated-ability", "cycle-stx-dragon-founder", "evasion", "extra-untap", "full-refund", "life-payment", "per-player", "ramp", "repeatable-creature-tokens", "repeatable-lifegain", "triggered-ability", "untapper-land"]
+oracle = "Flying\nAt the beginning of each upkeep, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\"\nPay 10 life: Untap all lands you control. Activate only once each turn."
+set = "soc"
+subtypes = ["Elder", "Dragon"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 5
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# At the beginning of each upkeep, create a 1/1 black and green Pest creature token with
+# "When this token dies, you gain 1 life."
+[[abilities]]
+timing = "each_upkeep"
+
+# create a 1/1 black and green Pest creature token
+[[abilities.effects]]
+type = "create_token"
+count = 1
+
+[abilities.effects.token]
+name = "Pest"
+colors = ["black", "green"]
+subtypes = ["Pest"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# "When this token dies, you gain 1 life."
+[[abilities.effects.token.abilities]]
+timing = "dies"
+
+# you gain 1 life
+[[abilities.effects.token.abilities.effects]]
+type = "gain_life"
+amount = 1
+
+# Pay 10 life: Untap all lands you control. Activate only once each turn.
+[[abilities]]
+timing = "activated"
+pay_life = 10
+once_each_turn = true
+
+# Untap all lands you control.
+[[abilities.effects]]
+type = "untap_all"
+filter = "land"

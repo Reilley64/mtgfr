@@ -1,0 +1,24 @@
+# Dev Postgres for mtgfr. `docker compose up -d`, then run the server — it picks this up via the
+# default DATABASE_URL (postgresql://mtgfr:mtgfr@localhost:5432/mtgfr), or set DATABASE_URL yourself.
+services:
+  postgres:
+    image: postgres:latest
+    container_name: mtgfr-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mtgfr
+      POSTGRES_PASSWORD: mtgfr
+      POSTGRES_DB: mtgfr
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18+ stores data in a version subdirectory, so mount the parent (not .../data).
+      - mtgfr-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mtgfr -d mtgfr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mtgfr-pgdata:

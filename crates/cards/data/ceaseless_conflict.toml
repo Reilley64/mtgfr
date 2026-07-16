@@ -1,0 +1,36 @@
+# Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken creature you controlled
+# that was destroyed this way.
+name = "Ceaseless Conflict"
+otags = ["alliteration", "multiple-bodies", "out-of-color-token", "removal-creature", "removal-destroy", "sweeper"]
+oracle = "Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken creature you controlled that was destroyed this way."
+set = "soc"
+
+[cost]
+generic = 3
+white = 2
+
+[kind]
+type = "sorcery"
+
+# Destroy all creatures. Then create a 3/2 red and white Spirit creature token for each nontoken
+# creature you controlled that was destroyed this way.
+[[abilities]]
+timing = "spell"
+
+# Destroy all creatures.
+[[abilities.effects]]
+type = "destroy_all"
+filter = "creatures"
+
+# Then create a 3/2 red and white Spirit creature token for each nontoken creature you
+# controlled that was destroyed this way.
+[[abilities.effects]]
+type = "create_token"
+count = { permanents_destroyed_this_way = { types = "creature", controller = "you", token = "nontoken" } }
+
+[abilities.effects.token]
+name = "Spirit"
+power = 3
+toughness = 2
+colors = ["red", "white"]
+subtypes = ["Spirit"]

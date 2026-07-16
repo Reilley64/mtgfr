@@ -1,0 +1,44 @@
+# Vigilance
+# This creature gets +1/+1 for each creature card in your graveyard.
+# {T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then
+# shuffle.
+name = "Wight of the Reliquary"
+otags = ["activated-ability", "cycle-mh3-r-m-two-color", "land-ramp", "punny-name", "repeatable-sacrifice-outlet", "sacrifice-outlet-creature", "tutor-land-any", "tutor-land-to-battlefield", "undergrowth"]
+oracle = "Vigilance\nThis creature gets +1/+1 for each creature card in your graveyard.\n{T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then shuffle."
+set = "soc"
+subtypes = ["Zombie", "Knight"]
+keywords = ["vigilance"]
+
+[cost]
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# This creature gets +1/+1 for each creature card in your graveyard.
+[[abilities]]
+timing = "static"
+
+# This creature gets +1/+1 for each creature card in your graveyard.
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+power = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
+toughness = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
+
+# {T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield
+# tapped, then shuffle.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = { creature = { other = true } }
+
+# Search your library for a land card, put it onto the battlefield tapped, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "land"
+to_zone = "battlefield"
+tapped = true

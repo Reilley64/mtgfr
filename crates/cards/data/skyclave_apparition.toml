@@ -1,0 +1,31 @@
+# ponytail: the "up to one" declinable target is modeled by optional = true.
+name = "Skyclave Apparition"
+otags = ["donate-token", "leaves-trigger-self", "mana-value-matters", "out-of-color-token", "removal-exile", "removal-nonland", "spot-removal", "swap-removal"]
+oracle = "When this creature enters, exile up to one target nonland, nontoken permanent you don't control with mana value 4 or less.\nWhen this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion creature token, where X is the mana value of the exiled card."
+set = "soc"
+subtypes = ["Kor", "Spirit"]
+keywords = []
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, exile up to one target nonland, nontoken permanent you don't control
+# with mana value 4 or less.
+# When this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion
+# creature token, where X is the mana value of the exiled card.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# exile up to one target nonland, nontoken permanent you don't control with mana value 4 or
+# less. When this creature leaves the battlefield, the exiled card's owner creates an X/X blue
+# Illusion creature token, where X is the mana value of the exiled card.
+[[abilities.effects]]
+type = "exile_target_minting_illusion_on_leave"
+target = { permanent = { types = "nonland", token = "nontoken", controller = "opponent", mv_max = 4 } }

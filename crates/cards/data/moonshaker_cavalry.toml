@@ -1,0 +1,34 @@
+# Flying
+# When this creature enters, creatures you control gain flying and get +X/+X until end of turn, where X is the number of
+# creatures you control.
+# Moonshaker Cavalry (soc): {5}{W}{W}{W} 6/6 Spirit Knight with flying. Real oracle text:
+#   "Flying
+#    When this creature enters, creatures you control gain flying and get +X/+X until end of turn,
+#    where X is the number of creatures you control."
+name = "Moonshaker Cavalry"
+otags = ["creature-count-matters", "evasion", "gives-flying", "power-boost-to-all", "quadratic", "toughness-boost-to-all", "triggered-ability", "virtual-french-vanilla"]
+oracle = "Flying\nWhen this creature enters, creatures you control gain flying and get +X/+X until end of turn, where X is the number of creatures you control."
+set = "soc"
+subtypes = ["Spirit", "Knight"]
+keywords = ["flying"]
+
+[cost]
+generic = 5
+white = 3
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# When this creature enters, creatures you control gain flying and get +X/+X until end of turn,
+# where X is the number of creatures you control.
+[[abilities]]
+timing = "etb"
+
+# creatures you control gain flying and get +X/+X until end of turn, where X is the number of creatures you control.
+[[abilities.effects]]
+type = "pump_creatures_you_control_until_end_of_turn"
+power = "per_creature_you_control"
+toughness = "per_creature_you_control"
+keywords = ["flying"]

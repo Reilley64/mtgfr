@@ -1,0 +1,51 @@
+# {1}, {T}: You may put a land card from your hand onto the battlefield tapped.
+# {4}, {T}: Draw a card. If you control eight or more lands, draw two cards instead.
+# Zimone, Quandrix Prodigy (soc). Real oracle text:
+#   "{1}, {T}: You may put a land card from your hand onto the battlefield tapped.
+#    {4}, {T}: Draw a card. If you control eight or more lands, draw two cards instead."
+name = "Zimone, Quandrix Prodigy"
+otags = ["activated-ability", "cycle-stx-student", "draw-engine", "land-ramp", "lands-matter", "repeatable-pure-draw", "self-replacement-effect", "sneak-land"]
+oracle = "{1}, {T}: You may put a land card from your hand onto the battlefield tapped.\n{4}, {T}: Draw a card. If you control eight or more lands, draw two cards instead."
+set = "soc"
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+
+# {1}, {T}: You may put a land card from your hand onto the battlefield tapped.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# You may put a land card from your hand onto the battlefield tapped.
+[[abilities.effects]]
+type = "put_land_from_hand"
+tapped = true
+
+# {4}, {T}: Draw a card. If you control eight or more lands, draw two cards instead — modeled as
+# an unconditional draw plus a second, gated draw (same total either way).
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 4 }
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# If you control eight or more lands, draw two cards instead.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "you_control_lands", at_least = 8 }
+then = [
+        { type = "draw_cards", count = 1 },
+    ]

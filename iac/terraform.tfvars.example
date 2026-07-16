@@ -1,0 +1,40 @@
+# Copy to terraform.tfvars or *.auto.tfvars (both gitignored) and fill in.
+# See variables.tf for the full list + descriptions. Defaults in variables.tf use example.com;
+# override hostnames here for a real deploy.
+
+kubeconfig_path = "~/.kube/config"
+
+cloudflare_account_id = "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"
+cloudflare_zone_id    = "REPLACE_WITH_CLOUDFLARE_ZONE_ID"
+cloudflare_api_token  = "REPLACE_WITH_CLOUDFLARE_API_TOKEN"
+
+dns_zone     = "example.com"
+edh_hostname = "edh.example.com"
+api_hostname = "api.edh.example.com"
+
+cookie_domain = ".example.com"
+cors_origin   = "https://edh.example.com"
+
+# Public GHCR tags — pin explicit release versions, never "latest". `just deploy`
+# (iac/scripts/deploy.sh) manages server_image/web_image/server_image_drain/api_drain_enabled
+# itself across the two-phase apply — the values below are only what a manual first
+# `terraform apply` (before ever running `just deploy`) needs.
+server_image = "ghcr.io/OWNER/mtgfr-server:0.1.0"
+web_image    = "ghcr.io/OWNER/mtgfr-web:0.1.0"
+
+api_drain_enabled = false
+# server_image_drain = "ghcr.io/OWNER/mtgfr-server:0.0.9"  # only set while api_drain_enabled = true
+
+mtgfr_db_password = "REPLACE_WITH_A_STRONG_PASSWORD"
+
+# Reserved — session signing if added later; leave empty until the server consumes it.
+auth_secret = ""
+
+# Bearer token for /admin/drain + /health/drain (empty = unauthenticated, matching the server's
+# default). Set a strong value once the cluster is stable, and export the same value as
+# MTGFR_ADMIN_TOKEN when running `just deploy` / scripts/wait-drain.sh directly.
+admin_token = ""
+
+# Pin cloudflared to an explicit release — never "latest". Check
+# https://github.com/cloudflare/cloudflared/releases for the current stable tag.
+cloudflared_image = "cloudflare/cloudflared:2026.6.0"

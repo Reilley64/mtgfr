@@ -1,0 +1,79 @@
+# [Striding Shotcaller]
+# Reach
+# Whenever one or more creatures you control deal combat damage to a player, this creature becomes prepared. (While it's
+# prepared, you may cast a copy of its spell. Doing so unprepares it.)
+# [Run the Play]
+# Put a +1/+1 counter on each of up to X target creatures. Those creatures gain flying until end of turn. Draw a card.
+name = "Striding Shotcaller"
+otags = ["alliteration", "curiosity", "cycle-soc-two-color-prepare", "draw-engine", "gives-castable-from-exile", "gives-flying", "jump", "multiple-targets", "repeatable-pp-counters", "repeatable-pure-draw", "single-target-instant-sorcery", "support"]
+oracle = "Reach\nWhenever one or more creatures you control deal combat damage to a player, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Put a +1/+1 counter on each of up to X target creatures. Those creatures gain flying until end of turn. Draw a card."
+set = "soc"
+subtypes = ["Troll", "Druid"]
+keywords = ["reach"]
+
+[cost]
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 4
+
+# Whenever one or more creatures you control deal combat damage to a player, this creature
+# becomes prepared.
+# ponytail: the real trigger is a single batch "one or more ... deal ..." watch (fires once per
+# combat damage step); `who = "your_creatures"` fires once per damaging creature instead. Both
+# converge on the same prepared state (`become_prepared` is idempotent), so the divergence is
+# unobservable — upgrade to a batch combat-damage trigger if a card ever needs to count how many
+# creatures connected, not just whether any did.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "your_creatures"
+
+# this creature becomes prepared.
+[[abilities.effects]]
+type = "become_prepared"
+
+# Back face — Run the Play ({X}{G}{U} sorcery): "Put a +1/+1 counter on each of up to X target
+# creatures. Those creatures gain flying until end of turn. Draw a card."
+[back]
+name = "Run the Play"
+set = "soc"
+
+[back.cost]
+x = true
+green = 1
+blue = 1
+
+[back.kind]
+type = "sorcery"
+
+# Put a +1/+1 counter on each of up to X target creatures. Those creatures gain flying until end
+# of turn.
+[[back.abilities]]
+timing = "spell"
+
+# Put a +1/+1 counter on each of up to X target creatures.
+[[back.abilities.effects]]
+type = "put_counters"
+count = 1
+target = "creature"
+targets = { min = 0, max = 0, x_scaled = true }
+
+# Those creatures gain flying until end of turn.
+[[back.abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = "creature"
+keywords = ["flying"]
+
+# Draw a card.
+[[back.abilities]]
+timing = "spell"
+
+# Draw a card.
+[[back.abilities.effects]]
+type = "draw_cards"
+count = 1

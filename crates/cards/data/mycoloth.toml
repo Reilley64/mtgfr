@@ -1,0 +1,35 @@
+# Devour 2 (As this creature enters, you may sacrifice any number of creatures. It enters with twice that many +1/+1
+# counters on it.)
+# At the beginning of your upkeep, create a 1/1 green Saproling creature token for each +1/+1 counter on this creature.
+name = "Mycoloth"
+otags = ["devour", "pp-counters-matter", "repeatable-creature-tokens", "sacrifice-outlet-creature", "triggered-ability"]
+oracle = "Devour 2 (As this creature enters, you may sacrifice any number of creatures. It enters with twice that many +1/+1 counters on it.)\nAt the beginning of your upkeep, create a 1/1 green Saproling creature token for each +1/+1 counter on this creature."
+set = "soc"
+subtypes = ["Fungus"]
+devour = 2
+
+[cost]
+generic = 3
+green = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# At the beginning of your upkeep, create a 1/1 green Saproling creature token for each +1/+1
+# counter on this creature.
+[[abilities]]
+timing = "upkeep"
+
+# create a 1/1 green Saproling creature token for each +1/+1 counter on this creature.
+[[abilities.effects]]
+type = "create_token"
+count = "per_counter_on_source"
+
+[abilities.effects.token]
+name = "Saproling"
+power = 1
+toughness = 1
+colors = ["green"]
+subtypes = ["Saproling"]

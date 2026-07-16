@@ -1,0 +1,34 @@
+# Each player puts a vow counter on a creature they control and sacrifices the rest. Each of those creatures can't
+# attack you or planeswalkers you control for as long as it has a vow counter on it.
+# ponytail: the "or planeswalkers you control" clause is unobservable while every attack target is
+# a player (planeswalker defenders unmodeled).
+name = "Promise of Loyalty"
+otags = ["fun-ruling", "functional-reminder-counter", "prevent-attack", "removal-creature", "removal-sacrifice", "sweeper", "synergy-planeswalker", "unique-counter"]
+oracle = "Each player puts a vow counter on a creature they control and sacrifices the rest. Each of those creatures can't attack you or planeswalkers you control for as long as it has a vow counter on it."
+set = "msc"
+
+[cost]
+generic = 4
+white = 1
+
+[kind]
+type = "sorcery"
+
+# Each player puts a vow counter on a creature they control and sacrifices the rest. Each of those
+# creatures can't attack you or planeswalkers you control for as long as it has a vow counter on it.
+[[abilities]]
+timing = "spell"
+
+# Each player puts a vow counter on a creature they control and sacrifices the rest.
+[[abilities.effects]]
+type = "each_player_sacrifices"
+scope = "all_players"
+keep_one = true
+filter = "creature"
+
+# Each player puts a vow counter on a creature they control [and sacrifices the rest]. Each of
+# those creatures can't attack you or planeswalkers you control for as long as it has a vow
+# counter on it.
+[[abilities.effects.then]]
+type = "place_vow_counters"
+filter = "creature"

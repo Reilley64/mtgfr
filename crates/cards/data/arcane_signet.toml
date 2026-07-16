@@ -1,0 +1,22 @@
+# {T}: Add one mana of any color in your commander's color identity.
+name = "Arcane Signet"
+otags = ["activated-ability", "commander-identity-matters", "mana-rock-with-set-s-mechanic", "mini-refund", "synergy-commander"]
+oracle = "{T}: Add one mana of any color in your commander's color identity."
+set = "msc"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {T}: Add one mana of any color in your commander's color identity (CR 903.4). Resolved to a
+# real Color/Either credit at resolution from the controller's commander.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color in your commander's color identity.
+[[abilities.effects]]
+type = "add_mana"
+identity = 1

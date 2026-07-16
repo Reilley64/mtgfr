@@ -1,0 +1,53 @@
+# This enchantment enters with X charge counters on it.
+# Remove a charge counter from this enchantment: Add one mana of any color. Activate only once each turn.
+# At the beginning of your upkeep, if this enchantment has no charge counters on it, return it to its owner's hand.
+# Mana Bloom (soc): "{X}{G} Enchantment.
+#   This enchantment enters with X charge counters on it.
+#   Remove a charge counter from this enchantment: Add one mana of any color. Activate only once
+#   each turn.
+#   At the beginning of your upkeep, if this enchantment has no charge counters on it, return it to
+#   its owner's hand."
+name = "Mana Bloom"
+otags = ["activated-ability", "bounce-self", "counter-fuel-charge", "intervening-if-clause", "mana-storage", "ramp"]
+oracle = "This enchantment enters with X charge counters on it.\nRemove a charge counter from this enchantment: Add one mana of any color. Activate only once each turn.\nAt the beginning of your upkeep, if this enchantment has no charge counters on it, return it to its owner's hand."
+set = "soc"
+
+[cost]
+x = true
+green = 1
+
+[kind]
+type = "enchantment"
+
+# Enters with X charge counters.
+[[abilities]]
+timing = "static"
+
+# This enchantment enters with X charge counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+kind = "charge"
+
+# Remove a charge counter from this enchantment: Add one mana of any color. Activate only once
+# each turn.
+[[abilities]]
+timing = "activated"
+remove_counters = 1
+remove_counters_kind = "charge"
+once_each_turn = true
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]
+
+# At the beginning of your upkeep, if this enchantment has no charge counters on it, return it to
+# its owner's hand.
+[[abilities]]
+timing = "upkeep"
+condition = { type = "source_has_no_counters_of_kind", kind = "charge" }
+
+# return it to its owner's hand.
+[[abilities.effects]]
+type = "return_this_to_hand"

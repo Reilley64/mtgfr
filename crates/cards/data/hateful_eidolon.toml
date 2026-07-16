@@ -1,0 +1,31 @@
+# Lifelink
+# Whenever an enchanted creature dies, draw a card for each Aura you controlled that was attached to it.
+# Hateful Eidolon (soc), an Enchantment Creature. Real oracle text:
+#   "Lifelink
+#    Whenever an enchanted creature dies, draw a card for each Aura you controlled that was
+#    attached to it."
+name = "Hateful Eidolon"
+otags = ["death-trigger", "draw-engine", "repeatable-lifegain", "synergy-aura"]
+oracle = "Lifelink\nWhenever an enchanted creature dies, draw a card for each Aura you controlled that was attached to it."
+set = "soc"
+subtypes = ["Spirit"]
+keywords = ["lifelink"]
+
+[cost]
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+also = ["enchantment"]
+
+# Whenever an enchanted creature dies, draw a card for each Aura you controlled that was
+# attached to it.
+[[abilities]]
+timing = "an_enchanted_creature_dies"
+
+# draw a card for each Aura you controlled that was attached to it.
+[[abilities.effects]]
+type = "draw_cards"
+count = "auras_you_controlled_attached_to_dying_creature"

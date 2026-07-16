@@ -1,0 +1,34 @@
+# Enchant creature
+# Enchanted creature gets +1/+1 and has vigilance.
+# Escape—{W}, Exile two other cards from your graveyard. (You may cast this card from your graveyard for its escape
+# cost.)
+# Aura from Silverquill Influence (soc).
+name = "Sentinel's Eyes"
+otags = ["castable-from-graveyard", "gives-vigilance", "graveyard-fuel", "reanimate-cast", "reanimate-self", "repeatable-crime"]
+oracle = "Enchant creature\nEnchanted creature gets +1/+1 and has vigilance.\nEscape—{W}, Exile two other cards from your graveyard. (You may cast this card from your graveyard for its escape cost.)"
+set = "soc"
+subtypes = ["Aura"]
+
+[cost]
+white = 1
+
+[kind]
+type = "aura"
+
+# Escape—{W}, Exile two other cards from your graveyard.
+[escape]
+exile = 2
+
+[escape.cost]
+white = 1
+
+# Enchanted creature gets +1/+1 and has vigilance.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +1/+1 and has vigilance.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 1
+toughness = 1
+keywords = ["vigilance"]

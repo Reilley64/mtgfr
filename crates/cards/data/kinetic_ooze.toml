@@ -1,0 +1,52 @@
+# Kinetic Ooze (soc). Real oracle text:
+#   "This creature enters with X +1/+1 counters on it.
+#    When this creature enters, destroy up to one target artifact or enchantment with mana value X
+#    or less. If X is 5 or more, you draw a card. If X is 10 or more, double the number of +1/+1
+#    counters on any number of other target creatures."
+name = "Kinetic Ooze"
+otags = ["cantrip", "counter-doubler", "disenchant-naturalize", "gains-pp-counters", "hand-neutral", "high-x-matters", "pp-counters-matter", "removal-destroy", "spot-removal", "triggered-ability", "virtual-vanilla"]
+oracle = "This creature enters with X +1/+1 counters on it.\nWhen this creature enters, destroy up to one target artifact or enchantment with mana value X or less. If X is 5 or more, you draw a card. If X is 10 or more, double the number of +1/+1 counters on any number of other target creatures."
+set = "soc"
+subtypes = ["Ooze"]
+
+[cost]
+x = true
+green = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with X +1/+1 counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = "x"
+
+# When this creature enters, destroy up to one target artifact or enchantment with mana value X
+# or less. If X is 5 or more, you draw a card. If X is 10 or more, double the number of +1/+1
+# counters on any number of other target creatures.
+[[abilities]]
+timing = "etb"
+
+# destroy up to one target artifact or enchantment with mana value X or less
+[[abilities.effects]]
+type = "destroy_target"
+count = { max = 1 }
+target = { permanent = { types = "artifact_or_enchantment", mv_max_x = true } }
+
+# If X is 5 or more, you draw a card.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "source_entered_with_x_at_least", at_least = 5 }
+then = [{ type = "draw_cards", count = 1 }]
+
+# If X is 10 or more, double the number of +1/+1 counters on any number of other target creatures.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "source_entered_with_x_at_least", at_least = 10 }
+then = [{ type = "double_counters_on_target_creatures", target = { permanent = { types = "creature", other = true } }, count = { min = 0, max = 6 } }]

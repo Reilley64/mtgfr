@@ -1,0 +1,29 @@
+# Whenever you discard a card, you may exile that card from your graveyard. If you do, you may play that card this turn.
+# Containment Construct (soc): {2} 2/1 Artifact Creature — Construct. Real oracle text:
+#   "Whenever you discard a card, you may exile that card from your graveyard. If you do, you may
+#    play that card this turn."
+# The artifact creature type is modeled as a plain creature (bodies-only precedent:
+# Darksteel Myr, Solemn Simulacrum).
+name = "Containment Construct"
+otags = ["alliteration", "impulsive-recursion", "self-discard-matters", "triggered-ability"]
+oracle = "Whenever you discard a card, you may exile that card from your graveyard. If you do, you may play that card this turn."
+set = "soc"
+subtypes = ["Construct"]
+
+[cost]
+generic = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# Whenever you discard a card, you may exile that card from your graveyard. If you do, you may
+# play that card this turn.
+[[abilities]]
+timing = "you_discard"
+optional = true
+
+# you may exile that card from your graveyard. If you do, you may play that card this turn.
+[[abilities.effects]]
+type = "exile_from_graveyard_may_play"

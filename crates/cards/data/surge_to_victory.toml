@@ -1,0 +1,37 @@
+# Exile target instant or sorcery card from your graveyard. Creatures you control get +X/+0 until end of turn, where X
+# is that card's mana value. Whenever a creature you control deals combat damage to a player this turn, copy the exiled
+# card. You may cast the copy without paying its mana cost.
+name = "Surge to Victory"
+otags = ["delayed-trigger", "demilich-effect", "free-cast-another", "graveyard-fuel-instant", "graveyard-fuel-sorcery", "mana-value-matters", "power-boost-to-all", "saboteur", "single-target-instant-sorcery", "synergy-instant", "synergy-sorcery"]
+oracle = "Exile target instant or sorcery card from your graveyard. Creatures you control get +X/+0 until end of turn, where X is that card's mana value. Whenever a creature you control deals combat damage to a player this turn, copy the exiled card. You may cast the copy without paying its mana cost."
+set = "soc"
+
+[cost]
+generic = 4
+red = 2
+
+[kind]
+type = "sorcery"
+
+# Exile target instant or sorcery card from your graveyard. Creatures you control get +X/+0
+# until end of turn, where X is that card's mana value. Whenever a creature you control deals
+# combat damage to a player this turn, copy the exiled card. You may cast the copy without
+# paying its mana cost.
+[[abilities]]
+timing = "spell"
+
+# Exile target instant or sorcery card from your graveyard.
+[[abilities.effects]]
+type = "exile_target_graveyard_card_record_mana_value"
+filter = "instant_or_sorcery"
+
+# Creatures you control get +X/+0 until end of turn, where X is that card's mana value.
+[[abilities.effects]]
+type = "pump_creatures_you_control_until_end_of_turn"
+power = "exiled_card_mana_value_this_way"
+toughness = 0
+
+# Whenever a creature you control deals combat damage to a player this turn, copy the exiled
+# card. You may cast the copy without paying its mana cost.
+[[abilities.effects]]
+type = "schedule_this_turn_combat_damage_copy"

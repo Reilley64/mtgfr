@@ -1,0 +1,34 @@
+# Hexproof
+# This land enters tapped.
+# When this land enters, sacrifice two lands.
+# {T}: Add three mana of any one color.
+name = "Lotus Field"
+otags = ["activated-ability", "adds-multiple-mana", "drawback", "rainbow-land", "sacrifice-cost-land", "sacrifice-outlet-land", "tapland", "triggered-ability"]
+oracle = "Hexproof\nThis land enters tapped.\nWhen this land enters, sacrifice two lands.\n{T}: Add three mana of any one color."
+set = "soc"
+enters_tapped = true
+keywords = ["hexproof"]
+
+[kind]
+type = "land"
+
+# When this land enters, sacrifice two lands.
+[[abilities]]
+timing = "etb"
+
+# sacrifice two lands.
+[[abilities.effects]]
+type = "sacrifice_own"
+filter = "land"
+count = 2
+
+# {T}: Add three mana of any one color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add three mana of any one color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any", "any", "any"]
+single_color = true

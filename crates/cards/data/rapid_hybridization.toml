@@ -1,0 +1,29 @@
+# Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature
+# token.
+name = "Rapid Hybridization"
+otags = ["color-break", "donate-token", "hate-regenerate", "out-of-color-token", "removal-creature", "removal-destroy", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
+oracle = "Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature token."
+set = "soc"
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green
+# Frog Lizard creature token.
+[[abilities]]
+timing = "spell"
+
+# Destroy target creature. It can't be regenerated.
+[[abilities.effects]]
+type = "destroy_target"
+target = "creature"
+cant_be_regenerated = true
+
+# That creature's controller creates a 3/3 green Frog Lizard creature token.
+[[abilities.effects]]
+type = "create_token"
+controller = "target_controller"
+token = { name = "Frog Lizard", power = 3, toughness = 3, colors = ["green"], subtypes = ["Frog", "Lizard"] }

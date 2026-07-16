@@ -1,0 +1,49 @@
+name = "Conspiracy Theorist"
+otags = ["attack-trigger", "attacking-matters-self", "discarded-type-matters", "impulsive-recursion", "repeatable-rummage", "self-discard-matters"]
+oracle = "Whenever this creature attacks, you may pay {1} and discard a card. If you do, draw a card.\nWhenever you discard one or more nonland cards, you may exile one of them from your graveyard. If you do, you may cast it this turn."
+set = "soc"
+subtypes = ["Human", "Shaman"]
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever this creature attacks, you may pay {1} and discard a card. If you do, draw a card.
+# ponytail: models "pay {1} and discard" as a paid activation gate (settled up front) then a
+# separate may-discard, rather than one all-or-nothing "pay {1} and discard a card" cost — a
+# player could pay {1} and decline the discard, drawing nothing, a strictly-dominated line no
+# one takes. Upgrade path: a combined mana-plus-discard cost type, if a card ever punishes
+# paying without discarding.
+[[abilities]]
+timing = "attacks"
+optional = true
+
+[abilities.cost]
+generic = 1
+
+# you may pay {1} and discard a card. If you do, draw a card.
+[[abilities.effects]]
+type = "may_discard"
+
+[[abilities.effects.then]]
+type = "draw_cards"
+count = 1
+
+# Whenever you discard one or more nonland cards, you may exile one of them from your graveyard.
+# If you do, you may cast it this turn.
+# ponytail: `Trigger::YouDiscard` is unfiltered (fires on a discarded land too) and fires once per
+# discarded card rather than once per discard event offering a choice among "one of them" — both
+# are strictly upside/unobservable divergences from the printed "nonland … one of them" wording;
+# upgrade to a filtered, batch-choose discard trigger if a card ever punishes either.
+[[abilities]]
+timing = "you_discard"
+optional = true
+
+# you may exile one of them from your graveyard. If you do, you may cast it this turn.
+[[abilities.effects]]
+type = "exile_from_graveyard_may_play"

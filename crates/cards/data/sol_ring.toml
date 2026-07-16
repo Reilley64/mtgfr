@@ -1,0 +1,21 @@
+# {T}: Add {C}{C}.
+name = "Sol Ring"
+otags = ["activated-ability", "adds-multiple-mana", "full-refund", "mana-rock"]
+oracle = "{T}: Add {C}{C}."
+set = "msc"
+
+[cost]
+generic = 1
+
+[kind]
+type = "artifact"
+
+# {T}: Add {C}{C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}{C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless", "colorless"]

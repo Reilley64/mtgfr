@@ -1,0 +1,31 @@
+# Flying
+# Aura spells you cast cost {1} less to cast.
+# Transcendent Envoy (soc), an Enchantment Creature. Real oracle text:
+#   "Flying
+#    Aura spells you cast cost {1} less to cast."
+name = "Transcendent Envoy"
+otags = ["cost-reducer-aura", "evasion", "synergy-aura", "unique-type-line"]
+oracle = "Flying\nAura spells you cast cost {1} less to cast."
+set = "soc"
+subtypes = ["Griffin"]
+keywords = ["flying"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+also = ["enchantment"]
+
+# Aura spells you cast cost {1} less to cast.
+[[abilities]]
+timing = "static"
+
+# Aura spells you cast cost {1} less to cast.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = 1
+filter = "aura"

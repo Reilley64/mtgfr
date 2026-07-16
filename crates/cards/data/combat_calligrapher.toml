@@ -1,0 +1,46 @@
+# Flying
+# Inklings can't attack you or planeswalkers you control.
+# Whenever a player attacks one of your opponents, that attacking player creates a tapped 2/1 white and black Inkling
+# creature token with flying that's attacking that opponent.
+name = "Combat Calligrapher"
+otags = ["alliteration", "attack-trigger", "attacking-matters", "donate-token", "evasion", "hate-typal-inkling", "multiplayer", "out-of-color-token", "repeatable-creature-tokens", "synergy-planeswalker"]
+oracle = "Flying\nInklings can't attack you or planeswalkers you control.\nWhenever a player attacks one of your opponents, that attacking player creates a tapped 2/1 white and black Inkling creature token with flying that's attacking that opponent."
+set = "soc"
+subtypes = ["Bird", "Cleric"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Inklings can't attack you or planeswalkers you control.
+[[abilities]]
+timing = "static"
+
+# Inklings can't attack you or planeswalkers you control.
+[[abilities.effects]]
+type = "cant_be_attacked_by"
+filter = { subtypes = ["Inkling"] }
+
+# Whenever a player attacks one of your opponents, that attacking player creates a tapped 2/1
+# white and black Inkling creature token with flying that's attacking that opponent.
+[[abilities]]
+timing = "player_attacks_your_opponent"
+
+# that attacking player creates a tapped 2/1 white and black Inkling creature token with flying
+# that's attacking that opponent
+[[abilities.effects]]
+type = "create_token"
+enters_tapped_and_attacking = true
+[abilities.effects.token]
+name = "Inkling"
+power = 2
+toughness = 1
+colors = ["white", "black"]
+subtypes = ["Inkling"]
+keywords = ["flying"]

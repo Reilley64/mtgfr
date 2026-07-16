@@ -1,0 +1,16 @@
+# ({T}: Add {U} or {R}.)
+# This land enters tapped.
+# Cycling {2} ({2}, Discard this card: Draw a card.)
+# Coastal Peak: Land — Island Mountain. "({T}: Add {U} or {R}.) This land enters tapped.
+# Cycling {2}."
+name = "Coastal Peak"
+otags = ["activate-from-hand", "cycle-dual-cycling-land", "hand-neutral", "nonbasic-basic-land-type", "pure-draw", "utility-land"]
+oracle = "({T}: Add {U} or {R}.)\nThis land enters tapped.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+set = "msc"
+identity = ["red"]
+enters_tapped = true
+cycling = { generic = 2 }
+
+[kind]
+type = "land"
+produces = ["blue", "red"]

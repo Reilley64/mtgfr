@@ -1,0 +1,31 @@
+# Destroy target permanent an opponent controls. Its controller may search their library for a basic land card, put it
+# onto the battlefield, then shuffle.
+name = "Assassin's Trophy"
+otags = ["cycle-mkm-r-2c-noncreature", "donate-rampant-growth", "removal-destroy", "removal-permanent", "single-target-instant-sorcery", "spot-removal", "swap-removal"]
+oracle = "Destroy target permanent an opponent controls. Its controller may search their library for a basic land card, put it onto the battlefield, then shuffle."
+set = "soc"
+
+[cost]
+black = 1
+green = 1
+
+[kind]
+type = "instant"
+
+# Destroy target permanent an opponent controls. Its controller may search their library for a
+# basic land card, put it onto the battlefield, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# Destroy target permanent an opponent controls.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { controller = "opponent" } }
+
+# Its controller may search their library for a basic land card, put it onto the battlefield,
+# then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+searcher = "target_controller"

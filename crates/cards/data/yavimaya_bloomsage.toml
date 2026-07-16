@@ -1,0 +1,57 @@
+# [Yavimaya Bloomsage]
+# At the beginning of your end step, put a +1/+1 counter on target creature you control. Then if that creature has power
+# 7 or greater, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so
+# unprepares it.)
+# [Channel]
+# Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}.
+name = "Yavimaya Bloomsage"
+otags = ["cycle-soc-guest-lecturer", "gives-castable-from-exile", "gives-pp-counters", "life-payment", "power-matters-individual", "repeatable-pp-counters", "ritual", "special-action", "triggered-ability"]
+oracle = "At the beginning of your end step, put a +1/+1 counter on target creature you control. Then if that creature has power 7 or greater, this creature becomes prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.) // Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}."
+set = "soc"
+subtypes = ["Dryad", "Druid"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# At the beginning of your end step, put a +1/+1 counter on target creature you control. Then if
+# that creature has power 7 or greater, this creature becomes prepared. (While it's prepared, you
+# may cast a copy of its spell. Doing so unprepares it.)
+[[abilities]]
+timing = "end_step"
+
+# put a +1/+1 counter on target creature you control.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "creature_you_control"
+
+# Then if that creature has power 7 or greater, this creature becomes prepared.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "target_power_at_least", at_least = 7 }
+then = [
+        { type = "become_prepared" },
+    ]
+
+# Back face — Channel: "Until end of turn, any time you could activate a mana ability, you may
+# pay 1 life. If you do, add {C}." No printed mana cost of its own.
+[back]
+name = "Channel"
+set = "soc"
+
+[back.kind]
+type = "instant"
+
+# Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}.
+[[back.abilities]]
+timing = "spell"
+
+# Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}.
+[[back.abilities.effects]]
+type = "grant_channel_colorless_mana_this_turn"

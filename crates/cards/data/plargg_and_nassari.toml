@@ -1,0 +1,30 @@
+# At the beginning of your upkeep, each player exiles cards from the top of their library until they exile a nonland
+# card. An opponent chooses a nonland card exiled this way. You may cast up to two spells from among the other cards
+# exiled this way without paying their mana costs.
+name = "Plargg and Nassari"
+otags = ["cast-on-resolution", "consult-cast", "free-cast-another", "gives-castable-from-exile", "legendary-team-up", "mill-exile", "multiple-species-types", "opponent-chooses", "per-player", "repeatable-card-advantage", "theft-cast", "triggered-ability"]
+oracle = "At the beginning of your upkeep, each player exiles cards from the top of their library until they exile a nonland card. An opponent chooses a nonland card exiled this way. You may cast up to two spells from among the other cards exiled this way without paying their mana costs."
+set = "soc"
+subtypes = ["Orc", "Efreet"]
+legendary = true
+
+[cost]
+generic = 3
+red = 2
+
+[kind]
+type = "creature"
+power = 5
+toughness = 4
+
+# At the beginning of your upkeep, each player exiles cards from the top of their library until
+# they exile a nonland card. An opponent chooses a nonland card exiled this way. You may cast up
+# to two spells from among the other cards exiled this way without paying their mana costs.
+[[abilities]]
+timing = "upkeep"
+
+# each player exiles cards from the top of their library until they exile a nonland card. An
+# opponent chooses a nonland card exiled this way. You may cast up to two spells from among the
+# other cards exiled this way without paying their mana costs.
+[[abilities.effects]]
+type = "each_player_exiles_until_nonland_opponent_picks"

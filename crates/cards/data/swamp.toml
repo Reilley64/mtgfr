@@ -1,0 +1,11 @@
+# ({T}: Add {B}.)
+name = "Swamp"
+otags = ["activated-ability", "cycle-lea-basic-land", "eponymous", "single-english-word-name", "unique-type-line"]
+oracle = "({T}: Add {B}.)"
+set = "msh"
+
+[kind]
+type = "land"
+produces = "black"
+subtypes = ["Swamp"]
+basic = true

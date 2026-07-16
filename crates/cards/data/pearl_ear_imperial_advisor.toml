@@ -1,0 +1,43 @@
+# Lifelink
+# Enchantment spells you cast have affinity for Auras. (They cost {1} less to cast for each Aura you control.)
+# Whenever you cast an Aura spell that targets a modified permanent you control, draw a card. (Equipment, Auras you
+# control, and counters are modifications.)
+name = "Pearl-Ear, Imperial Advisor"
+otags = ["cast-trigger-you", "cost-reducer-enchantment", "draw-engine", "gives-affinity", "repeatable-lifegain", "repeatable-pure-draw", "synergy-modified"]
+oracle = "Lifelink\nEnchantment spells you cast have affinity for Auras. (They cost {1} less to cast for each Aura you control.)\nWhenever you cast an Aura spell that targets a modified permanent you control, draw a card. (Equipment, Auras you control, and counters are modifications.)"
+set = "soc"
+subtypes = ["Fox", "Advisor"]
+legendary = true
+keywords = ["lifelink"]
+
+[cost]
+generic = 1
+white = 2
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# Enchantment spells you cast have affinity for Auras. (They cost {1} less to cast for each Aura
+# you control.)
+[[abilities]]
+timing = "static"
+
+# Enchantment spells you cast have affinity for Auras. (They cost {1} less to cast for each Aura
+# you control.)
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
+filter = "enchantment"
+
+# Whenever you cast an Aura spell that targets a modified permanent you control, draw a card.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "aura_targets_modified_permanent_you_control"
+caster = "you"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

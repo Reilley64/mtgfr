@@ -1,0 +1,49 @@
+name = "Tajic, Legion's Edge"
+otags = ["activated-ability", "attack-trigger", "attacking-matters", "attacking-matters-self", "cycle-grn-guild-champion", "cycle-rvr-r-two-color-legend", "damage-prevention", "damage-prevention-creature", "gains-first-strike", "gives-pp-counters", "power-matters-self"]
+oracle = "Haste\nMentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature with lesser power.)\nPrevent all noncombat damage that would be dealt to other creatures you control.\n{R}{W}: Tajic gains first strike until end of turn."
+set = "rvr"
+subtypes = ["Human", "Soldier"]
+legendary = true
+keywords = ["haste"]
+
+[cost]
+generic = 1
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Mentor (Whenever this creature attacks, put a +1/+1 counter on target attacking creature
+# with lesser power.)
+[[abilities]]
+timing = "attacks"
+
+# put a +1/+1 counter on target attacking creature with lesser power
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = { permanent = { types = "creature", attacking = true, power_less_than_source = true, other = true } }
+
+# Prevent all noncombat damage that would be dealt to other creatures you control.
+[[abilities]]
+timing = "static"
+
+# Prevent all noncombat damage that would be dealt to other creatures you control
+[[abilities.effects]]
+type = "prevent_noncombat_damage_to_other_creatures_you_control"
+
+# {R}{W}: Tajic gains first strike until end of turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { red = 1, white = 1 }
+
+# Tajic gains first strike until end of turn
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = "this"
+keywords = ["first_strike"]

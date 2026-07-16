@@ -1,0 +1,45 @@
+# Spirits you control get +1/+1 and have trample and haste.
+# Whenever another nontoken creature you control dies, exile it. If you do, create a token that's a copy of that
+# creature, except it's a Spirit in addition to its other types and it has "When this token leaves the battlefield,
+# return the exiled card to its owner's graveyard."
+name = "Hofri Ghostforge"
+otags = ["anthem", "cheat-death", "copy-creature", "cycle-stx-m-college-spell", "death-trigger", "gives-haste", "gives-trample", "keyword-anthem", "power-boost-to-all", "repeatable-creature-tokens", "toughness-boost-to-all", "typal-spirit"]
+oracle = "Spirits you control get +1/+1 and have trample and haste.\nWhenever another nontoken creature you control dies, exile it. If you do, create a token that's a copy of that creature, except it's a Spirit in addition to its other types and it has \"When this token leaves the battlefield, return the exiled card to its owner's graveyard.\""
+set = "soc"
+subtypes = ["Dwarf", "Cleric"]
+legendary = true
+
+[cost]
+generic = 3
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 5
+
+# Spirits you control get +1/+1 and have trample and haste.
+[[abilities]]
+timing = "static"
+
+# Spirits you control get +1/+1 and have trample and haste.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 1
+subtypes = ["Spirit"]
+keywords = ["trample", "haste"]
+
+# Whenever another nontoken creature you control dies, exile it. If you do, create a token that's a copy of that
+# creature, except it's a Spirit in addition to its other types and it has "When this token leaves the battlefield,
+# return the exiled card to its owner's graveyard."
+[[abilities]]
+timing = "creature_you_control_dies_nontoken"
+
+# exile it. If you do, create a token that's a copy of that creature, except it's a Spirit in addition to its other
+# types and it has "When this token leaves the battlefield, return the exiled card to its owner's graveyard."
+[[abilities.effects]]
+type = "exile_dead_creature_create_copy_with_subtype"
+add_subtypes = ["Spirit"]
+leaves_returns_exiled = true

@@ -1,0 +1,31 @@
+# Lifelink
+# Menace (This creature can't be blocked except by two or more creatures.)
+# Spells you cast that target a creature cost {2} less to cast.
+# "Spells you cast that target a creature cost {2} less to cast." — the targets-a-creature
+# reducer (Killian, Ink Duelist, Silverquill's warlock).
+name = "Killian, Ink Duelist"
+otags = ["cost-reducer", "cycle-stx-student", "evasion", "repeatable-lifegain", "synergy-target"]
+oracle = "Lifelink\nMenace (This creature can't be blocked except by two or more creatures.)\nSpells you cast that target a creature cost {2} less to cast."
+set = "soc"
+subtypes = ["Human", "Warlock"]
+legendary = true
+keywords = ["lifelink", "menace"]
+
+[cost]
+white = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Spells you cast that target a creature cost {2} less to cast.
+[[abilities]]
+timing = "static"
+
+# Spells you cast that target a creature cost {2} less to cast.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = 2
+filter = "targets_a_creature"

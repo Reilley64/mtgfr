@@ -1,0 +1,28 @@
+# Whenever you cast an Aura, Equipment, or Vehicle spell, draw a card.
+# Sram, Senior Edificer (soc). Real oracle text:
+#   "Whenever you cast an Aura, Equipment, or Vehicle spell, draw a card."
+name = "Sram, Senior Edificer"
+otags = ["alliteration", "cast-trigger-you", "color-break", "cycle-aer-legend", "draw-engine", "enchantment-engine", "repeatable-pure-draw", "synergy-aura", "synergy-equipment", "synergy-vehicle"]
+oracle = "Whenever you cast an Aura, Equipment, or Vehicle spell, draw a card."
+set = "soc"
+subtypes = ["Dwarf", "Advisor"]
+legendary = true
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever you cast an Aura, Equipment, or Vehicle spell, draw a card.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = { has_subtype = ["Aura", "Equipment", "Vehicle"] }
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

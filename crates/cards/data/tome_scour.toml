@@ -1,0 +1,21 @@
+# Target player mills five cards.
+name = "Tome Scour"
+otags = ["mill-any", "single-target-instant-sorcery"]
+oracle = "Target player mills five cards."
+set = "m14"
+
+[cost]
+blue = 1
+
+[kind]
+type = "sorcery"
+
+# Target player mills five cards.
+[[abilities]]
+timing = "spell"
+
+# Target player mills five cards.
+[[abilities.effects]]
+type = "mill"
+count = 5
+target = "player"

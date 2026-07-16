@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/regen-cr-index.py",
+        "timeout": 15
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": ".cursor/hooks/regen-cr-index.py",
+        "timeout": 60,
+        "loop_limit": 1
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/regen-cr-index.py",
+        "timeout": 60,
+        "loop_limit": 1
+      }
+    ]
+  }
+}

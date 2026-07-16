@@ -1,0 +1,28 @@
+# At the beginning of your upkeep, you and target opponent each reveal the top card of your library. You each lose life
+# equal to the mana value of the card revealed by the other player. You each put the card you revealed into your hand.
+name = "Keen Duelist"
+otags = ["clash-like", "opponent-loses-life", "repeatable-card-advantage", "repeatable-crime", "selective-group-hug", "triggered-ability", "wannabe-dark-confidant"]
+oracle = "At the beginning of your upkeep, you and target opponent each reveal the top card of your library. You each lose life equal to the mana value of the card revealed by the other player. You each put the card you revealed into your hand."
+set = "soc"
+subtypes = ["Human", "Wizard"]
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# At the beginning of your upkeep, you and target opponent each reveal the top card of your
+# library. You each lose life equal to the mana value of the card revealed by the other player.
+# You each put the card you revealed into your hand.
+[[abilities]]
+timing = "upkeep"
+
+# you and target opponent each reveal the top card of your library. You each lose life equal to
+# the mana value of the card revealed by the other player. You each put the card you revealed
+# into your hand.
+[[abilities.effects]]
+type = "reveal_top_and_drain_mutual"

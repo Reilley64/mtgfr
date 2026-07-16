@@ -1,0 +1,43 @@
+# Flash
+# Commander creatures you control get +2/+2.
+# Commanders you control have hexproof.
+name = "Guardian Augmenter"
+otags = ["giant-growth", "gives-hexproof", "protects-creature", "synergy-commander", "unique-type-line"]
+oracle = "Flash\nCommander creatures you control get +2/+2.\nCommanders you control have hexproof."
+set = "soc"
+subtypes = ["Troll", "Wizard"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+keywords = ["flash"]
+
+# Commander creatures you control get +2/+2.
+[[abilities]]
+timing = "static"
+
+# Commander creatures you control get +2/+2.
+[[abilities.effects]]
+type = "anthem_static"
+power = 2
+toughness = 2
+commander_only = true
+
+# Commanders you control have hexproof.
+# ponytail: the pool's only commander-scoped anthem targets creatures — every pool commander is
+# a creature, so a creature-scoped anthem stands in for "commanders you control have hexproof"
+# even though the real ability isn't creature-restricted.
+[[abilities]]
+timing = "static"
+
+# Commanders you control have hexproof.
+[[abilities.effects]]
+type = "anthem_static"
+keywords = ["hexproof"]
+commander_only = true

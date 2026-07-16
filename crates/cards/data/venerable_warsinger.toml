@@ -1,0 +1,33 @@
+# Vigilance, trample
+# Whenever this creature deals combat damage to a player, you may return target creature card with mana value X or less
+# from your graveyard to the battlefield, where X is the amount of damage this creature dealt to that player.
+name = "Venerable Warsinger"
+otags = ["reanimate-creature", "saboteur", "triggered-ability"]
+oracle = "Vigilance, trample\nWhenever this creature deals combat damage to a player, you may return target creature card with mana value X or less from your graveyard to the battlefield, where X is the amount of damage this creature dealt to that player."
+set = "soc"
+subtypes = ["Spirit", "Cleric"]
+keywords = ["vigilance", "trample"]
+
+[cost]
+generic = 1
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# Whenever this creature deals combat damage to a player, you may return target creature card
+# with mana value X or less from your graveyard to the battlefield, where X is the amount of
+# damage this creature dealt to that player.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "this"
+optional = true
+
+# return target creature card with mana value X or less from your graveyard to the battlefield,
+# where X is the amount of damage this creature dealt to that player.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = "creature_with_mana_value_at_most_combat_damage" } }
