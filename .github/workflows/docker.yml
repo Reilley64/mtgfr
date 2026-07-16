@@ -1,14 +1,15 @@
 name: Docker
 
 # Build + push GHCR images for `v*` tags.
-# semantic-release creates tags via the GitHub API (`create` event). A PAT
-# (`RELEASE_TOKEN`) is required — `GITHUB_TOKEN` cannot cascade workflow runs.
+# semantic-release must create tags with `RELEASE_TOKEN` (PAT: contents +
+# workflow) — `GITHUB_TOKEN` cannot cascade workflow runs. Do not also listen
+# for `create`: GitHub emits both `create` and `push` for the same tag, which
+# doubles the build.
 
 on:
   push:
     tags:
       - "v*"
-  create:
 
 permissions:
   contents: read
@@ -20,8 +21,6 @@ env:
 
 jobs:
   docker:
-    # `create` also fires for branches — only build version tags.
-    if: github.event_name == 'push' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     services:
       postgres:
