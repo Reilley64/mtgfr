@@ -3,8 +3,11 @@ import {
   cookieValue,
   DEV_UPSTREAM,
   isBlockedPublicApiPath,
+  isUnknownTableLobbyBody,
+  normalizePublicApiPath,
   parseUpstreamsJson,
   resolveUpstreamBase,
+  upstreamBasesInOrder,
 } from "~/lib/apiUpstream";
 
 describe("parseUpstreamsJson", () => {
@@ -62,10 +65,56 @@ describe("resolveUpstreamBase", () => {
   });
 });
 
+describe("normalizePublicApiPath", () => {
+  it("rejects traversal, empty segments, and blocked admin/drain paths", () => {
+    expect(normalizePublicApiPath("%2e%2e/admin/drain")).toBeNull();
+    expect(normalizePublicApiPath("admin%2Fdrain")).toBeNull();
+    expect(normalizePublicApiPath("x/../admin/drain")).toBeNull();
+    expect(normalizePublicApiPath("admin/drain")).toBeNull();
+    expect(normalizePublicApiPath("admin")).toBeNull();
+    expect(normalizePublicApiPath("health/drain")).toBeNull();
+    expect(normalizePublicApiPath("health/drain/")).toBeNull();
+    expect(normalizePublicApiPath("/tables/join/v1")).toBe("tables/join/v1");
+    expect(normalizePublicApiPath("tables/x/stream/v1")).toBe("tables/x/stream/v1");
+  });
+});
+
 describe("isBlockedPublicApiPath", () => {
-  it("blocks admin and health/drain", () => {
+  it("blocks admin and health/drain including traversal disguises", () => {
     expect(isBlockedPublicApiPath("admin/drain")).toBe(true);
     expect(isBlockedPublicApiPath("health/drain")).toBe(true);
+    expect(isBlockedPublicApiPath("../admin/drain")).toBe(true);
+    expect(isBlockedPublicApiPath("health/drain/")).toBe(true);
     expect(isBlockedPublicApiPath("tables/x/stream/v1")).toBe(false);
+  });
+});
+
+describe("upstreamBasesInOrder", () => {
+  const upstreams = JSON.stringify({
+    "edh-api-1-2-0": "http://edh-api-1-2-0.edh.svc:8080",
+    "edh-api-1-1-0": "http://edh-api-1-1-0.edh.svc:8080",
+    "edh-api-1-0-0": "http://edh-api-1-0-0.edh.svc:8080",
+  });
+
+  it("orders sticky cookie, then active, then remaining peers", () => {
+    expect(
+      upstreamBasesInOrder({
+        upstreamsJson: upstreams,
+        activeInstanceId: "edh-api-1-2-0",
+        cookieHeader: "mtgfr-instance=edh-api-1-1-0",
+      }),
+    ).toEqual([
+      "http://edh-api-1-1-0.edh.svc:8080",
+      "http://edh-api-1-2-0.edh.svc:8080",
+      "http://edh-api-1-0-0.edh.svc:8080",
+    ]);
+  });
+});
+
+describe("isUnknownTableLobbyBody", () => {
+  it("detects lobby UnknownTable errors only", () => {
+    expect(isUnknownTableLobbyBody('{"error":"UnknownTable","table_id":"ABC"}')).toBe(true);
+    expect(isUnknownTableLobbyBody('{"error":null}')).toBe(false);
+    expect(isUnknownTableLobbyBody("not-json")).toBe(false);
   });
 });

@@ -227,22 +227,24 @@ sequenceDiagram
     participant PG as Postgres
 
     Note over Web: Hold previous image until<br/>zero drain peers remain
-    TF->>PG: Migrate Job active image
-    TF->>New: Create Deployment INSTANCE_ID=edh-api-1-2-0
-    TF->>BFF: API_UPSTREAMS map + active=New
+    TF->>PG: Migrate Job (active image)
+    TF->>New: Create Deployment (old stays active)
+    TF->>BFF: API_UPSTREAMS includes New; active=Old
     TF->>Old: POST admin/drain live toggle
     Note over Old: Reject new tables<br/>Keep existing SSE
-    Note over TF: Nested roll may add another<br/>active before Old empties
-    TF->>Old: GC when active_tables=0
+    TF->>BFF: Flip active=New
+    Note over TF: Nested roll may add another<br/>peer before Old empties
+    TF->>Old: GC when active_tables=0 only
     TF->>Web: Bump edh-web when only active remains
 ```
 
-1. **Migrate**, then **add** a new versioned API Deployment as active (`api_instances` + `api_active_instance_id`). Prior instances keep their images. **Hold `edh-web`**.
+1. **Migrate**, then **add** a new versioned API Deployment while keeping the previous id as `api_active_instance_id`. Prior instances keep their images. **Hold `edh-web`**.
 2. **Mark previous active draining** via live `POST /admin/drain` (port-forward). Never flip `DRAIN` env / rewrite image.
-3. **Affinity:** BFF routes `mtgfr-instance` to the matching Service.
-4. **Nested rolls** allowed until `api_max_instances`; at cap, wait for a peer to empty and GC it first.
-5. **GC** peers with `active_tables=0` (remove from Terraform map).
-6. **Bump `edh-web`** only when the map has a single (active) instance.
+3. **Flip** `api_active_instance_id` to the new instance (no dual-accept window).
+4. **Affinity:** BFF routes `mtgfr-instance` to the matching Service; join fans out for cookieless guests.
+5. **Nested rolls** allowed until `api_max_instances`; at cap, wait (with timeout) for a peer to empty and GC it first.
+6. **GC** peers only when `active_tables=0` (never on probe failure); remove from Terraform map.
+7. **Bump `edh-web`** only when the map has a single (active) instance.
 
 **Client/server roll order (locked):** API rolls may nest; web only after **all** drain peers are gone. Expand-only wire across the whole concurrent set.
 
@@ -267,8 +269,8 @@ ADR 0005 assumes a single instance. Nested rolling deploy requires:
    ```
    Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
    ```
-3. **SolidStart BFF** routes on `mtgfr-instance` via `API_UPSTREAMS`; missing/unknown → `API_ACTIVE_INSTANCE_ID`.
-4. Wrong-instance hits return `404`/`410`; client reconnect drops the stale cookie.
+3. **SolidStart BFF** routes on `mtgfr-instance` via `API_UPSTREAMS`; missing/unknown → `API_ACTIVE_INSTANCE_ID`. `POST /tables/join/v1` fans out across peers until the table is found (cookieless guests).
+4. Wrong-instance joins surface as lobby `UnknownTable` and are retried on other peers by the BFF; stale cookies for GC'd peers fall through to active (then fan-out on join).
 
 **Session cookies** (auth) are host-only on `edh.example.com` when `COOKIE_DOMAIN` is empty.
 
@@ -494,7 +496,7 @@ CI: Postgres service → `just migrate` → `just check`.
 
 - Server may enable **CORS** for `cors_origin` when set; same-origin BFF leaves it empty (browser does not need CORS).
 - Auth **session** cookies are host-only on `edh.example.com` so `fetch(..., { credentials: "include" })` to `/api` sends them.
-- Affinity cookie `mtgfr-instance` is host-only on `edh.example.com`; the BFF forwards it to nginx on the ClusterIP hop.
+- Affinity cookie `mtgfr-instance` is host-only on `edh.example.com`; the BFF routes by that cookie (and fans out `POST /tables/join/v1` across peers when the guest has no sticky cookie).
 
 ### Client (production build)
 
@@ -824,7 +826,7 @@ Rolling sequence uses versioned `edh-api-*` instances with SolidStart sticky. Ne
 | **3 — CI** | `.github/workflows/ci.yml` (migrate + `just check`) | PRs and `main` run migrate then `just check` |
 | **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json`, `RELEASE_TOKEN` | Merge to `main` → semantic-release (default) → `v*` tag push → GHCR images |
 | **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres StatefulSet, BFF sticky, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
-| **6 — Drain + affinity** | Health/drain + live `/admin/drain`, stable `INSTANCE_ID`, nginx cookie route, two-Deployment roll; **web image held until drain empties**; **wire backwards-compat doc** (ADR or `docs/`) | Deploy while a game runs on the prior version without disconnect; mid-game refresh keeps old SPA ↔ old API; schema authors have written expand/contract rules |
+| **6 — Drain + affinity** | Health/drain + live `/admin/drain`, stable `INSTANCE_ID`, SolidStart BFF cookie sticky + join fan-out, N-Deployment roll; **web image held until all drain peers empty**; **wire backwards-compat doc** (ADR or `docs/`) | Deploy while a game runs on the prior version without disconnect; mid-game refresh keeps old SPA ↔ old API; schema authors have written expand/contract rules |
 | **7 — Deploy ergonomics** | `just deploy` recipe (API bump → drain wait → web bump); optional workflow PR for `terraform.tfvars` image bumps | Release → apply with minimal hand steps; cannot bump both images in one step |
 
 ## Decisions (locked)
@@ -835,7 +837,7 @@ Rolling sequence uses versioned `edh-api-*` instances with SolidStart sticky. Ne
 | Terraform state | **Kubernetes backend** on that k3s cluster (Secret + Lease in `terraform`); apply machine reaches it over the k3s API |
 | Postgres | Official **`postgres` image** StatefulSet in `edh`; single primary + PVC |
 | Postgres backups (v1) | **k3s / PVC snapshots** (+ existing etcd/datastore backups); no dump cron yet |
-| Sticky proxy | **nginx** with cookie map/hash on `mtgfr-instance` (not nginx Plus `sticky`) |
+| Sticky routing | **SolidStart BFF** (`API_UPSTREAMS` + `mtgfr-instance` cookie; join fan-out for cookieless guests) |
 | Tunnel | **Fully Terraform-managed** Zero Trust tunnel + DNS + in-cluster `cloudflared` |
 | Idle lobby TTL | **30 minutes** — idle lobbies drop so drain can complete |
 | Drain stuck >24h | **Log loudly**; no auto-kill for v1 — operator decides |
@@ -853,7 +855,7 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 
 - [ ] `https://edh.example.com/` loads the client; `/api` reaches Axum via the BFF; auth, deck builder, and lobby work against prod Postgres.
 - [ ] Traffic reaches the cluster via Cloudflare Tunnel only (no public NodePort/LB required for edh).
-- [ ] Auth + affinity cookies are host-only on edh; sticky proxy still routes `mtgfr-instance` behind the BFF.
+- [ ] Auth + affinity cookies are host-only on edh; BFF routes `mtgfr-instance` and fans out join when the cookie is missing.
 - [ ] SSE keepalives keep streams alive through the tunnel under idle play (≥2 min without user actions).
 - [x] `just migrate` runs Toasty `migration apply` on dev Postgres; server starts without `push_schema`.
 - [ ] `terraform apply` from the apply machine (not the k3s host) uses the kubernetes backend on home k3s and reproduces the edh stack; plan fails clearly if the cluster/tunnel prerequisites are missing.
@@ -872,7 +874,7 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 - Home **k3s** — workload host; apply machine is separate and uses remote kubeconfig for Terraform providers + kubernetes state backend
 - [Terraform kubernetes backend](https://developer.hashicorp.com/terraform/language/backend/kubernetes) — state Secret + lock Lease
 - Official `postgres` image StatefulSet — in-cluster Postgres
-- nginx cookie map/hash — sticky proxy for `mtgfr-instance`
+- SolidStart BFF sticky (`API_UPSTREAMS` / `mtgfr-instance`) — no nginx hop
 - Cloudflare Tunnel / Zero Trust — Terraform-managed public hostnames → in-cluster `cloudflared`
 - ADR 0005 — in-process fan-out (affinity extends this)
 - ADR 0010 — Postgres via Toasty (`push_schema` dev-only; migrations in prod)

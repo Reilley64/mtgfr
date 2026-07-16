@@ -29,25 +29,80 @@ export function cookieValue(header: string | undefined, name: string): string | 
   return undefined;
 }
 
+/**
+ * Collapse a catch-all `/api/*` path to a safe upstream path, or `null` if it must not be
+ * forwarded (traversal, admin, health/drain). Trailing slashes are stripped so `health/drain/`
+ * cannot slip past an exact-match block.
+ */
+export function normalizePublicApiPath(path: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return null;
+  }
+  const trimmed = decoded.replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!trimmed) return "";
+  const segments = trimmed.split("/");
+  if (segments.some((s) => s === "" || s === "." || s === "..")) return null;
+  if (segments[0] === "admin") return null;
+  if (segments[0] === "health" && segments[1] === "drain") return null;
+  return segments.join("/");
+}
+
+export function isBlockedPublicApiPath(path: string): boolean {
+  return normalizePublicApiPath(path) === null;
+}
+
 export function resolveUpstreamBase(opts: {
   upstreamsJson?: string;
   activeInstanceId?: string;
   cookieHeader?: string;
   fallbackUpstream?: string;
 }): string {
-  const upstreams = parseUpstreamsJson(opts.upstreamsJson);
-  const activeId = opts.activeInstanceId ?? "";
-  if (Object.keys(upstreams).length === 0) {
-    return (opts.fallbackUpstream ?? DEV_UPSTREAM).replace(/\/$/, "");
-  }
-
-  const instance = cookieValue(opts.cookieHeader, "mtgfr-instance");
-  if (instance && upstreams[instance]) return upstreams[instance];
-  if (activeId && upstreams[activeId]) return upstreams[activeId];
-  const first = Object.values(upstreams)[0];
-  return first ?? DEV_UPSTREAM;
+  const bases = upstreamBasesInOrder(opts);
+  return bases[0] ?? DEV_UPSTREAM;
 }
 
-export function isBlockedPublicApiPath(path: string): boolean {
-  return path === "health/drain" || path.startsWith("admin/") || path === "admin";
+/** Prefer sticky cookie (when known), then active, then remaining drain peers — for join fan-out. */
+export function upstreamBasesInOrder(opts: {
+  upstreamsJson?: string;
+  activeInstanceId?: string;
+  cookieHeader?: string;
+  fallbackUpstream?: string;
+}): string[] {
+  const upstreams = parseUpstreamsJson(opts.upstreamsJson);
+  if (Object.keys(upstreams).length === 0) {
+    return [(opts.fallbackUpstream ?? DEV_UPSTREAM).replace(/\/$/, "")];
+  }
+
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  const pushId = (id: string | undefined) => {
+    if (!id) return;
+    const url = upstreams[id];
+    if (!url || seen.has(id)) return;
+    seen.add(id);
+    ordered.push(url);
+  };
+
+  const instance = cookieValue(opts.cookieHeader, "mtgfr-instance");
+  pushId(instance);
+  pushId(opts.activeInstanceId);
+  for (const id of Object.keys(upstreams)) pushId(id);
+  return ordered;
+}
+
+export function isUnknownTableLobbyBody(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body) as { error?: unknown };
+    return parsed.error === "UnknownTable";
+  } catch {
+    return false;
+  }
+}
+
+/** Guests joining by code have no sticky cookie; fan out across versioned peers. */
+export function shouldFanOutJoin(path: string, method: string): boolean {
+  return method === "POST" && path === "tables/join/v1";
 }

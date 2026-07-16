@@ -165,8 +165,11 @@ gc_empty() {
 
   for id in $(python3 -c 'import json,sys; print(" ".join(json.loads(sys.argv[1])))' "$drain_ids"); do
     tables="$(read_tables "$id")"
-    if [ "$tables" = "0" ] || [ "$tables" = "unreachable" ]; then
-      echo "wait-drain: GC $id (tables=$tables)." >&2
+    if [ "$tables" = "unreachable" ]; then
+      # Never tear down on a probe failure — that would wipe in-memory tables (ADR 0021).
+      echo "wait-drain: keep $id (unreachable — refusing GC)." >&2
+    elif [ "$tables" = "0" ]; then
+      echo "wait-drain: GC $id (tables=0)." >&2
       images_json="$(python3 -c 'import json,sys; m=json.loads(sys.argv[1]); m.pop(sys.argv[2], None); print(json.dumps(m))' "$images_json" "$id")"
       changed=1
     else
@@ -180,7 +183,8 @@ gc_empty() {
 }
 
 gc_one() {
-  local active_id drain_ids id tables images_json pf_pid
+  local active_id drain_ids id tables images_json pf_pid start_time elapsed
+  local max_wait="${API_CAP_WAIT_SECONDS:-21600}"
   active_id="$(terraform output -raw api_active_instance_id)"
   drain_ids="$(terraform output -json api_drain_instance_ids)"
   if [ "$drain_ids" = "[]" ]; then
@@ -188,7 +192,13 @@ gc_one() {
     return 0
   fi
 
+  start_time=$(date +%s)
   while true; do
+    elapsed=$(($(date +%s) - start_time))
+    if [ "$elapsed" -ge "$max_wait" ]; then
+      echo "wait-drain: error: no empty drain peer after ${max_wait}s" >&2
+      exit 1
+    fi
     for id in $(python3 -c 'import json,sys; print(" ".join(json.loads(sys.argv[1])))' "$drain_ids"); do
       pf_pid="$(start_pf "$id")" || continue
       if wait_pf_ready; then
@@ -205,9 +215,10 @@ gc_one() {
         echo "wait-drain: $id still has active_tables=$tables." >&2
       else
         kill "$pf_pid" 2>/dev/null || true
+        echo "wait-drain: keep $id (unreachable — refusing GC)." >&2
       fi
     done
-    echo "wait-drain: no empty drain peer yet — sleeping ${POLL_INTERVAL_SECONDS}s…" >&2
+    echo "wait-drain: no empty drain peer yet — sleeping ${POLL_INTERVAL_SECONDS}s (${elapsed}s/${max_wait}s)…" >&2
     sleep "$POLL_INTERVAL_SECONDS"
     drain_ids="$(terraform output -json api_drain_instance_ids)"
   done

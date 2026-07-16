@@ -25,8 +25,14 @@ to **multiple concurrent draining instances**.
   Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
   ```
 - **SolidStart BFF** (`edh-web`, `API_UPSTREAMS` + `API_ACTIVE_INSTANCE_ID`) routes `/api/*` by that
-  cookie (unknown/missing → active). Public `/api/admin/*` and `/api/health/drain` return 404;
-  apply-machine drain uses `kubectl port-forward` to the instance Service.
+  cookie (unknown/missing → active). `POST /tables/join/v1` **fans out** across all live peers
+  until a non-`UnknownTable` lobby response (so cookieless guests can join a table on a drain
+  peer); the winning `Set-Cookie` pins later requests. Public `/api/admin/*` and
+  `/api/health/drain` return 404 after path normalization (reject `..`); apply-machine drain uses
+  `kubectl port-forward` to the instance Service.
+- Deploy cutover: add the new Deployment while the previous id stays active → live-drain the
+  previous → flip `api_active_instance_id` (no dual-accept window). GC removes a peer only when
+  `active_tables=0` (never on probe failure). Cap waits time out (`API_CAP_WAIT_SECONDS`).
 - There is **no** nginx sticky proxy. NetworkPolicy: `cloudflared` → `edh-web` only; `edh-web` →
   pods labeled `mtgfr.io/component=api`.
 - Auth session cookies are host-only on edh when `COOKIE_DOMAIN` is empty; the BFF forwards
