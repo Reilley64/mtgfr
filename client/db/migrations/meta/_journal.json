@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784215285421,
+      "tag": "0000_init_lobby_routes",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784217000000,
+      "tag": "0001_lobby_seat_user_unique",
+      "breakpoints": true
+    }
+  ]
+}

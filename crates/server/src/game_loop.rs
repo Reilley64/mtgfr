@@ -1,7 +1,11 @@
 //! HTTP handlers for intent submission, yield, and helpless dwell. Seat validation and ack
 //! shaping live here; chrome policy is the three [`crate::session::TableSession`] verbs.
+//! Table id is always a path param (`/tables/{table}/…`) so the BFF can route without body peek.
 
-use axum::{Json, extract::State};
+use axum::{
+    Json,
+    extract::{Path, State},
+};
 use engine::PlayerId;
 use schema::{IntentEnvelope, to_intent_for_seat};
 use serde::{Deserialize, Serialize};
@@ -41,13 +45,15 @@ impl From<DwellResult> for Ack {
 /// sequence and broadcast the resulting events to every viewer's stream.
 #[utoipa::path(
     post,
-    path = "/intent/v1",
+    path = "/tables/{table}/intent/v1",
+    params(("table" = String, Path, description = "table id")),
     request_body = IntentEnvelope,
     responses((status = 200, description = "Intent accepted or rejected", body = Ack)),
 )]
 pub async fn submit_intent(
     State(state): State<AppState>,
     user: AuthUser,
+    Path(table_id): Path<String>,
     Json(env): Json<IntentEnvelope>,
 ) -> Json<Ack> {
     // Live games are in-memory only (no durable store): a restart loses running games.
@@ -55,7 +61,7 @@ pub async fn submit_intent(
     // I/O can't stall other tables.
     let (ack, log_row) = {
         let mut reg = lock(&state.reg);
-        let (table, seat) = match seated_table(&mut reg, &env.table_id, &user) {
+        let (table, seat) = match seated_table(&mut reg, &table_id, &user) {
             Ok(pair) => pair,
             Err(ack) => return Json(ack),
         };
@@ -71,10 +77,10 @@ pub async fn submit_intent(
         );
         let seq = table.seq;
         let ack = Ack::from(result);
-        settle_after_apply(&mut reg, &state, &env.table_id, disposition, seq);
+        settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
         (ack, log_row)
     };
-    crate::action_log::append(&env.table_id, &log_row);
+    crate::action_log::append(&table_id, &log_row);
     Json(ack)
 }
 
@@ -105,18 +111,20 @@ fn seated_table<'r>(
 /// everyone is waiting on — so this drives auto-advance and broadcasts like any intent.
 #[utoipa::path(
     post,
-    path = "/yield/v1",
+    path = "/tables/{table}/yield/v1",
+    params(("table" = String, Path, description = "table id")),
     request_body = YieldRequest,
     responses((status = 200, description = "Yield recorded", body = Ack)),
 )]
 pub async fn set_yield(
     State(state): State<AppState>,
     user: AuthUser,
+    Path(table_id): Path<String>,
     Json(req): Json<YieldRequest>,
 ) -> Json<Ack> {
-    let (ack, log_row, table_id) = {
+    let (ack, log_row) = {
         let mut reg = lock(&state.reg);
-        let (table, seat) = match seated_table(&mut reg, &req.table_id, &user) {
+        let (table, seat) = match seated_table(&mut reg, &table_id, &user) {
             Ok(pair) => pair,
             Err(ack) => return Json(ack),
         };
@@ -132,8 +140,8 @@ pub async fn set_yield(
         );
         let seq = table.seq;
         let ack = Ack::from(result);
-        settle_after_apply(&mut reg, &state, &req.table_id, disposition, seq);
-        (ack, log_row, req.table_id.clone())
+        settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
+        (ack, log_row)
     };
     crate::action_log::append(&table_id, &log_row);
     Json(ack)
@@ -142,7 +150,6 @@ pub async fn set_yield(
 /// A player's "don't care about this stack" toggle (see [`set_yield`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct YieldRequest {
-    pub table_id: String,
     /// True to auto-pass this seat while the current stack resolves; false to opt back in.
     pub enabled: bool,
 }
@@ -151,18 +158,20 @@ pub struct YieldRequest {
 /// take an intentional action (ADR 0029). Independent of stack yield.
 #[utoipa::path(
     post,
-    path = "/turn-yield/v1",
+    path = "/tables/{table}/turn-yield/v1",
+    params(("table" = String, Path, description = "table id")),
     request_body = YieldRequest,
     responses((status = 200, description = "Turn yield recorded", body = Ack)),
 )]
 pub async fn set_turn_yield(
     State(state): State<AppState>,
     user: AuthUser,
+    Path(table_id): Path<String>,
     Json(req): Json<YieldRequest>,
 ) -> Json<Ack> {
-    let (ack, log_row, table_id) = {
+    let (ack, log_row) = {
         let mut reg = lock(&state.reg);
-        let (table, seat) = match seated_table(&mut reg, &req.table_id, &user) {
+        let (table, seat) = match seated_table(&mut reg, &table_id, &user) {
             Ok(pair) => pair,
             Err(ack) => return Json(ack),
         };
@@ -183,8 +192,8 @@ pub async fn set_turn_yield(
         );
         let seq = table.seq;
         let ack = Ack::from(result);
-        settle_after_apply(&mut reg, &state, &req.table_id, disposition, seq);
-        (ack, log_row, req.table_id.clone())
+        settle_after_apply(&mut reg, &state, &table_id, disposition, seq);
+        (ack, log_row)
     };
     crate::action_log::append(&table_id, &log_row);
     Json(ack)
@@ -193,17 +202,19 @@ pub async fn set_turn_yield(
 /// Helpless-reader hover on the stack during a hold (see [`set_stack_dwell`]).
 #[utoipa::path(
     post,
-    path = "/stack-dwell/v1",
+    path = "/tables/{table}/stack-dwell/v1",
+    params(("table" = String, Path, description = "table id")),
     request_body = StackDwellRequest,
     responses((status = 200, description = "Dwell recorded", body = Ack)),
 )]
 pub async fn set_stack_dwell(
     State(state): State<AppState>,
     user: AuthUser,
+    Path(table_id): Path<String>,
     Json(req): Json<StackDwellRequest>,
 ) -> Json<Ack> {
     let mut reg = lock(&state.reg);
-    let (table, seat) = match seated_table(&mut reg, &req.table_id, &user) {
+    let (table, seat) = match seated_table(&mut reg, &table_id, &user) {
         Ok(pair) => pair,
         Err(ack) => return Json(ack),
     };
@@ -215,7 +226,6 @@ pub async fn set_stack_dwell(
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct StackDwellRequest {
-    pub table_id: String,
     pub dwelling: bool,
 }
 

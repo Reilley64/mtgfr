@@ -506,7 +506,7 @@ mod tests {
     use crate::decks::seed_game;
     use crate::test_support::{as_user, seat_deck, user_with_deck};
     use axum::Json;
-    use axum::extract::State;
+    use axum::extract::{Path, State};
     use engine::PlayerId;
     use schema::{IntentEnvelope, WireIntent, to_intent};
 
@@ -570,7 +570,7 @@ mod tests {
             "a multi-block owes the attacker a damage-division choice",
         );
 
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         let mut rx = table.tx.subscribe();
         table.game = Some(game);
         let before = table.seq;
@@ -593,7 +593,7 @@ mod tests {
 
     #[test]
     fn a_rejected_intent_does_not_advance_the_sequence() {
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         table.game = Some(seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
             0,
@@ -609,7 +609,7 @@ mod tests {
 
     #[test]
     fn an_action_and_its_auto_passes_fold_into_one_broadcast_frame() {
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         table.game = Some(seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
             0,
@@ -741,7 +741,7 @@ mod tests {
     }
 
     fn bear_table() -> (Table, engine::ObjectId) {
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
         game.fund_mana(PlayerId(0));
         let bear = game.spawn_in_hand(PlayerId(0), cards::get_by_name("Grizzly Bear").unwrap());
@@ -756,7 +756,7 @@ mod tests {
 
     #[test]
     fn a_forced_single_legal_target_choice_auto_resolves_without_a_client_intent() {
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         let mut game = engine::Game::new();
         let pinger = game.spawn_in_hand(PlayerId(0), FORCED_PINGER);
         table.game = Some(game);
@@ -778,7 +778,7 @@ mod tests {
 
     #[test]
     fn a_genuine_two_target_choice_does_not_auto_resolve() {
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         let mut game = engine::Game::new();
         game.spawn_on_battlefield(
             PlayerId(1),
@@ -1128,7 +1128,7 @@ mod tests {
         let _ = user_with_deck(&state, "p0@x.c").await;
         let uid = as_user(&state, "p0@x.c").await.0.id;
 
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
         table.game = Some(seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
@@ -1149,6 +1149,7 @@ mod tests {
         let ack = submit_intent(
             State(state.clone()),
             as_user(&state, "p0@x.c").await,
+            Path("take".to_string()),
             Json(IntentEnvelope {
                 table_id: "take".to_string(),
                 client_seq: 0,
@@ -1179,7 +1180,7 @@ mod tests {
         let uid0 = as_user(&state, "p0@x.c").await.0.id;
         let uid1 = as_user(&state, "p1@x.c").await.0.id;
 
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         table.seats[0].user_id = Some(uid0);
         table.seats[1].user_id = Some(uid1);
         table.game = Some(seed_game(
@@ -1191,10 +1192,8 @@ mod tests {
         let ack = set_yield(
             State(state.clone()),
             as_user(&state, "p1@x.c").await,
-            Json(YieldRequest {
-                table_id: "y".to_string(),
-                enabled: true,
-            }),
+            Path("y".to_string()),
+            Json(YieldRequest { enabled: true }),
         )
         .await
         .0;
@@ -1203,10 +1202,8 @@ mod tests {
         let ack = set_yield(
             State(state.clone()),
             as_user(&state, "p0@x.c").await,
-            Json(YieldRequest {
-                table_id: "y".to_string(),
-                enabled: true,
-            }),
+            Path("y".to_string()),
+            Json(YieldRequest { enabled: true }),
         )
         .await
         .0;
@@ -1220,7 +1217,7 @@ mod tests {
         let _ = user_with_deck(&state, "p0@x.c").await;
         let uid = as_user(&state, "p0@x.c").await.0.id;
 
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
         let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
         game.set_life(PlayerId(1), 0);
@@ -1230,6 +1227,7 @@ mod tests {
         let ack = submit_intent(
             State(state.clone()),
             as_user(&state, "p0@x.c").await,
+            Path("over".to_string()),
             Json(IntentEnvelope {
                 table_id: "over".to_string(),
                 client_seq: 0,
@@ -1244,7 +1242,7 @@ mod tests {
 
     #[test]
     fn published_delta_carries_self_sufficient_game_snapshot() {
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         table.game = Some(seed_game(
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
             0,
@@ -1301,7 +1299,7 @@ mod tests {
             .expect("escape Sentinel's Eyes is listed")
             .id;
 
-        let mut table = Table::new_lobby();
+        let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
         table.game = Some(game);
         lock(&state.reg)
@@ -1311,6 +1309,7 @@ mod tests {
         let missing = submit_intent(
             State(state.clone()),
             as_user(&state, "eyes0@x.c").await,
+            Path("eyes-escape".to_string()),
             Json(IntentEnvelope {
                 table_id: "eyes-escape".to_string(),
                 client_seq: 0,
@@ -1335,6 +1334,7 @@ mod tests {
         let ack = submit_intent(
             State(state.clone()),
             as_user(&state, "eyes0@x.c").await,
+            Path("eyes-escape".to_string()),
             Json(IntentEnvelope {
                 table_id: "eyes-escape".to_string(),
                 client_seq: 1,

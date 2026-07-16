@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edh-web
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: edh-web
+    app.kubernetes.io/part-of: mtgfr
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edh-web
+  template:
+    metadata:
+      labels:
+        app: edh-web
+        app.kubernetes.io/part-of: mtgfr
+    spec:
+      containers:
+        - name: edh-web
+          image: {{ .Values.webImage | quote }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8080"
+            - name: WEB_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dbSecretName }}
+                  key: WEB_DATABASE_URL
+            - name: API_UPSTREAM
+              value: "http://edh-api.{{ .Values.namespace }}.svc:8080"
+          livenessProbe:
+            httpGet:
+              path: /api/meta/health/v1
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/meta/health/v1
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

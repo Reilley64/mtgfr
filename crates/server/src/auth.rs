@@ -143,6 +143,7 @@ fn validate_username(raw: &str) -> Result<String, StatusCode> {
 
 fn me_of(user: &User) -> Me {
     Me {
+        id: user.id,
         email: user.email.clone(),
         username: user.username.clone(),
     }

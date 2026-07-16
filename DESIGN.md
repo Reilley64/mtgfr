@@ -168,7 +168,7 @@ components:
 
 **Priority readability:** Gold = a decision is owed. During **instant-priority focus**, non-usable battlefield permanents take a black veil; legal activates and untapped mana sources stay bright. Empty-stack main and declare attackers/blockers stay fully lit (see ADR 0027 / `CONTEXT.md`). Yielded pass uses amber earth (`yielded` / `yielded-ink`) — not priority gold (The Gold Means Act Rule).
 
-**Components:** Chunky buttons (Llanowar Deep → Llanowar on hover, inset highlight, shortens on press) via `~/ui` Solid wrappers — never `@apply`. Panels: Forest Surface 98% + 1px Vine border; fluid width (`max-w` capped, no hard `min-w` that overflows landscape phones). HUD: Forest HUD 92%. Inputs: Glass fill + Vine border. Cards on canvas: tapped = 90° rotation; combat outlines red/green; life orbs are combat drop targets. Quiet HUD dismiss controls use `.hit-quiet` so coarse pointers still hit ≥44×44.
+**Components:** Chunky buttons (Llanowar Deep → Llanowar on hover, inset highlight, shortens on press) via `~/components/atoms` Solid wrappers — never `@apply`. Panels: Forest Surface 98% + 1px Vine border; fluid width (`max-w` capped, no hard `min-w` that overflows landscape phones). HUD: Forest HUD 92%. Inputs: Glass fill + Vine border. Cards on canvas: tapped = 90° rotation; combat outlines red/green; life orbs are combat drop targets. Quiet HUD dismiss controls use `.hit-quiet` so coarse pointers still hit ≥44×44.
 
 **Motion:** 150–250ms ease-out, state-only, `prefers-reduced-motion` fallback — never celebration.
 

@@ -58,7 +58,6 @@ jobs:
           push: true
           tags: ${{ steps.image.outputs.web }}:${{ steps.image.outputs.version }}
           build-args: |
-            VITE_API_ORIGIN=${{ vars.VITE_API_ORIGIN || 'https://api.edh.example.com' }}
             VITE_CARD_CDN=${{ vars.VITE_CARD_CDN }}
 
       - name: Make GHCR packages public

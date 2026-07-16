@@ -66,7 +66,7 @@ describe("cn", () => {
     expect(cn("px-lg", "py-sm")).toBe("px-lg py-sm"); // different properties, both kept
   });
 
-  // Utility recipes from `~/ui` compose through cn like any other class list — later entries
+  // Utility recipes from `~/components/atoms` compose through cn like any other class list — later entries
   // override earlier ones for the same CSS property (e.g. quiet/yielded on top of game).
   it("lets button recipe utilities override via order", () => {
     expect(cn("bg-llanowar-deep", "bg-tapped-out", "bg-yielded")).toBe("bg-yielded");

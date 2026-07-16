@@ -5,12 +5,14 @@
   "scripts": {
     "gen": "sh scripts/gen.sh",
     "predev": "bun run gen",
-    "dev": "vite",
+    "dev": "vinxi dev",
     "prebuild": "bun run gen",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "build": "tsc --noEmit && vinxi build",
+    "start": "vinxi start",
+    "preview": "vinxi preview",
     "pretest": "bun run gen",
     "test": "vitest run",
+    "migrate": "sh scripts/migrate.sh",
     "lint": "biome check --formatter-enabled=false",
     "lint:fix": "biome check --write --formatter-enabled=false",
     "format": "biome format --write",
@@ -18,13 +20,18 @@
   },
   "dependencies": {
     "@effect/atom-solid": "4.0.0-beta.94",
+    "@effect/sql-pg": "4.0.0-beta.94",
+    "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.16.1",
+    "@solidjs/start": "1.3.2",
     "clsx": "2.1.1",
     "cva": "1.0.0-beta.7",
+    "drizzle-orm": "^0.45.2",
     "effect": "4.0.0-beta.94",
     "mana-font": "1.18.0",
     "solid-js": "^1.9.14",
-    "tailwind-merge": "3.6.0"
+    "tailwind-merge": "3.6.0",
+    "vinxi": "^0.5.7"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
@@ -32,11 +39,17 @@
     "@effect/platform-node": "4.0.0-beta.94",
     "@tailwindcss/vite": "4.3.2",
     "@types/node": "26.1.0",
+    "drizzle-kit": "^0.31.10",
     "happy-dom": "15",
     "tailwindcss": "4.3.2",
     "typescript": "^6.0.3",
-    "vite": "^8.1.3",
+    "vite": "^6.3.3",
     "vite-plugin-solid": "^2.11.12",
     "vitest": "^4.1.10"
-  }
+  },
+  "engines": {
+    "node": ">=22",
+    "bun": "1.3.14"
+  },
+  "packageManager": "bun@1.3.14"
 }

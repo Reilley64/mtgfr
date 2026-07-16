@@ -24,7 +24,8 @@ pub use dto::{
     ActionView, ChoiceItem, CombatView, CommanderDamageView, CreateTableResponse, Credentials,
     DeckCardEntry, DeckDetail, DeckError, DeckSummary, JoinRequest, LobbyView, Me, ModalView,
     ModeView, ObjectView, PendingChoiceView, PlayerView, ReadyRequest, SaveDeckRequest, SeatView,
-    SignupCredentials, StackObjectView, StartRequest, VisibleState, WireCost, WireKind,
+    SeedRequest, SeedResponse, SeedSeat, SignupCredentials, StackObjectView, StartRequest,
+    VisibleState, WireCost, WireKind,
 };
 pub use event::{DeltaEnvelope, VisibleEvent, redact, spectator_redact};
 pub use intent::{

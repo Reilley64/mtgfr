@@ -5,7 +5,7 @@ use axum::http::HeaderValue;
 use serde::Deserialize;
 
 /// Runtime settings. Env mapping: `HOST`, `PORT`, `DATABASE_URL`, `INSTANCE_ID`, `DRAIN`,
-/// `COOKIE_SECURE`, `COOKIE_DOMAIN`, `CORS_ORIGIN`, `ADMIN_TOKEN`, `VERSION`.
+/// `COOKIE_SECURE`, `COOKIE_DOMAIN`, `CORS_ORIGIN`, `VERSION`, `POD_DNS`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
     /// Default `127.0.0.1`; prod `0.0.0.0`.
@@ -16,7 +16,11 @@ pub struct Settings {
     pub database_url: String,
     /// Stable per-Deployment id (e.g. `edh-api`), not the pod name. Default `local`.
     pub instance_id: String,
-    /// Startup default only; live drain is `POST /admin/drain`.
+    /// This pod's routable DNS name, handed back by `POST /tables/seed/v1` so the BFF can pin
+    /// later hops for the table to the pod that owns its in-memory game. Default `""` — the seed
+    /// handler falls back to `instance_id` (dev, single pod).
+    pub pod_dns: String,
+    /// Startup default only; SIGTERM flips the live drain flag.
     pub drain: bool,
     /// Session cookie `Secure`. Default `false` (localhost http).
     pub cookie_secure: bool,
@@ -26,8 +30,6 @@ pub struct Settings {
     pub cors_origin: String,
     /// Surfaced on `/health/live`. Default: crate version.
     pub version: String,
-    /// Guards `/admin/drain` and `/health/drain`. Empty = open (NetworkPolicy still applies).
-    pub admin_token: String,
 }
 
 impl Settings {
@@ -40,12 +42,12 @@ impl Settings {
             .set_default("host", "127.0.0.1")?
             .set_default("port", 8080)?
             .set_default("instance_id", "local")?
+            .set_default("pod_dns", "")?
             .set_default("drain", false)?
             .set_default("cookie_secure", false)?
             .set_default("cookie_domain", "")?
             .set_default("cors_origin", "")?
             .set_default("version", env!("CARGO_PKG_VERSION"))?
-            .set_default("admin_token", "")?
             .add_source(config::File::with_name(config_path).required(false))
             .add_source(config::Environment::default().separator("__"))
             .build()?
@@ -77,12 +79,12 @@ pub(crate) fn for_test() -> Settings {
         port: 0,
         database_url: "sqlite::memory:".to_string(),
         instance_id: "test".to_string(),
+        pod_dns: String::new(),
         drain: false,
         cookie_secure: false,
         cookie_domain: String::new(),
         cors_origin: String::new(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        admin_token: String::new(),
     }
 }
 
@@ -137,12 +139,12 @@ mod tests {
             "postgresql://mtgfr:mtgfr@localhost:5432/mtgfr"
         );
         assert_eq!(settings.instance_id, "local");
+        assert_eq!(settings.pod_dns, "");
         assert!(!settings.drain);
         assert!(!settings.cookie_secure);
         assert_eq!(settings.cookie_domain, "");
         assert_eq!(settings.cors_origin, "");
         assert_eq!(settings.version, env!("CARGO_PKG_VERSION"));
-        assert_eq!(settings.admin_token, "");
         assert_eq!(settings.listen_addr(), "127.0.0.1:8080");
 
         if let Some(v) = saved {

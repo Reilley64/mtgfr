@@ -1,0 +1,18 @@
+# Wave 1: retarget after API Deployment (wave 0) is healthy — avoids selecting a missing app id.
+apiVersion: v1
+kind: Service
+metadata:
+  name: edh-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: edh-api
+    app.kubernetes.io/part-of: mtgfr
+    mtgfr.io/component: api
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  selector:
+    app: {{ .Values.apiActiveInstanceId }}
+  ports:
+    - port: 8080
+      targetPort: 8080

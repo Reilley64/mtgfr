@@ -1,42 +1,35 @@
 //! Tables and their seed decks.
 //!
-//! A `Table` starts in a lobby (up-to-four claimable seats, each picking one of the joiner's
-//! saved decks) and becomes a live `Game` when the host starts it. Seat identity is the
-//! authenticated user; the deck a seat plays is resolved from the durable store at start.
-
-use std::time::Duration;
+//! The pre-game lobby (claiming seats, picking decks, readying up) lives entirely in the
+//! SolidStart BFF's own store now (`mtgfr_web` Postgres, Drizzle) — see `docs/prds` for the split.
+//! A `Table` here is born already seeded: the BFF calls `POST /tables/seed/v1` once, handing over
+//! the host, the ordered seats (each with its resolved deck), and this module builds the running
+//! `Game` right away. There is no more claim/ready/start dance on this side.
 
 use engine::{CardDef, Game, PlayerId};
+use schema::SeedSeat;
 use tokio::sync::broadcast;
-use tokio::time::Instant;
 
 pub use crate::session::{Broadcast, PublishedDelta};
 
-/// How long a never-started lobby may sit idle (claimed or empty) before the sweeper evicts it,
-/// and how recently a claimed-but-not-started lobby must have seen activity to still count as
-/// "active" for drain purposes. See [`Table::touch`], `Registry::active_table_count`, and
-/// `Registry::sweep_idle_lobbies`.
-pub const IDLE_LOBBY_TTL: Duration = Duration::from_secs(30 * 60);
-
-/// One lobby seat: which user claimed it, the saved deck they'll play (id + name for display),
-/// and their ready flag.
+/// One seated player: the user who owns the seat and their display name (public — every
+/// viewer's [`schema::PlayerView::username`] shows it).
 #[derive(Debug, Clone, Default)]
 pub struct Seat {
     pub user_id: Option<i64>,
     pub username: Option<String>,
-    pub deck_id: Option<i64>,
-    pub deck_name: Option<String>,
-    pub ready: bool,
 }
 
-/// A table: a lobby of up to four seats that becomes a running game once the host starts.
-/// One `Table` per `table_id` in the registry.
+/// A table: up to four seats playing a live game. One `Table` per `table_id` in the registry,
+/// born with its game already running (see [`Table::seeded`]).
 pub struct Table {
-    /// The four claimable seats (a Commander table). Filled front-to-back as players join.
+    /// The four seats (a Commander table). Only the first `seats.len()`-many via `seed` are
+    /// filled; a table always seeds with 2..=4 players.
     pub seats: [Seat; 4],
-    /// The host user (the first player to join); only they may start the game.
+    /// The host user (whoever started the game on the BFF side) — kept for display/audit; no
+    /// handler on this side gates on it anymore.
     pub host: Option<i64>,
-    /// The live game once started — `None` while still in the lobby.
+    /// The live game.
     pub game: Option<Game>,
     /// The PRNG seed the game was seeded with (recorded so a replay reproduces the shuffle).
     /// Meaningful only once `game` is `Some`.
@@ -59,15 +52,19 @@ pub struct Table {
     /// Per-seat helpless stack dwell (hover pause). Mutated via
     /// [`crate::session::TableSession::set_dwell`]; cleared when the hold ends.
     pub stack_dwell: [bool; 4],
-    /// Last join/ready/start for idle-lobby TTL (ignored once `game` is set).
-    pub last_activity: Instant,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
 }
 
 impl Table {
-    /// A fresh, empty lobby table.
-    pub fn new_lobby() -> Table {
+    /// An empty table shell (no seats, no game) — a test-support builder; production tables are
+    /// always born via [`Table::seeded`].
+    #[cfg(test)]
+    pub fn empty() -> Table {
+        Self::shell()
+    }
+
+    fn shell() -> Table {
         let (tx, _rx) = broadcast::channel(256);
         Table {
             seats: Default::default(),
@@ -81,24 +78,22 @@ impl Table {
             turn_yields: [false; 4],
             stack_hold: None,
             stack_dwell: [false; 4],
-            last_activity: Instant::now(),
             prints: Default::default(),
         }
     }
 
-    pub fn touch(&mut self) {
-        self.last_activity = Instant::now();
-    }
-
-    /// Started game, or claimed lobby still inside [`IDLE_LOBBY_TTL`].
-    pub fn is_active(&self) -> bool {
-        self.game.is_some()
-            || (self.claimed_count() >= 1 && self.last_activity.elapsed() < IDLE_LOBBY_TTL)
-    }
-
-    /// Never-started lobby idle past `ttl` — sweeper candidate.
-    pub fn is_idle_lobby(&self, ttl: Duration) -> bool {
-        self.game.is_none() && self.last_activity.elapsed() >= ttl
+    /// Build a table with its seats filled from an already-resolved lobby, ready for
+    /// [`Table::game`] to be set by [`seed_game`]. `seats` is ordered by seat index (2..=4).
+    pub fn seeded(host_user_id: i64, seats: &[SeedSeat]) -> Table {
+        let mut table = Self::shell();
+        table.host = Some(host_user_id);
+        for (i, seat) in seats.iter().enumerate() {
+            table.seats[i] = Seat {
+                user_id: Some(seat.user_id),
+                username: Some(seat.username.clone()),
+            };
+        }
+        table
     }
 
     /// Milliseconds until the stack-hold would resolve, or `0` if no hold is active.
@@ -127,11 +122,6 @@ impl Table {
             turn_yields: self.turn_yields,
             stack_hold_remaining_ms: self.stack_hold_remaining_ms(),
         }));
-    }
-
-    /// The number of claimed seats (contiguous from seat 0 — players join the next open seat).
-    pub fn claimed_count(&self) -> usize {
-        self.seats.iter().filter(|s| s.user_id.is_some()).count()
     }
 
     /// The seat index a user holds, if any.
