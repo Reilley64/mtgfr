@@ -1,10 +1,10 @@
 name: Docker
 
 # Build + push GHCR images for `v*` tags.
-# semantic-release must create tags with `RELEASE_TOKEN` (PAT: contents +
-# workflow) — `GITHUB_TOKEN` cannot cascade workflow runs. Do not also listen
-# for `create`: GitHub emits both `create` and `push` for the same tag, which
-# doubles the build.
+# Verify already ran `just check` on this commit (verify-and-release → semantic-release).
+# semantic-release must create tags with `RELEASE_TOKEN` (PAT: contents + workflow) —
+# `GITHUB_TOKEN` cannot cascade workflow runs. Do not also listen for `create`: GitHub
+# emits both `create` and `push` for the same tag, which doubles the build.
 
 on:
   push:
@@ -17,25 +17,10 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
 
 jobs:
   docker:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: mtgfr
-          POSTGRES_PASSWORD: mtgfr
-          POSTGRES_DB: mtgfr
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U mtgfr -d mtgfr"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
@@ -47,44 +32,6 @@ jobs:
           echo "server=ghcr.io/${owner}/mtgfr-server" >> "$GITHUB_OUTPUT"
           echo "web=ghcr.io/${owner}/mtgfr-web" >> "$GITHUB_OUTPUT"
           echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - uses: extractions/setup-just@v3
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
-
-      - name: Install client dependencies
-        run: cd client && bun install --frozen-lockfile
-
-      - name: Apply Toasty migrations
-        run: cargo run -p server -- migration apply
-
-      - name: just check (codegen + format + lint + typecheck + test)
-        run: just check
-
-      - name: Upload Rust JUnit report
-        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: rust-junit
-          path: target/nextest/ci/junit.xml
-
-      - name: Rust test summary
-        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: test-summary/action@v2
-        with:
-          paths: target/nextest/ci/junit.xml
 
       - uses: docker/setup-buildx-action@v3
 
