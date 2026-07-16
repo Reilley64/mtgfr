@@ -126,7 +126,6 @@ resource "kubernetes_job_v1" "edh_web_migrate" {
             });
             CFG
             bun install --no-save
-            # Network fetch at apply time (oven/bun image); pin versions above for reproducibility.
             bunx drizzle-kit migrate
           EOT
           ]

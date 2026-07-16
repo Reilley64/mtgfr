@@ -1,6 +1,5 @@
 import { boolean, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
-/** Pre-game lobby row — SolidStart / mtgfr_web only (not Axum Toasty). */
 export const lobbies = pgTable("lobbies", {
   tableId: text("table_id").primaryKey(),
   hostUserId: integer("host_user_id").notNull(),
@@ -28,7 +27,6 @@ export const lobbySeats = pgTable(
   ],
 );
 
-/** In-game BFF routing: table → API pod DNS (TTL + explicit delete). */
 export const tableRoutes = pgTable("table_routes", {
   tableId: text("table_id").primaryKey(),
   podDns: text("pod_dns").notNull(),

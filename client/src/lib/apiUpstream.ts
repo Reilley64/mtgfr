@@ -1,8 +1,3 @@
-/** Sticky / path helpers for the SolidStart `/api` BFF. */
-
-export const DEV_UPSTREAM = "http://127.0.0.1:8080";
-
-/** Safe upstream path, or `null` if blocked (traversal / admin / health/drain). */
 export function normalizePublicApiPath(path: string): string | null {
   let decoded: string;
   try {
@@ -16,12 +11,10 @@ export function normalizePublicApiPath(path: string): string | null {
   if (segments.some((s) => s === "" || s === "." || s === "..")) return null;
   if (segments[0] === "admin") return null;
   if (segments[0] === "health" && segments[1] === "drain") return null;
-  // Seed is BFF→API only (server-side); browsers must not hit it via the public proxy.
   if (segments[0] === "tables" && segments[1] === "seed") return null;
   return segments.join("/");
 }
 
-/** Parse `tables/{id}/…` game routes for BFF Postgres lookup. */
 export function tableIdFromGamePath(path: string): string | null {
   const match = path.match(/^tables\/([^/]+)\/(stream|intent|yield|turn-yield|stack-dwell)\/v1$/);
   if (!match) return null;
@@ -32,7 +25,6 @@ export function tableIdFromGamePath(path: string): string | null {
   }
 }
 
-/** Turn a `table_routes.pod_dns` value into an HTTP base URL for proxying. */
 export function upstreamFromPodDns(pod: string): string {
   if (pod.startsWith("http://") || pod.startsWith("https://")) {
     return pod.replace(/\/$/, "");

@@ -1,9 +1,4 @@
-//! Seed a running game on this instance from a lobby the SolidStart BFF already resolved.
-//!
-//! The pre-game lobby (claiming seats, picking decks, readying up) lives entirely on the BFF
-//! side now (`mtgfr_web` Postgres, Drizzle — see ADR notes in the plan). This module's only job
-//! is `POST /tables/seed/v1`: given a host, an ordered list of seats (each with the deck they'll
-//! play), build the `Table` and seed its `Game` once.
+//! `POST /tables/seed/v1` — build a live `Table` from seats the SolidStart BFF already resolved.
 
 use std::sync::atomic::Ordering;
 
@@ -18,10 +13,7 @@ use rand::RngCore;
 use rand::rngs::OsRng;
 use schema::{DeckCardEntry, SeedRequest, SeedResponse};
 
-/// Seed a running game from a lobby the BFF already resolved (host, seats in seat-index order,
-/// each seat's chosen deck). 503 while draining — a new table must land on an instance that will
-/// stick around. 400 if `table_id` already names a live table (the BFF must mint fresh ids), if
-/// `seats` isn't 2..=4 long, or if a seat's deck doesn't resolve.
+/// Seed a running game from BFF-resolved seats. 503 while draining.
 #[utoipa::path(
     post,
     path = "/tables/seed/v1",
@@ -44,7 +36,6 @@ pub async fn seed_table(
     if !(2..=4).contains(&req.seats.len()) {
         return Err(StatusCode::BAD_REQUEST);
     }
-    // Caller must be the host and appear in the seat list (BFF is trusted but not blindly).
     if user.0.id != req.host_user_id {
         return Err(StatusCode::FORBIDDEN);
     }
@@ -55,8 +46,7 @@ pub async fn seed_table(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    // Resolve every seat's deck before touching the registry — no DB await is held across the
-    // registry lock. Non-precon decks must belong to that seat's user.
+    // Resolve decks before touching the registry — no DB await across the lock.
     let mut resolved: Vec<(PlayerId, SeatDeck)> = Vec::with_capacity(req.seats.len());
     for (i, seat) in req.seats.iter().enumerate() {
         let deck = resolve_deck(&state, seat.deck_id, seat.user_id)
@@ -94,8 +84,7 @@ pub async fn seed_table(
     }))
 }
 
-/// Load a stored deck and resolve it to its commander + cards, re-checking legality.
-/// Non-precon decks must be owned by `seat_user_id`.
+/// Load a deck and resolve commander + cards; non-precons must be owned by `seat_user_id`.
 async fn resolve_deck(
     state: &AppState,
     deck_id: i64,

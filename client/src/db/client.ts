@@ -1,10 +1,4 @@
-/**
- * Drizzle over `@effect/sql-pg` (Effect v4).
- *
- * Official `@effect/sql-drizzle` is still on Effect 3; this mirrors its pg-proxy
- * remote callback so schema/query builder stay Drizzle while the wire driver is
- * Effect's PgClient (`pg` pool).
- */
+// Drizzle query builder over `@effect/sql-pg` via pg-proxy (`@effect/sql-drizzle` is still Effect 3).
 
 import { PgClient } from "@effect/sql-pg";
 import { drizzle } from "drizzle-orm/pg-proxy";
@@ -60,7 +54,6 @@ function remoteCallback(runtime: SqlRuntime) {
   };
 }
 
-/** Shared Drizzle client for SolidStart BFF (`mtgfr_web` only), backed by `@effect/sql-pg`. */
 export function createWebDb(url = process.env.WEB_DATABASE_URL): WebDb {
   if (!url) {
     throw new Error("WEB_DATABASE_URL is required");

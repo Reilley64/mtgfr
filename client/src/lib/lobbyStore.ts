@@ -1,9 +1,9 @@
 import { and, eq, isNull, lt, sql } from "drizzle-orm";
 import type { WebDb } from "~/db/client";
+import type { LobbyView } from "~/lib/lobbyTypes";
 import { lobbies, lobbySeats, tableRoutes } from "../../db/schema";
 
 const IDLE_LOBBY_MS = 30 * 60 * 1000;
-/** Matches default api_termination_grace_seconds; refreshed on in-game lookup. */
 const ROUTE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -112,7 +112,7 @@ export async function joinLobby(
       ready: false,
     });
   } catch {
-    // Unique (table_id, user_id) or (table_id, seat) race under pg-proxy (no transactions).
+    // Unique seat/user race — pg-proxy has no transactions.
     const again = await loadLobby(db, opts.tableId);
     if (!again) return { error: "UnknownTable" };
     if (again.seats.some((s) => s.userId === opts.userId)) return { snap: again };
@@ -164,10 +164,7 @@ export async function putTableRoute(db: WebDb, tableId: string, podDns: string):
     });
 }
 
-/**
- * Write route then mark started. pg-proxy has no transactions — if markStarted fails,
- * delete the route so Start can be retried (seed may still have created an orphan game).
- */
+/** Route then mark started; roll back the route if mark fails (pg-proxy has no transactions). */
 export async function commitStart(db: WebDb, tableId: string, podDns: string): Promise<void> {
   await putTableRoute(db, tableId, podDns);
   try {
@@ -185,7 +182,6 @@ export async function lookupTableRoute(db: WebDb, tableId: string): Promise<stri
     await db.delete(tableRoutes).where(eq(tableRoutes.tableId, tableId));
     return null;
   }
-  // Refresh TTL while the table is still being dialed so long games outlive the initial window.
   const expiresAt = new Date(Date.now() + ROUTE_TTL_MS);
   await db.update(tableRoutes).set({ expiresAt }).where(eq(tableRoutes.tableId, tableId));
   return row.podDns;
@@ -204,32 +200,12 @@ export async function sweepIdleLobbies(db: WebDb): Promise<void> {
   await db.delete(lobbies).where(and(isNull(lobbies.startedAt), lt(lobbies.lastActivity, cutoff)));
 }
 
-/** Opportunistic GC: idle lobbies + expired routes (safe to call on lobby traffic). */
 export async function sweepWebDb(db: WebDb): Promise<void> {
   await sweepIdleLobbies(db);
   await sweepExpiredRoutes(db);
 }
 
-export function toLobbyView(
-  snap: LobbySnapshot,
-  userId: number | null,
-  error?: string | null,
-): {
-  table_id: string;
-  seats: Array<{
-    player: number;
-    claimed: boolean;
-    username: string | null;
-    deck_name: string | null;
-    ready: boolean;
-    is_host: boolean;
-    is_you: boolean;
-  }>;
-  you: number | null;
-  started: boolean;
-  start_error: string | null;
-  error: string | null;
-} {
+export function toLobbyView(snap: LobbySnapshot, userId: number | null, error?: string | null): LobbyView {
   const you = userId == null ? null : (snap.seats.find((s) => s.userId === userId)?.seat ?? null);
   const seats = Array.from({ length: 4 }, (_, i) => {
     const s = snap.seats.find((x) => x.seat === i);

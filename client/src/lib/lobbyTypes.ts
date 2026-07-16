@@ -1,4 +1,3 @@
-/** Lobby wire shapes (BFF-owned; no longer on Axum OpenAPI paths). */
 export type SeatView = {
   player: number;
   claimed: boolean;
