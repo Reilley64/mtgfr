@@ -1,57 +1,41 @@
 # 0030 — Table/instance affinity for drain rolls
 
-Status: **Accepted**; extends [0005](0005-in-process-fanout-ndjson-snapshot.md) (single-instance fan-out) to a two-instance rolling deploy; deploy PRD §Table / instance affinity and §Rolling deployment model.
+Status: **Accepted**; extends [0005](0005-in-process-fanout-ndjson-snapshot.md) (single-instance fan-out) to an **N-instance** rolling deploy (1 active + many draining); deploy PRD §Table / instance affinity and §Rolling deployment model.
 
 ## Context
 
 ADR 0005 assumes one server process per table for the life of that table — `tokio::broadcast` and
 the in-memory `Registry` (ADR 0021) are process-local, so a table's SSE stream and game state live
-and die with the pod that created it. The deploy PRD's rolling deploy needs a new server binary to
-take over new traffic without killing tables still running on the old one, which means **two**
-server processes can be live in the cluster at once (`edh-api` active, `edh-api-drain` outgoing).
-ADR 0005's single-instance assumption doesn't say how a client finds the *right* one of the two.
+and die with the pod that created it. Rolling deploy needs new server binaries without killing
+tables still running on older ones. A single drain slot cannot nest rolls: shipping again while a
+peer is still draining would replace that peer and wipe its tables. Affinity must therefore scale
+to **multiple concurrent draining instances**.
 
 ## Decision
 
-- Each server process gets a **stable** `instance_id` (`Settings::instance_id`), set once per
-  Deployment via `INSTANCE_ID=edh-api` / `INSTANCE_ID=edh-api-drain` — **not** the pod name. Pod
-  names change on restart/reschedule and would invalidate a cookie bound to one.
-- On `POST /tables/v1`, `POST /tables/join/v1`, and any response that binds a user to a table, the
-  server sets a **host-only** affinity cookie (no `Domain` attribute) on the public origin
-  (`edh.example.com` via the SolidStart `/api` BFF):
+- Each release is its own Kubernetes Deployment+Service whose name is a stable **`INSTANCE_ID`**
+  derived from the image tag (e.g. `ghcr.io/…/mtgfr-server:1.2.3` → `edh-api-1-2-3`) — **not** the
+  pod name. The image on a draining Deployment is never rewritten (that would restart the pod).
+- Exactly one instance is **active** (`api_active_instance_id`); it accepts new tables. All other
+  live instances may be **draining** (live `POST /admin/drain` — never env/image churn).
+- Cap: `api_max_instances` (default 4). A nested roll that would exceed the cap waits until a
+  drain peer reports `active_tables=0` and is removed from the Terraform map.
+- On table create/join (and other bind responses), the server sets a host-only affinity cookie:
   ```
   Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
   ```
-- `edh-proxy` (nginx, `iac/proxy.tf`) reads `mtgfr-instance` and routes to the matching
-  Service, defaulting to the **active** instance (`edh-api`) when the cookie is absent or names a
-  peer that no longer exists. Public traffic reaches the proxy only through `edh-web` (`API_UPSTREAM`).
-- If a request lands on the wrong instance (cookie points at a peer that doesn't have the table),
-  the server returns `404`/`410`; the client's existing stream-reconnect path drops the stale
-  cookie and retries.
-- The affinity cookie is independent of the **auth session** cookie: both are host-only on edh
-  when `COOKIE_DOMAIN` is empty; `mtgfr-instance` ignores `cookie_domain` either way. The BFF
-  forwards `Cookie` / `Set-Cookie` on the ClusterIP hop to nginx.
-- Terraform models the outgoing peer as a second Deployment/Service (`edh-api-drain`), gated by a
-  variable (`api_drain_enabled`) rather than always present — it exists only for the duration of a
-  roll (`iac/api.tf`).
+- **SolidStart BFF** (`edh-web`, `API_UPSTREAMS` + `API_ACTIVE_INSTANCE_ID`) routes `/api/*` by that
+  cookie (unknown/missing → active). Public `/api/admin/*` and `/api/health/drain` return 404;
+  apply-machine drain uses `kubectl port-forward` to the instance Service.
+- There is **no** nginx sticky proxy. NetworkPolicy: `cloudflared` → `edh-web` only; `edh-web` →
+  pods labeled `mtgfr.io/component=api`.
+- Auth session cookies are host-only on edh when `COOKIE_DOMAIN` is empty; the BFF forwards
+  `Cookie` / `Set-Cookie` to the chosen API Service.
+- `edh-web` image bumps only when **zero** drain peers remain (SPA pairing with mid-game tables).
 
 ## Consequences
 
-- No `table_id` needed in every path or a routing service registry — a cookie carries the
-  binding, and nginx's `map $cookie_mtgfr_instance` (not the nginx Plus `sticky` directive) is
-  enough OSS-friendly stickiness for a two-instance topology.
-- Extends, doesn't replace, ADR 0005: fan-out inside one process is still `tokio::broadcast`;
-  affinity only decides *which* process a request reaches. The Redis scale-out path ADR 0005
-  flags for the future would need a different affinity story (shared table registry) — out of
-  scope here, which stays a two-instance rolling window (deploy PRD non-goals).
-- Wire contract must tolerate the two instances briefly running different server versions (N on
-  `edh-api-drain`, N+1 on `edh-api`) — see [docs/WIRE_COMPAT.md](../WIRE_COMPAT.md) for the
-  expand-only rules this affinity model depends on.
-- `edh-web` is deliberately held back until drain empties (deploy PRD §Client/server roll order):
-  affinity fixes *API* routing, but a mid-game page refresh still needs the SPA that matches the
-  API version its table cookie points at, and only the previous SPA build is guaranteed to.
-- Admin/drain endpoints (`POST /admin/drain`, `GET /health/drain`) are deliberately **not** routed
-  by the sticky proxy at all — `iac/network-policy.tf` blocks `cloudflared` from reaching
-  `edh-api`/`edh-api-drain` (and `edh-proxy` is only reachable from `edh-web`), and
-  `iac/proxy.tf` 404s those paths even if something hits the proxy. The apply machine reaches
-  them only via `kubectl port-forward`.
+- Nested API rolls are safe up to the cap: older drain peers keep their process memory until empty.
+- Expand-only wire rules must hold across **all** concurrent instance versions until GC.
+- Horizontal replicas of the same `INSTANCE_ID` remain out of scope (still one pod per instance).
+- Redis / shared table registry remains future work (ADR 0005).

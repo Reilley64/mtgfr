@@ -1,16 +1,26 @@
-# Read by `iac/scripts/deploy.sh` (via `terraform output -raw ...`) to recover the images that
-# were actually applied on the *previous* deploy — plain `-var` inputs don't persist across
-# separate `terraform apply` invocations, so the deploy script needs somewhere durable to read
-# "what's live right now" from before deciding what the next apply should hold steady vs. bump.
-# These simply echo back the input variables, which is correct precisely because both are always
-# passed explicitly on every apply (no drift between "what we asked for" and "what's applied").
+# Read by `iac/scripts/deploy.sh` (via `terraform output`) to recover live instances / images.
 
 output "server_image" {
-  description = "The mtgfr-server image most recently applied to the edh-api Deployment (not edh-api-drain)."
-  value       = var.server_image
+  description = "Image of the active API instance (api_active_instance_id)."
+  value       = local.api_active_image
 }
 
 output "web_image" {
   description = "The mtgfr-web image most recently applied to the edh-web Deployment."
   value       = var.web_image
+}
+
+output "api_active_instance_id" {
+  description = "INSTANCE_ID of the API that accepts new tables."
+  value       = var.api_active_instance_id
+}
+
+output "api_instances" {
+  description = "Map of INSTANCE_ID → image for all live API Deployments (active + draining)."
+  value       = { for id, inst in var.api_instances : id => inst.image }
+}
+
+output "api_drain_instance_ids" {
+  description = "INSTANCE_IDs that are not active (candidates for drain GC)."
+  value       = [for id in keys(var.api_instances) : id if id != var.api_active_instance_id]
 }

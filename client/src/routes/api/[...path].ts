@@ -1,18 +1,28 @@
-// Same-origin BFF: forward `/api/*` to the Axum API, stripping the `/api` prefix.
-// `API_UPSTREAM` is read per request so Docker/k8s can set it at runtime (dev defaults to :8080).
+// Same-origin BFF: sticky-route `/api/*` to a versioned Axum instance by `mtgfr-instance` cookie,
+// stripping the `/api` prefix. Upstream map is runtime env so nested drain peers work without rebuild.
 
 import type { APIEvent } from "@solidjs/start/server";
-import { getRequestURL, proxyRequest } from "vinxi/http";
+import { getRequestHeader, getRequestURL, proxyRequest } from "vinxi/http";
+import { isBlockedPublicApiPath, resolveUpstreamBase } from "~/lib/apiUpstream";
 
-function upstreamUrl(event: APIEvent): string {
-  const base = (process.env.API_UPSTREAM ?? "http://127.0.0.1:8080").replace(/\/$/, "");
-  const path = event.params.path ?? "";
-  const search = getRequestURL(event.nativeEvent).search;
-  return `${base}/${path}${search}`;
+function strippedPath(event: APIEvent): string {
+  return event.params.path ?? "";
 }
 
 async function forward(event: APIEvent) {
-  return proxyRequest(event.nativeEvent, upstreamUrl(event));
+  const path = strippedPath(event);
+  if (isBlockedPublicApiPath(path)) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  const search = getRequestURL(event.nativeEvent).search;
+  const base = resolveUpstreamBase({
+    upstreamsJson: process.env.API_UPSTREAMS,
+    activeInstanceId: process.env.API_ACTIVE_INSTANCE_ID,
+    cookieHeader: getRequestHeader(event.nativeEvent, "cookie"),
+    fallbackUpstream: process.env.API_UPSTREAM,
+  });
+  return proxyRequest(event.nativeEvent, `${base}/${path}${search}`);
 }
 
 export const GET = forward;

@@ -21,7 +21,7 @@ variable "namespace_terraform" {
 }
 
 variable "namespace_edh" {
-  description = "Namespace holding all edh workloads (web, api, api-drain, proxy, postgres, cloudflared)."
+  description = "Namespace holding all edh workloads (web, versioned API instances, postgres, cloudflared)."
   type        = string
   default     = "edh"
 }
@@ -68,32 +68,32 @@ variable "cloudflared_replicas" {
   default     = 2
 }
 
-# ── Images ───────────────────────────────────────────────────────────────────────────────────────
+# ── Images / API instances ───────────────────────────────────────────────────────────────────────
 # Public GHCR packages (deploy PRD — no imagePullSecrets). Never a moving `latest` tag; pin
-# explicit release versions here.
+# explicit release versions. Each map key is a stable INSTANCE_ID / Service name (DNS-1123),
+# typically `edh-api-<semver-with-dots-as-dashes>` from the image tag.
 
-variable "server_image" {
-  description = "mtgfr-server image for the active edh-api Deployment (and the migrate Job)."
+variable "api_instances" {
+  description = "Versioned mtgfr-server Deployments: map of INSTANCE_ID → { image }. One is active (api_active_instance_id); others may be draining. Cap: api_max_instances."
+  type = map(object({
+    image = string
+  }))
+}
+
+variable "api_active_instance_id" {
+  description = "INSTANCE_ID / Service name of the API that accepts new tables. Must be a key in api_instances."
   type        = string
 }
 
-variable "server_image_drain" {
-  description = "mtgfr-server image for the draining edh-api-drain Deployment. Only used while api_drain_enabled = true; typically the previous server_image value during a roll."
-  type        = string
-  default     = ""
+variable "api_max_instances" {
+  description = "Max concurrent API Deployments (1 active + drain peers). Nested rolls block when at cap until a drainer GCs."
+  type        = number
+  default     = 4
 }
 
 variable "web_image" {
-  description = "mtgfr-web (`mtgfr static`) image for the edh-web Deployment. Deploy PRD — bump this only after the drain window closes; `iac/scripts/deploy.sh` holds this at the previously-applied tag during the API roll and only passes the new tag once wait-drain.sh confirms active_tables=0."
+  description = "mtgfr-web (SolidStart BFF) image. Hold at the previous tag while any drain peer remains; deploy.sh bumps only when api_instances has a single (active) entry."
   type        = string
-}
-
-# ── Rolling deploy ───────────────────────────────────────────────────────────────────────────────
-
-variable "api_drain_enabled" {
-  description = "Whether the edh-api-drain Deployment/Service exist. True only during a roll (old instance kept alive on the previous image while edh-api serves the new one); false in steady state once drain empties and the peer is torn down."
-  type        = bool
-  default     = false
 }
 
 # ── Database ─────────────────────────────────────────────────────────────────────────────────────
@@ -151,7 +151,7 @@ variable "admin_token" {
 }
 
 variable "log_level" {
-  description = "RUST_LOG value for edh-api / edh-api-drain."
+  description = "RUST_LOG value for all API instances."
   type        = string
   default     = "info"
 }

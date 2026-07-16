@@ -35,7 +35,7 @@ resource "kubernetes_secret_v1" "mtgfr_auth" {
 }
 
 # Shared secret guarding /admin/drain + /health/drain (deploy PRD §Admin / drain endpoints).
-# Consumed as ADMIN_TOKEN by both edh-api and edh-api-drain (api.tf), and by scripts/wait-drain.sh
+# Consumed as ADMIN_TOKEN by every API instance (api.tf), and by scripts/wait-drain.sh
 # via MTGFR_ADMIN_TOKEN so the drain toggle it issues carries the same bearer. May be an empty
 # string (var.admin_token default) — the server treats that the same as "no token configured" and
 # leaves the routes open, matching local dev.

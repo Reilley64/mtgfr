@@ -1,9 +1,6 @@
 # Deploy PRD §Client/server roll order (locked). `web_image` always applies as given — the
-# holding pattern that keeps `edh-web` on the previous release during an API drain window is
-# owned by the caller, not by this file: `iac/scripts/deploy.sh` reads the last-applied
-# `web_image` (via `output.tf`'s `web_image` output) and passes that same value back explicitly
-# on the first (API-roll) apply, then passes the new tag on the second apply once drain empties.
-# Never bump both images in one apply — see deploy.sh.
+# holding pattern that keeps `edh-web` on the previous release while any API drain peer remains
+# is owned by the caller (`iac/scripts/deploy.sh`).
 
 resource "kubernetes_deployment_v1" "edh_web" {
   wait_for_rollout = true
@@ -47,10 +44,18 @@ resource "kubernetes_deployment_v1" "edh_web" {
             value = "8080"
           }
 
-          # SolidStart BFF proxies same-origin `/api/*` to the sticky nginx (strip `/api`).
+          # SolidStart BFF: cookie sticky → versioned API Services (strip `/api`).
           env {
-            name  = "API_UPSTREAM"
-            value = "http://${kubernetes_service_v1.edh_proxy.metadata[0].name}.${local.namespace}.svc:8080"
+            name = "API_UPSTREAMS"
+            value = jsonencode({
+              for id, svc in kubernetes_service_v1.edh_api :
+              id => "http://${svc.metadata[0].name}.${local.namespace}.svc:8080"
+            })
+          }
+
+          env {
+            name  = "API_ACTIVE_INSTANCE_ID"
+            value = var.api_active_instance_id
           }
         }
       }

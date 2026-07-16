@@ -15,15 +15,15 @@ edh_hostname = "edh.example.com"
 cookie_domain = ""
 cors_origin   = ""
 
-# Public GHCR tags — pin explicit release versions, never "latest". `just deploy`
-# (iac/scripts/deploy.sh) manages server_image/web_image/server_image_drain/api_drain_enabled
-# itself across the two-phase apply — the values below are only what a manual first
-# `terraform apply` (before ever running `just deploy`) needs.
-server_image = "ghcr.io/OWNER/mtgfr-server:0.1.0"
-web_image    = "ghcr.io/OWNER/mtgfr-web:0.1.0"
+# Versioned API instances. Key = INSTANCE_ID / Service name (DNS-1123).
+# `just deploy` (iac/scripts/deploy.sh) manages this map across nested rolls.
+api_instances = {
+  "edh-api-0-1-0" = { image = "ghcr.io/OWNER/mtgfr-server:0.1.0" }
+}
+api_active_instance_id = "edh-api-0-1-0"
+# api_max_instances    = 4
 
-api_drain_enabled = false
-# server_image_drain = "ghcr.io/OWNER/mtgfr-server:0.0.9"  # only set while api_drain_enabled = true
+web_image = "ghcr.io/OWNER/mtgfr-web:0.1.0"
 
 mtgfr_db_password = "REPLACE_WITH_A_STRONG_PASSWORD"
 

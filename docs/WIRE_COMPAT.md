@@ -9,27 +9,23 @@ binary).
 
 ## Why this exists
 
-The rolling deploy model (deploy PRD §Rolling deployment model) keeps the outgoing server
-(`edh-api-drain`) alive, serving its existing tables, while the incoming server (`edh-api`) takes
-all new traffic. `edh-web` stays on the previous release until drain empties. During that window:
+The rolling deploy model (deploy PRD §Rolling deployment model) keeps **zero or more** outgoing
+versioned API instances alive (draining), serving their existing tables, while one **active**
+instance takes all new traffic. `edh-web` stays on the previous release until **all** drain peers
+report empty and are GC'd. During that window:
 
-- **New** tables are created against the **new** API by the **old** SPA (a browser tab open
-  before the roll started, or a fresh load that raced the CDN/tunnel cache).
-- **Old** tables keep talking to the **old** API via the sticky `mtgfr-instance` cookie
-  ([ADR 0030](adr/0030-table-instance-affinity-for-drain-rolls.md)), regardless of which SPA
-  version a given browser tab is running.
+- **New** tables are created against the **active** API by the **held** SPA.
+- **Old** tables keep talking to their versioned API via the sticky `mtgfr-instance` cookie
+  ([ADR 0030](adr/0030-table-instance-affinity-for-drain-rolls.md)), routed by the SolidStart BFF.
 
-So two adjacent versions, N and N+1, must speak a wire protocol each can parse from the other, for
-as long as `edh-api-drain` reports `active_tables > 0`. This is the same *expand-only* discipline
-already required of Postgres migrations (deploy PRD §Migration rules) — same reasoning, applied to
-the OpenAPI contract and the SSE stream instead of `toasty/migrations/`.
+So every concurrent instance version must speak a wire protocol the held SPA and peer versions can
+parse — expand-only across the whole set until GC. Nested rolls widen that set until peers empty.
 
 ## 1. Compatibility window
 
-N and N+1 must coexist only until drain empties (`GET /health/drain` reports `active_tables: 0`
-on the outgoing instance). No longer-lived multi-version support is required — once the old
-Deployment is torn down, only N+1's contract needs to work, and N's compatibility affordances can
-be removed in a *later* release (never in the same release that introduced them; see §3).
+All concurrent instance versions must coexist until each drain peer reports `active_tables: 0`
+and is removed from `api_instances`. No longer-lived multi-version support is required beyond that
+set — once a peer is torn down, only remaining instances' contracts need to work.
 
 ## 2. Expand-only during that window
 
