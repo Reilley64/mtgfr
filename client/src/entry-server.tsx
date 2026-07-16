@@ -9,7 +9,6 @@ export default createHandler(() => (
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>mtgfr</title>
-          {/* Inline before the module graph loads — Forest Floor, no flash of a light page. */}
           <style>{`html, body { margin: 0; height: 100%; background: #0b1310; overflow: hidden; } #app { position: fixed; inset: 0; }`}</style>
           {assets}
         </head>

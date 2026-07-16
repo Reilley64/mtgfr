@@ -1,8 +1,7 @@
 import { defineConfig } from "@solidjs/start/config";
 import tailwindcss from "@tailwindcss/vite";
 
-// BFF `/api` proxy lives in `src/routes/api/[...path].ts` so `API_UPSTREAM` is read at
-// request time (Nitro `routeRules` bake the target at build time).
+// `/api` BFF is a request-time route (`API_UPSTREAMS`); Nitro routeRules would bake the target.
 export default defineConfig({
   ssr: false,
   server: {
@@ -10,7 +9,6 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
-    // Pure camera/hit-test modules are plain math — no DOM needed for unit tests.
     test: {
       environment: "node",
     },

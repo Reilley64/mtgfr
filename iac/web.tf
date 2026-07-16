@@ -55,7 +55,7 @@ resource "kubernetes_deployment_v1" "edh_web" {
 
           env {
             name  = "API_ACTIVE_INSTANCE_ID"
-            value = var.api_active_instance_id
+            value = local.api_active_instance_id
           }
         }
       }

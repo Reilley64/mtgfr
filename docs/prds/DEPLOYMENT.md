@@ -157,7 +157,7 @@ Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-ca
 | `kubernetes_namespace.terraform` | Optional if bootstrapped by hand; state Secret/Lease live here |
 | `kubernetes_namespace.edh` | Isolation boundary for workloads |
 | `edh-web` | SolidStart BFF + sticky (`API_UPSTREAMS`) |
-| Versioned `edh-api-*` Deployments + Services | `api_instances` map; one `api_active_instance_id`; cap `api_max_instances` |
+| Versioned `edh-api-*` Deployments + Services | Operator `server_image`; peers via script-owned `api_peer_images`; cap `api_max_instances` |
 | `edh-migrate` Job | `server migration apply` before new active (name hashed from active image) |
 | StatefulSet `postgres` | Official `postgres` image; dedicated `mtgfr` role/DB; backups = k3s/PVC snapshots |
 | NetworkPolicy | tunnel→web; web→api; api+migrate→postgres |
@@ -174,7 +174,7 @@ Skip CloudNativePG / Bitnami for v1 — more operators (and Bitnami’s image-ca
 | `cloudflare_api_token` | DNS + Zero Trust tunnel |
 | `mtgfr_db_password` | `DATABASE_URL` (composed in Terraform) |
 | `auth_secret` | reserved — session signing if added later |
-| `api_instances` / `api_active_instance_id` / `web_image` | Versioned API map + active id + web image (`just deploy` manages rolls) |
+| `server_image` / `web_image` | Desired active API + web images (`just deploy` owns drain peers) |
 
 ### Apply
 
@@ -184,11 +184,11 @@ From the **apply machine** (repo checkout + Terraform CLI + network access to k3
 export KUBE_CONFIG_PATH=~/.kube/config   # example — remote k3s
 cd iac
 terraform init
-terraform plan
-terraform apply
+just tf-apply            # preserves drain peers; do not bare-apply during a drain window
+just deploy              # roll to tfvars server_image / web_image (or SERVER_IMAGE / WEB_IMAGE env)
 ```
 
-Optional `just deploy` recipe wrapping apply + image tag from latest GitHub Release (still runs on the apply machine).
+`just deploy` stages the new API, live-drains the previous active, flips `server_image`, GCs empty peers, then bumps web when no peers remain.
 
 ## DNS & Cloudflare
 
@@ -238,13 +238,13 @@ sequenceDiagram
     TF->>Web: Bump edh-web when only active remains
 ```
 
-1. **Migrate**, then **add** a new versioned API Deployment while keeping the previous id as `api_active_instance_id`. Prior instances keep their images. **Hold `edh-web`**.
+1. **Migrate**, then **stage** the new image as an `api_peer_images` entry while `server_image` stays on the previous tag. **Hold `edh-web`**.
 2. **Mark previous active draining** via live `POST /admin/drain` (port-forward). Never flip `DRAIN` env / rewrite image.
-3. **Flip** `api_active_instance_id` to the new instance (no dual-accept window).
+3. **Flip** `server_image` to the new tag (old active moves into `api_peer_images`).
 4. **Affinity:** BFF routes `mtgfr-instance` to the matching Service; join fans out for cookieless guests.
 5. **Nested rolls** allowed until `api_max_instances`; at cap, wait (with timeout) for a peer to empty and GC it first.
-6. **GC** peers only when `active_tables=0` (never on probe failure); remove from Terraform map.
-7. **Bump `edh-web`** only when the map has a single (active) instance.
+6. **GC** peers only when `active_tables=0` (never on probe failure); remove from `api_peer_images`.
+7. **Bump `edh-web`** only when `api_peer_images` is empty.
 
 **Client/server roll order (locked):** API rolls may nest; web only after **all** drain peers are gone. Expand-only wire across the whole concurrent set.
 
@@ -586,7 +586,7 @@ mtgfr/
     variables.tf
     namespace.tf          # edh (+ terraform if not bootstrapped by hand)
     web.tf               # edh-web Deployment + Service
-    api.tf               # versioned edh-api-* Deployments/Services (api_instances)
+    api.tf               # versioned edh-api-* from server_image + api_peer_images
     web.tf               # SolidStart BFF + API_UPSTREAMS sticky env
     postgres.tf          # StatefulSet + Service: official postgres image
     migrate.tf           # Job: toasty migration apply (generate_name + wait)
@@ -807,10 +807,8 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 2. Merge to `main`.
 3. `verify-and-release.yml`: verify passes → `npx semantic-release` (default) → git tag + GitHub Release (if commits warrant a release).
 4. `docker.yml` builds and pushes GHCR images when that `v*` tag is pushed (requires `RELEASE_TOKEN` for semantic-release cascades).
-5. Bump **`server_image` only** in `iac/terraform.tfvars` and `terraform apply` (migrate + API roll + drain). Leave `web_image` on the previous tag.
-6. When drain reports `active_tables=0` and the old API Deployment is gone, bump **`web_image`** to the same release tag and apply again.
-
-Steps 5–6 stay manual for v1; a future `just deploy` / workflow can enforce “web after drain” rather than bumping both tags in one apply.
+5. Set **`server_image`** (and optionally **`web_image`**) in `iac/terraform.tfvars` to the new release tag and run **`just deploy`** from the apply machine (stages API, drains, flips active, GCs, bumps web when peers are empty). Override with `SERVER_IMAGE` / `WEB_IMAGE` env if needed.
+6. For non-roll infra changes while peers exist, use **`just tf-apply`** — bare `terraform apply` defaults `api_peer_images` to `{}` and would destroy drainers.
 
 ### Deploy
 
@@ -827,7 +825,7 @@ Rolling sequence uses versioned `edh-api-*` instances with SolidStart sticky. Ne
 | **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json`, `RELEASE_TOKEN` | Merge to `main` → semantic-release (default) → `v*` tag push → GHCR images |
 | **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres StatefulSet, BFF sticky, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
 | **6 — Drain + affinity** | Health/drain + live `/admin/drain`, stable `INSTANCE_ID`, SolidStart BFF cookie sticky + join fan-out, N-Deployment roll; **web image held until all drain peers empty**; **wire backwards-compat doc** (ADR or `docs/`) | Deploy while a game runs on the prior version without disconnect; mid-game refresh keeps old SPA ↔ old API; schema authors have written expand/contract rules |
-| **7 — Deploy ergonomics** | `just deploy` recipe (API bump → drain wait → web bump); optional workflow PR for `terraform.tfvars` image bumps | Release → apply with minimal hand steps; cannot bump both images in one step |
+| **7 — Deploy ergonomics** | `just deploy` (tfvars `server_image` → drain/GC/web) + `just tf-apply` (preserve peers) | Release → bump `server_image` → `just deploy`; peers never hand-edited |
 
 ## Decisions (locked)
 

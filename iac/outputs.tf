@@ -1,8 +1,8 @@
-# Read by `iac/scripts/deploy.sh` (via `terraform output`) to recover live instances / images.
+# Read by deploy / wait-drain / tf-apply scripts.
 
 output "server_image" {
-  description = "Image of the active API instance (api_active_instance_id)."
-  value       = local.api_active_image
+  description = "Desired/applied active mtgfr-server image (var.server_image)."
+  value       = var.server_image
 }
 
 output "web_image" {
@@ -11,16 +11,24 @@ output "web_image" {
 }
 
 output "api_active_instance_id" {
-  description = "INSTANCE_ID of the API that accepts new tables."
-  value       = var.api_active_instance_id
+  description = "INSTANCE_ID of the API that accepts new tables (derived from server_image tag)."
+  value       = local.api_active_instance_id
 }
 
 output "api_instances" {
   description = "Map of INSTANCE_ID → image for all live API Deployments (active + draining)."
-  value       = { for id, inst in var.api_instances : id => inst.image }
+  value       = { for id, inst in local.api_instances : id => inst.image }
+}
+
+output "api_peer_images" {
+  description = "Drain peer INSTANCE_ID → image (pass back as -var=api_peer_images on apply)."
+  value = {
+    for id, img in local.api_instances : id => img
+    if id != local.api_active_instance_id
+  }
 }
 
 output "api_drain_instance_ids" {
   description = "INSTANCE_IDs that are not active (candidates for drain GC)."
-  value       = [for id in keys(var.api_instances) : id if id != var.api_active_instance_id]
+  value       = [for id in keys(local.api_instances) : id if id != local.api_active_instance_id]
 }

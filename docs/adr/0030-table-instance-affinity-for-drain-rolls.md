@@ -16,10 +16,11 @@ to **multiple concurrent draining instances**.
 - Each release is its own Kubernetes Deployment+Service whose name is a stable **`INSTANCE_ID`**
   derived from the image tag (e.g. `ghcr.io/…/mtgfr-server:1.2.3` → `edh-api-1-2-3`) — **not** the
   pod name. The image on a draining Deployment is never rewritten (that would restart the pod).
-- Exactly one instance is **active** (`api_active_instance_id`); it accepts new tables. All other
-  live instances may be **draining** (live `POST /admin/drain` — never env/image churn).
+- Exactly one instance is **active**, derived from operator `server_image` (`edh-api-<slug(tag)>`);
+  it accepts new tables. Drain peers are **not** listed in tfvars — scripts pass `api_peer_images`
+  from Terraform outputs on every apply. Live drain is `POST /admin/drain` (never env/image churn).
 - Cap: `api_max_instances` (default 4). A nested roll that would exceed the cap waits until a
-  drain peer reports `active_tables=0` and is removed from the Terraform map.
+  drain peer reports `active_tables=0` and is removed from the peer map.
 - On table create/join (and other bind responses), the server sets a host-only affinity cookie:
   ```
   Set-Cookie: mtgfr-instance=<instance_id>; Path=/; Secure; SameSite=Lax; HttpOnly
@@ -30,9 +31,10 @@ to **multiple concurrent draining instances**.
   peer); the winning `Set-Cookie` pins later requests. Public `/api/admin/*` and
   `/api/health/drain` return 404 after path normalization (reject `..`); apply-machine drain uses
   `kubectl port-forward` to the instance Service.
-- Deploy cutover: add the new Deployment while the previous id stays active → live-drain the
-  previous → flip `api_active_instance_id` (no dual-accept window). GC removes a peer only when
-  `active_tables=0` (never on probe failure). Cap waits time out (`API_CAP_WAIT_SECONDS`).
+- Deploy cutover (`just deploy`): stage the new image as a peer while `server_image` stays on the
+  previous tag → live-drain the previous active → flip `server_image` (old becomes a peer). GC
+  removes a peer only when `active_tables=0` (never on probe failure). Cap waits time out
+  (`API_CAP_WAIT_SECONDS`). Non-roll applies use `just tf-apply` so peers are not wiped.
 - There is **no** nginx sticky proxy. NetworkPolicy: `cloudflared` → `edh-web` only; `edh-web` →
   pods labeled `mtgfr.io/component=api`.
 - Auth session cookies are host-only on edh when `COOKIE_DOMAIN` is empty; the BFF forwards

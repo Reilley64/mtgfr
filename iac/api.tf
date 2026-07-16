@@ -2,8 +2,8 @@
 # with INSTANCE_ID = map key (e.g. edh-api-1-2-3). Never rewrite a draining peer's image — that would
 # restart the pod and wipe in-memory tables (ADR 0021). Live drain is POST /admin/drain only.
 #
-# Cookie sticky lives in the SolidStart BFF (`API_UPSTREAMS` / `API_ACTIVE_INSTANCE_ID` on edh-web),
-# not nginx.
+# Operator sets `server_image` only; drain peers come from `api_peer_images` (scripts). Cookie sticky
+# lives in the SolidStart BFF (`API_UPSTREAMS` / `API_ACTIVE_INSTANCE_ID` on edh-web).
 
 locals {
   api_env_common = {
@@ -15,32 +15,35 @@ locals {
     RUST_LOG      = var.log_level
   }
 
-  api_active_image = var.api_instances[var.api_active_instance_id].image
-}
+  # Same slug rules as iac/scripts/deploy.sh instance_id_from_image.
+  server_image_tag = element(split(":", var.server_image), length(split(":", var.server_image)) - 1)
+  api_active_instance_id = format(
+    "edh-api-%s",
+    trimsuffix(trimprefix(replace(lower(local.server_image_tag), "/[^a-z0-9]+/", "-"), "-"), "-")
+  )
 
-check "api_instances_nonempty" {
-  assert {
-    condition     = length(var.api_instances) > 0
-    error_message = "api_instances must contain at least the active instance."
-  }
+  api_instances = merge(
+    {
+      for id, img in var.api_peer_images : id => { image = img }
+      if id != local.api_active_instance_id
+    },
+    {
+      (local.api_active_instance_id) = { image = var.server_image }
+    }
+  )
+
+  api_active_image = var.server_image
 }
 
 check "api_instances_cap" {
   assert {
-    condition     = length(var.api_instances) <= var.api_max_instances
-    error_message = "api_instances length exceeds api_max_instances (${var.api_max_instances})."
-  }
-}
-
-check "api_active_in_map" {
-  assert {
-    condition     = contains(keys(var.api_instances), var.api_active_instance_id)
-    error_message = "api_active_instance_id must be a key in api_instances."
+    condition     = length(local.api_instances) <= var.api_max_instances
+    error_message = "api instance count (active + peers) exceeds api_max_instances (${var.api_max_instances})."
   }
 }
 
 resource "kubernetes_deployment_v1" "edh_api" {
-  for_each = var.api_instances
+  for_each = local.api_instances
 
   wait_for_rollout = true
 
@@ -50,7 +53,7 @@ resource "kubernetes_deployment_v1" "edh_api" {
     labels = merge(local.common_labels, {
       app                  = each.key
       "mtgfr.io/component" = "api"
-      "mtgfr.io/api-role"  = each.key == var.api_active_instance_id ? "active" : "drain"
+      "mtgfr.io/api-role"  = each.key == local.api_active_instance_id ? "active" : "drain"
     })
   }
 
@@ -138,7 +141,7 @@ resource "kubernetes_deployment_v1" "edh_api" {
 }
 
 resource "kubernetes_service_v1" "edh_api" {
-  for_each = var.api_instances
+  for_each = local.api_instances
 
   wait_for_load_balancer = false
 

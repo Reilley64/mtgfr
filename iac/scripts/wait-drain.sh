@@ -4,17 +4,18 @@
 # Usage:
 #   wait-drain.sh --mark-only <instance_id>   # POST /admin/drain only
 #   wait-drain.sh --wait <instance_id>        # mark + poll until active_tables=0
-#   wait-drain.sh --gc-empty                  # remove drain peers with active_tables=0 from TF map
+#   wait-drain.sh --gc-empty                  # remove drain peers with active_tables=0
 #   wait-drain.sh --gc-one                    # wait until one drain peer empties, then remove it
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+# shellcheck source=tf-common.sh
+source ./scripts/tf-common.sh
 
 NAMESPACE="${MTGFR_NAMESPACE:-edh}"
 LOCAL_PORT="${WAIT_DRAIN_LOCAL_PORT:-18080}"
 POLL_INTERVAL_SECONDS="${WAIT_DRAIN_POLL_INTERVAL_SECONDS:-5}"
 LOUD_LOG_AFTER_SECONDS="${WAIT_DRAIN_LOUD_LOG_AFTER_SECONDS:-86400}"
-MAX_INSTANCES="${API_MAX_INSTANCES:-4}"
 
 AUTH_ARGS=()
 if [ -n "${MTGFR_ADMIN_TOKEN:-}" ]; then
@@ -24,28 +25,14 @@ fi
 MODE="${1:-}"
 ARG2="${2:-}"
 
-tf_instances_var() {
-  python3 -c '
-import json, sys
-images = json.loads(sys.argv[1])
-mapped = {k: {"image": v} for k, v in images.items()}
-print(json.dumps(mapped, separators=(",", ":")))
-' "$1"
-}
-
 apply_map() {
-  local images_json="$1"
-  local active_id="$2"
-  local web
-  web="$(terraform output -raw web_image)"
-  terraform apply -auto-approve \
-    -var="api_instances=$(tf_instances_var "$images_json")" \
-    -var="api_active_instance_id=$active_id" \
-    -var="api_max_instances=$MAX_INSTANCES" \
-    -var="web_image=$web"
+  local peers_json="$1"
+  local server web
+  server="$(require_output_raw server_image)"
+  web="$(require_output_raw web_image)"
+  tf_apply_images "$server" "$web" "$peers_json"
 }
 
-# Start port-forward; echo pid. Caller must kill.
 start_pf() {
   local service="$1"
   if ! kubectl get service "$service" -n "$NAMESPACE" >/dev/null 2>&1; then
@@ -157,20 +144,17 @@ read_tables() {
 }
 
 gc_empty() {
-  local images_json active_id drain_ids id tables changed
-  images_json="$(terraform output -json api_instances)"
-  active_id="$(terraform output -raw api_active_instance_id)"
-  drain_ids="$(terraform output -json api_drain_instance_ids)"
+  local peers_json id tables changed
+  peers_json="$(require_output_json api_peer_images)"
   changed=0
 
-  for id in $(python3 -c 'import json,sys; print(" ".join(json.loads(sys.argv[1])))' "$drain_ids"); do
+  for id in $(python3 -c 'import json,sys; print(" ".join(json.loads(sys.argv[1])))' "$peers_json"); do
     tables="$(read_tables "$id")"
     if [ "$tables" = "unreachable" ]; then
-      # Never tear down on a probe failure — that would wipe in-memory tables (ADR 0021).
       echo "wait-drain: keep $id (unreachable — refusing GC)." >&2
     elif [ "$tables" = "0" ]; then
       echo "wait-drain: GC $id (tables=0)." >&2
-      images_json="$(python3 -c 'import json,sys; m=json.loads(sys.argv[1]); m.pop(sys.argv[2], None); print(json.dumps(m))' "$images_json" "$id")"
+      peers_json="$(python3 -c 'import json,sys; m=json.loads(sys.argv[1]); m.pop(sys.argv[2], None); print(json.dumps(m, separators=(",", ":")))' "$peers_json" "$id")"
       changed=1
     else
       echo "wait-drain: keep $id (active_tables=$tables)." >&2
@@ -178,15 +162,14 @@ gc_empty() {
   done
 
   if [ "$changed" -eq 1 ]; then
-    apply_map "$images_json" "$active_id"
+    apply_map "$peers_json"
   fi
 }
 
 gc_one() {
-  local active_id drain_ids id tables images_json pf_pid start_time elapsed
+  local drain_ids id tables peers_json pf_pid start_time elapsed
   local max_wait="${API_CAP_WAIT_SECONDS:-21600}"
-  active_id="$(terraform output -raw api_active_instance_id)"
-  drain_ids="$(terraform output -json api_drain_instance_ids)"
+  drain_ids="$(require_output_json api_drain_instance_ids)"
   if [ "$drain_ids" = "[]" ]; then
     echo "wait-drain: no drain peers to GC." >&2
     return 0
@@ -206,10 +189,10 @@ gc_one() {
         tables="$(active_tables_from_json "$(curl_drain_json)")"
         kill "$pf_pid" 2>/dev/null || true
         if [ "$tables" = "0" ]; then
-          images_json="$(terraform output -json api_instances)"
-          images_json="$(python3 -c 'import json,sys; m=json.loads(sys.argv[1]); m.pop(sys.argv[2], None); print(json.dumps(m))' "$images_json" "$id")"
+          peers_json="$(require_output_json api_peer_images)"
+          peers_json="$(python3 -c 'import json,sys; m=json.loads(sys.argv[1]); m.pop(sys.argv[2], None); print(json.dumps(m, separators=(",", ":")))' "$peers_json" "$id")"
           echo "wait-drain: removing emptied peer $id." >&2
-          apply_map "$images_json" "$active_id"
+          apply_map "$peers_json"
           return 0
         fi
         echo "wait-drain: $id still has active_tables=$tables." >&2
@@ -220,7 +203,7 @@ gc_one() {
     done
     echo "wait-drain: no empty drain peer yet — sleeping ${POLL_INTERVAL_SECONDS}s (${elapsed}s/${max_wait}s)…" >&2
     sleep "$POLL_INTERVAL_SECONDS"
-    drain_ids="$(terraform output -json api_drain_instance_ids)"
+    drain_ids="$(require_output_json api_drain_instance_ids)"
   done
 }
 

@@ -1,4 +1,4 @@
-/** Pure sticky / path helpers for the SolidStart `/api` BFF (testable without Vinxi). */
+/** Sticky / path helpers for the SolidStart `/api` BFF. */
 
 export const DEV_UPSTREAM = "http://127.0.0.1:8080";
 
@@ -29,11 +29,7 @@ export function cookieValue(header: string | undefined, name: string): string | 
   return undefined;
 }
 
-/**
- * Collapse a catch-all `/api/*` path to a safe upstream path, or `null` if it must not be
- * forwarded (traversal, admin, health/drain). Trailing slashes are stripped so `health/drain/`
- * cannot slip past an exact-match block.
- */
+/** Safe upstream path, or `null` if blocked (traversal / admin / health/drain). */
 export function normalizePublicApiPath(path: string): string | null {
   let decoded: string;
   try {
@@ -50,21 +46,16 @@ export function normalizePublicApiPath(path: string): string | null {
   return segments.join("/");
 }
 
-export function isBlockedPublicApiPath(path: string): boolean {
-  return normalizePublicApiPath(path) === null;
-}
-
 export function resolveUpstreamBase(opts: {
   upstreamsJson?: string;
   activeInstanceId?: string;
   cookieHeader?: string;
   fallbackUpstream?: string;
 }): string {
-  const bases = upstreamBasesInOrder(opts);
-  return bases[0] ?? DEV_UPSTREAM;
+  return upstreamBasesInOrder(opts)[0] ?? DEV_UPSTREAM;
 }
 
-/** Prefer sticky cookie (when known), then active, then remaining drain peers — for join fan-out. */
+/** Cookie (if known), then active, then remaining peers. */
 export function upstreamBasesInOrder(opts: {
   upstreamsJson?: string;
   activeInstanceId?: string;
@@ -79,15 +70,12 @@ export function upstreamBasesInOrder(opts: {
   const ordered: string[] = [];
   const seen = new Set<string>();
   const pushId = (id: string | undefined) => {
-    if (!id) return;
-    const url = upstreams[id];
-    if (!url || seen.has(id)) return;
+    if (!id || seen.has(id) || !upstreams[id]) return;
     seen.add(id);
-    ordered.push(url);
+    ordered.push(upstreams[id]);
   };
 
-  const instance = cookieValue(opts.cookieHeader, "mtgfr-instance");
-  pushId(instance);
+  pushId(cookieValue(opts.cookieHeader, "mtgfr-instance"));
   pushId(opts.activeInstanceId);
   for (const id of Object.keys(upstreams)) pushId(id);
   return ordered;
@@ -100,9 +88,4 @@ export function isUnknownTableLobbyBody(body: string): boolean {
   } catch {
     return false;
   }
-}
-
-/** Guests joining by code have no sticky cookie; fan out across versioned peers. */
-export function shouldFanOutJoin(path: string, method: string): boolean {
-  return method === "POST" && path === "tables/join/v1";
 }

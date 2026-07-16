@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   cookieValue,
   DEV_UPSTREAM,
-  isBlockedPublicApiPath,
   isUnknownTableLobbyBody,
   normalizePublicApiPath,
   parseUpstreamsJson,
@@ -66,7 +65,7 @@ describe("resolveUpstreamBase", () => {
 });
 
 describe("normalizePublicApiPath", () => {
-  it("rejects traversal, empty segments, and blocked admin/drain paths", () => {
+  it("rejects traversal, encoding tricks, and admin/drain", () => {
     expect(normalizePublicApiPath("%2e%2e/admin/drain")).toBeNull();
     expect(normalizePublicApiPath("admin%2Fdrain")).toBeNull();
     expect(normalizePublicApiPath("x/../admin/drain")).toBeNull();
@@ -76,16 +75,6 @@ describe("normalizePublicApiPath", () => {
     expect(normalizePublicApiPath("health/drain/")).toBeNull();
     expect(normalizePublicApiPath("/tables/join/v1")).toBe("tables/join/v1");
     expect(normalizePublicApiPath("tables/x/stream/v1")).toBe("tables/x/stream/v1");
-  });
-});
-
-describe("isBlockedPublicApiPath", () => {
-  it("blocks admin and health/drain including traversal disguises", () => {
-    expect(isBlockedPublicApiPath("admin/drain")).toBe(true);
-    expect(isBlockedPublicApiPath("health/drain")).toBe(true);
-    expect(isBlockedPublicApiPath("../admin/drain")).toBe(true);
-    expect(isBlockedPublicApiPath("health/drain/")).toBe(true);
-    expect(isBlockedPublicApiPath("tables/x/stream/v1")).toBe(false);
   });
 });
 

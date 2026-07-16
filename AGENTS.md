@@ -25,7 +25,8 @@ just --group server --list      # server-* recipes only
 just --group client --list      # client-* recipes only
 just engine-cr-index            # regenerate docs/CR_INDEX.md from engine CR citations
 just engine-cr-index-check      # fail if docs/CR_INDEX.md is stale
-just deploy                     # apply-machine: API roll → drain wait → web bump
+just deploy                     # apply-machine: roll to tfvars server_image (peers auto)
+just tf-apply                   # terraform apply preserving drain peers
 just dev                        # tmux: bacon server + client vinxi
 ```
 

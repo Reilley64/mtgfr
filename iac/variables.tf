@@ -70,19 +70,18 @@ variable "cloudflared_replicas" {
 
 # ── Images / API instances ───────────────────────────────────────────────────────────────────────
 # Public GHCR packages (deploy PRD — no imagePullSecrets). Never a moving `latest` tag; pin
-# explicit release versions. Each map key is a stable INSTANCE_ID / Service name (DNS-1123),
-# typically `edh-api-<semver-with-dots-as-dashes>` from the image tag.
+# explicit release versions. Operator sets only `server_image` (desired active) + `web_image`.
+# Drain peers are owned by deploy/GC scripts via `api_peer_images` (-var), not tfvars.
 
-variable "api_instances" {
-  description = "Versioned mtgfr-server Deployments: map of INSTANCE_ID → { image }. One is active (api_active_instance_id); others may be draining. Cap: api_max_instances."
-  type = map(object({
-    image = string
-  }))
+variable "server_image" {
+  description = "Desired active mtgfr-server image. INSTANCE_ID is derived as edh-api-<slug(tag)>. Drain peers are not listed here."
+  type        = string
 }
 
-variable "api_active_instance_id" {
-  description = "INSTANCE_ID / Service name of the API that accepts new tables. Must be a key in api_instances."
-  type        = string
+variable "api_peer_images" {
+  description = "Drain peer INSTANCE_ID → image. Default empty; deploy.sh / wait-drain.sh / tf-apply.sh pass the live map from terraform outputs. Do not put this in tfvars."
+  type        = map(string)
+  default     = {}
 }
 
 variable "api_max_instances" {
@@ -92,7 +91,7 @@ variable "api_max_instances" {
 }
 
 variable "web_image" {
-  description = "mtgfr-web (SolidStart BFF) image. Hold at the previous tag while any drain peer remains; deploy.sh bumps only when api_instances has a single (active) entry."
+  description = "mtgfr-web (SolidStart BFF) image. Hold at the previous tag while any drain peer remains; deploy.sh bumps only when no peers remain."
   type        = string
 }
 

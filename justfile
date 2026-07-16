@@ -89,9 +89,13 @@ client-run: client-build
 migrate:
     DATABASE_URL="${DATABASE_URL:-postgresql://mtgfr:mtgfr@localhost:5432/mtgfr}" cargo run -p server -- migration apply
 
-[doc("Apply-machine deploy: bump API, drain wait, then web (see docs/prds/DEPLOYMENT.md). Requires SERVER_IMAGE and WEB_IMAGE env vars.")]
+[doc("Apply-machine deploy: roll to tfvars server_image/web_image (or SERVER_IMAGE/WEB_IMAGE env). See docs/prds/DEPLOYMENT.md.")]
 deploy:
     ./iac/scripts/deploy.sh
+
+[doc("terraform apply that preserves drain peers (use instead of bare apply during/after nested rolls)")]
+tf-apply *ARGS:
+    ./iac/scripts/tf-apply.sh {{ARGS}}
 
 # ── Workspace ────────────────────────────────────────────────────────────────────────
 

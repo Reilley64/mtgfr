@@ -1,5 +1,4 @@
-/** Landscape-first: portrait phones get a native modal so the app underneath is inert + focus-trapped.
- * Escape is swallowed — rotating is the only dismiss. Matches DESIGN.md The Landscape Rule. */
+/** Portrait phones: native modal (DESIGN.md Landscape Rule). Escape is swallowed — rotate to dismiss. */
 
 import { onCleanup, onMount } from "solid-js";
 import { openModalWhenReady } from "~/lib/modalDialog";
