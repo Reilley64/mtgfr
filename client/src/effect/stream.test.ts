@@ -38,7 +38,9 @@ function harness(statusFor: (attempt: number) => number = () => 200) {
     return Promise.resolve(new Response(body, { status: 200 }));
   }) as typeof fetch;
   const controller = (i: number) => {
-    const c = conns[i].controller;
+    const conn = conns[i];
+    if (!conn) throw new Error(`connection ${i} does not exist yet (${conns.length} open)`);
+    const c = conn.controller;
     if (!c) throw new Error(`connection ${i} has no stream controller`);
     return c;
   };
@@ -61,6 +63,16 @@ function build(h: ReturnType<typeof harness>, cb: StreamCallbacks, random: () =>
 const settle = Effect.promise(() => new Promise((r) => setTimeout(r, 5)));
 const adjust = (ms: number) => TestClock.adjust(Duration.millis(ms));
 
+/** Wait until mock fetch has opened connection `i` (CI event-loop timing varies). */
+const waitConn = (h: ReturnType<typeof harness>, i: number) =>
+  Effect.promise(async () => {
+    for (let n = 0; n < 400; n++) {
+      if (h.conns[i]) return;
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    throw new Error(`timed out waiting for connection ${i} (have ${h.conns.length})`);
+  });
+
 /** Run a driver against a `TestClock`. Forked children are interrupted when the driver returns. */
 function drive(body: Effect.Effect<void, never, TestClock.TestClock>): Promise<void> {
   return Effect.runPromise(body.pipe(Effect.provide(TestClock.layer())));
@@ -73,7 +85,7 @@ describe("streamDeltas frame delivery", () => {
     await drive(
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(build(h, { onFrame: (f) => frames.push(f) }));
-        yield* settle;
+        yield* waitConn(h, 0);
         h.frame(0, 1);
         h.raw(0, "\n"); // a blank keepalive line between frames
         h.frame(0, 2);
@@ -94,7 +106,7 @@ describe("streamDeltas reconnection", () => {
     await drive(
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(build(h, { onFrame() {}, onStatus: (c) => status.push(c) }));
-        yield* settle;
+        yield* waitConn(h, 0);
         expect(h.conns.length).toBe(1);
 
         yield* adjust(499);
@@ -137,11 +149,12 @@ describe("streamDeltas reconnection", () => {
     await drive(
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(build(h, { onFrame() {}, onStatus: (c) => status.push(c) }));
-        yield* settle;
+        yield* waitConn(h, 0);
         expect(h.conns.length).toBe(1); // attempt 0 (503) → 500ms wait, backoff now 1000
 
         yield* adjust(500);
         yield* settle;
+        yield* waitConn(h, 1);
         expect(h.conns.length).toBe(2); // attempt 1 connects
         h.frame(1, 1); // a frame proves health → onStatus(true), backoff reset
         yield* settle;
@@ -169,7 +182,7 @@ describe("streamDeltas reconnection", () => {
     await drive(
       Effect.gen(function* () {
         yield* Effect.forkChild(build(h, { onFrame() {}, onError: (s) => errors.push(s) }));
-        yield* settle;
+        yield* waitConn(h, 0);
         expect(h.conns.length).toBe(1);
         expect(errors).toEqual([404]);
 
@@ -191,7 +204,7 @@ describe("streamDeltas reconnection", () => {
     await drive(
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(build(h, { onFrame() {}, onStatus: (c) => status.push(c) }));
-        yield* settle;
+        yield* waitConn(h, 0);
         expect(h.conns.length).toBe(1);
         h.frame(0, { frame: "snapshot", seq: 0, state: {} }); // proves health
         yield* settle;
@@ -220,7 +233,7 @@ describe("streamDeltas reconnection", () => {
     await drive(
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(build(h, { onFrame: (f) => frames.push(f) }));
-        yield* settle;
+        yield* waitConn(h, 0);
         h.frame(0, { frame: "snapshot", seq: 0, state: {} });
         yield* settle;
 
@@ -248,7 +261,7 @@ describe("streamDeltas reconnection", () => {
     await drive(
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(build(h, { onFrame() {}, onStatus: (c) => status.push(c) }));
-        yield* settle;
+        yield* waitConn(h, 0);
         h.frame(0, { frame: "heartbeat" });
         yield* settle;
         expect(status).toEqual([true]);
@@ -264,7 +277,7 @@ describe("streamDeltas reconnection", () => {
     await drive(
       Effect.gen(function* () {
         const fiber = yield* Effect.forkChild(build(h, { onFrame: (f) => frames.push(f) }));
-        yield* settle;
+        yield* waitConn(h, 0);
         h.frame(0, 1);
         yield* settle;
         expect(frames).toEqual([1]);
