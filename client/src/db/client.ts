@@ -1,8 +1,8 @@
 // Drizzle query builder over `@effect/sql-pg` via pg-proxy (`@effect/sql-drizzle` is still Effect 3).
 
 import { PgClient } from "@effect/sql-pg";
-import { drizzle } from "drizzle-orm/pg-proxy";
 import type { PgRemoteDatabase } from "drizzle-orm/pg-proxy";
+import { drizzle } from "drizzle-orm/pg-proxy";
 import * as Effect from "effect/Effect";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Redacted from "effect/Redacted";

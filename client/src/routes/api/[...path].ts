@@ -8,13 +8,13 @@ import {
   createLobby,
   deleteTableRoute,
   joinLobby,
+  type LobbySnapshot,
   loadLobby,
   lookupTableRoute,
   setReady,
   startError,
   sweepWebDb,
   toLobbyView,
-  type LobbySnapshot,
 } from "~/lib/lobbyStore";
 
 function json(data: unknown, status = 200): Response {
