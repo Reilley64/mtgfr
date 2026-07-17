@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { makeClient, orNull } from "~/effect/client";
 import { json, networkError, recordingFetch, respondWith, status, stubLocation } from "~/effect/test-support";
 
-class Boom extends Data.TaggedError("Boom")<{}> {}
+class Boom extends Data.TaggedError("Boom")<{ readonly reason: string }> {}
 
 beforeAll(stubLocation);
 
@@ -34,7 +34,7 @@ describe("orNull", () => {
   });
 
   it("folds a typed failure to null", async () => {
-    expect(await Effect.runPromise(orNull(Effect.fail(new Boom())))).toBeNull();
+    expect(await Effect.runPromise(orNull(Effect.fail(new Boom({ reason: "boom" }))))).toBeNull();
   });
 
   it("folds an unreachable server (network error) to null", async () => {

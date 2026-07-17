@@ -10,20 +10,20 @@ import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest";
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse";
 import {
   Ack,
+  type CatalogCard,
   CreateDeck422,
-  Credentials,
+  type Credentials,
   DeckDetail,
   DeckError,
   DeckSummary,
-  Me,
-  SaveDeckRequest,
-  SignupCredentials,
-  StackDwellRequest,
-  UpdateDeck422,
-  YieldRequest,
-  type CatalogCard,
   type IntentEnvelope,
+  Me,
+  type SaveDeckRequest,
+  type SignupCredentials,
+  type StackDwellRequest,
   type StreamFrame,
+  UpdateDeck422,
+  type YieldRequest,
 } from "~/wire/types";
 
 const API_ORIGIN = "/api/rpc";
@@ -112,9 +112,9 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
   return {
     httpClient: base,
 
-    signup: (payload: typeof SignupCredentials.Type) =>
+    signup: (payload: SignupCredentials) =>
       json(Me, HttpClientRequest.post("/auth/signup").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
-    login: (payload: typeof Credentials.Type) =>
+    login: (payload: Credentials) =>
       json(Me, HttpClientRequest.post("/auth/login").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
     logout: () => empty(HttpClientRequest.post("/auth/logout")),
     me: () => json(Me, HttpClientRequest.get("/auth/me")),
@@ -127,20 +127,17 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
         ),
       ),
     lookupCards: (ids: ReadonlyArray<string>) =>
-      json(
-        CatalogCardList,
-        HttpClientRequest.get("/cards/lookup").pipe(HttpClientRequest.setUrlParams({ ids })),
-      ),
+      json(CatalogCardList, HttpClientRequest.get("/cards/lookup").pipe(HttpClientRequest.setUrlParams({ ids }))),
 
     listDecks: () => json(Schema.Array(DeckSummary), HttpClientRequest.get("/decks")),
-    createDeck: (payload: typeof SaveDeckRequest.Type) =>
+    createDeck: (payload: SaveDeckRequest) =>
       jsonOrDeckError(
         DeckDetail,
         (cause) => new CreateDeck422({ cause }),
         HttpClientRequest.post("/decks").pipe(HttpClientRequest.bodyJsonUnsafe(payload)),
       ),
     getDeck: (id: string) => json(DeckDetail, HttpClientRequest.get(`/decks/${id}`)),
-    updateDeck: (id: string, payload: typeof SaveDeckRequest.Type) =>
+    updateDeck: (id: string, payload: SaveDeckRequest) =>
       jsonOrDeckError(
         DeckDetail,
         (cause) => new UpdateDeck422({ cause }),
@@ -150,11 +147,11 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
 
     submitIntent: (table: string, envelope: IntentEnvelope) =>
       json(Ack, HttpClientRequest.post(`/game/${table}/intent`).pipe(HttpClientRequest.bodyJsonUnsafe(envelope))),
-    setYield: (table: string, payload: typeof YieldRequest.Type) =>
+    setYield: (table: string, payload: YieldRequest) =>
       json(Ack, HttpClientRequest.post(`/game/${table}/yield`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
-    setTurnYield: (table: string, payload: typeof YieldRequest.Type) =>
+    setTurnYield: (table: string, payload: YieldRequest) =>
       json(Ack, HttpClientRequest.post(`/game/${table}/turn-yield`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
-    setStackDwell: (table: string, payload: typeof StackDwellRequest.Type) =>
+    setStackDwell: (table: string, payload: StackDwellRequest) =>
       json(Ack, HttpClientRequest.post(`/game/${table}/stack-dwell`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
 
     /** SSE delta stream. Full StreamFrame Schema is deferred; invalid JSON fails the stream. */
