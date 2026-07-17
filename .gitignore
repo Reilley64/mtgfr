@@ -5,9 +5,6 @@
 openapi.json
 client/src/wire/generated/
 
-# Local Effect source checkout for the effect-ts skill (optional)
-.repos/effect
-
 mutants*.out
 
 /.idea
