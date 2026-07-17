@@ -1,11 +1,37 @@
 //! Draw-family event mint — pure Event vectors for [`Effect::DrawCards`] and siblings.
 //!
+//! Dispatched via [`Game::mint_draw_family`] from the exhaustive mint match.
+//!
 //! Called only from the private mint path behind [`Game::run`] (ADR 0002 / explore-all deepen).
 //! Apply stays in [`crate::apply`]; this module never mutates the board.
 
 use crate::*;
 
 impl Game {
+    /// Mint events for the Draw Effect family.
+    pub(crate) fn mint_draw_family(
+        &self,
+        effect: Effect,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+    ) -> Vec<Event> {
+        match effect {
+            Effect::DrawCards { count } => {
+                self.mint_draw_cards(controller, source, target, x, count)
+            }
+            Effect::TargetPlayerDraws { count, .. } => {
+                self.mint_target_player_draws(controller, source, target, x, count)
+            }
+            Effect::EachPlayerDraws { count } => self.mint_each_player_draws(count),
+            Effect::AttackingPlayerDraws { drawer, count } => {
+                self.mint_attacking_player_draws(drawer, count)
+            }
+            _ => unreachable!("draw family mint received a non-family effect"),
+        }
+    }
+
     /// Mint draw events for the ability's controller ([`Effect::DrawCards`]).
     pub(crate) fn mint_draw_cards(
         &self,

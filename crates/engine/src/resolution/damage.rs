@@ -6,27 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Damage Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_damage(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::DamageEachCreature { .. }
-                | Effect::DealDamage { .. }
-                | Effect::DealDamageToEnteringPermanent { .. }
-        ) {
-            return None;
-        }
-        Some(self.mint_damage_family(effect, controller, source, target, x))
-    }
-
-    fn mint_damage_family(
+    pub(crate) fn mint_damage_family(
         &self,
         effect: Effect,
         controller: PlayerId,

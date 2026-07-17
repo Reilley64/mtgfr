@@ -6,40 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Zones Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_zones(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::ExileDeadCreatureCreateCopyWithSubtype { .. }
-                | Effect::FlickerTarget { .. }
-                | Effect::Manifest
-                | Effect::MassReturnFromGraveyard { .. }
-                | Effect::ReanimateDyingEnchantedCreature { .. }
-                | Effect::ReanimateToBattlefield { .. }
-                | Effect::ReturnAllToHand { .. }
-                | Effect::ReturnExiledCardToOwnersGraveyard { .. }
-                | Effect::ReturnFlickeredCard { .. }
-                | Effect::ReturnFromGraveyardToHand { .. }
-                | Effect::ReturnThisAuraAttachedTo { .. }
-                | Effect::ReturnThisFromGraveyardToBattlefield { .. }
-                | Effect::ReturnThisToHand
-                | Effect::ReturnToHand { .. }
-                | Effect::TuckFromGraveyard { .. }
-                | Effect::TuckPermanentIntoLibrary { .. }
-        ) {
-            return None;
-        }
-        Some(self.mint_zones_family(effect, controller, source, target, x))
-    }
-
-    fn mint_zones_family(
+    pub(crate) fn mint_zones_family(
         &self,
         effect: Effect,
         controller: PlayerId,

@@ -6,35 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Control Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_control(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::AttachSelfToEntering { .. }
-                | Effect::Equip
-                | Effect::GainControl { .. }
-                | Effect::GainControlUntilEndOfTurn { .. }
-                | Effect::GainControlWhile { .. }
-                | Effect::GoadTarget { .. }
-                | Effect::GrantSourceAbilitiesUntilEndOfTurn
-                | Effect::RegenerateShield { .. }
-                | Effect::TapTarget { .. }
-                | Effect::UntapAll { .. }
-                | Effect::UntapTarget { .. }
-        ) {
-            return None;
-        }
-        Some(self.mint_control_family(effect, controller, source, target, x))
-    }
-
-    fn mint_control_family(
+    pub(crate) fn mint_control_family(
         &self,
         effect: Effect,
         controller: PlayerId,

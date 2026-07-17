@@ -6,34 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Life Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_life(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::AttackerLosesLifeYouDraw { .. }
-                | Effect::AttackerLosesLifeYouGain { .. }
-                | Effect::DrainTarget { .. }
-                | Effect::EachOpponentDrain { .. }
-                | Effect::EachOpponentLosesLife { .. }
-                | Effect::GainLife { .. }
-                | Effect::GainLifeTargetController { .. }
-                | Effect::LoseLife { .. }
-                | Effect::TargetPlayerGainsLife { .. }
-                | Effect::TargetPlayerLosesLife { .. }
-        ) {
-            return None;
-        }
-        Some(self.mint_life_family(effect, controller, source, target, x))
-    }
-
-    fn mint_life_family(
+    pub(crate) fn mint_life_family(
         &self,
         effect: Effect,
         controller: PlayerId,

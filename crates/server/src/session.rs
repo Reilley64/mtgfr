@@ -1,6 +1,6 @@
 //! Live Table chrome (ADR 0007 / 0026 / 0027 / 0029): intent submission, yield / dwell,
 //! auto-advance, stack-hold scheduling, and delta packaging. Chrome knobs live on
-//! [`crate::decks::ChromeState`]; only [`TableSession`] mutates them. gRPC adapters call the
+//! [`crate::chrome::ChromeState`]; only [`TableSession`] mutates them. gRPC adapters call the
 //! chrome verbs and get [`ApplyResult`] / [`DwellResult`] — [`Disposition`] stays crate-private
 //! for the unlock-tail. `stream` projects `PublishedDelta` only.
 

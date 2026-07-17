@@ -694,27 +694,10 @@ impl Game {
             return;
         }
         match effect {
-            // Scry/surveil pause on an ArrangeTop choice: the non-kept pile goes to the
-            // library bottom (scry) or the graveyard (surveil).
-            Effect::Scry { count } => {
-                let count = self.resolve_count(count, controller, source, target, x);
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ArrangeTop {
-                        player: controller,
-                        count,
-                        to_graveyard: false,
-                    },
-                )
+            // Scry/surveil — ArrangeTop pause peel (`resolution/pause_arrange`).
+            Effect::Scry { .. } | Effect::Surveil { .. } => {
+                self.run_arrange_top(effect, controller, source, target, x)
             }
-            Effect::Surveil { count } => pending::raise(
-                self,
-                pending::ChoiceRequest::ArrangeTop {
-                    player: controller,
-                    count,
-                    to_graveyard: true,
-                },
-            ),
             // Look at the top N, select up to `up_to` matching cards into `dest`, rest to `rest`
             // (Quandrix Apprentice). Pauses on a SelectFromTop choice.
             Effect::LookAtTop {
@@ -769,9 +752,7 @@ impl Game {
             // Cascade (CR 702.85): reveal-until a cheaper nonland, may cast it free, bottom the
             // rest in random order. Pauses on a ChooseExiledDigToCastFree choice (reused from the
             // dig) when a hit is found.
-            Effect::Cascade { mana_value } => {
-                self.cascade(controller, source, mana_value, events)
-            }
+            Effect::Cascade { mana_value } => self.cascade(controller, source, mana_value, events),
             // Look at the top N, route one card each to hand / bottom / exile-may-play
             // (Expressive Iteration). Pauses on a DistributeTop choice.
             Effect::DistributeTop {
@@ -912,9 +893,7 @@ impl Game {
             }
             // Fact or Fiction: reveal the top five, an opponent splits them into two piles,
             // pausing on a PartitionRevealed choice.
-            Effect::RevealTopSplitPiles => {
-                self.reveal_top_split_piles(controller, source, events)
-            }
+            Effect::RevealTopSplitPiles => self.reveal_top_split_piles(controller, source, events),
             // Plargg and Nassari: each player exiles from the top until a nonland, an opponent
             // picks one, pausing on an OpponentChoosesExiledNonland choice.
             Effect::EachPlayerExilesUntilNonlandOpponentPicks => {
@@ -922,7 +901,7 @@ impl Game {
             }
             // Brudiclad: "you may choose a token you control; if you do, each other token you
             // control becomes a copy of that token." Pauses on a ChooseTokenToCopy choice; with no
-            // token to choose there's nothing to convert (guarded like begin_may_sacrifice).
+            // token to choose there's nothing to convert (guarded like MaySacrifice).
             Effect::EachOtherTokenBecomesCopyOfChosen => pending::raise(
                 self,
                 pending::ChoiceRequest::ChooseTokenToCopy {
@@ -2484,213 +2463,6 @@ impl Game {
             controller: new_controller,
             finality,
             tapped: false,
-        }
-    }
-
-    /// Private mint: the events one non-pausing effect would produce for `controller`
-    /// against `target`. Pure — [`Game::run`] applies (and applies before minting more ids).
-    /// Pausing / composite effects never reach this: [`Game::run`] intercepts them.
-    fn execute_effect(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Vec<Event> {
-        // Pure mint families live in `resolution::*` (ADR 0002 deepen).
-        if let Some(events) = self.try_mint_control(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_counters(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_damage(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_destroy(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_life(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_mana(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_mill(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_misc(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_pump(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_reveal(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_tokens(effect, controller, source, target, x) {
-            return events;
-        }
-        if let Some(events) = self.try_mint_zones(effect, controller, source, target, x) {
-            return events;
-        }
-        match effect {
-            Effect::DrawCards { count } => {
-                self.mint_draw_cards(controller, source, target, x, count)
-            }
-            Effect::TargetPlayerDraws { count, .. } => {
-                self.mint_target_player_draws(controller, source, target, x, count)
-            }
-            // Static abilities are read during recompute, never resolved from the stack.
-            Effect::AnthemStatic { .. }
-            | Effect::KeywordAnthemStatic { .. }
-            | Effect::TappedForManaBonus { .. }
-            | Effect::PreventNoncombatDamageToOtherCreaturesYouControl
-            | Effect::PreventDamageToSelfRemovingCounter
-            | Effect::TriggerDoublingStatic { .. }
-            | Effect::GrantManaAbility { .. }
-            | Effect::GrantToAttached { .. }
-            | Effect::SetAttachedBasePT { .. }
-            | Effect::SetAttachedTypes { .. }
-            | Effect::ControlAttached
-            | Effect::ReduceSpellCost { .. }
-            | Effect::AttackTax { .. }
-            | Effect::CounterScaledAttackTax
-            | Effect::CantBeAttackedBy { .. }
-            | Effect::CounterReplacement { .. }
-            | Effect::TokenReplacement { .. }
-            | Effect::LifeGainReplacement { .. }
-            | Effect::CastXReplacement { .. }
-            | Effect::EntersWithCounters { .. }
-            | Effect::CreaturesYouControlEnterWithCounters { .. }
-            | Effect::NoMaximumHandSize
-            | Effect::PlayFromGraveyardOncePerTurn => Vec::new(),
-            // Firemane Commando: the attacking player (context) draws `count`, not this
-            // ability's controller.
-            Effect::AttackingPlayerDraws { drawer, count } => {
-                self.mint_attacking_player_draws(drawer, count)
-            }
-            // Pausing effects never resolve to plain events — `run` intercepts
-            // them and pauses on their PendingChoice before reaching this point.
-            Effect::Scry { .. }
-            // Needs `&mut self` to arm the prevention shield on `Game::combat_extras` — only
-            // resolves via `Game::run`.
-            | Effect::PreventCombatDamageToYouCreatingTokens { .. }
-            | Effect::PreventAllCombatDamageThisTurn
-            | Effect::Surveil { .. }
-            | Effect::LookAtTop { .. }
-            | Effect::DistributeTop { .. }
-            | Effect::ExileTopCastMatchingFree { .. }
-            | Effect::RevealUntilMayDeploy { .. }
-            | Effect::RevealUntilExileCastFree { .. }
-            | Effect::Cascade { .. }
-            | Effect::SearchLibrary { .. }
-            | Effect::EachPlayerSacrifices { .. }
-            | Effect::EachPlayerExilesFromGraveyard
-            | Effect::TargetPlayerExilesFromGraveyard { .. }
-            | Effect::CasterKeepsOneOfEachTypePerPlayer
-            | Effect::EachPlayerControllerChoosesCounterTarget
-            | Effect::CouncilsDilemmaVote { .. }
-            | Effect::OpponentSplitsExilePiles
-            | Effect::RevealTopSplitPiles
-            | Effect::EachPlayerExilesUntilNonlandOpponentPicks
-            | Effect::EachPlayerCreatesFractalFromExiledPower { .. }
-            | Effect::EachOtherTokenBecomesCopyOfChosen
-            | Effect::PutCounterThenMayBecomeCopyOfCardFromList { .. }
-            | Effect::EachPlayerDiscardsHandThenDraws { .. }
-            | Effect::MaySacrifice { .. }
-            | Effect::SacrificeOwn { .. }
-            | Effect::DefendingPlayerSacrifices { .. }
-            | Effect::MayReturnFromGraveyard { .. }
-            | Effect::MayDiscard { .. }
-            // Needs `&mut self` to pause on the MayYesNo/PayOrControllerDraws chain — only
-            // resolves via `Game::run`, never this pure path.
-            | Effect::MayDrawUnlessPays { .. }
-            // Needs `&mut self` to pause the targeted player on a MayYesNo — only resolves via
-            // `Game::run`, never this pure path.
-            | Effect::TargetPlayerMayDraw { .. }
-            | Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. }
-            | Effect::Discard { .. }
-            | Effect::PutLandFromHand { .. }
-            | Effect::CastCreatureFaceDown
-            | Effect::CashOutExiledWithThis
-            | Effect::CastExiledWithThisFree
-            | Effect::Fight { .. }
-            | Effect::ChooseOne { .. }
-            | Effect::ChooseCreatureType
-            | Effect::ChooseColor
-            | Effect::CopyTargetSpell
-            | Effect::CopyThisSpell { .. }
-            | Effect::RetargetSpellCopy { .. }
-            // Pauses on `ChooseSpellTargets` to bend the chosen spell — only resolves via
-            // `Game::run`, never this pure path.
-            | Effect::ChangeTargetOfTargetSpellOrAbility { .. }
-            | Effect::CopyTriggeringSpell { .. }
-            | Effect::CopyTriggeringSpellForEachOtherCreatureYouControl { .. }
-            // Needs `&mut self` to mint the ability copy (`push_ability_group_with_x`) — only
-            // resolves via `Game::run`, never this pure path.
-            | Effect::CopyTriggeringAbility { .. }
-            | Effect::Demonstrate { .. }
-            // Records onto `Game::pending_enter_bonus_counters` — needs `&mut self`, only resolves
-            // via `Game::run`, never this pure path.
-            | Effect::CommanderEntersWithBonusCounters { .. }
-            | Effect::Sequence { .. }
-            | Effect::Conditional { .. }
-            | Effect::Proliferate { .. }
-            | Effect::PhaseOut
-            | Effect::DoubleCountersOnTargetCreatures { .. }
-            | Effect::MoveCounters { .. }
-            | Effect::UntapSearchedLand
-            | Effect::AttachTriggeringAuraToMintedToken { .. }
-            | Effect::ReflexiveTrigger { .. }
-            | Effect::ReturnFromGraveyardAttachedToToken { .. }
-            | Effect::AttachSelfToReanimated
-            | Effect::AttachSelfToMintedToken
-            | Effect::AttachMintedAuraToTarget { .. }
-            | Effect::DoubleCountersOnAttachedCreature
-            | Effect::ScheduleReturnThisAuraAttachedToReanimated
-            // Needs `&mut self` to pause on `ChooseAttachHost` — only resolves via
-            // `Game::run`, never this pure path.
-            | Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost
-            | Effect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost
-            // Needs `&mut self` to draw from the injected RNG — only resolves via
-            // `Game::run`, never this pure path.
-            | Effect::ExileRandomFromGraveyardMayPlay
-            | Effect::ShuffleLibrary
-            // Player-driven exile loop + a running tally across pauses — only resolves via
-            // `Game::run`, never this pure path.
-            | Effect::ExileTopUntilStopCastFreeUnderBudget { .. }
-            // Needs `&mut self` to read the actual post-shuffle library order — only resolves
-            // via `Game::run`, never this pure path.
-            | Effect::ShuffleTargetPermanentIntoLibraryThenReveal { .. }
-            // Needs `&mut self` to mint the exiled object id (`Game::next_object_id`) — only
-            // resolves via `Game::run`, never this pure path.
-            | Effect::ExileTargetGraveyardSpellCastFree { .. }
-            // Needs `&mut self` to write `Game::surge_exiled_card` — only resolves via
-            // `Game::run`, never this pure path.
-            | Effect::ExileTargetGraveyardCardRecordManaValue { .. }
-            // Needs `&mut self` to mark `Game::self_exile_time_counters` — only resolves via
-            // `Game::run`, never this pure path.
-            | Effect::ExileSelfWithTimeCounters { .. }
-            // Needs `&mut self` to mint the free copy (`Game::mint_spell_copies`) — only
-            // resolves via `Game::run`, never this pure path.
-            | Effect::MintFreeCopyOfExiledCard { .. }
-            // Needs `&mut self` to conditionally `run_sequence` its `then` — only resolves via
-            // `Game::run`, never this pure path.
-            | Effect::ExileTargetGraveyardCardThenIfCreature { .. }
-            // Needs `&mut self` to pause on `SacrificeUnlessPay` — only resolves via `Game::run`,
-            // never this pure path.
-            | Effect::SacrificeSelfUnlessPay { .. }
-            // Needs `&mut self` to scan the battlefield and pause on `SacrificeUnlessReturnLand`
-            // (or sacrifice outright with no candidates) — only resolves via `Game::run`, never
-            // this pure path.
-            | Effect::SacrificeSelfUnlessReturnLand { .. } => {
-                unreachable!("a pausing/composite effect resolves via Game::run")
-            }
-            Effect::EachPlayerDraws { count } => self.mint_each_player_draws(count),
-            // Pure mint families are handled by `try_mint_*` above (ADR 0002 deepen).
-            _ => unreachable!("pure mint Effect should have been handled by try_mint_*"),
         }
     }
 }

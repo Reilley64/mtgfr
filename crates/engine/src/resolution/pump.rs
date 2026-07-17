@@ -6,35 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Pump Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_pump(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::AnimateSelfUntilEndOfTurn { .. }
-                | Effect::EnchantedAttackerPumpAttackingOpponentElseControllerLosesLife { .. }
-                | Effect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn { .. }
-                | Effect::PumpCreaturesYouControlUntilEndOfTurn { .. }
-                | Effect::PumpOtherAttackersAttackingYourOpponents { .. }
-                | Effect::PumpSelfUntilEndOfTurn { .. }
-                | Effect::PumpUntilEndOfTurn { .. }
-                | Effect::SetBasePtCreaturesYouControlUntilEndOfTurn { .. }
-                | Effect::SetBasePtTargetUntilEndOfTurn { .. }
-                | Effect::StripKeywordsFromOpponentsCreatures { .. }
-                | Effect::WeakenEachCreature { .. }
-        ) {
-            return None;
-        }
-        Some(self.mint_pump_family(effect, controller, source, target, x))
-    }
-
-    fn mint_pump_family(
+    pub(crate) fn mint_pump_family(
         &self,
         effect: Effect,
         controller: PlayerId,

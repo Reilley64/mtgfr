@@ -6,36 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Destroy Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_destroy(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::DestroyAll { .. }
-                | Effect::DestroyTarget { .. }
-                | Effect::ExileAll { .. }
-                | Effect::ExileAllGraveyards
-                | Effect::ExileGraveyard
-                | Effect::ExileObject { .. }
-                | Effect::ExileTarget { .. }
-                | Effect::ExileTargetMintingIllusionOnLeave { .. }
-                | Effect::ExileUntilSourceLeaves { .. }
-                | Effect::SacrificeEnchantedCreature { .. }
-                | Effect::SacrificeObject { .. }
-                | Effect::SacrificeSource
-        ) {
-            return None;
-        }
-        Some(self.mint_destroy_family(effect, controller, source, target, x))
-    }
-
-    fn mint_destroy_family(
+    pub(crate) fn mint_destroy_family(
         &self,
         effect: Effect,
         controller: PlayerId,

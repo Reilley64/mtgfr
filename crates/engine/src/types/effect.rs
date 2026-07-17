@@ -334,7 +334,8 @@ pub enum Effect {
     /// targets (CR 601.2d — Magma Opus's "4 damage divided as you choose among any number of
     /// targets"): each target must get at least one point, summing to exactly `amount`. The
     /// split itself is a player choice recorded on [`Spell::damage_division`], settled right
-    /// after targets are chosen (see [`Game::maybe_begin_damage_division`]) — a single chosen
+    /// after targets are chosen (see [`Game::maybe_begin_damage_division`], which raises
+    /// [`crate::pending::ChoiceRequest::DivideSpellDamage`]) — a single chosen
     /// target skips the choice and takes the whole amount.
     /// ponytail: a `divided` spell's `count.max` must not exceed `amount` (each target needs
     /// ≥1) — enforced by careful authoring, not a runtime check (no pool card divides a
@@ -1018,7 +1019,8 @@ pub enum Effect {
     /// getting at least one (Grove's Bounty — Elusive Otter's adventure — "Distribute X +1/+1
     /// counters among any number of target creatures you control"). The split is recorded on
     /// [`Spell::counter_division`], settled right after targets are chosen (see
-    /// [`Game::maybe_begin_counter_division`]) — a single chosen target skips the choice and
+    /// [`Game::maybe_begin_counter_division`], which raises
+    /// [`crate::pending::ChoiceRequest::DivideCounters`]) — a single chosen target skips the choice and
     /// takes the whole total. Only meaningful with `kind: None` (no pool card divides a named
     /// counter kind).
     PutCounters {
@@ -1652,7 +1654,7 @@ pub enum Effect {
     /// whole batch). Every other exiled card — declined, non-matching, or all of them if nothing
     /// is chosen — goes to the bottom of the controller's library (CR "put the rest on the
     /// bottom"). No pause at all when nothing exiled matches `filter` (a legal no-op offer,
-    /// mirroring [`Game::begin_cast_exiled_with_this_free`]'s empty-pile case) — the rest-move
+    /// mirroring [`Game::choose_exiled_to_cast_free_pile`]'s empty-pile case) — the rest-move
     /// still bottoms everything. Takes no target.
     /// ponytail: the free cast is only offered at a later priority window this turn, not
     /// mid-resolution of this effect (same approximation Quintorius, Loremaster's free-cast
@@ -2974,7 +2976,7 @@ pub enum Effect {
     /// lands", Smothering Abomination's upkeep "sacrifice a creature". No target — always the
     /// controller's own board. Which matching permanents are sacrificed is the controller's own
     /// choice (CR 701.16a) when more than `count` are available; see
-    /// [`Game::begin_choose_own_sacrifices`].
+    /// [`crate::pending::ChoiceRequest::ChooseOwnSacrifices`].
     SacrificeOwn { filter: PermanentFilter, count: u32 },
     /// Annihilator N (CR 702.86a — Eldrazi Conscription's granted keyword): the *defending*
     /// player sacrifices `count` permanents of their own choice (any permanent, CR 701.16a lets
@@ -2982,7 +2984,7 @@ pub enum Effect {
     /// filled in from the attack trigger's context ([`TriggerContext::attack`]) when placed;
     /// `None` in a card template. The defender-scoped twin of [`SacrificeOwn`](Self::SacrificeOwn)
     /// (always the controller's own board); shares its
-    /// [`Game::begin_choose_own_sacrifices`] machinery with an unrestricted filter and the
+    /// [`crate::pending::ChoiceRequest::ChooseOwnSacrifices`] machinery with an unrestricted filter and the
     /// defending player standing in for the ability's controller.
     DefendingPlayerSacrifices {
         count: u8,

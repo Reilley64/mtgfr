@@ -6,31 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Mill Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_mill(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::ExileDiscardedWithThis { .. }
-                | Effect::ExileFromGraveyardMayPlay { .. }
-                | Effect::ExileTargetFromGraveyardCreateTokenCopy { .. }
-                | Effect::ExileTargetFromGraveyardWithThis
-                | Effect::ExileTopMayPlay { .. }
-                | Effect::Mill { .. }
-                | Effect::MillSelf { .. }
-        ) {
-            return None;
-        }
-        Some(self.mint_mill_family(effect, controller, source, target, x))
-    }
-
-    fn mint_mill_family(
+    pub(crate) fn mint_mill_family(
         &self,
         effect: Effect,
         controller: PlayerId,

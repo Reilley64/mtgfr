@@ -16,6 +16,7 @@ use engine::PlayerId;
 mod action_log;
 pub mod auth;
 pub mod catalog_search;
+mod chrome;
 pub mod db;
 pub mod decks;
 pub mod decks_api;

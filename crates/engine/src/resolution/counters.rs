@@ -6,32 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Counters Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_counters(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::AttackerDrawsControllerCounters { .. }
-                | Effect::DoubleCounters { .. }
-                | Effect::LevelUp { .. }
-                | Effect::PlaceVowCounters { .. }
-                | Effect::PutCounters { .. }
-                | Effect::PutCountersEach { .. }
-                | Effect::RemoveAllCountersThenDraw { .. }
-                | Effect::RemoveCounterFromSelf
-        ) {
-            return None;
-        }
-        Some(self.mint_counters_family(effect, controller, source, target, x))
-    }
-
-    fn mint_counters_family(
+    pub(crate) fn mint_counters_family(
         &self,
         effect: Effect,
         controller: PlayerId,

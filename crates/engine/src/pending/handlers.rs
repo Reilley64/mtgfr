@@ -2838,7 +2838,12 @@ impl Game {
     /// the [`Event::Sacrificed`] marker for each — the shared tail
     /// [`ChoiceRequest::ChooseOwnSacrifices`]'s no-real-choice path and
     /// [`Game::choose_own_sacrifices`]'s answer path both run.
-    pub(crate) fn sacrifice_ids(&mut self, ids: &[ObjectId], by: PlayerId, events: &mut Vec<Event>) {
+    pub(crate) fn sacrifice_ids(
+        &mut self,
+        ids: &[ObjectId],
+        by: PlayerId,
+        events: &mut Vec<Event>,
+    ) {
         for &id in ids {
             let def = self.def_of(id);
             let event = self.sacrifice_event(id);

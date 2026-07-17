@@ -6,28 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Reveal Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_reveal(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::RevealTopAndDrainMutual
-                | Effect::RevealTopCards { .. }
-                | Effect::RevealTopToHand { .. }
-                | Effect::RevealUntil { .. }
-        ) {
-            return None;
-        }
-        Some(self.mint_reveal_family(effect, controller, source, target, x))
-    }
-
-    fn mint_reveal_family(
+    pub(crate) fn mint_reveal_family(
         &self,
         effect: Effect,
         controller: PlayerId,

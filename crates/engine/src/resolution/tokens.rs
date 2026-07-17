@@ -6,30 +6,7 @@
 use crate::*;
 
 impl Game {
-    /// Mint events for the Tokens Effect family, or [`None`] if `effect` is not in this family.
-    pub(crate) fn try_mint_tokens(
-        &self,
-        effect: Effect,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-    ) -> Option<Vec<Event>> {
-        if !matches!(
-            effect,
-            Effect::BecomeCopyOfTargetCreatureGainingMyriad { .. }
-                | Effect::CopyEachEnteredThisTurnTokenTappedAttacking { .. }
-                | Effect::CreateToken { .. }
-                | Effect::CreateTokenCopy { .. }
-                | Effect::CreateTreasure { .. }
-                | Effect::MyriadTokenCopies { .. }
-        ) {
-            return None;
-        }
-        Some(self.mint_tokens_family(effect, controller, source, target, x))
-    }
-
-    fn mint_tokens_family(
+    pub(crate) fn mint_tokens_family(
         &self,
         effect: Effect,
         controller: PlayerId,

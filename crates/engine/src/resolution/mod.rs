@@ -2,9 +2,9 @@
 //! locality. Pause bookkeeping lives in [`crate::pending`]; board mutation stays in [`crate::apply`].
 //!
 //! Primary: CR 608. External seam: [`Game::run`] (in `effects`) is the sole Effect→board verb —
-//! callers never choose mint vs pause. Internals here: [`SequenceCont`] / resume, plus pure mint
-//! families ([`draw`], [`damage`], [`life`], [`destroy`], [`counters`], [`mill`], …).
-//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! callers never choose mint vs pause. Internals here: [`SequenceCont`] / resume, pure mint
+//! dispatcher ([`mint`]) + families ([`draw`], [`damage`], [`life`], …), and pause peels
+//! ([`pause_arrange`]). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
 
 mod control;
 mod counters;
@@ -14,7 +14,9 @@ mod draw;
 mod life;
 mod mana;
 mod mill;
+mod mint;
 mod misc;
+mod pause_arrange;
 mod pump;
 mod reveal;
 mod tokens;
