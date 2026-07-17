@@ -1,34 +1,35 @@
-// Hand-written Effect client over same-origin `/api/rpc`. Deck 422s fail as `{_tag, cause: DeckError}`.
+// Hand-written Effect client over same-origin `/api/rpc`. Deck 422s fail as Schema tagged errors.
 
 import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient";
 import * as HttpClient from "effect/unstable/http/HttpClient";
 import * as HttpClientError from "effect/unstable/http/HttpClientError";
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest";
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse";
-import type {
+import {
   Ack,
-  CatalogCard,
-  Credentials,
+  type CatalogCard,
+  CreateDeck422,
+  type Credentials,
   DeckDetail,
   DeckError,
   DeckSummary,
-  IntentEnvelope,
+  type IntentEnvelope,
   Me,
-  SaveDeckRequest,
-  SignupCredentials,
-  StackDwellRequest,
-  StreamFrame,
-  YieldRequest,
+  type SaveDeckRequest,
+  type SignupCredentials,
+  type StackDwellRequest,
+  type StreamFrame,
+  UpdateDeck422,
+  type YieldRequest,
 } from "~/wire/types";
 
 const API_ORIGIN = "/api/rpc";
 
-export interface MtgfrError<Tag extends string, E> {
-  _tag: Tag;
-  cause: E;
-}
+/** CatalogCard Schema deferred (WireKind union); accept any JSON array from the BFF. */
+const CatalogCardList = Schema.Array(Schema.Unknown) as Schema.Codec<ReadonlyArray<CatalogCard>>;
 
 function withCredentials(fetchImpl: typeof globalThis.fetch): typeof globalThis.fetch {
   return ((input: RequestInfo | URL, init?: RequestInit) =>
@@ -39,9 +40,7 @@ function withCredentials(fetchImpl: typeof globalThis.fetch): typeof globalThis.
  * resolves synchronously. Tests use this with a stub `fetch`; the app uses the default `client`. */
 export function makeClient(fetchImpl: typeof globalThis.fetch) {
   const httpClient = Effect.runSync(
-    Effect.gen(function* () {
-      return yield* HttpClient.HttpClient;
-    }).pipe(
+    HttpClient.HttpClient.pipe(
       Effect.provide(FetchHttpClient.layer),
       Effect.provideService(FetchHttpClient.Fetch, withCredentials(fetchImpl)),
     ),
@@ -63,12 +62,15 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
         ),
     );
 
-  /** Execute `request`, decoding a 2xx JSON body as `A`; anything else fails as `HttpClientError`. */
-  function json<A>(request: HttpClientRequest.HttpClientRequest): Effect.Effect<A, HttpClientError.HttpClientError> {
+  /** Execute `request`, Schema-decoding a 2xx JSON body. */
+  function json<A, I, RD>(
+    schema: Schema.ConstraintCodec<A, I, RD, unknown>,
+    request: HttpClientRequest.HttpClientRequest,
+  ): Effect.Effect<A, HttpClientError.HttpClientError | Schema.SchemaError, RD> {
     return base.execute(request).pipe(
       Effect.flatMap(
         HttpClientResponse.matchStatus({
-          "2xx": (response) => response.json as Effect.Effect<A, HttpClientError.HttpClientError>,
+          "2xx": (response) => HttpClientResponse.schemaBodyJson(schema)(response),
           orElse: unexpectedStatus,
         }),
       ),
@@ -87,19 +89,19 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
     );
   }
 
-  /** Execute a deck write request, tagging a 422 as `MtgfrError<Tag, DeckError>` instead of an
-   * opaque `HttpClientError` — the shape `deck-builder.tsx` branches on to show every problem. */
-  function jsonOrDeckError<Tag extends string, A>(
-    tag: Tag,
+  /** Deck write: 422 → tagged Schema error with decoded `DeckError`. */
+  function jsonOrDeckError<A, I, RD, E extends CreateDeck422 | UpdateDeck422>(
+    schema: Schema.ConstraintCodec<A, I, RD, unknown>,
+    toTagged: (cause: typeof DeckError.Type) => E,
     request: HttpClientRequest.HttpClientRequest,
-  ): Effect.Effect<A, HttpClientError.HttpClientError | MtgfrError<Tag, DeckError>> {
+  ): Effect.Effect<A, HttpClientError.HttpClientError | Schema.SchemaError | E, RD> {
     return base.execute(request).pipe(
       Effect.flatMap(
         HttpClientResponse.matchStatus({
-          "2xx": (response) => response.json as Effect.Effect<A, HttpClientError.HttpClientError>,
+          "2xx": (response) => HttpClientResponse.schemaBodyJson(schema)(response),
           "422": (response) =>
-            Effect.flatMap(response.json as Effect.Effect<DeckError, HttpClientError.HttpClientError>, (cause) =>
-              Effect.fail<MtgfrError<Tag, DeckError>>({ _tag: tag, cause }),
+            HttpClientResponse.schemaBodyJson(DeckError)(response).pipe(
+              Effect.flatMap((cause) => Effect.fail(toTagged(cause))),
             ),
           orElse: unexpectedStatus,
         }),
@@ -111,48 +113,48 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
     httpClient: base,
 
     signup: (payload: SignupCredentials) =>
-      json<Me>(HttpClientRequest.post("/auth/signup").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
+      json(Me, HttpClientRequest.post("/auth/signup").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
     login: (payload: Credentials) =>
-      json<Me>(HttpClientRequest.post("/auth/login").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
+      json(Me, HttpClientRequest.post("/auth/login").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
     logout: () => empty(HttpClientRequest.post("/auth/logout")),
-    me: () => json<Me>(HttpClientRequest.get("/auth/me")),
+    me: () => json(Me, HttpClientRequest.get("/auth/me")),
 
     searchCards: (params: { q: string; limit: number; offset: number }) =>
-      json<ReadonlyArray<CatalogCard>>(
+      json(
+        CatalogCardList,
         HttpClientRequest.get("/cards/search").pipe(
           HttpClientRequest.setUrlParams({ q: params.q, limit: params.limit, offset: params.offset }),
         ),
       ),
     lookupCards: (ids: ReadonlyArray<string>) =>
-      json<ReadonlyArray<CatalogCard>>(
-        HttpClientRequest.get("/cards/lookup").pipe(HttpClientRequest.setUrlParams({ ids })),
-      ),
+      json(CatalogCardList, HttpClientRequest.get("/cards/lookup").pipe(HttpClientRequest.setUrlParams({ ids }))),
 
-    listDecks: () => json<ReadonlyArray<DeckSummary>>(HttpClientRequest.get("/decks")),
+    listDecks: () => json(Schema.Array(DeckSummary), HttpClientRequest.get("/decks")),
     createDeck: (payload: SaveDeckRequest) =>
-      jsonOrDeckError<"CreateDeck422", DeckDetail>(
-        "CreateDeck422",
+      jsonOrDeckError(
+        DeckDetail,
+        (cause) => new CreateDeck422({ cause }),
         HttpClientRequest.post("/decks").pipe(HttpClientRequest.bodyJsonUnsafe(payload)),
       ),
-    getDeck: (id: string) => json<DeckDetail>(HttpClientRequest.get(`/decks/${id}`)),
+    getDeck: (id: string) => json(DeckDetail, HttpClientRequest.get(`/decks/${id}`)),
     updateDeck: (id: string, payload: SaveDeckRequest) =>
-      jsonOrDeckError<"UpdateDeck422", DeckDetail>(
-        "UpdateDeck422",
+      jsonOrDeckError(
+        DeckDetail,
+        (cause) => new UpdateDeck422({ cause }),
         HttpClientRequest.put(`/decks/${id}`).pipe(HttpClientRequest.bodyJsonUnsafe(payload)),
       ),
     deleteDeck: (id: string) => empty(HttpClientRequest.make("DELETE")(`/decks/${id}`)),
 
     submitIntent: (table: string, envelope: IntentEnvelope) =>
-      json<Ack>(HttpClientRequest.post(`/game/${table}/intent`).pipe(HttpClientRequest.bodyJsonUnsafe(envelope))),
+      json(Ack, HttpClientRequest.post(`/game/${table}/intent`).pipe(HttpClientRequest.bodyJsonUnsafe(envelope))),
     setYield: (table: string, payload: YieldRequest) =>
-      json<Ack>(HttpClientRequest.post(`/game/${table}/yield`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
+      json(Ack, HttpClientRequest.post(`/game/${table}/yield`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
     setTurnYield: (table: string, payload: YieldRequest) =>
-      json<Ack>(HttpClientRequest.post(`/game/${table}/turn-yield`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
+      json(Ack, HttpClientRequest.post(`/game/${table}/turn-yield`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
     setStackDwell: (table: string, payload: StackDwellRequest) =>
-      json<Ack>(HttpClientRequest.post(`/game/${table}/stack-dwell`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
+      json(Ack, HttpClientRequest.post(`/game/${table}/stack-dwell`).pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
 
-    /** The per-viewer delta stream as SSE (`text/event-stream`), decoded the same way the old
-     * generated `streamSse` was: filter to `data: ` lines, `JSON.parse` each. */
+    /** SSE delta stream. Full StreamFrame Schema is deferred; invalid JSON fails the stream. */
     streamSse: (table: string): Stream.Stream<StreamFrame, HttpClientError.HttpClientError> =>
       HttpClient.filterStatusOk(base)
         .execute(HttpClientRequest.get(`/game/${table}/stream`))
@@ -175,19 +177,13 @@ export type Client = typeof client;
 /**
  * Fold any recoverable failure to `null`, leaving the success value untouched.
  *
- * For endpoints that answer every *logical* failure with a 200 body (the lobby's actions return a
- * `LobbyView` whose `error` field names the reason), a failed Effect means only one thing: the
- * request never landed. `null` is that, as a value the caller can branch on — so the fold lives
- * here in the pipeline rather than as a `try`/`catch` around an awaited promise in a component.
- *
  * Defects pass through as defects: a bug must not masquerade as an unreachable server.
  */
 export const orNull = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A | null, never, R> =>
   Effect.catch(effect, () => Effect.succeed(null));
 
 /**
- * `orNull` for an endpoint that answers with no body: fold the outcome to did-it-land. Same seam and
- * same defect semantics, but `void | null` would make "succeeded" and "failed" both falsy.
+ * `orNull` for an endpoint that answers with no body: fold the outcome to did-it-land.
  */
 export const succeeded = <E, R>(effect: Effect.Effect<unknown, E, R>): Effect.Effect<boolean, never, R> =>
   effect.pipe(
@@ -196,10 +192,12 @@ export const succeeded = <E, R>(effect: Effect.Effect<unknown, E, R>): Effect.Ef
   );
 
 /**
- * The HTTP status carried by a failed client Effect, when it has a response — an `HttpClientError`
- * (e.g. auth 401/409, a session-expired 401 on `/intent`) exposes `response.status`. `undefined`
- * for a transport/decoding failure with no response, or a tagged deck `MtgfrError` (never a status).
+ * The HTTP status carried by a failed client Effect, when it has a response.
+ * Tagged deck 422s and Schema decode errors have no status.
  */
 export function statusOf(error: unknown): number | undefined {
-  return (error as { response?: { status?: number } } | null)?.response?.status;
+  if (HttpClientError.isHttpClientError(error)) {
+    return error.response?.status;
+  }
+  return undefined;
 }

@@ -276,7 +276,7 @@ Roll order reduces mid-game refresh skew; it does **not** remove the need for wi
 1. **Compatibility window** — all concurrent API binaries until each Terminating pod exits.
 2. **Expand-only during that window** — additive optional protobuf fields (new field numbers), new RPCs, new intent/event variants the old client never sends; no rename/remove/reuse of field numbers until older binaries are gone. See [WIRE_COMPAT.md](../WIRE_COMPAT.md).
 3. **Hard breaks** — bump proto package / service version, run both until drain completes, then remove the old; use sparingly. The REST→gRPC migration (ADR 0032) was an intentional hard cut of API+web together.
-4. **Game stream** — same expand-only rule on `StreamFrame` / `VisibleState` JSON payloads carried over gRPC.
+4. **Game stream** — same expand-only rule on native protobuf `StreamFrame` / `VisibleState` trees (ADR 0032; not JSON-in-proto).
 5. **Authoring habit** — change `proto/` first; keep `client/src/wire/types.ts` aligned with `crates/schema` serde shapes; prefer optional fields first.
 
 ### Table → pod routing

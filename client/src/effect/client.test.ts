@@ -1,9 +1,12 @@
 // `orNull` is the one place a wire failure becomes a value.
 
+import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import { beforeAll, describe, expect, it } from "vitest";
 import { makeClient, orNull } from "~/effect/client";
 import { json, networkError, recordingFetch, respondWith, status, stubLocation } from "~/effect/test-support";
+
+class Boom extends Data.TaggedError("Boom")<{ readonly reason: string }> {}
 
 beforeAll(stubLocation);
 
@@ -31,7 +34,7 @@ describe("orNull", () => {
   });
 
   it("folds a typed failure to null", async () => {
-    expect(await Effect.runPromise(orNull(Effect.fail(new Error("boom"))))).toBeNull();
+    expect(await Effect.runPromise(orNull(Effect.fail(new Boom({ reason: "boom" }))))).toBeNull();
   });
 
   it("folds an unreachable server (network error) to null", async () => {

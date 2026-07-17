@@ -7,8 +7,7 @@
 use axum::http::StatusCode;
 use engine::{Event, Game, PlayerId};
 use schema::{
-    DeltaEnvelope, StreamFrame, ViewExtras, VisibleEvent, VisibleState, complete_visible, redact,
-    spectator_redact,
+    DeltaCompose, StreamFrame, ViewExtras, VisibleState, complete_visible, compose_delta,
 };
 use tokio::sync::broadcast;
 
@@ -16,7 +15,6 @@ use crate::AppState;
 use crate::decks::{Broadcast, Seat};
 
 /// Map Table-owned policy into the schema DTO that finishes a [`schema::VisibleState`].
-#[allow(clippy::too_many_arguments)]
 pub fn view_extras(
     yields: &[bool; 4],
     turn_yields: &[bool; 4],
@@ -38,10 +36,10 @@ pub fn view_extras(
     }
 }
 
-/// A resolved subscription to one table's delta stream, ready for a transport (SSE or gRPC
-/// server-streaming) to pump: the opening snapshot plus everything the caller needs to keep
-/// building later delta frames. Built by [`subscribe`] under the registry lock; the transport
-/// shell owns the actual async loop over `rx`.
+/// A resolved subscription to one table's delta stream, ready for a transport (gRPC
+/// server-streaming; historically SSE) to pump: the opening snapshot plus everything the caller
+/// needs to keep building later delta frames. Built by [`subscribe`] under the registry lock; the
+/// transport shell owns the actual async loop over `rx`.
 pub struct TableSubscription {
     pub rx: broadcast::Receiver<Broadcast>,
     pub snapshot_seq: u64,
@@ -72,13 +70,7 @@ pub fn subscribe(
         return Err(StatusCode::NOT_FOUND);
     };
     let viewer = table.seat_of(user_id).map(PlayerId);
-    let extras = view_extras(
-        &table.yields,
-        &table.turn_yields,
-        &table.seats,
-        table.stack_hold_remaining_ms(),
-        &table.prints,
-    );
+    let extras = table_view_extras(table);
     let snapshot = complete_visible(game, viewer, &extras);
     Ok(TableSubscription {
         rx: table.tx.subscribe(),
@@ -89,6 +81,18 @@ pub fn subscribe(
         prints: table.prints.clone(),
         snapshot_broadcast_seq: table.broadcast_seq,
     })
+}
+
+/// Table → [`ViewExtras`] for the opening snapshot (and for tests that build frames from a live
+/// table). Hold remaining is computed from chrome; seats/prints come from the table shell.
+pub fn table_view_extras(table: &crate::decks::Table) -> ViewExtras {
+    view_extras(
+        table.chrome.yields(),
+        table.chrome.turn_yields(),
+        &table.seats,
+        table.stack_hold_remaining_ms(),
+        &table.prints,
+    )
 }
 
 /// Whether a broadcast message at `broadcast_seq` should reach a stream whose opening
@@ -106,41 +110,30 @@ pub fn should_deliver(broadcast_seq: u64, snapshot_broadcast_seq: u64) -> bool {
 /// while folding this intent's fallout into the frame — same for every viewer (no redaction: a
 /// label never names a private card).
 ///
-/// Thin wrapper: redact events, build [`ViewExtras`] from Table facts, call
-/// [`complete_visible`]. Redaction stays separate from completeness (ADR 0006).
-#[allow(clippy::too_many_arguments)]
+/// Thin transport adapter: maps into [`schema::compose_delta`]. Redaction stays separate from
+/// completeness inside schema (ADR 0006).
 pub fn frame_for(
     viewer: Option<PlayerId>,
     seq: u64,
     events: &[Event],
     game: &Game,
     auto_actions: Vec<String>,
-    yields: &[bool; 4],
-    turn_yields: &[bool; 4],
-    seats: &[Seat; 4],
-    stack_hold_remaining_ms: u32,
-    prints: &[std::collections::HashMap<String, String>; 4],
+    extras: &ViewExtras,
 ) -> StreamFrame {
-    let visible: Vec<VisibleEvent> = events
-        .iter()
-        .map(|e| match viewer {
-            Some(v) => redact(e, v),
-            None => spectator_redact(e),
-        })
-        .collect();
-    let extras = view_extras(yields, turn_yields, seats, stack_hold_remaining_ms, prints);
-    let state = complete_visible(game, viewer, &extras);
-    StreamFrame::Delta(DeltaEnvelope {
+    compose_delta(DeltaCompose {
+        game,
+        viewer,
         seq,
-        events: visible,
-        state,
+        events,
         auto_actions,
+        extras,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use schema::{DeltaEnvelope, VisibleEvent};
 
     fn def(name: &str) -> engine::CardDef {
         cards::get_by_name(name).unwrap_or_else(|| panic!("unknown card {name:?}"))
@@ -159,6 +152,10 @@ mod tests {
         }
     }
 
+    fn empty_extras() -> ViewExtras {
+        ViewExtras::default()
+    }
+
     #[test]
     fn frame_for_a_seated_viewer_reveals_their_own_draw() {
         let game = Game::new();
@@ -168,11 +165,7 @@ mod tests {
             &[alice_draws_a_shock()],
             &game,
             vec![],
-            &[false; 4],
-            &[false; 4],
-            &std::array::from_fn(|_| Seat::default()),
-            0,
-            &Default::default(),
+            &empty_extras(),
         );
 
         let StreamFrame::Delta(DeltaEnvelope { seq, events, .. }) = frame else {
@@ -200,11 +193,7 @@ mod tests {
             &[alice_draws_a_shock()],
             &game,
             vec![],
-            &[false; 4],
-            &[false; 4],
-            &std::array::from_fn(|_| Seat::default()),
-            0,
-            &Default::default(),
+            &empty_extras(),
         );
 
         let StreamFrame::Delta(DeltaEnvelope { events, .. }) = frame else {
@@ -230,19 +219,11 @@ mod tests {
         seats[1].username = Some("bob".into());
         let yields = [true, false, false, false];
         let turn_yields = [false, true, false, false];
+        let extras = view_extras(&yields, &turn_yields, &seats, 900, &Default::default());
 
-        let StreamFrame::Delta(DeltaEnvelope { state, .. }) = frame_for(
-            Some(PlayerId(0)),
-            1,
-            &[],
-            &game,
-            vec![],
-            &yields,
-            &turn_yields,
-            &seats,
-            900,
-            &Default::default(),
-        ) else {
+        let StreamFrame::Delta(DeltaEnvelope { state, .. }) =
+            frame_for(Some(PlayerId(0)), 1, &[], &game, vec![], &extras)
+        else {
             panic!("expected a delta frame");
         };
 
@@ -252,18 +233,9 @@ mod tests {
         assert_eq!(state.players[0].username, "alice");
         assert_eq!(state.players[1].username, "bob");
 
-        let StreamFrame::Delta(DeltaEnvelope { state: p1, .. }) = frame_for(
-            Some(PlayerId(1)),
-            1,
-            &[],
-            &game,
-            vec![],
-            &yields,
-            &turn_yields,
-            &seats,
-            900,
-            &Default::default(),
-        ) else {
+        let StreamFrame::Delta(DeltaEnvelope { state: p1, .. }) =
+            frame_for(Some(PlayerId(1)), 1, &[], &game, vec![], &extras)
+        else {
             panic!("expected a delta frame");
         };
         assert!(!p1.yielded);
