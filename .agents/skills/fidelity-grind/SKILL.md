@@ -20,7 +20,11 @@ the wrap-up report as its body.
   `git worktree add ../mtgfr-grind-<slug> -b fidelity-<slug> master`
 - Commit every green wave on that branch. **Never merge to master until the grind is done**
   and the user confirms. Periodically sync-merge master *into* the branch (delegate to an
-  agent; full workspace tests both sides after resolving).
+  agent; full workspace tests both sides after resolving). If the default branch was
+  force-pushed with rewritten history mid-grind ("refusing to merge unrelated histories"),
+  graft the old root under the new one (`git replace --graft <new-root> <old-root>`), do the
+  normal 3-way merge, then `git replace -d <new-root>` — one real conflict instead of
+  hundreds of add/add ones.
 - All agent briefs must name the worktree root and forbid touching the main checkout.
 
 ## Phase 1 — Deck intake
@@ -58,6 +62,14 @@ Author all of section C in batched waves (TDD: failing engine test in
 `crates/engine/tests/game.rs` first, then the TOML). No engine edits allowed in this phase —
 if a card turns out to need one, reclassify it to D and move on.
 
+**Frame audit (mandatory, after every authoring or grind wave that adds cards):** agents
+hallucinate frames — the first grind shipped 8/66 cards with wrong mana costs, P/T, or
+phantom keywords (Rubinia herself was {2}{W}{U}{U} 2/4 *with flying*), invisible to
+ability-level tests but fatal to deck legality. Script a diff of every new card's mana cost,
+P/T, type, legendary flag, and verbatim `oracle` field against a fresh Scryfall
+`cards/collection` fetch; fix every mismatch (some are behavioral — a wrong activation cost
+or counter count changes play) and keep the two-sided check until it reports zero.
+
 ## Phase 4 — Engine grind loop
 
 Run the wave loop until the planner declares done. Assets in this folder:
@@ -78,7 +90,13 @@ Hard-won loop rules (already baked into the script — do not soften them):
   Left to a cheapest-first rule alone, XLs get deferred forever.
 - **Eligibility:** an increment is eligible only if its deps are landed AND a real pool card
   becomes faithful or measurably closer (never add a dead variant). Verify against the TOMLs,
-  not backlog prose — "still blocked" lists go stale as riders land cards.
+  not backlog prose — "still blocked" lists go stale as riders land cards. A deck card not
+  yet on disk is NOT a reason to skip: the increment authors that card (TOML + tests) as its
+  own work — "card absent from the pool" never disqualifies an increment in a deck grind.
+- **XL completion:** once every staged slice of an XL is built and only a documented,
+  deliberate flag-don't-force residual remains, mark it LANDED with the residual named in the
+  heading — an XL left "note-only" forever makes every later planner waste its mandatory XL
+  slot re-confirming it.
 - **Verify gate (every wave, opus, adversarial):** full `cargo test --workspace`,
   `cargo fmt --check`, `cargo clippy --all-targets` with zero NEW warnings vs a git-stash
   baseline; adversarial diff review against the CR; reconcile every touched card's
@@ -105,9 +123,16 @@ form when the answer shape matches; the engine dispatches by pending-choice kind
 1. Re-run the deck checklist: every card checked, or carrying a precise residual note the
    user has seen. Every remaining `approximates` in the pool must name *why* (absent
    subsystem, unobservable, dead variant) — never a silently dropped ability.
-2. Sync-merge the default branch into the grind branch one last time; full bar both sides
+2. **Live smoke game (do not skip):** boot the real server + client from the worktree (own
+   ports — never kill or reuse another session's dev servers) and drive a multiplayer game
+   with the actual decklist over the HTTP/SSE surface, per the project `verify` skill. Saving
+   the deck exercises deck legality (itself a frame gate — this is what exposed the
+   hallucinated frames); the drive loop should answer every pending-choice kind it meets and
+   log which new kinds fired live. Fix what it finds with regression tests at the lowest
+   layer.
+3. Sync-merge the default branch into the grind branch one last time; full bar both sides
    (`just check`-equivalent: workspace tests, fmt, clippy-no-new, tsc, client tests).
-3. **End with an open PR, not a direct merge:** push the branch and open it with
+4. **End with an open PR, not a direct merge:** push the branch and open it with
    `gh pr create` against the default branch. The PR body is the wrap-up report — the deck
    checklist summary (faithful counts before/after), engine capabilities landed, remaining
    residuals and their why, client surface added, and the test totals. The user reviews and
