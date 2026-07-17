@@ -236,7 +236,8 @@ impl Game {
     /// List ([`CastPlayKind::List`]) follows ADR 0007: instants count only in a reaction
     /// window or at sorcery speed. Execute ([`CastPlayKind::OneClick`]/[`CastPlayKind::Full`])
     /// follows [`Game::cast`]: any instant-speed spell may be cast whenever its caster holds
-    /// priority (CR 117.1a).
+    /// priority (CR 117.1a). The post-attack declare-attackers window is a reaction window for
+    /// each defending player so empty-stack removal can stop auto-pass before blockers (ADR 0007).
     pub(crate) fn cast_timing_ok(
         &self,
         player: PlayerId,
@@ -256,11 +257,21 @@ impl Game {
             || self.may_cast_from_exile_free(object, player);
         if as_instant {
             if kind == CastPlayKind::List {
-                return sorcery_ok || !self.stack.is_empty();
+                return sorcery_ok
+                    || !self.stack.is_empty()
+                    || self.in_attack_response_window(player);
             }
             return true;
         }
         sorcery_ok
+    }
+
+    /// After attackers are declared, each defending seat's declare-attackers priority is a
+    /// reaction window for empty-stack instants (before blockers).
+    pub(crate) fn in_attack_response_window(&self, player: PlayerId) -> bool {
+        self.step == Step::DeclareAttackers
+            && self.combat.attackers_declared
+            && self.is_attacked_player(player)
     }
 
     fn cast_affordable_list(
