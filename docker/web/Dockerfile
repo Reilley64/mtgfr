@@ -10,8 +10,10 @@ FROM node:22-bookworm AS build
 WORKDIR /client
 COPY --from=deps /client/node_modules ./node_modules
 COPY client ./
-# `src/api/generated.ts` is produced on the host/CI via `just server-codegen` before
-# `docker build` (gitignored — not committed).
+# `src/api/generated.ts` is gitignored. `docker.yml` (and local `just server-codegen`)
+# must run codegen into the build context before `docker build`.
+RUN test -f src/api/generated.ts \
+  || (echo "missing src/api/generated.ts — run \`just server-codegen\` before docker build" >&2; exit 1)
 # Empty `VITE_CARD_CDN` → Scryfall `named` fallback in the client.
 ARG VITE_CARD_CDN=
 ENV VITE_CARD_CDN=$VITE_CARD_CDN

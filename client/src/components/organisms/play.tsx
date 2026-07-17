@@ -2,12 +2,15 @@ import { useParams } from "@solidjs/router";
 import { createEffect, createSignal, Show } from "solid-js";
 import Board from "~/components/organisms/board";
 import Lobby from "~/components/organisms/lobby";
-import { useAuthGuard } from "~/guard";
+import { RequireAuth } from "~/guard";
 import * as lobbyClient from "~/lib/lobbyClient";
 import { tableId } from "~/net";
 
 export default function Play() {
-  useAuthGuard();
+  return <RequireAuth>{() => <PlaySignedIn />}</RequireAuth>;
+}
+
+function PlaySignedIn() {
   const params = useParams();
   const [started, setStarted] = createSignal(false);
 

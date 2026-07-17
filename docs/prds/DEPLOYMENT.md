@@ -206,9 +206,12 @@ Drain is in-process on SIGTERM until `active_tables=0` or grace expires. Apply d
 
 **One-time cutover** from TF-owned Deployments / `edh-api` Service:
 
-1. Merge this chart (`iac/charts/edh` Deployments + `edh-api` Service) to the git revision in `argocd_target_revision` **before** apply — Argo reads the chart from git, not the apply machine working tree.
-2. `terraform state rm` old `kubernetes_deployment_v1.edh_api`, `kubernetes_deployment_v1.edh_web`, and `kubernetes_service_v1.edh_api_active` (if present) so Terraform does not destroy them before Argo adopts.
-3. Set required `argocd_repo_url` / `argocd_target_revision`, then `terraform apply`.
+1. Chart (`iac/charts/edh`) must already be on the git revision in `argocd_target_revision` — Argo reads git, not the apply machine working tree.
+2. Set `argocd_repo_url` / `argocd_target_revision` and image tags, then `terraform apply`. Terraform will destroy the old Deployments / `edh-api` Service still in state; Argo creates the replacements. Expect a short outage and any in-memory games to die.
+
+Optional: `terraform state rm` those resources first if you want Argo to adopt without a delete/create gap.
+
+If a prior apply left a failed `kubernetes_manifest.edh_application` in state, remove it (`terraform state rm 'kubernetes_manifest.edh_application'`) — the Application is now a `helm_release.edh_application` (`argocd-apps`).
 
 **Failure mode:** If Service `edh-api` ever selects an instance id with no Ready pods (mis-ordered sync without waves), Start/seed/auth return connection errors until the new Deployment is healthy.
 
@@ -505,7 +508,7 @@ just migrate
 cargo run -p server
 ```
 
-CI: Postgres service → `just migrate` → `just check`.
+CI: parallel `verify-server` / `verify-client` jobs (see §GitHub Actions); server job applies Toasty migrations then `just server-check`.
 
 - Server may enable **CORS** for `cors_origin` when set; same-origin BFF leaves it empty (browser does not need CORS).
 - Auth **session** cookies are host-only on `edh.example.com` so `fetch(..., { credentials: "include" })` to `/api` sends them.
@@ -566,7 +569,7 @@ SolidStart (Vinxi / Nitro `node_server`) on distroless Node — SPA (`ssr: false
 Multi-stage `docker/web/Dockerfile`:
 
 1. **Deps:** `oven/bun` — `bun install --frozen-lockfile`.
-2. **Build:** `node:22-bookworm` — `vinxi build` → `.output/` (optional `VITE_CARD_CDN` build-arg).
+2. **Build:** `node:22-bookworm` — requires `src/api/generated.ts` in the build context (`docker.yml` runs `bun run gen` first; locally `just server-codegen`) → `tsc` + `vinxi build` → `.output/` (optional `VITE_CARD_CDN` build-arg).
 3. **Runtime:** `gcr.io/distroless/nodejs22-debian12:nonroot` — copy `.output`; `ENV HOST=0.0.0.0 PORT=8080`; sticky map from k8s env; `CMD [".output/server/index.mjs"]`.
 
 #### Compression / streaming
@@ -577,8 +580,7 @@ Multi-stage `docker/web/Dockerfile`:
 | BFF → API | Do **not** buffer `text/event-stream` (SSE); Configuration Rules disable response buffering on `edh`. |
 | API (`serve`) | Optional gzip on JSON later; **never** gzip SSE. |
 
-OpenAPI codegen in the client build must use the **committed** `openapi.json` at the image tag being built (release workflow checks they match).
-
+OpenAPI `openapi.json` and `client/src/api/generated.ts` are gitignored; `docker.yml` regenerates them on the runner before `docker build` so the web image typechecks against the schema at that tag.
 ### What not to use
 
 | Avoid | Use instead |
@@ -682,26 +684,43 @@ Follow the official [semantic-release GitHub Actions recipe](https://semantic-re
 #### Workflow overview
 
 ```
-pull_request ──► ci.yml                    (migrate + just check)
+pull_request ──► ci.yml
+                   ├─ verify → verify-jobs.yml
+                   │            ├─ verify-server  (just server-check; Postgres)
+                   │            └─ verify-client  (just client-check)
+                   └─ terraform (iac/)
 
 push to main/master ──► verify-and-release.yml
-                            ├─ job: verify   (migrate + just check)
-                            └─ job: release  (npx semantic-release — default config)
+                            ├─ verify → verify-jobs.yml  (same parallel jobs)
+                            └─ release  (npx semantic-release — default config)
 
 v* tag pushed ──────► docker.yml           (build + push GHCR images)
 
 workstation (apply machine) ──► terraform apply (iac/) → remote k3s API
 ```
 
-Three workflows: **`ci.yml`** (PRs), **`verify-and-release.yml`** (official recipe), **`docker.yml`** (images only — not part of semantic-release).
+Four workflows: **`ci.yml`** (PRs), **`verify-jobs.yml`** (reusable server/client verify), **`verify-and-release.yml`** (official recipe), **`docker.yml`** (images only — not part of semantic-release).
+
+**Content-hash skip:** each verify job caches a tiny pass marker keyed by `hashFiles` of that side’s inputs (`verify-server-v1-…` / `verify-client-v1-…`). On cache hit, setup and checks are skipped. PRs restore markers written on `main`, so a client-only PR can skip the server job (and vice versa). Same-branch re-runs no-op when the tree is unchanged. Post-merge `main` still re-runs (GHA cache from a PR branch is not visible on the default branch).
 
 #### `ci.yml` — pull requests
 
-Triggers: `pull_request` to `main` or `master`. Same verify steps as below; no release.
+Triggers: `pull_request` to `main` or `master`. Calls `verify-jobs.yml`; no release. Terraform job validates `iac/` in parallel.
+
+#### `verify-jobs.yml` — reusable verify
+
+`on: workflow_call`. Two parallel jobs:
+
+| Job | Recipe | Needs |
+|-----|--------|-------|
+| `verify-server` | `just server-check` (fmt + clippy + migrate + nextest) | Rust, nextest, Postgres |
+| `verify-client` | `just client-check` (codegen + format + lint + typecheck + vitest) | Bun + Rust (for `openapi` gen); no Postgres |
+
+Local `just check` stays sequential (codegen → format → lint → typecheck → test).
 
 #### `verify-and-release.yml` — official recipe (adapted for Rust)
 
-Triggers: `push` to `main` and `master`. Structure matches the [verify-and-release example](https://semantic-release.org/recipes/ci-configurations/github-actions/); only the **verify** job steps differ (Rust/Bun instead of `npm test`).
+Triggers: `push` to `main` and `master`. Structure matches the [verify-and-release example](https://semantic-release.org/recipes/ci-configurations/github-actions/); verify is the reusable workflow instead of `npm test`.
 
 ```yaml
 name: Verify and Release
@@ -718,16 +737,7 @@ permissions:
 jobs:
   verify:
     name: Verify
-    runs-on: ubuntu-latest
-    services:
-      postgres: # … image + env for migrate
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      # rust toolchain, bun, caches
-      - run: cargo run -p server -- migration apply
-      - run: just check
+    uses: ./.github/workflows/verify-jobs.yml
 
   release:
     name: Release
@@ -769,7 +779,7 @@ jobs:
 
 #### `docker.yml` — images on `v*` tag push
 
-Triggers: `push` of tags matching `v*`. semantic-release must push that tag with repo secret `RELEASE_TOKEN` (PAT: `contents` + `workflow`) — default `GITHUB_TOKEN` cannot cascade workflow runs. Verify already ran `just check` on the tagged commit — this workflow only builds and pushes images.
+Triggers: `push` of tags matching `v*`. semantic-release must push that tag with repo secret `RELEASE_TOKEN` (PAT: `contents` + `workflow`) — default `GITHUB_TOKEN` cannot cascade workflow runs. Verify already ran `just server-check` / `just client-check` on the tagged commit — this workflow only builds and pushes images.
 
 ```yaml
 on:
@@ -795,6 +805,7 @@ Do **not** push a moving `latest` tag — pin explicit versions in `terraform.tf
 
 ```
 .github/workflows/ci.yml
+.github/workflows/verify-jobs.yml
 .github/workflows/verify-and-release.yml
 .github/workflows/docker.yml
 package.json
@@ -820,9 +831,9 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 
 #### End-to-end release (steady state)
 
-1. Open PR with conventional commits; `ci.yml` runs migrate + `just check`.
+1. Open PR with conventional commits; `ci.yml` runs parallel `verify-server` / `verify-client` (content-hash skip when unchanged vs `main`).
 2. Merge to `main`.
-3. `verify-and-release.yml`: verify passes → `npx semantic-release` (default) → git tag + GitHub Release (if commits warrant a release).
+3. `verify-and-release.yml`: both verify jobs pass → `npx semantic-release` (default) → git tag + GitHub Release (if commits warrant a release).
 4. `docker.yml` builds and pushes GHCR images when that `v*` tag is pushed (requires `RELEASE_TOKEN` for semantic-release cascades).
 5. Set **`server_image`** / **`web_image`** in `iac/terraform.tfvars` and run **`terraform apply`** from the apply machine.
 6. Old API pods drain on SIGTERM; mid-game traffic stays on them via `table_routes` → headless pod DNS until tables clear or grace expires.
@@ -838,7 +849,7 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 | **0 — Bootstrap** | History squash, `v0.1.0` tag, conventional-commit note in AGENTS.md | Tag exists; CI green |
 | **1 — Migrations** | `toasty-cli`, `Toasty.toml`, initial `migration generate`, `server migration` subcommand, drop prod `push_schema` | `just migrate` + tests green against Postgres |
 | **2 — Containerize** | Distroless Dockerfiles (API `cc`, web `nodejs22` SolidStart), `config` crate + `Settings` | Local image smoke test (compose or kind) |
-| **3 — CI** | `.github/workflows/ci.yml` (migrate + `just check`) | PRs and `main` run migrate then `just check` |
+| **3 — CI** | `.github/workflows/ci.yml` + `verify-jobs.yml` (parallel server/client) | PRs and `main` run `just server-check` / `just client-check` |
 | **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json`, `RELEASE_TOKEN` | Merge to `main` → semantic-release (default) → `v*` tag push → GHCR images |
 | **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres, BFF, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
 | **6 — Drain + routing** | SIGTERM drain, `POD_DNS`, BFF lobby + `table_routes`, active + headless Services, [WIRE_COMPAT.md](../WIRE_COMPAT.md) | Deploy while a game runs on the prior binary without disconnect; mid-game hops stay on old pod DNS |
@@ -900,6 +911,6 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 - ADR 0021 — live games in-memory (motivates drain deploy)
 - `docker-compose.yml` — dev Postgres defaults
 - [`config`](https://docs.rs/config) — layered server `Settings` (TOML + env)
-- `justfile` — `migrate`, `client-migrate`, `check`
+- `justfile` — `migrate`, `client-migrate`, `server-check`, `client-check`, `check`
 - [Google distroless](https://github.com/GoogleContainerTools/distroless) — production runtime base images
 - [semantic-release GitHub Actions recipe](https://semantic-release.org/recipes/ci-configurations/github-actions/) — `verify-and-release.yml` template
