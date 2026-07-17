@@ -17,13 +17,28 @@ impl<'a> ChoiceCtx<'a> {
     }
 
     fn label_items(&self, ids: Vec<engine::ObjectId>) -> Vec<ChoiceItem> {
-        ids.into_iter()
-            .map(|id| ChoiceItem {
-                id,
-                label: self.game.def_of(id).name.to_string(),
-                player: None,
-            })
-            .collect()
+        ids.into_iter().map(|id| self.object_item(id)).collect()
+    }
+
+    /// An object choice item with name + default Printing (seat prints overlay later).
+    fn object_item(&self, id: engine::ObjectId) -> ChoiceItem {
+        let def = self.game.def_of(id);
+        ChoiceItem {
+            id,
+            label: def.name.to_string(),
+            print: def.default_print.to_string(),
+            player: None,
+        }
+    }
+
+    /// A player-seat choice item — no card art.
+    fn player_item(&self, p: engine::PlayerId) -> ChoiceItem {
+        ChoiceItem {
+            id: 0,
+            label: format!("Player {}", p.0 + 1),
+            print: String::new(),
+            player: Some(p.0),
+        }
     }
 
     /// Label an exile pile whose cards may individually be face down (CR 701.9 — Abstract
@@ -37,14 +52,15 @@ impl<'a> ChoiceCtx<'a> {
         ids.into_iter()
             .map(|id| {
                 let hidden = !reveals_face_down && self.game.is_card_face_down(id);
-                ChoiceItem {
-                    id,
-                    label: if hidden {
-                        String::new()
-                    } else {
-                        self.game.def_of(id).name.to_string()
-                    },
-                    player: None,
+                if hidden {
+                    ChoiceItem {
+                        id,
+                        label: String::new(),
+                        print: String::new(),
+                        player: None,
+                    }
+                } else {
+                    self.object_item(id)
                 }
             })
             .collect()
@@ -56,11 +72,7 @@ impl<'a> ChoiceCtx<'a> {
     fn label_players(&self, players: Vec<engine::PlayerId>) -> Vec<ChoiceItem> {
         players
             .into_iter()
-            .map(|p| ChoiceItem {
-                id: 0,
-                label: format!("Player {}", p.0 + 1),
-                player: Some(p.0),
-            })
+            .map(|p| self.player_item(p))
             .collect()
     }
 
@@ -69,16 +81,8 @@ impl<'a> ChoiceCtx<'a> {
         targets
             .into_iter()
             .map(|t| match t {
-                engine::Target::Object(id) => ChoiceItem {
-                    id,
-                    label: self.game.def_of(id).name.to_string(),
-                    player: None,
-                },
-                engine::Target::Player(p) => ChoiceItem {
-                    id: 0,
-                    label: format!("Player {}", p.0 + 1),
-                    player: Some(p.0),
-                },
+                engine::Target::Object(id) => self.object_item(id),
+                engine::Target::Player(p) => self.player_item(p),
             })
             .collect()
     }
@@ -609,11 +613,7 @@ impl<'a> ChoiceCtx<'a> {
             engine::PendingChoice::RevealedCardToBattlefieldOrHand { player, card } => {
                 PendingChoiceView::RevealedCardToBattlefieldOrHand {
                     player: player.0,
-                    item: ChoiceItem {
-                        id: card,
-                        label: self.game.def_of(card).name.to_string(),
-                        player: None,
-                    },
+                    item: self.object_item(card),
                 }
             }
             engine::PendingChoice::ChooseMode {

@@ -257,6 +257,7 @@ mod tests {
             items: vec![ChoiceItem {
                 id: 7,
                 label: "Beast".into(),
+                print: String::new(),
                 player: None,
             }],
         }

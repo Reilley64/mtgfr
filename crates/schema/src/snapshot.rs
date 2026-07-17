@@ -97,6 +97,26 @@ pub fn complete_visible(
             obj.print = print.clone();
         }
     }
+    // Same overlay for pending-choice items — library/scry picks never appear in `objects`
+    // (libraries aren't itemized), so their art rides on ChoiceItem.print alone.
+    if let Some(ref mut pc) = state.pending_choice {
+        pc.for_each_item_mut(|item| {
+            if item.player.is_some() || item.print.is_empty() {
+                return;
+            }
+            let owner = game.owner_of(item.id);
+            let card_id = game.def_of(item.id).id;
+            let seat = owner.0 as usize;
+            if seat >= extras.prints.len() {
+                return;
+            }
+            if let Some(print) = extras.prints[seat].get(card_id)
+                && !print.is_empty()
+            {
+                item.print = print.clone();
+            }
+        });
+    }
     state
 }
 
@@ -748,6 +768,59 @@ mod tests {
         let snap2 = complete_visible(&game, Some(p0), &empty_override);
         let obj2 = snap2.objects.iter().find(|o| o.id == shock).expect("shock");
         assert_eq!(obj2.print, default_print);
+    }
+
+    #[test]
+    fn complete_visible_overlays_seat_prints_onto_library_search_items() {
+        // Library cards never appear in `objects`, so ChoiceItem.print is the only art path —
+        // deck-chosen Printings must overlay there too (ADR 0031).
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.fund_mana(p0);
+        game.stack_library(p0, &[def("Forest"), def("Grizzly Bear"), def("Island")]);
+        let tutor = game.spawn_in_hand(p0, def("Diabolic Tutor"));
+        game.submit(engine::Intent::Cast {
+            player: p0,
+            object: tutor,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+        })
+        .unwrap();
+        resolve_top_of_stack(&mut game);
+
+        let forest_id = def("Forest").id.to_string();
+        let preferred = "ffffffff-1111-2222-3333-444444444444";
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(forest_id, preferred.into());
+        let extras = ViewExtras {
+            prints,
+            ..ViewExtras::default()
+        };
+
+        let snap = complete_visible(&game, Some(p0), &extras);
+        match snap.pending_choice {
+            Some(PendingChoiceView::SearchLibrary { items, .. }) => {
+                let forest = items
+                    .iter()
+                    .find(|it| it.label == "Forest")
+                    .expect("Forest among matches");
+                assert_eq!(forest.print, preferred);
+                assert!(
+                    items.iter().all(|it| !it.print.is_empty()),
+                    "every library-search item carries a print"
+                );
+            }
+            other => panic!("expected SearchLibrary, got {other:?}"),
+        }
     }
 
     #[test]
@@ -1976,7 +2049,14 @@ mod tests {
                     items.len(),
                     3,
                     "the searcher sees every matching library card"
-                )
+                );
+                for item in &items {
+                    assert!(
+                        !item.print.is_empty(),
+                        "library-search items must carry a Printing UUID for art (got empty for {})",
+                        item.label
+                    );
+                }
             }
             other => panic!("expected a SearchLibrary choice for the searcher, got {other:?}"),
         }

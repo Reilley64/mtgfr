@@ -139,8 +139,8 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
             items={(dp().action.discard_choices ?? []).map((id) => ({
               id,
               label: props.model.objectName(id),
+              print: props.model.objectPrint(id),
             }))}
-            print={props.model.objectPrint}
             count={dp().action.discard_count ?? 1}
             declineLabel="Cancel"
             onDecline={() => props.model.setDiscardPick(null)}
@@ -174,8 +174,8 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
               items={(gp().action.graveyard_exile_choices ?? []).map((id) => ({
                 id,
                 label: props.model.objectName(id),
+                print: props.model.objectPrint(id),
               }))}
-              print={props.model.objectPrint}
               count={exact() ? min() : null}
               minCount={exact() ? undefined : min()}
               maxCount={exact() ? undefined : max()}

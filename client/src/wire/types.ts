@@ -35,7 +35,7 @@ export const decodeAck = Schema.decodeUnknownSync(Ack);
 
 // ── Decks / cards / lobby ──
 
-export type ChoiceItem = { id: number; label: string; player?: never };
+export type ChoiceItem = { id: number; label: string; print?: string; player?: never };
 export type CommanderDamageView = { amount: number; from: number };
 export type DeckCardEntry = { count: number; id: string; print: string };
 export type DeckError = { problems: Array<string> };

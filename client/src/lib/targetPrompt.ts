@@ -12,6 +12,12 @@ export function objectPrint(state: VisibleState, id: number): string {
   return state.objects.find((o) => o.id === id)?.print ?? "";
 }
 
+/** Printing UUID for a pending-choice item. Prefers `item.print` (library/scry picks never
+ * appear in `objects`); falls back to joining against the visible object list. */
+export function choiceItemPrint(state: VisibleState, item: { id: number; print?: string }): string {
+  return item.print || objectPrint(state, item.id);
+}
+
 /** A short subtitle naming the source permanent when it differs from the effect label. */
 export function sourceHint(state: VisibleState, sourceId: number, effectLabel: string): string | undefined {
   const name = objectName(state, sourceId);
