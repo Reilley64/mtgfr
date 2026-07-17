@@ -7,9 +7,11 @@
 // card UUID) is art preference only (ADR 0031). `preferredPrint` is a sticky, session-local choice
 // per Card id — once you pick a printing for a card, adding it again reuses that choice.
 
-import { useAtom, useAtomResource, useAtomSet, useAtomValue } from "@effect/atom-solid";
+import { useAtom, useAtomSet, useAtomValue } from "@effect/atom-solid";
 import { useNavigate, useParams } from "@solidjs/router";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import {
   createEffect,
@@ -126,7 +128,10 @@ function DeckBuilderSignedIn() {
   const navigate = useNavigate();
   const editingId = () => (params.id ? Number(params.id) : null);
 
-  const [existing] = useAtomResource(() => deckAtomFamily(editingId()));
+  // Non-suspending reads — `useAtomResource` would blank the whole builder under the app-root
+  // Suspense on every search/page and while an existing deck loads.
+  const existingResult = useAtomValue(() => deckAtomFamily(editingId()));
+  const existing = () => Option.getOrUndefined(AsyncResult.value(existingResult()));
   const hydrateCards = useAtomSet(() => hydrateCardsFn, { mode: "promise" });
   const saveDeck = useAtomSet(() => saveDeckFn, { mode: "promise" });
 
@@ -138,7 +143,12 @@ function DeckBuilderSignedIn() {
   const debouncedQuery = useAtomValue(() => debouncedQueryAtom);
   const [offset, setOffset] = useAtom(() => offsetAtom);
   onMount(() => setQuery(""));
-  const [results] = useAtomResource(() => searchResultsAtom);
+  const resultsResult = useAtomValue(() => searchResultsAtom);
+  const results = () => Option.getOrUndefined(AsyncResult.value(resultsResult()));
+  const resultsLoading = () => {
+    const r = resultsResult();
+    return AsyncResult.isInitial(r) || r.waiting;
+  };
 
   // The grid renders an accumulated list of every page fetched so far — infinite scroll appends,
   // it isn't the single current page. `atEnd` latches once a short page proves we've hit the pool's
@@ -178,7 +188,7 @@ function DeckBuilderSignedIn() {
     if (!sentinel) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (!entries[0].isIntersecting || atEnd() || results.loading) return;
+        if (!entries[0].isIntersecting || atEnd() || resultsLoading()) return;
         setOffset((o) => o + PAGE);
       },
       { root: gridEl, rootMargin: "300px" },
@@ -507,7 +517,7 @@ function DeckBuilderSignedIn() {
           </For>
           {/* Skeletons while a page loads — same footprint as a pool card, so the grid doesn't jump
               when the real cards land. */}
-          <Show when={results.loading}>
+          <Show when={resultsLoading()}>
             <For each={Array.from({ length: 10 })}>
               {() => (
                 <div class={cn(POOL_CARD, "pointer-events-none cursor-default")}>
@@ -517,7 +527,7 @@ function DeckBuilderSignedIn() {
               )}
             </For>
           </Show>
-          <Show when={!results.loading && pool().length === 0}>
+          <Show when={!resultsLoading() && pool().length === 0}>
             <div class="col-span-full text-label text-lichen">No cards match.</div>
           </Show>
           {/* Bottom sentinel: the IntersectionObserver above fetches the next page when it appears. */}

@@ -4,8 +4,10 @@
 // Deck list is the shared `decksAtom` (per ADR 0019); delete/logout are function atoms consumed
 // via `useAtomSet` in promise mode, so error folding lives in the Effect pipeline, not here.
 
-import { useAtomRefresh, useAtomResource, useAtomSet } from "@effect/atom-solid";
+import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
+import * as Option from "effect/Option";
+import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import type { CatalogCard, Me } from "~/api/generated";
@@ -28,9 +30,14 @@ export default function Decks() {
 
 function DecksSignedIn(props: { user: Me }) {
   const navigate = useNavigate();
-  const [decks] = useAtomResource(() => decksAtom);
-  // `useAtomResource`'s own `refetch` only re-wraps the atom's *current* value — the `listDecks`
-  // Effect lives in the atom, so refreshing the atom is what actually re-fetches (as in guard).
+  // Non-suspending — `useAtomResource` blanks the whole page under the app-root Suspense.
+  const decksResult = useAtomValue(() => decksAtom);
+  const decks = () => Option.getOrUndefined(AsyncResult.value(decksResult()));
+  const decksLoading = () => {
+    const r = decksResult();
+    return AsyncResult.isInitial(r) || r.waiting;
+  };
+  // Refreshing the atom is what actually re-fetches (as in guard).
   const refreshDecks = useAtomRefresh(() => decksAtom);
   const deleteDeck = useAtomSet(() => deleteDeckFn, { mode: "promise" });
   const logout = useAtomSet(() => logoutFn, { mode: "promise" });
@@ -99,58 +106,63 @@ function DecksSignedIn(props: { user: Me }) {
             {failed()}
           </div>
         </Show>
-        <Show
-          when={(decks() ?? []).length > 0}
-          fallback={<div class="text-label text-lichen">No decks yet — build one to get started.</div>}
-        >
-          <For each={decks()}>
-            {(d) => (
-              <ListRow class="flex flex-wrap items-center justify-between gap-md rounded-hud px-xl py-3">
-                <div class="flex min-w-0 flex-col">
-                  <span class="font-semibold">
-                    {d.name}
-                    {/* Precons (negative id) are read-only — everyone has them, nobody edits them.
+        <Show when={decksLoading()}>
+          <div class="text-label text-lichen">Loading decks…</div>
+        </Show>
+        <Show when={!decksLoading()}>
+          <Show
+            when={(decks() ?? []).length > 0}
+            fallback={<div class="text-label text-lichen">No decks yet — build one to get started.</div>}
+          >
+            <For each={decks()}>
+              {(d) => (
+                <ListRow class="flex flex-wrap items-center justify-between gap-md rounded-hud px-xl py-3">
+                  <div class="flex min-w-0 flex-col">
+                    <span class="font-semibold">
+                      {d.name}
+                      {/* Precons (negative id) are read-only — everyone has them, nobody edits them.
                         Commander Gold is reserved for commanders (DESIGN.md §2/§6), so the precon
                         chip uses the Lichen (muted-label) family instead, same shape and size. */}
-                    <Show when={d.id < 0}>
-                      <span class="ml-sm rounded-full bg-lichen/14 px-[7px] py-px align-middle font-semibold text-chip text-lichen">
-                        Precon
-                      </span>
-                    </Show>
-                  </span>
-                  {/* biome-ignore lint/a11y/noStaticElementInteractions: hover only reveals the
+                      <Show when={d.id < 0}>
+                        <span class="ml-sm rounded-full bg-lichen/14 px-[7px] py-px align-middle font-semibold text-chip text-lichen">
+                          Precon
+                        </span>
+                      </Show>
+                    </span>
+                    {/* biome-ignore lint/a11y/noStaticElementInteractions: hover only reveals the
                       commander's art; its name is right here as text. */}
-                  <span
-                    onMouseMove={(e) =>
-                      setHover({
-                        id: d.commander,
-                        print: d.commander_print || commanders()[d.commander]?.default_print,
-                        x: e.clientX,
-                        y: e.clientY,
-                      })
-                    }
-                    onMouseLeave={() => setHover(null)}
-                    class="text-label text-lichen"
-                  >
-                    {commanderName(d.commander)}
-                  </span>
-                </div>
-                <div class="flex flex-wrap gap-sm">
-                  <Button type="button" onClick={() => navigate(`/play?deck=${d.id}`)}>
-                    Play
-                  </Button>
-                  <Show when={d.id >= 0}>
-                    <Button type="button" onClick={() => navigate(`/decks/${d.id}`)} variant="ghost">
-                      Edit
+                    <span
+                      onMouseMove={(e) =>
+                        setHover({
+                          id: d.commander,
+                          print: d.commander_print || commanders()[d.commander]?.default_print,
+                          x: e.clientX,
+                          y: e.clientY,
+                        })
+                      }
+                      onMouseLeave={() => setHover(null)}
+                      class="text-label text-lichen"
+                    >
+                      {commanderName(d.commander)}
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap gap-sm">
+                    <Button type="button" onClick={() => navigate(`/play?deck=${d.id}`)}>
+                      Play
                     </Button>
-                    <Button type="button" onClick={() => setConfirmingId(d.id)} variant="ghost">
-                      Delete
-                    </Button>
-                  </Show>
-                </div>
-              </ListRow>
-            )}
-          </For>
+                    <Show when={d.id >= 0}>
+                      <Button type="button" onClick={() => navigate(`/decks/${d.id}`)} variant="ghost">
+                        Edit
+                      </Button>
+                      <Button type="button" onClick={() => setConfirmingId(d.id)} variant="ghost">
+                        Delete
+                      </Button>
+                    </Show>
+                  </div>
+                </ListRow>
+              )}
+            </For>
+          </Show>
         </Show>
       </div>
 

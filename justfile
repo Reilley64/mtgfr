@@ -110,6 +110,14 @@ test *args:
     @just server-test {{ args }}
     @just client-test
 
+[doc("Server CI check (fmt + clippy + migrate + nextest)")]
+server-check: server-format server-lint
+    cargo run -p server -- migration apply
+    just server-test
+
+[doc("Client CI check (codegen + format + lint + typecheck + vitest)")]
+client-check: server-codegen client-format client-lint client-typecheck client-test
+
 [doc("Run all checks")]
 check: server-codegen format lint typecheck test
 
