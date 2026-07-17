@@ -206,9 +206,12 @@ Drain is in-process on SIGTERM until `active_tables=0` or grace expires. Apply d
 
 **One-time cutover** from TF-owned Deployments / `edh-api` Service:
 
-1. Merge this chart (`iac/charts/edh` Deployments + `edh-api` Service) to the git revision in `argocd_target_revision` **before** apply — Argo reads the chart from git, not the apply machine working tree.
-2. `terraform state rm` old `kubernetes_deployment_v1.edh_api`, `kubernetes_deployment_v1.edh_web`, and `kubernetes_service_v1.edh_api_active` (if present) so Terraform does not destroy them before Argo adopts.
-3. Set required `argocd_repo_url` / `argocd_target_revision`, then `terraform apply`.
+1. Chart (`iac/charts/edh`) must already be on the git revision in `argocd_target_revision` — Argo reads git, not the apply machine working tree.
+2. Set `argocd_repo_url` / `argocd_target_revision` and image tags, then `terraform apply`. Terraform will destroy the old Deployments / `edh-api` Service still in state; Argo creates the replacements. Expect a short outage and any in-memory games to die.
+
+Optional: `terraform state rm` those resources first if you want Argo to adopt without a delete/create gap.
+
+If a prior apply left a failed `kubernetes_manifest.edh_application` in state, remove it (`terraform state rm 'kubernetes_manifest.edh_application'`) — the Application is now a `helm_release.edh_application` (`argocd-apps`).
 
 **Failure mode:** If Service `edh-api` ever selects an instance id with no Ready pods (mis-ordered sync without waves), Start/seed/auth return connection errors until the new Deployment is healthy.
 
