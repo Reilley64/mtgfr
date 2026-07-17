@@ -10,6 +10,24 @@ on:
       - master
 
 jobs:
+  commitlint:
+    name: Commitlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm clean-install
+
+      - name: Lint PR commits
+        run: npx commitlint --from "origin/${{ github.base_ref }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
+
   verify:
     name: Verify
     uses: ./.github/workflows/verify-jobs.yml

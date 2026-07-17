@@ -663,7 +663,7 @@ Before the first semver tag, rewrite git history to a single root commit (preser
 3. Force-push `main` (only acceptable because this is pre-release / friend group).
 4. Tag `v0.1.0` (or `v1.0.0` if treating current state as first production).
 
-After squash, **all** commits on `main` follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, `feat!:` / `BREAKING CHANGE:` for majors.
+After squash, **all** commits on `main` follow the [Angular commit message guidelines](https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md) (enforced by commitlint / `@commitlint/config-angular`): `feat:`, `fix:`, `build:`, `ci:`, …, with majors via a `BREAKING CHANGE:` footer.
 
 ### Semantic versioning
 
@@ -833,7 +833,7 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 
 #### End-to-end release (steady state)
 
-1. Open PR with conventional commits; `ci.yml` runs parallel `verify-server` / `verify-client` (content-hash skip when unchanged vs `main`).
+1. Open PR with Angular-format commits (commitlint); `ci.yml` runs parallel `verify-server` / `verify-client` (content-hash skip when unchanged vs `main`).
 2. Merge to `main`.
 3. `verify-and-release.yml`: both verify jobs pass → `npx semantic-release` (default) → git tag + GitHub Release (if commits warrant a release).
 4. `docker.yml` builds and pushes GHCR images when that `v*` tag is pushed (requires `RELEASE_TOKEN` for semantic-release cascades).
@@ -848,7 +848,7 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 
 | Phase | Deliverable | Exit criteria |
 |-------|-------------|---------------|
-| **0 — Bootstrap** | History squash, `v0.1.0` tag, conventional-commit note in AGENTS.md | Tag exists; CI green |
+| **0 — Bootstrap** | History squash, `v0.1.0` tag, Angular commit-message note in AGENTS.md | Tag exists; CI green |
 | **1 — Migrations** | `toasty-cli`, `Toasty.toml`, initial `migration generate`, `server migration` subcommand, drop prod `push_schema` | `just migrate` + tests green against Postgres |
 | **2 — Containerize** | Distroless Dockerfiles (API `cc`, web `nodejs22` SolidStart), `config` crate + `Settings` | Local image smoke test (compose or kind) |
 | **3 — CI** | `.github/workflows/ci.yml` + `verify-jobs.yml` (parallel server/client) | PRs and `main` run `just server-check` / `just client-check` |
@@ -897,7 +897,7 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 - [x] Wire backwards-compatibility rules are documented ([WIRE_COMPAT.md](../WIRE_COMPAT.md)) — expand-only across the drain window, `/v2` for hard breaks.
 - [ ] Old server pods exit within minutes after the last table clears (or stay up harmlessly if a game runs long; SIGKILL after default 24h grace).
 - [ ] Every production deploy is a semver GitHub Release with changelog; **public** GHCR images exist for that version.
-- [ ] Merging releasable conventional commits to `main` triggers semantic-release (default rules) → GitHub Release → GHCR images.
+- [ ] Merging releasable Angular-format commits to `main` triggers semantic-release (default rules) → GitHub Release → GHCR images.
 
 ## References
 

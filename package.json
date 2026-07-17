@@ -2,7 +2,14 @@
   "name": "mtgfr",
   "private": true,
   "version": "0.0.0-development",
+  "scripts": {
+    "prepare": "husky",
+    "commitlint": "commitlint --edit"
+  },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-angular": "^21.2.0",
+    "husky": "^9.1.7",
     "semantic-release": "^24"
   }
 }

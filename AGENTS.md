@@ -31,7 +31,7 @@ just dev                        # tmux: bacon server + client vinxi
 
 ## Commits & releases
 
-Commits on `main`/`master` follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, and `feat!:` / `BREAKING CHANGE:` for majors. [semantic-release](https://semantic-release.org/) is the **only** writer of `v*` tags and GitHub Releases — do not create or push version tags by hand. Repo secret `RELEASE_TOKEN` (PAT with `contents` + `workflow`) is required so that tag push can trigger `docker.yml` (default `GITHUB_TOKEN` cannot cascade workflows). See [docs/prds/DEPLOYMENT.md](docs/prds/DEPLOYMENT.md).
+Commits on `main`/`master` follow the [Angular commit message guidelines](https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md) (`feat:`, `fix:`, `build:`, `ci:`, `docs:`, `perf:`, `refactor:`, `test`, …; breaking changes via a `BREAKING CHANGE:` footer). [commitlint](https://github.com/conventional-changelog/commitlint) with `@commitlint/config-angular` enforces this on `commit-msg` (Husky). [semantic-release](https://semantic-release.org/) is the **only** writer of `v*` tags and GitHub Releases — do not create or push version tags by hand. Repo secret `RELEASE_TOKEN` (PAT with `contents` + `workflow`) is required so that tag push can trigger `docker.yml` (default `GITHUB_TOKEN` cannot cascade workflows). See [docs/prds/DEPLOYMENT.md](docs/prds/DEPLOYMENT.md).
 
 ## Architecture commitments (do not relitigate without reason)
 
