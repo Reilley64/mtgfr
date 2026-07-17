@@ -150,7 +150,7 @@ pub enum Amount {
     /// just destroyed (CR "destroyed this way" riders) — Ceaseless Conflict's "for each nontoken
     /// creature you controlled that was destroyed this way" token count, Culling Ritual's "for
     /// each permanent destroyed this way" mana count. Resolution-scoped, not turn-scoped: reads
-    /// [`Game::destroyed_this_way`], a snapshot [`Effect::DestroyAll`]'s own `run`
+    /// [`ResolutionFrame::destroyed_this_way`](crate::resolution::ResolutionFrame), a snapshot [`Effect::DestroyAll`]'s own `run`
     /// special case overwrites (not accumulates) each time it runs, since an `Effect::Sequence`
     /// doesn't apply steps' events back to live battlefield state between steps (the destroyed
     /// permanents are already gone by the time a later step counts them). `#[serde(default)]`
@@ -159,27 +159,27 @@ pub enum Amount {
     /// How many *nonland* cards this resolution's own [`Effect::EachPlayerExilesFromGraveyard`]
     /// step just exiled across every player (Augusta, Order Returned's "put that many +1/+1
     /// counters"). Resolution-scoped like [`PermanentsDestroyedThisWay`](Self::PermanentsDestroyedThisWay):
-    /// reads [`Game::nonland_cards_exiled_this_way`], overwritten (not accumulated) each time the
+    /// reads [`ResolutionFrame::nonland_cards_exiled_this_way`](crate::resolution::ResolutionFrame), overwritten (not accumulated) each time the
     /// fan-out begins.
     NonlandCardsExiledThisWay,
     /// How many "past" votes this resolution's own [`Effect::CouncilsDilemmaVote`] round tallied
-    /// (Fateful Tempest's "mill a card for each past vote"). Reads [`Game::council_past_votes`], a
+    /// (Fateful Tempest's "mill a card for each past vote"). Reads [`ResolutionFrame::council_past_votes`](crate::resolution::ResolutionFrame), a
     /// resolution-scoped tally reset when the vote round begins — the vote-round sibling of
     /// [`NonlandCardsExiledThisWay`](Self::NonlandCardsExiledThisWay).
     PastVotes,
     /// How many "present" votes this resolution's own [`Effect::CouncilsDilemmaVote`] round tallied
     /// (Fateful Tempest's "Exile the top card of your library for each present vote"). Reads
-    /// [`Game::council_present_votes`], the present-ballot twin of [`PastVotes`](Self::PastVotes).
+    /// [`ResolutionFrame::council_present_votes`](crate::resolution::ResolutionFrame), the present-ballot twin of [`PastVotes`](Self::PastVotes).
     PresentVotes,
     /// The total mana value of the cards this resolution's own [`Effect::MillSelf`] step just
     /// milled (Fateful Tempest's "damage to each opponent equal to the total mana value of cards
-    /// milled this way"). Reads [`Game::milled_mana_value_this_way`], snapshotted at the mill choke
+    /// milled this way"). Reads [`ResolutionFrame::milled_mana_value_this_way`](crate::resolution::ResolutionFrame), snapshotted at the mill choke
     /// — resolution-scoped, like [`NonlandCardsExiledThisWay`](Self::NonlandCardsExiledThisWay).
     TotalManaValueMilledThisWay,
     /// The mana value of the card this resolution's own
     /// [`Effect::ExileTargetGraveyardCardRecordManaValue`] step just exiled (Surge to Victory's
     /// "Creatures you control get +X/+0 until end of turn, where X is that card's mana value").
-    /// Reads [`Game::surge_exiled_card`], snapshotted at the exile choke — resolution-scoped,
+    /// Reads [`ResolutionFrame::surge_exiled_card`](crate::resolution::ResolutionFrame), snapshotted at the exile choke — resolution-scoped,
     /// like [`TotalManaValueMilledThisWay`](Self::TotalManaValueMilledThisWay). `0` if unset (the
     /// exile step never ran — unreachable in practice, since a fizzled target drops this whole
     /// ability before either step resolves, CR 608.2b).
@@ -1788,8 +1788,8 @@ pub enum Effect {
     /// Surge to Victory: "Exile target instant or sorcery card from your graveyard." A targeted
     /// sibling of [`ExileTargetGraveyardSpellCastFree`](Self::ExileTargetGraveyardSpellCastFree)
     /// that exiles without minting a copy of its own: the chosen card is exiled and its object id
-    /// and mana value are snapshotted onto [`Game::surge_exiled_card`] (overwritten per call,
-    /// like [`Game::milled_mana_value_this_way`]) for a following [`Amount::ExiledCardManaValueThisWay`]
+    /// and mana value are snapshotted onto [`ResolutionFrame::surge_exiled_card`](crate::resolution::ResolutionFrame) (overwritten per call,
+    /// like [`ResolutionFrame::milled_mana_value_this_way`](crate::resolution::ResolutionFrame)) for a following [`Amount::ExiledCardManaValueThisWay`]
     /// team-pump step and [`ScheduleThisTurnCombatDamageCopy`](Self::ScheduleThisTurnCombatDamageCopy)
     /// arm step, both sharing this same resolution's [`Sequence`](Self::Sequence).
     ExileTargetGraveyardCardRecordManaValue { filter: CardFilter },
@@ -1797,7 +1797,7 @@ pub enum Effect {
     /// turn, copy the exiled card. You may cast the copy without paying its mana cost." Arms a
     /// CR 603.7 delayed watch over the card this same resolution's
     /// [`ExileTargetGraveyardCardRecordManaValue`](Self::ExileTargetGraveyardCardRecordManaValue)
-    /// step just exiled (read off [`Game::surge_exiled_card`]) — unlike
+    /// step just exiled (read off [`ResolutionFrame::surge_exiled_card`](crate::resolution::ResolutionFrame)) — unlike
     /// [`ArmCombatDamageWatch`](Self::ArmCombatDamageWatch)'s one-shot single-creature watch, this
     /// is controller-scoped (any creature the controller controls, not one chosen target) and
     /// **repeatable** for the rest of the turn (CR "this turn", not "this combat"): each
@@ -2732,7 +2732,7 @@ pub enum Effect {
     /// from their graveyard"): each player, in APNAP order, exiles one card from their own
     /// graveyard (mandatory when they have any), pausing on a
     /// [`PendingChoice::ExileFromGraveyard`]. How many of the exiled cards were *nonland* is
-    /// snapshotted onto [`Game::nonland_cards_exiled_this_way`] for a following `Sequence` step to
+    /// snapshotted onto [`ResolutionFrame::nonland_cards_exiled_this_way`](crate::resolution::ResolutionFrame) for a following `Sequence` step to
     /// read via [`Amount::NonlandCardsExiledThisWay`] (Augusta's "put that many +1/+1 counters"
     /// payoff). The payoff rides in the enclosing `Sequence`, resumed once every player has
     /// answered (the same deferred-tail path a pausing sequence step uses) — so, unlike
@@ -2779,7 +2779,7 @@ pub enum Effect {
     /// Council's dilemma (CR 701.32) — Fateful Tempest's "Starting with you, each player votes for
     /// past or present." Each living player, in turn order starting with the effect's controller,
     /// votes for one of `options` (the ballot labels), pausing on a [`PendingChoice::CastVote`].
-    /// The two tallies are accumulated onto [`Game::council_past_votes`]/[`Game::council_present_votes`]
+    /// The two tallies are accumulated onto [`ResolutionFrame::council_past_votes`](crate::resolution::ResolutionFrame)/[`ResolutionFrame::council_present_votes`](crate::resolution::ResolutionFrame)
     /// for the following `Sequence` steps to read via [`Amount::PastVotes`]/[`Amount::PresentVotes`].
     /// Like [`EachPlayerExilesFromGraveyard`](Self::EachPlayerExilesFromGraveyard), the payoff rides
     /// in the enclosing `Sequence`, resumed once every player has voted, so this carries no follow-up.
@@ -2794,7 +2794,7 @@ pub enum Effect {
     /// "Each player creates a 0/0 green and blue Fractal creature token and puts a number of
     /// +1/+1 counters on it equal to the total power of creatures they controlled that were
     /// exiled this way." (Oversimplify): one `token` per living player, in APNAP order, with
-    /// +1/+1 counters equal to that player's own share of `Game::power_exiled_this_way` — the
+    /// +1/+1 counters equal to that player's own share of `ResolutionFrame::power_exiled_this_way` — the
     /// preceding `Effect::ExileAll` step's per-controller power snapshot — routed through
     /// [`Game::counters_after_replacements`] like `CreateToken`'s `enters_with`. Unlike
     /// [`EachPlayerExilesFromGraveyard`](Self::EachPlayerExilesFromGraveyard), no player makes a
@@ -2886,7 +2886,7 @@ pub enum Effect {
         /// runs nothing at all — no pause — unless the ability's own controller actually
         /// sacrificed a permanent during this resolution's own
         /// [`EachPlayerSacrifices`](Self::EachPlayerSacrifices) edict (tracked by `Game`'s
-        /// `sacrificed_by_edict_controller` scratch flag). Default `false` (unconditional, every
+        /// `ResolutionFrame::sacrificed_by_edict_controller` scratch flag). Default `false` (unconditional, every
         /// other consumer's shape).
         #[cfg_attr(feature = "card-dsl", serde(default))]
         if_you_sacrificed_this_way: bool,
@@ -3453,7 +3453,7 @@ impl Effect {
             // Arms a watch on the enclosing `Sequence`'s shared target (the creature the
             // preceding `pump_until_end_of_turn` step just deathtouched) — no target of its own.
             | Effect::ArmCombatDamageWatch
-            // Arms the this-turn combat-damage-copy watch over `Game::surge_exiled_card` (the
+            // Arms the this-turn combat-damage-copy watch over `ResolutionFrame::surge_exiled_card` (the
             // enclosing `Sequence`'s own exile step just recorded it) — no target of its own.
             | Effect::ScheduleThisTurnCombatDamageCopy
             // `card` is filled in by the delayed watch when it fires, not a chosen target.

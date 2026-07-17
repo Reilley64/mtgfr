@@ -100,7 +100,7 @@ impl Game {
         let mut events = Vec::new();
         let id = exiles[0];
         if !matches!(self.def_of(id).kind, CardKind::Land { .. }) {
-            self.nonland_cards_exiled_this_way += 1;
+            self.resolution_frame.nonland_cards_exiled_this_way += 1;
         }
         let card = self.next_object_id();
         self.push_apply(&mut events, Event::MovedToExile { card, from: id });
@@ -154,8 +154,8 @@ impl Game {
         // ponytail: past/present hardcoded — Fateful Tempest is the pool's only council's-dilemma
         // card. Generalize to a label→tally map when a differently-balloted voting card lands.
         match ballot {
-            "past" => self.council_past_votes += 1,
-            "present" => self.council_present_votes += 1,
+            "past" => self.resolution_frame.council_past_votes += 1,
+            "present" => self.resolution_frame.council_present_votes += 1,
             other => panic!("unknown council's-dilemma ballot {other:?}"),
         }
         self.prompt_next_vote(remaining, source, options);

@@ -382,7 +382,7 @@ impl Game {
     ) {
         // Scoped to this one edict (Deadly Brew's "if you sacrificed this way" gate) — overwrite,
         // not accumulate, so a prior edict earlier this game can't leak through.
-        self.sacrificed_by_edict_controller = false;
+        self.resolution_frame.sacrificed_by_edict_controller = false;
         if scope == EdictScope::TargetedPlayers {
             let legal = self.apnap_order();
             pending::raise(
@@ -551,7 +551,7 @@ impl Game {
         // Deadly Brew's "if you sacrificed a permanent this way" gate: only the edict's own
         // controller sacrificing (not just any affected player) meets it.
         if sacrificer == controller && !sacrifices.is_empty() {
-            self.sacrificed_by_edict_controller = true;
+            self.resolution_frame.sacrificed_by_edict_controller = true;
         }
 
         let mut events = Vec::new();

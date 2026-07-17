@@ -130,43 +130,9 @@ pub struct Game {
     /// Untap step alongside the per-player tallies. Feeds `Amount::PermanentsDiedThisTurn`
     /// (Ominous Harvest's Gravestorm).
     pub(crate) permanents_died_this_turn: u32,
-    /// The permanents this resolution's own `Effect::DestroyAll` step most recently destroyed
-    /// (CR "destroyed this way" riders — `Amount::PermanentsDestroyedThisWay`). Overwritten (not
-    /// accumulated) each time a `DestroyAll` step resolves, so it's scoped to that one mass-
-    /// destroy call rather than the whole turn.
-    pub(crate) destroyed_this_way: Vec<state::DestroyedThisWay>,
-    /// How many *nonland* cards this resolution's own [`Effect::EachPlayerExilesFromGraveyard`]
-    /// step most recently exiled (Augusta, Order Returned — `Amount::NonlandCardsExiledThisWay`).
-    /// Overwritten (not accumulated) each time the fan-out begins, so it's scoped to that one
-    /// resolution rather than the whole turn.
-    pub(crate) nonland_cards_exiled_this_way: u32,
-    /// The two council's-dilemma tallies this resolution's own [`Effect::CouncilsDilemmaVote`]
-    /// round accumulated (Fateful Tempest — `Amount::PastVotes`/`Amount::PresentVotes`). Reset to 0
-    /// when the vote round begins, incremented per vote answered, so scoped to that one resolution.
-    pub(crate) council_past_votes: u32,
-    pub(crate) council_present_votes: u32,
-    /// The total mana value of the cards this resolution's own [`Effect::MillSelf`] step just
-    /// milled (Fateful Tempest — `Amount::TotalManaValueMilledThisWay`). Overwritten (not
-    /// accumulated) each `MillSelf`, so scoped to that one mill call rather than the whole turn.
-    pub(crate) milled_mana_value_this_way: u32,
-    /// The object id + mana value of the card this resolution's own
-    /// [`Effect::ExileTargetGraveyardCardRecordManaValue`] step most recently exiled (Surge to
-    /// Victory). Overwritten (not accumulated) each time that effect resolves, so it's scoped to
-    /// this one exile call rather than the whole turn — same shape as
-    /// [`milled_mana_value_this_way`](Self::milled_mana_value_this_way).
-    pub(crate) surge_exiled_card: Option<(ObjectId, u32)>,
-    /// Each creature's controller and power this resolution's own [`Effect::ExileAll`] step most
-    /// recently exiled (Oversimplify — `Effect::EachPlayerCreatesFractalFromExiledPower`).
-    /// Overwritten (not accumulated) each time `ExileAll` resolves, so it's scoped to that one
-    /// mass-exile call rather than the whole turn.
-    pub(crate) power_exiled_this_way: Vec<state::PowerExiledThisWay>,
-    /// Whether this resolution's own [`Effect::EachPlayerSacrifices`] edict's controller
-    /// actually sacrificed a permanent during the edict (Deadly Brew's "if you sacrificed a
-    /// permanent this way" gate on [`Effect::MayReturnFromGraveyard`]). Reset to `false` at
-    /// [`Game::sacrifice_edict`] and set (overwritten, not accumulated) only when the
-    /// edict's own controller — not just any affected player — sacrifices ≥1 permanent in
-    /// [`Game::choose_sacrifices`], so scoped to that one edict rather than the whole turn.
-    pub(crate) sacrificed_by_edict_controller: bool,
+    /// Resolution-local "this way" scratch (DestroyAll / ExileAll / mill / council / edict riders).
+    /// Not turn-scoped — see [`resolution::ResolutionFrame`].
+    pub(crate) resolution_frame: resolution::ResolutionFrame,
     /// Controllers owed 2 life by Serra Paragon's granted rider (CR 118.9) for a permanent just
     /// exiled on death this event batch — captured at the [`Event::MovedToExile`] choke (the
     /// permanent's `serra_recursion` tag is gone once it's moved) and drained into

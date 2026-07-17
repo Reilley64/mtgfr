@@ -1,7 +1,7 @@
-//! Mill-family event mint — pure Event vectors for related [`Effect`] variants.
+//! Mill-family Event mint and resolve choreography for related [`Effect`] variants.
 //!
-//! Called only from the private mint path behind [`Game::run`] (ADR 0002 / explore-all deepen).
-//! Apply stays in [`crate::apply`]; this module never mutates the board.
+//! Pure mint stays behind [`Game::execute_effect`]; [`Game::resolve_mill_self`] owns
+//! mill → ResolutionFrame mana-value snapshot → apply (ADR 0002 deepen).
 
 use crate::*;
 
@@ -106,5 +106,28 @@ impl Game {
 
             _ => unreachable!("mill family mint received a non-family effect"),
         }
+    }
+
+    /// Resolve [`Effect::MillSelf`]: mill → snapshot mana value into [`ResolutionFrame`] → apply.
+    pub(crate) fn resolve_mill_self(
+        &mut self,
+        count: Amount,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+        events: &mut Vec<Event>,
+    ) {
+        let n = self.resolve_count(count, controller, source, target, x);
+        let evs = self.mill_events(controller, n);
+        self.resolution_frame.milled_mana_value_this_way = evs
+            .iter()
+            .filter_map(|e| match e {
+                Event::Milled { from, .. } => Some(self.def_of(*from).mana_value()),
+                _ => None,
+            })
+            .sum();
+        self.apply_all(&evs);
+        events.extend(evs);
     }
 }

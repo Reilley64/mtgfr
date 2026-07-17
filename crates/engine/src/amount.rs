@@ -127,33 +127,39 @@ impl Game {
             Amount::TriggeringSpellManaSpent => 0,
             Amount::SpellSacrificeCount => self.spell_sacrifice_count(source) as i32,
             Amount::PermanentsDiedThisTurn => self.permanents_died_this_turn as i32,
-            // Reads the snapshot `Effect::DestroyAll`'s own `Game::run` special case just
-            // recorded, restricted to `filter` (empty/default matches every destroyed permanent
-            // — Culling Ritual's unfiltered mana count). No `permanent_matches` reuse: the
+            // Reads the snapshot `Effect::DestroyAll`'s resolve path just recorded on
+            // [`ResolutionFrame`], restricted to `filter` (empty/default matches every destroyed
+            // permanent — Culling Ritual's unfiltered mana count). No `permanent_matches` reuse: the
             // permanents are already off the battlefield by the time a following `Sequence`
             // step reads this, so matching runs against the snapshot's `def`/`controller`/
             // `token` facts instead of live board state.
             Amount::PermanentsDestroyedThisWay { filter } => self
+                .resolution_frame
                 .destroyed_this_way
                 .iter()
                 .filter(|snap| destroyed_this_way_matches(&filter, controller, snap))
                 .count() as i32,
             // Reads the snapshot `Effect::EachPlayerExilesFromGraveyard` recorded (Augusta's "put
             // that many +1/+1 counters"); resolution-scoped, like `PermanentsDestroyedThisWay`.
-            Amount::NonlandCardsExiledThisWay => self.nonland_cards_exiled_this_way as i32,
+            Amount::NonlandCardsExiledThisWay => {
+                self.resolution_frame.nonland_cards_exiled_this_way as i32
+            }
             // Reads the tallies this resolution's own `Effect::CouncilsDilemmaVote` round
             // accumulated (Fateful Tempest); resolution-scoped, like `NonlandCardsExiledThisWay`.
-            Amount::PastVotes => self.council_past_votes as i32,
-            Amount::PresentVotes => self.council_present_votes as i32,
+            Amount::PastVotes => self.resolution_frame.council_past_votes as i32,
+            Amount::PresentVotes => self.resolution_frame.council_present_votes as i32,
             // Reads the mana value the preceding `Effect::MillSelf` step snapshotted (Fateful
             // Tempest's "damage … equal to the total mana value of cards milled this way").
-            Amount::TotalManaValueMilledThisWay => self.milled_mana_value_this_way as i32,
+            Amount::TotalManaValueMilledThisWay => {
+                self.resolution_frame.milled_mana_value_this_way as i32
+            }
             // Reads the mana value the preceding `Effect::ExileTargetGraveyardCardRecordManaValue`
             // step snapshotted (Surge to Victory's team +X/+0 pump); `0` if unset — unreachable in
             // practice, since a fizzled target drops the whole ability before this reads.
-            Amount::ExiledCardManaValueThisWay => {
-                self.surge_exiled_card.map_or(0, |(_, mv)| mv as i32)
-            }
+            Amount::ExiledCardManaValueThisWay => self
+                .resolution_frame
+                .surge_exiled_card
+                .map_or(0, |(_, mv)| mv as i32),
             // A placeholder [`fill_auras_attached_to_dying_creature`] must have already rewritten
             // to `Fixed` before the ability reaches the stack — see the variant's own doc comment.
             Amount::AurasYouControlledAttachedToDyingCreature => panic!(

@@ -1,7 +1,8 @@
-//! Destroy-family event mint — pure Event vectors for related [`Effect`] variants.
+//! Destroy-family Event mint and resolve choreography for related [`Effect`] variants.
 //!
-//! Called only from the private mint path behind [`Game::run`] (ADR 0002 / explore-all deepen).
-//! Apply stays in [`crate::apply`]; this module never mutates the board.
+//! Pure mint stays behind [`Game::execute_effect`]; [`Game::resolve_destroy_all`] /
+//! [`Game::resolve_exile_all`] own mint → ResolutionFrame snapshot → apply so
+//! [`Game::run`] stays a thin dispatcher (ADR 0002 deepen).
 
 use crate::*;
 
@@ -270,5 +271,94 @@ impl Game {
 
             _ => unreachable!("destroy family mint received a non-family effect"),
         }
+    }
+
+    /// Resolve [`Effect::DestroyAll`]: mint → snapshot into [`ResolutionFrame`] → apply.
+    /// Owns the "destroyed this way" choreography so [`Game::run`] stays a thin dispatcher.
+    pub(crate) fn resolve_destroy_all(
+        &mut self,
+        effect: Effect,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+        events: &mut Vec<Event>,
+    ) {
+        debug_assert!(matches!(effect, Effect::DestroyAll { .. }));
+        let evs = self.execute_effect(effect, controller, source, target, x);
+        self.resolution_frame.destroyed_this_way.clear();
+        for e in &evs {
+            match *e {
+                Event::TokenCeasedToExist {
+                    controller: died_controller,
+                    def,
+                    ..
+                } => {
+                    self.resolution_frame
+                        .destroyed_this_way
+                        .push(state::DestroyedThisWay {
+                            def,
+                            controller: died_controller,
+                            token: true,
+                        });
+                }
+                Event::MovedToGraveyard { from, .. } | Event::MovedToCommandZone { from, .. } => {
+                    if let Some(p) = self.as_permanent(from) {
+                        self.resolution_frame
+                            .destroyed_this_way
+                            .push(state::DestroyedThisWay {
+                                def: p.def,
+                                controller: self.controller_of(from),
+                                token: false,
+                            });
+                    }
+                }
+                _ => {}
+            }
+        }
+        self.apply_all(&evs);
+        events.extend(evs);
+    }
+
+    /// Resolve [`Effect::ExileAll`]: mint → snapshot power-exiled-this-way → apply.
+    pub(crate) fn resolve_exile_all(
+        &mut self,
+        effect: Effect,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+        events: &mut Vec<Event>,
+    ) {
+        debug_assert!(matches!(effect, Effect::ExileAll { .. }));
+        let evs = self.execute_effect(effect, controller, source, target, x);
+        self.resolution_frame.power_exiled_this_way.clear();
+        for e in &evs {
+            match *e {
+                Event::TokenCeasedToExist {
+                    token,
+                    controller: died_controller,
+                    ..
+                } => {
+                    self.resolution_frame
+                        .power_exiled_this_way
+                        .push(state::PowerExiledThisWay {
+                            controller: died_controller,
+                            power: self.power(token),
+                        });
+                }
+                Event::MovedToExile { from, .. } | Event::MovedToCommandZone { from, .. } => {
+                    self.resolution_frame
+                        .power_exiled_this_way
+                        .push(state::PowerExiledThisWay {
+                            controller: self.controller_of(from),
+                            power: self.power(from),
+                        });
+                }
+                _ => {}
+            }
+        }
+        self.apply_all(&evs);
+        events.extend(evs);
     }
 }
