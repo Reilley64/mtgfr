@@ -118,7 +118,14 @@ const saveDeckFn = Atom.fn((req: { id: number | null; body: SaveDeckRequest }) =
 });
 
 export default function DeckBuilder() {
-  useAuthGuard();
+  const user = useAuthGuard();
+  // Wait for a session before mounting atoms that hit auth'd endpoints (getDeck / search).
+  return <Show when={user()}>
+    <DeckBuilderSignedIn />
+  </Show>;
+}
+
+function DeckBuilderSignedIn() {
   const params = useParams();
   const navigate = useNavigate();
   const editingId = () => (params.id ? Number(params.id) : null);

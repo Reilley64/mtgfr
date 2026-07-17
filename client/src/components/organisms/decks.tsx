@@ -8,7 +8,7 @@ import { useAtomRefresh, useAtomResource, useAtomSet } from "@effect/atom-solid"
 import { useNavigate } from "@solidjs/router";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, Show } from "solid-js";
-import type { CatalogCard } from "~/api/generated";
+import type { CatalogCard, Me } from "~/api/generated";
 import { decksAtom } from "~/atoms";
 import { Button, Felt, ListRow } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
@@ -22,8 +22,14 @@ const logoutFn = Atom.fn(() => succeeded(client.logout({})));
 // Commander catalog lookup by Card id; hover art uses `commander_print` on the summary.
 const lookupCommandersFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 
+/** Wait for a session before mounting `decksAtom` — otherwise anonymous first visit races
+ * `listDecks` (401) into the error boundary while the guard is still redirecting to /login. */
 export default function Decks() {
   const user = useAuthGuard();
+  return <Show when={user()}>{(u) => <DecksSignedIn user={u()} />}</Show>;
+}
+
+function DecksSignedIn(props: { user: Me }) {
   const navigate = useNavigate();
   const [decks] = useAtomResource(() => decksAtom);
   // `useAtomResource`'s own `refetch` only re-wraps the atom's *current* value — the `listDecks`
@@ -80,7 +86,7 @@ export default function Decks() {
       <div class="mx-auto mb-5 flex max-w-[720px] flex-wrap items-center justify-between gap-md">
         <h1 class="m-0 text-title">Your decks</h1>
         <div class="flex flex-wrap items-center gap-md">
-          <Show when={user()}>{(u) => <span class="text-label text-lichen">{u().email}</span>}</Show>
+          <span class="text-label text-lichen">{props.user.email}</span>
           <Button type="button" onClick={onLogout} variant="ghost">
             Sign out
           </Button>
