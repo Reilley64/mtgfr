@@ -62,18 +62,11 @@ import { stagedTargetHint } from "~/lib/targetPrompt";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
 import { connectedAtom, gameStreamFamily, tableId } from "~/net";
 import {
+  foldProvenance,
   game,
-  landPlayFrom,
-  leftStackToPile,
-  priorStackObjectIds,
   resetGame,
-  resolvedFromStack,
   SPECTATOR_VIEWER,
   setReject,
-  stackEntranceMap,
-  tokenCreatorMap,
-  zoneMoves,
-  zonePileEntranceMap,
 } from "~/store";
 import type { ActionView, ObjectView, PlayerView, VisibleState, WireTarget } from "~/wire/types";
 
@@ -159,18 +152,19 @@ export default function Board() {
 
   // Logical layout → TableSurface density overlay for hits; draw uses surface.drawnCards (tween + density).
   const cards = createMemo<RenderCard[]>(() => (game.state ? layout(game.state, me()) : []));
+  const provenance = () => foldProvenance();
   const surface = useTableSurface({
     me,
     playerCount,
     cards,
     handBarH: HAND_BAR_H,
-    zoneMoves,
-    fromStack: resolvedFromStack,
-    fromStackExit: leftStackToPile,
-    tokenCreators: tokenCreatorMap,
-    zonePileEntrances: zonePileEntranceMap,
-    landPlays: landPlayFrom,
-    stackObjectIds: priorStackObjectIds,
+    zoneMoves: () => provenance().zoneMoves,
+    fromStack: () => provenance().resolvedFromStack,
+    fromStackExit: () => provenance().leftStackToPile,
+    tokenCreators: () => provenance().tokenCreators,
+    zonePileEntrances: () => provenance().zonePileEntrances,
+    landPlays: () => provenance().landPlayFrom,
+    stackObjectIds: () => provenance().priorStackObjectIds,
     stackLength: () => game.state?.stack.length ?? 0,
     selectedId,
   });
@@ -188,7 +182,7 @@ export default function Board() {
     const next = new Map(stackInDeltas());
     const stackLen = game.state?.stack.length ?? 0;
     const peek = stackPeekFor(stackLen, sz.y, STACK_VERTICAL_RESERVED);
-    for (const [spell, meta] of stackEntranceMap()) {
+    for (const [spell, meta] of provenance().stackEntrances) {
       if (next.has(spell)) continue;
       let fromScreen = stackScreenByCard.get(meta.from);
       if (!fromScreen) {

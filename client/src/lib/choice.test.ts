@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type AnswerInput, choiceIntent } from "~/lib/choice";
-import type { PendingChoiceView } from "~/wire/types";
+import { type AnswerInput, choiceIntent, choiceShowKey, chooseTargetIsCardPick, myChoice } from "~/lib/choice";
+import type { PendingChoiceView, VisibleState } from "~/wire/types";
 
 // A pending choice carrying just the `player` the mapping reads (the rest is form input).
 const pc = (kind: PendingChoiceView["kind"]): PendingChoiceView =>
@@ -182,3 +182,68 @@ describe("choiceIntent", () => {
 // importing *any* .tsx file crashes on solid-js/web's SSR guard the moment its module loads
 // (reproducible with the pre-existing hand molecule, unrelated to this change) — so prompt-forms.tsx
 // can't be imported from a plain .test.ts here.
+
+const baseState = {
+  active_player: 0,
+  can_act: true,
+  combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+  objects: [],
+  players: [],
+  priority: 0,
+  stack: [],
+  step: 0,
+  viewer: 0,
+} as VisibleState;
+
+const scryPc = (player: number): PendingChoiceView =>
+  ({ kind: "scry", player, items: [{ id: 1, label: "Forest" }] }) as PendingChoiceView;
+
+const mayPc = (player: number): PendingChoiceView =>
+  ({ kind: "may_yes_no", player, source: 1, label: "Draw a card" }) as PendingChoiceView;
+
+describe("myChoice", () => {
+  it("returns the pending choice only for the answering seat", () => {
+    const state = { ...baseState, pending_choice: scryPc(0) };
+    expect(myChoice(state, 0)?.kind).toBe("scry");
+    expect(myChoice(state, 1)).toBeNull();
+  });
+
+  it("is null when nothing is pending", () => {
+    expect(myChoice({ ...baseState, pending_choice: null }, 0)).toBeNull();
+  });
+});
+
+describe("choiceShowKey", () => {
+  it("is false with no choice for this seat", () => {
+    expect(choiceShowKey({ ...baseState, pending_choice: scryPc(1) }, 0)).toBe(false);
+    expect(choiceShowKey({ ...baseState, pending_choice: null }, 0)).toBe(false);
+  });
+
+  it("changes when the choice kind changes so a prior form is not reused", () => {
+    expect(choiceShowKey({ ...baseState, pending_choice: scryPc(0) }, 0)).toBe("scry:0");
+    expect(choiceShowKey({ ...baseState, pending_choice: mayPc(0) }, 0)).toBe("may_yes_no:0");
+  });
+});
+
+describe("chooseTargetIsCardPick", () => {
+  it("is true for object-only targets (card image picker)", () => {
+    expect(chooseTargetIsCardPick([{ id: 4, label: "Bear" }])).toBe(true);
+  });
+
+  it("is false for Bojuka Bog-style player seats (need life-orb PickDialog)", () => {
+    expect(chooseTargetIsCardPick([{ id: 0, label: "Player 2", player: 1 }])).toBe(false);
+  });
+
+  it("is false when any item is a player (mixed any-target lists)", () => {
+    expect(
+      chooseTargetIsCardPick([
+        { id: 4, label: "Bear" },
+        { id: 0, label: "Player 1", player: 0 },
+      ]),
+    ).toBe(false);
+  });
+
+  it("is false for an empty list", () => {
+    expect(chooseTargetIsCardPick([])).toBe(false);
+  });
+});

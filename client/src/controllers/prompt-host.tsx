@@ -3,11 +3,11 @@ import { Dynamic } from "solid-js/web";
 import { Button, Field, Modal } from "~/components/atoms";
 import { FORMS, PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
 import { type AnswerInput, choiceIntent } from "~/lib/choice";
-import { choiceShowKey, myChoice } from "~/lib/promptChoice";
+import { choiceShowKey, myChoice } from "~/lib/choice";
 import { isFullscreenPrompt } from "~/lib/promptForm";
 import type { PendingChoiceView, VisibleState, WireIntent } from "~/wire/types";
 
-export { choiceShowKey, myChoice } from "~/lib/promptChoice";
+export { choiceShowKey, myChoice } from "~/lib/choice";
 
 // True when the event target is itself a focusable interactive control (a text field, a button, or
 // a `role="button"` tile like a Hand bar card) — anything that already owns Enter/Space natively, so

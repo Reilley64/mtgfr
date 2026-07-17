@@ -237,6 +237,9 @@ export interface ActionExecutionDeps {
   onHintUsed: () => void;
 }
 
+/** Return shape of [`useActionExecution`] — the internal chrome/session port (not Board). */
+export type ActionExecution = ReturnType<typeof useActionExecution>;
+
 /** Staged targeting, modal casts, cost picks, and take_action submission. */
 export function useActionExecution(deps: ActionExecutionDeps) {
   const [staged, setStaged] = createSignal<StagedAction | null>(null);

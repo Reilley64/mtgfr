@@ -12,7 +12,7 @@ import { cn } from "~/lib/cn";
 import { type InspectPin, pinFromHit } from "~/lib/inspect";
 import { modeAvailable } from "~/lib/modal";
 import { openModalWhenReady } from "~/lib/modalDialog";
-import { chooseTargetIsCardPick } from "~/lib/promptChoice";
+import { chooseTargetIsCardPick } from "~/lib/choice";
 import { cardPickIsSearchable, filterChoiceItems, searchableChoiceItems } from "~/lib/promptForm";
 import { imageUrlByPrint } from "~/lib/scryfall";
 import {
