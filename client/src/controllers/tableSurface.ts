@@ -69,6 +69,8 @@ export type TableSurfaceDeps = {
   playEntrances?: Accessor<Map<number, Vec>>;
   /** Zone-pile BF entrances. Defaults to empty. */
   zonePileEntrances?: Accessor<Map<number, { zone: ZonePileKind; seat: number }>>;
+  /** Land permanent id → hand card id (`land_played.from`) for play-origin matching. */
+  landPlays?: Accessor<Map<number, number>>;
   /** Object ids that were on the stack in the prior frame (token creator hybrid). */
   stackObjectIds?: Accessor<Set<number>>;
   /** Live stack length for stack→battlefield entrance seed. */
@@ -472,6 +474,8 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   let playEntrancesLocal = new Map<number, Vec>();
   let tapAnim = new Map<number, number>();
   const [animTick, setAnimTick] = createSignal(0);
+  /** Bumps when a late takePlayEntrance lands after cards already laid out. */
+  const [entranceBump, setEntranceBump] = createSignal(0);
   let rafId = 0;
   let lastFrame = 0;
 
@@ -484,6 +488,8 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
     if (!origin) return;
     pendingPlayOrigins.delete(fromCardId);
     playEntrancesLocal.set(permanentId, origin);
+    // Re-run seeding if the layout effect already ran this tick without the origin.
+    setEntranceBump((n) => n + 1);
   };
 
   const clearPlayOrigin = (cardId: number) => {
@@ -509,6 +515,7 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   const fromStack = () => deps.fromStack?.() ?? new Set<number>();
   const fromStackExit = () => deps.fromStackExit?.() ?? new Set<number>();
   const tokenCreators = () => deps.tokenCreators?.() ?? new Map<number, number>();
+  const landPlays = () => deps.landPlays?.() ?? new Map<number, number>();
   const playEntrances = () => {
     const fromDeps = deps.playEntrances?.() ?? new Map<number, Vec>();
     if (playEntrancesLocal.size === 0) return fromDeps;
@@ -520,16 +527,32 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   const stackObjectIds = () => deps.stackObjectIds?.() ?? new Set<number>();
   const stackLength = () => deps.stackLength?.() ?? 0;
 
+  /** Match land_played.from → pending play origin before seeding (same tick as layout). */
+  const bindLandPlayEntrances = (targets: readonly RenderCard[]) => {
+    const present = new Set(targets.map((c) => c.id));
+    for (const [permanent, from] of landPlays()) {
+      if (!present.has(permanent)) continue;
+      if (playEntrancesLocal.has(permanent)) continue;
+      const origin = pendingPlayOrigins.get(from);
+      if (!origin) continue;
+      pendingPlayOrigins.delete(from);
+      playEntrancesLocal.set(permanent, origin);
+    }
+  };
+
   createEffect(() => {
+    entranceBump();
     const targets = deps.cards();
-    if (reducedMotion() || anim.size === 0) {
+    landPlays(); // subscribe — land provenance arrives with the same delta as new BF cards
+    bindLandPlayEntrances(targets);
+    if (reducedMotion()) {
       anim = snapAll(targets);
       tapAnim = tapTargets(targets);
       playEntrancesLocal = new Map();
       setAnimTick((t) => t + 1);
       return;
     }
-    seedEntrances(anim, targets, {
+    const entranceOpts = {
       moves: zoneMoves(),
       fromStack: fromStack(),
       fromStackExit: fromStackExit(),
@@ -542,7 +565,18 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
       camera: camera(),
       me: deps.me(),
       playerCount: deps.playerCount(),
-    });
+    };
+    // First paint: seed provenance into an empty anim, then snap anything left to layout.
+    // (A blanket snapAll first would mark ids present and skip play/stack entrances.)
+    if (anim.size === 0) {
+      seedEntrances(anim, targets, entranceOpts);
+      for (const c of targets) {
+        if (!anim.has(c.id)) anim.set(c.id, { x: c.x, y: c.y });
+      }
+      tapAnim = tapTargets(targets);
+    } else {
+      seedEntrances(anim, targets, entranceOpts);
+    }
     playEntrancesLocal = new Map();
     // Paint immediately at entrance seeds — don't wait for the first rAF tick.
     setAnimTick((t) => t + 1);

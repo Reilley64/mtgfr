@@ -481,6 +481,82 @@ describe("useTableSurface", () => {
     });
   });
 
+  it("seeds playEntrances from deps on newly appearing cards", () => {
+    const existing = logical(1, 100, 100);
+    const land = logical(3, 400, 400);
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    let dispose!: () => void;
+    let setCards!: (cs: RenderCard[]) => void;
+    let surface!: ReturnType<typeof useTableSurface>;
+    try {
+      createRoot((d) => {
+        dispose = d;
+        const [cards, sc] = createSignal<RenderCard[]>([existing]);
+        setCards = sc;
+        surface = useTableSurface({
+          me: () => 0,
+          playerCount: () => 2,
+          cards,
+          handBarH: 210,
+          initialSize: { x: 800, y: 600 },
+          reducedMotion: () => false,
+          playEntrances: () => new Map([[3, { x: 12, y: 34 }]]),
+        });
+      });
+      setCards([existing, land]);
+      expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(
+        expect.objectContaining({ id: 3, x: 12, y: 34 }),
+      );
+      dispose();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("binds landPlays to pending play origins before seeding entrances", () => {
+    const existing = logical(1, 100, 100);
+    const land = logical(3, 400, 400);
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    let dispose!: () => void;
+    let setCards!: (cs: RenderCard[]) => void;
+    let setLands!: (m: Map<number, number>) => void;
+    let surface!: ReturnType<typeof useTableSurface>;
+    try {
+      // Mount outside the updates under test — Solid defers effects while still inside createRoot.
+      createRoot((d) => {
+        dispose = d;
+        const [cards, sc] = createSignal<RenderCard[]>([existing]);
+        const [lands, sl] = createSignal(new Map<number, number>());
+        setCards = sc;
+        setLands = sl;
+        surface = useTableSurface({
+          me: () => 0,
+          playerCount: () => 2,
+          cards,
+          handBarH: 210,
+          initialSize: { x: 800, y: 600 },
+          reducedMotion: () => false,
+          landPlays: lands,
+        });
+      });
+      expect(surface.drawnCards().find((c) => c.id === 1)?.x).toBe(100);
+
+      surface.notePlayOrigin(9, { x: 12, y: 34 });
+      // Unbatched updates: land provenance must not consume the origin before the permanent exists.
+      setLands(new Map([[3, 9]]));
+      setCards([existing, land]);
+
+      expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(
+        expect.objectContaining({ id: 3, x: 12, y: 34 }),
+      );
+      dispose();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   describe("seedEntrances", () => {
     const cam = fitCamera({ x: 800, y: 600 }, 2, 210);
     const baseOpts = {

@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { applyDelta, game, resetGame, resolvedFromStack, setGame, zoneMoves } from "~/store";
-import type { ObjectView, StreamFrame, VisibleEvent, VisibleState } from "~/wire/types";
+import {
+  applyDelta,
+  applySnapshot,
+  game,
+  landPlayFrom,
+  priorStackObjectIds,
+  resetGame,
+  resolvedFromStack,
+  setGame,
+  zoneMoves,
+} from "~/store";
+import type { ObjectView, StackObjectView, StreamFrame, VisibleEvent, VisibleState } from "~/wire/types";
 
 /** The delta payload (delta arm of `StreamFrame` minus its `frame` tag; the generator inlines it). */
 type DeltaEnvelope = Omit<Extract<StreamFrame, { frame: "delta" }>, "frame">;
@@ -325,6 +335,50 @@ describe("applyDelta", () => {
       // And it resets with the next delta, like the move map.
       applyDelta(mkDelta(2, [{ kind: "priority_passed", player: 0 }]));
       expect(resolvedFromStack().size).toBe(0);
+    });
+
+    it("records land_played permanent → hand card for play-origin matching", () => {
+      applyDelta(
+        mkDelta(1, [{ kind: "land_played", from: 9, permanent: 3, player: 0 }], [
+          mkObject({ id: 3, name: "Forest", kind: { kind: "land" } }),
+        ]),
+      );
+      expect(landPlayFrom().get(3)).toBe(9);
+      applyDelta(mkDelta(2, [{ kind: "priority_passed", player: 0 }]));
+      expect(landPlayFrom().size).toBe(0);
+    });
+  });
+
+  describe("priorStackObjectIds", () => {
+    const stackSpell = (source: number): StackObjectView => ({
+      controller: 0,
+      kind: "spell",
+      label: "Spell",
+      source,
+    });
+
+    it("freezes the pre-delta stack so resolving creators still match this frame", () => {
+      applySnapshot(1, { ...mkState(), stack: [stackSpell(30)] });
+      // Spell resolves off the stack in this delta — post-state stack is empty.
+      applyDelta({
+        ...mkDelta(2, [{ kind: "token_created", controller: 0, token: 99, creator: 30 }]),
+        state: { ...mkState(), stack: [] },
+      });
+      expect(priorStackObjectIds().has(30)).toBe(true);
+      // Next delta: prior was already empty after the resolve.
+      applyDelta(mkDelta(3, [{ kind: "priority_passed", player: 0 }]));
+      expect(priorStackObjectIds().has(30)).toBe(false);
+    });
+
+    it("clears on snapshot", () => {
+      applySnapshot(1, { ...mkState(), stack: [stackSpell(30)] });
+      applyDelta({
+        ...mkDelta(2, []),
+        state: { ...mkState(), stack: [] },
+      });
+      expect(priorStackObjectIds().has(30)).toBe(true);
+      applySnapshot(3, mkState());
+      expect(priorStackObjectIds().size).toBe(0);
     });
   });
 });

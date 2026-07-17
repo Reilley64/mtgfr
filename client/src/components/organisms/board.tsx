@@ -170,20 +170,13 @@ export default function Board() {
     fromStackExit: leftStackToPile,
     tokenCreators: tokenCreatorMap,
     zonePileEntrances: zonePileEntranceMap,
+    landPlays: landPlayFrom,
     stackObjectIds: priorStackObjectIds,
     stackLength: () => game.state?.stack.length ?? 0,
     selectedId,
   });
   const { camera, size, setSize, hitCard, hitSeat, dragging, drawnCards, inspectPin, clearInspect, tryPinInspect } =
     surface;
-
-  // Match land_played.from → permanent id into the surface play-entrance map.
-  createEffect(() => {
-    game.seq;
-    for (const [permanent, from] of landPlayFrom()) {
-      surface.takePlayEntrance(permanent, from);
-    }
-  });
 
   /** Hand-card id → screen origin for stack DOM play-in; remapped to spell id on spell_cast. */
   const stackScreenByCard = new Map<number, { x: number; y: number }>();

@@ -46,6 +46,7 @@ export function resetGame(): void {
   zonePileEntrances = new Map();
   stackEntrances = new Map();
   prevStackIds = new Set();
+  stackIdsAtDeltaStart = new Set();
   setGame({ state: null, seq: 0, reject: null, log: [] });
 }
 
@@ -60,6 +61,7 @@ export function applySnapshot(seq: number, state: VisibleState): void {
     zonePileEntrances = new Map();
     stackEntrances = new Map();
     prevStackIds = new Set(state.stack.map((s) => s.source));
+    stackIdsAtDeltaStart = new Set();
     setGame({ state, seq });
   }
 }
@@ -101,7 +103,7 @@ export function applyDelta(delta: DeltaEnvelope): void {
   }));
   const lines = [...eventLines, ...autoLines];
   // Provenance for the canvas glide, rebuilt before the board re-lays out.
-  const prevStack = prevStackIds;
+  const priorStack = prevStackIds;
   ({
     moves: moveMap,
     fromStack: stackResolved,
@@ -110,7 +112,9 @@ export function applyDelta(delta: DeltaEnvelope): void {
     landPlays,
     zonePileEntrances,
     stackEntrances,
-  } = extractProvenance(delta.events, prevStack, game.state?.viewer ?? 0));
+  } = extractProvenance(delta.events, priorStack, game.state?.viewer ?? 0));
+  // Freeze the pre-delta stack for token-creator seeding this frame (before advancing).
+  stackIdsAtDeltaStart = priorStack;
   prevStackIds = new Set(delta.state.stack.map((s) => s.source));
   setGame({ state: delta.state, seq: delta.seq });
   if (lines.length) setGame("log", (log) => [...log, ...lines].slice(-200));
@@ -173,10 +177,16 @@ export function stackEntranceMap(): Map<number, { controller: number; from: numb
   return stackEntrances;
 }
 
-/** Stack object ids from the last applied state (for stack-exit / token-creator hybrid). */
+/** Stack object ids from the last applied state (next delta's prior). */
 let prevStackIds = new Set<number>();
+/**
+ * Stack object ids *before* the most recent delta — used for token creator hybrid
+ * (resolving stack object → overlay origin). Distinct from `prevStackIds`, which advances
+ * to the post-delta stack as soon as the delta is applied.
+ */
+let stackIdsAtDeltaStart = new Set<number>();
 export function priorStackObjectIds(): Set<number> {
-  return prevStackIds;
+  return stackIdsAtDeltaStart;
 }
 
 /** One pass over a delta's events building glide-provenance structures. */
