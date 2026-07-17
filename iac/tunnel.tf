@@ -94,7 +94,7 @@ resource "kubernetes_deployment_v1" "cloudflared" {
   }
 
   spec {
-    # HA for the connector, not for capacity — deploy PRD target topology.
+    # Replica count is operator-chosen (default 1); 2+ is connector HA, not capacity.
     replicas = var.cloudflared_replicas
 
     selector {
