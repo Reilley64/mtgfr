@@ -12,8 +12,8 @@ COPY --from=deps /client/node_modules ./client/node_modules
 COPY client ./client
 COPY proto ./proto
 WORKDIR /src/client
-# ADR 0032: Effect-gRPC + protobuf-es clients are gitignored; regenerate from proto here.
-RUN sh scripts/gen.sh
+# Effect-gRPC + protobuf-es clients are gitignored; regenerate from proto here.
+RUN PATH="$PWD/node_modules/.bin:$PATH" ./node_modules/.bin/buf generate --template ../proto/buf.gen.yaml ../proto
 # Empty `VITE_CARD_CDN` → Scryfall `named` fallback in the client.
 ARG VITE_CARD_CDN=
 ENV VITE_CARD_CDN=$VITE_CARD_CDN
