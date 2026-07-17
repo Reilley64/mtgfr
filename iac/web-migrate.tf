@@ -42,8 +42,8 @@ resource "kubernetes_job_v1" "edh_web_migrate" {
   }
 
   spec {
-    backoff_limit              = 1
-    ttl_seconds_after_finished = 300
+    backoff_limit              = 2
+    ttl_seconds_after_finished = 3600
 
     template {
       metadata {
@@ -98,24 +98,17 @@ resource "kubernetes_job_v1" "edh_web_migrate" {
 
         container {
           name              = "migrate"
-          image             = "oven/bun:1"
+          image             = "oven/bun:1.3.14"
           image_pull_policy = "IfNotPresent"
           working_dir       = "/work"
           command           = ["/bin/sh", "-ec"]
+          # drizzle-kit migrate needs a Postgres driver (`pg`) at runtime — kit alone is not enough.
           args = [<<-EOT
             set -e
             mkdir -p /work/db
             cp -a /migrations/. /work/db/migrations/
             cat > /work/package.json <<'PKG'
-            {
-              "name": "edh-web-migrate",
-              "private": true,
-              "type": "module",
-              "devDependencies": {
-                "drizzle-kit": "0.31.10",
-                "drizzle-orm": "0.45.2"
-              }
-            }
+            {"name":"edh-web-migrate","private":true,"type":"module","dependencies":{"drizzle-orm":"0.45.2","pg":"8.16.3"},"devDependencies":{"drizzle-kit":"0.31.10"}}
             PKG
             cat > /work/drizzle.config.ts <<'CFG'
             import { defineConfig } from "drizzle-kit";
@@ -166,5 +159,6 @@ resource "kubernetes_job_v1" "edh_web_migrate" {
     kubernetes_job_v1.postgres_create_web_db,
     kubernetes_config_map_v1.edh_web_migrations,
     kubernetes_secret_v1.mtgfr_db,
+    kubernetes_network_policy_v1.postgres_ingress,
   ]
 }
