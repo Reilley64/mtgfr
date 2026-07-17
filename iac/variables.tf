@@ -26,6 +26,30 @@ variable "namespace_edh" {
   default     = "edh"
 }
 
+variable "namespace_observability" {
+  description = "Namespace for self-hosted LGTM (Grafana/Loki/Tempo/Prometheus) + Alloy."
+  type        = string
+  default     = "observability"
+}
+
+variable "observability_storage_size" {
+  description = "PVC size for Loki, Tempo, and Prometheus (local-path on k3s)."
+  type        = string
+  default     = "10Gi"
+}
+
+variable "otel_exporter_otlp_endpoint" {
+  description = "OTLP HTTP endpoint for edh-api and edh-web. Empty disables export in the chart (local/dev)."
+  type        = string
+  default     = "http://alloy.observability.svc:4318"
+}
+
+variable "faro_collect_upstream" {
+  description = "Alloy Faro collect URL the BFF proxies /api/faro/collect to."
+  type        = string
+  default     = "http://alloy.observability.svc:12347/collect"
+}
+
 # ── Cloudflare ───────────────────────────────────────────────────────────────────────────────────
 
 variable "cloudflare_api_token" {

@@ -54,6 +54,8 @@ resource "helm_release" "edh_application" {
                 { name = "corsOrigin", value = var.cors_origin },
                 { name = "logLevel", value = var.log_level },
                 { name = "dbSecretName", value = kubernetes_secret_v1.mtgfr_db.metadata[0].name },
+                { name = "otelExporterOtlpEndpoint", value = var.otel_exporter_otlp_endpoint },
+                { name = "faroCollectUpstream", value = var.faro_collect_upstream },
               ]
             }
           }
@@ -78,6 +80,7 @@ resource "helm_release" "edh_application" {
   # Migrate Jobs (image-hash names) finish before helm params update.
   depends_on = [
     helm_release.argocd,
+    helm_release.alloy,
     kubernetes_job_v1.edh_migrate,
     kubernetes_job_v1.postgres_create_web_db,
     kubernetes_job_v1.edh_web_migrate,

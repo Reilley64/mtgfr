@@ -17,6 +17,7 @@ import {
   sweepWebDb,
   toLobbyView,
 } from "~/lib/lobbyStore";
+import { runWithTraceparent } from "~/wire/grpcClient";
 
 /** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */
 const SESSION_COOKIE = "session";
@@ -175,10 +176,10 @@ async function forward(event: APIEvent) {
     return new Response("Not Found", { status: 404 });
   }
 
-  const lobby = await handleLobby(event, path);
-  if (lobby) return lobby;
-
-  return new Response("Not Found", { status: 404 });
+  const traceparent = event.request.headers.get("traceparent");
+  return runWithTraceparent(traceparent, () => handleLobby(event, path)).then(
+    (lobby) => lobby ?? new Response("Not Found", { status: 404 }),
+  );
 }
 
 export const GET = forward;

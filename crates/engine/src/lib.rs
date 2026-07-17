@@ -208,7 +208,19 @@ impl Game {
     /// After the action: state-based actions are swept to a fixpoint, then any newly-triggered
     /// abilities are put on the stack (which may raise a choice) — both happen when a
     /// player would receive priority.
+    #[tracing::instrument(
+        name = "engine.submit",
+        level = "debug",
+        skip(self, intent),
+        fields(accepted = tracing::field::Empty)
+    )]
     pub fn submit(&mut self, intent: Intent) -> Result<Vec<Event>, Reject> {
+        let result = self.submit_inner(intent);
+        tracing::Span::current().record("accepted", result.is_ok());
+        result
+    }
+
+    fn submit_inner(&mut self, intent: Intent) -> Result<Vec<Event>, Reject> {
         // While a choice is pending, only an answer intent from that player is legal (the
         // specific handler rejects an answer that doesn't match the pending choice's kind).
         // Conceding is the exception: a player must be able to quit whoever the game is waiting on,
