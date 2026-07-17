@@ -11,8 +11,8 @@ import { useAtom, useAtomSet, useAtomValue } from "@effect/atom-solid";
 import { useNavigate, useParams } from "@solidjs/router";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Atom from "effect/unstable/reactivity/Atom";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
+import * as Atom from "effect/unstable/reactivity/Atom";
 import {
   createEffect,
   createMemo,

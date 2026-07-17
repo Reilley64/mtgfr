@@ -7,8 +7,8 @@
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
 import * as Option from "effect/Option";
-import * as Atom from "effect/unstable/reactivity/Atom";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
+import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import type { CatalogCard, Me } from "~/api/generated";
 import { decksAtom } from "~/atoms";
