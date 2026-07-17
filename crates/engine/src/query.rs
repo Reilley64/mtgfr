@@ -31,7 +31,7 @@ impl Game {
     /// for anyone carrying removal (you can still cast it while stopped for another reason).
     /// Exception: after attackers are declared, each defending seat's declare-attackers
     /// priority lists empty-stack instants so auto-pass can stop for pre-blocker responses
-    /// without forcing a dead stop on helpless defenders (ADR 0029).
+    /// without forcing a dead stop on helpless defenders.
     /// Once something is ON the stack, an instant-speed cast (an instant, or flash — CR
     /// CR 702.8a) counts too: that reaction window is the whole point of the stack, and the
     /// per-player "don't care" yield is the smooth-flow relief valve. Affordability is

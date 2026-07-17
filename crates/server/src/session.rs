@@ -1083,6 +1083,70 @@ mod tests {
     }
 
     #[test]
+    fn helpless_attacked_seat_auto_passes_without_turn_yield() {
+        use engine::{Game, Intent, MeaningfulAction, Step};
+
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = Game::new();
+        let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
+        let _blocker = game.spawn_on_battlefield(PlayerId(1), bear());
+        table.game = Some(game);
+
+        // No turn yield — auto-pass must still skip a dead declare-attackers stop.
+        assert!(!table.turn_yields[1]);
+        advance_table_to_step(&mut table, Step::DeclareAttackers);
+        let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, PlayerId(1))],
+        });
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.current_step(),
+            Step::DeclareBlockers,
+            "helpless defender auto-passes declare-attackers priority even without turn yield"
+        );
+        assert!(
+            game.meaningful_actions(PlayerId(1))
+                .contains(&MeaningfulAction::DeclareBlockers),
+            "P1 still owes blockers"
+        );
+    }
+
+    #[test]
+    fn unaffordable_instant_does_not_stop_attack_response() {
+        use engine::{Game, Intent, Step};
+
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = Game::new();
+        let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
+        // Shock in hand but no Mountain — not castable, so not meaningful.
+        let _shock = game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
+        table.game = Some(game);
+
+        advance_table_to_step(&mut table, Step::DeclareAttackers);
+        let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, PlayerId(1))],
+        });
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert!(
+            !game.has_meaningful_action(PlayerId(1)),
+            "unaffordable Shock must not count as a response"
+        );
+        assert_ne!(
+            game.current_step(),
+            Step::DeclareAttackers,
+            "unaffordable removal must not force a declare-attackers priority stop"
+        );
+    }
+
+    #[test]
     fn empty_attack_declaration_does_not_clear_turn_yield() {
         use engine::{Event, Game, Intent, Step};
 

@@ -237,7 +237,7 @@ impl Game {
     /// window or at sorcery speed. Execute ([`CastPlayKind::OneClick`]/[`CastPlayKind::Full`])
     /// follows [`Game::cast`]: any instant-speed spell may be cast whenever its caster holds
     /// priority (CR 117.1a). The post-attack declare-attackers window is a reaction window for
-    /// each defending player (ADR 0029) so empty-stack removal can stop auto-pass before blockers.
+    /// each defending player so empty-stack removal can stop auto-pass before blockers (ADR 0007).
     pub(crate) fn cast_timing_ok(
         &self,
         player: PlayerId,
