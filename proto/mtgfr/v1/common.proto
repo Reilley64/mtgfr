@@ -4,9 +4,7 @@ package mtgfr.v1;
 
 option java_multiple_files = true;
 
-// Shared wire vocabulary used by catalog/intent/stream (ADR 0032): targets, combat/damage
-// shapes, mode choices, mana costs/kinds/pools, and the small (id, amount) pairs used to
-// carry a divided total.
+// Shared wire vocabulary: targets, combat/damage, mode choices, mana, amount pairs.
 
 // Wire form of `engine::Target`: a chosen target is either a permanent (`object`) or a player.
 message WireTarget {

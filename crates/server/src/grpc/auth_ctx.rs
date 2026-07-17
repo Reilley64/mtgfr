@@ -1,6 +1,4 @@
-//! gRPC session auth: resolve the caller from the `x-session-token` metadata key, mirroring the
-//! cookie-based [`crate::auth::AuthUser`] extractor (ADR 0032). Cookies terminate at the BFF —
-//! by the time a call reaches tonic, the session token travels as gRPC metadata instead.
+//! gRPC session auth via `x-session-token` metadata (cookies terminate at the BFF).
 //!
 // ponytail: `tonic::Status` is a large `Err` (it carries the RPC status shape); boxing it here
 // buys nothing since every caller immediately maps it into a `Response` anyway (see

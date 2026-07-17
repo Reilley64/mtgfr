@@ -1,7 +1,4 @@
-// The BFF's lobby + meta surface (ADR 0032). Auth/decks/cards/game no longer proxy here — the
-// browser calls `/api/rpc/**` (see `~/routes/api/rpc/[...path].ts`), which dials tonic directly.
-// This route keeps only what stays BFF-local: pre-game lobby (Drizzle/`mtgfr_web`) and the two
-// `meta/*` endpoints (health/version).
+// BFF lobby + meta surface. Auth/decks/cards/game go through `/api/rpc/**`.
 
 import type { APIEvent } from "@solidjs/start/server";
 import { getCookie } from "vinxi/http";
@@ -21,8 +18,7 @@ import {
   toLobbyView,
 } from "~/lib/lobbyStore";
 
-/** The BFF's own session cookie (ADR 0032) — cookies terminate here; every downstream call
- * carries the token as gRPC metadata instead (`~/wire/grpcClient`). */
+/** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */
 const SESSION_COOKIE = "session";
 
 function json(data: unknown, status = 200): Response {

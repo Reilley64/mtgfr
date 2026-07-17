@@ -12,14 +12,13 @@ pub struct Settings {
     pub host: String,
     /// Default `8080`.
     pub port: u16,
-    /// The tonic gRPC port (ADR 0032) — the wire contract's authoritative transport. Default
-    /// `50051`.
+    /// The tonic gRPC port. Default `50051`.
     pub grpc_port: u16,
     /// From `config/mtgfr.toml` or `DATABASE_URL` — no built-in default.
     pub database_url: String,
     /// Stable per-Deployment id (e.g. `edh-api`), not the pod name. Default `local`.
     pub instance_id: String,
-    /// This pod's routable DNS name, handed back by `POST /tables/seed/v1` so the BFF can pin
+    /// This pod's routable DNS name, handed back by `Tables.Seed` so the BFF can pin
     /// later hops for the table to the pod that owns its in-memory game. Default `""` — the seed
     /// handler falls back to `http://{host}:{port}` (dev, single process).
     pub pod_dns: String,

@@ -1,7 +1,5 @@
-//! Integration tests for the gRPC services (ADR 0032): drive the real service impls (auth
-//! metadata, DB writes, the live registry) the same way tonic would after decoding a request off
-//! the wire — no transport needed to exercise the handler logic itself. A separate smoke test at
-//! the bottom proves `grpc::serve` actually binds and accepts connections.
+//! Integration tests for the gRPC services: drive the real service impls without a transport.
+//! A smoke test at the bottom proves `grpc::serve` binds and accepts connections.
 
 use tonic::{Request, Status};
 
@@ -13,8 +11,7 @@ async fn test_state() -> AppState {
     AppState::for_test(db::connect("sqlite::memory:").await.expect("sqlite"))
 }
 
-/// A request carrying `token` as the `x-session-token` metadata, mirroring what the BFF sends
-/// after terminating the browser's cookie (ADR 0032).
+/// A request carrying `token` as the `x-session-token` metadata.
 fn authed<T>(msg: T, token: &str) -> Request<T> {
     let mut req = Request::new(msg);
     req.metadata_mut()
@@ -402,8 +399,7 @@ async fn next_frame(
 }
 
 /// The delta from a submitted intent reaches the same `Game.Stream` connection that was already
-/// open before the intent was submitted — mirrors the removed HTTP integration test for the SSE
-/// stream (ADR 0032).
+/// open before the intent was submitted.
 #[tokio::test]
 async fn game_stream_emits_snapshot_then_a_delta_on_intent() {
     use pb::game_server::Game;
@@ -615,9 +611,7 @@ async fn deck_row(state: &AppState, user_id: i64) -> i64 {
         .id
 }
 
-/// A bare `serve()` bind-and-accept smoke test: proves the server actually stands up on a real
-/// TCP port with every service registered, without needing a generated client (the build only
-/// emits server stubs — ADR 0032). Bounded so a wiring regression fails fast instead of hanging.
+/// Bind-and-accept smoke test for `grpc::serve` (no generated client required).
 #[tokio::test]
 async fn serve_binds_and_accepts_a_connection() {
     let state = test_state().await;

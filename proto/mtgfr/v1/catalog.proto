@@ -6,9 +6,7 @@ import "mtgfr/v1/common.proto";
 
 option java_multiple_files = true;
 
-// Deck building and the card catalog (ADR 0032): a deck is user-authored data (commander + a
-// list of `(card, count)`); the catalog exposes the pool so the builder can browse it, plus the
-// lobby-seed request/response the BFF sends once a table's host starts the game.
+// Decks, card catalog, and lobby seed request/response.
 
 // One line of a decklist: a Card id, how many copies, and the chosen Printing UUID.
 message DeckCardEntry {

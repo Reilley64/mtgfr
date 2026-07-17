@@ -1,8 +1,4 @@
-// BFF-side helpers the lobby route handler (`~/routes/api/[...path].ts`) calls against the API:
-// `fetchMe`/`fetchDeckName`/`seedGame` now dial tonic over gRPC (ADR 0032) — the BFF's session
-// cookie becomes the `x-session-token` metadata the gRPC services authenticate with. Only
-// `fetchApiVersion` stays HTTP: health stays Axum's `/health/live` on :8080 (ADR 0032's
-// "health stays HTTP").
+// BFF helpers for the lobby route: me/deck/seed over gRPC; version stays HTTP `/health/live`.
 
 import { GrpcCallError, grpcClient, httpStatusOf } from "~/wire/grpcClient";
 import type { SaveDeckRequest, SeedRequest, SeedResponse } from "~/wire/types";
@@ -11,9 +7,7 @@ export function apiUpstream(): string {
   return (process.env.API_UPSTREAM ?? "http://127.0.0.1:8080").replace(/\/$/, "");
 }
 
-/** The default (unrouted) tonic gRPC address: `GRPC_UPSTREAM` if set, else `apiUpstream()`'s
- * host on the gRPC port (50051) — the same instance as the default HTTP upstream in dev/single
- * process, since both come up together (`main.rs::run_serve`). */
+/** Default tonic address: `GRPC_UPSTREAM`, else `apiUpstream()`'s host on `:50051`. */
 export function grpcUpstream(): string {
   if (process.env.GRPC_UPSTREAM) return process.env.GRPC_UPSTREAM.replace(/\/$/, "");
   return `${new URL(apiUpstream()).hostname}:50051`;
@@ -33,8 +27,7 @@ export function parseMePayload(body: unknown): Me | null {
 export async function fetchMe(sessionToken: string | null): Promise<Me | null> {
   if (!sessionToken) return null;
   try {
-    const me = await grpcClient(grpcUpstream()).auth.getMe(sessionToken);
-    return parseMePayload(me);
+    return await grpcClient(grpcUpstream()).auth.getMe(sessionToken);
   } catch {
     return null;
   }

@@ -1,6 +1,4 @@
-// Auth calls on the wire client (ADR 0032: `/api/rpc/auth/*`, backed by tonic). Failures arrive
-// as `HttpClientError` carrying the response, so we assert on the HTTP status via `statusOf`
-// rather than a tagged error.
+// Auth calls on `/api/rpc/auth/*`. Assert failures via `statusOf`.
 
 import * as Result from "effect/Result";
 import { beforeAll, describe, expect, it } from "vitest";

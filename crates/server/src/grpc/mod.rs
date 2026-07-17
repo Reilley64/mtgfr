@@ -1,11 +1,5 @@
-//! The tonic gRPC server (ADR 0032): `.proto` is the sole wire contract, and this module hosts
-//! every RPC on its own port (`Settings::grpc_port`) alongside the legacy Axum `app()` — a hard
-//! cutover to gRPC-only happens once the BFF client lands (see `docs/adr/0032-*.md`).
-//!
-//! Each `*_svc` submodule implements one proto service by calling the same transport-agnostic
-//! handler logic the HTTP routes call (`game_loop::*_core`, `decks_api::*_core`,
-//! `lobby::seed_table_core`, `stream::subscribe`) — HTTP and gRPC can't drift apart on behavior,
-//! only on wire shape.
+//! The tonic gRPC server: `.proto` is the sole wire contract, served on `Settings::grpc_port`.
+//! Each `*_svc` calls the same transport-agnostic cores as before (`*_core`, `stream::subscribe`).
 
 pub mod auth_ctx;
 mod auth_svc;
@@ -17,8 +11,7 @@ mod tables_svc;
 #[cfg(test)]
 mod tests;
 
-/// Generated types (`Empty`, `Ack`, `StreamFrame`, …) and service traits/servers from
-/// `proto/mtgfr/v1/*.proto` (native payloads — no JSON-in-string wrappers).
+/// Generated types and service traits from `proto/mtgfr/v1/*.proto`.
 pub mod pb {
     tonic::include_proto!("mtgfr.v1");
 }

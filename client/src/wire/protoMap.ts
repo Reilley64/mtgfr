@@ -1,15 +1,11 @@
-// The BFF-side adapter between the generated Effect-gRPC proto shapes (`~/wire/generated`) and
-// the hand-maintained browser wire shapes (`~/wire/types`, ADR 0032). Effect-gRPC decodes proto
-// messages into camelCase JS objects with `bigint` for int64 and `{ case, value }` oneofs nested
-// under a field (`kind` | `intent` | `event` | `choice` | `frame`); the browser wire shapes are
-// snake_case tagged unions (`{ kind: "play_land", ... }`) to stay serde-compatible on the wire to
-// the browser. Rather than hand-write a converter per message (the game-state graph is large and
-// recursive — see `VisibleState`), `fromProtoWire`/`toProtoWire` walk the two shapes structurally:
-// bigint → number, camelCase ↔ snake_case, and a handful of shape-recognizable patterns
-// (`ObjectIdList`, `ObjectAmount`/`PlayerAmount`, the oneof wrapper). This buys one conversion that
-// covers every message instead of ~40 hand-maintained ones, at the cost of a few structural
-// heuristics documented inline where they could otherwise be ambiguous.
+// Proto ↔ browser wire: camelCase/`bigint`/`{case,value}` oneofs ↔ snake_case tagged unions.
+// Structural walk with heuristics for oneofs, `ObjectIdList`, and amount tuples.
 
+import type {
+  SaveDeckRequest as ProtoSaveDeckRequest,
+  SeedRequest as ProtoSeedRequest,
+} from "~/wire/generated/mtgfr/v1/catalog_effect_grpc";
+import type { IntentEnvelope as ProtoIntentEnvelope } from "~/wire/generated/mtgfr/v1/intent_effect_grpc";
 import type {
   CatalogCard,
   DeckDetail,
@@ -19,19 +15,11 @@ import type {
   SeedRequest,
   SeedResponse,
   StreamFrame,
-  WireIntent,
 } from "~/wire/types";
 
-/** Oneof wrapper field names the wire schemas use. All but `frame` flatten to a `kind` tag on the
- * browser side (`StreamFrame` keeps its own field name since it's already called `frame` there). */
 const ONEOF_WRAPPER_KEYS = new Set(["kind", "intent", "event", "choice", "frame"]);
 
-/** `assignment`/`players` arrays whose *elements* need the `ObjectAmount`/`PlayerAmount` struct →
- * tuple collapse (proto has no tuple type, so divided-damage events carry `{id,amount}` structs
- * where the browser wire format uses `[id, amount]`). Only inbound (`VisibleEvent`) fields use this
- * shape — outbound `WireIntent` damage-assignment fields carry `WireDamage`/`WireSpellDamage`
- * structs already, which don't match the `{id,amount}`/`{player,amount}` shape below and pass
- * through unchanged. */
+/** Inbound event fields whose elements are `{id,amount}` / `{player,amount}` → `[id, amount]` tuples. */
 const AMOUNT_TUPLE_KEYS = new Set(["assignment", "players"]);
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -60,14 +48,7 @@ function toAmountTuple(item: unknown): unknown {
   return convertFromProto(item);
 }
 
-/** Detects a oneof wrapper: a message whose *entire* content is one field named `kind`/`intent`/
- * `event`/`choice`/`frame` holding an effect-grpc `{ case, value }` union (e.g. `WireTarget`,
- * `WireKind`, `WireIntent`, `VisibleEvent`, `PendingChoiceView`, `StreamFrame`). Detecting it
- * structurally — rather than by message name — is what lets one function flatten all of them.
- * Returns `null` when `value` isn't shaped like a oneof wrapper at all (caller falls through to
- * normal field-by-field conversion), or a single-element tuple `[result]` when it is — `result`
- * is `undefined` for an unset oneof (CR-less "this field is simply absent" case), distinguishing
- * "no oneof here" from "a oneof, but it's empty" without a second sentinel value. */
+/** Flatten a oneof wrapper (`kind`/`intent`/…) to a tagged union, or `undefined` if unset. */
 function flattenOneofWrapper(value: Record<string, unknown>): [unknown] | null {
   const keys = Object.keys(value);
   if (keys.length !== 1) return null;
@@ -76,7 +57,7 @@ function flattenOneofWrapper(value: Record<string, unknown>): [unknown] | null {
   const oneof = value[wrapperKey];
   if (!isPlainObject(oneof) || !("case" in oneof)) return null;
   const caseValue = oneof.case;
-  if (caseValue == null) return [undefined]; // unset oneof: treat the whole field as absent
+  if (caseValue == null) return [undefined];
   if (typeof caseValue !== "string") return null;
 
   const tag = wrapperKey === "frame" ? "frame" : "kind";
@@ -112,21 +93,11 @@ function convertFromProto(value: unknown): unknown {
   return result;
 }
 
-/** Proto/Effect-gRPC → browser wire shape (`~/wire/types`): bigint → number, camelCase →
- * snake_case, oneofs flattened to a `kind`/`frame` tag, `ObjectIdList` unwrapped to a plain array,
- * and `ObjectAmount`/`PlayerAmount` arrays collapsed to `[id, amount]` tuples. */
 export function fromProtoWire<T = unknown>(value: unknown): T {
   return convertFromProto(value) as T;
 }
 
-/** A flattened tagged union looks like `{ kind: "creature", power: 2, toughness: 2 }` — the shape
- * every `WireKind`/`WireTarget`-style union takes on the browser side. Detecting it by the
- * presence of a string `kind` field is safe for `toProtoWire`'s actual scope (request payloads:
- * `WireIntent`'s nested `target`s and no card/deck/seed shape uses a `kind` field), but is *not*
- * safe in general — `WireIntent` itself uses `kind` as its tag while the proto wrapper field is
- * named `intent`, not `kind`, which is why `intentEnvelopeToProto` handles that one case by hand
- * instead of relying on this heuristic. */
-function looksLikeFlattenedUnion(value: Record<string, unknown>): boolean {
+function looksLikeFlattenedUnion(value: Record<string, unknown>): value is Record<string, unknown> & { kind: string } {
   return typeof value.kind === "string";
 }
 
@@ -136,7 +107,7 @@ function convertToProto(value: unknown): unknown {
 
   if (looksLikeFlattenedUnion(value)) {
     const { kind, ...rest } = value;
-    return { kind: { case: snakeToCamel(kind as string), value: convertToProto(rest) } };
+    return { kind: { case: snakeToCamel(kind), value: convertToProto(rest) } };
   }
 
   const result: Record<string, unknown> = {};
@@ -148,17 +119,10 @@ function convertToProto(value: unknown): unknown {
   return result;
 }
 
-/** Browser wire shape → proto/Effect-gRPC: snake_case → camelCase, and (via `looksLikeFlattenedUnion`)
- * `{kind:"object",id}`-style tagged unions rewrapped under `{ kind: { case, value } }`. Does not
- * handle `WireIntent`'s `intent`-named wrapper (see `intentEnvelopeToProto`) or bigint fields (see
- * `coerceBigints`) — both need message-specific knowledge this generic pass doesn't have. */
 export function toProtoWire(value: unknown): unknown {
   return convertToProto(value);
 }
 
-/** int64 fields across the request messages this module converts. `toProtoWire` can't tell a
- * bigint-typed field from a number-typed one structurally, so the specialized `*ToProto` wrappers
- * below run this afterward wherever the target schema declares `Schema.BigInt`. */
 const BIGINT_FIELDS = new Set(["clientSeq", "hostUserId", "userId", "deckId"]);
 
 function coerceBigints(value: unknown): unknown {
@@ -175,33 +139,29 @@ export function deckDetailFromProto(proto: unknown): DeckDetail {
   return fromProtoWire<DeckDetail>(proto);
 }
 
-export function deckSummaryListFromProto(proto: unknown): DeckSummary[] {
-  return (Array.isArray(proto) ? proto : []).map((item) => fromProtoWire<DeckSummary>(item));
+export function deckSummaryListFromProto(proto: readonly unknown[]): DeckSummary[] {
+  return proto.map((item) => fromProtoWire<DeckSummary>(item));
 }
 
-export function saveDeckToProto(deck: SaveDeckRequest): unknown {
-  return toProtoWire(deck);
+export function saveDeckToProto(deck: SaveDeckRequest): ProtoSaveDeckRequest {
+  return toProtoWire(deck) as ProtoSaveDeckRequest;
 }
 
-export function catalogCardsFromProto(cards: unknown): CatalogCard[] {
-  return (Array.isArray(cards) ? cards : []).map((item) => fromProtoWire<CatalogCard>(item));
+export function catalogCardsFromProto(cards: readonly unknown[]): CatalogCard[] {
+  return cards.map((item) => fromProtoWire<CatalogCard>(item));
 }
 
-export function seedRequestToProto(request: SeedRequest): unknown {
-  return coerceBigints(toProtoWire(request));
+export function seedRequestToProto(request: SeedRequest): ProtoSeedRequest {
+  return coerceBigints(toProtoWire(request)) as ProtoSeedRequest;
 }
 
 export function seedResponseFromProto(proto: unknown): SeedResponse {
   return fromProtoWire<SeedResponse>(proto);
 }
 
-/** `IntentEnvelope.intent` is a `WireIntent` message whose *own* sole field (also named `intent`)
- * carries the oneof — the one wrapper in this schema set where the proto field name (`intent`)
- * differs from the browser tag key (`kind`), so `toProtoWire`'s generic `kind`-shaped detection
- * would rewrap it under the wrong field name. Handled by hand; the variant's own fields (including
- * any nested `WireTarget`) still go through `toProtoWire` since those *do* use matching names. */
-export function intentEnvelopeToProto(envelope: IntentEnvelope): unknown {
-  const { kind, ...rest } = envelope.intent as WireIntent & { kind: string };
+/** `WireIntent` wraps under proto field `intent`, not `kind` — hand-rewrapped here. */
+export function intentEnvelopeToProto(envelope: IntentEnvelope): ProtoIntentEnvelope {
+  const { kind, ...rest } = envelope.intent;
   return coerceBigints({
     tableId: envelope.table_id,
     clientSeq: envelope.client_seq,
@@ -211,7 +171,7 @@ export function intentEnvelopeToProto(envelope: IntentEnvelope): unknown {
         value: toProtoWire(rest),
       },
     },
-  });
+  }) as ProtoIntentEnvelope;
 }
 
 export function streamFrameFromProto(proto: unknown): StreamFrame {

@@ -6,10 +6,7 @@ import "mtgfr/v1/common.proto";
 
 option java_multiple_files = true;
 
-// The client → server intent surface (ADR 0032): `IntentEnvelope` wraps a `WireIntent`, a
-// discriminated union covering the full player-action surface (`crates/schema/src/intent.rs`).
-// `ObjectId` = uint32, `u8` = uint32, `u64`/`usize` = uint64, `Option<T>` = optional,
-// `Vec<T>` = repeated.
+// Client → server intent surface (`IntentEnvelope` / `WireIntent`).
 
 // A player's requested action (client → server).
 message IntentEnvelope {

@@ -66,12 +66,12 @@ async fn run_serve() {
     }
 
     let version = settings.version.clone();
-    // Tables are born already seeded via POST /tables/seed/v1 (the BFF owns the pre-game lobby);
+    // Tables are born already seeded via Tables.Seed (the BFF owns the pre-game lobby);
     // the registry starts empty. Action traces land at data/actions.<table_id>.toon (gitignored)
     // for post-hoc debugging.
     let state = server::AppState::new(db, Arc::new(settings));
     println!("mtgfr server v{version} health checks on http://{addr}");
-    println!("mtgfr gRPC (ADR 0032) listening on {grpc_addr}");
+    println!("mtgfr gRPC listening on {grpc_addr}");
     println!("action traces: ./data/actions.<table>.toon");
 
     // Both transports share one drain signal: SIGTERM/Ctrl-C flips `draining`, then blocks on

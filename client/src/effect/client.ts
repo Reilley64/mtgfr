@@ -1,13 +1,4 @@
-// The wire client (ADR 0032): hand-written Effect methods over the same-origin `/api/rpc` gateway.
-// Each method builds an `HttpClientRequest`, executes it against a shared `HttpClient`, and
-// decodes the JSON body — the same shape the old OpenAPI-generated client had (self-contained
-// Effects, no service requirement), just without codegen: `/api/rpc`'s surface is small and fixed
-// (`~/wire/rpcs.ts`), so a generator buys nothing a dozen short methods don't already give.
-//
-// Failures still arrive as `HttpClientError` carrying `.response.status` (branch on `statusOf`),
-// except the deck 422s, which fail with a tagged `{_tag, cause: DeckError}` object — the same
-// discriminated shape the old generated `MtgfrError` had, so `deck-builder.tsx`'s
-// `err._tag === "CreateDeck422"` branch didn't need to change.
+// Hand-written Effect client over same-origin `/api/rpc`. Deck 422s fail as `{_tag, cause: DeckError}`.
 
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";

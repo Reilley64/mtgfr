@@ -1,10 +1,5 @@
-// Server-only gRPC client (ADR 0032): the BFF's on-ramp to tonic via `@effect-grpc/effect-grpc`
-// (Connect native-gRPC transport + Effect Rpc clients generated from `proto/mtgfr/v1/mtgfr.proto`).
-// Never import this from anything that reaches the browser bundle — only `~/routes/api/**` and the
-// server-only helpers they call (`~/lib/apiUpstreamAuth`, `~/wire/rpcServer`) may import it.
-//
-// Channels/runtimes are cached per base URL so repeated calls against the same pod reuse one
-// transport instead of paying a new-connection cost.
+// Server-only gRPC client for the BFF. Do not import from the browser bundle.
+// Channels/runtimes are cached per base URL.
 
 import { GrpcClientProtocol, type GrpcStatusCode, GrpcStatusError } from "@effect-grpc/effect-grpc";
 import * as Effect from "effect/Effect";
@@ -12,11 +7,6 @@ import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Stream from "effect/Stream";
-import type {
-  SaveDeckRequest as ProtoSaveDeckRequest,
-  SeedRequest as ProtoSeedRequest,
-} from "~/wire/generated/mtgfr/v1/catalog_effect_grpc";
-import type { IntentEnvelope as ProtoIntentEnvelope } from "~/wire/generated/mtgfr/v1/intent_effect_grpc";
 import {
   AuthClient,
   AuthClientLayer,
@@ -57,7 +47,6 @@ import type {
   StreamFrame,
 } from "~/wire/types";
 
-/** The metadata key the session token travels under (matches `crates/server::grpc::auth_ctx`). */
 export const SESSION_METADATA_KEY = "x-session-token";
 
 const AllGrpcRegistry = new Map([
@@ -77,8 +66,6 @@ function sessionOpts(sessionToken: string | null) {
   return { metadata: [[SESSION_METADATA_KEY, sessionToken] as const] };
 }
 
-/** A failed unary/streaming call, carrying the gRPC status code + message so callers can map it
- * back to an HTTP status without re-parsing a connect/tonic error. */
 export class GrpcCallError extends Error {
   readonly code: GrpcStatusCode.GrpcStatusCode;
   constructor(code: GrpcStatusCode.GrpcStatusCode, message: string) {
@@ -91,15 +78,6 @@ export class GrpcCallError extends Error {
 function toCallError(err: unknown): GrpcCallError {
   if (err instanceof GrpcStatusError.GrpcStatusError) {
     return new GrpcCallError(err.code, err.message);
-  }
-  if (
-    err !== null &&
-    typeof err === "object" &&
-    "_tag" in err &&
-    (err as { _tag: string })._tag === "GrpcStatusError"
-  ) {
-    const g = err as GrpcStatusError.GrpcStatusError;
-    return new GrpcCallError(g.code, g.message);
   }
   return new GrpcCallError("unknown", err instanceof Error ? err.message : String(err));
 }
@@ -189,7 +167,6 @@ export interface GrpcClient {
 
 const clientCache = new Map<string, GrpcClient>();
 
-/** The gRPC client bundle for `address` (`host:port` or `http://host:port`). Cached per address. */
 export function grpcClient(address: string): GrpcClient {
   const key = grpcBaseUrl(address);
   const cached = clientCache.get(key);
@@ -240,7 +217,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const decks = yield* DecksClient;
-            const deck = yield* decks.create(saveDeckToProto(req) as ProtoSaveDeckRequest, sessionOpts(sessionToken));
+            const deck = yield* decks.create(saveDeckToProto(req), sessionOpts(sessionToken));
             return deckDetailFromProto(deck);
           }),
         ),
@@ -268,7 +245,7 @@ export function grpcClient(address: string): GrpcClient {
           Effect.gen(function* () {
             const decks = yield* DecksClient;
             const deck = yield* decks.update(
-              { id: BigInt(id), request: saveDeckToProto(req) as ProtoSaveDeckRequest },
+              { id: BigInt(id), request: saveDeckToProto(req) },
               sessionOpts(sessionToken),
             );
             return deckDetailFromProto(deck);
@@ -319,7 +296,7 @@ export function grpcClient(address: string): GrpcClient {
           Effect.gen(function* () {
             const game = yield* GameClient;
             return yield* game.submitIntent(
-              { tableId, envelope: intentEnvelopeToProto(envelope) as ProtoIntentEnvelope },
+              { tableId, envelope: intentEnvelopeToProto(envelope) },
               sessionOpts(sessionToken),
             );
           }),
@@ -433,7 +410,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const tables = yield* TablesClient;
-            const response = yield* tables.seed(seedRequestToProto(req) as ProtoSeedRequest, sessionOpts(sessionToken));
+            const response = yield* tables.seed(seedRequestToProto(req), sessionOpts(sessionToken));
             return seedResponseFromProto(response);
           }),
         ),
@@ -444,7 +421,6 @@ export function grpcClient(address: string): GrpcClient {
   return client;
 }
 
-/** Map a `GrpcCallError`'s status code to the HTTP status the browser should see. */
 export function httpStatusOf(code: GrpcStatusCode.GrpcStatusCode): number {
   switch (code) {
     case "ok":

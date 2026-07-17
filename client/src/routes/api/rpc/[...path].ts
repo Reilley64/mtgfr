@@ -1,7 +1,4 @@
-// The Effect-ish same-origin RPC gateway (ADR 0032): browser JSON in, gRPC out. `~/wire/rpcServer`
-// owns the actual dispatch (pure, unit-testable); this route file only does the Vinxi-specific
-// plumbing — cookie in/out, body parsing, and turning an `RpcOutcome` into a `Response` (including
-// the one streaming case, `game/:table/stream`, as `text/event-stream`).
+// Same-origin `/api/rpc` gateway: cookie/body plumbing around `dispatchRpc`.
 
 import type { APIEvent } from "@solidjs/start/server";
 import * as Match from "effect/Match";

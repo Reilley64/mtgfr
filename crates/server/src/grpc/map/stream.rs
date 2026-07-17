@@ -1,5 +1,4 @@
-//! Boundary mappers for `stream.proto`: the per-viewer game snapshot/delta stream. Server-emit
-//! only (`to_pb`) — the server never receives these shapes back.
+//! Boundary mappers for `stream.proto` (`to_pb` only — server-emit).
 
 use schema::{
     ActionView, ChoiceItem, CombatView, ModalView, ModeView, ModifierSourceView, ObjectView,

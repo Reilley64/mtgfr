@@ -1,5 +1,4 @@
-//! `mtgfr.v1.Cards` — the card pool and its search/lookup projection. Public, like the HTTP
-//! `/cards/*` routes: the pool isn't private.
+//! `mtgfr.v1.Cards` — public card pool catalog/search/lookup.
 
 use schema::catalog_card;
 use tonic::{Request, Response, Status};

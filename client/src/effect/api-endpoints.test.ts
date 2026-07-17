@@ -1,8 +1,4 @@
-// Deck/catalog/game endpoints on the wire client (ADR 0032: `/api/rpc/**`, backed by tonic):
-// request shape (path, method, body/query) and the error model (a tagged `MtgfrError` for a
-// declared 422 body; `HttpClientError` with a status otherwise). Auth is covered in api.test.ts.
-// `Tables.Seed` is BFF-internal (`~/lib/apiUpstreamAuth`, dialed over gRPC directly) — it's never
-// on this browser-facing client, so there's nothing here for it to cover.
+// Deck/catalog/game endpoints on `/api/rpc/**` (auth in api.test.ts).
 
 import * as Result from "effect/Result";
 import { beforeAll, describe, expect, it } from "vitest";

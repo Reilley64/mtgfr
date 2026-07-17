@@ -10,8 +10,7 @@ use crate::db::Deck;
 use crate::legality;
 use crate::precons;
 
-/// A deck read/write failure, in transport-agnostic form (ADR 0032): the gRPC `Decks` service
-/// maps this to a `tonic::Status` (`grpc::decks_svc`'s `From<DeckOpError> for Status`).
+/// A deck read/write failure, in transport-agnostic form.
 #[derive(Debug)]
 pub(crate) enum DeckOpError {
     /// Failed Commander legality — carries every problem found.

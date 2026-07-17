@@ -23,9 +23,7 @@ impl AuthSvc {
     }
 }
 
-/// A ready-to-use `Status` for a rejected auth attempt (signup or login) — every path here ends
-/// up as a plain "unauthenticated" from the caller's point of view, distinguished by conflict
-/// (duplicate email) vs. everything else.
+/// Map an auth HTTP-style status into a tonic `Status`.
 fn status_of(code: StatusCode) -> Status {
     match code {
         StatusCode::CONFLICT => Status::already_exists("email already registered"),

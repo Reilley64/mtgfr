@@ -1,5 +1,4 @@
-//! `mtgfr.v1.Decks` — deck CRUD over native protobuf messages (ADR 0032): each payload is a
-//! generated `pb` type, mapped to/from `schema`'s wire DTOs at the boundary (`grpc::map`).
+//! `mtgfr.v1.Decks` — deck CRUD; payloads map through `grpc::map`.
 #![allow(clippy::result_large_err)] // `tonic::Status` is a large `Err` by design; see auth_ctx.rs.
 
 use tonic::{Request, Response, Status};

@@ -1,8 +1,4 @@
-// The Effect Rpc-ish surface shared by the browser client (`~/effect/client`) and the BFF's
-// dispatcher (`~/wire/rpcServer`) — ADR 0032's "thin same-origin Effect HTTP API at `/api/rpc`"
-// fallback. A full `RpcGroup`/`RpcServer` pair needs an `HttpServerRequest` bridge SolidStart's
-// Vinxi routes don't give us for free; this module is the method map that keeps the two sides
-// from drifting instead — one name, one URL, one direction, on both ends.
+// Method map shared by the browser client (`~/effect/client`) and the BFF dispatcher (`~/wire/rpcServer`).
 
 /** `/api/rpc/<group>/...` — the top-level dispatch key. */
 export type RpcGroup = "auth" | "cards" | "decks" | "game";

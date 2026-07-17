@@ -8,9 +8,7 @@ import "mtgfr/v1/stream.proto";
 
 option java_multiple_files = true;
 
-// The tonic gRPC surface (ADR 0032): Auth, Decks, Cards, Game, Tables. `common.proto` (via
-// catalog/intent/stream) carries the shared wire vocabulary; every payload here is a native
-// proto message, not a JSON-in-a-string envelope.
+// Auth, Decks, Cards, Game, Tables. Shared vocabulary lives in common.proto.
 
 message Empty {}
 

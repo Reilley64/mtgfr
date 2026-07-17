@@ -1,22 +1,16 @@
-//! Boundary mappers for `intent.proto`: the client → server intent surface. Exhaustive both
-//! directions — every `WireIntent` variant must round-trip, so a new variant fails to compile
-//! here until it's wired up. `to_pb` currently has no caller (the server only ever receives an
-//! intent, never sends one) — kept for symmetry and the round-trip tests below.
+//! Boundary mappers for `intent.proto`. Exhaustive both ways so a new `WireIntent` fails to compile
+//! until wired; `to_pb` exists for the round-trip tests.
 #![allow(dead_code)]
 
 use schema::{IntentEnvelope, WireIntent};
 
 use crate::grpc::map::common::{
-    opt_wire_target_from_pb, wire_attack_from_pb, wire_attack_to_pb, wire_block_from_pb,
+    opt_wire_target_from_pb, u8_trunc, wire_attack_from_pb, wire_attack_to_pb, wire_block_from_pb,
     wire_block_to_pb, wire_damage_from_pb, wire_damage_to_pb, wire_mode_choice_from_pb,
     wire_mode_choice_to_pb, wire_spell_damage_from_pb, wire_spell_damage_to_pb,
     wire_target_from_pb, wire_target_to_pb,
 };
 use crate::grpc::pb;
-
-fn u8_trunc(v: u32) -> u8 {
-    v.min(255) as u8
-}
 
 fn try_modes(modes: Vec<pb::WireModeChoice>) -> Result<Vec<schema::WireModeChoice>, String> {
     modes.into_iter().map(wire_mode_choice_from_pb).collect()

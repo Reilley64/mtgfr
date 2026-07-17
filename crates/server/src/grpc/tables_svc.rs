@@ -1,5 +1,4 @@
-//! `mtgfr.v1.Tables` — `Seed` builds a live `Table` from BFF-resolved seats (ADR 0032), the
-//! same entry point as `POST /tables/seed/v1`.
+//! `mtgfr.v1.Tables` — `Seed` builds a live `Table` from BFF-resolved seats.
 
 use axum::http::StatusCode;
 use tonic::{Request, Response, Status};

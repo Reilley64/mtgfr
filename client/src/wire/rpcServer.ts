@@ -1,11 +1,9 @@
-// The `/api/rpc` dispatcher (ADR 0032): pure request-shape-in, outcome-out logic, kept free of
-// Vinxi's `APIEvent`/`Response` so it's unit-testable without spinning up a route. The route file
-// (`~/routes/api/rpc/[...path].ts`) only does cookie/HTTP plumbing and calls `dispatchRpc`.
+// `/api/rpc` dispatcher: request shape in, outcome out — unit-testable without a Vinxi route.
 
 import * as Match from "effect/Match";
-import { GrpcCallError, type GrpcClient, grpcClient, httpStatusOf } from "~/wire/grpcClient";
+import { GrpcCallError, grpcClient, httpStatusOf } from "~/wire/grpcClient";
 import { isAuthMethod, isCardsMethod, isGameMethod, isRpcGroup } from "~/wire/rpcs";
-import type { DeckError, IntentEnvelope, SaveDeckRequest } from "~/wire/types";
+import type { DeckError, IntentEnvelope, SaveDeckRequest, StreamFrame } from "~/wire/types";
 
 export interface RpcEnv {
   readonly sessionToken: string | null;
@@ -17,7 +15,7 @@ export interface RpcEnv {
 export type RpcOutcome =
   | { kind: "json"; status: number; body: unknown; setSessionToken?: string; clearSession?: boolean }
   | { kind: "empty"; status: number; clearSession?: boolean }
-  | { kind: "stream"; frames: AsyncIterable<import("~/wire/types").StreamFrame> };
+  | { kind: "stream"; frames: AsyncIterable<StreamFrame> };
 
 function jsonOk(body: unknown): RpcOutcome {
   return { kind: "json", status: 200, body };
@@ -36,7 +34,7 @@ function deckErrorOf(message: string): DeckError {
 function fromGrpcError(err: unknown): RpcOutcome {
   if (!(err instanceof GrpcCallError)) throw err;
   const status = httpStatusOf(err.code);
-  const body = err.code === "invalid_argument" && status === 422 ? deckErrorOf(err.message) : { error: err.message };
+  const body = err.code === "invalid_argument" ? deckErrorOf(err.message) : { error: err.message };
   return { kind: "json", status, body };
 }
 
@@ -143,8 +141,7 @@ async function dispatchGame(
   }
 }
 
-/** Route `/api/rpc/<segments…>` to a gRPC call and back. `segments` is the URL path with the
- * leading `rpc` already stripped (e.g. `["auth", "login"]`, `["game", "ABC123", "intent"]`). */
+/** Route `/api/rpc/<segments…>` to a gRPC call. `segments` already omit the leading `rpc`. */
 export function dispatchRpc(
   segments: ReadonlyArray<string>,
   httpMethod: string,
@@ -162,5 +159,3 @@ export function dispatchRpc(
     Match.exhaustive,
   );
 }
-
-export type { GrpcClient };

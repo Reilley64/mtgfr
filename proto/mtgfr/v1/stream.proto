@@ -6,10 +6,7 @@ import "mtgfr/v1/common.proto";
 
 option java_multiple_files = true;
 
-// The per-viewer game snapshot/delta stream (ADR 0032, `crates/schema/src/dto.rs` +
-// `crates/schema/src/event.rs`): the redacted board view a client renders, the pending-choice
-// union the engine may be blocked on, and the canonical-event union that drives the game
-// log/stack panel/combat highlights.
+// Per-viewer snapshot/delta stream: board view, pending choices, visible events.
 
 // Per-player public facts plus that player's private counts.
 message PlayerView {

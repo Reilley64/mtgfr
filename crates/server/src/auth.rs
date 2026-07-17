@@ -1,9 +1,6 @@
-//! Self-hosted email+password accounts. `AuthUser` remains a cookie extractor for parity with
-//! how sessions used to reach the API directly; the live path is the gRPC `Auth` service
-//! (`grpc::auth_svc`), which calls the transport-agnostic helpers below and mints/reads the
-//! session token as `AuthSession.session_token` / `x-session-token` metadata (ADR 0032) — the
-//! BFF is the one that terminates the browser's cookie and does the `Set-Cookie`. An expired
-//! session is lazily swept so a leaked token can't be probed repeatedly.
+//! Self-hosted email+password accounts. Live path is gRPC `Auth` (`grpc::auth_svc`); the BFF
+//! terminates cookies and forwards `x-session-token` metadata. An expired session is lazily
+//! swept so a leaked token can't be probed repeatedly.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -55,10 +52,7 @@ impl FromRequestParts<AppState> for AuthUser {
     }
 }
 
-/// Resolve a raw session token to its user — the transport-agnostic half of [`AuthUser`]'s
-/// cookie lookup, shared with the gRPC `x-session-token` metadata path (ADR 0032,
-/// `grpc::auth_ctx`). An expired session is lazily swept so a leaked token can't be probed
-/// repeatedly.
+/// Resolve a raw session token to its user — shared by cookie and gRPC metadata paths.
 pub(crate) async fn resolve_session_token(
     db: &mut toasty::Db,
     token: &str,

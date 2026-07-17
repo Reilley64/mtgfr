@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# ADR 0032: regenerate Effect-gRPC + protobuf-es clients from `proto/mtgfr/v1/mtgfr.proto`
+# Regenerate Effect-gRPC + protobuf-es clients from `proto/mtgfr/v1/mtgfr.proto`.
 # into `client/src/wire/generated/` (consumed by `~/wire/grpcClient`).
 set -e
 cd "$(dirname "$0")/.."
@@ -38,4 +38,4 @@ import type { GrpcMethodRegistry } from "@effect-grpc\/effect-grpc";/' \
   rm -f "$GEN.bak"
 done
 
-echo "gen.sh: regenerated client/src/wire/generated from proto (ADR 0032)."
+echo "gen.sh: regenerated client/src/wire/generated from proto."

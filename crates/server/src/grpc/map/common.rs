@@ -1,10 +1,4 @@
-//! Boundary mappers for `common.proto`'s shared wire vocabulary: targets, combat/damage shapes,
-//! mode choices, mana costs/kinds/pools, and the small (id, amount) pairs.
-//!
-//! Both directions are kept for every shape even where only one currently has a caller (`from_pb`
-//! for a type that so far only rides intents *out*, or vice versa) — `intent.proto`/`stream.proto`
-//! grow in both directions over time, and a missing half should be a one-line add here, not a
-//! rediscovery of the whole mapping.
+//! Boundary mappers for `common.proto`'s shared wire vocabulary.
 #![allow(dead_code)]
 
 use schema::{
@@ -14,14 +8,11 @@ use schema::{
 
 use crate::grpc::pb;
 
-/// `repeated uint32` from a `[u8]` (WUBRG-indexed pips/colors).
 fn u8s(v: impl IntoIterator<Item = u8>) -> Vec<u32> {
     v.into_iter().map(u32::from).collect()
 }
 
-/// Clamp an incoming wire `uint32` into `u8` — a trust-boundary default, not a real choice (no
-/// pool value needs more than 255 of anything this crosses).
-fn u8_trunc(v: u32) -> u8 {
+pub(crate) fn u8_trunc(v: u32) -> u8 {
     v.min(255) as u8
 }
 

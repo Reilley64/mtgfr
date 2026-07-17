@@ -1,7 +1,5 @@
-//! The server's shared state and health-only Axum `app()` (ADR 0032): the wire contract's
-//! authoritative transport is the tonic gRPC server in [`grpc`], hosted alongside this on its
-//! own port. Axum now serves only `/health/*` for k8s probes; every game/auth/decks/cards route
-//! lives on gRPC.
+//! The server's shared state and health-only Axum `app()` (`/health/*` on :8080).
+//! Game/auth/decks/cards live on the tonic gRPC server in [`grpc`].
 //!
 //! Single instance, so live-game fan-out is an in-process `tokio::broadcast` rather than Redis
 //! (see ADR 0005). State lives behind a `std::sync::Mutex` — `Game::submit` is synchronous and
@@ -116,10 +114,8 @@ fn cors_layer(origin: &str) -> Option<tower_http::cors::CorsLayer> {
     )
 }
 
-/// The health-only Axum application (ADR 0032): k8s liveness/readiness/drain probes on 8080,
-/// alongside — but no longer carrying — the tonic gRPC server (`grpc::serve`) on `:50051`, which
-/// hosts every game/auth/decks/cards route. `cors` is applied for parity with `Settings` and its
-/// tests even though the health routes themselves don't need it.
+/// Health-only Axum app: k8s liveness/readiness/drain probes on 8080.
+/// `cors` is applied for parity with `Settings` even though health routes don't need it.
 pub fn app(state: AppState) -> Router {
     let cors = cors_layer(&state.settings.cors_origin);
     let router = Router::new()

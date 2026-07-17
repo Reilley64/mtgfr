@@ -1,7 +1,5 @@
-//! `mtgfr.v1.Game` — intent submission, yield/dwell chrome, and the per-viewer delta stream.
-//! `Stream` reuses the same [`crate::stream::subscribe`] snapshot-then-delta framing the SSE
-//! handler in `lib.rs` uses (ADR 0005/0032): same heartbeat, same seq-dedup, same redaction —
-//! only the transport (tonic server-streaming, not SSE) differs.
+//! `mtgfr.v1.Game` — intents, yield/dwell chrome, and the per-viewer delta stream.
+//! `Stream` reuses [`crate::stream::subscribe`] (same heartbeat, seq-dedup, redaction).
 #![allow(clippy::result_large_err)] // `tonic::Status` is a large `Err` by design; see auth_ctx.rs.
 
 use std::pin::Pin;

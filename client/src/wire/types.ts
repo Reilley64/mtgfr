@@ -1,19 +1,8 @@
-// The wire types (ADR 0032): structural TypeScript shapes matching `crates/schema`'s serde
-// output, checked in here rather than generated. Payloads between the BFF and `crates/server`'s
-// gRPC API are now native proto (ADR 0032) — camelCase, `bigint` for int64, `{case,value}` oneofs
-// — decoded by the generated Effect-gRPC clients (`~/wire/generated`) and adapted to/from this
-// module's shapes by `~/wire/protoMap`. This module itself is the *browser*-facing shape: what the
-// BFF's `/api/rpc` sends/receives as JSON, snake_case and serde-compatible with `crates/schema` so
-// the client and the engine agree on one vocabulary without a second translation layer in between.
-// A handful of small, flat, security-relevant shapes (auth) get real `effect/Schema` structs so a
-// malformed BFF response fails loudly instead of silently typing-through; the large recursive
-// game-state unions (`VisibleState`, `StreamFrame`, …) stay structural-only per ADR 0032's
-// "Schema.Unknown or structured types" guidance — round-tripping them through a full recursive
-// Schema buys no safety the engine's own tests don't already provide, at real maintenance cost.
+// Browser-facing wire shapes (snake_case, schema-compatible). Proto adaptation lives in `protoMap`.
 
 import * as Schema from "effect/Schema";
 
-// ── Auth (validated with Schema — small, flat, and worth failing loudly on) ─────────────────
+// ── Auth ──
 
 export const Me = Schema.Struct({
   id: Schema.Number,
@@ -44,7 +33,7 @@ export type Ack = typeof Ack.Type;
 export const decodeMe = Schema.decodeUnknownSync(Me);
 export const decodeAck = Schema.decodeUnknownSync(Ack);
 
-// ── Decks / cards / lobby-seed (structural — see module doc) ────────────────────────────────
+// ── Decks / cards / lobby ──
 
 export type ChoiceItem = { id: number; label: string; player?: never };
 export type CommanderDamageView = { amount: number; from: number };

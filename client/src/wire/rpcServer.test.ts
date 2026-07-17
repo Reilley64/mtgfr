@@ -1,7 +1,4 @@
-// The `/api/rpc` dispatcher, with `~/wire/grpcClient` mocked — this file never touches a real
-// socket. Covers routing (group/method → the right gRPC call), the deck-error reconstruction
-// (`decks_svc.rs` folds `DeckError.problems` into one status message; this un-folds it), and the
-// unknown-group/method 404s the exhaustive Match arms fall through to.
+// `/api/rpc` dispatcher tests with `grpcClient` mocked.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
