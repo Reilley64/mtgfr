@@ -118,7 +118,7 @@ describe("fromProtoWire / toProtoWire", () => {
     expect(proto.tableId).toBe("ABC123");
     expect(proto.clientSeq).toBe(1n);
     expect(proto.intent.intent.case).toBe("cast");
-    expect(proto.intent.intent.value).toEqual({ player: 0, object: 1 });
+    expect(proto.intent.intent.value).toMatchObject({ player: 0, object: 1, x: 0, kicked: false });
   });
 
   it("builds a target-carrying Intent with the nested WireTarget also wrapped", () => {
@@ -131,7 +131,59 @@ describe("fromProtoWire / toProtoWire", () => {
       intent: { intent: { case: string; value: { target: unknown } } };
     };
     expect(proto.intent.intent.case).toBe("activateAbility");
-    expect(proto.intent.intent.value.target).toEqual({ kind: { case: "object", value: { id: 9 } } });
+    expect(proto.intent.intent.value.target).toMatchObject({ kind: { case: "object", value: { id: 9 } } });
+  });
+
+  it("coerces take_action id to bigint (proto uint64 / Effect Schema.BigInt)", () => {
+    const envelope: IntentEnvelope = {
+      table_id: "ABC123",
+      client_seq: 3,
+      intent: { kind: "take_action", player: 0, id: 0, sacrifice: [] },
+    };
+    const proto = intentEnvelopeToProto(envelope) as unknown as {
+      intent: { intent: { case: string; value: { id: unknown; player: number; attackers: unknown[] } } };
+    };
+    expect(proto.intent.intent.case).toBe("takeAction");
+    expect(proto.intent.intent.value.id).toBe(0n);
+    expect(proto.intent.intent.value.player).toBe(0);
+    expect(proto.intent.intent.value.attackers).toEqual([]);
+  });
+
+  it("omits null optionals and fills proto3 defaults so Effect Schema accepts take_action", () => {
+    const envelope: IntentEnvelope = {
+      table_id: "ABC123",
+      client_seq: 4,
+      intent: {
+        kind: "take_action",
+        player: 0,
+        id: 7,
+        target: null,
+        x: 0,
+        modes: [],
+        sacrifice: [],
+        discard_cost: [],
+        graveyard_exile: [],
+      },
+    };
+    const proto = intentEnvelopeToProto(envelope) as {
+      intent: { intent: { value: Record<string, unknown> } };
+    };
+    expect(proto.intent.intent.value).not.toHaveProperty("target");
+    expect(proto.intent.intent.value.blocks).toEqual([]);
+  });
+
+  it("fills sparse Cast defaults (x/modes/flags) for Effect Schema", () => {
+    const envelope: IntentEnvelope = {
+      table_id: "ABC123",
+      client_seq: 5,
+      intent: { kind: "cast", player: 0, object: 1 },
+    };
+    const proto = intentEnvelopeToProto(envelope) as unknown as {
+      intent: { intent: { value: { x: number; kicked: boolean; modes: unknown[] } } };
+    };
+    expect(proto.intent.intent.value.x).toBe(0);
+    expect(proto.intent.intent.value.kicked).toBe(false);
+    expect(proto.intent.intent.value.modes).toEqual([]);
   });
 
   it("collapses ObjectAmount assignment arrays into [id, amount] tuples", () => {
