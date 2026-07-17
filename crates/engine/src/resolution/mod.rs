@@ -1,7 +1,24 @@
-//! Sequence continuations during effect resolution (pause bookkeeping lives in `pending`).
+//! Effect resolution behind [`Game::run`]: sequence continuations, and (growing) family mint
+//! locality. Pause bookkeeping lives in [`crate::pending`]; board mutation stays in [`crate::apply`].
 //!
-//! Primary: CR 608 resolution interrupted by choices; [`Effect::Sequence`] tails replayed
-//! after a pending answer. Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! Primary: CR 608. External seam: [`Game::run`] (in `effects`) is the sole Effect→board verb —
+//! callers never choose mint vs pause. Internals here: [`SequenceCont`] / resume, plus pure mint
+//! families ([`draw`], [`damage`], [`life`], [`destroy`], [`counters`], [`mill`], …).
+//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+
+mod control;
+mod counters;
+mod damage;
+mod destroy;
+mod draw;
+mod life;
+mod mana;
+mod mill;
+mod misc;
+mod pump;
+mod reveal;
+mod tokens;
+mod zones;
 
 use crate::*;
 

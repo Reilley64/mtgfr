@@ -979,7 +979,7 @@ pub enum PendingChoice {
     /// `max` (`legal.len()`). Answered by [`Intent::ChooseTargetPlayers`]. The chosen set becomes
     /// the edict's affected players — `keep_one`/`filter`/`life_loss`/`then` are the edict's own
     /// fields, carried through so [`Game::choose_target_players`] can run the same per-player
-    /// sacrifice fan-out [`Game::begin_sacrifice_edict`] runs for `AllPlayers`/`EachOpponent`.
+    /// sacrifice fan-out [`Game::sacrifice_edict`] runs for `AllPlayers`/`EachOpponent`.
     ChooseTargetPlayers {
         player: PlayerId,
         source: ObjectId,
@@ -1182,7 +1182,7 @@ pub enum PendingChoice {
     /// ([`Effect::RevealTopSplitPiles`]): a settled ruling (not a numbered CR section) gives the
     /// ability's controller the pick of *which* opponent "an opponent" means, when more than one
     /// is alive. `legal` lists the living opponents; only raised when there are at least two
-    /// ([`Game::begin_choose_splitting_opponent`] resumes immediately with the sole opponent
+    /// ([`Game::choose_splitting_opponent`] resumes immediately with the sole opponent
     /// otherwise — the same collapse this choice's predecessor hardcoded). Answered by
     /// [`Intent::ChooseTargets`] (reusing its "single `Target::Player`" wire shape —
     /// [`Game::choose_targets`] special-cases this pause the same way it already does

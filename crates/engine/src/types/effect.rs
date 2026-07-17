@@ -1318,8 +1318,8 @@ pub enum Effect {
         attacking_context: Option<(PlayerId, PlayerId)>,
     },
     /// A static ability on an Aura/Equipment: while it is attached, its host creature gets
-    /// +power/+toughness and gains `keywords`. Read during recompute (ADR 0003 — additive,
-    /// no CR 613 layers), never resolved off the stack.
+    /// +power/+toughness and gains `keywords`. Read during recompute (ADR 0003 — `PtLayer` 7c
+    /// / keyword grants; full CR 613 still deferred), never resolved off the stack.
     GrantToAttached {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         power: Amount,
@@ -1376,8 +1376,8 @@ pub enum Effect {
     },
     /// A static ability on an Aura: while it is attached, its host's *base* power/toughness
     /// becomes this fixed value (Darksteel Mutation's "base power and toughness 0/1"). Read
-    /// during recompute (ADR 0003 — additive, no CR 613 layers): the set base replaces the
-    /// printed base, then counters/pumps/anthems still add on top. Never resolved off the stack.
+    /// during recompute as a `PtLayer` 7b base-set (ADR 0003): the set base replaces the
+    /// printed base, then 7c counters/pumps/anthems still add on top. Never resolved off the stack.
     /// ponytail: last-applied would win under CR 613 layer 7b, but the pool never stacks two
     /// set-base effects on one creature, so a single override is enough — grow ordering from a
     /// card that needs it.
@@ -1684,7 +1684,7 @@ pub enum Effect {
     /// with `rest_to_hand`). Takes no target; only resolves via [`Game::run`] (needs the
     /// real library order and pauses).
     /// The opponent who makes the pile pick is chosen by the controller when more than one is
-    /// alive ([`Game::begin_choose_splitting_opponent`], shared with
+    /// alive ([`Game::choose_splitting_opponent`], shared with
     /// [`RevealTopSplitPiles`](Self::RevealTopSplitPiles) — a settled ruling, not a numbered CR
     /// section: "an opponent" with no other qualifier is the ability's controller's pick),
     /// collapsing to the sole opponent with no pause in a 2-player/1-opponent game.
@@ -1699,7 +1699,7 @@ pub enum Effect {
     /// Reveals the top five (all public, CR 701.16 "reveal"; a short library reveals only what's
     /// there, CR 120.3 "as many as possible" — the reveal never moves the cards' zone, so the
     /// same library-resident object ids ride through the whole flow), then hands off to
-    /// [`Game::begin_choose_splitting_opponent`] — the same "an opponent" chooser
+    /// [`Game::choose_splitting_opponent`] — the same "an opponent" chooser
     /// [`OpponentSplitsExilePiles`](Self::OpponentSplitsExilePiles) uses. The chosen opponent
     /// partitions the revealed cards into two piles
     /// ([`PendingChoice::PartitionRevealed`](crate::PendingChoice::PartitionRevealed) — either may

@@ -21,6 +21,7 @@
 #[cfg(feature = "card-dsl")]
 mod de;
 
+mod amount;
 mod apply;
 mod cast;
 mod characteristics;
@@ -162,7 +163,7 @@ pub struct Game {
     /// Whether this resolution's own [`Effect::EachPlayerSacrifices`] edict's controller
     /// actually sacrificed a permanent during the edict (Deadly Brew's "if you sacrificed a
     /// permanent this way" gate on [`Effect::MayReturnFromGraveyard`]). Reset to `false` at
-    /// [`Game::begin_sacrifice_edict`] and set (overwritten, not accumulated) only when the
+    /// [`Game::sacrifice_edict`] and set (overwritten, not accumulated) only when the
     /// edict's own controller — not just any affected player — sacrifices ≥1 permanent in
     /// [`Game::choose_sacrifices`], so scoped to that one edict rather than the whole turn.
     pub(crate) sacrificed_by_edict_controller: bool,

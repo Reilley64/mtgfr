@@ -1,10 +1,11 @@
-//! Pending-choice handlers and transitional `begin_*` raise helpers.
+//! Pending-choice handlers and dig-loop kickoff helpers.
 //!
 //! Targets, modes, scry, search, edicts, damage assignment, and trigger ordering
 //! ([`PendingChoice`]). Closely tied to CR 601.2c (choosing targets) and resolution
 //! pauses under CR 608. The submit seam is [`super::answer`] / [`super::forced`];
-//! common effect/cast sites use [`super::raise`]. Deferred / gaps: see the parent
-//! module docs and `docs/FIDELITY_BACKLOG.md`.
+//! pause sites use [`super::raise`] / [`super::raise_choice`]. Dig-loop kickoffs emit
+//! prep events then raise. Deferred / gaps: see the parent module docs and
+//! `docs/FIDELITY_BACKLOG.md`.
 
 use crate::*;
 
@@ -311,36 +312,6 @@ impl Game {
         }
     }
 
-    /// Begin a proliferate ([`Effect::Proliferate`], CR 701.27): pause on a
-    /// [`PendingChoice::Proliferate`] over every battlefield permanent (any controller) that
-    /// currently has a counter of any kind. `remaining` is how many more iterations
-    /// `Proliferate`'s `times` calls for after this one. With no counter-bearing permanent on
-    /// the battlefield, there's nothing to choose for this or any further iteration — skip
-    /// straight past (same "nothing to choose" treatment [`Self::begin_may_sacrifice`] gives an
-    /// empty board).
-    pub(crate) fn begin_proliferate(&mut self, player: PlayerId, source: ObjectId, remaining: u8) {
-        if remaining == 0 {
-            return;
-        }
-        let options: Vec<ObjectId> = self
-            .battlefield()
-            .into_iter()
-            .filter(|&id| {
-                let p = self.permanent(id);
-                p.plus_counters > 0 || p.kind_counters.iter().any(|&c| c > 0)
-            })
-            .collect();
-        if options.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::Proliferate {
-            player,
-            source,
-            options,
-            remaining: remaining - 1,
-        });
-    }
-
     /// Answer a [`PendingChoice::Proliferate`]: every chosen permanent gets one more counter of
     /// each kind already on it (CR 701.27), through the same replaceable-placement pipeline as
     /// [`Effect::PutCounters`] for +1/+1 (a chosen permanent's own doubler applies here too) and
@@ -400,32 +371,15 @@ impl Game {
                 }
             }
         }
-        self.begin_proliferate(player, source, remaining);
+        pending::raise(
+            self,
+            pending::ChoiceRequest::Proliferate {
+                player,
+                source,
+                remaining,
+            },
+        );
         Ok(events)
-    }
-
-    /// Begin Guardian of Faith's phase-out (CR 702.26; [`Effect::PhaseOut`]): pause on a
-    /// [`PendingChoice::PhaseOut`] over the *other* creatures `player` controls. With no other
-    /// creature there's nothing to choose — skip past (same "nothing to choose" treatment
-    /// [`Self::begin_proliferate`] gives an empty board).
-    pub(crate) fn begin_phase_out(&mut self, player: PlayerId, source: ObjectId) {
-        let options: Vec<ObjectId> = self
-            .battlefield()
-            .into_iter()
-            .filter(|&id| {
-                id != source
-                    && self.controller_of(id) == player
-                    && matches!(self.def_of(id).kind, CardKind::Creature { .. })
-            })
-            .collect();
-        if options.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::PhaseOut {
-            player,
-            source,
-            options,
-        });
     }
 
     /// Answer a [`PendingChoice::PhaseOut`]: every chosen creature (and everything attached to it)
@@ -828,21 +782,6 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin Rupture Spire's own ETB trigger ([`Effect::SacrificeSelfUnlessPay`]): pause on a
-    /// [`PendingChoice::SacrificeUnlessPay`] over `source`'s pay-or-sacrifice cost.
-    pub(crate) fn begin_sacrifice_unless_pay(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        cost: Cost,
-    ) {
-        self.pause_for(PendingChoice::SacrificeUnlessPay {
-            player: controller,
-            source,
-            cost,
-        });
-    }
-
     /// Answer a [`PendingChoice::SacrificeUnlessPay`]: pay `cost` to keep `source`, or decline
     /// and sacrifice it (CR 701.16). Rupture Spire's own-ETB twin of [`Game::pay_echo`] — same
     /// [`Intent::PayOptionalCost`] shape and polarity, kept as its own handler since it isn't
@@ -881,43 +820,6 @@ impl Game {
         self.settle_payment(player, cost, None, None, &mut events)?;
         self.finish_answer();
         Ok(events)
-    }
-
-    /// Begin Treva's Ruins' own ETB trigger ([`Effect::SacrificeSelfUnlessReturnLand`]): offer
-    /// `controller`'s permanents matching `filter` (the "non-Lair land you control" gate) as
-    /// candidates to bounce, pausing on a [`PendingChoice::SacrificeUnlessReturnLand`]. With no
-    /// matching land, there's nothing to return — sacrifice `source` outright, no pause (the
-    /// same "no real decision" shortcut [`Game::begin_may_sacrifice`] uses).
-    pub(crate) fn begin_sacrifice_unless_return_land(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        filter: PermanentFilter,
-        events: &mut Vec<Event>,
-    ) {
-        let candidates = self.edict_options(controller, filter);
-        if candidates.is_empty() {
-            self.run(
-                Effect::SacrificeObject {
-                    object: Some(source),
-                },
-                ResolveCtx {
-                    controller,
-                    source,
-                    target: None,
-                    targets_second: TargetList::default(),
-                    x: 0,
-                    spent_mana: [0; 6],
-                },
-                events,
-            );
-            return;
-        }
-        self.pause_for(PendingChoice::SacrificeUnlessReturnLand {
-            player: controller,
-            source,
-            candidates,
-        });
     }
 
     /// Answer a [`PendingChoice::SacrificeUnlessReturnLand`]: `land` (one of the offered
@@ -1148,47 +1050,6 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin a scry/surveil: pause on a [`PendingChoice::ArrangeTop`] over the top `count` cards
-    /// of `player`'s library. An empty library (nothing to look at) is a harmless no-op — no
-    /// choice is raised, and a scry for more than the library holds just sees what's there.
-    pub(crate) fn begin_arrange_top(&mut self, player: PlayerId, count: u32, to_graveyard: bool) {
-        let library = &self.players[player.0 as usize].library;
-        let cards: Vec<ObjectId> = library.iter().take(count as usize).copied().collect();
-        if cards.is_empty() {
-            return; // ponytail: scry/surveil on an empty library does nothing (CR 701.42d).
-        }
-        self.pause_for(PendingChoice::ArrangeTop {
-            player,
-            cards,
-            to_graveyard,
-        });
-    }
-
-    /// Begin an [`Effect::Discard`]: pause on a [`PendingChoice::DiscardCards`] for `player` to
-    /// pick which `count` cards to pitch. Fewer than `count` in hand discards the whole hand; an
-    /// empty hand raises no choice (a harmless no-op). `or_one_matching` carries the effect's
-    /// land-escape-valve filter (`None` for a plain discard) straight through to the pending
-    /// choice — [`Game::answer_discard`] is where a hand with no matching card collapses back to
-    /// the plain `count`-card shape.
-    pub(crate) fn begin_discard(
-        &mut self,
-        player: PlayerId,
-        count: u32,
-        or_one_matching: Option<CardFilter>,
-    ) {
-        let hand = self.hand_of(player);
-        let count = (count as usize).min(hand.len());
-        if count == 0 {
-            return; // nothing to discard — don't pause.
-        }
-        self.pause_for(PendingChoice::DiscardCards {
-            player,
-            hand,
-            count,
-            or_one_matching,
-        });
-    }
-
     /// Answer a [`PendingChoice::ArrangeTop`]: keep `top` on top of the library (in this order),
     /// and send `bottom` to the library bottom (scry) or the graveyard (surveil). Their union
     /// must be a partition of the shown cards.
@@ -1244,42 +1105,6 @@ impl Game {
         }
         self.players[player.0 as usize].library = library;
         Ok(events)
-    }
-
-    /// Begin an [`Effect::LookAtTop`]: pause on a [`PendingChoice::SelectFromTop`] over the top
-    /// `count` cards of `player`'s library. A short library looks at what's there (CR 120-style
-    /// "as many as possible"); an empty library raises no choice (a harmless no-op). The choice is
-    /// raised even when no looked-at card matches `filter` — the rest-move still has to run, so the
-    /// answer path (with an empty selection) bottoms everything.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn begin_look_at_top(
-        &mut self,
-        player: PlayerId,
-        count: u32,
-        filter: CardFilter,
-        up_to: u32,
-        min: u32,
-        dest: TopDest,
-        dest_tapped: bool,
-        rest: RestDest,
-        mv_budget: Option<u32>,
-    ) {
-        let library = &self.players[player.0 as usize].library;
-        let cards: Vec<ObjectId> = library.iter().take(count as usize).copied().collect();
-        if cards.is_empty() {
-            return; // nothing to look at — don't pause.
-        }
-        self.pause_for(PendingChoice::SelectFromTop {
-            player,
-            cards,
-            filter,
-            up_to,
-            min,
-            dest,
-            dest_tapped,
-            rest,
-            mv_budget,
-        });
     }
 
     /// Answer a [`PendingChoice::SelectFromTop`]: move each `selected` card (up to `up_to`, each
@@ -1395,40 +1220,6 @@ impl Game {
             }
         }
         Ok(events)
-    }
-
-    /// Begin an [`Effect::DistributeTop`]: pause on a [`PendingChoice::DistributeTop`] over the
-    /// top `count` cards of `player`'s library. A short library looks at what's there (CR
-    /// 120-style "as many as possible"); an empty library raises no choice.
-    pub(crate) fn begin_distribute_top(
-        &mut self,
-        player: PlayerId,
-        count: u32,
-        to_hand: u32,
-        to_bottom: u32,
-        to_exile_may_play: u32,
-    ) {
-        let library = &self.players[player.0 as usize].library;
-        let cards: Vec<ObjectId> = library.iter().take(count as usize).copied().collect();
-        if cards.is_empty() {
-            return; // nothing to look at — don't pause.
-        }
-        // ponytail: no pool card yet distributes into a library shorter than its total slots; if (CR 400.3)
-        // one ever does, slots are filled hand→bottom→exile in priority order and any excess slot (CR 117, CR 406.5, CR 402.5)
-        // is silently dropped (CR 120.3-style "as many as possible" with no printed tie-break).
-        let mut looked_at = cards.len() as u32;
-        let to_hand = to_hand.min(looked_at);
-        looked_at -= to_hand;
-        let to_bottom = to_bottom.min(looked_at);
-        looked_at -= to_bottom;
-        let to_exile_may_play = to_exile_may_play.min(looked_at);
-        self.pause_for(PendingChoice::DistributeTop {
-            player,
-            cards,
-            to_hand,
-            to_bottom,
-            to_exile_may_play,
-        });
     }
 
     /// Answer a [`PendingChoice::DistributeTop`]: route `to_hand` to hand, `to_bottom` to the
@@ -1590,34 +1381,6 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin a shuffle-from-graveyard ability
-    /// ([`Effect::ShuffleTargetCardsFromGraveyardIntoLibrary`] — Perpetual Timepiece's own
-    /// graveyard, or Quandrix Command mode 3's targeted `owner`): pause on a
-    /// [`PendingChoice::ShuffleFromGraveyard`] over every card in `owner`'s graveyard, answered
-    /// by `answerer` (the ability's controller — CR: the caster chooses, even when a different
-    /// player's graveyard is affected). An empty graveyard raises no choice — "any number"/"up
-    /// to N" of zero is always legal and there's nothing to pick from (the same "nothing to
-    /// choose" skip [`Game::begin_may_sacrifice`] gives an empty board).
-    pub(crate) fn begin_shuffle_from_graveyard(
-        &mut self,
-        answerer: PlayerId,
-        owner: PlayerId,
-        source: ObjectId,
-        max: u32,
-    ) {
-        let candidates = self.graveyard_of(owner);
-        if candidates.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::ShuffleFromGraveyard {
-            player: answerer,
-            owner,
-            source,
-            candidates,
-            max,
-        });
-    }
-
     /// Answer a [`PendingChoice::ShuffleFromGraveyard`]: shuffle up to `max` (`0` = unbounded) of
     /// the offered `candidates` from `owner`'s graveyard into `owner`'s library, via the same
     /// [`Event::TuckedToLibrary`] zone move [`Effect::TuckFromGraveyard`] uses, then shuffle that
@@ -1662,35 +1425,6 @@ impl Game {
         }
         self.push_apply(&mut events, Event::LibraryShuffled { player: owner });
         Ok(events)
-    }
-
-    /// Begin a library search: pause on a [`PendingChoice::SearchLibrary`] over the cards in
-    /// `player`'s library matching `filter`, offering up to `count` finds. Always pauses (even
-    /// with no matches) so the search — and its mandatory shuffle (CR 701.19) — completes
-    /// through the answer path.
-    pub(crate) fn begin_search_library(
-        &mut self,
-        player: PlayerId,
-        filter: CardFilter,
-        dest: SearchDest,
-        tapped: bool,
-        count: u8,
-        overflow: Option<SearchDest>,
-    ) {
-        let matches: Vec<ObjectId> = self.players[player.0 as usize]
-            .library
-            .iter()
-            .copied()
-            .filter(|&id| filter.matches(self.def_of(id)))
-            .collect();
-        self.pause_for(PendingChoice::SearchLibrary {
-            player,
-            matches,
-            dest,
-            tapped,
-            remaining: count,
-            overflow,
-        });
     }
 
     /// Answer a [`PendingChoice::SearchLibrary`]: move the chosen card (one of the offered
@@ -1780,25 +1514,6 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin an [`Effect::PutLandFromHand`]: pause on a [`PendingChoice::PutLandFromHand`] over
-    /// `player`'s hand land cards ("up to one" — CR 305.9). No lands in hand raises no choice (a
-    /// harmless no-op, same shape as [`Game::begin_discard`]'s empty-hand case).
-    pub(crate) fn begin_put_land_from_hand(&mut self, player: PlayerId, tapped: bool) {
-        let candidates: Vec<ObjectId> = self
-            .hand_of(player)
-            .into_iter()
-            .filter(|&id| matches!(self.def_of(id).kind, CardKind::Land { .. }))
-            .collect();
-        if candidates.is_empty() {
-            return; // nothing to put — don't pause.
-        }
-        self.pause_for(PendingChoice::PutLandFromHand {
-            player,
-            tapped,
-            candidates,
-        });
-    }
-
     /// Answer a [`PendingChoice::PutLandFromHand`]: put the chosen land (one of the offered
     /// candidates) onto the battlefield, or decline (`choice = None`).
     pub(crate) fn put_land_from_hand(
@@ -1830,25 +1545,6 @@ impl Game {
             );
         }
         Ok(events)
-    }
-
-    /// Begin an [`Effect::CastCreatureFaceDown`] (Illusionary Mask): pause on a
-    /// [`PendingChoice::CastCreatureFaceDown`] over `player`'s hand creature cards whose mana
-    /// cost "could be paid by some amount of, or all of" the mana spent on the activation's `{X}`
-    /// (`spent_mana`, [`Cost::payable_from_multiset`] — CR 107.3). "You may," so no payable
-    /// creature raises no choice (a harmless no-op, same shape as
-    /// [`Game::begin_put_land_from_hand`]).
-    pub(crate) fn begin_cast_creature_face_down(&mut self, player: PlayerId, spent_mana: [u8; 6]) {
-        let candidates: Vec<ObjectId> = self
-            .hand_of(player)
-            .into_iter()
-            .filter(|&id| matches!(self.def_of(id).kind, CardKind::Creature { .. }))
-            .filter(|&id| self.def_of(id).cost.payable_from_multiset(&spent_mana))
-            .collect();
-        if candidates.is_empty() {
-            return; // nothing payable — don't pause.
-        }
-        self.pause_for(PendingChoice::CastCreatureFaceDown { player, candidates });
     }
 
     /// Answer a [`PendingChoice::CastCreatureFaceDown`]: cast the chosen hand creature (one of the
@@ -1990,29 +1686,6 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin an [`Effect::CashOutExiledWithThis`]: pause on a
-    /// [`PendingChoice::ChooseExiledWithCard`] over the cards `source` has exiled with itself
-    /// (via [`Effect::ExileDiscardedWithThis`]/[`Game::exiled_with`]) — "up to one," mirroring
-    /// [`Game::begin_put_land_from_hand`]. An empty pile raises no choice (a legal activation that
-    /// does nothing).
-    pub(crate) fn begin_cash_out_exiled_with_this(&mut self, player: PlayerId, source: ObjectId) {
-        let candidates: Vec<ObjectId> = self
-            .exile_links
-            .with_source
-            .iter()
-            .filter(|&&(s, _)| s == source)
-            .map(|&(_, card)| card)
-            .collect();
-        if candidates.is_empty() {
-            return; // nothing exiled with this source — legal activation, no-op.
-        }
-        self.pause_for(PendingChoice::ChooseExiledWithCard {
-            player,
-            source,
-            candidates,
-        });
-    }
-
     /// Answer a [`PendingChoice::ChooseExiledWithCard`]: put the chosen card (one of the offered
     /// candidates) into its owner's graveyard, then create a Treasure if it's a land or a 2/2
     /// creature token otherwise (CR 406.3), or decline (`choice = None`).
@@ -2061,28 +1734,6 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin an [`Effect::CastExiledWithThisFree`]: pause on a
-    /// [`PendingChoice::ChooseExiledWithCardToCast`] over the cards `source` has exiled with
-    /// itself — "up to one," the same shape [`Game::begin_cash_out_exiled_with_this`] pauses on.
-    /// An empty pile raises no choice (a legal activation that does nothing).
-    pub(crate) fn begin_cast_exiled_with_this_free(&mut self, player: PlayerId, source: ObjectId) {
-        let candidates: Vec<ObjectId> = self
-            .exile_links
-            .with_source
-            .iter()
-            .filter(|&&(s, _)| s == source)
-            .map(|&(_, card)| card)
-            .collect();
-        if candidates.is_empty() {
-            return; // nothing exiled with this source — legal activation, no-op.
-        }
-        self.pause_for(PendingChoice::ChooseExiledWithCardToCast {
-            player,
-            source,
-            candidates,
-        });
-    }
-
     /// Answer a [`PendingChoice::ChooseExiledWithCardToCast`]: grant the free-cast permission
     /// (CR 118.5, "without paying its mana cost") for the chosen card, or decline
     /// (`choice = None`). Unlike [`Game::choose_exiled_with_card`], the chosen card stays in the
@@ -2117,14 +1768,14 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin an [`Effect::ExileTopCastMatchingFree`] (Herald of Amity's dig): exile the top
-    /// `count` cards of `controller`'s library face-up (public, CR 701.17), then pause on a
+    /// Resolve [`Effect::ExileTopCastMatchingFree`] (Herald of Amity's dig): exile the top
+    /// `count` cards of `controller`'s library face-up (public, CR 701.17), then raise a
     /// choose-up-to-one over the exiled cards matching `filter`. A short library exiles only
     /// what's there (CR 120-style "as many as possible"); an empty library raises no choice (a
-    /// harmless no-op, mirroring [`Self::begin_look_at_top`]). No exiled card matching `filter`
+    /// harmless no-op, mirroring empty-library ArrangeTop). No exiled card matching `filter`
     /// also raises no choice — there's nothing to offer — but "put the rest on the bottom" still
     /// has to run, so the whole batch is bottomed immediately instead.
-    pub(crate) fn begin_exile_top_cast_matching_free(
+    pub(crate) fn exile_top_cast_matching_free(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -2162,16 +1813,18 @@ impl Game {
             .copied()
             .filter(|&id| filter.matches(self.def_of(id)))
             .collect();
-        if candidates.is_empty() {
+        pending::raise(
+            self,
+            pending::ChoiceRequest::ChooseExiledDigToCastFree {
+                player: controller,
+                source,
+                candidates,
+                exiled: exiled.clone(),
+            },
+        );
+        if !self.resolution_is_paused() {
             self.bottom_exiled_dig(&exiled, events);
-            return;
         }
-        self.pause_for(PendingChoice::ChooseExiledDigToCastFree {
-            player: controller,
-            source,
-            candidates,
-            exiled,
-        });
     }
 
     /// Answer a [`PendingChoice::ChooseExiledDigToCastFree`]: grant the free-cast permission
@@ -2212,8 +1865,8 @@ impl Game {
     /// Put every exiled-dig card in `cards` on the bottom of its owner's library in a random
     /// order (CR "in a random order" — shared by Herald of Amity's dig and Cascade). The order is
     /// randomized with the injected splitmix PRNG (Fisher-Yates), keeping the engine deterministic
-    /// and pure — no `rand`. Shared by [`Self::begin_exile_top_cast_matching_free`]'s /
-    /// [`Self::begin_cascade`]'s no-hit fast paths and [`Self::choose_exiled_dig_to_cast_free`]'s
+    /// and pure — no `rand`. Shared by [`Self::exile_top_cast_matching_free`]'s /
+    /// [`Self::cascade`]'s no-hit fast paths and [`Self::choose_exiled_dig_to_cast_free`]'s
     /// answer.
     pub(crate) fn bottom_exiled_dig(&mut self, cards: &[ObjectId], events: &mut Vec<Event>) {
         let mut order = cards.to_vec();
@@ -2236,8 +1889,8 @@ impl Game {
 
     /// Put every card in `cards` (already `player`'s own library cards) on the bottom of that
     /// library in a random order (CR "in a random order" — shared by Songbirds' Blessing's
-    /// [`Self::begin_reveal_until_may_deploy`] and Creative Technique's
-    /// [`Self::begin_reveal_until_exile_cast_free`]). Same Fisher-Yates-with-the-injected-PRNG
+    /// [`Self::reveal_until_may_deploy`] and Creative Technique's
+    /// [`Self::reveal_until_exile_cast_free`]). Same Fisher-Yates-with-the-injected-PRNG
     /// shuffle as [`Self::bottom_exiled_dig`], but each card is already in the library — a
     /// same-zone reorder via [`Event::PutOnBottomOfLibrary`], not a zone change.
     pub(crate) fn bottom_pile_in_library(
@@ -2260,7 +1913,7 @@ impl Game {
     /// and Nassari's nonland pick): the next living player reached walking turn order forward
     /// from `controller`.
     /// ponytail: hardcodes the next opponent in turn order rather than the controller's own pick
-    /// (the same approximation [`Self::begin_choose_splitting_opponent`] used to carry for
+    /// (the same approximation [`Self::choose_splitting_opponent`] used to carry for
     /// Abstract Performance and Fact or Fiction, before their shared chooser fixed it) — migrate
     /// Plargg and Nassari to that chooser if a pool card ever needs "an opponent" here to be a
     /// genuine choice. `None` only if `controller` is the sole living player left (unreachable in
@@ -2337,10 +1990,10 @@ impl Game {
     }
 
     /// Offer `controller` up to `count` free casts (CR 118.5) over the castable (nonland) cards in
-    /// `exiled`, pausing on a [`PendingChoice::ChooseExiledToCastFree`]. With no castable card
+    /// `exiled`, raising [`ChoiceRequest::ChooseExiledToCastFree`]. With no castable card
     /// there's nothing to offer, so the rest routes immediately. Shared by Abstract Performance
     /// (`count = 1`, rest to hand) and Plargg and Nassari (`count = 2`, rest stays exiled).
-    pub(crate) fn begin_choose_exiled_to_cast_free(
+    pub(crate) fn choose_exiled_to_cast_free_pile(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -2349,23 +2002,19 @@ impl Game {
         rest_to_hand: bool,
         events: &mut Vec<Event>,
     ) {
-        let candidates: Vec<ObjectId> = exiled
-            .iter()
-            .copied()
-            .filter(|&id| !matches!(self.def_of(id).kind, CardKind::Land { .. }))
-            .collect();
-        if candidates.is_empty() {
+        pending::raise(
+            self,
+            pending::ChoiceRequest::ChooseExiledToCastFree {
+                player: controller,
+                source,
+                exiled: exiled.clone(),
+                count,
+                rest_to_hand,
+            },
+        );
+        if !self.resolution_is_paused() {
             self.route_exiled_rest(&exiled, &[], rest_to_hand, events);
-            return;
         }
-        self.pause_for(PendingChoice::ChooseExiledToCastFree {
-            player: controller,
-            source,
-            candidates,
-            exiled,
-            count,
-            rest_to_hand,
-        });
     }
 
     /// Answer a [`PendingChoice::ChooseExiledToCastFree`]: grant the free-cast permission (CR
@@ -2408,11 +2057,11 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin Dance with Calamity's push-your-luck loop
-    /// ([`Effect::ExileTopUntilStopCastFreeUnderBudget`]): pause on a first
-    /// [`PendingChoice::DanceExileMore`] over an empty exile pile. An already-empty library has
+    /// Resolve Dance with Calamity's push-your-luck loop
+    /// ([`Effect::ExileTopUntilStopCastFreeUnderBudget`]): raise a first
+    /// [`ChoiceRequest::DanceExileMore`] over an empty exile pile. An already-empty library has
     /// nothing to exile, so it resolves the payoff straight away (a zero tally — nothing to cast).
-    pub(crate) fn begin_dance_with_calamity(
+    pub(crate) fn dance_with_calamity(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -2423,18 +2072,21 @@ impl Game {
             self.finish_dance(controller, source, Vec::new(), 0, budget, events);
             return;
         }
-        self.pause_for(PendingChoice::DanceExileMore {
-            player: controller,
-            source,
-            exiled: Vec::new(),
-            total_mv: 0,
-            budget,
-        });
+        pending::raise(
+            self,
+            pending::ChoiceRequest::DanceExileMore {
+                player: controller,
+                source,
+                exiled: Vec::new(),
+                total_mv: 0,
+                budget,
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::DanceExileMore`]: on `yes`, exile the top card of the caster's
     /// library face-up (CR 701.17, public) and add its mana value to the running tally, then
-    /// re-pause (unless the library is now empty). On `no` — or once the library empties — stop and
+    /// re-raise (unless the library is now empty). On `no` — or once the library empties — stop and
     /// resolve the payoff ([`Self::finish_dance`]).
     pub(crate) fn dance_exile_more(
         &mut self,
@@ -2470,13 +2122,16 @@ impl Game {
         }
         // Keep offering as long as the caster wants more and the library still has a card to exile.
         if yes && !self.players[player.0 as usize].library.is_empty() {
-            self.pause_for(PendingChoice::DanceExileMore {
-                player,
-                source,
-                exiled,
-                total_mv,
-                budget,
-            });
+            pending::raise(
+                self,
+                pending::ChoiceRequest::DanceExileMore {
+                    player,
+                    source,
+                    exiled,
+                    total_mv,
+                    budget,
+                },
+            );
             return Ok(events);
         }
         self.finish_dance(player, source, exiled, total_mv, budget, &mut events);
@@ -2484,8 +2139,8 @@ impl Game {
     }
 
     /// Resolve Dance with Calamity's payoff once the exile loop stops: if `total_mv <= budget` the
-    /// caster may cast any number of the exiled (nonland) cards for free (CR 118.5) — pausing on a
-    /// [`PendingChoice::ChooseExiledToCastFree`] over the whole pile, uncast cards staying exiled.
+    /// caster may cast any number of the exiled (nonland) cards for free (CR 118.5) — raising
+    /// [`ChoiceRequest::ChooseExiledToCastFree`] over the whole pile, uncast cards staying exiled.
     /// On a bust (`total_mv > budget`) nothing is offered and every exiled card stays exiled (a
     /// bust never returns them).
     fn finish_dance(
@@ -2503,14 +2158,14 @@ impl Game {
         // "any number" — the cap is the whole exiled pile (u8-bounded; a legal Dance can never
         // exile more than a handful of nonland cards under a 13-MV budget).
         let count = exiled.len().min(u8::MAX as usize) as u8;
-        self.begin_choose_exiled_to_cast_free(controller, source, exiled, count, false, events);
+        self.choose_exiled_to_cast_free_pile(controller, source, exiled, count, false, events);
     }
 
-    /// Begin Abstract Performance ([`Effect::OpponentSplitsExilePiles`]): exile the top four
+    /// Resolve Abstract Performance ([`Effect::OpponentSplitsExilePiles`]): exile the top four
     /// (CR 701.9 face-down — hidden from every viewer but `controller`) then the next four
     /// (face-up) of `controller`'s library into two piles, then hand off to the shared
-    /// [`Self::begin_choose_splitting_opponent`] chooser to pick who picks a pile.
-    pub(crate) fn begin_opponent_splits_exile_piles(
+    /// [`Self::choose_splitting_opponent`] chooser to pick who picks a pile.
+    pub(crate) fn opponent_splits_exile_piles(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -2518,19 +2173,19 @@ impl Game {
     ) {
         let pile_a = self.exile_top_into_pile(controller, 4, true, events);
         let pile_b = self.exile_top_into_pile(controller, 4, false, events);
-        self.begin_choose_splitting_opponent(
+        self.choose_splitting_opponent(
             controller,
             source,
             SplittingContinuation::ExilePiles { pile_a, pile_b },
         );
     }
 
-    /// Begin Fact or Fiction ([`Effect::RevealTopSplitPiles`]): reveal the top five of
+    /// Resolve Fact or Fiction ([`Effect::RevealTopSplitPiles`]): reveal the top five of
     /// `controller`'s library (all public, CR 701.16; a short library reveals only what's there,
     /// CR 120.3 "as many as possible" — an empty library reveals nothing and raises no pause),
-    /// then hand off to the shared [`Self::begin_choose_splitting_opponent`] chooser to pick who
+    /// then hand off to the shared [`Self::choose_splitting_opponent`] chooser to pick who
     /// partitions them.
-    pub(crate) fn begin_reveal_top_split_piles(
+    pub(crate) fn reveal_top_split_piles(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -2555,7 +2210,7 @@ impl Game {
         if revealed.is_empty() {
             return; // an empty library reveals nothing — no pile to split.
         }
-        self.begin_choose_splitting_opponent(
+        self.choose_splitting_opponent(
             controller,
             source,
             SplittingContinuation::Partition { revealed },
@@ -2564,10 +2219,10 @@ impl Game {
 
     /// The shared "an opponent ..." chooser for [`Effect::OpponentSplitsExilePiles`] and
     /// [`Effect::RevealTopSplitPiles`]: with more than one opponent alive, `controller` picks
-    /// which one on a [`PendingChoice::ChooseSplittingOpponent`]; with at most one, resume
+    /// which one on a [`ChoiceRequest::ChooseSplittingOpponent`]; with at most one, resume
     /// immediately (the "single-legal-choice" collapse — no real choice to offer). `then` carries
     /// the split data already computed, so it's ready the instant the opponent is known.
-    fn begin_choose_splitting_opponent(
+    fn choose_splitting_opponent(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -2577,12 +2232,15 @@ impl Game {
         match legal.as_slice() {
             [] => {} // ponytail: no opponent to choose or split — unreachable in a real game.
             [only] => self.resume_splitting_opponent(*only, controller, source, then),
-            _ => self.pause_for(PendingChoice::ChooseSplittingOpponent {
-                player: controller,
-                source,
-                legal,
-                then,
-            }),
+            _ => pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseSplittingOpponent {
+                    player: controller,
+                    source,
+                    legal,
+                    then,
+                },
+            ),
         }
     }
 
@@ -2607,8 +2265,8 @@ impl Game {
         Ok(Vec::new())
     }
 
-    /// Resume [`Self::begin_choose_splitting_opponent`] once the splitting opponent is known:
-    /// pause `opponent` on whichever pause `then` names.
+    /// Resume [`Self::choose_splitting_opponent`] once the splitting opponent is known:
+    /// raise `opponent` on whichever pause `then` names.
     fn resume_splitting_opponent(
         &mut self,
         opponent: PlayerId,
@@ -2618,21 +2276,27 @@ impl Game {
     ) {
         match then {
             SplittingContinuation::ExilePiles { pile_a, pile_b } => {
-                self.pause_for(PendingChoice::OpponentChoosesPile {
-                    player: opponent,
-                    controller,
-                    source,
-                    pile_a,
-                    pile_b,
-                });
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::OpponentChoosesPile {
+                        player: opponent,
+                        controller,
+                        source,
+                        pile_a,
+                        pile_b,
+                    },
+                );
             }
             SplittingContinuation::Partition { revealed } => {
-                self.pause_for(PendingChoice::PartitionRevealed {
-                    player: opponent,
-                    controller,
-                    source,
-                    revealed,
-                });
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::PartitionRevealed {
+                        player: opponent,
+                        controller,
+                        source,
+                        revealed,
+                    },
+                );
             }
         }
     }
@@ -2667,12 +2331,15 @@ impl Game {
             .into_iter()
             .filter(|id| !pile_a.contains(id))
             .collect();
-        self.pause_for(PendingChoice::ChoosePileForHand {
-            player: controller,
-            source,
-            pile_a,
-            pile_b,
-        });
+        pending::raise(
+            self,
+            pending::ChoiceRequest::ChoosePileForHand {
+                player: controller,
+                source,
+                pile_a,
+                pile_b,
+            },
+        );
         Ok(Vec::new())
     }
 
@@ -2757,14 +2424,14 @@ impl Game {
                 },
             );
         }
-        self.begin_choose_exiled_to_cast_free(controller, source, other, 1, true, &mut events);
+        self.choose_exiled_to_cast_free_pile(controller, source, other, 1, true, &mut events);
         Ok(events)
     }
 
-    /// Begin Plargg and Nassari ([`Effect::EachPlayerExilesUntilNonlandOpponentPicks`]): each
+    /// Resolve Plargg and Nassari ([`Effect::EachPlayerExilesUntilNonlandOpponentPicks`]): each
     /// living player, in APNAP order, exiles cards from the top of their own library until they
     /// exile a nonland (all face-up, public); an opponent then picks one of the exiled nonlands.
-    pub(crate) fn begin_each_player_exiles_until_nonland(
+    pub(crate) fn each_player_exiles_until_nonland(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -2791,19 +2458,19 @@ impl Game {
                 }
             }
         }
-        if nonlands.is_empty() {
-            return; // no nonland exiled anywhere — nothing for an opponent to pick.
-        }
         let Some(opponent) = self.next_opponent_in_turn_order(controller) else {
             return; // ponytail: no opponent to choose — unreachable in a real game.
         };
-        self.pause_for(PendingChoice::OpponentChoosesExiledNonland {
-            player: opponent,
-            controller,
-            source,
-            nonlands,
-            exiled,
-        });
+        pending::raise(
+            self,
+            pending::ChoiceRequest::OpponentChoosesExiledNonland {
+                player: opponent,
+                controller,
+                source,
+                nonlands,
+                exiled,
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::OpponentChoosesExiledNonland`]: the picked nonland stays exiled;
@@ -2832,18 +2499,18 @@ impl Game {
 
         let mut events = Vec::new();
         let others: Vec<ObjectId> = exiled.into_iter().filter(|&id| id != picked).collect();
-        self.begin_choose_exiled_to_cast_free(controller, source, others, 2, false, &mut events);
+        self.choose_exiled_to_cast_free_pile(controller, source, others, 2, false, &mut events);
         Ok(events)
     }
 
-    /// Begin an [`Effect::RevealUntilMayDeploy`] (Songbirds' Blessing's enchanted-creature-
+    /// Resolve [`Effect::RevealUntilMayDeploy`] (Songbirds' Blessing's enchanted-creature-
     /// attacks trigger): reveal `controller`'s own top cards one at a time until the first card
     /// matching `filter` or the library runs out (CR 120.3), collecting every non-match along the
     /// way. The matching card is left unmoved on top of the library and offered on a
-    /// [`PendingChoice::RevealedCardToBattlefieldOrHand`]; either way (a hit or a whiff), the
+    /// [`ChoiceRequest::RevealedCardToBattlefieldOrHand`]; either way (a hit or a whiff), the
     /// collected non-matches are bottomed together, shuffled, via
     /// [`Self::bottom_pile_in_library`].
-    pub(crate) fn begin_reveal_until_may_deploy(
+    pub(crate) fn reveal_until_may_deploy(
         &mut self,
         controller: PlayerId,
         filter: CardFilter,
@@ -2866,10 +2533,13 @@ impl Game {
                 continue;
             }
             self.bottom_pile_in_library(controller, &rest, events);
-            self.pause_for(PendingChoice::RevealedCardToBattlefieldOrHand {
-                player: controller,
-                card,
-            });
+            pending::raise(
+                self,
+                pending::ChoiceRequest::RevealedCardToBattlefieldOrHand {
+                    player: controller,
+                    card,
+                },
+            );
             return;
         }
         self.bottom_pile_in_library(controller, &rest, events);
@@ -2961,15 +2631,15 @@ impl Game {
             .into_iter()
             .filter(|&id| self.permanent_matches(&host_filter, id, controller, Some(deployed)))
             .collect();
-        if candidates.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::ChooseAttachHost {
-            player: controller,
-            attachment: deployed,
-            candidates,
-            optional,
-        });
+        pending::raise(
+            self,
+            pending::ChoiceRequest::ChooseAttachHost {
+                player: controller,
+                attachment: deployed,
+                candidates,
+                optional,
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::ChooseAttachHost`]: `host = Some(id)` attaches the deployed
@@ -3022,7 +2692,7 @@ impl Game {
     /// [`Self::maybe_pause_attach_deployed_aura`], the same choose-host surface a deployed Aura
     /// already uses (CR 303.4f). Guard-returns with no events if this Aura has since left the
     /// graveyard (CR 603.10a last-known information — milled/exiled elsewhere in the meantime).
-    pub(crate) fn begin_return_aura_from_graveyard_attached_to_chosen_host(
+    pub(crate) fn return_aura_from_graveyard_attached_to_chosen_host(
         &mut self,
         source: ObjectId,
         events: &mut Vec<Event>,
@@ -3040,15 +2710,15 @@ impl Game {
         self.maybe_pause_attach_deployed_aura(permanent, owner);
     }
 
-    /// Begin an [`Effect::RevealUntilExileCastFree`] (Creative Technique's reveal-until-nonland
+    /// Resolve [`Effect::RevealUntilExileCastFree`] (Creative Technique's reveal-until-nonland
     /// dig, run after its preceding [`Effect::ShuffleLibrary`] step): reveal `controller`'s own
-    /// top cards one at a time — same loop shape as [`Self::begin_reveal_until_may_deploy`] —
+    /// top cards one at a time — same loop shape as [`Self::reveal_until_may_deploy`] —
     /// until the first card matching `filter` or the library runs out, collecting every non-match
-    /// along the way. The matching card is exiled face-up and pauses on the shared
-    /// [`PendingChoice::ChooseExiledDigToCastFree`] (a single-candidate batch); either way (a hit
+    /// along the way. The matching card is exiled face-up and raises the shared
+    /// [`ChoiceRequest::ChooseExiledDigToCastFree`] (a single-candidate batch); either way (a hit
     /// or a whiff), the collected non-matches are bottomed together, shuffled, via
     /// [`Self::bottom_pile_in_library`].
-    pub(crate) fn begin_reveal_until_exile_cast_free(
+    pub(crate) fn reveal_until_exile_cast_free(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -3082,25 +2752,28 @@ impl Game {
                 },
             );
             self.bottom_pile_in_library(controller, &rest, events);
-            self.pause_for(PendingChoice::ChooseExiledDigToCastFree {
-                player: controller,
-                source,
-                candidates: vec![card],
-                exiled: vec![card],
-            });
+            pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseExiledDigToCastFree {
+                    player: controller,
+                    source,
+                    candidates: vec![card],
+                    exiled: vec![card],
+                },
+            );
             return;
         }
         self.bottom_pile_in_library(controller, &rest, events);
     }
 
-    /// Begin an [`Effect::Cascade`] (CR 702.85). Reveal cards from the top of `controller`'s
+    /// Resolve [`Effect::Cascade`] (CR 702.85). Reveal cards from the top of `controller`'s
     /// library one at a time, exiling each face-up (public, reusing the dig's
     /// [`Event::ExiledFromLibraryToChooseCastFree`]), until the just-exiled card is a **nonland**
     /// with mana value strictly less than `mana_value` (the cascading spell's own mana value), or
-    /// the library runs out (CR 702.85c "as many as possible"). A hit pauses on a may-cast-it-free
-    /// choice over exactly that card (reusing [`PendingChoice::ChooseExiledDigToCastFree`]); with
+    /// the library runs out (CR 702.85c "as many as possible"). A hit raises a may-cast-it-free
+    /// choice over exactly that card (reusing [`ChoiceRequest::ChooseExiledDigToCastFree`]); with
     /// no hit, the whole reveal is bottomed immediately in a random order.
-    pub(crate) fn begin_cascade(
+    pub(crate) fn cascade(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
@@ -3131,12 +2804,15 @@ impl Game {
             self.bottom_exiled_dig(&exiled, events); // whiff — bottom everything revealed
             return;
         };
-        self.pause_for(PendingChoice::ChooseExiledDigToCastFree {
-            player: controller,
-            source,
-            candidates: vec![hit],
-            exiled,
-        });
+        pending::raise(
+            self,
+            pending::ChoiceRequest::ChooseExiledDigToCastFree {
+                player: controller,
+                source,
+                candidates: vec![hit],
+                exiled,
+            },
+        );
     }
 
     /// The living players in APNAP order (CR 101.4): the active player first, then each other in
@@ -3158,36 +2834,11 @@ impl Game {
             .collect()
     }
 
-    /// Begin a resolution-time optional sacrifice ([`Effect::MaySacrifice`] — Witherbloom
-    /// Charm's "You may sacrifice a permanent. If you do, draw two cards."): pause on a
-    /// [`PendingChoice::MaySacrifice`] so `controller` can pick one of their permanents matching
-    /// `filter`, or nothing. With no legal permanent to give up, there's no real decision — skip
-    /// straight past (declining is automatic), the same "nothing to choose" treatment
-    /// [`Game::prompt_next_sacrifice`] gives an edict-affected player with an empty board.
-    pub(crate) fn begin_may_sacrifice(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        filter: PermanentFilter,
-        then: &'static [Effect],
-    ) {
-        let options = self.edict_options(controller, filter);
-        if options.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::MaySacrifice {
-            player: controller,
-            source,
-            options,
-            then,
-        });
-    }
-
     /// Sacrifice each of `ids` (already validated as legal), pushing both the death event and
     /// the [`Event::Sacrificed`] marker for each — the shared tail
-    /// [`Game::begin_choose_own_sacrifices`]'s no-real-choice path and
+    /// [`ChoiceRequest::ChooseOwnSacrifices`]'s no-real-choice path and
     /// [`Game::choose_own_sacrifices`]'s answer path both run.
-    fn sacrifice_ids(&mut self, ids: &[ObjectId], by: PlayerId, events: &mut Vec<Event>) {
+    pub(crate) fn sacrifice_ids(&mut self, ids: &[ObjectId], by: PlayerId, events: &mut Vec<Event>) {
         for &id in ids {
             let def = self.def_of(id);
             let event = self.sacrifice_event(id);
@@ -3201,35 +2852,6 @@ impl Game {
                 },
             );
         }
-    }
-
-    /// Begin a forced sacrifice the affected player directs ([`Effect::SacrificeOwn`] — Lotus
-    /// Field's ETB "sacrifice two lands", Smothering Abomination's upkeep "sacrifice a
-    /// creature"): pause on a [`PendingChoice::ChooseOwnSacrifices`] so `controller` picks
-    /// exactly `count` of their own permanents matching `filter` (CR 701.16a: the permanents'
-    /// controller chooses which). With `count` or fewer legal permanents, there's no real
-    /// decision — sacrifice all of them immediately (CR 700.2's "as many as possible"), the same
-    /// "nothing to choose" treatment [`Game::begin_may_sacrifice`] gives an empty board.
-    pub(crate) fn begin_choose_own_sacrifices(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        filter: PermanentFilter,
-        count: u32,
-        events: &mut Vec<Event>,
-    ) {
-        let options = self.edict_options(controller, filter);
-        if options.len() <= count as usize {
-            self.sacrifice_ids(&options, controller, events);
-            return;
-        }
-        self.pause_for(PendingChoice::ChooseOwnSacrifices {
-            player: controller,
-            source,
-            filter,
-            count,
-            options,
-        });
     }
 
     /// Answer a [`PendingChoice::ChooseOwnSacrifices`]: `sacrifices` must be exactly `count` of
@@ -3262,29 +2884,6 @@ impl Game {
         let mut events = Vec::new();
         self.sacrifice_ids(&sacrifices, player, &mut events);
         Ok(events)
-    }
-
-    /// Begin a Devour N as-enters sacrifice ([`CardDef::devour`] — Mycoloth, Ribtruss Roaster):
-    /// pause on a [`PendingChoice::Devour`] so `controller` may sacrifice any subset of the *other*
-    /// creatures they control (the entering `source` itself isn't offered, CR 702.82). With no
-    /// other creature to give up there's no real decision — skip straight past (declining places 0
-    /// counters), the same "nothing to choose" treatment [`Game::begin_may_sacrifice`] gives an
-    /// empty board.
-    pub(crate) fn begin_devour(&mut self, controller: PlayerId, source: ObjectId, multiplier: u32) {
-        let options: Vec<ObjectId> = self
-            .edict_options(controller, PermanentFilter::of(TypeSet::CREATURE))
-            .into_iter()
-            .filter(|&id| id != source)
-            .collect();
-        if options.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::Devour {
-            player: controller,
-            source,
-            multiplier,
-            options,
-        });
     }
 
     /// Answer a [`PendingChoice::Devour`]: `sacrifices` is any subset (empty declines) of the
@@ -3326,43 +2925,6 @@ impl Game {
             );
         }
         Ok(events)
-    }
-
-    /// Begin an enter-as-copy replacement (CR 706/707.2 — Altered Ego, Cursed Mirror, Copy
-    /// Enchantment): as `source` enters, its controller may have it become a copy of any *other*
-    /// object on the battlefield matching `marker.of` (a creature by default; an enchantment,
-    /// including an Aura, for Copy Enchantment). With no candidate there's no real decision — skip
-    /// straight past (the printed permanent stands), the same "nothing to choose" treatment
-    /// [`Game::begin_devour`] gives an empty board.
-    pub(crate) fn begin_enter_as_copy(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        marker: EnterAsCopy,
-    ) {
-        let candidates: Vec<ObjectId> = self
-            .permanent_ids(|_| true)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .filter(|&id| {
-                id != source
-                    && match marker.of {
-                        CopyTargetKind::Creature => self.is_creature_on_battlefield(id),
-                        CopyTargetKind::Enchantment => self.is_enchantment_on_battlefield(id),
-                    }
-            })
-            .collect();
-        if candidates.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::ChooseCopyTarget {
-            player: controller,
-            source,
-            candidates,
-            until_eot: marker.until_eot,
-            extra_counters: marker.extra_counters,
-            gains_haste: marker.gains_haste,
-        });
     }
 
     /// Answer a [`PendingChoice::ChooseCopyTarget`]: `copy = Some(creature)` (one of the choice's
@@ -3454,33 +3016,6 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin Brudiclad's mass token conversion ([`Effect::EachOtherTokenBecomesCopyOfChosen`] —
-    /// "you may choose a token you control; if you do, each other token you control becomes a copy
-    /// of that token"): pause on a [`PendingChoice::ChooseTokenToCopy`] so `controller` can pick
-    /// one token they control, or decline. With no token to choose there's no real decision — skip
-    /// straight past (nothing to convert), the same "nothing to choose" treatment
-    /// [`Game::begin_enter_as_copy`] gives an empty board.
-    pub(crate) fn begin_each_other_token_becomes_copy(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-    ) {
-        let candidates: Vec<ObjectId> = self
-            .permanent_ids(|p| p.token)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .filter(|&id| self.controller_of(id) == controller)
-            .collect();
-        if candidates.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::ChooseTokenToCopy {
-            player: controller,
-            source,
-            candidates,
-        });
-    }
-
     /// Answer a [`PendingChoice::ChooseTokenToCopy`] (reusing [`Intent::ChooseCopyTarget`]):
     /// `copy = Some(token)` (one of the choice's `candidates`) makes every *other* token the
     /// player controls become a copy of it — an indefinite [`Event::BecameCopy`] per other token
@@ -3524,54 +3059,6 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin Spirit of Resilience's payoff
-    /// ([`Effect::PutCounterThenMayBecomeCopyOfCardFromList`] — "put a +1/+1 counter on this
-    /// creature, then you may have this creature become a copy of an artifact or creature card
-    /// from among those cards until end of turn"): place one +1/+1 counter on `source` (its own
-    /// creature), then pause on a [`PendingChoice::ChooseCopyCardFromList`] over the
-    /// artifact/creature cards among `cards`. With no copyable card there's no real decision — the
-    /// counter is placed and nothing pauses, the same "nothing to choose" treatment
-    /// [`Game::begin_each_other_token_becomes_copy`] gives an empty board.
-    pub(crate) fn begin_put_counter_then_may_become_copy(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        cards: &'static [ObjectId],
-        events: &mut Vec<Event>,
-    ) {
-        let count = self.counters_after_replacements(source, 1);
-        if count > 0 {
-            self.push_apply(
-                events,
-                Event::CountersPlaced {
-                    object: source,
-                    count,
-                    source_name: self.source_name_of(source),
-                },
-            );
-        }
-        // "an artifact or creature card from among those cards" — CR 707.2 copyable values only
-        // exist for a card that could be that permanent kind.
-        let candidates: Vec<ObjectId> = cards
-            .iter()
-            .copied()
-            .filter(|&id| {
-                self.def_of(id)
-                    .kind
-                    .types()
-                    .intersects(TypeSet::CREATURE.union(TypeSet::ARTIFACT))
-            })
-            .collect();
-        if candidates.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::ChooseCopyCardFromList {
-            player: controller,
-            source,
-            candidates,
-        });
-    }
-
     /// Answer a [`PendingChoice::ChooseCopyCardFromList`] (reusing [`Intent::ChooseCopyTarget`]):
     /// `copy = Some(card)` (one of the choice's `candidates`) has `source` become a copy of that
     /// card until end of turn (an [`Event::BecameCopy`] with `until_eot: true`, CR 706/707.2).
@@ -3610,60 +3097,6 @@ impl Game {
             },
         );
         Ok(events)
-    }
-
-    /// Begin a resolution-time optional graveyard return ([`Effect::MayReturnFromGraveyard`] —
-    /// Deadly Brew's "you may return another permanent card from your graveyard to your hand"):
-    /// pause on a [`PendingChoice::MayReturnFromGraveyard`] so `controller` can pick one card in
-    /// their own graveyard matching `filter`, or nothing. With no legal card, there's no real
-    /// decision — skip straight past, the same "nothing to choose" treatment
-    /// [`Game::begin_may_sacrifice`] gives an empty board.
-    pub(crate) fn begin_may_return_from_graveyard(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        filter: CardFilter,
-    ) {
-        let options: Vec<ObjectId> = self
-            .live_object_ids()
-            .into_iter()
-            .filter(|&id| {
-                self.zone_of(id) == Zone::Graveyard
-                    && self.owner_of(id) == controller
-                    && filter.matches(self.def_of(id))
-            })
-            .collect();
-        if options.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::MayReturnFromGraveyard {
-            player: controller,
-            source,
-            options,
-        });
-    }
-
-    /// Begin a resolution-time optional discard ([`Effect::MayDiscard`] — Quintorius, History
-    /// Chaser's +1 "You may discard a card. If you do, draw two cards, then mill a card."):
-    /// pause on a [`PendingChoice::MayDiscard`] so `controller` can pick one card from their
-    /// hand, or nothing. With an empty hand there's no real decision — skip straight past, the
-    /// same "nothing to choose" treatment [`Game::begin_may_sacrifice`] gives an empty board.
-    pub(crate) fn begin_may_discard(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        then: &'static [Effect],
-    ) {
-        let hand = self.hand_of(controller);
-        if hand.is_empty() {
-            return;
-        }
-        self.pause_for(PendingChoice::MayDiscard {
-            player: controller,
-            source,
-            options: hand,
-            then,
-        });
     }
 
     /// Discard each of `ids` (already validated as legal), moving each to the graveyard and
@@ -3734,18 +3167,18 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin a multi-player sacrifice edict ([`Effect::EachPlayerSacrifices`]): each affected
+    /// Resolve a multi-player sacrifice edict ([`Effect::EachPlayerSacrifices`]): each affected
     /// player (per `scope`, APNAP order) loses `life_loss` life, then the affected players choose
-    /// their sacrifices one at a time (each pausing on a [`PendingChoice::SacrificeEdict`]). Once
+    /// their sacrifices one at a time (each raising [`ChoiceRequest::NextSacrificeEdict`]). Once
     /// all have chosen, `follow_up` runs for `controller`.
     ///
     /// [`EdictScope::TargetedPlayers`] (Priest of Forgotten Gods' "any number of target players")
-    /// has no scope-derived affected set to compute — `controller` first pauses on a
-    /// [`PendingChoice::ChooseTargetPlayers`] (CR 601.2c/608.2b: zero is a legal choice); once
+    /// has no scope-derived affected set to compute — `controller` first raises
+    /// [`ChoiceRequest::ChooseTargetPlayers`] (CR 601.2c/608.2b: zero is a legal choice); once
     /// answered, [`Self::choose_target_players`] applies the life loss and continues into
     /// [`Self::prompt_next_sacrifice`] exactly as below.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn begin_sacrifice_edict(
+    pub(crate) fn sacrifice_edict(
         &mut self,
         scope: EdictScope,
         keep_one: bool,
@@ -3761,17 +3194,20 @@ impl Game {
         self.sacrificed_by_edict_controller = false;
         if scope == EdictScope::TargetedPlayers {
             let legal = self.apnap_order();
-            self.pause_for(PendingChoice::ChooseTargetPlayers {
-                player: controller,
-                source,
-                max: legal.len() as u8,
-                legal,
-                min: 0,
-                keep_one,
-                filter,
-                life_loss,
-                then: follow_up,
-            });
+            pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseTargetPlayers {
+                    player: controller,
+                    source,
+                    max: legal.len() as u8,
+                    legal,
+                    min: 0,
+                    keep_one,
+                    filter,
+                    life_loss,
+                    then: follow_up,
+                },
+            );
             return;
         }
         let affected: Vec<PlayerId> = self
@@ -3798,7 +3234,7 @@ impl Game {
 
     /// Answer a [`PendingChoice::ChooseTargetPlayers`] (Priest of Forgotten Gods' "any number of
     /// target players"): `players` becomes the edict's affected set, life loss applied, then the
-    /// same per-player sacrifice fan-out [`Self::begin_sacrifice_edict`] runs for
+    /// same per-player sacrifice fan-out [`Self::sacrifice_edict`] runs for
     /// `AllPlayers`/`EachOpponent` continues from [`Self::prompt_next_sacrifice`].
     pub(crate) fn choose_target_players(
         &mut self,
@@ -3849,12 +3285,12 @@ impl Game {
         Ok(events)
     }
 
-    /// Pause on the next affected player who has a real sacrifice to make (skipping any with
+    /// Raise on the next affected player who has a real sacrifice to make (skipping any with
     /// nothing to give up), or — when none remain — run the edict's `follow_up` for `controller`.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn prompt_next_sacrifice(
         &mut self,
-        mut remaining: Vec<PlayerId>,
+        remaining: Vec<PlayerId>,
         keep_one: bool,
         filter: PermanentFilter,
         follow_up: &'static [Effect],
@@ -3862,23 +3298,18 @@ impl Game {
         source: ObjectId,
         events: &mut Vec<Event>,
     ) {
-        while !remaining.is_empty() {
-            let player = remaining.remove(0);
-            let options = self.edict_options(player, filter);
-            // No decision to make: nothing to sacrifice, or "keep one" with only one to keep.
-            if options.is_empty() || (keep_one && options.len() == 1) {
-                continue;
-            }
-            self.pause_for(PendingChoice::SacrificeEdict {
-                player,
-                options,
+        pending::raise(
+            self,
+            pending::ChoiceRequest::NextSacrificeEdict {
+                remaining,
                 keep_one,
                 filter,
-                remaining,
+                follow_up,
                 controller,
                 source,
-                follow_up,
-            });
+            },
+        );
+        if self.resolution_is_paused() {
             return;
         }
         for &effect in follow_up {
@@ -3959,40 +3390,23 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin the caster-directed keep-one-of-each-type sweep
-    /// ([`Effect::CasterKeepsOneOfEachTypePerPlayer`] — Tragic Arrogance): walk every living player
-    /// in APNAP order, pausing so the `caster` picks up to one of that player's nonland permanents of
-    /// each type to keep. No `follow_up` — the spell finishes once every player has been answered
-    /// (like [`Self::begin_each_player_exile`]).
-    pub(crate) fn begin_caster_keeps_per_player(&mut self, caster: PlayerId, source: ObjectId) {
-        let players = self.apnap_order();
-        self.prompt_next_caster_keep(players, caster, source);
-    }
-
     /// Pause on the next player who controls a nonland permanent (skipping any who control none —
     /// nothing to keep or sacrifice), or — when none remain — return, letting the enclosing spell
     /// resolution finish.
     pub(crate) fn prompt_next_caster_keep(
         &mut self,
-        mut remaining: Vec<PlayerId>,
+        remaining: Vec<PlayerId>,
         caster: PlayerId,
         source: ObjectId,
     ) {
-        while !remaining.is_empty() {
-            let target_player = remaining.remove(0);
-            let options = self.edict_options(target_player, PermanentFilter::of(TypeSet::NONLAND));
-            if options.is_empty() {
-                continue; // only lands (or nothing) — no keep decision, nothing to sacrifice.
-            }
-            self.pause_for(PendingChoice::CasterKeepPermanents {
+        super::raise(
+            self,
+            super::ChoiceRequest::NextCasterKeep {
+                remaining,
                 caster,
                 source,
-                target_player,
-                options,
-                remaining,
-            });
-            return;
-        }
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::CasterKeepPermanents`]: `keeps` are the permanents the caster keeps
@@ -4071,43 +3485,22 @@ impl Game {
         keeps.len() == max_distinct_slots(&option_masks, &slots)
     }
 
-    /// Begin the controller-directed per-player +1/+1 fan-out
-    /// ([`Effect::EachPlayerControllerChoosesCounterTarget`] — Nils, Discipline Enforcer): walk every
-    /// living player in APNAP order, pausing so `chooser` (Nils' controller) puts a +1/+1 counter on
-    /// up to one creature that player controls. No `follow_up` — the ability finishes once every
-    /// player has been answered (like [`Self::begin_caster_keeps_per_player`]).
-    pub(crate) fn begin_each_player_counter_target(&mut self, chooser: PlayerId, source: ObjectId) {
-        let players = self.apnap_order();
-        self.prompt_next_counter_target(players, chooser, source);
-    }
-
     /// Pause on the next player who controls a creature (skipping any who control none — nothing to
     /// counter), or — when none remain — return, letting the ability resolution finish.
     pub(crate) fn prompt_next_counter_target(
         &mut self,
-        mut remaining: Vec<PlayerId>,
+        remaining: Vec<PlayerId>,
         chooser: PlayerId,
         source: ObjectId,
     ) {
-        while !remaining.is_empty() {
-            let target_player = remaining.remove(0);
-            let options: Vec<ObjectId> = self
-                .controlled_battlefield(target_player)
-                .into_iter()
-                .filter(|&id| self.is_creature_on_battlefield(id))
-                .collect();
-            if options.is_empty() {
-                continue; // no creature to counter — skip with no pause
-            }
-            self.pause_for(PendingChoice::ChooseCounterTargetForPlayer {
+        super::raise(
+            self,
+            super::ChoiceRequest::NextCounterTarget {
+                remaining,
                 chooser,
                 source,
-                target_player,
-                options,
-                remaining,
-            });
-            return;
-        }
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::ChooseCounterTargetForPlayer`]: `chosen` is the up-to-one creature
@@ -4152,46 +3545,17 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin a multi-player graveyard-exile fan-out ([`Effect::EachPlayerExilesFromGraveyard`] —
-    /// Augusta, Order Returned's "each player exiles a card from their graveyard"): each player, in
-    /// APNAP order, exiles one card from their own graveyard. Resets the nonland tally, then walks
-    /// to the first player with a card. The reflexive counter payoff rides in the enclosing
-    /// `Sequence`, resumed once every player has answered — so no `follow_up` is threaded here.
-    pub(crate) fn begin_each_player_exile(&mut self, source: ObjectId) {
-        self.nonland_cards_exiled_this_way = 0;
-        let affected = self.apnap_order();
-        self.prompt_next_graveyard_exile(affected, source);
-    }
-
-    /// Begin the single-player graveyard exile ([`Effect::TargetPlayerExilesFromGraveyard`] —
-    /// Relic of Progenitus's "Target player exiles a card from their graveyard"): the one-player
-    /// special case of [`Self::begin_each_player_exile`]'s fan-out — same pause, no `remaining`
-    /// players queued behind it, and no payoff tally to reset.
-    pub(crate) fn begin_target_player_exile(&mut self, player: PlayerId, source: ObjectId) {
-        self.prompt_next_graveyard_exile(vec![player], source);
-    }
-
     /// Pause on the next affected player who has a graveyard card to exile (skipping any with an
     /// empty graveyard), or — when none remain — return, letting the enclosing sequence resume.
     pub(crate) fn prompt_next_graveyard_exile(
         &mut self,
-        mut remaining: Vec<PlayerId>,
+        remaining: Vec<PlayerId>,
         source: ObjectId,
     ) {
-        while !remaining.is_empty() {
-            let player = remaining.remove(0);
-            let options = self.graveyard_cards(player);
-            if options.is_empty() {
-                continue; // nothing to exile — skip with no pause
-            }
-            self.pause_for(PendingChoice::ExileFromGraveyard {
-                player,
-                source,
-                options,
-                remaining,
-            });
-            return;
-        }
+        super::raise(
+            self,
+            super::ChoiceRequest::NextGraveyardExile { remaining, source },
+        );
     }
 
     /// Answer a [`PendingChoice::ExileFromGraveyard`]: exile the one chosen graveyard card (routed
@@ -4228,48 +3592,23 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin a council's-dilemma vote round ([`Effect::CouncilsDilemmaVote`] — Fateful Tempest's
-    /// "Starting with you, each player votes for past or present"): reset the two tallies, then walk
-    /// every living player in turn order starting with the effect's `controller` (CR 701.32a),
-    /// pausing each on a [`PendingChoice::CastVote`]. The tally-scaled payoff rides in the enclosing
-    /// `Sequence`, resumed once every player has voted — no `follow_up` here, like
-    /// [`Self::begin_each_player_exile`].
-    pub(crate) fn begin_councils_dilemma_vote(
-        &mut self,
-        controller: PlayerId,
-        source: ObjectId,
-        options: &'static [&'static str],
-    ) {
-        self.council_past_votes = 0;
-        self.council_present_votes = 0;
-        let n = self.players.len();
-        let start = controller.0 as usize;
-        let order: Vec<PlayerId> = (0..n)
-            .map(|i| PlayerId(((start + i) % n) as u8))
-            .filter(|&p| !self.players[p.0 as usize].lost)
-            .collect();
-        self.prompt_next_vote(order, source, options);
-    }
-
     /// Pause on the next player to vote, or — when none remain — return, letting the enclosing
     /// sequence resume into the tally-scaled outcome steps. Unlike a graveyard fan-out, no seat is
     /// ever skipped: every living player votes (CR 701.32a).
     pub(crate) fn prompt_next_vote(
         &mut self,
-        mut remaining: Vec<PlayerId>,
+        remaining: Vec<PlayerId>,
         source: ObjectId,
         options: &'static [&'static str],
     ) {
-        if remaining.is_empty() {
-            return;
-        }
-        let player = remaining.remove(0);
-        self.pause_for(PendingChoice::CastVote {
-            player,
-            source,
-            options,
-            remaining,
-        });
+        super::raise(
+            self,
+            super::ChoiceRequest::NextVote {
+                remaining,
+                source,
+                options,
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::CastVote`]: `choice` is the index into the ballot's `options`

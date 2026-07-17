@@ -20,6 +20,87 @@ pub struct Seat {
     pub username: Option<String>,
 }
 
+/// Live-table priority chrome (ADR 0007 / 0026 / 0027 / 0029): yields, stack hold, and dwell.
+/// Fields are private — mutate only via [`crate::session::TableSession`] (or the `pub(crate)`
+/// accessors below used by the hold timer). gRPC adapters never poke chrome.
+#[derive(Debug, Default)]
+pub struct ChromeState {
+    /// Per-seat "don't care" yields: a yielded seat is auto-passed while the stack is
+    /// non-empty. Cleared whenever the stack empties.
+    yields: [bool; 4],
+    /// Per-seat turn yield (ADR 0029): auto-pass until that seat's turn / until they act.
+    turn_yields: [bool; 4],
+    /// Active stack-hold (uncontested resolve pause): seq + when the hold started
+    /// (`tokio::time::Instant` so hold timers honor the test paused clock).
+    stack_hold: Option<(u64, tokio::time::Instant)>,
+    /// Per-seat helpless stack dwell (hover pause). Cleared when the hold ends.
+    stack_dwell: [bool; 4],
+}
+
+impl ChromeState {
+    pub fn yields(&self) -> &[bool; 4] {
+        &self.yields
+    }
+
+    pub fn turn_yields(&self) -> &[bool; 4] {
+        &self.turn_yields
+    }
+
+    pub fn stack_hold(&self) -> Option<(u64, tokio::time::Instant)> {
+        self.stack_hold
+    }
+
+    pub fn any_dwell(&self) -> bool {
+        self.stack_dwell.iter().any(|&d| d)
+    }
+
+    pub(crate) fn arm_yield(&mut self, seat: usize) {
+        self.yields[seat] = true;
+    }
+
+    pub(crate) fn set_turn_yield_flag(&mut self, seat: usize, enabled: bool) {
+        self.turn_yields[seat] = enabled;
+    }
+
+    /// Stack-yield + turn-yield flags for [`crate::session`] auto-advance (one borrow).
+    pub(crate) fn skip_flags_mut(&mut self) -> (&mut [bool; 4], &mut [bool; 4]) {
+        (&mut self.yields, &mut self.turn_yields)
+    }
+
+    pub(crate) fn begin_hold(&mut self, seq: u64, now: tokio::time::Instant) {
+        self.stack_hold = Some((seq, now));
+        self.stack_dwell = [false; 4];
+    }
+
+    pub(crate) fn clear_hold(&mut self) {
+        self.stack_hold = None;
+        self.stack_dwell = [false; 4];
+    }
+
+    /// Clear hold only when it still matches `seq` (stale timer eviction).
+    pub(crate) fn clear_hold_if_seq(&mut self, seq: u64) {
+        if self.stack_hold.is_some_and(|(s, _)| s == seq) {
+            self.clear_hold();
+        }
+    }
+
+    pub(crate) fn set_dwell_flag(&mut self, seat: usize, dwelling: bool) {
+        self.stack_dwell[seat] = dwelling;
+    }
+
+    /// Test / session fixtures that need to reset stack-yield without going through verbs.
+    #[cfg(test)]
+    pub(crate) fn set_yields_for_test(&mut self, yields: [bool; 4]) {
+        self.yields = yields;
+    }
+
+    /// Test fixture: stamp an active hold as the scheduler would.
+    #[cfg(test)]
+    pub(crate) fn stamp_hold_for_test(&mut self, seq: u64, now: tokio::time::Instant) {
+        self.begin_hold(seq, now);
+    }
+}
+
 /// A table: up to four seats playing a live game. One `Table` per `table_id` in the registry,
 /// born with its game already running (see [`Table::seeded`]).
 pub struct Table {
@@ -36,22 +117,13 @@ pub struct Table {
     pub seed: u64,
     /// Monotonic delta sequence number; the snapshot watermark for resume.
     pub seq: u64,
-    /// Monotonic publish id for the SSE fan-out. Advances on every broadcast, including
-    /// hold-only ticks that keep game `seq` unchanged (dwell must not kill the hold timer).
+    /// Monotonic publish id for the stream fan-out (gRPC broadcast). Advances on every
+    /// broadcast, including hold-only ticks that keep game `seq` unchanged (dwell must not kill
+    /// the hold timer).
     pub broadcast_seq: u64,
     pub tx: broadcast::Sender<Broadcast>,
-    /// Per-seat "don't care" yields: a yielded seat is auto-passed while the stack is
-    /// non-empty. Mutated via [`crate::session::TableSession::set_yield`]; cleared whenever
-    /// the stack empties.
-    pub yields: [bool; 4],
-    /// Per-seat turn yield (ADR 0029): auto-pass until that seat's turn / until they act.
-    pub turn_yields: [bool; 4],
-    /// Active stack-hold (uncontested resolve pause): seq + when the hold started
-    /// (`tokio::time::Instant` so hold timers honor the test paused clock).
-    pub stack_hold: Option<(u64, tokio::time::Instant)>,
-    /// Per-seat helpless stack dwell (hover pause). Mutated via
-    /// [`crate::session::TableSession::set_dwell`]; cleared when the hold ends.
-    pub stack_dwell: [bool; 4],
+    /// Auto-pass / stack-hold / dwell policy — see [`ChromeState`].
+    pub chrome: ChromeState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
 }
@@ -74,10 +146,7 @@ impl Table {
             seq: 0,
             broadcast_seq: 0,
             tx,
-            yields: [false; 4],
-            turn_yields: [false; 4],
-            stack_hold: None,
-            stack_dwell: [false; 4],
+            chrome: ChromeState::default(),
             prints: Default::default(),
         }
     }
@@ -99,14 +168,11 @@ impl Table {
     /// Milliseconds until the stack-hold would resolve, or `0` if no hold is active.
     /// Deadline math lives in the session module (shared with the hold poll loop).
     pub fn stack_hold_remaining_ms(&self) -> u32 {
-        crate::session::stack_hold_remaining_ms(
-            self.stack_hold,
-            self.stack_dwell.iter().any(|&d| d),
-        )
+        crate::session::stack_hold_remaining_ms(self.chrome.stack_hold(), self.chrome.any_dwell())
     }
 
     /// Fan out the current hold remaining without bumping game `seq` (dwell / countdown sync).
-    /// Called from [`crate::session::TableSession::set_dwell`], not from HTTP handlers.
+    /// Private to chrome — only [`crate::session::TableSession`] calls this.
     pub(crate) fn publish_hold_tick(&mut self) {
         let Some(game) = self.game.as_ref() else {
             return;
@@ -118,8 +184,8 @@ impl Table {
             events: vec![],
             game: game.clone(),
             auto_actions: vec![],
-            yields: self.yields,
-            turn_yields: self.turn_yields,
+            yields: *self.chrome.yields(),
+            turn_yields: *self.chrome.turn_yields(),
             stack_hold_remaining_ms: self.stack_hold_remaining_ms(),
         }));
     }

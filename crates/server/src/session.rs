@@ -1,7 +1,8 @@
-//! Table game lifecycle: intent submission, yield / helpless-dwell chrome, auto-advance,
-//! stack-hold scheduling, and delta packaging. HTTP handlers in `game_loop` validate seats and
-//! call the three [`TableSession`] verbs; they must not poke yield / dwell fields directly.
-//! `stream` stays a pure projection of `PublishedDelta` payloads.
+//! Live Table chrome (ADR 0007 / 0026 / 0027 / 0029): intent submission, yield / dwell,
+//! auto-advance, stack-hold scheduling, and delta packaging. Chrome knobs live on
+//! [`crate::decks::ChromeState`]; only [`TableSession`] mutates them. gRPC adapters call the
+//! chrome verbs and get [`ApplyResult`] / [`DwellResult`] — [`Disposition`] stays crate-private
+//! for the unlock-tail. `stream` projects `PublishedDelta` only.
 
 use std::sync::Arc;
 
@@ -46,7 +47,7 @@ pub type Broadcast = Arc<PublishedDelta>;
 /// What became of a table after applying an intent, decided under the lock and acted on by the
 /// caller once the borrow ends.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Disposition {
+pub(crate) enum Disposition {
     /// The game continues; `stack_held` means auto-advance paused before a stack resolution,
     /// so the caller owes a [`schedule_stack_resolution`] (folded in by [`settle_after_apply`]).
     Live { stack_held: bool },
@@ -112,13 +113,15 @@ impl<'a> TableSession<'a> {
                 Disposition::Live { stack_held: false },
             );
         }
-        self.table.yields[seat.0 as usize] = true;
+        self.table.chrome.arm_yield(seat.0 as usize);
         self.drive(None, false)
     }
 
     /// Stamp this seat's turn yield (ADR 0029) and drive auto-advance.
     pub fn set_turn_yield(&mut self, seat: PlayerId, enabled: bool) -> (ApplyResult, Disposition) {
-        self.table.turn_yields[seat.0 as usize] = enabled;
+        self.table
+            .chrome
+            .set_turn_yield_flag(seat.0 as usize, enabled);
         self.drive(None, false)
     }
 
@@ -127,8 +130,8 @@ impl<'a> TableSession<'a> {
     /// are rejected with `NotHelpless`.
     pub fn set_dwell(&mut self, seat: PlayerId, dwelling: bool) -> DwellResult {
         let idx = seat.0 as usize;
-        if self.table.stack_hold.is_none() {
-            self.table.stack_dwell[idx] = false;
+        if self.table.chrome.stack_hold().is_none() {
+            self.table.chrome.set_dwell_flag(idx, false);
             return DwellResult {
                 accepted: true,
                 reason: None,
@@ -140,7 +143,7 @@ impl<'a> TableSession<'a> {
                 .game
                 .as_ref()
                 .is_some_and(|g| !g.has_meaningful_action(seat));
-            self.table.stack_dwell[idx] = helpless;
+            self.table.chrome.set_dwell_flag(idx, helpless);
             self.table.publish_hold_tick();
             if !helpless {
                 return DwellResult {
@@ -149,7 +152,7 @@ impl<'a> TableSession<'a> {
                 };
             }
         } else {
-            self.table.stack_dwell[idx] = false;
+            self.table.chrome.set_dwell_flag(idx, false);
             self.table.publish_hold_tick();
         }
         DwellResult {
@@ -170,8 +173,7 @@ impl<'a> TableSession<'a> {
             .game
             .as_mut()
             .expect("TableSession::drive on a started game");
-        let yields = &mut self.table.yields;
-        let turn_yields = &mut self.table.turn_yields;
+        let (yields, turn_yields) = self.table.chrome.skip_flags_mut();
         // C3: the engine has reachable panics in resolution paths. Catch them here so one bad game
         // state rejects its own intent and quarantines its own table, instead of poisoning the
         // registry lock and bricking every table. `Game` is a plain value; on unwind we drop it.
@@ -229,8 +231,8 @@ impl<'a> TableSession<'a> {
             events: events.clone(),
             game: game.clone(),
             auto_actions: labels,
-            yields: self.table.yields,
-            turn_yields: self.table.turn_yields,
+            yields: *self.table.chrome.yields(),
+            turn_yields: *self.table.chrome.turn_yields(),
             stack_hold_remaining_ms: hold_ms,
         }));
         let disposition = if game.winner().is_some() {
@@ -334,8 +336,7 @@ fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
             let mut reg = lock(&state.reg);
             if let Some(table) = reg.tables.get_mut(&table_id) {
                 let now = Instant::now();
-                table.stack_hold = Some((seq, now));
-                table.stack_dwell = [false; 4];
+                table.chrome.begin_hold(seq, now);
             }
         }
         loop {
@@ -345,26 +346,24 @@ fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
                 return;
             };
             if table.seq != seq {
-                if table.stack_hold.is_some_and(|(s, _)| s == seq) {
-                    table.stack_hold = None;
-                    table.stack_dwell = [false; 4];
-                }
+                table.chrome.clear_hold_if_seq(seq);
                 return;
             }
-            let Some((_, started)) = table.stack_hold else {
+            let Some((_, started)) = table.chrome.stack_hold() else {
                 return;
             };
             let now = Instant::now();
-            let any_dwell = table.stack_dwell.iter().any(|&d| d);
+            let any_dwell = table.chrome.any_dwell();
             if now < hold_deadline(started, any_dwell) {
                 continue;
             }
-            table.stack_hold = None;
-            table.stack_dwell = [false; 4];
+            table.chrome.clear_hold();
             let Some(game) = table.game.as_ref() else {
                 return;
             };
-            let Some(holder) = stack_hold_pass(game, &table.yields, &table.turn_yields) else {
+            let Some(holder) =
+                stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields())
+            else {
                 return;
             };
             let mut session = TableSession::new(table);
@@ -859,7 +858,7 @@ mod tests {
             table.game.as_ref().unwrap().zone_of(bear),
             engine::Zone::Battlefield,
         );
-        assert_eq!(table.yields, [false; 4]);
+        assert_eq!(*table.chrome.yields(), [false; 4]);
     }
 
     #[test]
@@ -874,11 +873,11 @@ mod tests {
         let (result, disp) = TableSession::new(&mut table).set_turn_yield(PlayerId(1), true);
         assert!(result.accepted);
         assert!(held(disp));
-        assert!(table.turn_yields[1]);
+        assert!(table.chrome.turn_yields()[1]);
 
         let (_result, _disp) = fire_stack_hold(&mut table);
         assert!(
-            table.turn_yields[1],
+            table.chrome.turn_yields()[1],
             "turn yield must not clear when the stack empties"
         );
     }
@@ -895,13 +894,13 @@ mod tests {
         assert_eq!(table.game.as_ref().unwrap().priority_holder(), PlayerId(1));
         let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(1), true);
         assert!(result.accepted);
-        assert!(table.turn_yields[1]);
+        assert!(table.chrome.turn_yields()[1]);
 
         let (result, _) = TableSession::new(&mut table).submit(Intent::PassPriority {
             player: PlayerId(1),
         });
         assert!(result.accepted);
-        assert!(!table.turn_yields[1]);
+        assert!(!table.chrome.turn_yields()[1]);
     }
 
     #[test]
@@ -915,7 +914,7 @@ mod tests {
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
         let (_result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(1), true);
         let (_result, _) = fire_stack_hold(&mut table);
-        assert!(table.turn_yields[1]);
+        assert!(table.chrome.turn_yields()[1]);
 
         // Pass through P0's remaining turn until P1 becomes active.
         for _ in 0..64 {
@@ -932,7 +931,7 @@ mod tests {
         let game = table.game.as_ref().unwrap();
         assert_eq!(game.active_player(), PlayerId(1), "reached P1's turn");
         assert!(
-            !table.turn_yields[1],
+            !table.chrome.turn_yields()[1],
             "turn yield must clear at Untap before auto-pass skips their turn"
         );
         assert_eq!(
@@ -1257,13 +1256,13 @@ mod tests {
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
         let (result, _) = TableSession::new(&mut table).set_yield(PlayerId(1), true);
         assert!(result.accepted);
-        assert!(table.yields[1]);
+        assert!(table.chrome.yields()[1]);
 
         let before = table.seq;
         let (result, _) = TableSession::new(&mut table).set_yield(PlayerId(1), false);
         assert!(!result.accepted);
         assert_eq!(result.reason.as_deref(), Some("StackYieldOneShot"));
-        assert!(table.yields[1], "still armed");
+        assert!(table.chrome.yields()[1], "still armed");
         assert_eq!(table.seq, before, "reject must not advance seq");
     }
 
@@ -1277,7 +1276,7 @@ mod tests {
         }
         let (_result, _disp) = cast(&mut table, PlayerId(0), bear);
         // Clear any auto-arm from hold path, then arm via the session verb.
-        table.yields = [false; 4];
+        table.chrome.set_yields_for_test([false; 4]);
         let mut rx = table.tx.subscribe();
 
         let before = table.seq;
@@ -1313,20 +1312,24 @@ mod tests {
 
         let (_result, disp) = TableSession::new(&mut table).set_yield(PlayerId(1), true);
         assert!(held(disp));
-        table.yields[1] = false;
+        table
+            .chrome
+            .set_yields_for_test([false, false, false, false]);
 
         let game = table.game.as_ref().unwrap();
         assert_eq!(
-            stack_hold_pass(game, &table.yields, &table.turn_yields),
+            stack_hold_pass(game, table.chrome.yields(), table.chrome.turn_yields()),
             None
         );
 
-        table.yields[1] = true;
+        table
+            .chrome
+            .set_yields_for_test([false, true, false, false]);
         assert_eq!(
             stack_hold_pass(
                 table.game.as_ref().unwrap(),
-                &table.yields,
-                &table.turn_yields
+                table.chrome.yields(),
+                table.chrome.turn_yields()
             ),
             Some(PlayerId(1)),
         );
@@ -1414,7 +1417,7 @@ mod tests {
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
         // Simulate the scheduled hold stamp (schedule_stack_resolution sets this under the lock).
-        table.stack_hold = Some((table.seq, Instant::now()));
+        table.chrome.stamp_hold_for_test(table.seq, Instant::now());
         let mut rx = table.tx.subscribe();
         let seq_before = table.seq;
         let bcast_before = table.broadcast_seq;
@@ -1548,7 +1551,7 @@ mod tests {
         assert!(result.accepted);
         let delta = rx.try_recv().expect("drive-only apply publishes a delta");
         assert_eq!(delta.seq, table.seq);
-        assert_eq!(delta.yields, table.yields);
+        assert_eq!(delta.yields, *table.chrome.yields());
         assert!(delta.game.player_count() > 0);
     }
 

@@ -9,21 +9,22 @@
 //! [`resume_deferred_sequence`](crate::Game::resume_deferred_sequence) stays on submit /
 //! resolution — Choice owns pause ↔ answer ↔ events only.
 //!
-//! Handlers and transitional `begin_*` raise helpers live in [`handlers`]. `pause_for` is
-//! private to this module so other engine modules must not poke `PendingChoice` raw — use
-//! [`raise`] / [`raise_choice`] / `begin_*` instead.
+//! Handlers and dig-loop kickoff helpers live in [`handlers`]. `pause_for` is private to this
+//! module so other engine modules must not poke `PendingChoice` raw — use [`raise`] /
+//! [`raise_choice`] instead.
 //!
 //! ## Deferred (next increments)
-//! - Collapse remaining `begin_*` into [`ChoiceRequest`] variants (effects still call
-//!   `begin_*` for ~30 families).
 //! - Optional internal `ChoiceHandler` per kind family (locality for new kinds).
+//! - Dig-loop / multi-step effect kickoffs (cascade, reveal-until, dance, edict prep, …) still
+//!   live as non-`begin_*` helpers on [`Game`] that emit dig events then [`raise`] — they are
+//!   not pure `ChoiceRequest` constructors because prep mutates via events before the pause.
 
 mod handlers;
 
 use crate::{Event, Game, Intent, PendingChoice, Reject};
 
-/// Engine-internal raise request (not wire). Partial coverage of common effect/cast pause
-/// sites; other raises still use `begin_*` on [`Game`] during migration.
+/// Engine-internal raise request (not wire). Covers effect/cast pause sites, fan-out kickoffs,
+/// and dig-loop pause payloads (prep/dig events stay at the call site — see module deferred notes).
 #[derive(Debug, Clone)]
 pub(crate) enum ChoiceRequest {
     ChooseTarget {
@@ -76,44 +77,313 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         amount: u8,
     },
+    /// [`Effect::Proliferate`] — empty counter-bearing board skips (no pause).
+    Proliferate {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        /// Iterations still to run, including this one (`0` is a no-op).
+        remaining: u8,
+    },
+    /// [`Effect::PhaseOut`] — no other creatures skips.
+    PhaseOut {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+    },
+    /// [`Effect::MaySacrifice`] — no legal permanent skips.
+    MaySacrifice {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        filter: crate::PermanentFilter,
+        then: &'static [crate::Effect],
+    },
+    /// [`CardDef::devour`] as-enters — no other creature skips.
+    Devour {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        multiplier: u32,
+    },
+    /// [`Effect::MayReturnFromGraveyard`] — no legal card skips.
+    MayReturnFromGraveyard {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        filter: crate::CardFilter,
+    },
+    /// [`Effect::MayDiscard`] — empty hand skips.
+    MayDiscard {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        then: &'static [crate::Effect],
+    },
+    /// [`Effect::Discard`] — empty (or zero-count) hand skips.
+    Discard {
+        player: crate::PlayerId,
+        count: u32,
+        or_one_matching: Option<crate::CardFilter>,
+    },
+    /// [`Effect::SacrificeSelfUnlessPay`] — always pauses.
+    SacrificeUnlessPay {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        cost: crate::Cost,
+    },
+    /// [`Effect::SacrificeSelfUnlessReturnLand`] — no candidates → `None` (caller sacrifices).
+    SacrificeUnlessReturnLand {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        filter: crate::PermanentFilter,
+    },
+    /// [`Effect::Scry`] / [`Effect::Surveil`] — empty library skips.
+    ArrangeTop {
+        player: crate::PlayerId,
+        count: u32,
+        to_graveyard: bool,
+    },
+    /// [`Effect::LookAtTop`] — empty library skips.
+    SelectFromTop {
+        player: crate::PlayerId,
+        count: u32,
+        filter: crate::CardFilter,
+        up_to: u32,
+        min: u32,
+        dest: crate::TopDest,
+        dest_tapped: bool,
+        rest: crate::RestDest,
+        mv_budget: Option<u32>,
+    },
+    /// [`Effect::DistributeTop`] — empty library skips.
+    DistributeTop {
+        player: crate::PlayerId,
+        count: u32,
+        to_hand: u32,
+        to_bottom: u32,
+        to_exile_may_play: u32,
+    },
+    /// [`Effect::ShuffleFromGraveyard`] — empty graveyard skips.
+    ShuffleFromGraveyard {
+        answerer: crate::PlayerId,
+        owner: crate::PlayerId,
+        source: crate::ObjectId,
+        max: u32,
+    },
+    /// [`Effect::SearchLibrary`] — always pauses (fail-to-find is a legal answer).
+    SearchLibrary {
+        player: crate::PlayerId,
+        filter: crate::CardFilter,
+        dest: crate::SearchDest,
+        tapped: bool,
+        count: u8,
+        overflow: Option<crate::SearchDest>,
+    },
+    /// [`Effect::PutLandFromHand`] — no hand land skips.
+    PutLandFromHand {
+        player: crate::PlayerId,
+        tapped: bool,
+    },
+    /// [`Effect::CastCreatureFaceDown`] — no payable creature skips.
+    CastCreatureFaceDown {
+        player: crate::PlayerId,
+        spent_mana: [u8; 6],
+    },
+    /// [`Effect::CashOutExiledWithThis`] — empty exile pile skips.
+    ChooseExiledWithCard {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+    },
+    /// [`Effect::CastExiledWithThisFree`] — empty exile pile skips.
+    ChooseExiledWithCardToCast {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+    },
+    /// [`CardDef::enter_as_copy`] as-enters — no candidate skips.
+    EnterAsCopy {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        marker: crate::EnterAsCopy,
+    },
+    /// [`Effect::EachOtherTokenBecomesCopyOfChosen`] — no token skips.
+    ChooseTokenToCopy {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+    },
+    /// Copy-from-list pause (counter placement stays at the call site) — no candidate skips.
+    ChooseCopyCardFromList {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        cards: &'static [crate::ObjectId],
+    },
+    /// [`Effect::SacrificeOwn`] / annihilator — `options.len() <= count` → `None` (caller
+    /// sacrifices all).
+    ChooseOwnSacrifices {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        filter: crate::PermanentFilter,
+        count: u32,
+    },
+    /// Next seat in a graveyard-exile fan-out (Augusta / Relic) — empty remaining skips.
+    NextGraveyardExile {
+        remaining: Vec<crate::PlayerId>,
+        source: crate::ObjectId,
+    },
+    /// Next seat in Tragic Arrogance's caster-keep fan-out — empty remaining skips.
+    NextCasterKeep {
+        remaining: Vec<crate::PlayerId>,
+        caster: crate::PlayerId,
+        source: crate::ObjectId,
+    },
+    /// Next seat in Nils' counter-target fan-out — empty remaining skips.
+    NextCounterTarget {
+        remaining: Vec<crate::PlayerId>,
+        chooser: crate::PlayerId,
+        source: crate::ObjectId,
+    },
+    /// Next seat in a council's-dilemma vote — empty remaining skips.
+    NextVote {
+        remaining: Vec<crate::PlayerId>,
+        source: crate::ObjectId,
+        options: &'static [&'static str],
+    },
+    /// Next seat in a multi-player sacrifice edict — no real choice left → `None` (caller runs
+    /// follow-up).
+    NextSacrificeEdict {
+        remaining: Vec<crate::PlayerId>,
+        keep_one: bool,
+        filter: crate::PermanentFilter,
+        follow_up: &'static [crate::Effect],
+        controller: crate::PlayerId,
+        source: crate::ObjectId,
+    },
+    /// Priest of Forgotten Gods' "any number of target players" — always pauses.
+    ChooseTargetPlayers {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        max: u8,
+        legal: Vec<crate::PlayerId>,
+        min: u8,
+        keep_one: bool,
+        filter: crate::PermanentFilter,
+        life_loss: i32,
+        then: &'static [crate::Effect],
+    },
+    /// Herald dig / cascade / Creative Technique — empty `candidates` → `None` (caller bottoms).
+    ChooseExiledDigToCastFree {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        candidates: Vec<crate::ObjectId>,
+        exiled: Vec<crate::ObjectId>,
+    },
+    /// Dance with Calamity push-your-luck — always pauses when raised.
+    DanceExileMore {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        exiled: Vec<crate::ObjectId>,
+        total_mv: u32,
+        budget: u32,
+    },
+    /// Shared free-cast over an exile pile — no castable card → `None` (caller routes rest).
+    ChooseExiledToCastFree {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        exiled: Vec<crate::ObjectId>,
+        count: u8,
+        rest_to_hand: bool,
+    },
+    /// Abstract Performance / Fact or Fiction "which opponent splits" — caller handles 0/1
+    /// opponents (raise only when `legal.len() > 1`).
+    ChooseSplittingOpponent {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        legal: Vec<crate::PlayerId>,
+        then: crate::SplittingContinuation,
+    },
+    /// Opponent picks one of two exile piles (Abstract Performance).
+    OpponentChoosesPile {
+        player: crate::PlayerId,
+        controller: crate::PlayerId,
+        source: crate::ObjectId,
+        pile_a: Vec<crate::ObjectId>,
+        pile_b: Vec<crate::ObjectId>,
+    },
+    /// Opponent partitions revealed cards (Fact or Fiction).
+    PartitionRevealed {
+        player: crate::PlayerId,
+        controller: crate::PlayerId,
+        source: crate::ObjectId,
+        revealed: Vec<crate::ObjectId>,
+    },
+    /// Controller picks which Fact-or-Fiction pile goes to hand.
+    ChoosePileForHand {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
+        pile_a: Vec<crate::ObjectId>,
+        pile_b: Vec<crate::ObjectId>,
+    },
+    /// Plargg and Nassari — empty `nonlands` → `None`.
+    OpponentChoosesExiledNonland {
+        player: crate::PlayerId,
+        controller: crate::PlayerId,
+        source: crate::ObjectId,
+        nonlands: Vec<crate::ObjectId>,
+        exiled: Vec<crate::ObjectId>,
+    },
+    /// Songbirds' Blessing reveal-until hit — always pauses when raised.
+    RevealedCardToBattlefieldOrHand {
+        player: crate::PlayerId,
+        card: crate::ObjectId,
+    },
+    /// Deployed Aura/Equipment choose-host — empty candidates → `None`.
+    ChooseAttachHost {
+        player: crate::PlayerId,
+        attachment: crate::ObjectId,
+        candidates: Vec<crate::ObjectId>,
+        optional: bool,
+    },
 }
 
 /// Raise a Choice from resolution (or cast). Constructs [`PendingChoice`] and pauses.
+/// Some variants skip when there is nothing to choose (empty board / hand).
 pub(crate) fn raise(game: &mut Game, request: ChoiceRequest) {
-    let choice = match request {
+    let Some(choice) = choice_from_request(game, request) else {
+        return;
+    };
+    game.pause_for(choice);
+}
+
+/// Build a [`PendingChoice`] for `request`, or `None` when the raise is a no-op skip.
+fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option<PendingChoice> {
+    match request {
         ChoiceRequest::ChooseTarget {
             player,
             source,
             effect,
             legal,
             optional,
-        } => PendingChoice::ChooseTarget {
+        } => Some(PendingChoice::ChooseTarget {
             player,
             source,
             effect,
             legal,
             optional,
-        },
+        }),
         ChoiceRequest::PayOrCounter {
             player,
             cost,
             spell,
-        } => PendingChoice::PayOrCounter {
+        } => Some(PendingChoice::PayOrCounter {
             player,
             cost,
             spell,
-        },
+        }),
         ChoiceRequest::ChooseCreatureType {
             player,
             source,
             options,
-        } => PendingChoice::ChooseCreatureType {
+        } => Some(PendingChoice::ChooseCreatureType {
             player,
             source,
             options,
-        },
+        }),
         ChoiceRequest::ChooseColor { player, source } => {
-            PendingChoice::ChooseColor { player, source }
+            Some(PendingChoice::ChooseColor { player, source })
         }
         ChoiceRequest::ChooseMode {
             player,
@@ -121,55 +391,759 @@ pub(crate) fn raise(game: &mut Game, request: ChoiceRequest) {
             target,
             x,
             modes,
-        } => PendingChoice::ChooseMode {
+        } => Some(PendingChoice::ChooseMode {
             player,
             source,
             target,
             x,
             modes,
-        },
+        }),
         ChoiceRequest::MayYesNo {
             player,
             source,
             effect,
-        } => PendingChoice::MayYesNo {
+        } => Some(PendingChoice::MayYesNo {
             player,
             source,
             effect,
-        },
+        }),
         ChoiceRequest::DivideSpellDamage {
             player,
             spell,
             targets,
             total,
-        } => PendingChoice::DivideSpellDamage {
+        } => Some(PendingChoice::DivideSpellDamage {
             player,
             spell,
             targets,
             total,
-        },
+        }),
         ChoiceRequest::DivideCounters {
             player,
             spell,
             targets,
             total,
-        } => PendingChoice::DivideCounters {
+        } => Some(PendingChoice::DivideCounters {
             player,
             spell,
             targets,
             total,
-        },
+        }),
         ChoiceRequest::ChooseManaColor {
             player,
             source,
             amount,
-        } => PendingChoice::ChooseManaColor {
+        } => Some(PendingChoice::ChooseManaColor {
             player,
             source,
             amount,
-        },
-    };
-    game.pause_for(choice);
+        }),
+        ChoiceRequest::Proliferate {
+            player,
+            source,
+            remaining,
+        } => {
+            if remaining == 0 {
+                return None;
+            }
+            let options: Vec<crate::ObjectId> = game
+                .battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    let p = game.permanent(id);
+                    p.plus_counters > 0 || p.kind_counters.iter().any(|&c| c > 0)
+                })
+                .collect();
+            if options.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::Proliferate {
+                player,
+                source,
+                options,
+                remaining: remaining - 1,
+            })
+        }
+        ChoiceRequest::PhaseOut { player, source } => {
+            let options: Vec<crate::ObjectId> = game
+                .battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    id != source
+                        && game.controller_of(id) == player
+                        && matches!(game.def_of(id).kind, crate::CardKind::Creature { .. })
+                })
+                .collect();
+            if options.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::PhaseOut {
+                player,
+                source,
+                options,
+            })
+        }
+        ChoiceRequest::MaySacrifice {
+            player,
+            source,
+            filter,
+            then,
+        } => {
+            let options = game.edict_options(player, filter);
+            if options.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::MaySacrifice {
+                player,
+                source,
+                options,
+                then,
+            })
+        }
+        ChoiceRequest::Devour {
+            player,
+            source,
+            multiplier,
+        } => {
+            let options: Vec<crate::ObjectId> = game
+                .edict_options(player, crate::PermanentFilter::of(crate::TypeSet::CREATURE))
+                .into_iter()
+                .filter(|&id| id != source)
+                .collect();
+            if options.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::Devour {
+                player,
+                source,
+                multiplier,
+                options,
+            })
+        }
+        ChoiceRequest::MayReturnFromGraveyard {
+            player,
+            source,
+            filter,
+        } => {
+            let options: Vec<crate::ObjectId> = game
+                .live_object_ids()
+                .into_iter()
+                .filter(|&id| {
+                    game.zone_of(id) == crate::Zone::Graveyard
+                        && game.owner_of(id) == player
+                        && filter.matches(game.def_of(id))
+                })
+                .collect();
+            if options.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::MayReturnFromGraveyard {
+                player,
+                source,
+                options,
+            })
+        }
+        ChoiceRequest::MayDiscard {
+            player,
+            source,
+            then,
+        } => {
+            let hand = game.hand_of(player);
+            if hand.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::MayDiscard {
+                player,
+                source,
+                options: hand,
+                then,
+            })
+        }
+        ChoiceRequest::Discard {
+            player,
+            count,
+            or_one_matching,
+        } => {
+            let hand = game.hand_of(player);
+            let count = (count as usize).min(hand.len());
+            if count == 0 {
+                return None;
+            }
+            Some(PendingChoice::DiscardCards {
+                player,
+                hand,
+                count,
+                or_one_matching,
+            })
+        }
+        ChoiceRequest::SacrificeUnlessPay {
+            player,
+            source,
+            cost,
+        } => Some(PendingChoice::SacrificeUnlessPay {
+            player,
+            source,
+            cost,
+        }),
+        ChoiceRequest::SacrificeUnlessReturnLand {
+            player,
+            source,
+            filter,
+        } => {
+            let candidates = game.edict_options(player, filter);
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::SacrificeUnlessReturnLand {
+                player,
+                source,
+                candidates,
+            })
+        }
+        ChoiceRequest::ArrangeTop {
+            player,
+            count,
+            to_graveyard,
+        } => {
+            let library = &game.players[player.0 as usize].library;
+            let cards: Vec<crate::ObjectId> =
+                library.iter().take(count as usize).copied().collect();
+            if cards.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ArrangeTop {
+                player,
+                cards,
+                to_graveyard,
+            })
+        }
+        ChoiceRequest::SelectFromTop {
+            player,
+            count,
+            filter,
+            up_to,
+            min,
+            dest,
+            dest_tapped,
+            rest,
+            mv_budget,
+        } => {
+            let library = &game.players[player.0 as usize].library;
+            let cards: Vec<crate::ObjectId> =
+                library.iter().take(count as usize).copied().collect();
+            if cards.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::SelectFromTop {
+                player,
+                cards,
+                filter,
+                up_to,
+                min,
+                dest,
+                dest_tapped,
+                rest,
+                mv_budget,
+            })
+        }
+        ChoiceRequest::DistributeTop {
+            player,
+            count,
+            to_hand,
+            to_bottom,
+            to_exile_may_play,
+        } => {
+            let library = &game.players[player.0 as usize].library;
+            let cards: Vec<crate::ObjectId> =
+                library.iter().take(count as usize).copied().collect();
+            if cards.is_empty() {
+                return None;
+            }
+            // ponytail: no pool card yet distributes into a library shorter than its total slots;
+            // if (CR 400.3) one ever does, slots are filled hand→bottom→exile in priority order and
+            // any excess slot (CR 117, CR 406.5, CR 402.5) is silently dropped (CR 120.3-style "as
+            // many as possible" with no printed tie-break).
+            let mut looked_at = cards.len() as u32;
+            let to_hand = to_hand.min(looked_at);
+            looked_at -= to_hand;
+            let to_bottom = to_bottom.min(looked_at);
+            looked_at -= to_bottom;
+            let to_exile_may_play = to_exile_may_play.min(looked_at);
+            Some(PendingChoice::DistributeTop {
+                player,
+                cards,
+                to_hand,
+                to_bottom,
+                to_exile_may_play,
+            })
+        }
+        ChoiceRequest::ShuffleFromGraveyard {
+            answerer,
+            owner,
+            source,
+            max,
+        } => {
+            let candidates = game.graveyard_of(owner);
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ShuffleFromGraveyard {
+                player: answerer,
+                owner,
+                source,
+                candidates,
+                max,
+            })
+        }
+        ChoiceRequest::SearchLibrary {
+            player,
+            filter,
+            dest,
+            tapped,
+            count,
+            overflow,
+        } => {
+            let matches: Vec<crate::ObjectId> = game.players[player.0 as usize]
+                .library
+                .iter()
+                .copied()
+                .filter(|&id| filter.matches(game.def_of(id)))
+                .collect();
+            Some(PendingChoice::SearchLibrary {
+                player,
+                matches,
+                dest,
+                tapped,
+                remaining: count,
+                overflow,
+            })
+        }
+        ChoiceRequest::PutLandFromHand { player, tapped } => {
+            let candidates: Vec<crate::ObjectId> = game
+                .hand_of(player)
+                .into_iter()
+                .filter(|&id| matches!(game.def_of(id).kind, crate::CardKind::Land { .. }))
+                .collect();
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::PutLandFromHand {
+                player,
+                tapped,
+                candidates,
+            })
+        }
+        ChoiceRequest::CastCreatureFaceDown { player, spent_mana } => {
+            let candidates: Vec<crate::ObjectId> = game
+                .hand_of(player)
+                .into_iter()
+                .filter(|&id| matches!(game.def_of(id).kind, crate::CardKind::Creature { .. }))
+                .filter(|&id| game.def_of(id).cost.payable_from_multiset(&spent_mana))
+                .collect();
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::CastCreatureFaceDown { player, candidates })
+        }
+        ChoiceRequest::ChooseExiledWithCard { player, source } => {
+            let candidates: Vec<crate::ObjectId> = game
+                .exile_links
+                .with_source
+                .iter()
+                .filter(|&&(s, _)| s == source)
+                .map(|&(_, card)| card)
+                .collect();
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ChooseExiledWithCard {
+                player,
+                source,
+                candidates,
+            })
+        }
+        ChoiceRequest::ChooseExiledWithCardToCast { player, source } => {
+            let candidates: Vec<crate::ObjectId> = game
+                .exile_links
+                .with_source
+                .iter()
+                .filter(|&&(s, _)| s == source)
+                .map(|&(_, card)| card)
+                .collect();
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ChooseExiledWithCardToCast {
+                player,
+                source,
+                candidates,
+            })
+        }
+        ChoiceRequest::EnterAsCopy {
+            player,
+            source,
+            marker,
+        } => {
+            let candidates: Vec<crate::ObjectId> = game
+                .permanent_ids(|_| true)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .filter(|&id| {
+                    id != source
+                        && match marker.of {
+                            crate::CopyTargetKind::Creature => game.is_creature_on_battlefield(id),
+                            crate::CopyTargetKind::Enchantment => {
+                                game.is_enchantment_on_battlefield(id)
+                            }
+                        }
+                })
+                .collect();
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ChooseCopyTarget {
+                player,
+                source,
+                candidates,
+                until_eot: marker.until_eot,
+                extra_counters: marker.extra_counters,
+                gains_haste: marker.gains_haste,
+            })
+        }
+        ChoiceRequest::ChooseTokenToCopy { player, source } => {
+            let candidates: Vec<crate::ObjectId> = game
+                .permanent_ids(|p| p.token)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .filter(|&id| game.controller_of(id) == player)
+                .collect();
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ChooseTokenToCopy {
+                player,
+                source,
+                candidates,
+            })
+        }
+        ChoiceRequest::ChooseCopyCardFromList {
+            player,
+            source,
+            cards,
+        } => {
+            let candidates: Vec<crate::ObjectId> = cards
+                .iter()
+                .copied()
+                .filter(|&id| {
+                    game.def_of(id)
+                        .kind
+                        .types()
+                        .intersects(crate::TypeSet::CREATURE.union(crate::TypeSet::ARTIFACT))
+                })
+                .collect();
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ChooseCopyCardFromList {
+                player,
+                source,
+                candidates,
+            })
+        }
+        ChoiceRequest::ChooseOwnSacrifices {
+            player,
+            source,
+            filter,
+            count,
+        } => {
+            let options = game.edict_options(player, filter);
+            if options.len() <= count as usize {
+                return None;
+            }
+            Some(PendingChoice::ChooseOwnSacrifices {
+                player,
+                source,
+                filter,
+                count,
+                options,
+            })
+        }
+        ChoiceRequest::NextGraveyardExile { remaining, source } => {
+            let mut remaining = remaining;
+            while !remaining.is_empty() {
+                let player = remaining.remove(0);
+                let options = game.graveyard_cards(player);
+                if options.is_empty() {
+                    continue;
+                }
+                return Some(PendingChoice::ExileFromGraveyard {
+                    player,
+                    source,
+                    options,
+                    remaining,
+                });
+            }
+            None
+        }
+        ChoiceRequest::NextCasterKeep {
+            remaining,
+            caster,
+            source,
+        } => {
+            let mut remaining = remaining;
+            while !remaining.is_empty() {
+                let target_player = remaining.remove(0);
+                let options = game.edict_options(
+                    target_player,
+                    crate::PermanentFilter::of(crate::TypeSet::NONLAND),
+                );
+                if options.is_empty() {
+                    continue;
+                }
+                return Some(PendingChoice::CasterKeepPermanents {
+                    caster,
+                    source,
+                    target_player,
+                    options,
+                    remaining,
+                });
+            }
+            None
+        }
+        ChoiceRequest::NextCounterTarget {
+            remaining,
+            chooser,
+            source,
+        } => {
+            let mut remaining = remaining;
+            while !remaining.is_empty() {
+                let target_player = remaining.remove(0);
+                let options: Vec<crate::ObjectId> = game
+                    .controlled_battlefield(target_player)
+                    .into_iter()
+                    .filter(|&id| game.is_creature_on_battlefield(id))
+                    .collect();
+                if options.is_empty() {
+                    continue;
+                }
+                return Some(PendingChoice::ChooseCounterTargetForPlayer {
+                    chooser,
+                    source,
+                    target_player,
+                    options,
+                    remaining,
+                });
+            }
+            None
+        }
+        ChoiceRequest::NextVote {
+            remaining,
+            source,
+            options,
+        } => {
+            if remaining.is_empty() {
+                return None;
+            }
+            let mut remaining = remaining;
+            let player = remaining.remove(0);
+            Some(PendingChoice::CastVote {
+                player,
+                source,
+                options,
+                remaining,
+            })
+        }
+        ChoiceRequest::NextSacrificeEdict {
+            remaining,
+            keep_one,
+            filter,
+            follow_up,
+            controller,
+            source,
+        } => {
+            let mut remaining = remaining;
+            while !remaining.is_empty() {
+                let player = remaining.remove(0);
+                let options = game.edict_options(player, filter);
+                if options.is_empty() || (keep_one && options.len() == 1) {
+                    continue;
+                }
+                return Some(PendingChoice::SacrificeEdict {
+                    player,
+                    options,
+                    keep_one,
+                    filter,
+                    remaining,
+                    controller,
+                    source,
+                    follow_up,
+                });
+            }
+            None
+        }
+        ChoiceRequest::ChooseTargetPlayers {
+            player,
+            source,
+            max,
+            legal,
+            min,
+            keep_one,
+            filter,
+            life_loss,
+            then,
+        } => Some(PendingChoice::ChooseTargetPlayers {
+            player,
+            source,
+            max,
+            legal,
+            min,
+            keep_one,
+            filter,
+            life_loss,
+            then,
+        }),
+        ChoiceRequest::ChooseExiledDigToCastFree {
+            player,
+            source,
+            candidates,
+            exiled,
+        } => {
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ChooseExiledDigToCastFree {
+                player,
+                source,
+                candidates,
+                exiled,
+            })
+        }
+        ChoiceRequest::DanceExileMore {
+            player,
+            source,
+            exiled,
+            total_mv,
+            budget,
+        } => Some(PendingChoice::DanceExileMore {
+            player,
+            source,
+            exiled,
+            total_mv,
+            budget,
+        }),
+        ChoiceRequest::ChooseExiledToCastFree {
+            player,
+            source,
+            exiled,
+            count,
+            rest_to_hand,
+        } => {
+            let candidates: Vec<crate::ObjectId> = exiled
+                .iter()
+                .copied()
+                .filter(|&id| !matches!(game.def_of(id).kind, crate::CardKind::Land { .. }))
+                .collect();
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ChooseExiledToCastFree {
+                player,
+                source,
+                candidates,
+                exiled,
+                count,
+                rest_to_hand,
+            })
+        }
+        ChoiceRequest::ChooseSplittingOpponent {
+            player,
+            source,
+            legal,
+            then,
+        } => {
+            if legal.len() <= 1 {
+                return None;
+            }
+            Some(PendingChoice::ChooseSplittingOpponent {
+                player,
+                source,
+                legal,
+                then,
+            })
+        }
+        ChoiceRequest::OpponentChoosesPile {
+            player,
+            controller,
+            source,
+            pile_a,
+            pile_b,
+        } => Some(PendingChoice::OpponentChoosesPile {
+            player,
+            controller,
+            source,
+            pile_a,
+            pile_b,
+        }),
+        ChoiceRequest::PartitionRevealed {
+            player,
+            controller,
+            source,
+            revealed,
+        } => Some(PendingChoice::PartitionRevealed {
+            player,
+            controller,
+            source,
+            revealed,
+        }),
+        ChoiceRequest::ChoosePileForHand {
+            player,
+            source,
+            pile_a,
+            pile_b,
+        } => Some(PendingChoice::ChoosePileForHand {
+            player,
+            source,
+            pile_a,
+            pile_b,
+        }),
+        ChoiceRequest::OpponentChoosesExiledNonland {
+            player,
+            controller,
+            source,
+            nonlands,
+            exiled,
+        } => {
+            if nonlands.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::OpponentChoosesExiledNonland {
+                player,
+                controller,
+                source,
+                nonlands,
+                exiled,
+            })
+        }
+        ChoiceRequest::RevealedCardToBattlefieldOrHand { player, card } => {
+            Some(PendingChoice::RevealedCardToBattlefieldOrHand { player, card })
+        }
+        ChoiceRequest::ChooseAttachHost {
+            player,
+            attachment,
+            candidates,
+            optional,
+        } => {
+            if candidates.is_empty() {
+                return None;
+            }
+            Some(PendingChoice::ChooseAttachHost {
+                player,
+                attachment,
+                candidates,
+                optional,
+            })
+        }
+    }
 }
 
 /// Pause on an already-built [`PendingChoice`]. Production sites outside this module
@@ -477,7 +1451,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
 
 impl Game {
     /// Begin waiting on `choice` before resolution can continue.
-    /// Private to [`pending`]: effects/cast use [`raise`] or `begin_*`.
+    /// Private to [`pending`]: effects/cast use [`raise`] / [`raise_choice`].
     fn pause_for(&mut self, choice: PendingChoice) {
         self.pending_choice = Some(choice);
     }

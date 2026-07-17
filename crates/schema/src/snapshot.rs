@@ -60,11 +60,45 @@ pub struct ViewExtras {
     pub prints: [std::collections::HashMap<String, String>; 4],
 }
 
+/// Inputs for one viewer-facing delta frame: redact events + complete board in one call
+/// (ADR 0005/0006). Callers map Table chrome into [`ViewExtras`] first — the engine stays
+/// audience-unaware.
+pub struct DeltaCompose<'a> {
+    pub game: &'a engine::Game,
+    pub viewer: Option<engine::PlayerId>,
+    pub seq: u64,
+    pub events: &'a [engine::Event],
+    pub auto_actions: Vec<String>,
+    pub extras: &'a ViewExtras,
+}
+
+/// Compose a self-sufficient [`StreamFrame::Delta`]: per-viewer event redaction, then a full
+/// [`VisibleState`] stamped from `extras`. Callers must not pair `redact` + `complete_visible`
+/// by hand for live frames.
+pub fn compose_delta(input: DeltaCompose<'_>) -> StreamFrame {
+    let visible: Vec<crate::event::VisibleEvent> = input
+        .events
+        .iter()
+        .map(|e| match input.viewer {
+            Some(v) => crate::event::redact(e, v),
+            None => crate::event::spectator_redact(e),
+        })
+        .collect();
+    let state = complete_visible(input.game, input.viewer, input.extras);
+    StreamFrame::Delta(DeltaEnvelope {
+        seq: input.seq,
+        events: visible,
+        state,
+        auto_actions: input.auto_actions,
+    })
+}
+
 /// One wire-complete [`VisibleState`] for `viewer` (`Some` = seated, `None` = spectator).
 ///
 /// Redacts private zones, projects the board, then stamps Table policy from `extras` in one
 /// pass — yield, hold remaining, and usernames. Incomplete board projection is not a public
-/// wire path (ADR 0005/0006).
+/// wire path (ADR 0005/0006). Opening snapshots use this directly; live deltas use
+/// [`compose_delta`].
 pub fn complete_visible(
     game: &engine::Game,
     viewer: Option<engine::PlayerId>,
@@ -674,7 +708,8 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
     }
 }
 
-/// One event of the SSE stream: the opening snapshot, then a delta per change.
+/// One frame of the game stream (gRPC `Game.Stream`; BFF may bridge to the browser as SSE):
+/// the opening snapshot, then a delta per change.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "frame", rename_all = "snake_case")]
 pub enum StreamFrame {
@@ -696,7 +731,7 @@ mod tests {
     use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
     use engine::{Game, ObjectId, PlayerId};
 
-    use super::{SPECTATOR_VIEWER, ViewExtras, complete_visible};
+    use super::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
 
     /// Board-only fixture: empty Table extras. Production wire paths must pass real extras.
     fn snapshot(game: &Game, viewer: PlayerId) -> crate::dto::VisibleState {
@@ -705,6 +740,79 @@ mod tests {
 
     fn spectator_snapshot(game: &Game) -> crate::dto::VisibleState {
         complete_visible(game, None, &ViewExtras::default())
+    }
+
+    #[test]
+    fn compose_delta_redacts_events_and_stamps_extras_in_one_call() {
+        use crate::event::VisibleEvent;
+        use crate::{DeltaCompose, compose_delta};
+        use engine::Event;
+
+        let game = Game::new();
+        let draw = Event::CardDrawn {
+            player: PlayerId(0),
+            object: 7,
+            from: 3,
+            card: def("Shock"),
+        };
+        let extras = ViewExtras {
+            yields: [true, false, false, false],
+            turn_yields: [false, true, false, false],
+            stack_hold_remaining_ms: 900,
+            usernames: ["alice".into(), "bob".into(), String::new(), String::new()],
+            prints: Default::default(),
+        };
+
+        let StreamFrame::Delta(env) = compose_delta(DeltaCompose {
+            game: &game,
+            viewer: Some(PlayerId(0)),
+            seq: 5,
+            events: std::slice::from_ref(&draw),
+            auto_actions: vec!["Only one legal target — chosen automatically".into()],
+            extras: &extras,
+        }) else {
+            panic!("expected a delta frame");
+        };
+
+        assert_eq!(env.seq, 5);
+        assert_eq!(
+            env.events,
+            vec![VisibleEvent::CardDrawn {
+                player: 0,
+                object: 7,
+                from: Some(3),
+                card: Some("Shock".into()),
+            }],
+        );
+        assert!(env.state.yielded);
+        assert!(!env.state.turn_yielded);
+        assert_eq!(env.state.stack_hold_remaining_ms, 900);
+        assert_eq!(env.state.players[0].username, "alice");
+        assert_eq!(
+            env.auto_actions,
+            vec!["Only one legal target — chosen automatically"]
+        );
+
+        let StreamFrame::Delta(spectator) = compose_delta(DeltaCompose {
+            game: &game,
+            viewer: None,
+            seq: 5,
+            events: &[draw],
+            auto_actions: vec![],
+            extras: &extras,
+        }) else {
+            panic!("expected a delta frame");
+        };
+        assert_eq!(
+            spectator.events,
+            vec![VisibleEvent::CardDrawn {
+                player: 0,
+                object: 7,
+                from: None,
+                card: None,
+            }],
+        );
+        assert!(!spectator.state.yielded);
     }
 
     #[test]

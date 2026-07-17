@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { STEP } from "~/layout";
 import {
   activatableBattlefieldIds,
+  boardChromeFromState,
   canActOnStack,
   fullBattlefieldWindow,
   instantPriorityFocus,
@@ -11,7 +12,8 @@ import {
   stackChrome,
   viewerIsHelpless,
 } from "~/lib/stackResponse";
-import type { ActionView } from "~/wire/types";
+import { SPECTATOR_VIEWER } from "~/store";
+import type { ActionView, VisibleState } from "~/wire/types";
 
 const activate = (object: number, over: Partial<ActionView> = {}): ActionView =>
   ({
@@ -129,6 +131,7 @@ describe("stackChrome", () => {
     spectating: false,
     staged: false,
     yielded: false,
+    turnYielded: false,
     stackLen: 1,
     holdRemainingMs: 0,
     canAct: true,
@@ -143,10 +146,12 @@ describe("stackChrome", () => {
   it("keeps Pass and Space in sync while the seat can act on the stack", () => {
     const chrome = stackChrome(base);
     expect(chrome.pass).toBe(true);
-    expect(chrome.spaceOnStack).toBe("pass_priority");
+    expect(chrome.space).toBe("pass_priority");
     expect(chrome.hideControlsPass).toBe(true);
     expect(chrome.stackYieldArm).toBe(true);
     expect(chrome.stackYieldArmed).toBe(false);
+    expect(chrome.showPrimary("pass")).toBe(false);
+    expect(chrome.showPrimary("next")).toBe(true);
   });
 
   it("shows armed stack yield as disabled, not as a cancel toggle", () => {
@@ -159,7 +164,7 @@ describe("stackChrome", () => {
   it("blocks Pass / yield arm while a local target is staged (even if aim draw is suspended)", () => {
     const chrome = stackChrome({ ...base, staged: true });
     expect(chrome.pass).toBe(false);
-    expect(chrome.spaceOnStack).toBe("ignore");
+    expect(chrome.space).toBe("ignore");
     expect(chrome.stackYieldArm).toBe(false);
   });
 
@@ -167,5 +172,98 @@ describe("stackChrome", () => {
     expect(stackChrome({ ...base, actions: [], holdRemainingMs: 800 }).allowDwell).toBe(true);
     expect(stackChrome({ ...base, actions: [], holdRemainingMs: 0 }).allowDwell).toBe(false);
     expect(stackChrome({ ...base, actions: [], holdRemainingMs: 800, spectating: true }).allowDwell).toBe(false);
+  });
+
+  it("shows turn yield only when not spectating and not the active player", () => {
+    expect(stackChrome({ ...base, viewer: 0, active: 1 }).showTurnYield).toBe(true);
+    expect(stackChrome({ ...base, viewer: 0, active: 0 }).showTurnYield).toBe(false);
+    expect(stackChrome({ ...base, viewer: 0, active: 1, spectating: true }).showTurnYield).toBe(false);
+    expect(stackChrome({ ...base, turnYielded: true }).turnYielded).toBe(true);
+  });
+
+  it("binds Space to primary on an empty stack, ignore for spectators", () => {
+    expect(stackChrome({ ...base, stackLen: 0 }).space).toBe("primary");
+    expect(stackChrome({ ...base, stackLen: 0, spectating: true }).space).toBe("ignore");
+    expect(stackChrome({ ...base, stackLen: 1, canAct: false }).space).toBe("ignore");
+  });
+});
+
+const visible = (over: Partial<VisibleState> = {}): VisibleState =>
+  ({
+    objects: [],
+    players: [],
+    active_player: 0,
+    priority: 0,
+    step: STEP.Main1,
+    viewer: 0,
+    can_act: true,
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    stack: [],
+    ...over,
+  }) as VisibleState;
+
+describe("boardChromeFromState", () => {
+  it("binds wire seat facts so Board does not assemble StackChromeInput inline", () => {
+    const chrome = boardChromeFromState(
+      visible({
+        stack: [{}] as VisibleState["stack"],
+        can_act: true,
+        priority: 0,
+        viewer: 0,
+        yielded: false,
+        turn_yielded: true,
+        stack_hold_remaining_ms: 0,
+        actions: [activate(1)],
+        active_player: 1,
+      }),
+      { staged: false, manaSources: [] },
+    );
+    expect(chrome.pass).toBe(true);
+    expect(chrome.space).toBe("pass_priority");
+    expect(chrome.showTurnYield).toBe(true);
+    expect(chrome.turnYielded).toBe(true);
+  });
+
+  it("takes staged + manaSources as local binder args (not scattered Board field picks)", () => {
+    const state = visible({
+      stack: [{}] as VisibleState["stack"],
+      actions: [activate(1)],
+      can_act: true,
+      priority: 0,
+      viewer: 0,
+      active_player: 1,
+      step: STEP.Upkeep,
+    });
+    expect(boardChromeFromState(state, { staged: true, manaSources: [] }).space).toBe("ignore");
+
+    const withMana = boardChromeFromState(state, {
+      staged: false,
+      manaSources: [land(42)],
+    });
+    expect(withMana.focus).toBe(true);
+    expect(withMana.brightIds.has(42)).toBe(true);
+  });
+
+  it("treats SPECTATOR_VIEWER as spectating (Space ignore) without a Board spectating() pick", () => {
+    const chrome = boardChromeFromState(
+      visible({
+        viewer: SPECTATOR_VIEWER,
+        stack: [{}] as VisibleState["stack"],
+        actions: [activate(1)],
+        can_act: true,
+        priority: 0,
+      }),
+      { staged: false, manaSources: [] },
+    );
+    expect(chrome.space).toBe("ignore");
+    expect(chrome.pass).toBe(false);
+    expect(chrome.showTurnYield).toBe(false);
+  });
+
+  it("returns a safe empty-stack chrome when state is null", () => {
+    const chrome = boardChromeFromState(null, { staged: false, manaSources: [] });
+    expect(chrome.space).toBe("primary");
+    expect(chrome.pass).toBe(false);
+    expect(chrome.allowDwell).toBe(false);
   });
 });
