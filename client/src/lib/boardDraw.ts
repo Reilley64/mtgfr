@@ -1,12 +1,12 @@
 // Canvas board drawing: seat bands, cards, avatars, combat/target arrows.
 
-import type { VisibleState, WireAttack, WireBlock } from "~/api/generated";
 import { AVATAR_R, type RenderCard, STEP, seatBand, seatColor, ZONE } from "~/layout";
 import { type Camera, worldToScreen } from "~/lib/camera";
 import { abilityGlyph, hiddenKeywordCount, keywordBadges, showsSummoningSick, TAP_GLYPH } from "~/lib/cardBadges";
 import type { ImageCache } from "~/lib/imageCache";
 import { LETHAL_COMMANDER_DAMAGE, worstCommanderDamage } from "~/lib/outcome";
 import { cardBackUrl, imageUrlByPrint } from "~/lib/scryfall";
+import type { VisibleState, WireAttack, WireBlock } from "~/wire/types";
 
 type Vec = { x: number; y: number };
 

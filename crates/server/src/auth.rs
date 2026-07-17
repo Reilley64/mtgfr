@@ -1,28 +1,23 @@
-//! Self-hosted email+password accounts with cookie sessions.
-//!
-//! Passwords are argon2 PHC hashes; a login/signup mints a random session token, stores it with a
-//! 30-day expiry, and sets it as an HttpOnly `SameSite=Lax` cookie (`Secure` when
-//! `settings.cookie_secure`, since dev is http on localhost; `Domain` when
-//! `settings.cookie_domain` is set, for prod's shared-subdomain auth). The [`AuthUser`] extractor
-//! resolves that cookie to a [`db::User`] for protected routes, rejecting and sweeping sessions
-//! past `expires_at`.
+//! Self-hosted email+password accounts. `AuthUser` remains a cookie extractor for parity with
+//! how sessions used to reach the API directly; the live path is the gRPC `Auth` service
+//! (`grpc::auth_svc`), which calls the transport-agnostic helpers below and mints/reads the
+//! session token as `AuthSession.session_token` / `x-session-token` metadata (ADR 0032) — the
+//! BFF is the one that terminates the browser's cookie and does the `Set-Cookie`. An expired
+//! session is lazily swept so a leaked token can't be probed repeatedly.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use argon2::Argon2;
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
-use axum::Json;
-use axum::extract::{FromRequestParts, State};
+use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum::http::request::Parts;
-use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use axum_extra::extract::cookie::CookieJar;
 use rand::RngCore;
-use schema::{Credentials, Me, SignupCredentials};
 
 use crate::AppState;
 use crate::db::{Session, User};
-use crate::settings::Settings;
 
 /// The session cookie name.
 const SESSION_COOKIE: &str = "session";
@@ -55,27 +50,35 @@ impl FromRequestParts<AppState> for AuthUser {
             .get(SESSION_COOKIE)
             .map(|c| c.value().to_string())
             .ok_or(StatusCode::UNAUTHORIZED)?;
-
         let mut db = state.db.clone();
-        let session = Session::filter_by_token(&token)
-            .get(&mut db)
-            .await
-            .map_err(|_| StatusCode::UNAUTHORIZED)?;
-        if session.expires_at <= now_unix() {
-            // Lazy sweep: drop the dead row so a leaked token can't be probed repeatedly.
-            let _ = session.delete().exec(&mut db).await;
-            return Err(StatusCode::UNAUTHORIZED);
-        }
-        let user = User::filter_by_id(session.user_id)
-            .get(&mut db)
-            .await
-            .map_err(|_| StatusCode::UNAUTHORIZED)?;
-        Ok(AuthUser(user))
+        resolve_session_token(&mut db, &token).await.map(AuthUser)
     }
 }
 
+/// Resolve a raw session token to its user — the transport-agnostic half of [`AuthUser`]'s
+/// cookie lookup, shared with the gRPC `x-session-token` metadata path (ADR 0032,
+/// `grpc::auth_ctx`). An expired session is lazily swept so a leaked token can't be probed
+/// repeatedly.
+pub(crate) async fn resolve_session_token(
+    db: &mut toasty::Db,
+    token: &str,
+) -> Result<User, StatusCode> {
+    let session = Session::filter_by_token(token)
+        .get(db)
+        .await
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    if session.expires_at <= now_unix() {
+        let _ = session.delete().exec(db).await;
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    User::filter_by_id(session.user_id)
+        .get(db)
+        .await
+        .map_err(|_| StatusCode::UNAUTHORIZED)
+}
+
 /// argon2 PHC hash of a password.
-fn hash_password(password: &str) -> String {
+pub(crate) fn hash_password(password: &str) -> String {
     let salt = SaltString::generate(&mut OsRng);
     Argon2::default()
         .hash_password(password.as_bytes(), &salt)
@@ -84,7 +87,7 @@ fn hash_password(password: &str) -> String {
 }
 
 /// Whether `password` matches the stored PHC hash.
-fn verify_password(password: &str, phc: &str) -> bool {
+pub(crate) fn verify_password(password: &str, phc: &str) -> bool {
     let Ok(parsed) = PasswordHash::new(phc) else {
         return false;
     };
@@ -100,18 +103,10 @@ fn random_token() -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// Session cookie `Domain` from settings — omitted when empty (host-only). Must match on logout.
-fn cookie_domain_attr(settings: &Settings) -> Option<String> {
-    (!settings.cookie_domain.is_empty()).then(|| settings.cookie_domain.clone())
-}
-
-/// Create a session row and return the jar with the session cookie set.
-async fn start_session(
-    jar: CookieJar,
-    db: &mut toasty::Db,
-    user_id: i64,
-    settings: &Settings,
-) -> Result<CookieJar, StatusCode> {
+/// Create a session row for `user_id` and return its raw token, for the gRPC `Auth` service
+/// (signup/login) to hand back as `AuthSession.session_token` — the BFF does the `Set-Cookie`
+/// itself from that.
+pub(crate) async fn mint_session(db: &mut toasty::Db, user_id: i64) -> Result<String, StatusCode> {
     let token = random_token();
     Session::create()
         .token(&token)
@@ -120,19 +115,23 @@ async fn start_session(
         .exec(db)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let mut builder = Cookie::build((SESSION_COOKIE, token))
-        .http_only(true)
-        .secure(settings.cookie_secure)
-        .same_site(SameSite::Lax)
-        .path("/");
-    if let Some(domain) = cookie_domain_attr(settings) {
-        builder = builder.domain(domain);
+    Ok(token)
+}
+
+/// Delete the session row for `token`, if any — idempotent, for the gRPC `Auth.Logout` path.
+pub(crate) async fn revoke_session(db: &mut toasty::Db, token: &str) -> Result<(), StatusCode> {
+    if let Ok(session) = Session::filter_by_token(token).get(db).await {
+        session
+            .delete()
+            .exec(db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     }
-    Ok(jar.add(builder.build()))
+    Ok(())
 }
 
 /// Trim and length-check a signup username; 400 on empty or too long.
-fn validate_username(raw: &str) -> Result<String, StatusCode> {
+pub(crate) fn validate_username(raw: &str) -> Result<String, StatusCode> {
     const MAX: usize = 32;
     let trimmed = raw.trim();
     if trimmed.is_empty() || trimmed.len() > MAX {
@@ -141,98 +140,15 @@ fn validate_username(raw: &str) -> Result<String, StatusCode> {
     Ok(trimmed.to_string())
 }
 
-fn me_of(user: &User) -> Me {
-    Me {
-        id: user.id,
-        email: user.email.clone(),
-        username: user.username.clone(),
-    }
-}
-
 /// Duplicate email is a 409; anything else (schema drift, connectivity) is a 500 so verify/dev
-/// doesn't misread a broken DB as "email taken".
-fn signup_create_error(err: toasty::Error) -> StatusCode {
+/// doesn't misread a broken DB as "email taken". Called by the gRPC `Auth.Signup` service.
+pub(crate) fn signup_create_error(err: toasty::Error) -> StatusCode {
     let msg = err.to_string().to_lowercase();
     if msg.contains("unique") || msg.contains("duplicate") {
         return StatusCode::CONFLICT;
     }
     eprintln!("signup create failed: {err}");
     StatusCode::INTERNAL_SERVER_ERROR
-}
-
-/// Register a new account and sign in. A duplicate email is a 409 — deliberately *not* declared
-/// as a response, so the generated client surfaces it as a catchable `HttpClientError` (a
-/// documented bodiless status is instead swallowed to void). The client reads the 409 off the error.
-#[utoipa::path(post, path = "/auth/signup/v1", request_body = SignupCredentials, responses((status = 200, description = "Signed up", body = Me)))]
-pub async fn signup(
-    State(state): State<AppState>,
-    jar: CookieJar,
-    Json(cred): Json<SignupCredentials>,
-) -> Result<(CookieJar, Json<Me>), StatusCode> {
-    let username = validate_username(&cred.username)?;
-    let mut db = state.db.clone();
-    let hash = hash_password(&cred.password);
-    // A duplicate email violates the unique index — surface it as a conflict.
-    let user = User::create()
-        .email(&cred.email)
-        .username(&username)
-        .password_hash(&hash)
-        .exec(&mut db)
-        .await
-        .map_err(signup_create_error)?;
-    let jar = start_session(jar, &mut db, user.id, &state.settings).await?;
-    Ok((jar, Json(me_of(&user))))
-}
-
-/// Sign in to an existing account.
-/// response (see `signup`), so the generated client surfaces it as a catchable `HttpClientError`
-/// rather than swallowing it to void.
-#[utoipa::path(post, path = "/auth/login/v1", request_body = Credentials, responses((status = 200, description = "Signed in", body = Me)))]
-pub async fn login(
-    State(state): State<AppState>,
-    jar: CookieJar,
-    Json(cred): Json<Credentials>,
-) -> Result<(CookieJar, Json<Me>), StatusCode> {
-    let mut db = state.db.clone();
-    let user = User::filter_by_email(&cred.email)
-        .get(&mut db)
-        .await
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-    if !verify_password(&cred.password, &user.password_hash) {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-    let jar = start_session(jar, &mut db, user.id, &state.settings).await?;
-    Ok((jar, Json(me_of(&user))))
-}
-
-/// Sign out: delete the session row and clear the cookie.
-#[utoipa::path(post, path = "/auth/logout/v1", responses((status = 200, description = "Signed out"), (status = 500, description = "Session deletion failed")))]
-pub async fn logout(
-    State(state): State<AppState>,
-    jar: CookieJar,
-) -> Result<CookieJar, StatusCode> {
-    if let Some(cookie) = jar.get(SESSION_COOKIE) {
-        let token = cookie.value().to_string();
-        let mut db = state.db.clone();
-        if let Ok(session) = Session::filter_by_token(&token).get(&mut db).await {
-            session
-                .delete()
-                .exec(&mut db)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        }
-    }
-    let mut builder = Cookie::build(SESSION_COOKIE).path("/");
-    if let Some(domain) = cookie_domain_attr(&state.settings) {
-        builder = builder.domain(domain);
-    }
-    Ok(jar.remove(builder.build()))
-}
-
-/// The currently signed-in user (401 if not signed in).
-#[utoipa::path(get, path = "/auth/me/v1", responses((status = 200, description = "Current user", body = Me), (status = 401, description = "Not signed in")))]
-pub async fn me(user: AuthUser) -> Json<Me> {
-    Json(me_of(&user.0))
 }
 
 #[cfg(test)]
@@ -242,21 +158,6 @@ mod tests {
 
     async fn test_state() -> AppState {
         AppState::for_test(connect("sqlite::memory:").await.expect("sqlite"))
-    }
-
-    fn signup_creds(email: &str, password: &str, username: &str) -> SignupCredentials {
-        SignupCredentials {
-            email: email.to_string(),
-            password: password.to_string(),
-            username: username.to_string(),
-        }
-    }
-
-    fn creds(email: &str, password: &str) -> Credentials {
-        Credentials {
-            email: email.to_string(),
-            password: password.to_string(),
-        }
     }
 
     /// A `Parts` carrying the given session cookie, for driving the `AuthUser` extractor.
@@ -277,49 +178,23 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn signup_sets_a_session_that_the_extractor_resolves() {
+    async fn a_minted_session_authenticates_the_cookie_extractor() {
         let state = test_state().await;
-        let (jar, Json(me)) = signup(
-            State(state.clone()),
-            CookieJar::new(),
-            Json(signup_creds("a@b.c", "pw", "alice")),
-        )
-        .await
-        .expect("signup");
-        assert_eq!(me.email, "a@b.c");
-        assert_eq!(me.username, "alice");
+        let mut db = state.db.clone();
+        let user = User::create()
+            .email("a@b.c")
+            .username("alice")
+            .password_hash(hash_password("pw"))
+            .exec(&mut db)
+            .await
+            .expect("create user");
+        let token = mint_session(&mut db, user.id).await.expect("mint session");
 
-        let token = jar
-            .get(SESSION_COOKIE)
-            .expect("session cookie set")
-            .value()
-            .to_string();
         let mut parts = parts_with_cookie(&token);
-        let AuthUser(user) = AuthUser::from_request_parts(&mut parts, &state)
+        let AuthUser(resolved) = AuthUser::from_request_parts(&mut parts, &state)
             .await
             .expect("cookie resolves to the user");
-        assert_eq!(user.email, "a@b.c");
-    }
-
-    #[tokio::test]
-    async fn login_rejects_a_wrong_password() {
-        let state = test_state().await;
-        let _ = signup(
-            State(state.clone()),
-            CookieJar::new(),
-            Json(signup_creds("a@b.c", "right", "alice")),
-        )
-        .await
-        .expect("signup");
-
-        let err = login(
-            State(state.clone()),
-            CookieJar::new(),
-            Json(creds("a@b.c", "wrong")),
-        )
-        .await
-        .unwrap_err();
-        assert_eq!(err, StatusCode::UNAUTHORIZED);
+        assert_eq!(resolved.email, "a@b.c");
     }
 
     #[tokio::test]

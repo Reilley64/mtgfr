@@ -34,17 +34,31 @@ export type LobbySnapshot = {
   seats: LobbySeatRow[];
 };
 
+function isUniqueViolation(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  // Postgres unique_violation (23505) — drizzle/pg-proxy may wrap or stringify it.
+  return msg.includes("23505") || /duplicate key|unique constraint/i.test(msg);
+}
+
+/** Visible for unit tests — collision detection must not swallow unrelated insert failures. */
+export function createLobbyTreatsAsCollision(err: unknown): boolean {
+  return isUniqueViolation(err);
+}
+
 export async function createLobby(db: WebDb, hostUserId: number): Promise<string> {
+  let lastError: unknown;
   for (let attempt = 0; attempt < 8; attempt++) {
     const tableId = randomTableCode();
     try {
       await db.insert(lobbies).values({ tableId, hostUserId });
       return tableId;
-    } catch {
-      // collision — retry
+    } catch (err) {
+      lastError = err;
+      if (!isUniqueViolation(err)) throw err;
+      // primary-key collision on table_id — retry with a fresh code
     }
   }
-  throw new Error("Could not mint a unique table code");
+  throw new Error("Could not mint a unique table code", { cause: lastError });
 }
 
 export async function loadLobby(db: WebDb, tableId: string): Promise<LobbySnapshot | null> {

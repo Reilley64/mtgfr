@@ -2,12 +2,11 @@
 //! [`to_intent`], which maps a received `WireIntent` back into [`engine::Intent`].
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::ObjectId;
 
 /// A player's requested action (client → server, POST body payload).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IntentEnvelope {
     pub table_id: String,
     /// Client-assigned sequence number, for ordering/idempotency.
@@ -17,7 +16,7 @@ pub struct IntentEnvelope {
 
 /// Wire form of [`engine::Target`]: a chosen target is either a permanent (`object`) or a
 /// player. A named, tagged enum so the generated TypeScript stays a discriminated union.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum WireTarget {
     Object { id: ObjectId },
@@ -44,7 +43,7 @@ impl WireTarget {
 
 /// One declared block: `blocker` blocks `attacker`. (A struct rather than a tuple so the
 /// generated TypeScript/OpenAPI stays a named object.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireBlock {
     pub blocker: ObjectId,
     pub attacker: ObjectId,
@@ -52,14 +51,14 @@ pub struct WireBlock {
 
 /// One declared attack: `attacker` attacks player `defender`. (A named struct so the
 /// generated TypeScript/OpenAPI stays an object, like [`WireBlock`].)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireAttack {
     pub attacker: ObjectId,
     pub defender: u8,
 }
 
 /// One combat-damage assignment: `amount` of an attacker's damage dealt to `blocker`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireDamage {
     pub blocker: ObjectId,
     pub amount: i32,
@@ -67,7 +66,7 @@ pub struct WireDamage {
 
 /// One share of a divided-damage spell's total: `amount` dealt to `target` (CR 601.2d). Keyed by
 /// [`WireTarget`], not a bare object id, because "any number of targets" may include a player.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireSpellDamage {
     pub target: WireTarget,
     pub amount: i32,
@@ -76,7 +75,7 @@ pub struct WireSpellDamage {
 /// One chosen mode of a modal spell (CR 700.2): the printed-mode `index` and that mode's
 /// `target` (absent if the mode needs none). A named struct so the generated
 /// TypeScript/OpenAPI stays an object, like [`WireBlock`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireModeChoice {
     pub index: u32,
     #[serde(default)]
@@ -85,7 +84,7 @@ pub struct WireModeChoice {
 
 /// Wire form of [`engine::Intent`] — the full player action surface. `to_intent` maps a
 /// `WireIntent` back to the engine's `Intent` (the inbound counterpart of redaction).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum WireIntent {
     Cast {

@@ -4,7 +4,6 @@
 // here is a TypeScript build failure, not a silent "Unhandled choice" caught only at runtime.
 
 import { type Component, createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
-import type { ChoiceItem, ModeView, PendingChoiceView, VisibleState, WireCost, WireTarget } from "~/api/generated";
 import { Button, Field } from "~/components/atoms";
 import { InspectDock } from "~/components/molecules/card-preview";
 import { seatColor } from "~/layout";
@@ -26,6 +25,7 @@ import {
   sourceHint,
   spellTargetsTitle,
 } from "~/lib/targetPrompt";
+import type { ChoiceItem, ModeView, PendingChoiceView, VisibleState, WireCost, WireTarget } from "~/wire/types";
 
 export const PROMPT_TITLE = cn("mb-sm font-bold");
 export const PROMPT_ROW = cn("my-1 flex flex-wrap gap-xs");
@@ -743,8 +743,10 @@ export function CardPickPrompt(props: {
     // No `onEscape`: this answers a *pending choice* — the engine will not proceed until it's
     // answered, so there is nothing to escape to. Decline, where the choice allows one, is a button.
     <PickDialog label={props.title}>
-      <div class={PICK_COLUMN}>
-        <div class="text-snow text-title">{props.title}</div>
+      <div class={PICK_COLUMN} data-testid="pick-prompt">
+        <div class="text-snow text-title" data-testid="pick-title">
+          {props.title}
+        </div>
         <Show when={props.hint}>
           <div class="-mt-2 text-label text-mist">{props.hint}</div>
         </Show>
@@ -775,6 +777,7 @@ export function CardPickPrompt(props: {
                 // card art shows.
                 <button
                   type="button"
+                  data-testid={`pick-card-${it.id}`}
                   aria-pressed={selected()}
                   aria-label={it.label}
                   onClick={() => toggle(it.id)}
@@ -808,23 +811,28 @@ export function CardPickPrompt(props: {
           </Show>
         </div>
         <Show when={props.count !== null}>
-          <div class="text-caption text-mist">
+          <div class="text-caption text-mist" data-testid="pick-count">
             {picked().length} / {props.count} selected
           </div>
         </Show>
         <Show when={props.count === null && (props.minCount !== undefined || props.maxCount !== undefined)}>
-          <div class="text-caption text-mist">
+          <div class="text-caption text-mist" data-testid="pick-count">
             {picked().length}
             {props.maxCount !== undefined ? ` / ${props.maxCount}` : ""} selected
             {props.minCount !== undefined && props.minCount > 0 ? ` (need at least ${props.minCount})` : ""}
           </div>
         </Show>
         <div class="flex gap-md">
-          <Button type="button" disabled={!ready()} onClick={() => props.onSubmit(picked())}>
+          <Button
+            type="button"
+            data-testid="pick-submit"
+            disabled={!ready()}
+            onClick={() => props.onSubmit(picked())}
+          >
             {props.submitLabel}
           </Button>
           <Show when={props.declineLabel}>
-            <Button type="button" onClick={() => props.onDecline?.()} variant="ghost">
+            <Button type="button" data-testid="pick-decline" onClick={() => props.onDecline?.()} variant="ghost">
               {props.declineLabel}
             </Button>
           </Show>

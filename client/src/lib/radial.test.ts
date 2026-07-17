@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ActionView } from "~/api/generated";
 import { CARD_H } from "~/layout";
 import { activationRadialRadius, radialOptions } from "~/lib/radial";
+import type { ActionView } from "~/wire/types";
 
 const activate = (over: Partial<ActionView> = {}): ActionView =>
   ({

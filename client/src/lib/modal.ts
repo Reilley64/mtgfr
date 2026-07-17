@@ -4,7 +4,7 @@
 // target — the cast's top-level `target` stays empty. Answering them is a walk left to right over
 // the chosen indices: a mode that takes no target answers itself, one that does has to be asked.
 
-import type { ModeView, WireModeChoice } from "~/api/generated";
+import type { ModeView, WireModeChoice } from "~/wire/types";
 
 export type ModalStep =
   /** Ask for `mode`'s target (it is `chosen[answers.length]`). */

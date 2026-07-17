@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ObjectView, StreamFrame, VisibleEvent, VisibleState } from "~/api/generated";
 import { applyDelta, game, resetGame, resolvedFromStack, setGame, zoneMoves } from "~/store";
+import type { ObjectView, StreamFrame, VisibleEvent, VisibleState } from "~/wire/types";
 
 /** The delta payload (delta arm of `StreamFrame` minus its `frame` tag; the generator inlines it). */
 type DeltaEnvelope = Omit<Extract<StreamFrame, { frame: "delta" }>, "frame">;

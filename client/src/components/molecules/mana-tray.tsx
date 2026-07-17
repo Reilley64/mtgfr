@@ -1,5 +1,6 @@
 // Per-seat mana tray: world-anchored DOM chips (mana-font) outside the seat band.
 
+import * as Match from "effect/Match";
 import { For, type JSX, Show } from "solid-js";
 import { cn } from "~/lib/cn";
 import type { ManaTrayChip } from "~/lib/manaPips";
@@ -36,60 +37,57 @@ function Chip(props: { chip: ManaTrayChip; zoom: number }) {
     </span>
   );
 
-  switch (props.chip.kind) {
-    case "glyph": {
-      const numbered = isNumericPip(props.chip.ms);
-      const countIn = amount() > 1 && !numbered;
-      return wrap(
-        <i
-          class={cn("relative", "ms", "ms-cost", `ms-${props.chip.ms}`, countIn && "ms-tray-count")}
-          aria-hidden="true"
-        >
-          <Show when={countIn}>
-            <CountInside amount={amount()} />
-          </Show>
-        </i>,
-        `{${props.chip.code}}`,
-      );
-    }
-    case "any":
-      return wrap(
-        <i class={cn("relative", "ms", "ms-duo", "ms-duo-color", "ms-multicolor", "ms-grad")} aria-hidden="true">
-          <Show when={amount() > 1}>
-            <CountInside amount={amount()} light />
-          </Show>
-        </i>,
-        "any color",
-      );
-    case "ci":
-      return wrap(
-        <i
-          class={cn("relative", "ms", "ms-ci", `ms-ci-${props.chip.n}`, `ms-ci-${props.chip.suffix}`)}
-          aria-hidden="true"
-        >
-          <Show when={amount() > 1}>
-            <CountInside amount={amount()} light />
-          </Show>
-        </i>,
-        props.chip.code,
-      );
-    case "text":
-      return (
+  return Match.value(props.chip).pipe(
+    Match.discriminatorsExhaustive("kind")({
+      glyph: (chip) => {
+        const numbered = isNumericPip(chip.ms);
+        const countIn = amount() > 1 && !numbered;
+        return wrap(
+          <i
+            class={cn("relative", "ms", "ms-cost", `ms-${chip.ms}`, countIn && "ms-tray-count")}
+            aria-hidden="true"
+          >
+            <Show when={countIn}>
+              <CountInside amount={amount()} />
+            </Show>
+          </i>,
+          `{${chip.code}}`,
+        );
+      },
+      any: () =>
+        wrap(
+          <i class={cn("relative", "ms", "ms-duo", "ms-duo-color", "ms-multicolor", "ms-grad")} aria-hidden="true">
+            <Show when={amount() > 1}>
+              <CountInside amount={amount()} light />
+            </Show>
+          </i>,
+          "any color",
+        ),
+      ci: (chip) =>
+        wrap(
+          <i
+            class={cn("relative", "ms", "ms-ci", `ms-ci-${chip.n}`, `ms-ci-${chip.suffix}`)}
+            aria-hidden="true"
+          >
+            <Show when={amount() > 1}>
+              <CountInside amount={amount()} light />
+            </Show>
+          </i>,
+          chip.code,
+        ),
+      text: (chip) => (
         <span
           class="inline-flex items-center gap-px font-semibold text-[#7fd4a8]"
           style={{ "font-size": `${fontPx()}px` }}
         >
-          <span class="leading-none">{props.chip.text}</span>
+          <span class="leading-none">{chip.text}</span>
           <Show when={amount() > 1}>
             <span class="leading-none">{amount()}</span>
           </Show>
         </span>
-      );
-    default: {
-      const _exhaustive: never = props.chip;
-      return _exhaustive;
-    }
-  }
+      ),
+    }),
+  );
 }
 
 export default function ManaTray(props: { trays: ManaTraySeat[] }) {

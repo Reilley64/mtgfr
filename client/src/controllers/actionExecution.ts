@@ -1,4 +1,9 @@
 import { type Accessor, createMemo, createSignal } from "solid-js";
+import { humanReason } from "~/controllers/reject";
+import { CARD_H, CARD_W } from "~/layout";
+import { type Camera, screenToWorld } from "~/lib/camera";
+import { advance } from "~/lib/modal";
+import { targetMode } from "~/lib/targeting";
 import type {
   ActionView,
   ModeView,
@@ -7,12 +12,7 @@ import type {
   WireIntent,
   WireModeChoice,
   WireTarget,
-} from "~/api/generated";
-import { humanReason } from "~/controllers/reject";
-import { CARD_H, CARD_W } from "~/layout";
-import { type Camera, screenToWorld } from "~/lib/camera";
-import { advance } from "~/lib/modal";
-import { targetMode } from "~/lib/targeting";
+} from "~/wire/types";
 
 type Vec = { x: number; y: number };
 

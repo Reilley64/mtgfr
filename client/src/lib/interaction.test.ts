@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ObjectView, VisibleState } from "~/api/generated";
 import { AVATAR_R, avatarPos, boardBounds, type RenderCard, ZONE } from "~/layout";
 import { worldToScreen } from "~/lib/camera";
 import {
@@ -15,6 +14,7 @@ import {
   resolveClick,
   TOP_MARGIN,
 } from "~/lib/interaction";
+import type { ObjectView, VisibleState } from "~/wire/types";
 
 const MAIN_1 = 3;
 

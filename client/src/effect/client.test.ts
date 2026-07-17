@@ -7,36 +7,27 @@ import { json, networkError, recordingFetch, respondWith, status, stubLocation }
 
 beforeAll(stubLocation);
 
-const seedBody = {
-  table_id: "ABCD",
-  host_user_id: 1,
-  seats: [
-    { user_id: 1, username: "a", deck_id: 1 },
-    { user_id: 2, username: "b", deck_id: 2 },
-  ],
-};
-
 describe("makeClient", () => {
   it("sends credentials: include so session cookies work on the same-origin BFF", async () => {
-    const { fetch, calls } = recordingFetch(json({ table_id: "ABCD", pod_dns: "x", version: "v" }));
+    const { fetch, calls } = recordingFetch(json({ id: 1, email: "a@b.co", username: "alice" }));
     const client = makeClient(fetch);
-    await Effect.runPromise(client.seedTable({ payload: seedBody }));
+    await Effect.runPromise(client.me());
     expect(calls).toHaveLength(1);
     expect(calls[0][1]?.credentials).toBe("include");
   });
-  it("prepends the same-origin /api BFF prefix", async () => {
-    const { fetch, calls } = recordingFetch(json({ table_id: "ABCD", pod_dns: "x", version: "v" }));
+  it("prepends the same-origin /api/rpc BFF prefix", async () => {
+    const { fetch, calls } = recordingFetch(json({ id: 1, email: "a@b.co", username: "alice" }));
     const client = makeClient(fetch);
-    await Effect.runPromise(client.seedTable({ payload: seedBody }));
+    await Effect.runPromise(client.me());
     expect(calls).toHaveLength(1);
     const url = calls[0][0];
-    expect(url.pathname.startsWith("/api/")).toBe(true);
+    expect(url.pathname).toBe("/api/rpc/auth/me");
   });
 });
 
 describe("orNull", () => {
   it("passes a success value through untouched", async () => {
-    expect(await Effect.runPromise(orNull(Effect.succeed({ table_id: "ABCD" })))).toEqual({ table_id: "ABCD" });
+    expect(await Effect.runPromise(orNull(Effect.succeed({ id: 1 })))).toEqual({ id: 1 });
   });
 
   it("folds a typed failure to null", async () => {
@@ -45,21 +36,17 @@ describe("orNull", () => {
 
   it("folds an unreachable server (network error) to null", async () => {
     const client = makeClient(networkError);
-    expect(await Effect.runPromise(orNull(client.seedTable({ payload: seedBody })))).toBeNull();
+    expect(await Effect.runPromise(orNull(client.me()))).toBeNull();
   });
 
   it("folds a 500 to null", async () => {
     const client = makeClient(respondWith(status(500)));
-    expect(await Effect.runPromise(orNull(client.seedTable({ payload: seedBody })))).toBeNull();
+    expect(await Effect.runPromise(orNull(client.me()))).toBeNull();
   });
 
-  it("still yields the view on a 200", async () => {
-    const client = makeClient(respondWith(json({ table_id: "ABCD", pod_dns: "x", version: "v" })));
-    expect(await Effect.runPromise(orNull(client.seedTable({ payload: seedBody })))).toEqual({
-      table_id: "ABCD",
-      pod_dns: "x",
-      version: "v",
-    });
+  it("still yields the value on a 200", async () => {
+    const client = makeClient(respondWith(json({ id: 1, email: "a@b.co", username: "alice" })));
+    expect(await Effect.runPromise(orNull(client.me()))).toEqual({ id: 1, email: "a@b.co", username: "alice" });
   });
 
   it("does not swallow defects", async () => {

@@ -2,7 +2,6 @@
 //! and deck-building/catalog wire shapes.
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::ObjectId;
 use crate::intent::{WireAttack, WireBlock, WireTarget};
@@ -10,7 +9,7 @@ use crate::intent::{WireAttack, WireBlock, WireTarget};
 // ── Snapshot view types: the redacted full view of the game a client renders from ────
 
 /// Per-player public facts plus that player's private counts.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerView {
     pub player: u8,
     /// Display name from the seated account (not unique across players).
@@ -34,7 +33,7 @@ pub struct PlayerView {
 
 /// Wire form of [`engine::ManaPool`]: WUBRG counts, `{C}`, any, dual either-credits, and
 /// restricted of-colors credits. Zero either/of_colors rows are omitted.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct WireManaPool {
     /// WUBRG amounts (length 5).
     pub colored: Vec<u8>,
@@ -46,7 +45,7 @@ pub struct WireManaPool {
     pub of_colors: Vec<WireOfColorsMana>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireEitherMana {
     /// First color index (WUBRG).
     pub a: u8,
@@ -55,7 +54,7 @@ pub struct WireEitherMana {
     pub amount: u8,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireOfColorsMana {
     /// WUBRG bitmask of the restricted credit.
     pub mask: u8,
@@ -99,7 +98,7 @@ impl WireManaPool {
 
 /// Commander damage dealt to one player by one commander, keyed by that commander's owner (each
 /// player has exactly one commander).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommanderDamageView {
     /// The seat whose commander dealt it.
     pub from: u8,
@@ -108,7 +107,7 @@ pub struct CommanderDamageView {
 
 /// What a card fundamentally is, for the client (mirror of `engine::CardKind`). Lets the UI
 /// distinguish creatures/lands/spells for targeting highlights and drag-to-play validity.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum WireKind {
     Creature {
@@ -133,7 +132,7 @@ pub enum WireKind {
 }
 
 /// A mana cost for the client: generic plus per-color pips (WUBRG).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireCost {
     pub generic: u8,
     /// Colored pips indexed WUBRG (see `engine::Color::index`).
@@ -146,7 +145,7 @@ pub struct WireCost {
 }
 
 /// One object the viewer may see, with its render-relevant state.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ObjectView {
     pub id: ObjectId,
     /// Zone discriminant; see `engine::Zone`.
@@ -221,7 +220,7 @@ pub struct ObjectView {
 }
 
 /// One source card def's contributions to a permanent (Alt-inspect ledger).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModifierSourceView {
     /// Card def name — clicking inspects this catalog card.
     pub source_name: String,
@@ -233,7 +232,7 @@ pub struct ModifierSourceView {
 }
 
 /// One entry on the stack, for the stack panel. Bottom-first in `VisibleState.stack`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StackObjectView {
     /// `spell` or `ability`.
     pub kind: String,
@@ -249,7 +248,7 @@ pub struct StackObjectView {
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign
 /// damage to). The `label` is the object's name, so the prompt UI needn't join against the
 /// object list.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChoiceItem {
     /// The object being chosen. Ignored when `player` is set — player-target choices (Bojuka Bog,
     /// Remorseful Cleric) name a seat instead of a battlefield object.
@@ -264,7 +263,7 @@ pub struct ChoiceItem {
 /// `kind`/`object`/`ability_index` are a flat trio rather than a tagged union — `kind` alone
 /// (`"play_land"` / `"cast"` / `"activate"` / `"declare_attackers"` / `"declare_blockers"`) tells
 /// the client which of the other two fields (if either) is set.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActionView {
     pub id: u64,
     pub kind: String,
@@ -332,7 +331,7 @@ pub struct ActionView {
 }
 
 /// A modal spell's printed modes and how many of them the caster picks (CR 700.2).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModalView {
     /// The minimum number of distinct modes to choose.
     pub choose: u8,
@@ -345,7 +344,7 @@ pub struct ModalView {
 }
 
 /// One printed mode of a modal spell.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModeView {
     /// A human-readable description of the mode's effect.
     pub label: String,
@@ -362,7 +361,7 @@ pub struct ModeView {
 /// zero-attacker (or zero-blocker) confirm leaves `attackers`/`blocks` empty, but the engine
 /// still treats the declaration as final — the client must flip off "No attackers/blockers"
 /// from these flags, not from list length alone.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct CombatView {
     /// Each attacker with the player it's attacking, so clients draw the right arrow and each
     /// defender sees who's coming.
@@ -380,7 +379,7 @@ pub struct CombatView {
 /// switches on `kind` and the compiler checks the switch is exhaustive (see ADR 0001 refinement).
 /// The `kind` strings are load-bearing wire contract: they must stay exactly what they were
 /// when this was one flattened struct with a `kind: String` field.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PendingChoiceView {
     /// How many items must be permuted, and a label per item so the player can tell them apart.
@@ -802,7 +801,7 @@ pub enum PendingChoiceView {
 /// The complete view one player is allowed to see: turn state, per-player facts, and the
 /// objects visible to them (all public zones + their own hand; opponents' hands and all
 /// libraries are counts only).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VisibleState {
     pub viewer: u8,
     pub active_player: u8,
@@ -843,28 +842,28 @@ pub struct VisibleState {
 // push channel if it ever feels laggy).
 
 /// Create a fresh lobby table.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateTableResponse {
     pub table_id: String,
 }
 
 /// Claim the next open seat with one of the caller's saved decks. Identity comes from the
 /// session cookie, so no token travels in the body.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JoinRequest {
     pub table_id: String,
     pub deck_id: i64,
 }
 
 /// Toggle a seated player's ready flag.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReadyRequest {
     pub table_id: String,
     pub ready: bool,
 }
 
 /// The host starts the game once ≥2 seats are claimed and all are ready.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StartRequest {
     pub table_id: String,
 }
@@ -878,7 +877,7 @@ pub struct StartRequest {
 // handlers are gone.
 
 /// One seat to seed, in seat-index order.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeedSeat {
     pub user_id: i64,
     pub username: String,
@@ -887,7 +886,7 @@ pub struct SeedSeat {
 
 /// Seed a running game from a lobby the BFF already resolved. `seats` is ordered by seat index
 /// (2..=4 players — a Commander table, minimum two to start).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeedRequest {
     pub table_id: String,
     pub host_user_id: i64,
@@ -896,7 +895,7 @@ pub struct SeedRequest {
 
 /// The seeded game's location: which pod owns it (`pod_dns`) and the API version running there,
 /// so the BFF can route later hops and detect a rolling deploy crossing versions mid-game.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeedResponse {
     pub table_id: String,
     pub pod_dns: String,
@@ -904,7 +903,7 @@ pub struct SeedResponse {
 }
 
 /// One seat's lobby state.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeatView {
     pub player: u8,
     pub claimed: bool,
@@ -920,7 +919,7 @@ pub struct SeatView {
 
 /// The full lobby state a client renders (and a mutation's reply). `you` is the seat the
 /// requesting token holds, if any.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LobbyView {
     pub table_id: String,
     pub seats: Vec<SeatView>,
@@ -941,14 +940,14 @@ pub struct LobbyView {
 // Seat ownership and deck ownership are keyed by the authenticated user, not a browser token.
 
 /// Login credentials.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Credentials {
     pub email: String,
     pub password: String,
 }
 
 /// Signup credentials — username is required and not unique across accounts.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignupCredentials {
     pub email: String,
     pub password: String,
@@ -958,7 +957,7 @@ pub struct SignupCredentials {
 /// The signed-in user (the `GET /auth/me` reply). `id` is the durable-store user id — the BFF
 /// needs it verbatim to seed a table (`SeedSeat::user_id` is this same numeric id, not the
 /// email/username).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Me {
     pub id: i64,
     pub email: String,
@@ -972,7 +971,7 @@ pub struct Me {
 // oracle text, which wouldn't match a simplified card).
 
 /// One line of a decklist: a Card id, how many copies, and the chosen Printing UUID.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeckCardEntry {
     /// Card id (Scryfall oracle id).
     pub id: String,
@@ -982,7 +981,7 @@ pub struct DeckCardEntry {
 }
 
 /// A deck in a list view (no card contents).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeckSummary {
     pub id: i64,
     pub name: String,
@@ -993,7 +992,7 @@ pub struct DeckSummary {
 }
 
 /// A deck with its full contents (the builder's edit view).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeckDetail {
     pub id: i64,
     pub name: String,
@@ -1005,7 +1004,7 @@ pub struct DeckDetail {
 }
 
 /// Body for creating or updating a deck.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveDeckRequest {
     pub name: String,
     /// Commander Card id (Scryfall oracle id).
@@ -1016,7 +1015,7 @@ pub struct SaveDeckRequest {
 }
 
 /// Why a deck was rejected as illegal — every problem at once, for the builder to list.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeckError {
     pub problems: Vec<String>,
 }

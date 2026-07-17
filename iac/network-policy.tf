@@ -25,6 +25,13 @@ resource "kubernetes_network_policy_v1" "edh_api_ingress" {
         port     = "8080"
         protocol = "TCP"
       }
+
+      # ADR 0032: the BFF dials the tonic gRPC service on this port for every game/auth/decks/
+      # cards call; 8080 above is now health checks only.
+      ports {
+        port     = "50051"
+        protocol = "TCP"
+      }
     }
 
     policy_types = ["Ingress"]

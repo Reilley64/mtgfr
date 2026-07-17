@@ -4,13 +4,16 @@
 //! test surface with no broadcast channel, keepalive timer, or `Body` involved — the handler
 //! shell keeps the genuinely async parts and just pumps this.
 
+use axum::http::StatusCode;
 use engine::{Event, Game, PlayerId};
 use schema::{
-    DeltaEnvelope, StreamFrame, ViewExtras, VisibleEvent, complete_visible, redact,
+    DeltaEnvelope, StreamFrame, ViewExtras, VisibleEvent, VisibleState, complete_visible, redact,
     spectator_redact,
 };
+use tokio::sync::broadcast;
 
-use crate::decks::Seat;
+use crate::AppState;
+use crate::decks::{Broadcast, Seat};
 
 /// Map Table-owned policy into the schema DTO that finishes a [`schema::VisibleState`].
 #[allow(clippy::too_many_arguments)]
@@ -33,6 +36,59 @@ pub fn view_extras(
         }),
         prints: prints.clone(),
     }
+}
+
+/// A resolved subscription to one table's delta stream, ready for a transport (SSE or gRPC
+/// server-streaming) to pump: the opening snapshot plus everything the caller needs to keep
+/// building later delta frames. Built by [`subscribe`] under the registry lock; the transport
+/// shell owns the actual async loop over `rx`.
+pub struct TableSubscription {
+    pub rx: broadcast::Receiver<Broadcast>,
+    pub snapshot_seq: u64,
+    pub snapshot: VisibleState,
+    pub viewer: Option<PlayerId>,
+    pub seats: [Seat; 4],
+    pub prints: [std::collections::HashMap<String, String>; 4],
+    /// The table's `broadcast_seq` at snapshot time — later messages at or below this are
+    /// already reflected in the snapshot (see [`should_deliver`]).
+    pub snapshot_broadcast_seq: u64,
+}
+
+/// Resolve `user_id`'s subscription to `table_id`'s delta stream: their own seat if they have
+/// one, or the public spectator view otherwise (C1/6.3 — the viewer is resolved server-side,
+/// never from the client). `NOT_FOUND` if the table or its game doesn't exist. Subscribes to the
+/// broadcast channel *before* snapshotting, so nothing slips through the subscribe/snapshot gap
+/// (deltas already reflected in the snapshot are dropped later by [`should_deliver`]).
+pub fn subscribe(
+    state: &AppState,
+    table_id: &str,
+    user_id: i64,
+) -> Result<TableSubscription, StatusCode> {
+    let reg = crate::lock(&state.reg);
+    let Some(table) = reg.tables.get(table_id) else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+    let Some(game) = table.game.as_ref() else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+    let viewer = table.seat_of(user_id).map(PlayerId);
+    let extras = view_extras(
+        &table.yields,
+        &table.turn_yields,
+        &table.seats,
+        table.stack_hold_remaining_ms(),
+        &table.prints,
+    );
+    let snapshot = complete_visible(game, viewer, &extras);
+    Ok(TableSubscription {
+        rx: table.tx.subscribe(),
+        snapshot_seq: table.seq,
+        snapshot,
+        viewer,
+        seats: table.seats.clone(),
+        prints: table.prints.clone(),
+        snapshot_broadcast_seq: table.broadcast_seq,
+    })
 }
 
 /// Whether a broadcast message at `broadcast_seq` should reach a stream whose opening

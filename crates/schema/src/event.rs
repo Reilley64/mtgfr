@@ -6,7 +6,6 @@
 //! [`crate::projection`], never in the engine — the engine stays audience-unaware.
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::ObjectId;
 use crate::dto::VisibleState;
@@ -16,7 +15,7 @@ use crate::intent::WireTarget;
 /// after they were applied. The `events` drive the game log / stack panel / combat highlights
 /// (folded client-side); `state` is the board the client renders. Carrying both makes each
 /// delta self-sufficient — the client never re-fetches a snapshot mid-stream (see ADR 0006).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeltaEnvelope {
     pub seq: u64,
     pub events: Vec<VisibleEvent>,
@@ -31,7 +30,7 @@ pub struct DeltaEnvelope {
 /// An [`engine::Event`] after per-viewer redaction. Public facts pass through
 /// unchanged; private facts (a drawn card's identity) become `None` for players
 /// who may not see them.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum VisibleEvent {
     SpellCast {

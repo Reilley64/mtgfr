@@ -8,7 +8,7 @@ Point-in-time decisions. Follow status + related links; ignore superseded parts.
 | [0002](0002-cards-as-data-driven-effect-enum.md) | Cards as `CardDef` + `Ability` + `Effect` data | Current |
 | [0003](0003-additive-continuous-effects-no-layers.md) | Additive P/T/keywords, no CR 613 layers yet | Current |
 | [0004](0004-resumable-engine-pending-choice.md) | `pending_choice` pauses engine; answer via intent | Current |
-| [0005](0005-in-process-fanout-ndjson-snapshot.md) | In-process broadcast; snapshot-then-deltas | Partial (NDJSON → SSE in 0018; affinity extended in 0030) |
+| [0005](0005-in-process-fanout-ndjson-snapshot.md) | In-process broadcast; snapshot-then-deltas | Partial (NDJSON → SSE in 0018; SSE → gRPC stream in 0032; affinity in 0030) |
 | [0006](0006-client-side-fold-and-choice-framework.md) | Self-sufficient deltas; general `PendingChoice` | Current |
 | [0007](0007-auto-pass-and-commander-ui-ahead-of-engine.md) | Server auto-pass via `has_meaningful_action` | Current (extended by 0020) |
 | [0008](0008-multiplayer-combat-elimination-and-lobby.md) | 4-player combat, elimination, lobby | Current (tokens → 0011) |
@@ -21,7 +21,7 @@ Point-in-time decisions. Follow status + related links; ignore superseded parts.
 | [0015](0015-card-imagery-via-self-hosted-cdn-and-name-id-map.md) | Optional `VITE_CARD_CDN` + `card-ids.json` | Current (tooling → 0017) |
 | [0016](0016-deck-builder-direct-manipulation-and-card-preview.md) | Direct-manipulation builder + `CardPreview` | Current |
 | [0017](0017-deck-builder-search-over-projected-pool.md) | `set`/`subtypes` + Postgres catalog search | Current |
-| [0018](0018-effect-generated-client-and-sse-stream.md) | Effect v4 client from OpenAPI; SSE stream | Current |
+| [0018](0018-effect-generated-client-and-sse-stream.md) | Effect v4 client from OpenAPI; SSE stream | Superseded by 0032 |
 | [0019](0019-effect-first-client-state-via-atom-solid.md) | Atoms for async; Solid for view | Current |
 | [0020](0020-engine-computed-action-lists-with-ids.md) | `LegalAction` list; `TakeAction { id }` | Current (amended 0021, 0022) |
 | [0021](0021-live-games-in-memory-only.md) | Stable action ids; no durable games | Current |
@@ -34,3 +34,5 @@ Point-in-time decisions. Follow status + related links; ignore superseded parts.
 | [0028](0028-battlefield-row-packing-and-clusters.md) | Row packing + permanent clusters (no spill) | Current |
 | [0029](0029-turn-yield.md) | Turn yield until active / until intentional action | Current |
 | [0030](0030-table-instance-affinity-for-drain-rolls.md) | BFF lobby + `table_routes` → pod DNS; Argo-owned rolls + SIGTERM drain | Current (extends 0005) |
+| [0031](0031-card-id-and-printing-art-preference.md) | Card id + printing art preference | Current |
+| [0032](0032-effect-rpc-and-grpc-proto-wire.md) | Effect RPC JSON + gRPC/tonic; proto wire | Current |

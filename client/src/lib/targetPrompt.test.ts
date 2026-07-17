@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ActionView, ObjectView, VisibleState } from "~/api/generated";
 import {
   mayYesNoTitle,
   payCostTitle,
@@ -11,6 +10,7 @@ import {
   stagedTargetHint,
   stagedTargetTitle,
 } from "~/lib/targetPrompt";
+import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 
 const state = (objects: ObjectView[]): VisibleState => ({
   objects,

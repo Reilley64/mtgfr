@@ -31,3 +31,14 @@ export function upstreamFromPodDns(pod: string): string {
   }
   return `http://${pod}:8080`;
 }
+
+/** The tonic gRPC address (`host:port` — grpc-js address format, no scheme) for a pod DNS name
+ * handed back by `Tables.Seed`, or an already-absolute `http(s)://host:port` upstream (ADR 0032).
+ * The pod's HTTP port (8080, `upstreamFromPodDns`) and gRPC port (50051) differ; this is the
+ * gRPC-port analogue used once a table is routed to a specific pod. */
+export function grpcUpstreamFromPodDns(pod: string): string {
+  if (pod.startsWith("http://") || pod.startsWith("https://")) {
+    return `${new URL(pod).hostname}:50051`;
+  }
+  return `${pod}:50051`;
+}

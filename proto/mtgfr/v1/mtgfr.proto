@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package mtgfr.v1;
+
+import "mtgfr/v1/catalog.proto";
+import "mtgfr/v1/intent.proto";
+import "mtgfr/v1/stream.proto";
+
+option java_multiple_files = true;
+
+// The tonic gRPC surface (ADR 0032): Auth, Decks, Cards, Game, Tables. `common.proto` (via
+// catalog/intent/stream) carries the shared wire vocabulary; every payload here is a native
+// proto message, not a JSON-in-a-string envelope.
+
+message Empty {}
+
+message Ack {
+  bool accepted = 1;
+  optional string reason = 2;
+}
+
+message Me {
+  int64 id = 1;
+  string email = 2;
+  string username = 3;
+}
+
+message Credentials {
+  string email = 1;
+  string password = 2;
+}
+
+message SignupCredentials {
+  string email = 1;
+  string password = 2;
+  string username = 3;
+}
+
+// Auth responses that mint a session: token is returned for the BFF to Set-Cookie.
+message AuthSession {
+  Me me = 1;
+  string session_token = 2;
+}
+
+service Auth {
+  rpc Signup(SignupCredentials) returns (AuthSession);
+  rpc Login(Credentials) returns (AuthSession);
+  rpc Logout(Empty) returns (Empty);
+  // Named GetMe, not Me: protoc can't resolve a `returns (Me)` type inside an rpc method also
+  // named `Me` (the method name shadows the message name).
+  rpc GetMe(Empty) returns (Me);
+}
+
+message DeckId {
+  int64 id = 1;
+}
+
+message DeckList {
+  repeated DeckSummary decks = 1;
+}
+
+message UpdateDeckRequest {
+  int64 id = 1;
+  SaveDeckRequest request = 2;
+}
+
+service Decks {
+  rpc Create(SaveDeckRequest) returns (DeckDetail);
+  rpc List(Empty) returns (DeckList);
+  rpc Get(DeckId) returns (DeckDetail);
+  rpc Update(UpdateDeckRequest) returns (DeckDetail);
+  rpc Delete(DeckId) returns (Empty);
+}
+
+message SearchCardsRequest {
+  string q = 1;
+  uint32 limit = 2;
+  uint32 offset = 3;
+}
+
+message CardList {
+  repeated CatalogCard cards = 1;
+}
+
+message LookupCardsRequest {
+  repeated string ids = 1;
+}
+
+service Cards {
+  rpc Catalog(Empty) returns (CardList);
+  rpc Search(SearchCardsRequest) returns (CardList);
+  rpc Lookup(LookupCardsRequest) returns (CardList);
+}
+
+message StreamRequest {
+  string table_id = 1;
+}
+
+message IntentRequest {
+  string table_id = 1;
+  IntentEnvelope envelope = 2;
+}
+
+message YieldRequest {
+  string table_id = 1;
+  bool enabled = 2;
+}
+
+message StackDwellRequest {
+  string table_id = 1;
+  bool dwelling = 2;
+}
+
+service Game {
+  rpc Stream(StreamRequest) returns (stream StreamFrame);
+  rpc SubmitIntent(IntentRequest) returns (Ack);
+  rpc SetYield(YieldRequest) returns (Ack);
+  rpc SetTurnYield(YieldRequest) returns (Ack);
+  rpc SetStackDwell(StackDwellRequest) returns (Ack);
+}
+
+service Tables {
+  rpc Seed(SeedRequest) returns (SeedResponse);
+}

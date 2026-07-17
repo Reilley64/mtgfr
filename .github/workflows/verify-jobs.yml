@@ -89,7 +89,7 @@ jobs:
         id: pass
         with:
           path: .ci-pass
-          key: verify-client-v1-${{ hashFiles('client/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.bun-version', 'justfile', '.github/workflows/verify-jobs.yml') }}
+          key: verify-client-v1-${{ hashFiles('client/**', 'proto/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.bun-version', 'justfile', '.github/workflows/verify-jobs.yml') }}
 
       - name: Skip — client hash already verified
         if: steps.pass.outputs.cache-hit == 'true'

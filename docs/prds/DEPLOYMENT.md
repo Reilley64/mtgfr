@@ -24,7 +24,7 @@ Deploy mtgfr to a **Kubernetes cluster** reached via a **Cloudflare Tunnel** (no
 | Concern | Current state | Deploy implication |
 |--------|---------------|-------------------|
 | Live games | In-memory `Registry` per process (ADR 0021) | Concurrent API pods **must not share** a table; BFF pins each table to the owning pod via `mtgfr_web.table_routes` → pod DNS. |
-| Fan-out | `tokio::broadcast` in-process (ADR 0005) | SSE streams are tied to the pod that owns the table. |
+| Fan-out | `tokio::broadcast` in-process (ADR 0005) | gRPC streams are tied to the pod that owns the table. |
 | Durable data | Postgres `mtgfr`: users, sessions, decks (ADR 0010); `mtgfr_web`: lobbies + routes | API uses `DATABASE_URL` → `mtgfr`; BFF uses `WEB_DATABASE_URL` → `mtgfr_web` (Drizzle). |
 | Client | SolidStart 1.3 (Vinxi, `ssr: false`); same-origin `/api` BFF | Browser always calls `/api`; lobby stays on BFF; game paths resolve `table_id` → pod DNS; auth/decks → Service `edh-api`. Web **may** roll with the API (expand-only wire). |
 | Dev DB bootstrap | `push_schema()` at boot (`db.rs`) | **Toasty** for `mtgfr` in prod/CI; **Drizzle** for `mtgfr_web`; `push_schema` only for in-memory SQLite tests (per [Toasty schema guide](https://tokio-rs.github.io/toasty/nightly/guide/schema-management.html)). |
@@ -225,7 +225,7 @@ DNS for the public host is **owned by mtgfr Terraform** (with the tunnel resourc
 
 **Proxy mode:** Tunnel hostnames are **proxied (orange cloud)** — that is how Cloudflare Tunnel works. TLS is at the edge; origin is the in-cluster `cloudflared` connector.
 
-**SSE through Cloudflare (required):** Tunnel hostnames are orange-clouded, so Cloudflare's ~100s HTTP idle timeout applies. The server **must** send periodic SSE comments / keepalive events (e.g. every 15–30s) on `GET /tables/{table}/stream/v1` before phase 5 exit. Configuration Rules disable response buffering on `edh.example.com` so the BFF stream is not held at the edge. If keepalives still drop streams in playtests, revisit (WebSocket upgrade or Cloudflare settings).
+**Game stream through Cloudflare (required):** Tunnel hostnames are orange-clouded, so Cloudflare's ~100s HTTP idle timeout applies. The BFF bridges gRPC `Game.Stream` to the browser as SSE on `/api/rpc/.../stream` and must keep that edge stream alive (heartbeats from tonic → SSE). Configuration Rules disable response buffering on `edh.example.com` so the BFF stream is not held at the edge.
 
 **Table share links** use `https://edh.example.com/play/XXXXXX` — stable across deploys. Legacy `?table=` query links still parse on join.
 
@@ -274,18 +274,18 @@ sequenceDiagram
 Roll order reduces mid-game refresh skew; it does **not** remove the need for wire rules. During the drain window, **new SPA ↔ old API** still happens for mid-game tables (and new SPA ↔ new API for new tables). Durable rules live in [WIRE_COMPAT.md](../WIRE_COMPAT.md):
 
 1. **Compatibility window** — all concurrent API binaries until each Terminating pod exits.
-2. **Expand-only during that window** — additive optional fields (`#[serde(default)]`), new endpoints, new intent/event variants the old client never sends; no rename/remove/type-change of wire fields until older binaries are gone.
-3. **Hard breaks** — bump path version (`/v2`), run both until drain completes, then remove `/v1`; use sparingly.
-4. **SSE / snapshots** — same expand-only rule on `VisibleState` and stream frames.
-5. **Authoring habit** — run `just server-codegen` with schema changes; prefer optional fields first.
+2. **Expand-only during that window** — additive optional protobuf fields (new field numbers), new RPCs, new intent/event variants the old client never sends; no rename/remove/reuse of field numbers until older binaries are gone. See [WIRE_COMPAT.md](../WIRE_COMPAT.md).
+3. **Hard breaks** — bump proto package / service version, run both until drain completes, then remove the old; use sparingly. The REST→gRPC migration (ADR 0032) was an intentional hard cut of API+web together.
+4. **Game stream** — same expand-only rule on `StreamFrame` / `VisibleState` JSON payloads carried over gRPC.
+5. **Authoring habit** — change `proto/` first; keep `client/src/wire/types.ts` aligned with `crates/schema` serde shapes; prefer optional fields first.
 
 ### Table → pod routing
 
 ADR 0005 assumes a single instance. Rolling deploy requires:
 
-1. Each API pod publishes **`POD_DNS`** (Downward API name + headless Service DNS) and returns it from `POST /tables/seed/v1`.
+1. Each API pod publishes **`POD_DNS`** (Downward API name + headless Service DNS) and returns it from `Tables.Seed` (gRPC).
 2. BFF stores `table_id` → `pod_dns` in `mtgfr_web.table_routes` (explicit delete + TTL).
-3. In-game `/api/tables/{table}/…` proxies to that pod; missing/expired route → 404 `UnknownTable`.
+3. In-game BFF dials tonic at `{pod_dns}:50051`; missing/expired route → 404 `UnknownTable`.
 4. Guests join lobbies on the BFF only (no Axum lobby / no join fan-out across peers).
 
 **Session cookies** (auth) are host-only on `edh.example.com` when `COOKIE_DOMAIN` is empty.
@@ -373,6 +373,7 @@ No secrets in the TOML file — production credentials come only from Terraform-
 |------------------|---------|------------|
 | `host` | `HOST` | `0.0.0.0` |
 | `port` | `PORT` | `8080` |
+| `grpc_port` | `GRPC_PORT` | `50051` (ADR 0032 — tonic gRPC, the wire contract's authoritative transport) |
 | `database_url` | `DATABASE_URL` | `postgresql://mtgfr:<secret>@postgres:5432/mtgfr` |
 | `instance_id` | `INSTANCE_ID` | stable Deployment id, e.g. `edh-api-1-2-3` |
 | `drain` | `DRAIN` | startup default `false`; live drain via SIGTERM |
@@ -414,7 +415,7 @@ toasty/
     0000_snapshot.toml
 crates/server/
   src/
-    main.rs                  # serve | openapi | static | migration …
+    main.rs                  # serve | static | migration …
 ```
 
 **`Toasty.toml`** (repo root):
@@ -552,8 +553,8 @@ Distroless has no shell — use ephemeral debug containers for inspection. All c
 
 Multi-stage `docker/server/Dockerfile`:
 
-1. **Build:** `rust:1-bookworm` — `cargo build -p server --release` (cache mount on `target/`).
-2. **Runtime:** `gcr.io/distroless/cc-debian12:nonroot` — copy `server`, `config/mtgfr.toml`, `Toasty.toml`, `toasty/`; `EXPOSE 8080`.
+1. **Build:** `rust:1-bookworm` — install `protobuf-compiler`, copy `proto/` + crates, then `cargo build -p server --release` (cache mount on `target/`). tonic stubs land in Cargo `OUT_DIR` via `build.rs` (never committed).
+2. **Runtime:** `gcr.io/distroless/cc-debian12:nonroot` — copy `server`, `config/mtgfr.toml`, `Toasty.toml`, `toasty/`; `EXPOSE 8080` (health) / gRPC is `:50051` in chart/TF.
    - Use `cc` (glibc) variant for default dynamically-linked release binaries. Switch to `gcr.io/distroless/static-debian12:nonroot` only if we build fully static binaries (`musl`).
 3. **Entrypoints:**
    - `server serve` — API container default (`CMD ["/server", "serve"]`).
@@ -569,7 +570,7 @@ SolidStart (Vinxi / Nitro `node_server`) on distroless Node — SPA (`ssr: false
 Multi-stage `docker/web/Dockerfile`:
 
 1. **Deps:** `oven/bun` — `bun install --frozen-lockfile`.
-2. **Build:** `node:22-bookworm` — requires `src/api/generated.ts` in the build context (`docker.yml` runs `bun run gen` first; locally `just server-codegen`) → `tsc` + `vinxi build` → `.output/` (optional `VITE_CARD_CDN` build-arg).
+2. **Build:** `node:22-bookworm` — `.proto` is the sole wire contract (ADR 0032). Effect-gRPC clients under `client/src/wire/generated/` are gitignored and regenerated in-image via `bun run gen` / `scripts/gen.sh`; `client/src/wire/types.ts` stays hand-maintained. Then `tsc` + `vinxi build` → `.output/` (optional `VITE_CARD_CDN` build-arg).
 3. **Runtime:** `gcr.io/distroless/nodejs22-debian12:nonroot` — copy `.output`; `ENV HOST=0.0.0.0 PORT=8080`; sticky map from k8s env; `CMD [".output/server/index.mjs"]`.
 
 #### Compression / streaming
@@ -580,7 +581,6 @@ Multi-stage `docker/web/Dockerfile`:
 | BFF → API | Do **not** buffer `text/event-stream` (SSE); Configuration Rules disable response buffering on `edh`. |
 | API (`serve`) | Optional gzip on JSON later; **never** gzip SSE. |
 
-OpenAPI `openapi.json` and `client/src/api/generated.ts` are gitignored; `docker.yml` regenerates them on the runner before `docker build` so the web image typechecks against the schema at that tag.
 ### What not to use
 
 | Avoid | Use instead |
@@ -627,6 +627,7 @@ mtgfr/
 env = [
   { name = "HOST", value = "0.0.0.0" },
   { name = "PORT", value = "8080" },
+  { name = "GRPC_PORT", value = "50051" },      # ADR 0032
   { name = "DATABASE_URL", value_from = secret_key_ref … },
   { name = "INSTANCE_ID", value = "edh-api-1-2-3" },  # Deployment name
   { name = "POD_DNS", value = "$(POD_NAME).edh-api-headless.$(POD_NAMESPACE).svc.cluster.local" },
@@ -714,7 +715,7 @@ Triggers: `pull_request` to `main` or `master`. Calls `verify-jobs.yml`; no rele
 | Job | Recipe | Needs |
 |-----|--------|-------|
 | `verify-server` | `just server-check` (fmt + clippy + migrate + nextest) | Rust, nextest, Postgres |
-| `verify-client` | `just client-check` (codegen + format + lint + typecheck + vitest) | Bun + Rust (for `openapi` gen); no Postgres |
+| `verify-client` | `just client-check` (proto → Effect-gRPC codegen + format + lint + typecheck + vitest) | Bun only; no Postgres |
 
 Local `just check` stays sequential (codegen → format → lint → typecheck → test).
 
@@ -812,7 +813,7 @@ package.json
 package-lock.json
 Toasty.toml
 toasty/                         # history.toml, migrations/, snapshots/
-crates/server/src/main.rs  # serve | openapi | static | migration
+crates/server/src/main.rs  # serve | static | migration
 docker/server/Dockerfile    # distroless cc: server (serve + migration)
 docker/web/Dockerfile       # distroless cc: server static + dist/
 iac/
@@ -907,7 +908,7 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 - ADR 0005 — in-process fan-out (routing extends this)
 - ADR 0010 — Postgres via Toasty (`push_schema` dev-only; migrations in prod)
 - [Toasty schema management](https://tokio-rs.github.io/toasty/nightly/guide/schema-management.html) — `migration generate` / `migration apply`
-- ADR 0018 — Effect client + SSE stream; same-origin `/api` (SolidStart BFF)
+- ADR 0032 — Effect RPC + gRPC/tonic; proto-owned wire; hard cut from OpenAPI/SSE
 - ADR 0021 — live games in-memory (motivates drain deploy)
 - `docker-compose.yml` — dev Postgres defaults
 - [`config`](https://docs.rs/config) — layered server `Settings` (TOML + env)

@@ -37,6 +37,8 @@ spec:
                   key: WEB_DATABASE_URL
             - name: API_UPSTREAM
               value: "http://edh-api.{{ .Values.namespace }}.svc:8080"
+            - name: GRPC_UPSTREAM
+              value: "edh-api.{{ .Values.namespace }}.svc:50051"
           livenessProbe:
             httpGet:
               path: /api/meta/health/v1

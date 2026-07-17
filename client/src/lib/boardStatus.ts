@@ -1,10 +1,10 @@
 // Spoken board summary for AT / live regions. Uses the wire `viewer` seat (or SPECTATOR_VIEWER),
 // never the layout `me()` fallback that maps spectators to seat 0.
 
-import type { VisibleState } from "~/api/generated";
 import { STEP_NAMES } from "~/layout";
 import { playerLabel } from "~/lib/players";
 import { SPECTATOR_VIEWER } from "~/store";
+import type { VisibleState } from "~/wire/types";
 
 /** One-line status of whose turn, step, priority, and stack depth. */
 export function boardStatusSummary(state: VisibleState | null, viewer: number): string {

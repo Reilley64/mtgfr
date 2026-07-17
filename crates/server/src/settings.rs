@@ -12,13 +12,16 @@ pub struct Settings {
     pub host: String,
     /// Default `8080`.
     pub port: u16,
+    /// The tonic gRPC port (ADR 0032) — the wire contract's authoritative transport. Default
+    /// `50051`.
+    pub grpc_port: u16,
     /// From `config/mtgfr.toml` or `DATABASE_URL` — no built-in default.
     pub database_url: String,
     /// Stable per-Deployment id (e.g. `edh-api`), not the pod name. Default `local`.
     pub instance_id: String,
     /// This pod's routable DNS name, handed back by `POST /tables/seed/v1` so the BFF can pin
     /// later hops for the table to the pod that owns its in-memory game. Default `""` — the seed
-    /// handler falls back to `instance_id` (dev, single pod).
+    /// handler falls back to `http://{host}:{port}` (dev, single process).
     pub pod_dns: String,
     /// Startup default only; SIGTERM flips the live drain flag.
     pub drain: bool,
@@ -41,6 +44,7 @@ impl Settings {
         let settings: Settings = config::Config::builder()
             .set_default("host", "127.0.0.1")?
             .set_default("port", 8080)?
+            .set_default("grpc_port", 50051)?
             .set_default("instance_id", "local")?
             .set_default("pod_dns", "")?
             .set_default("drain", false)?
@@ -58,6 +62,11 @@ impl Settings {
 
     pub fn listen_addr(&self) -> String {
         format!("{}:{}", self.host, self.port)
+    }
+
+    /// The tonic gRPC listen address — same host, dedicated port.
+    pub fn grpc_listen_addr(&self) -> String {
+        format!("{}:{}", self.host, self.grpc_port)
     }
 }
 
@@ -77,6 +86,7 @@ pub(crate) fn for_test() -> Settings {
     Settings {
         host: "127.0.0.1".to_string(),
         port: 0,
+        grpc_port: 0,
         database_url: "sqlite::memory:".to_string(),
         instance_id: "test".to_string(),
         pod_dns: String::new(),
@@ -134,6 +144,7 @@ mod tests {
 
         assert_eq!(settings.host, "127.0.0.1");
         assert_eq!(settings.port, 8080);
+        assert_eq!(settings.grpc_port, 50051);
         assert_eq!(
             settings.database_url,
             "postgresql://mtgfr:mtgfr@localhost:5432/mtgfr"
@@ -146,6 +157,7 @@ mod tests {
         assert_eq!(settings.cors_origin, "");
         assert_eq!(settings.version, env!("CARGO_PKG_VERSION"));
         assert_eq!(settings.listen_addr(), "127.0.0.1:8080");
+        assert_eq!(settings.grpc_listen_addr(), "127.0.0.1:50051");
 
         if let Some(v) = saved {
             unsafe { std::env::set_var("DATABASE_URL", v) };

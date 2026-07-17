@@ -5,8 +5,9 @@
 //! player may not legally see (a drawn card's identity is private to its owner).
 //! Redaction lives here, never in the engine — the engine stays audience-unaware.
 //!
-//! These types carry `utoipa::ToSchema` so the server can emit an OpenAPI document
-//! for the TypeScript client (see ADR 0001).
+//! `.proto` is the sole wire contract (ADR 0032): these types are the serde-JSON shapes carried
+//! inside proto `Json.value` strings (see `crates/server/src/grpc`), and the client's TypeScript
+//! mirrors them by hand (`client/src/wire/types.ts`).
 
 mod answer_protocol;
 mod catalog;
@@ -19,18 +20,19 @@ mod snapshot;
 pub(crate) mod test_support;
 
 pub use answer_protocol::{Answer, encode_answer};
-pub use catalog::{CatalogCard, catalog_card, color_identity};
+pub use catalog::{CatalogBackFace, CatalogCard, catalog_card, color_identity};
 pub use dto::{
     ActionView, ChoiceItem, CombatView, CommanderDamageView, CreateTableResponse, Credentials,
     DeckCardEntry, DeckDetail, DeckError, DeckSummary, JoinRequest, LobbyView, Me, ModalView,
-    ModeView, ObjectView, PendingChoiceView, PlayerView, ReadyRequest, SaveDeckRequest, SeatView,
-    SeedRequest, SeedResponse, SeedSeat, SignupCredentials, StackObjectView, StartRequest,
-    VisibleState, WireCost, WireKind,
+    ModeView, ModifierSourceView, ObjectView, PendingChoiceView, PlayerView, ReadyRequest,
+    SaveDeckRequest, SeatView, SeedRequest, SeedResponse, SeedSeat, SignupCredentials,
+    StackObjectView, StartRequest, VisibleState, WireCost, WireEitherMana, WireKind, WireManaPool,
+    WireOfColorsMana,
 };
 pub use event::{DeltaEnvelope, VisibleEvent, redact, spectator_redact};
 pub use intent::{
-    IntentEnvelope, WireAttack, WireBlock, WireDamage, WireIntent, WireModeChoice, WireTarget,
-    to_intent, to_intent_for_seat,
+    IntentEnvelope, WireAttack, WireBlock, WireDamage, WireIntent, WireModeChoice, WireSpellDamage,
+    WireTarget, to_intent, to_intent_for_seat,
 };
 pub use snapshot::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
 

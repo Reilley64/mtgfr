@@ -76,9 +76,9 @@ pub(crate) async fn user_with_deck(state: &crate::AppState, email: &str) -> i64 
 }
 
 #[cfg(test)]
-pub(crate) async fn as_user(state: &crate::AppState, email: &str) -> crate::AuthUser {
+pub(crate) async fn as_user(state: &crate::AppState, email: &str) -> crate::auth::AuthUser {
     let mut db = state.db.clone();
-    crate::AuthUser(
+    crate::auth::AuthUser(
         db::User::filter_by_email(email)
             .get(&mut db)
             .await

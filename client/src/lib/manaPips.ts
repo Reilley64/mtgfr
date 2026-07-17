@@ -1,7 +1,7 @@
 // Format a mana pool as chips for the per-seat mana tray (hide zeros).
 
-import type { PlayerView } from "~/api/generated";
 import { manaFontClass } from "~/lib/oracleText";
+import type { PlayerView } from "~/wire/types";
 
 type ManaPool = PlayerView["mana_pool"];
 

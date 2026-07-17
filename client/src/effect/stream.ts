@@ -1,15 +1,15 @@
-// The delta stream as an Effect pipeline: the generated client's typed SSE stream
-// (`client.streamSse`) wrapped in a manual reconnect loop that owns the backoff. The loop is a
-// plain `Effect.gen` on purpose — "reset the backoff after a healthy connection" and "stop forever
-// on a 4xx" are two readable branches here, where a `Schedule` would express neither cleanly.
-// Parsing/decoding of each `StreamFrame` now lives in the generated client (SSE + Schema); this
-// module only owns reconnection.
+// The delta stream as an Effect pipeline: the wire client's typed SSE stream (`client.streamSse`,
+// now backed by `/api/rpc/game/:table/stream` → tonic — ADR 0032) wrapped in a manual reconnect
+// loop that owns the backoff. The loop is a plain `Effect.gen` on purpose — "reset the backoff
+// after a healthy connection" and "stop forever on a 4xx" are two readable branches here, where a
+// `Schedule` would express neither cleanly. Parsing/decoding of each `StreamFrame` lives in the
+// wire client (SSE line parsing); this module only owns reconnection.
 
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
-import type { StreamFrame } from "~/api/generated";
 import { type Client, client as defaultClient, statusOf } from "~/effect/client";
+import type { StreamFrame } from "~/wire/types";
 
 /** Backoff bounds: start at 500ms, double per failed reconnect, cap at 10s. */
 const RECONNECT_BASE_MS = 500;

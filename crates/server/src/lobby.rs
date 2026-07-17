@@ -1,45 +1,34 @@
-//! `POST /tables/seed/v1` — build a live `Table` from seats the SolidStart BFF already resolved.
+//! Seed a live `Table` from seats the SolidStart BFF already resolved, for the gRPC
+//! `Tables.Seed` service (`grpc::tables_svc`).
 
 use std::sync::atomic::Ordering;
 
 use crate::db::Deck;
 use crate::decks::{SeatDeck, Table, seed_game};
-use crate::{AppState, auth::AuthUser, legality, lock, precons};
-use axum::Json;
-use axum::extract::State;
+use crate::{AppState, legality, lock, precons};
 use axum::http::StatusCode;
 use engine::PlayerId;
 use rand::RngCore;
 use rand::rngs::OsRng;
 use schema::{DeckCardEntry, SeedRequest, SeedResponse};
 
-/// Seed a running game from BFF-resolved seats. 503 while draining.
-#[utoipa::path(
-    post,
-    path = "/tables/seed/v1",
-    request_body = SeedRequest,
-    responses(
-        (status = 200, description = "Seeded game location", body = SeedResponse),
-        (status = 400, description = "Duplicate table id, bad seat count, unknown deck, or host not seated"),
-        (status = 403, description = "Caller is not the host"),
-        (status = 503, description = "Instance draining — retry against another instance"),
-    ),
-)]
-pub async fn seed_table(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Json(req): Json<SeedRequest>,
-) -> Result<Json<SeedResponse>, StatusCode> {
+/// Seed a running game from BFF-resolved seats. Rejects with `SERVICE_UNAVAILABLE` while
+/// draining. Called by the gRPC `Tables.Seed` service.
+pub(crate) async fn seed_table_core(
+    state: &AppState,
+    caller_user_id: i64,
+    req: SeedRequest,
+) -> Result<SeedResponse, StatusCode> {
     if state.draining.load(Ordering::Relaxed) {
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     }
     if !(2..=4).contains(&req.seats.len()) {
         return Err(StatusCode::BAD_REQUEST);
     }
-    if user.0.id != req.host_user_id {
+    if caller_user_id != req.host_user_id {
         return Err(StatusCode::FORBIDDEN);
     }
-    if !req.seats.iter().any(|s| s.user_id == user.0.id) {
+    if !req.seats.iter().any(|s| s.user_id == caller_user_id) {
         return Err(StatusCode::BAD_REQUEST);
     }
     if lock(&state.reg).tables.contains_key(&req.table_id) {
@@ -49,7 +38,7 @@ pub async fn seed_table(
     // Resolve decks before touching the registry — no DB await across the lock.
     let mut resolved: Vec<(PlayerId, SeatDeck)> = Vec::with_capacity(req.seats.len());
     for (i, seat) in req.seats.iter().enumerate() {
-        let deck = resolve_deck(&state, seat.deck_id, seat.user_id)
+        let deck = resolve_deck(state, seat.deck_id, seat.user_id)
             .await
             .map_err(|_| StatusCode::BAD_REQUEST)?;
         resolved.push((PlayerId(i as u8), deck));
@@ -72,16 +61,18 @@ pub async fn seed_table(
     drop(reg);
     crate::action_log::start(&req.table_id); // outside the lock — blocking disk I/O
 
+    // Empty `pod_dns` means single-process dev: hand the BFF an absolute upstream it can
+    // proxy to. Returning bare `instance_id` ("local") made the BFF dial `http://local:8080`.
     let pod_dns = if state.settings.pod_dns.is_empty() {
-        state.settings.instance_id.clone() // dev fallback: no real DNS configured
+        format!("http://{}:{}", state.settings.host, state.settings.port)
     } else {
         state.settings.pod_dns.clone()
     };
-    Ok(Json(SeedResponse {
+    Ok(SeedResponse {
         table_id: req.table_id,
         pod_dns,
         version: state.settings.version.clone(),
-    }))
+    })
 }
 
 /// Load a deck and resolve commander + cards; non-precons must be owned by `seat_user_id`.
@@ -149,21 +140,24 @@ mod tests {
         let guest_seat = seed_seat(&state, "guest@x.c", "guest").await;
         let host_user_id = host_seat.user_id;
 
-        let resp = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "host@x.c").await,
-            Json(SeedRequest {
+        let resp = seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
                 table_id: "tbl1".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
-            }),
+            },
         )
         .await
         .expect("seeding succeeds");
         assert_eq!(resp.table_id, "tbl1");
         assert_eq!(resp.version, state.settings.version);
-        // Dev fallback: no pod_dns configured, so it falls back to instance_id.
-        assert_eq!(resp.pod_dns, state.settings.instance_id);
+        // Dev fallback: no pod_dns configured → absolute listen address for the BFF proxy.
+        assert_eq!(
+            resp.pod_dns,
+            format!("http://{}:{}", state.settings.host, state.settings.port)
+        );
 
         let reg = lock(&state.reg);
         let table = reg.tables.get("tbl1").expect("table inserted");
@@ -181,14 +175,14 @@ mod tests {
         let host_user_id = host_seat.user_id;
         state.draining.store(true, Ordering::Relaxed);
 
-        let err = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "host@x.c").await,
-            Json(SeedRequest {
+        let err = seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
                 table_id: "tbl-draining".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
-            }),
+            },
         )
         .await
         .expect_err("draining rejects new tables");
@@ -207,14 +201,14 @@ mod tests {
         let host_user_id = host_seat.user_id;
         host_seat.deck_id = 999_999; // no such deck
 
-        let err = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "host@x.c").await,
-            Json(SeedRequest {
+        let err = seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
                 table_id: "tbl-baddeck".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
-            }),
+            },
         )
         .await
         .expect_err("an unresolvable deck is rejected");
@@ -234,21 +228,13 @@ mod tests {
             host_user_id,
             seats: vec![host_seat, guest_seat],
         };
-        let _ = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "host@x.c").await,
-            Json(req.clone()),
-        )
-        .await
-        .expect("first seed succeeds");
+        let _ = seed_table_core(&state, host_user_id, req.clone())
+            .await
+            .expect("first seed succeeds");
 
-        let err = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "host@x.c").await,
-            Json(req),
-        )
-        .await
-        .expect_err("a duplicate table id is rejected");
+        let err = seed_table_core(&state, host_user_id, req)
+            .await
+            .expect_err("a duplicate table id is rejected");
         assert_eq!(err, StatusCode::BAD_REQUEST);
     }
 
@@ -258,14 +244,14 @@ mod tests {
         let host_seat = seed_seat(&state, "host@x.c", "host").await;
         let host_user_id = host_seat.user_id;
 
-        let err = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "host@x.c").await,
-            Json(SeedRequest {
+        let err = seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
                 table_id: "tbl-solo".to_string(),
                 host_user_id,
                 seats: vec![host_seat],
-            }),
+            },
         )
         .await
         .expect_err("a single seat can't start a game");
@@ -278,15 +264,16 @@ mod tests {
         let host_seat = seed_seat(&state, "host@x.c", "host").await;
         let guest_seat = seed_seat(&state, "guest@x.c", "guest").await;
         let host_user_id = host_seat.user_id;
+        let guest_user_id = guest_seat.user_id;
 
-        let err = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "guest@x.c").await,
-            Json(SeedRequest {
+        let err = seed_table_core(
+            &state,
+            guest_user_id,
+            SeedRequest {
                 table_id: "tbl-spoof".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
-            }),
+            },
         )
         .await
         .expect_err("only the host may seed");
@@ -302,14 +289,14 @@ mod tests {
         let guest_b = seed_seat(&state, "b@x.c", "b").await;
         let host_user_id = host_seat.user_id;
 
-        let err = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "host@x.c").await,
-            Json(SeedRequest {
+        let err = seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
                 table_id: "tbl-absent-host".to_string(),
                 host_user_id,
                 seats: vec![guest_a, guest_b],
-            }),
+            },
         )
         .await
         .expect_err("host must be seated");
@@ -325,14 +312,14 @@ mod tests {
         // Host tries to play the guest's private deck.
         host_seat.deck_id = guest_seat.deck_id;
 
-        let err = seed_table(
-            State(state.clone()),
-            crate::test_support::as_user(&state, "host@x.c").await,
-            Json(SeedRequest {
+        let err = seed_table_core(
+            &state,
+            host_user_id,
+            SeedRequest {
                 table_id: "tbl-stolen-deck".to_string(),
                 host_user_id,
                 seats: vec![host_seat, guest_seat],
-            }),
+            },
         )
         .await
         .expect_err("deck must belong to the seated user");

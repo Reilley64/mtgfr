@@ -26,7 +26,6 @@ import {
   untrack,
 } from "solid-js";
 import { createStore, produce } from "solid-js/store";
-import type { CatalogCard, DeckCardEntry, DeckError, SaveDeckRequest } from "~/api/generated";
 import { Button, Felt, Field } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
@@ -37,6 +36,7 @@ import { commanderPrintForRow, formatReleasedAt, reconcileEntries } from "~/lib/
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { openModalWhenReady } from "~/lib/modalDialog";
 import { imageUrlByPrint, searchPrints } from "~/lib/scryfall";
+import type { CatalogCard, DeckCardEntry, DeckError, SaveDeckRequest } from "~/wire/types";
 
 const BASICS = new Set(["Plains", "Island", "Swamp", "Mountain", "Forest"]);
 const DECK_SIZE = 99;
@@ -85,13 +85,13 @@ const offsetAtom = Atom.make(0);
 const searchResultsAtom = Atom.make((get) => {
   const q = get(debouncedQueryAtom);
   const offset = get(offsetAtom);
-  return client.searchCards({ params: { q, limit: PAGE, offset } }).pipe(Effect.map((cards) => ({ q, offset, cards })));
+  return client.searchCards({ q, limit: PAGE, offset }).pipe(Effect.map((cards) => ({ q, offset, cards })));
 });
 
 // Existing-deck load, one atom per id (memoized). `/decks/new` passes a null id and resolves to
 // null, so the prefill effect no-ops — matching createResource's "don't fetch on a null source".
 const deckAtomFamily = Atom.family((id: number | null) =>
-  Atom.make(id === null ? Effect.succeed(null) : client.getDeck(String(id), {}).pipe(Effect.map((d) => d ?? null))),
+  Atom.make(id === null ? Effect.succeed(null) : client.getDeck(String(id)).pipe(Effect.map((d) => d ?? null))),
 );
 
 // Hydrate a loaded deck's cards' data (the commander/decklist need color identity). Invoked once
@@ -104,9 +104,7 @@ const hydrateCardsFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 const saveDeckFn = Atom.fn((req: { id: number | null; body: SaveDeckRequest }) => {
   // Widen the create/update union (their 422 error tags differ) to one Effect type for `.pipe`.
   const attempt: Effect.Effect<unknown, unknown> =
-    req.id !== null
-      ? client.updateDeck(String(req.id), { payload: req.body })
-      : client.createDeck({ payload: req.body });
+    req.id !== null ? client.updateDeck(String(req.id), req.body) : client.createDeck(req.body);
   return attempt.pipe(
     Effect.as(null as string[] | null),
     Effect.catch((err) => {
