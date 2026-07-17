@@ -54,7 +54,7 @@ import { type Outcome, outcome } from "~/lib/outcome";
 import { playerLabel } from "~/lib/players";
 import { type RadialOption, radialOptions } from "~/lib/radial";
 import { imageUrlByPrint } from "~/lib/scryfall";
-import { stackChrome } from "~/lib/stackResponse";
+import { boardChromeFromState, type StackChrome } from "~/lib/stackResponse";
 import { stagedTargetHint } from "~/lib/targetPrompt";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
 import { connectedAtom, gameStreamFamily, tableId } from "~/net";
@@ -103,7 +103,6 @@ export default function Board() {
   // The viewer's "don't care" state is the server's flag, carried on every frame
   // (VisibleState.yielded) — no client mirror to drift when the server clears it mid-drive.
   const yielded = () => game.state?.yielded ?? false;
-  const turnYielded = () => game.state?.turn_yielded ?? false;
   // One-shot arm only (ADR 0027); server clears when the stack empties — no chrome cancel.
   const armStackYield = () => {
     if (yielded()) return;
@@ -222,19 +221,9 @@ export default function Board() {
   const spectating = () => game.state?.viewer === SPECTATOR_VIEWER;
   /** Shared Next/Pass/yield/dwell policy for bar, keyboard, canvas, and stack overlay. */
   const boardChrome = createMemo(() =>
-    stackChrome({
-      spectating: spectating(),
+    boardChromeFromState(game.state, {
       // Expand suspends arrow drawing only — staged still blocks Pass / Space / yield.
       staged: stackStagedCard() != null,
-      yielded: yielded(),
-      stackLen: game.state?.stack.length ?? 0,
-      holdRemainingMs: game.state?.stack_hold_remaining_ms ?? 0,
-      canAct: game.state?.can_act ?? false,
-      viewer: me(),
-      priority: game.state?.priority ?? -1,
-      active: game.state?.active_player ?? -1,
-      step: game.state?.step ?? -1,
-      actions: game.state?.actions,
       manaSources: drawnCards(),
     }),
   );
@@ -291,20 +280,19 @@ export default function Board() {
       if (
         (e.key === " " || e.key === "Enter") &&
         !inspectPin() &&
-        !spectating() &&
         !promptOpen() &&
         yours() &&
         !isInteractiveControl(e.target)
       ) {
         e.preventDefault(); // Space must not scroll the page
-        const stackLen = game.state?.stack.length ?? 0;
-        if (stackLen > 0) {
-          if (boardChrome().spaceOnStack === "pass_priority") {
-            void act({ kind: "pass_priority", player: me() });
-          }
+        const binding = boardChrome().space;
+        if (binding === "pass_priority") {
+          void act({ kind: "pass_priority", player: me() });
           return;
         }
-        runPrimaryAction();
+        if (binding === "primary") {
+          runPrimaryAction();
+        }
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -671,8 +659,6 @@ export default function Board() {
                 action={primaryAction()}
                 yours={yours()}
                 chrome={boardChrome()}
-                turnYielded={turnYielded()}
-                showTurnYield={(game.state?.active_player ?? -1) !== me()}
                 reject={game.reject}
                 // Coaching + Cancel stay while expand suspends only the arrow draw.
                 staged={stackStagedCard() ? stagedTargetHint(session.overlay().staged) : null}
@@ -865,10 +851,7 @@ function PriorityWatch(props: { me: number; state: VisibleState }) {
 function PriorityContextBar(props: {
   action: PrimaryAction;
   yours: boolean;
-  chrome: ReturnType<typeof stackChrome>;
-  turnYielded: boolean;
-  /** Hidden on your own turn — turn yield means "until I become active". */
-  showTurnYield: boolean;
+  chrome: StackChrome;
   reject: string | null;
   staged: string | null;
   /** The staged spell may target a player, so the hint must mention their life orb. */
@@ -880,7 +863,7 @@ function PriorityContextBar(props: {
   /** Clear a staged targeting cast (arrow mode). */
   onCancelTarget: (() => void) | null;
 }) {
-  const showNext = () => !(props.chrome.hideControlsPass && props.action.kind === "pass");
+  const showNext = () => props.chrome.showPrimary(props.action.kind);
   return (
     <div
       style={{ "--b": `${HAND_BAR_H + 10}px` }}
@@ -916,32 +899,32 @@ function PriorityContextBar(props: {
           </Button>
         </Show>
         {/* Arena-style pass-turn rocker: icon + sliding switch, not a form checkbox. */}
-        <Show when={props.showTurnYield}>
+        <Show when={props.chrome.showTurnYield}>
           <button
             type="button"
             role="switch"
             data-testid="board-turn-yield"
-            aria-checked={props.turnYielded}
+            aria-checked={props.chrome.turnYielded}
             aria-label="Auto-pass until my turn"
             title="Auto-pass until my turn"
-            onClick={() => props.onTurnYield(!props.turnYielded)}
+            onClick={() => props.onTurnYield(!props.chrome.turnYielded)}
             class={cn(
               "flex h-[42px] items-center rounded-game border border-white/12 bg-[#141c18f0] px-3",
               "transition-colors",
-              props.turnYielded && "border-priority-gold/50",
+              props.chrome.turnYielded && "border-priority-gold/50",
             )}
           >
             <span
               class={cn(
                 "relative h-[22px] w-[40px] shrink-0 rounded-full transition-colors",
-                props.turnYielded ? "bg-priority-gold" : "bg-tapped-out",
+                props.chrome.turnYielded ? "bg-priority-gold" : "bg-tapped-out",
               )}
             >
               <span
                 class={cn(
                   "absolute top-[2px] left-[2px] flex size-[18px] items-center justify-center rounded-full",
                   "bg-snow font-bold text-[#1a221e] text-[10px] leading-none shadow-press transition-transform",
-                  props.turnYielded && "translate-x-[18px] bg-[#1a221e] text-priority-gold",
+                  props.chrome.turnYielded && "translate-x-[18px] bg-[#1a221e] text-priority-gold",
                 )}
                 aria-hidden="true"
               >

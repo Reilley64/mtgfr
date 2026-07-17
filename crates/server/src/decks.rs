@@ -10,6 +10,8 @@ use engine::{CardDef, Game, PlayerId};
 use schema::SeedSeat;
 use tokio::sync::broadcast;
 
+use crate::chrome::ChromeState;
+
 pub use crate::session::{Broadcast, PublishedDelta};
 
 /// One seated player: the user who owns the seat and their display name (public — every
@@ -36,22 +38,13 @@ pub struct Table {
     pub seed: u64,
     /// Monotonic delta sequence number; the snapshot watermark for resume.
     pub seq: u64,
-    /// Monotonic publish id for the SSE fan-out. Advances on every broadcast, including
-    /// hold-only ticks that keep game `seq` unchanged (dwell must not kill the hold timer).
+    /// Monotonic publish id for the stream fan-out (gRPC broadcast). Advances on every
+    /// broadcast, including hold-only ticks that keep game `seq` unchanged (dwell must not kill
+    /// the hold timer).
     pub broadcast_seq: u64,
     pub tx: broadcast::Sender<Broadcast>,
-    /// Per-seat "don't care" yields: a yielded seat is auto-passed while the stack is
-    /// non-empty. Mutated via [`crate::session::TableSession::set_yield`]; cleared whenever
-    /// the stack empties.
-    pub yields: [bool; 4],
-    /// Per-seat turn yield (ADR 0029): auto-pass until that seat's turn / until they act.
-    pub turn_yields: [bool; 4],
-    /// Active stack-hold (uncontested resolve pause): seq + when the hold started
-    /// (`tokio::time::Instant` so hold timers honor the test paused clock).
-    pub stack_hold: Option<(u64, tokio::time::Instant)>,
-    /// Per-seat helpless stack dwell (hover pause). Mutated via
-    /// [`crate::session::TableSession::set_dwell`]; cleared when the hold ends.
-    pub stack_dwell: [bool; 4],
+    /// Auto-pass / stack-hold / dwell policy — see [`crate::chrome::ChromeState`].
+    pub chrome: ChromeState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
 }
@@ -74,10 +67,7 @@ impl Table {
             seq: 0,
             broadcast_seq: 0,
             tx,
-            yields: [false; 4],
-            turn_yields: [false; 4],
-            stack_hold: None,
-            stack_dwell: [false; 4],
+            chrome: ChromeState::default(),
             prints: Default::default(),
         }
     }
@@ -99,14 +89,11 @@ impl Table {
     /// Milliseconds until the stack-hold would resolve, or `0` if no hold is active.
     /// Deadline math lives in the session module (shared with the hold poll loop).
     pub fn stack_hold_remaining_ms(&self) -> u32 {
-        crate::session::stack_hold_remaining_ms(
-            self.stack_hold,
-            self.stack_dwell.iter().any(|&d| d),
-        )
+        crate::session::stack_hold_remaining_ms(self.chrome.stack_hold(), self.chrome.any_dwell())
     }
 
     /// Fan out the current hold remaining without bumping game `seq` (dwell / countdown sync).
-    /// Called from [`crate::session::TableSession::set_dwell`], not from HTTP handlers.
+    /// Private to chrome — only [`crate::session::TableSession`] calls this.
     pub(crate) fn publish_hold_tick(&mut self) {
         let Some(game) = self.game.as_ref() else {
             return;
@@ -118,8 +105,8 @@ impl Table {
             events: vec![],
             game: game.clone(),
             auto_actions: vec![],
-            yields: self.yields,
-            turn_yields: self.turn_yields,
+            yields: *self.chrome.yields(),
+            turn_yields: *self.chrome.turn_yields(),
             stack_hold_remaining_ms: self.stack_hold_remaining_ms(),
         }));
     }

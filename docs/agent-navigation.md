@@ -17,12 +17,12 @@ This is **not** official CR text; it maps *our* citations and approximations to 
 | `pipeline` | CR 704 (SBA), CR 603 (place), CR 608 (priority rounds) |
 | `apply` | Event apply + CR 704 SBA body |
 | `triggers` | CR 603.* |
-| `effects` / `resolution` | CR 608 |
+| `effects` / `resolution` | CR 608 — `Game::run` sole Effect→board verb; `resolution/{draw,damage,life,destroy,counters,mill,…}` mint families; pause via `pending` |
 | `cast` | CR 601, 602, 118; alt costs (flashback, escape) |
 | `playable` | CR 601 timing/zone gates, CR 307 (sorcery speed) |
 | `combat` | CR 506–511, CR 702.* combat keywords, CR 701.38 |
 | `priority` | Turn structure / TBAs / cleanup; CR 605 mana planning |
-| `characteristics` (+ cache) | Effective P/T/keywords; CR 614 slices; **not** CR 613 ([ADR 0003](adr/0003-additive-continuous-effects-no-layers.md)) |
+| `characteristics` (+ cache) | Effective P/T/keywords; internal `PtLayer` 7b/7c for P/T; CR 614 slices; full CR 613 still deferred ([ADR 0003](adr/0003-additive-continuous-effects-no-layers.md)) |
 | `pending` | Targets / modes / assignment; CR 601.2c, CR 608 pauses (`raise`/`answer`/`forced`) |
 | `query` | Meaningful actions ([ADR 0007](adr/0007-auto-pass-and-commander-ui-ahead-of-engine.md)); CR 605 carve-outs |
 | `zones` | Zone membership, draw/shuffle, mana-pool helpers |
@@ -39,7 +39,7 @@ This is **not** official CR text; it maps *our* citations and approximations to 
 |-----|---------|
 | [`CONTEXT.md`](../CONTEXT.md) | Ubiquitous language / glossary |
 | [`FIDELITY_BACKLOG.md`](FIDELITY_BACKLOG.md) | Missing or partial capabilities |
-| [ADR 0003](adr/0003-additive-continuous-effects-no-layers.md) | Additive characteristics; CR 613 deferred |
+| [ADR 0003](adr/0003-additive-continuous-effects-no-layers.md) | Effective characteristics; P/T via `PtLayer` 7b/7c; full CR 613 deferred |
 | [ADR 0007](adr/0007-auto-pass-and-commander-ui-ahead-of-engine.md) | Auto-pass / meaningful actions |
 | [ADR 0014](adr/0014-any-card-faithful-scope-reversal.md) | Any-card faithful scope |
 | [`.agents/skills/card-dsl/`](../.agents/skills/card-dsl/) | Card authoring / DSL |

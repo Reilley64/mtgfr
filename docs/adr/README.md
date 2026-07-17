@@ -6,7 +6,7 @@ Point-in-time decisions. Follow status + related links; ignore superseded parts.
 |-----|----------|--------|
 | [0001](0001-rust-to-ts-via-utoipa-openapi-orval.md) | utoipa → OpenAPI wire contract | Superseded (Orval half → 0018) |
 | [0002](0002-cards-as-data-driven-effect-enum.md) | Cards as `CardDef` + `Ability` + `Effect` data | Current |
-| [0003](0003-additive-continuous-effects-no-layers.md) | Additive P/T/keywords, no CR 613 layers yet | Current |
+| [0003](0003-additive-continuous-effects-no-layers.md) | Effective characteristics; P/T `PtLayer` 7b/7c; full CR 613 deferred | Current |
 | [0004](0004-resumable-engine-pending-choice.md) | `pending_choice` pauses engine; answer via intent | Current |
 | [0005](0005-in-process-fanout-ndjson-snapshot.md) | In-process broadcast; snapshot-then-deltas | Partial (NDJSON → SSE in 0018; SSE → gRPC stream in 0032; affinity in 0030) |
 | [0006](0006-client-side-fold-and-choice-framework.md) | Self-sufficient deltas; general `PendingChoice` | Current |

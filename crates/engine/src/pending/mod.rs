@@ -9,165 +9,30 @@
 //! [`resume_deferred_sequence`](crate::Game::resume_deferred_sequence) stays on submit /
 //! resolution — Choice owns pause ↔ answer ↔ events only.
 //!
-//! Handlers and transitional `begin_*` raise helpers live in [`handlers`]. `pause_for` is
-//! private to this module so other engine modules must not poke `PendingChoice` raw — use
-//! [`raise`] / [`raise_choice`] / `begin_*` instead.
+//! Handlers and dig-loop kickoff helpers live in [`handlers`]. `pause_for` is private to this
+//! module so other engine modules must not poke `PendingChoice` raw — use [`raise`] /
+//! [`raise_choice`] instead.
+//!
+//! [`ChoiceRequest`] construction and skip guards live in [`raise`] (split by family). Dig-loop
+//! / multi-step effect kickoffs (cascade, reveal-until, dance, edict prep, …) remain non-pure
+//! constructors: call sites emit prep/dig events then [`raise`] — they are not pure
+//! `ChoiceRequest` factories because prep mutates via events before the pause.
 //!
 //! ## Deferred (next increments)
-//! - Collapse remaining `begin_*` into [`ChoiceRequest`] variants (effects still call
-//!   `begin_*` for ~30 families).
 //! - Optional internal `ChoiceHandler` per kind family (locality for new kinds).
 
 mod handlers;
+mod raise;
+
+pub(crate) use raise::ChoiceRequest;
 
 use crate::{Event, Game, Intent, PendingChoice, Reject};
 
-/// Engine-internal raise request (not wire). Partial coverage of common effect/cast pause
-/// sites; other raises still use `begin_*` on [`Game`] during migration.
-#[derive(Debug, Clone)]
-pub(crate) enum ChoiceRequest {
-    ChooseTarget {
-        player: crate::PlayerId,
-        source: crate::ObjectId,
-        effect: crate::Effect,
-        legal: Vec<crate::Target>,
-        optional: bool,
-    },
-    PayOrCounter {
-        player: crate::PlayerId,
-        cost: crate::Cost,
-        spell: crate::ObjectId,
-    },
-    ChooseCreatureType {
-        player: crate::PlayerId,
-        source: crate::ObjectId,
-        options: &'static [&'static str],
-    },
-    ChooseColor {
-        player: crate::PlayerId,
-        source: crate::ObjectId,
-    },
-    ChooseMode {
-        player: crate::PlayerId,
-        source: crate::ObjectId,
-        target: Option<crate::Target>,
-        x: u32,
-        modes: &'static [crate::Effect],
-    },
-    MayYesNo {
-        player: crate::PlayerId,
-        source: crate::ObjectId,
-        effect: crate::Effect,
-    },
-    DivideSpellDamage {
-        player: crate::PlayerId,
-        spell: crate::ObjectId,
-        targets: Vec<crate::Target>,
-        total: i32,
-    },
-    DivideCounters {
-        player: crate::PlayerId,
-        spell: crate::ObjectId,
-        targets: Vec<crate::ObjectId>,
-        total: i32,
-    },
-    ChooseManaColor {
-        player: crate::PlayerId,
-        source: crate::ObjectId,
-        amount: u8,
-    },
-}
-
 /// Raise a Choice from resolution (or cast). Constructs [`PendingChoice`] and pauses.
+/// Some variants skip when there is nothing to choose (empty board / hand).
 pub(crate) fn raise(game: &mut Game, request: ChoiceRequest) {
-    let choice = match request {
-        ChoiceRequest::ChooseTarget {
-            player,
-            source,
-            effect,
-            legal,
-            optional,
-        } => PendingChoice::ChooseTarget {
-            player,
-            source,
-            effect,
-            legal,
-            optional,
-        },
-        ChoiceRequest::PayOrCounter {
-            player,
-            cost,
-            spell,
-        } => PendingChoice::PayOrCounter {
-            player,
-            cost,
-            spell,
-        },
-        ChoiceRequest::ChooseCreatureType {
-            player,
-            source,
-            options,
-        } => PendingChoice::ChooseCreatureType {
-            player,
-            source,
-            options,
-        },
-        ChoiceRequest::ChooseColor { player, source } => {
-            PendingChoice::ChooseColor { player, source }
-        }
-        ChoiceRequest::ChooseMode {
-            player,
-            source,
-            target,
-            x,
-            modes,
-        } => PendingChoice::ChooseMode {
-            player,
-            source,
-            target,
-            x,
-            modes,
-        },
-        ChoiceRequest::MayYesNo {
-            player,
-            source,
-            effect,
-        } => PendingChoice::MayYesNo {
-            player,
-            source,
-            effect,
-        },
-        ChoiceRequest::DivideSpellDamage {
-            player,
-            spell,
-            targets,
-            total,
-        } => PendingChoice::DivideSpellDamage {
-            player,
-            spell,
-            targets,
-            total,
-        },
-        ChoiceRequest::DivideCounters {
-            player,
-            spell,
-            targets,
-            total,
-        } => PendingChoice::DivideCounters {
-            player,
-            spell,
-            targets,
-            total,
-        },
-        ChoiceRequest::ChooseManaColor {
-            player,
-            source,
-            amount,
-        } => PendingChoice::ChooseManaColor {
-            player,
-            source,
-            amount,
-        },
+    let Some(choice) = raise::choice_from_request(game, request) else {
+        return;
     };
     game.pause_for(choice);
 }
@@ -477,7 +342,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
 
 impl Game {
     /// Begin waiting on `choice` before resolution can continue.
-    /// Private to [`pending`]: effects/cast use [`raise`] or `begin_*`.
+    /// Private to [`pending`]: effects/cast use [`raise`] / [`raise_choice`].
     fn pause_for(&mut self, choice: PendingChoice) {
         self.pending_choice = Some(choice);
     }
