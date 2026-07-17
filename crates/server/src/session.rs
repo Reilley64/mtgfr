@@ -180,9 +180,8 @@ impl<'a> TableSession<'a> {
                 Some(intent) => {
                     let player = intent.actor();
                     let more = game.submit(intent)?;
-                    // Untap / being-attacked may appear on the player intent itself — clear
-                    // before auto_advance (ADR 0029).
-                    clear_turn_yields_from_events(turn_yields, &more);
+                    // Untap may appear on the player intent itself — clear before auto_advance.
+                    clear_turn_yields_on_untap(turn_yields, &more);
                     if clear_turn_yield_on_intent {
                         turn_yields[player.0 as usize] = false;
                     }
@@ -422,10 +421,9 @@ fn auto_advance(
             let label = forced_action_label(game, &choice);
             match game.submit(intent) {
                 Ok(more) => {
-                    // Clear turn yield as soon as Untap begins or this seat is attacked —
-                    // before the next skip check (ADR 0029). Must not wait until after the
-                    // whole auto_advance loop.
-                    clear_turn_yields_from_events(turn_yields, &more);
+                    // Clear turn yield as soon as Untap begins — before the next skip check
+                    // (ADR 0029). Must not wait until after the whole auto_advance loop.
+                    clear_turn_yields_on_untap(turn_yields, &more);
                     events.extend(more);
                 }
                 Err(_) => break,
@@ -447,7 +445,7 @@ fn auto_advance(
         }
         match game.submit(Intent::PassPriority { player: holder }) {
             Ok(more) => {
-                clear_turn_yields_from_events(turn_yields, &more);
+                clear_turn_yields_on_untap(turn_yields, &more);
                 events.extend(more);
             }
             Err(_) => break,
@@ -456,24 +454,15 @@ fn auto_advance(
     (events, labels, false)
 }
 
-fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) {
+fn clear_turn_yields_on_untap(turn_yields: &mut [bool; 4], events: &[Event]) {
     use engine::Step;
     for e in events {
-        match e {
-            // ADR 0029: your own turn starts — stop yielding through it.
-            Event::StepBegan {
-                step: Step::Untap,
-                active_player,
-            } => {
-                turn_yields[active_player.0 as usize] = false;
-            }
-            // Only the seat that was attacked cancels turn yield (not every yielded seat
-            // at the table) — so they can respond and declare blockers.
-            Event::AttackerDeclared { defender, .. }
-            | Event::TokenEnteredAttacking { defender, .. } => {
-                turn_yields[defender.0 as usize] = false;
-            }
-            _ => {}
+        if let Event::StepBegan {
+            step: Step::Untap,
+            active_player,
+        } = e
+        {
+            turn_yields[active_player.0 as usize] = false;
         }
     }
 }
@@ -940,72 +929,6 @@ mod tests {
         assert!(
             game.has_meaningful_action(PlayerId(1)),
             "P1 must still be able to act (not auto-passed through main)"
-        );
-    }
-
-    #[test]
-    fn turn_yield_clears_only_for_the_player_being_attacked() {
-        use engine::{Game, Intent, MeaningfulAction, Step};
-
-        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
-        let mut table = Table::empty();
-        let mut game = Game::with_players(3, 0);
-        let attacker = game.spawn_on_battlefield(PlayerId(0), bear());
-        let _blocker = game.spawn_on_battlefield(PlayerId(1), bear());
-        table.game = Some(game);
-
-        // Both non-active seats are turn-yielding; only the one swung at should clear.
-        assert!(TableSession::new(&mut table).set_turn_yield(PlayerId(1), true).0.accepted);
-        assert!(TableSession::new(&mut table).set_turn_yield(PlayerId(2), true).0.accepted);
-        assert!(table.turn_yields[1] && table.turn_yields[2]);
-
-        for _ in 0..64 {
-            let game = table.game.as_ref().unwrap();
-            if game.current_step() == Step::DeclareAttackers {
-                break;
-            }
-            let holder = game.priority_holder();
-            let (result, _) = TableSession::new(&mut table)
-                .submit_system(Intent::PassPriority { player: holder });
-            assert!(result.accepted, "pass by {holder:?} should advance");
-        }
-        assert_eq!(
-            table.game.as_ref().unwrap().current_step(),
-            Step::DeclareAttackers
-        );
-        assert!(
-            table.turn_yields[1] && table.turn_yields[2],
-            "turn yield stays armed until an attacker is declared at that seat"
-        );
-
-        let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
-            player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
-        });
-        assert!(result.accepted);
-
-        assert!(
-            !table.turn_yields[1],
-            "the seat being attacked must clear turn yield"
-        );
-        assert!(
-            table.turn_yields[2],
-            "a bystander's turn yield must stay armed when someone else is attacked"
-        );
-        let game = table.game.as_ref().unwrap();
-        assert_eq!(
-            game.current_step(),
-            Step::DeclareBlockers,
-            "with the defender's yield cleared, auto-advance must stop for blockers"
-        );
-        assert!(
-            !game.blockers_declared().contains(&PlayerId(1)),
-            "P1 must not have been auto-declared"
-        );
-        assert!(
-            game.meaningful_actions(PlayerId(1))
-                .contains(&MeaningfulAction::DeclareBlockers),
-            "P1 still owes a declare-blockers decision"
         );
     }
 
