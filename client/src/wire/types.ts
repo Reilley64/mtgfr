@@ -35,11 +35,63 @@ export const decodeAck = Schema.decodeUnknownSync(Ack);
 
 // ── Decks / cards / lobby ──
 
+export const DeckCardEntry = Schema.Struct({
+  count: Schema.Number,
+  id: Schema.String,
+  print: Schema.String,
+});
+export type DeckCardEntry = typeof DeckCardEntry.Type;
+
+export const DeckError = Schema.Struct({
+  problems: Schema.Array(Schema.String),
+});
+export type DeckError = typeof DeckError.Type;
+
+export const DeckSummary = Schema.Struct({
+  commander: Schema.String,
+  commander_print: Schema.optional(Schema.String),
+  id: Schema.Number,
+  name: Schema.String,
+});
+export type DeckSummary = typeof DeckSummary.Type;
+
+export const DeckDetail = Schema.Struct({
+  cards: Schema.Array(DeckCardEntry),
+  commander: Schema.String,
+  commander_print: Schema.String,
+  id: Schema.Number,
+  name: Schema.String,
+});
+export type DeckDetail = typeof DeckDetail.Type;
+
+export const SaveDeckRequest = Schema.Struct({
+  cards: Schema.Array(DeckCardEntry),
+  commander: Schema.String,
+  commander_print: Schema.String,
+  name: Schema.String,
+});
+export type SaveDeckRequest = typeof SaveDeckRequest.Type;
+
+export const YieldRequest = Schema.Struct({
+  enabled: Schema.Boolean,
+});
+export type YieldRequest = typeof YieldRequest.Type;
+
+export const StackDwellRequest = Schema.Struct({
+  dwelling: Schema.Boolean,
+});
+export type StackDwellRequest = typeof StackDwellRequest.Type;
+
+export class CreateDeck422 extends Schema.TaggedErrorClass<CreateDeck422>()("CreateDeck422", {
+  cause: DeckError,
+}) {}
+
+export class UpdateDeck422 extends Schema.TaggedErrorClass<UpdateDeck422>()("UpdateDeck422", {
+  cause: DeckError,
+}) {}
+
 export type ChoiceItem = { id: number; label: string; print?: string; player?: never };
 export type CommanderDamageView = { amount: number; from: number };
-export type DeckCardEntry = { count: number; id: string; print: string };
-export type DeckError = { problems: Array<string> };
-export type DeckSummary = { commander: string; commander_print?: string; id: number; name: string };
 export type ModifierSourceView = { contributions: Array<string>; source_card_id?: string; source_name: string };
 export type SeatView = {
   claimed: boolean;
@@ -52,7 +104,6 @@ export type SeatView = {
 };
 export type SeedResponse = { pod_dns: string; table_id: string; version: string };
 export type SeedSeat = { deck_id: number; user_id: number; username: string };
-export type StackDwellRequest = { dwelling: boolean };
 export type WireCost = { colored: Array<number>; generic: number; has_x?: boolean };
 export type WireEitherMana = { a: number; amount: number; b: number };
 export type WireKind =
@@ -64,16 +115,7 @@ export type WireKind =
   | { kind: "planeswalker"; loyalty: number }
   | { colors: Array<number>; kind: "land" };
 export type WireOfColorsMana = { amount: number; mask: number };
-export type YieldRequest = { enabled: boolean };
 export type U32 = number;
-export type DeckDetail = {
-  cards: Array<DeckCardEntry>;
-  commander: string;
-  commander_print: string;
-  id: number;
-  name: string;
-};
-export type SaveDeckRequest = { cards: Array<DeckCardEntry>; commander: string; commander_print: string; name: string };
 export type SeedRequest = { host_user_id: number; seats: Array<SeedSeat>; table_id: string };
 export type CatalogCard = {
   approximates?: string | null;

@@ -1,6 +1,7 @@
 // The lobby poll, factored out of the Solid component so it can be unit-tested without dragging in
 // `@solidjs/router` (which touches `window` at import). `Lobby.tsx` wires these into the component.
 
+import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
@@ -10,10 +11,16 @@ import type * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry";
 import * as lobbyClient from "~/lib/lobbyClient";
 import type { LobbyView } from "~/lib/lobbyTypes";
 
+export class LobbyPollError extends Data.TaggedError("LobbyPollError")<{
+  readonly reason: string;
+}> {}
+
 export const pollStream = (table: string) =>
   Stream.fromEffectSchedule(
     Effect.tryPromise(() => lobbyClient.lobbyState(table)).pipe(
-      Effect.flatMap((v) => (v == null ? Effect.fail(new Error("lobby poll failed")) : Effect.succeed(v))),
+      Effect.flatMap((v) =>
+        v == null ? Effect.fail(new LobbyPollError({ reason: "lobby poll failed" })) : Effect.succeed(v),
+      ),
       Effect.retry(Schedule.spaced("1 second")),
     ),
     Schedule.spaced("1 second"),

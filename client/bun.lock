@@ -29,6 +29,7 @@
         "@bufbuild/protoc-gen-es": "^2",
         "@effect-grpc/codegen": "npm:@effect-grpc/codegen@1.0.0-beta.2",
         "@effect-grpc/protoc-gen-effect-grpc": "npm:@effect-grpc/protoc-gen-effect-grpc@1.0.0-beta.2",
+        "@effect/language-service": "^0.87.0",
         "@effect/platform-node": "4.0.0-beta.94",
         "@tailwindcss/vite": "4.3.2",
         "@types/node": "26.1.0",
@@ -140,6 +141,8 @@
     "@effect-grpc/protoc-gen-effect-grpc": ["@effect-grpc/protoc-gen-effect-grpc@1.0.0-beta.2", "", { "dependencies": { "@bufbuild/protobuf": "^2.0.0", "@bufbuild/protoplugin": "^2.0.0" }, "bin": { "protoc-gen-effect-grpc": "./bin/protoc-gen-effect-grpc.mjs" } }, "sha512-w3ldMW/ZIuYfAtASwEDa3HD/IdaL3kzI+tNZyBoc1kO2bpPJhQkRkc3uMr+Bvg8SYhZ1sfmIoQk+vEaJ/jPmLA=="],
 
     "@effect/atom-solid": ["@effect/atom-solid@4.0.0-beta.94", "", { "peerDependencies": { "effect": "^4.0.0-beta.94", "solid-js": ">=1 <2" } }, "sha512-+lSn6iItUv7HvmcWmbf+RIGgvhD7Xrdrgftve9bVnxBokj6UOxNL2EmU6asSobvxppn96gim9i3+TDF3igNXhw=="],
+
+    "@effect/language-service": ["@effect/language-service@0.87.0", "", { "bin": { "effect-language-service": "cli.js" } }, "sha512-GwZtEwBaOMyKea6YAtN0T0OGBtzJ8/y0KUIfyg29u3hnMRiXKlR2BRDqJmi+SbgaODJNNB3YOd6KuRB/vsxnWw=="],
 
     "@effect/platform-node": ["@effect/platform-node@4.0.0-beta.94", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-beta.94", "mime": "^4.1.0", "undici": "^8.2.0" }, "peerDependencies": { "effect": "^4.0.0-beta.94", "ioredis": "^5.7.0" } }, "sha512-3WhV5ZN2pTPcOtEQlM66Ve0/B4EzF88sYBml97NnRV7BA5Kx0FYLSslc/4aWoaXj6XwuWOxmoXeGGeFzw4gbMQ=="],
 
