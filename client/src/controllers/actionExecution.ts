@@ -54,13 +54,26 @@ export function usedCostPick(picks: CostPicks): boolean {
  * (prompt vanishes, nothing happens). Capture first, clear second — same order as discard/exile.
  */
 export function settleSacrificePick(
-  pick: { action: ActionView; card: ObjectView | null; dropSeed: Vec; picks: CostPicks },
+  pick: {
+    action: ActionView;
+    card: ObjectView | null;
+    dropSeed: Vec;
+    screenOrigin: Vec;
+    picks: CostPicks;
+  },
   sacrificed: number,
-): { action: ActionView; card: ObjectView | null; dropSeed: Vec; picks: CostPicks } {
+): {
+  action: ActionView;
+  card: ObjectView | null;
+  dropSeed: Vec;
+  screenOrigin: Vec;
+  picks: CostPicks;
+} {
   return {
     action: pick.action,
     card: pick.card,
     dropSeed: pick.dropSeed,
+    screenOrigin: pick.screenOrigin,
     picks: { ...pick.picks, sacrifice: sacrificed },
   };
 }
@@ -72,6 +85,10 @@ export type StagedAction = {
   /** After escape/delve/discard, prefer the target picker over the arrow (easy to miss). Not set
    * for sacrifice alone — those activates stage onto the stack and aim normally. */
   preferPick: boolean;
+  /** World origin for the play-in leg (drop or hand slot) — canvas land path. */
+  playOrigin: Vec;
+  /** Screen origin for the play-in leg — stack DOM path. */
+  playOriginScreen: Vec;
 };
 
 export function buildTakeActionIntent(
@@ -214,31 +231,39 @@ export interface ActionExecutionDeps {
   size: Accessor<Vec>;
   handBarH: number;
   setReject: (msg: string | null) => void;
-  seedDrop: (seed: Vec) => void;
+  /** Record play-in world origin for a hand/command card id (canvas land path). */
+  seedDrop: (cardId: number, world: Vec, screen: Vec) => void;
+  clearPlayOrigin: (cardId: number) => void;
   onHintUsed: () => void;
 }
 
 /** Staged targeting, modal casts, cost picks, and take_action submission. */
 export function useActionExecution(deps: ActionExecutionDeps) {
   const [staged, setStaged] = createSignal<StagedAction | null>(null);
+  /** Staged card flying back to hand after cancel (ADR 0033). */
+  const [returningStaged, setReturningStaged] = createSignal<StagedAction | null>(null);
+  let returnTimer: ReturnType<typeof setTimeout> | null = null;
   const [xPrompt, setXPrompt] = createSignal<{ name: string; submit: (x: number) => void } | null>(null);
   const [modalCast, setModalCast] = createSignal<ModalCast | null>(null);
   const [sacrificePick, setSacrificePick] = createSignal<{
     action: ActionView;
     card: ObjectView | null;
     dropSeed: Vec;
+    screenOrigin: Vec;
     picks: CostPicks;
   } | null>(null);
   const [discardPick, setDiscardPick] = createSignal<{
     action: ActionView;
     card: ObjectView | null;
     dropSeed: Vec;
+    screenOrigin: Vec;
     picks: CostPicks;
   } | null>(null);
   const [gyExilePick, setGyExilePick] = createSignal<{
     action: ActionView;
     card: ObjectView | null;
     dropSeed: Vec;
+    screenOrigin: Vec;
     picks: CostPicks;
   } | null>(null);
 
@@ -332,7 +357,13 @@ export function useActionExecution(deps: ActionExecutionDeps) {
   // Printing UUID for a target's art (ADR 0031); empty renders a broken image.
   const objectPrint = (id: number): string => deps.getState()?.objects.find((o) => o.id === id)?.print ?? "";
 
-  const runAction = (action: ActionView, card: ObjectView | null, picks: CostPicks, dropSeed: Vec) => {
+  const runAction = (
+    action: ActionView,
+    card: ObjectView | null,
+    picks: CostPicks,
+    dropSeed: Vec,
+    screenOrigin: Vec,
+  ) => {
     const plan = planRunAction(action, card, picks, deps.getState());
     if (plan.kind === "noop") return;
     if (plan.kind === "reject") {
@@ -340,20 +371,24 @@ export function useActionExecution(deps: ActionExecutionDeps) {
       return;
     }
     if (plan.kind === "stage") {
+      if (plan.card.id != null) deps.seedDrop(plan.card.id, dropSeed, screenOrigin);
       setStaged({
         card: plan.card,
         action: plan.action,
         picks: plan.picks,
         preferPick: usedCostPick(plan.picks),
+        playOrigin: dropSeed,
+        playOriginScreen: screenOrigin,
       });
       return;
     }
     if (plan.kind === "play-land") {
-      deps.seedDrop(dropSeed);
+      if (card) deps.seedDrop(card.id, dropSeed, screenOrigin);
       void deps.act(buildTakeActionIntent(deps.me(), plan.actionId, null, 0, [], plan.picks));
       return;
     }
     if (plan.kind === "cast") {
+      if (card) deps.seedDrop(card.id, dropSeed, screenOrigin);
       void takeCastAction(plan.action, null, undefined, [], plan.picks);
       return;
     }
@@ -361,22 +396,28 @@ export function useActionExecution(deps: ActionExecutionDeps) {
   };
 
   /** Continue after a cost-pick prompt resolves. */
-  const continueAfterCostPick = (action: ActionView, card: ObjectView | null, picks: CostPicks, dropSeed: Vec) => {
+  const continueAfterCostPick = (
+    action: ActionView,
+    card: ObjectView | null,
+    picks: CostPicks,
+    dropSeed: Vec,
+    screenOrigin: Vec,
+  ) => {
     const plan = planCostPipeline(action, card, picks);
     if (plan.kind === "reject") {
       deps.setReject(humanReason(plan.reason));
       return;
     }
     if (plan.kind === "sacrifice-pick") {
-      setSacrificePick({ action, card, dropSeed, picks });
+      setSacrificePick({ action, card, dropSeed, screenOrigin, picks });
       return;
     }
     if (plan.kind === "discard-pick") {
-      setDiscardPick({ action, card, dropSeed, picks });
+      setDiscardPick({ action, card, dropSeed, screenOrigin, picks });
       return;
     }
     if (plan.kind === "gy-exile-pick") {
-      setGyExilePick({ action, card, dropSeed, picks });
+      setGyExilePick({ action, card, dropSeed, screenOrigin, picks });
       return;
     }
     if (plan.kind === "modal") {
@@ -384,7 +425,7 @@ export function useActionExecution(deps: ActionExecutionDeps) {
       return;
     }
     if (plan.kind === "run") {
-      runAction(plan.action, plan.card, plan.picks, dropSeed);
+      runAction(plan.action, plan.card, plan.picks, dropSeed, screenOrigin);
     }
   };
 
@@ -396,20 +437,21 @@ export function useActionExecution(deps: ActionExecutionDeps) {
     deps.onHintUsed();
     const w = screenToWorld(deps.camera(), x, y);
     const dropSeed = { x: w.x - CARD_W / 2, y: w.y - CARD_H / 2 };
+    const screenOrigin = { x, y };
     if (plan.kind === "reject") {
       deps.setReject(humanReason(plan.reason));
       return;
     }
     if (plan.kind === "sacrifice-pick") {
-      setSacrificePick({ action: plan.action, card: plan.card, dropSeed, picks: plan.picks });
+      setSacrificePick({ action: plan.action, card: plan.card, dropSeed, screenOrigin, picks: plan.picks });
       return;
     }
     if (plan.kind === "discard-pick") {
-      setDiscardPick({ action: plan.action, card: plan.card, dropSeed, picks: plan.picks });
+      setDiscardPick({ action: plan.action, card: plan.card, dropSeed, screenOrigin, picks: plan.picks });
       return;
     }
     if (plan.kind === "gy-exile-pick") {
-      setGyExilePick({ action: plan.action, card: plan.card, dropSeed, picks: plan.picks });
+      setGyExilePick({ action: plan.action, card: plan.card, dropSeed, screenOrigin, picks: plan.picks });
       return;
     }
     if (plan.kind === "modal") {
@@ -417,12 +459,25 @@ export function useActionExecution(deps: ActionExecutionDeps) {
       return;
     }
     if (plan.kind === "run") {
-      runAction(plan.action, plan.card, plan.picks, dropSeed);
+      runAction(plan.action, plan.card, plan.picks, dropSeed, screenOrigin);
     }
   };
 
-  const cancelActionState = () => {
+  const cancelStagedOnly = () => {
+    const s = staged();
+    if (!s) return;
+    deps.clearPlayOrigin(s.card.id);
+    setReturningStaged(s);
+    if (returnTimer) clearTimeout(returnTimer);
+    returnTimer = setTimeout(() => {
+      setReturningStaged(null);
+      returnTimer = null;
+    }, 220);
     setStaged(null);
+  };
+
+  const cancelActionState = () => {
+    cancelStagedOnly();
     setXPrompt(null);
     setModalCast(null);
     setSacrificePick(null);
@@ -433,6 +488,7 @@ export function useActionExecution(deps: ActionExecutionDeps) {
   return {
     staged,
     setStaged,
+    returningStaged,
     xPrompt,
     setXPrompt,
     modalCast,
@@ -457,6 +513,7 @@ export function useActionExecution(deps: ActionExecutionDeps) {
     runAction,
     continueAfterCostPick,
     onHandDrop,
+    cancelStagedOnly,
     cancelActionState,
     getState: deps.getState,
   };

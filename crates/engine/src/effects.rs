@@ -2283,6 +2283,7 @@ impl Game {
                             token: minted,
                             controller: player,
                             def: token,
+                            creator: source,
                         },
                     );
                     let power: i32 = self

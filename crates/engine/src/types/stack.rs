@@ -2206,11 +2206,13 @@ pub enum Event {
     },
     /// A token entered the battlefield under `controller`'s control as object `token`.
     /// Unlike [`Self::PermanentEntered`] it has no source card — its characteristics come
-    /// from the inline `def`.
+    /// from the inline `def`. `creator` is the resolving stack object or ability source
+    /// that produced it (client play motion / creator origin).
     TokenCreated {
         token: ObjectId,
         controller: PlayerId,
         def: CardDef,
+        creator: ObjectId,
     },
     /// A token left the battlefield and ceased to exist (CR 111.7) — a state-based action.
     /// Carries the token's `controller`/`def` (as [`Self::TokenCreated`] does) so its

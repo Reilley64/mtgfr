@@ -2237,6 +2237,7 @@ mod cache_tests {
             token,
             controller: PlayerId(0),
             def: creature(1, 1),
+            creator: bear,
         });
         assert!(
             game.characteristics_cache

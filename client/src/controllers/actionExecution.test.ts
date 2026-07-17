@@ -86,12 +86,19 @@ describe("settleSacrificePick", () => {
       targets: [{ kind: "object", id: 1 }],
     });
     const settled = settleSacrificePick(
-      { action, card: card(1), dropSeed: { x: 0, y: 0 }, picks: emptyCostPicks() },
+      {
+        action,
+        card: card(1),
+        dropSeed: { x: 0, y: 0 },
+        screenOrigin: { x: 10, y: 20 },
+        picks: emptyCostPicks(),
+      },
       3,
     );
     expect(settled.action).toBe(action);
     expect(settled.card?.id).toBe(1);
     expect(settled.picks.sacrifice).toBe(3);
+    expect(settled.screenOrigin).toEqual({ x: 10, y: 20 });
     expect(planCostPipeline(settled.action, settled.card, settled.picks).kind).toBe("run");
   });
 });

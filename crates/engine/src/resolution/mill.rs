@@ -94,6 +94,7 @@ impl Game {
                         token,
                         controller,
                         def,
+                        creator: source,
                     },
                 ]
             }

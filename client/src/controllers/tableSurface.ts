@@ -10,7 +10,7 @@
 // into hit*.
 
 import { type Accessor, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
-import { avatarPos, CARD_H, CARD_W, type RenderCard, ZONE } from "~/layout";
+import { avatarPos, CARD_H, CARD_W, type RenderCard, ZONE, zonePilePos } from "~/layout";
 import { withBoardDensity } from "~/lib/boardDensity";
 import { STACK_VERTICAL_RESERVED, stackAimOrigin, stackPeekFor } from "~/lib/boardDraw";
 import { type Camera, panBy, screenToWorld, zoomAt as zoomCameraAt } from "~/lib/camera";
@@ -23,6 +23,7 @@ import {
   pointerMove as reduceMove,
   pointerUp as reduceUp,
 } from "~/lib/interaction";
+import type { PlayOrigin } from "~/lib/playOrigin";
 import { type Positions, snapAll, stepScalar, stepToward } from "~/lib/tween";
 
 export type Vec = { x: number; y: number };
@@ -60,6 +61,18 @@ export type TableSurfaceDeps = {
   zoneMoves?: Accessor<Map<number, number>>;
   /** Permanents that entered from stack resolution. Defaults to empty. */
   fromStack?: Accessor<Set<number>>;
+  /** Cards that left the stack to GY/exile. Defaults to empty. */
+  fromStackExit?: Accessor<Set<number>>;
+  /** Token id → creator object id. Defaults to empty. */
+  tokenCreators?: Accessor<Map<number, number>>;
+  /** Own play permanent id → world origin. Defaults to empty. */
+  playEntrances?: Accessor<Map<number, Vec>>;
+  /** Zone-pile BF entrances. Defaults to empty. */
+  zonePileEntrances?: Accessor<Map<number, { zone: ZonePileKind; seat: number }>>;
+  /** Land permanent id → hand card id (`land_played.from`) for play-origin matching. */
+  landPlays?: Accessor<Map<number, number>>;
+  /** Object ids that were on the stack in the prior frame (token creator hybrid). */
+  stackObjectIds?: Accessor<Set<number>>;
   /** Live stack length for stack→battlefield entrance seed. */
   stackLength?: Accessor<number>;
   /** Override for tests; defaults to `prefers-reduced-motion`. */
@@ -91,7 +104,12 @@ export type TableSurface = {
 
   /** Paint path only — never feed to hit*. */
   drawnCards: Accessor<RenderCard[]>;
-  noteDropSeed(seed: Vec | null): void;
+  /** Record a play-in world origin for `cardId` (land → BF or cast staging). */
+  notePlayOrigin(cardId: number, seed: PlayOrigin): void;
+  /** Consume a pending play origin for a new permanent id (after land_played matching). */
+  takePlayEntrance(permanentId: number, fromCardId: number): void;
+  /** Clear pending play origins (e.g. cancelled staging). */
+  clearPlayOrigin(cardId: number): void;
 
   notePointer(sx: number, sy: number): void;
   setAuxHover(source: "hand" | "stack", card: { name: string; cardId?: string; print?: string } | null): void;
@@ -108,28 +126,40 @@ function defaultReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+export type ZonePileKind = "library" | "graveyard" | "exile";
+
 export type EntranceSeedOpts = {
   moves: Map<number, number>;
   fromStack: Set<number>;
+  /** Cards that left the stack to GY/exile — seed at the stack overlay like fromStack. */
+  fromStackExit: Set<number>;
+  /** Token id → creator object id (anim / stack / avatar fallback). */
+  tokenCreators: Map<number, number>;
+  /** Own play: new permanent id → world origin (matched via land_played.from). */
+  playEntrances: Map<number, Vec>;
+  /** Non-play BF entries from a zone pile when the predecessor is not on canvas. */
+  zonePileEntrances: Map<number, { zone: ZonePileKind; seat: number }>;
+  /** Creator ids that were on the stack when the token was minted (use stackAimOrigin). */
+  stackObjectIds: Set<number>;
   stackLength: number;
   size: Vec;
   camera: Camera;
   me: number;
   playerCount: number;
-  lastDrop: Vec | null;
 };
+
+function zoneToConst(zone: ZonePileKind): typeof ZONE.Library | typeof ZONE.Graveyard | typeof ZONE.Exile {
+  if (zone === "library") return ZONE.Library;
+  if (zone === "graveyard") return ZONE.Graveyard;
+  return ZONE.Exile;
+}
 
 /**
  * Pre-seed `anim` for ids that just appeared so the paint path glides from a meaningful origin
- * (zone predecessor, stack overlay, opponent avatar, or the viewer's last drop). Pure — the
- * Solid retarget effect is a thin caller. Does not touch ids already in `anim`.
+ * (zone predecessor, stack overlay, play origin, creator, zone pile, or opponent avatar). Pure —
+ * the Solid retarget effect is a thin caller. Does not touch ids already in `anim`.
  */
-export function seedEntrances(
-  anim: Positions,
-  targets: readonly RenderCard[],
-  opts: EntranceSeedOpts,
-): { lastDrop: Vec | null } {
-  let lastDrop = opts.lastDrop;
+export function seedEntrances(anim: Positions, targets: readonly RenderCard[], opts: EntranceSeedOpts): void {
   for (const c of targets) {
     if (anim.has(c.id)) continue;
     const origin = anim.get(opts.moves.get(c.id) ?? -1);
@@ -137,7 +167,7 @@ export function seedEntrances(
       anim.set(c.id, { ...origin });
       continue;
     }
-    if (opts.fromStack.has(c.id)) {
+    if (opts.fromStack.has(c.id) || opts.fromStackExit.has(c.id)) {
       const count = opts.stackLength + 1;
       const peek = stackPeekFor(count, opts.size.y, STACK_VERTICAL_RESERVED);
       const scr = stackAimOrigin(opts.size.x, opts.size.y, count, peek);
@@ -145,17 +175,41 @@ export function seedEntrances(
       anim.set(c.id, { x: w.x - CARD_W / 2, y: w.y - CARD_H / 2 });
       continue;
     }
-    if (c.controller !== opts.me) {
+    const creator = opts.tokenCreators.get(c.id);
+    if (creator !== undefined) {
+      const creatorPos = anim.get(creator);
+      if (creatorPos) {
+        anim.set(c.id, { ...creatorPos });
+        continue;
+      }
+      if (opts.stackObjectIds.has(creator)) {
+        const count = opts.stackLength + 1;
+        const peek = stackPeekFor(count, opts.size.y, STACK_VERTICAL_RESERVED);
+        const scr = stackAimOrigin(opts.size.x, opts.size.y, count, peek);
+        const w = screenToWorld(opts.camera, scr.x, scr.y);
+        anim.set(c.id, { x: w.x - CARD_W / 2, y: w.y - CARD_H / 2 });
+        continue;
+      }
       const a = avatarPos(c.controller, opts.me, opts.playerCount);
       anim.set(c.id, { x: a.x, y: a.y });
       continue;
     }
-    if (lastDrop && c.zone === ZONE.Battlefield) {
-      anim.set(c.id, { ...lastDrop });
-      lastDrop = null;
+    const play = opts.playEntrances.get(c.id);
+    if (play) {
+      anim.set(c.id, { ...play });
+      continue;
+    }
+    const pile = opts.zonePileEntrances.get(c.id);
+    if (pile) {
+      const p = zonePilePos(zoneToConst(pile.zone), pile.seat, opts.me, opts.playerCount);
+      anim.set(c.id, { x: p.x, y: p.y });
+      continue;
+    }
+    if (c.controller !== opts.me) {
+      const a = avatarPos(c.controller, opts.me, opts.playerCount);
+      anim.set(c.id, { x: a.x, y: a.y });
     }
   }
-  return { lastDrop };
 }
 
 /** Pure hit: id from hitTest → card from the same logical list (no tween). */
@@ -414,14 +468,32 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   // ── Paint-only tween ──────────────────────────────────────────────────────────────
   // No idle rAF: the loop runs only while unsettled, then stops until the layout next changes.
   let anim: Positions = new Map();
-  let lastDrop: Vec | null = null;
+  /** Pending play-in origins keyed by hand/command card id. */
+  const pendingPlayOrigins = new Map<number, PlayOrigin>();
+  /** Matched permanent id → world origin for this layout tick. */
+  let playEntrancesLocal = new Map<number, Vec>();
   let tapAnim = new Map<number, number>();
   const [animTick, setAnimTick] = createSignal(0);
+  /** Bumps when a late takePlayEntrance lands after cards already laid out. */
+  const [entranceBump, setEntranceBump] = createSignal(0);
   let rafId = 0;
   let lastFrame = 0;
 
-  const noteDropSeed = (seed: Vec | null) => {
-    lastDrop = seed;
+  const notePlayOriginFn = (cardId: number, seed: PlayOrigin) => {
+    pendingPlayOrigins.set(cardId, seed);
+  };
+
+  const takePlayEntrance = (permanentId: number, fromCardId: number) => {
+    const origin = pendingPlayOrigins.get(fromCardId);
+    if (!origin) return;
+    pendingPlayOrigins.delete(fromCardId);
+    playEntrancesLocal.set(permanentId, origin);
+    // Re-run seeding if the layout effect already ran this tick without the origin.
+    setEntranceBump((n) => n + 1);
+  };
+
+  const clearPlayOrigin = (cardId: number) => {
+    pendingPlayOrigins.delete(cardId);
   };
 
   const tapTargets = (cs: RenderCard[]) => new Map(cs.map((c) => [c.id, c.tapped ? 1 : 0]));
@@ -441,27 +513,71 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   const reducedMotion = () => deps.reducedMotion?.() ?? defaultReducedMotion();
   const zoneMoves = () => deps.zoneMoves?.() ?? new Map<number, number>();
   const fromStack = () => deps.fromStack?.() ?? new Set<number>();
+  const fromStackExit = () => deps.fromStackExit?.() ?? new Set<number>();
+  const tokenCreators = () => deps.tokenCreators?.() ?? new Map<number, number>();
+  const landPlays = () => deps.landPlays?.() ?? new Map<number, number>();
+  const playEntrances = () => {
+    const fromDeps = deps.playEntrances?.() ?? new Map<number, Vec>();
+    if (playEntrancesLocal.size === 0) return fromDeps;
+    const merged = new Map(fromDeps);
+    for (const [k, v] of playEntrancesLocal) merged.set(k, v);
+    return merged;
+  };
+  const zonePileEntrances = () => deps.zonePileEntrances?.() ?? new Map();
+  const stackObjectIds = () => deps.stackObjectIds?.() ?? new Set<number>();
   const stackLength = () => deps.stackLength?.() ?? 0;
 
+  /** Match land_played.from → pending play origin before seeding (same tick as layout). */
+  const bindLandPlayEntrances = (targets: readonly RenderCard[]) => {
+    const present = new Set(targets.map((c) => c.id));
+    for (const [permanent, from] of landPlays()) {
+      if (!present.has(permanent)) continue;
+      if (playEntrancesLocal.has(permanent)) continue;
+      const origin = pendingPlayOrigins.get(from);
+      if (!origin) continue;
+      pendingPlayOrigins.delete(from);
+      playEntrancesLocal.set(permanent, origin);
+    }
+  };
+
   createEffect(() => {
+    entranceBump();
     const targets = deps.cards();
-    if (reducedMotion() || anim.size === 0) {
+    landPlays(); // subscribe — land provenance arrives with the same delta as new BF cards
+    bindLandPlayEntrances(targets);
+    if (reducedMotion()) {
       anim = snapAll(targets);
       tapAnim = tapTargets(targets);
+      playEntrancesLocal = new Map();
       setAnimTick((t) => t + 1);
       return;
     }
-    const seeded = seedEntrances(anim, targets, {
+    const entranceOpts = {
       moves: zoneMoves(),
       fromStack: fromStack(),
+      fromStackExit: fromStackExit(),
+      tokenCreators: tokenCreators(),
+      playEntrances: playEntrances(),
+      zonePileEntrances: zonePileEntrances(),
+      stackObjectIds: stackObjectIds(),
       stackLength: stackLength(),
       size: size(),
       camera: camera(),
       me: deps.me(),
       playerCount: deps.playerCount(),
-      lastDrop,
-    });
-    lastDrop = seeded.lastDrop;
+    };
+    // First paint: seed provenance into an empty anim, then snap anything left to layout.
+    // (A blanket snapAll first would mark ids present and skip play/stack entrances.)
+    if (anim.size === 0) {
+      seedEntrances(anim, targets, entranceOpts);
+      for (const c of targets) {
+        if (!anim.has(c.id)) anim.set(c.id, { x: c.x, y: c.y });
+      }
+      tapAnim = tapTargets(targets);
+    } else {
+      seedEntrances(anim, targets, entranceOpts);
+    }
+    playEntrancesLocal = new Map();
     // Paint immediately at entrance seeds — don't wait for the first rAF tick.
     setAnimTick((t) => t + 1);
     if (rafId) return;
@@ -557,7 +673,9 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
     pointerCancel,
     dragging,
     drawnCards,
-    noteDropSeed,
+    notePlayOrigin: notePlayOriginFn,
+    takePlayEntrance,
+    clearPlayOrigin,
     notePointer,
     setAuxHover,
     tryPinInspect,

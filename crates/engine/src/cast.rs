@@ -1068,6 +1068,7 @@ impl Game {
                         token,
                         controller: player,
                         def,
+                        creator: card,
                     },
                 );
                 self.push_apply(

@@ -488,6 +488,8 @@ pub enum VisibleEvent {
     TokenCreated {
         token: ObjectId,
         controller: u8,
+        /// Resolving stack object or ability source (ADR 0033). Absent on older peers.
+        creator: Option<ObjectId>,
     },
     TokenCeasedToExist {
         token: ObjectId,

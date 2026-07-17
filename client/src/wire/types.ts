@@ -296,7 +296,7 @@ export type VisibleEvent =
       permanent: U32;
       tapped: boolean;
     }
-  | { controller: number; kind: "token_created"; token: U32 }
+  | { controller: number; creator?: null | number; kind: "token_created"; token: U32 }
   | { kind: "token_ceased_to_exist"; token: U32 }
   | { controller: number; copy: U32; kind: "spell_copied"; original: U32 }
   | { kind: "spell_ceased_to_exist"; spell: U32 }

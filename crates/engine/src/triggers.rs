@@ -71,6 +71,7 @@ impl Game {
                     token,
                     controller,
                     def,
+                    ..
                 } => {
                     self.queue_self_trigger(token, Trigger::Etb);
                     // A created token is a permanent entering the battlefield (CR 603.6a) too.

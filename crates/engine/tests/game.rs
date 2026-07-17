@@ -33340,9 +33340,7 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
     let created: Vec<(ObjectId, PlayerId)> = events
         .iter()
         .filter_map(|e| match e {
-            Event::TokenCreated {
-                token, controller, ..
-            } => Some((*token, *controller)),
+            Event::TokenCreated { token, controller, .. } => Some((*token, *controller)),
             _ => None,
         })
         .collect();
@@ -63698,9 +63696,7 @@ fn encore_creates_a_haste_copy_attacking_each_opponent() {
     let tokens: Vec<(ObjectId, PlayerId)> = events
         .iter()
         .filter_map(|e| match e {
-            Event::TokenCreated {
-                token, controller, ..
-            } => Some((*token, *controller)),
+            Event::TokenCreated { token, controller, .. } => Some((*token, *controller)),
             _ => None,
         })
         .collect();

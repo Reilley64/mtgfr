@@ -112,6 +112,7 @@ impl Game {
                             token: next,
                             controller: recipient,
                             def,
+                            creator: source,
                         });
                         // Attach the "attacks this turn if able" requirement to each minted token
                         // — bound to this batch's own defender (see `batches` above).
@@ -175,6 +176,7 @@ impl Game {
                         token: next,
                         controller: recipient,
                         def: treasure_token(),
+                        creator: source,
                     });
                     // "create a number of tapped Treasure tokens" (Goldvein Hydra): each minted
                     // Treasure enters already tapped.
@@ -206,6 +208,7 @@ impl Game {
                         token,
                         controller,
                         def,
+                        creator: source,
                     });
                     // Determined Iteration: "The token created this way gains haste."
                     if haste {
@@ -294,6 +297,7 @@ impl Game {
                             token,
                             controller: attacker,
                             def,
+                            creator: source,
                         });
                         events.push(Event::Tapped { object: token });
                         events.push(Event::TokenEnteredAttacking {
@@ -339,6 +343,7 @@ impl Game {
                         token: next,
                         controller: attacker,
                         def,
+                        creator: source,
                     });
                     events.push(Event::Tapped { object: next });
                     events.push(Event::TokenEnteredAttacking {

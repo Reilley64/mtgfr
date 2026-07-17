@@ -267,6 +267,7 @@ impl Game {
                         token,
                         controller,
                         def,
+                        creator: source,
                     },
                 ];
                 if !add_subtypes.is_empty() {

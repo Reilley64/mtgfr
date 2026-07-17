@@ -215,6 +215,29 @@ export function avatarPos(seat: number, viewer: number, count: number): { x: num
   return { x: band.x + band.w / 2, y };
 }
 
+/** Synthetic canvas id for a seat's Library pile face (`deckCard`). */
+export function libraryPileId(owner: number): number {
+  return -1 - owner;
+}
+
+/**
+ * World-space top-left of a seat's zone-column pile (library / graveyard / exile).
+ * Slot order matches `layout()`: upright commander→exile→deck→graveyard; flipped seats reverse.
+ */
+export function zonePilePos(
+  zone: typeof ZONE.Library | typeof ZONE.Graveyard | typeof ZONE.Exile,
+  seat: number,
+  viewer: number,
+  count: number,
+): { x: number; y: number } {
+  const o = seatOrigin(seat, viewer, count);
+  const flip = isFlipped(seat, viewer, count);
+  // Indices in the upright column: commander=0, exile=1, library=2, graveyard=3.
+  const upright = zone === ZONE.Exile ? 1 : zone === ZONE.Library ? 2 : 3;
+  const i = flip ? 3 - upright : upright;
+  return { x: o.x + COL_X, y: o.y + i * COL_STRIDE };
+}
+
 /** World-space anchor for a seat's mana tray — under the zone column's battlefield-side edge,
  * just outside the seat band on the outer edge (below upright boards; above flipped top-row boards).
  * X sits past the zone column (not its center) so the tray is less likely to collide with the
@@ -304,7 +327,7 @@ function colCard(card: RenderCard): RenderCard {
 function deckCard(owner: number, count: number): RenderCard | null {
   if (count <= 0) return null;
   return {
-    id: -1 - owner, // synthetic (no object); negative so it never collides with a real id
+    id: libraryPileId(owner), // synthetic (no object); negative so it never collides with a real id
     x: 0,
     y: 0,
     w: COL_W,
