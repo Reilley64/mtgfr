@@ -283,7 +283,7 @@ Roll order reduces mid-game refresh skew; it does **not** remove the need for wi
 
 ADR 0005 assumes a single instance. Rolling deploy requires:
 
-1. Each API pod publishes **`POD_DNS`** (Downward API name + headless Service DNS) and returns it from `Tables.Seed` (gRPC).
+1. Each API pod publishes **`POD_DNS`** (`{apiActiveInstanceId}.{headless}.$(POD_NAMESPACE).svc.cluster.local`, with Pod `hostname`/`subdomain` set so CoreDNS serves that A record) and returns it from `Tables.Seed` (gRPC).
 2. BFF stores `table_id` → `pod_dns` in `mtgfr_web.table_routes` (explicit delete + TTL).
 3. In-game BFF dials tonic at `{pod_dns}:50051`; missing/expired route → 404 `UnknownTable`.
 4. Guests join lobbies on the BFF only (no Axum lobby / no join fan-out across peers).
@@ -381,7 +381,7 @@ No secrets in the TOML file — production credentials come only from Terraform-
 | `cookie_domain` | `COOKIE_DOMAIN` | empty (host-only session cookie on edh) |
 | `cors_origin` | `CORS_ORIGIN` | empty (browser is same-origin via BFF) |
 | `version` | `VERSION` | image release tag |
-| `pod_dns` | `POD_DNS` | Downward API + headless DNS; returned by seed |
+| `pod_dns` | `POD_DNS` | `{instanceId}.{headless}.$(POD_NAMESPACE).svc.cluster.local` (Pod `hostname`/`subdomain`); returned by seed |
 
 `RUST_LOG` stays a standard tracing env var (not part of `Settings`) — set alongside the above in Terraform.
 
@@ -630,7 +630,8 @@ env = [
   { name = "GRPC_PORT", value = "50051" },      # ADR 0032
   { name = "DATABASE_URL", value_from = secret_key_ref … },
   { name = "INSTANCE_ID", value = "edh-api-1-2-3" },  # Deployment name
-  { name = "POD_DNS", value = "$(POD_NAME).edh-api-headless.$(POD_NAMESPACE).svc.cluster.local" },
+  { name = "POD_DNS", value = "edh-api-<tag>.edh-api-headless.$(POD_NAMESPACE).svc.cluster.local" },
+  # Pod template also sets hostname=<instanceId> + subdomain=edh-api-headless (required for that A record).
   { name = "DRAIN", value = "false" },          # startup only; SIGTERM for live drain
   { name = "COOKIE_SECURE", value = "true" },
   { name = "COOKIE_DOMAIN", value = "" },

@@ -75,7 +75,11 @@ export class GrpcCallError extends Error {
   }
 }
 
-function toCallError(err: unknown): GrpcCallError {
+/** Map transport / Effect failures to `GrpcCallError`. Idempotent — the game stream path runs
+ * `Stream.mapError(toCallError)` and then `Effect.catch(… toCallError)` on the same failure; a
+ * second wrap used to turn `unavailable` into `unknown` and the SSE connect into a bare 500. */
+export function toCallError(err: unknown): GrpcCallError {
+  if (err instanceof GrpcCallError) return err;
   if (err instanceof GrpcStatusError.GrpcStatusError) {
     return new GrpcCallError(err.code, err.message);
   }
