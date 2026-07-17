@@ -54,7 +54,12 @@ async function streamResponse(frames: AsyncIterable<StreamFrame>): Promise<Respo
   try {
     first = await iterator.next();
   } catch (err) {
-    if (err instanceof GrpcCallError) return new Response(null, { status: httpStatusOf(err.code) });
+    if (err instanceof GrpcCallError) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: httpStatusOf(err.code),
+        headers: { "content-type": "application/json" },
+      });
+    }
     return new Response(null, { status: 500 });
   }
   if (first.done) return new Response(null, { status: 200 });
