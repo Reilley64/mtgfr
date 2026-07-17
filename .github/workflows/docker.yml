@@ -5,6 +5,8 @@ name: Docker
 # semantic-release must create tags with `RELEASE_TOKEN` (PAT: contents + workflow) —
 # `GITHUB_TOKEN` cannot cascade workflow runs. Do not also listen for `create`: GitHub
 # emits both `create` and `push` for the same tag, which doubles the build.
+# Wire clients (Effect-gRPC) and tonic stubs are regenerated inside each Dockerfile —
+# nothing under `client/src/wire/generated/` or Cargo `OUT_DIR` is committed.
 
 on:
   push:
@@ -24,19 +26,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: .bun-version
-
-      # `client/src/api/generated.ts` is gitignored; web Dockerfile typechecks against it.
-      - name: Generate OpenAPI client
-        run: |
-          cd client
-          bun install --frozen-lockfile
-          bun run gen
 
       - name: Image names (GHCR requires lowercase)
         id: image

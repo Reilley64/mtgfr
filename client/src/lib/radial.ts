@@ -1,7 +1,7 @@
 // Legal activates for a selected permanent, including synthesized tap-for-mana.
 
-import type { ActionView } from "~/api/generated";
 import { CARD_H } from "~/layout";
+import type { ActionView } from "~/wire/types";
 
 export type RadialOption =
   | { kind: "tap_for_mana"; label: string }

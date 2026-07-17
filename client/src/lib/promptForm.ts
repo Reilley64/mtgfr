@@ -1,7 +1,7 @@
 // Pure prompt chrome / surface policy — importable from vitest without Solid.
 // Solid forms in components/molecules/prompt-forms.tsx remain the render adapters.
 
-import type { ChoiceItem, PendingChoiceView } from "~/api/generated";
+import type { ChoiceItem, PendingChoiceView } from "~/wire/types";
 
 /** Corner panel vs full-screen card picker (replaces a parallel CARD_PICK_KINDS set). */
 export type PromptChrome = "panel" | "fullscreen";

@@ -3,10 +3,10 @@
 // Engine pending_choice stays on PromptHost (same act sink). Pre-submit chrome: ActionChrome.
 
 import { type Accessor, type Component, createMemo } from "solid-js";
-import type { ActionView, ObjectView, WireTarget } from "~/api/generated";
 import { ActionChrome, type ActionChromeModel } from "~/controllers/action-chrome";
 import { type ActionExecutionDeps, type StagedAction, useActionExecution } from "~/controllers/actionExecution";
 import type { TargetMode } from "~/lib/targeting";
+import type { ActionView, ObjectView, WireTarget } from "~/wire/types";
 
 export type SessionOverlay = {
   staged: StagedAction | null;

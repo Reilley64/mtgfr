@@ -1,11 +1,11 @@
 import { createMemo, createSignal, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
-import type { PendingChoiceView, VisibleState, WireIntent } from "~/api/generated";
 import { Button, Field, Modal } from "~/components/atoms";
 import { FORMS, PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
 import { type AnswerInput, choiceIntent } from "~/lib/choice";
 import { choiceShowKey, myChoice } from "~/lib/promptChoice";
 import { isFullscreenPrompt } from "~/lib/promptForm";
+import type { PendingChoiceView, VisibleState, WireIntent } from "~/wire/types";
 
 export { choiceShowKey, myChoice } from "~/lib/promptChoice";
 

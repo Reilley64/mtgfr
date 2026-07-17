@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LobbySnapshot } from "~/lib/lobbyStore";
-import { randomTableCode, startError, toLobbyView } from "~/lib/lobbyStore";
+import { createLobbyTreatsAsCollision, randomTableCode, startError, toLobbyView } from "~/lib/lobbyStore";
 
 describe("randomTableCode", () => {
   it("mints a 6-character code from the unambiguous alphabet", () => {
@@ -11,6 +11,21 @@ describe("randomTableCode", () => {
   it("varies across calls (not a fixed code)", () => {
     const codes = new Set(Array.from({ length: 20 }, () => randomTableCode()));
     expect(codes.size).toBeGreaterThan(1);
+  });
+});
+
+describe("createLobbyTreatsAsCollision", () => {
+  it("recognizes postgres unique violations", () => {
+    expect(createLobbyTreatsAsCollision(new Error("duplicate key value violates unique constraint"))).toBe(true);
+    expect(createLobbyTreatsAsCollision(new Error("error code 23505"))).toBe(true);
+  });
+
+  it("does not treat missing NOT NULL / failed query as a collision", () => {
+    expect(
+      createLobbyTreatsAsCollision(
+        new Error('Failed query: insert into "lobbies" ... values ($1, default, default, default, default)'),
+      ),
+    ).toBe(false);
   });
 });
 

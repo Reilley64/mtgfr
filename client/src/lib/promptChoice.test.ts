@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { PendingChoiceView, VisibleState } from "~/api/generated";
 import { choiceShowKey, chooseTargetIsCardPick, myChoice } from "~/lib/promptChoice";
+import type { PendingChoiceView, VisibleState } from "~/wire/types";
 
 const baseState = {
   active_player: 0,

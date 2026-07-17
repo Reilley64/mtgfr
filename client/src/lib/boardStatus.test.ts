@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { PlayerView, VisibleState } from "~/api/generated";
 import { boardStatusSummary } from "~/lib/boardStatus";
 import { emptyManaPool } from "~/lib/manaPips";
 import { SPECTATOR_VIEWER } from "~/store";
+import type { PlayerView, VisibleState } from "~/wire/types";
 
 function seat(player: number, username: string): PlayerView {
   return {

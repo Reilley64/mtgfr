@@ -1,4 +1,4 @@
-import type { DeckCardEntry } from "~/api/generated";
+import type { DeckCardEntry } from "~/wire/types";
 
 /** Scryfall `released_at` is YYYY-MM-DD; show the release year only. */
 export function formatReleasedAt(iso: string | undefined): string {

@@ -1,0 +1,445 @@
+syntax = "proto3";
+
+package mtgfr.v1;
+
+import "mtgfr/v1/common.proto";
+
+option java_multiple_files = true;
+
+// Client → server intent surface (`IntentEnvelope` / `WireIntent`).
+
+// A player's requested action (client → server).
+message IntentEnvelope {
+  string table_id = 1;
+  // Client-assigned sequence number, for ordering/idempotency.
+  uint64 client_seq = 2;
+  WireIntent intent = 3;
+}
+
+// Wire form of `engine::Intent` — the full player action surface.
+message WireIntent {
+  oneof intent {
+    WireIntentCast cast = 1;
+    WireIntentPlayLand play_land = 2;
+    WireIntentTapForMana tap_for_mana = 3;
+    WireIntentActivateAbility activate_ability = 4;
+    WireIntentDeclareAttackers declare_attackers = 5;
+    WireIntentDeclareBlockers declare_blockers = 6;
+    WireIntentChooseOrder choose_order = 7;
+    WireIntentChooseTargets choose_targets = 8;
+    WireIntentChooseTargetPlayers choose_target_players = 9;
+    WireIntentAnswerMay answer_may = 10;
+    WireIntentPayOptionalCost pay_optional_cost = 11;
+    WireIntentAssignDamage assign_damage = 12;
+    WireIntentDivideSpellDamage divide_spell_damage = 13;
+    WireIntentArrangeTop arrange_top = 14;
+    WireIntentSelectFromTop select_from_top = 15;
+    WireIntentDistributeTop distribute_top = 16;
+    WireIntentShuffleFromGraveyard shuffle_from_graveyard = 17;
+    WireIntentSearchLibrary search_library = 18;
+    WireIntentChooseSacrifices choose_sacrifices = 19;
+    WireIntentDiscard discard = 20;
+    WireIntentPutLandFromHand put_land_from_hand = 21;
+    WireIntentChooseExiledWithCard choose_exiled_with_card = 22;
+    WireIntentChooseExiledWithCardToCast choose_exiled_with_card_to_cast = 23;
+    WireIntentChooseExiledDigToCastFree choose_exiled_dig_to_cast_free = 24;
+    WireIntentChooseOpponentPile choose_opponent_pile = 25;
+    WireIntentRevealedCardToBattlefieldOrHand revealed_card_to_battlefield_or_hand = 26;
+    WireIntentChooseMode choose_mode = 27;
+    WireIntentChooseTriggerModes choose_trigger_modes = 28;
+    WireIntentChooseManaColor choose_mana_color = 29;
+    WireIntentChooseCreatureType choose_creature_type = 30;
+    WireIntentChooseColor choose_color = 31;
+    WireIntentChooseAttachHost choose_attach_host = 32;
+    WireIntentChooseCopyTarget choose_copy_target = 33;
+    WireIntentCycle cycle = 34;
+    WireIntentActivateHandAbility activate_hand_ability = 35;
+    WireIntentSuspend suspend = 36;
+    WireIntentEncore encore = 37;
+    WireIntentTurnFaceUp turn_face_up = 38;
+    WireIntentCastPrepared cast_prepared = 39;
+    WireIntentCastAdventure cast_adventure = 40;
+    WireIntentCastBestow cast_bestow = 41;
+    WireIntentPassPriority pass_priority = 42;
+    WireIntentConcede concede = 43;
+    WireIntentTakeAction take_action = 44;
+    WireIntentDeclineUntap decline_untap = 45;
+    WireIntentCastCreatureFaceDown cast_creature_face_down = 46;
+    WireIntentReturnLandOrSacrifice return_land_or_sacrifice = 47;
+    WireIntentChooseTopOrBottom choose_top_or_bottom = 48;
+    WireIntentCastFaceDown cast_face_down = 49;
+  }
+}
+
+message WireIntentCast {
+  uint32 player = 1;
+  uint32 object = 2;
+  optional WireTarget target = 3;
+  // The chosen `{X}` value (absent/0 for a spell with no `{X}`).
+  uint32 x = 4;
+  // A modal spell's chosen modes (CR 700.2), each with its own target; empty for a non-modal
+  // spell (which uses `target`).
+  repeated WireModeChoice modes = 5;
+  // Hand cards chosen to pay the spell's additional discard cost (CR 601.2f); empty for a
+  // spell with none.
+  repeated uint32 discard_cost = 6;
+  // Graveyard cards chosen to pay a delve or escape graveyard-exile cost; empty for a spell
+  // with neither.
+  repeated uint32 graveyard_exile = 7;
+  // Permanents chosen to pay the spell's additional sacrifice cost; empty for a spell with
+  // none, or to decline an optional one.
+  repeated uint32 sacrifice_cost = 8;
+  // Whether the caster paid the spell's kicker cost (CR 702.33d); `false` (decline) for a
+  // spell with no kicker.
+  bool kicked = 9;
+  // The caster's declared Strive target count (CR 702.42); 0 (default) for a spell with no
+  // Strive, or "choose zero targets."
+  uint32 strive_count = 10;
+  // How many times the caster paid the spell's Replicate cost (CR 702.108); 0 (default) for a
+  // spell with no Replicate, or "pay it zero times."
+  uint32 replicate_count = 11;
+  // Whether the caster paid the spell's buyback cost (CR 702.27c); `false` (decline) for a
+  // spell with no buyback.
+  bool bought_back = 12;
+  // Whether the caster is casting the spell for its evoke cost (CR 702.74a); `false` for a
+  // spell with no evoke, or to cast it normally.
+  bool evoked = 13;
+}
+
+message WireIntentPlayLand {
+  uint32 player = 1;
+  uint32 object = 2;
+}
+
+message WireIntentTapForMana {
+  uint32 player = 1;
+  uint32 object = 2;
+}
+
+message WireIntentActivateAbility {
+  uint32 player = 1;
+  uint32 object = 2;
+  uint32 ability_index = 3;
+  optional WireTarget target = 4;
+  // The creature(s) to sacrifice for a "Sacrifice N creature(s)" cost (empty otherwise; must
+  // have exactly the cost's count of entries).
+  repeated uint32 sacrifice = 5;
+}
+
+message WireIntentDeclareAttackers {
+  uint32 player = 1;
+  repeated WireAttack attackers = 2;
+}
+
+message WireIntentDeclareBlockers {
+  uint32 player = 1;
+  repeated WireBlock blocks = 2;
+}
+
+message WireIntentChooseOrder {
+  uint32 player = 1;
+  repeated uint32 order = 2;
+}
+
+message WireIntentChooseTargets {
+  uint32 player = 1;
+  repeated WireTarget targets = 2;
+}
+
+// Answer a `ChooseTargetPlayers` choice: `players` are the chosen "any number of target
+// players" (a subset, possibly empty, of the offered legal players).
+message WireIntentChooseTargetPlayers {
+  uint32 player = 1;
+  repeated uint32 players = 2;
+}
+
+message WireIntentAnswerMay {
+  uint32 player = 1;
+  bool yes = 2;
+}
+
+message WireIntentPayOptionalCost {
+  uint32 player = 1;
+  bool pay = 2;
+}
+
+message WireIntentAssignDamage {
+  uint32 player = 1;
+  repeated WireDamage assignment = 2;
+}
+
+// Answer a `DivideSpellDamage` choice: how a divided-damage spell's total splits among its
+// chosen targets (CR 601.2d — Magma Opus). Distinct from `AssignDamage` (combat, object-only)
+// because a divided target may be a player.
+message WireIntentDivideSpellDamage {
+  uint32 player = 1;
+  repeated WireSpellDamage assignment = 2;
+}
+
+// Answer a scry/surveil: `top` cards kept on top (in this order), `bottom` to the library
+// bottom (scry) or graveyard (surveil).
+message WireIntentArrangeTop {
+  uint32 player = 1;
+  repeated uint32 top = 2;
+  repeated uint32 bottom = 3;
+}
+
+// Answer a look-at-top-then-select: `cards` are the looked-at cards taken into the choice's
+// destination (up to the offered maximum); the rest go to the choice's rest zone.
+message WireIntentSelectFromTop {
+  uint32 player = 1;
+  repeated uint32 cards = 2;
+}
+
+// Answer a distribute-top choice: `to_hand`/`to_bottom`/`to_exile_may_play` are the looked-at
+// cards routed to each of the choice's three slots.
+message WireIntentDistributeTop {
+  uint32 player = 1;
+  repeated uint32 to_hand = 2;
+  repeated uint32 to_bottom = 3;
+  repeated uint32 to_exile_may_play = 4;
+}
+
+// Answer a shuffle-from-graveyard choice: `cards` are the graveyard cards shuffled into the
+// library (any subset of the offered candidates, including none or all).
+message WireIntentShuffleFromGraveyard {
+  uint32 player = 1;
+  repeated uint32 cards = 2;
+}
+
+// Answer a library search: `choice` is the found card, or absent to fail to find.
+message WireIntentSearchLibrary {
+  uint32 player = 1;
+  optional uint32 choice = 2;
+}
+
+// Answer a sacrifice edict: the permanents this player gives up.
+message WireIntentChooseSacrifices {
+  uint32 player = 1;
+  repeated uint32 sacrifices = 2;
+}
+
+// Answer a cleanup discard: the cards this player discards to reach the hand-size limit.
+message WireIntentDiscard {
+  uint32 player = 1;
+  repeated uint32 cards = 2;
+}
+
+// Answer a put-a-land-from-hand choice: `choice` is the hand land put onto the battlefield, or
+// absent to decline.
+message WireIntentPutLandFromHand {
+  uint32 player = 1;
+  optional uint32 choice = 2;
+}
+
+// Answer a choose-exiled-with-card choice: `choice` is the exiled-with card put into its
+// owner's graveyard, or absent to decline.
+message WireIntentChooseExiledWithCard {
+  uint32 player = 1;
+  optional uint32 choice = 2;
+}
+
+// Answer a choose-exiled-with-card-to-cast choice: `choice` is the exiled-with card granted the
+// free-cast permission, or absent to decline.
+message WireIntentChooseExiledWithCardToCast {
+  uint32 player = 1;
+  optional uint32 choice = 2;
+}
+
+// Answer a choose-exiled-dig-to-cast-free choice: `choice` is the exiled dig card granted the
+// free-cast permission, or absent to decline.
+message WireIntentChooseExiledDigToCastFree {
+  uint32 player = 1;
+  optional uint32 choice = 2;
+}
+
+// Answer an opponent-chooses-pile choice (Abstract Performance): `pile` is `0` or `1` — which
+// of the two exile piles this opponent puts into the controller's graveyard.
+message WireIntentChooseOpponentPile {
+  uint32 player = 1;
+  uint32 pile = 2;
+}
+
+// Answer a revealed-card-to-battlefield-or-hand choice: `choice` is the revealed card put onto
+// the battlefield, or absent to put it into hand instead.
+message WireIntentRevealedCardToBattlefieldOrHand {
+  uint32 player = 1;
+  optional uint32 choice = 2;
+}
+
+// Answer a choose-one triggered-ability mode choice: `mode` is the index of the chosen mode.
+message WireIntentChooseMode {
+  uint32 player = 1;
+  uint64 mode = 2;
+}
+
+// Answer a modal *triggered* ability's "choose N" choice: `modes` are (printed-mode index,
+// chosen Player target) pairs — same shape as `Cast`'s `modes`. Empty declines the whole "may"
+// ability.
+message WireIntentChooseTriggerModes {
+  uint32 player = 1;
+  repeated WireModeChoice modes = 2;
+}
+
+// Answer a choose-mana-color choice (CR 106.4 "add N mana of any one color"): `color` is the
+// WUBRG index of the one color the pending amount is added as.
+message WireIntentChooseManaColor {
+  uint32 player = 1;
+  uint32 color = 2;
+}
+
+// Answer a choose-creature-type choice (CR 614.12/700.9-style "as ~ enters, choose a creature
+// type"): `subtype` names the chosen creature type.
+message WireIntentChooseCreatureType {
+  uint32 player = 1;
+  string subtype = 2;
+}
+
+// Answer a choose-color choice (CR 614.12/700.9-style "as ~ enters, choose a color" —
+// Flickering Ward): `color` is the WUBRG index of the chosen color.
+message WireIntentChooseColor {
+  uint32 player = 1;
+  uint32 color = 2;
+}
+
+// Answer a choose-attach-host choice: `host` is the chosen creature the deployed Aura (CR
+// 303.4f) or Equipment (CR 301.5c) attaches to, or absent to decline (Equipment only — an Aura
+// host is mandatory).
+message WireIntentChooseAttachHost {
+  uint32 player = 1;
+  optional uint32 host = 2;
+}
+
+// Answer an enter-as-copy choice (CR 706/707.2 — Altered Ego, Cursed Mirror): `copy` is the
+// chosen creature the entering permanent becomes a copy of, or absent to decline (the "you
+// may").
+message WireIntentChooseCopyTarget {
+  uint32 player = 1;
+  optional uint32 copy = 2;
+}
+
+// Activate a hand card's Cycling ability (CR 702.29a): pay its cycling cost, discard the card,
+// draw one.
+message WireIntentCycle {
+  uint32 player = 1;
+  uint32 card = 2;
+}
+
+// Activate a hand card's hand-activated, discard-this-card ability (CR 113.6/602.5e — Magma
+// Opus's "{U/R}{U/R}, Discard this card: Create a Treasure token.").
+message WireIntentActivateHandAbility {
+  uint32 player = 1;
+  uint32 card = 2;
+}
+
+// Suspend a hand card (CR 702.62): pay its suspend cost and exile it with time counters rather
+// than casting it.
+message WireIntentSuspend {
+  uint32 player = 1;
+  uint32 card = 2;
+}
+
+// Encore a graveyard card (CR 702.140): pay its encore mana cost and exile it from the
+// graveyard to mint a must-attack haste token copy per opponent.
+message WireIntentEncore {
+  uint32 player = 1;
+  uint32 card = 2;
+}
+
+// Turn a face-down manifested permanent face up (CR 701.34e): pay its hidden creature card's
+// mana cost to reveal it.
+message WireIntentTurnFaceUp {
+  uint32 player = 1;
+  uint32 permanent = 2;
+}
+
+// Cast a copy of a prepared permanent's back-face spell (soc/sos prepare DFCs): pay the back
+// face's cost, put the copy on the stack targeting `target`, and unprepare `source`.
+message WireIntentCastPrepared {
+  uint32 player = 1;
+  uint32 source = 2;
+  optional WireTarget target = 3;
+  // The back face's chosen `{X}` value (absent/0 for a back face with no `{X}`).
+  uint32 x = 4;
+}
+
+// Cast the adventure half of an adventure card from hand (CR 715): pay the adventure face's
+// cost, put that instant/sorcery on the stack targeting `target`.
+message WireIntentCastAdventure {
+  uint32 player = 1;
+  uint32 source = 2;
+  optional WireTarget target = 3;
+  // The adventure's chosen `{X}` value (absent/0 for an adventure with no `{X}`).
+  uint32 x = 4;
+}
+
+// Cast a card for its bestow cost (CR 702.103): pay the bestow cost, put it on the stack as an
+// Aura spell with enchant creature targeting `target`.
+message WireIntentCastBestow {
+  uint32 player = 1;
+  uint32 object = 2;
+  optional WireTarget target = 3;
+}
+
+message WireIntentPassPriority {
+  uint32 player = 1;
+}
+
+// Leave the game (CR 104.3a). Legal at any time — with or without priority, and even while the
+// engine waits on this player's own choice.
+message WireIntentConcede {
+  uint32 player = 1;
+}
+
+// Take one of the viewer's own stored `ActionView`s by `id` — the action-list counterpart of
+// `Cast`/`PlayLand`/`ActivateAbility`/`DeclareAttackers`/`DeclareBlockers`. Every
+// optional/list field defaults so a client only sends what the resolved action needs.
+message WireIntentTakeAction {
+  uint32 player = 1;
+  uint64 id = 2;
+  optional WireTarget target = 3;
+  uint32 x = 4;
+  repeated WireModeChoice modes = 5;
+  repeated uint32 sacrifice = 6;
+  // Hand cards paying an additional discard cost; empty when the cast has none.
+  repeated uint32 discard_cost = 7;
+  // Graveyard cards paying delve or escape exile; empty when neither.
+  repeated uint32 graveyard_exile = 8;
+  repeated WireAttack attackers = 9;
+  repeated WireBlock blocks = 10;
+}
+
+// Answer an optional-untap choice (CR 502.2 — Rubinia Soulsinger): `keep_tapped` are the
+// offered permanents this player leaves tapped; every other offered permanent untaps.
+message WireIntentDeclineUntap {
+  uint32 player = 1;
+  repeated uint32 keep_tapped = 2;
+}
+
+// Answer a cast-a-hand-creature-face-down choice (Illusionary Mask): `choice` is the hand
+// creature cast face down as a 2/2, or absent to decline.
+message WireIntentCastCreatureFaceDown {
+  uint32 player = 1;
+  optional uint32 choice = 2;
+}
+
+// Answer a sacrifice-unless-return-a-land choice (Treva's Ruins): `land` is the offered
+// non-Lair land returned to its owner's hand, or absent to decline and sacrifice the source.
+message WireIntentReturnLandOrSacrifice {
+  uint32 player = 1;
+  optional uint32 land = 2;
+}
+
+// Answer a choose-countered-spell-destination choice (CR 701.5b — Hinder's rider): `top` puts
+// the countered spell on top of its owner's library, `false` on the bottom.
+message WireIntentChooseTopOrBottom {
+  uint32 player = 1;
+  bool top = 2;
+}
+
+// Cast a hand card face down as a 2/2 for {3} (CR 702.37b — morph): pay the flat {3} and put it
+// on the stack as a face-down creature spell.
+message WireIntentCastFaceDown {
+  uint32 player = 1;
+  uint32 card = 2;
+}

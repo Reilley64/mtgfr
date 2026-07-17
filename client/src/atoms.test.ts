@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import { describe, expect, it } from "vitest";
-import type { DeckSummary, Me } from "~/api/generated";
 import { decksEffectForMe } from "~/atoms";
+import type { DeckSummary, Me } from "~/wire/types";
 
 const me: Me = { id: 1, email: "a@b.c", username: "a" };
 const decks: DeckSummary[] = [{ id: 1, name: "X", commander: "c" }];

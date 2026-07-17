@@ -4,8 +4,14 @@
 FROM rust:1-bookworm AS build
 WORKDIR /src
 
+# tonic-build needs `protoc` for ADR 0032 stubs (OUT_DIR; never committed).
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends protobuf-compiler \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
+COPY proto ./proto
 COPY config ./config
 COPY Toasty.toml ./
 COPY toasty ./toasty

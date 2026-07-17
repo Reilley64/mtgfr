@@ -35,7 +35,7 @@ jobs:
         id: pass
         with:
           path: .ci-pass
-          key: verify-server-v1-${{ hashFiles('crates/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml') }}
+          key: verify-server-v1-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml') }}
 
       - name: Skip — server hash already verified
         if: steps.pass.outputs.cache-hit == 'true'
@@ -56,6 +56,10 @@ jobs:
         if: steps.pass.outputs.cache-hit != 'true'
         with:
           tool: nextest
+
+      - name: Install protoc
+        if: steps.pass.outputs.cache-hit != 'true'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
 
       - name: just server-check (fmt + clippy + migrate + nextest)
         if: steps.pass.outputs.cache-hit != 'true'
@@ -89,7 +93,7 @@ jobs:
         id: pass
         with:
           path: .ci-pass
-          key: verify-client-v1-${{ hashFiles('client/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.bun-version', 'justfile', '.github/workflows/verify-jobs.yml') }}
+          key: verify-client-v1-${{ hashFiles('client/**', 'proto/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.bun-version', 'justfile', '.github/workflows/verify-jobs.yml') }}
 
       - name: Skip — client hash already verified
         if: steps.pass.outputs.cache-hit == 'true'

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "gen": "sh scripts/gen.sh",
+    "gen": "PATH=\"$PWD/node_modules/.bin:$PATH\" bunx --bun buf generate --template ../proto/buf.gen.yaml ../proto",
     "predev": "bun run gen",
     "dev": "vinxi dev",
     "prebuild": "bun run gen",
@@ -11,6 +11,7 @@
     "start": "vinxi start",
     "preview": "vinxi preview",
     "pretest": "bun run gen",
+    "pretypecheck": "bun run gen",
     "test": "vitest run",
     "migrate": "sh scripts/migrate.sh",
     "lint": "biome check --formatter-enabled=false",
@@ -19,6 +20,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2",
+    "@connectrpc/connect": "^2",
+    "@connectrpc/connect-node": "^2",
+    "@effect-grpc/effect-grpc": "npm:@effect-grpc/effect-grpc@1.0.0-beta.2",
     "@effect/atom-solid": "4.0.0-beta.94",
     "@effect/sql-pg": "4.0.0-beta.94",
     "@solidjs/meta": "^0.29.4",
@@ -35,7 +40,10 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
-    "@effect/openapi-generator": "4.0.0-beta.94",
+    "@bufbuild/buf": "^1",
+    "@bufbuild/protoc-gen-es": "^2",
+    "@effect-grpc/codegen": "npm:@effect-grpc/codegen@1.0.0-beta.2",
+    "@effect-grpc/protoc-gen-effect-grpc": "npm:@effect-grpc/protoc-gen-effect-grpc@1.0.0-beta.2",
     "@effect/platform-node": "4.0.0-beta.94",
     "@tailwindcss/vite": "4.3.2",
     "@types/node": "26.1.0",

@@ -25,8 +25,8 @@ function safeNext(next: string | string[] | undefined): string {
 // declares them), read off the status; anything else is a generic failure.
 const authenticateFn = Atom.fn((creds: Creds) =>
   (creds.mode === "login"
-    ? client.login({ payload: { email: creds.email, password: creds.password } })
-    : client.signup({ payload: { email: creds.email, password: creds.password, username: creds.username } })
+    ? client.login({ email: creds.email, password: creds.password })
+    : client.signup({ email: creds.email, password: creds.password, username: creds.username })
   ).pipe(
     Effect.as("ok" as const),
     Effect.catch((err) =>
@@ -72,14 +72,15 @@ export default function Auth() {
   return (
     <Felt class="fixed inset-0 overflow-y-auto">
       <div class="flex min-h-full items-center justify-center p-xxl">
-        <Panel as="main">
-          <form onSubmit={submit} class="contents">
+        <Panel as="main" data-testid="auth-panel">
+          <form onSubmit={submit} class="contents" data-testid="auth-form">
             <h1 class="m-0 text-title">mtgfr — {isLogin() ? "sign in" : "create account"}</h1>
             <label for="email" class="text-label text-lichen">
               Email
             </label>
             <Field
               id="email"
+              data-testid="auth-email"
               type="email"
               autocomplete="email"
               value={email()}
@@ -91,6 +92,7 @@ export default function Auth() {
               </label>
               <Field
                 id="username"
+                data-testid="auth-username"
                 type="text"
                 autocomplete="username"
                 value={username()}
@@ -102,14 +104,17 @@ export default function Auth() {
             </label>
             <Field
               id="password"
+              data-testid="auth-password"
               type="password"
               autocomplete={isLogin() ? "current-password" : "new-password"}
               value={password()}
               onInput={(e) => setPassword(e.currentTarget.value)}
             />
-            <Button type="submit">{isLogin() ? "Sign in" : "Sign up"}</Button>
+            <Button type="submit" data-testid="auth-submit">
+              {isLogin() ? "Sign in" : "Sign up"}
+            </Button>
             <Show when={error()}>
-              <div role="alert" class="text-burn-red text-caption">
+              <div role="alert" data-testid="auth-error" class="text-burn-red text-caption">
                 {error()}
               </div>
             </Show>
@@ -118,6 +123,7 @@ export default function Auth() {
               <Button
                 type="button"
                 variant="link"
+                data-testid="auth-toggle-mode"
                 onClick={() => {
                   setError(null);
                   setMode(isLogin() ? "signup" : "login");

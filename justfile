@@ -37,7 +37,7 @@ server-run: server-build-prod
     cargo run -p server --release -- serve
 
 [group('server')]
-[doc("Regenerate openapi.json and the client wire client")]
+[doc("Regenerate Effect-gRPC clients from proto into gitignored client/src/wire/generated (ADR 0032)")]
 server-codegen:
     cd client && bun run gen
 

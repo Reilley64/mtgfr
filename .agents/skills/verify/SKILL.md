@@ -7,24 +7,24 @@ description: Drive a live two-player mtgfr game end-to-end to verify engine/serv
 
 ## Handles
 
-- **Dev loop is usually already running**: `just dev` = `bacon server` (auto-rebuilds+restarts `target/debug/server serve` on :8080 on source change) + vite on :5173. Check `lsof -nP -i :8080` — if `server`'s parent is `bacon server`, the running binary already has your changes (bacon restarted it after your last build). Don't start a second server; listen addr comes from `Settings` (`config/mtgfr.toml` / env).
+- **Dev loop is usually already running**: `just dev` = `bacon server` (auto-rebuilds+restarts `target/debug/server serve` — health on :8080, gRPC on :50051 — on source change) + vite on :5173. Check `lsof -nP -i :8080` — if `server`'s parent is `bacon server`, the running binary already has your changes (bacon restarted it after your last build). Don't start a second server; listen addrs come from `Settings` (`config/mtgfr.toml` / env).
 - Cold start: `DATABASE_URL="sqlite::memory:" cargo run -p server` + `cd client && bun run dev`.
-- Confirm a new route is live: `curl -s localhost:8080/openapi.json | grep <path>` (401 = live-but-auth, 404 = not registered).
+- Confirm the API is up: `curl -s localhost:8080/health/live`. Every game/auth/decks/cards route is gRPC now (ADR 0032) — there's no `/openapi.json` or REST path to curl directly; drive it through the BFF's `/api/rpc` (below) or a gRPC client against `:50051`.
 
-## Seating a 2-player game via curl (no UI needed)
+## Seating a 2-player game via the BFF (no UI needed)
 
-All POST bodies are JSON; cookies carry the session (`-c jar.txt` on signup, `-b jar.txt` after).
+The client talks to the BFF at `client/src/routes/api/rpc/[...path].ts`, which dials tonic. Drive the same calls with `curl` against the BFF (`localhost:3000` in dev) rather than the API directly — cookies still carry the session (`-c jar.txt` on signup, `-b jar.txt` after). See `client/src/wire/rpcs.ts` for the RPC names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` with `x-session-token` metadata (see `crates/server/src/grpc/auth_ctx.rs`).
 
-1. `POST /auth/signup/v1` `{"email","password"}` per player (fresh throwaway emails — the dev DB persists).
-2. `GET /decks/v1` — precons have negative ids (-1 Silverquill … -5 Quandrix); usable by anyone, no deck building.
-3. `POST /tables/v1` (host) → `table_id`; `POST /tables/join/v1` `{table_id, deck_id}` per player; `POST /tables/ready/v1` `{table_id, ready:true}` per player; `POST /tables/start/v1` `{table_id}` (host).
+1. Sign up per player (fresh throwaway emails — the dev DB persists).
+2. List decks — precons have negative ids (-1 Silverquill … -5 Quandrix); usable by anyone, no deck building.
+3. Seed a table (`Tables.Seed` / the BFF's seed RPC) with both seats' user id + deck id.
 
 ## Reading state / driving intents
 
-- State: first SSE frame of `GET /tables/{table}/stream/v1` is a full snapshot for that cookie's seat: `curl -sN --max-time 1 -b jar.txt ...` and take the first `data:` line where `frame == "snapshot"`. Keep `--max-time` at 1s — curl otherwise sits open the full timeout.
-- Intents: `POST /intent/v1` with `{"table_id","player_id","client_seq":<int, monotonic>,"intent":{...}}`. Useful kinds: `take_action {player,id}` (ids from `state.actions`), `pass_priority {player}`, `discard {player,cards}`, `arrange_top {player,top,bottom}` (answers scry).
+- State: the first frame of `Game.Stream` is a full snapshot for that caller's seat — take the first frame where `frame == "snapshot"`.
+- Intents: `Game.SubmitIntent` with `{"table_id","client_seq":<int, monotonic>,"intent":{...}}`. Useful kinds: `take_action {player,id}` (ids from `state.actions`), `pass_priority {player}`, `discard {player,cards}`, `arrange_top {player,top,bottom}` (answers scry).
 - `scratchpad/drive.py` pattern from past runs: loop { answer pending_choice (discard/scry), play a land if offered, else pass } until the state you want. Precon games hit real choices (cleanup discards, scry lands) — handle or the loop wedges.
-- Per-stack yield: `POST /yield/v1` `{table_id, player_id, enabled}`.
+- Per-stack yield: `Game.SetYield` `{table_id, enabled}`.
 
 ## Watching in the browser
 

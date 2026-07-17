@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ActionView, ObjectView, VisibleState } from "~/api/generated";
 import {
   buildTakeActionIntent,
   emptyCostPicks,
@@ -12,6 +11,7 @@ import {
   stagedCastSubmission,
   usedCostPick,
 } from "~/controllers/actionExecution";
+import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 
 const mkAction = (over: Partial<ActionView> = {}): ActionView => ({
   id: 1,

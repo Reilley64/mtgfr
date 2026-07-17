@@ -32,8 +32,17 @@ resource "kubernetes_service_v1" "edh_api_headless" {
     }
 
     port {
+      name        = "http"
       port        = 8080
       target_port = 8080
+    }
+
+    # gRPC (ADR 0032): the wire contract's authoritative transport. The BFF dials this port on
+    # the pod DNS the headless service resolves for table affinity.
+    port {
+      name        = "grpc"
+      port        = 50051
+      target_port = 50051
     }
   }
 }

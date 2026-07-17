@@ -3,7 +3,7 @@
 // Kept pure (no Solid, no DOM) so both are unit-testable headlessly, in the style of layout.ts /
 // store.ts.
 
-import type { ActionView } from "~/api/generated";
+import type { ActionView } from "~/wire/types";
 
 /** The action-bar sections, matching `ActionView.section` (engine truth). "combat" actions inform
  * the existing combat UI rather than rendering as cards. */

@@ -6,7 +6,7 @@
 // Schema counterpart: `crates/schema/src/answer_protocol.rs` (`encode_answer`) — keep these in sync.
 
 import * as Match from "effect/Match";
-import type { PendingChoiceView, WireDamage, WireIntent, WireModeChoice } from "~/api/generated";
+import type { PendingChoiceView, WireDamage, WireIntent, WireModeChoice } from "~/wire/types";
 
 // What a prompt form produces — the raw answer, tagged so the mapping (and TypeScript) can tell the
 // choices apart. One per PendingChoice kind that needs an answer.

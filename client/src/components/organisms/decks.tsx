@@ -10,7 +10,6 @@ import * as Option from "effect/Option";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, Show } from "solid-js";
-import type { CatalogCard, Me } from "~/api/generated";
 import { decksAtom } from "~/atoms";
 import { Button, Felt, ListRow } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
@@ -18,9 +17,10 @@ import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client, succeeded } from "~/effect/client";
 import { RequireAuth } from "~/guard";
 import { lookupCardsByIds } from "~/lib/lookupCards";
+import type { CatalogCard, Me } from "~/wire/types";
 
-const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id), {})));
-const logoutFn = Atom.fn(() => succeeded(client.logout({})));
+const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id))));
+const logoutFn = Atom.fn(() => succeeded(client.logout()));
 // Commander catalog lookup by Card id; hover art uses `commander_print` on the summary.
 const lookupCommandersFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 
@@ -85,6 +85,7 @@ function DecksSignedIn(props: { user: Me }) {
     // Landscape-first: keep the horizontal list layout; portrait phones hit the rotate gate.
     <Felt
       as="main"
+      data-testid="decks-page"
       class="h-full overflow-y-auto p-xxl pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]"
     >
       <div class="mx-auto mb-5 flex max-w-[720px] flex-wrap items-center justify-between gap-md">
@@ -147,7 +148,11 @@ function DecksSignedIn(props: { user: Me }) {
                     </span>
                   </div>
                   <div class="flex flex-wrap gap-sm">
-                    <Button type="button" onClick={() => navigate(`/play?deck=${d.id}`)}>
+                    <Button
+                      type="button"
+                      data-testid={`deck-play-${d.id}`}
+                      onClick={() => navigate(`/play?deck=${d.id}`)}
+                    >
                       Play
                     </Button>
                     <Show when={d.id >= 0}>

@@ -1,9 +1,9 @@
 // Project per-seat mana pools to screen-anchored tray seats (camera + layout).
 
-import type { PlayerView } from "~/api/generated";
 import { manaTrayPos } from "~/layout";
 import { type Camera, worldToScreen } from "~/lib/camera";
 import { type ManaTrayChip, manaTrayChips } from "~/lib/manaPips";
+import type { PlayerView } from "~/wire/types";
 
 export type ManaTraySeat = {
   seat: number;

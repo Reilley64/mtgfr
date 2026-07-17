@@ -4,8 +4,8 @@
 
 import * as Match from "effect/Match";
 import { createStore } from "solid-js/store";
-import type { StreamFrame, VisibleEvent, VisibleState, WireTarget } from "~/api/generated";
 import { playerLabel } from "~/lib/players";
+import type { StreamFrame, VisibleEvent, VisibleState, WireTarget } from "~/wire/types";
 
 /** A delta's payload (`seq`, `events`, `state`) — the non-snapshot arm of `StreamFrame` minus its
  * `frame` tag. The generator inlines it rather than exporting a named `DeltaEnvelope`. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { PendingChoiceView } from "~/api/generated";
 import { type AnswerInput, choiceIntent } from "~/lib/choice";
+import type { PendingChoiceView } from "~/wire/types";
 
 // A pending choice carrying just the `player` the mapping reads (the rest is form input).
 const pc = (kind: PendingChoiceView["kind"]): PendingChoiceView =>

@@ -1,0 +1,1719 @@
+syntax = "proto3";
+
+package mtgfr.v1;
+
+import "mtgfr/v1/common.proto";
+
+option java_multiple_files = true;
+
+// Per-viewer snapshot/delta stream: board view, pending choices, visible events.
+
+// Per-player public facts plus that player's private counts.
+message PlayerView {
+  uint32 player = 1;
+  // Display name from the seated account (not unique across players).
+  string username = 2;
+  int32 life = 3;
+  // Extra generic mana to recast this player's commander from the command zone.
+  uint32 commander_tax = 4;
+  bool lost = 5;
+  // Card count only — hand identities are private (see the object list for own hand).
+  uint32 hand_count = 6;
+  uint32 library_count = 7;
+  // Floating mana pool for this player (every credit kind). Shown under each life orb.
+  WireManaPool mana_pool = 8;
+  // Commander damage this player has taken, one entry per commander that has connected.
+  repeated CommanderDamageView commander_damage = 9;
+}
+
+// One source card def's contributions to a permanent (Alt-inspect ledger).
+message ModifierSourceView {
+  // Card def name — clicking inspects this catalog card.
+  string source_name = 1;
+  // Card id when a matching battlefield permanent is still present; empty for synthetic labels.
+  string source_card_id = 2;
+  // Display crumbs: "+1/+1", "Flying", "goaded", "controls", "mana ability", …
+  repeated string contributions = 3;
+}
+
+// One object the viewer may see, with its render-relevant state.
+message ObjectView {
+  uint32 id = 1;
+  // Zone discriminant; see `engine::Zone`.
+  uint32 zone = 2;
+  uint32 owner = 3;
+  uint32 controller = 4;
+  // Card id (Scryfall oracle id). Empty when face-down or a token without one.
+  string card_id = 5;
+  string name = 6;
+  // Printing UUID for art (CDN). Empty when unknown / token without art.
+  string print = 7;
+  WireKind kind = 8;
+  WireCost mana_cost = 9;
+  // Whether casting this card requires choosing a target (drives the targeting UI).
+  bool needs_target = 10;
+  bool tapped = 11;
+  bool summoning_sick = 12;
+  // Has haste — so it may attack / tap even while summoning sick.
+  bool has_haste = 13;
+  // Effective keywords right now (printed ∪ granted ∪ anthem) as stable snake_case ids
+  // (`flying`, `first_strike`, `ward:2`, `protection:red`).
+  repeated string keywords = 14;
+  int32 power = 15;
+  int32 toughness = 16;
+  // Current loyalty for a planeswalker (0 otherwise).
+  int32 loyalty = 17;
+  int32 plus_counters = 18;
+  int32 marked_damage = 19;
+  bool is_commander = 20;
+  // Whether this creature is currently goaded (CR 701.38).
+  bool goaded = 21;
+  // Whether tapping this permanent produces mana.
+  bool taps_for_mana = 22;
+  // Whether this permanent is prepared (soc/sos prepare DFCs).
+  bool prepared = 23;
+  // Whether this permanent is phased out (CR 702.26).
+  bool phased_out = 24;
+  // Whether this permanent is face down (CR 708 — a manifest).
+  bool face_down = 25;
+  // Host this Aura/Equipment is attached to, if any.
+  optional uint32 attached_to = 26;
+  // Live sourced modifiers for Alt-inspect (grouped by source card def name).
+  repeated ModifierSourceView modifiers = 27;
+}
+
+// One entry on the stack, for the stack panel. Bottom-first in `VisibleState.stack`.
+message StackObjectView {
+  // "spell" or "ability".
+  string kind = 1;
+  // The spell's stack-object id, or the ability's source permanent.
+  uint32 source = 2;
+  uint32 controller = 3;
+  // A human-readable label (the spell's name, or a description of the ability's effect).
+  string label = 4;
+  // The chosen target, if any.
+  optional WireTarget target = 5;
+}
+
+// One labelled item offered by a pending choice (a legal target, or a blocker to assign damage
+// to). The `label` is the object's name, so the prompt UI needn't join against the object list.
+message ChoiceItem {
+  // The object being chosen. Ignored when `player` is set — player-target choices name a seat
+  // instead of a battlefield object.
+  uint32 id = 1;
+  string label = 2;
+  optional uint32 player = 3;
+}
+
+// One printed mode of a modal spell.
+message ModeView {
+  // A human-readable description of the mode's effect.
+  string label = 1;
+  // The targets legal for *this mode* right now. Empty when the mode takes no target — and
+  // also when it takes one but none is legal, which is why `needs_target` is separate.
+  repeated WireTarget targets = 2;
+  bool needs_target = 3;
+}
+
+// A modal spell's printed modes and how many of them the caster picks (CR 700.2).
+message ModalView {
+  // The minimum number of distinct modes to choose.
+  uint32 choose = 1;
+  // The maximum. Equal to `choose` for a plain "choose one"/"choose two"; larger when the card
+  // offers a range.
+  uint32 choose_max = 2;
+  // The printed modes, in printed order. A mode's index is its position here.
+  repeated ModeView modes = 3;
+}
+
+// One action the viewer may take right now (`Game::legal_actions`, filtered to their own seat),
+// for the client's sectioned action bar. `id` is what a `take_action` intent sends back.
+message ActionView {
+  uint64 id = 1;
+  string kind = 2;
+  // The card (play_land/cast) or ability source (activate); absent for a combat declaration.
+  optional uint32 object = 3;
+  // The activated ability's index on `object`; set only for `kind == "activate"`.
+  optional uint32 ability_index = 4;
+  // Section bucket: "hand" | "battlefield" | "command" | "graveyard" | "exile" | "combat".
+  string section = 5;
+  // Card name (play_land/cast) or ability label (activate/combat).
+  string label = 6;
+  bool needs_target = 7;
+  // The targets legal for this action right now.
+  repeated WireTarget targets = 8;
+  // Set when this is a cast of a modal spell ("choose one —").
+  optional ModalView modal = 9;
+  // The creatures that may pay this action's "Sacrifice a creature" activation cost, when it
+  // has one. Absent when it has no such cost; present-and-empty when it has one and nothing
+  // can pay it.
+  optional ObjectIdList sacrifice_choices = 10;
+  // Hand cards that may pay this cast's additional discard cost. Absent when the cast has no
+  // such cost; present-and-empty when it needs one and the hand can't pay.
+  optional ObjectIdList discard_choices = 11;
+  // Exact number of hand cards to discard when `discard_choices` is set; `0` when it is not.
+  uint32 discard_count = 12;
+  // Own graveyard cards that may pay delve or escape exile for this cast. Absent when neither
+  // applies; present-and-empty when escape needs exile and the graveyard can't pay.
+  optional ObjectIdList graveyard_exile_choices = 13;
+  // Inclusive minimum cards to exile from the graveyard (0 for delve; escape's exact N).
+  uint32 graveyard_exile_min = 14;
+  // Inclusive maximum cards to exile from the graveyard.
+  uint32 graveyard_exile_max = 15;
+  // Whether this cast asks for `{X}` in the mana cost being paid.
+  bool has_x = 16;
+  // Battlefield object ids `Game::plan_auto_taps` would tap to pay this action's mana.
+  repeated uint32 auto_tap = 17;
+  // Creatures that must be declared as attackers for this `declare_attackers` action to be
+  // legal (goad "attacks if able", CR 701.38a), each with a suggested legal defender.
+  repeated WireAttack required_attacks = 18;
+}
+
+// The current combat state a client renders: who's attacking and the declared blocks.
+message CombatView {
+  // Each attacker with the player it's attacking, so clients draw the right arrow and each
+  // defender sees who's coming.
+  repeated WireAttack attackers = 1;
+  repeated WireBlock blocks = 2;
+  // The active player has already confirmed their attack declaration this combat (including
+  // an empty one).
+  bool attackers_declared = 3;
+  // Seats that have already confirmed their block declaration this combat (including empty).
+  repeated uint32 blockers_declared = 4;
+}
+
+// A summary of the decision the engine is blocked on, if any.
+message PendingChoiceView {
+  oneof choice {
+    PendingChoiceViewOrderTriggers order_triggers = 1;
+    PendingChoiceViewChooseTarget choose_target = 2;
+    PendingChoiceViewChooseSpellTargets choose_spell_targets = 3;
+    PendingChoiceViewChooseTargetPlayers choose_target_players = 4;
+    PendingChoiceViewMayYesNo may_yes_no = 5;
+    PendingChoiceViewPayCost pay_cost = 6;
+    PendingChoiceViewPayOrCounter pay_or_counter = 7;
+    PendingChoiceViewPayEchoOrSacrifice pay_echo_or_sacrifice = 8;
+    PendingChoiceViewAssignCombatDamage assign_combat_damage = 9;
+    PendingChoiceViewDivideSpellDamage divide_spell_damage = 10;
+    PendingChoiceViewDivideCounters divide_counters = 11;
+    PendingChoiceViewScry scry = 12;
+    PendingChoiceViewSurveil surveil = 13;
+    PendingChoiceViewSearchLibrary search_library = 14;
+    PendingChoiceViewSelectFromTop select_from_top = 15;
+    PendingChoiceViewDistributeTop distribute_top = 16;
+    PendingChoiceViewShuffleFromGraveyard shuffle_from_graveyard = 17;
+    PendingChoiceViewSacrificeEdict sacrifice_edict = 18;
+    PendingChoiceViewProliferate proliferate = 19;
+    PendingChoiceViewPhaseOut phase_out = 20;
+    PendingChoiceViewChooseAbilityTargets choose_ability_targets = 21;
+    PendingChoiceViewMaySacrifice may_sacrifice = 22;
+    PendingChoiceViewChooseOwnSacrifices choose_own_sacrifices = 23;
+    PendingChoiceViewDevour devour = 24;
+    PendingChoiceViewExileFromGraveyard exile_from_graveyard = 25;
+    PendingChoiceViewCasterKeepPermanents caster_keep_permanents = 26;
+    PendingChoiceViewChooseCounterTargetForPlayer choose_counter_target_for_player = 27;
+    PendingChoiceViewMayReturnFromGraveyard may_return_from_graveyard = 28;
+    PendingChoiceViewMayDiscard may_discard = 29;
+    PendingChoiceViewDiscard discard = 30;
+    PendingChoiceViewPutLandFromHand put_land_from_hand = 31;
+    PendingChoiceViewChooseExiledWithCard choose_exiled_with_card = 32;
+    PendingChoiceViewChooseExiledWithCardToCast choose_exiled_with_card_to_cast = 33;
+    PendingChoiceViewChooseExiledDigToCastFree choose_exiled_dig_to_cast_free = 34;
+    PendingChoiceViewDanceExileMore dance_exile_more = 35;
+    PendingChoiceViewOpponentChoosesPile opponent_chooses_pile = 36;
+    PendingChoiceViewOpponentChoosesExiledNonland opponent_chooses_exiled_nonland = 37;
+    PendingChoiceViewChooseExiledToCastFree choose_exiled_to_cast_free = 38;
+    PendingChoiceViewRevealedCardToBattlefieldOrHand revealed_card_to_battlefield_or_hand = 39;
+    PendingChoiceViewChooseMode choose_mode = 40;
+    PendingChoiceViewChooseTriggerModes choose_trigger_modes = 41;
+    PendingChoiceViewChooseManaColor choose_mana_color = 42;
+    PendingChoiceViewChooseCreatureType choose_creature_type = 43;
+    PendingChoiceViewChooseColor choose_color = 44;
+    PendingChoiceViewChooseCopyTarget choose_copy_target = 45;
+    PendingChoiceViewChooseAttachHost choose_attach_host = 46;
+    PendingChoiceViewDeclineUntap decline_untap = 47;
+    PendingChoiceViewPayOrControllerDraws pay_or_controller_draws = 48;
+    PendingChoiceViewChooseCounteredSpellDestination choose_countered_spell_destination = 49;
+    PendingChoiceViewSacrificeUnlessPay sacrifice_unless_pay = 50;
+    PendingChoiceViewSacrificeUnlessReturnLand sacrifice_unless_return_land = 51;
+    PendingChoiceViewCastCreatureFaceDown cast_creature_face_down = 52;
+    PendingChoiceViewChooseSplittingOpponent choose_splitting_opponent = 53;
+    PendingChoiceViewPartitionRevealed partition_revealed = 54;
+    PendingChoiceViewChoosePileForHand choose_pile_for_hand = 55;
+  }
+}
+
+// How many items must be permuted, and a label per item so the player can tell them apart.
+message PendingChoiceViewOrderTriggers {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 count = 3;
+  repeated string labels = 4;
+}
+
+// Legal targets to choose among. `label` is the effect being aimed; `source` is the permanent
+// or spell it comes from. `optional` ("up to one" — Killian, Decisive Mentor) lets the player
+// submit no target instead of one of `items`.
+message PendingChoiceViewChooseTarget {
+  uint32 player = 1;
+  uint32 source = 2;
+  string label = 3;
+  repeated ChoiceItem items = 4;
+  bool optional = 5;
+}
+
+// A multi-target spell's targets to choose (CR 601.2c): between `min` and `max` distinct
+// `items` for the `spell` on the stack. `label` is the spell's name.
+message PendingChoiceViewChooseSpellTargets {
+  uint32 player = 1;
+  uint32 spell = 2;
+  string label = 3;
+  uint32 min = 4;
+  uint32 max = 5;
+  repeated ChoiceItem items = 6;
+}
+
+// "Any number of target players" to choose for a targeted edict (CR 601.2c/608.2b — Priest of
+// Forgotten Gods): between `min` (0) and `max` distinct `items` (players). `label` is the
+// edict source's name.
+message PendingChoiceViewChooseTargetPlayers {
+  uint32 player = 1;
+  uint32 source = 2;
+  string label = 3;
+  uint32 min = 4;
+  uint32 max = 5;
+  repeated ChoiceItem items = 6;
+}
+
+// Optional "you may" trigger — `label` is the effect so the client can name what accepting
+// does (mirrors `PayCost`).
+message PendingChoiceViewMayYesNo {
+  uint32 player = 1;
+  uint32 source = 2;
+  string label = 3;
+}
+
+// The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
+// effect label so the client can say what paying does.
+message PendingChoiceViewPayCost {
+  uint32 player = 1;
+  uint32 source = 2;
+  WireCost cost = 3;
+  // Short English for the paid effect — e.g. "Create 1 Fungus Beast token(s)".
+  string label = 4;
+}
+
+// Pay `cost` to save `spell` from being countered, or decline and let it be countered (CR
+// 701.5c "unless its controller pays" — the mirror image of `PayCost`).
+message PendingChoiceViewPayOrCounter {
+  uint32 player = 1;
+  uint32 spell = 2;
+  WireCost cost = 3;
+}
+
+// Pay `cost` (Echo) to keep `source`, or decline and sacrifice it (CR 702.31 — the
+// permanent-scoped twin of `PayOrCounter`).
+message PendingChoiceViewPayEchoOrSacrifice {
+  uint32 player = 1;
+  uint32 source = 2;
+  WireCost cost = 3;
+}
+
+// Blockers to divide the attacker's damage among.
+message PendingChoiceViewAssignCombatDamage {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// Targets to divide a divided-damage spell's total among (CR 601.2d).
+message PendingChoiceViewDivideSpellDamage {
+  uint32 player = 1;
+  uint32 spell = 2;
+  repeated ChoiceItem items = 3;
+  int32 total = 4;
+}
+
+// Targets to divide a divided-counters spell's total among (CR 601.2d — Grove's Bounty).
+message PendingChoiceViewDivideCounters {
+  uint32 player = 1;
+  uint32 spell = 2;
+  repeated ChoiceItem items = 3;
+  int32 total = 4;
+}
+
+// The looked-at cards, top of library. Private to the scrying player.
+message PendingChoiceViewScry {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// The looked-at cards, top of library. Private to the surveilling player.
+message PendingChoiceViewSurveil {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// The matching library cards found. Private to the searching player.
+message PendingChoiceViewSearchLibrary {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// The looked-at top cards; the player may select up to `up_to` into a zone. Private to them.
+message PendingChoiceViewSelectFromTop {
+  uint32 player = 1;
+  uint32 up_to = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// The looked-at top cards; the player must route `to_hand`/`to_bottom`/`to_exile_may_play` of
+// them into their respective slots. Private to them.
+message PendingChoiceViewDistributeTop {
+  uint32 player = 1;
+  uint32 to_hand = 2;
+  uint32 to_bottom = 3;
+  uint32 to_exile_may_play = 4;
+  repeated ChoiceItem items = 5;
+}
+
+// `owner`'s graveyard cards (`items`, public — graveyard-zone); `player` may shuffle up to
+// `max` (`0` = unbounded) of them into `owner`'s library. `owner` differs from `player` when
+// the ability targeted a player.
+message PendingChoiceViewShuffleFromGraveyard {
+  uint32 player = 1;
+  uint32 owner = 2;
+  uint32 source = 3;
+  uint32 max = 4;
+  repeated ChoiceItem items = 5;
+}
+
+// Permanents this player may choose to sacrifice.
+message PendingChoiceViewSacrificeEdict {
+  uint32 player = 1;
+  uint32 source = 2;
+  // When true, the player keeps one permanent and sacrifices all others.
+  bool keep_one = 3;
+  repeated ChoiceItem items = 4;
+}
+
+// Every counter-bearing permanent on the battlefield; this player may choose any number
+// (including none) to proliferate (CR 701.27).
+message PendingChoiceViewProliferate {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// The other creatures this player controls; they may choose any number (including none) to
+// phase out (CR 702.26 — Guardian of Faith). Answered like `Proliferate` (any subset).
+message PendingChoiceViewPhaseOut {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// A triggered ability's second independent target clause (CR 603.3d — Kinetic Ooze's X≥10
+// "double ... any number of other target creatures"), chosen as the trigger goes on the stack:
+// between `min` and `max` distinct `items` for the ability from `source`. `label` is the
+// effect being aimed. Answered by `ChooseTargets`, like `ChooseSpellTargets`.
+message PendingChoiceViewChooseAbilityTargets {
+  uint32 player = 1;
+  uint32 source = 2;
+  string label = 3;
+  uint32 min = 4;
+  uint32 max = 5;
+  repeated ChoiceItem items = 6;
+}
+
+// This player may sacrifice one of `items` (a permanent they control) to gain a rider effect,
+// or decline (CR 601.2f-style resolution-time optional cost).
+message PendingChoiceViewMaySacrifice {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player must choose exactly `count` of `items` (their own permanents) to sacrifice — a
+// forced sacrifice they direct (CR 701.16a — Lotus Field's ETB, Smothering Abomination's
+// upkeep). Unlike `MaySacrifice`, declining isn't legal.
+message PendingChoiceViewChooseOwnSacrifices {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 count = 3;
+  repeated ChoiceItem items = 4;
+}
+
+// This player may sacrifice any subset of `items` (the other creatures they control) as a
+// Devour N creature (`source`) enters; it gains `multiplier × count` +1/+1 counters (CR 702.82
+// — Mycoloth, Ribtruss Roaster). An empty selection declines (0 counters).
+message PendingChoiceViewDevour {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 multiplier = 3;
+  repeated ChoiceItem items = 4;
+}
+
+// This player must exile one of `items` (a card in their own graveyard) to a multi-player
+// fan-out (Augusta, Order Returned). The graveyard is public, so `items` are public.
+message PendingChoiceViewExileFromGraveyard {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player (Tragic Arrogance's caster) chooses which of `target_player`'s nonland
+// permanents (`items`) to keep — up to one of each type; the rest are sacrificed. Answered
+// like the sacrifice choices (naming the kept subset); the answering seat is `player` (the
+// caster), not `target_player`.
+message PendingChoiceViewCasterKeepPermanents {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 target_player = 3;
+  repeated ChoiceItem items = 4;
+}
+
+// This player (Nils' controller) puts a +1/+1 counter on up to one of `target_player`'s
+// creatures (`items`), or declines. Answered like the sacrifice choices (naming the 0-or-1
+// chosen creature); the answering seat is `player` (the chooser), not `target_player`.
+message PendingChoiceViewChooseCounterTargetForPlayer {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 target_player = 3;
+  repeated ChoiceItem items = 4;
+}
+
+// This player may return one of `items` (a card in their own graveyard) to their hand, or
+// decline (CR 601.2f-style resolution-time optional rider — Deadly Brew).
+message PendingChoiceViewMayReturnFromGraveyard {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may discard one of `items` (a card in their own hand, private to them) to gain a
+// rider effect, or decline (CR 608.2c-style resolution-time optional sub-action — Quintorius,
+// History Chaser's +1).
+message PendingChoiceViewMayDiscard {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player must discard `count` cards from their hand (`items`, private to them).
+message PendingChoiceViewDiscard {
+  uint32 player = 1;
+  uint32 count = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may put one hand land (`items`, private to them) onto the battlefield, or
+// decline.
+message PendingChoiceViewPutLandFromHand {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// This player may put one card exiled with `source` (`items`, public — exile-zone) into its
+// owner's graveyard, or decline.
+message PendingChoiceViewChooseExiledWithCard {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may choose one card exiled with `source` (`items`, public — exile-zone) to grant
+// the free-cast permission (CR 118.5), or decline.
+message PendingChoiceViewChooseExiledWithCardToCast {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may choose one card (`items`, public — exile-zone) among a just-exiled dig batch
+// to grant the free-cast permission (CR 118.5), or decline. Every other card in the batch goes
+// to the bottom of the library once answered.
+message PendingChoiceViewChooseExiledDigToCastFree {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player (the caster) may exile another top-of-library card or stop (Dance with
+// Calamity). `items` are the cards exiled so far (public — exile-zone), `total_mv` their
+// summed mana value, and `budget` the bust threshold. Answered by the yes/no `AnswerMay`.
+message PendingChoiceViewDanceExileMore {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 total_mv = 3;
+  uint32 budget = 4;
+  repeated ChoiceItem items = 5;
+}
+
+// This player (an **opponent** of the controller) must choose one of two exile piles; the
+// chosen pile goes to the controller's graveyard (Abstract Performance). `pile_a`/`pile_b` are
+// the piles' cards in order.
+message PendingChoiceViewOpponentChoosesPile {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem pile_a = 3;
+  repeated ChoiceItem pile_b = 4;
+}
+
+// This player (an **opponent** of the controller) must choose one nonland card exiled this way
+// (`items`, public — exile-zone); the controller then casts up to two of the others free
+// (Plargg and Nassari).
+message PendingChoiceViewOpponentChoosesExiledNonland {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player (the controller) may choose up to `count` of `items` (public — exile-zone) to
+// grant the free-cast permission (CR 118.5); the rest go to hand or stay exiled per the card
+// (Abstract Performance's kept pile, Plargg and Nassari's other exiled cards).
+message PendingChoiceViewChooseExiledToCastFree {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 count = 3;
+  repeated ChoiceItem items = 4;
+}
+
+// This player may put `item` (a just-revealed library card, public) onto the battlefield, or
+// decline and put it into hand instead.
+message PendingChoiceViewRevealedCardToBattlefieldOrHand {
+  uint32 player = 1;
+  ChoiceItem item = 2;
+}
+
+// This player must choose one mode of a "choose one" triggered ability. `labels` describes
+// each mode (public card text), one per selectable index.
+message PendingChoiceViewChooseMode {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated string labels = 3;
+}
+
+// This player may choose `choose` distinct modes of a modal *triggered* ability (CR 700.2 —
+// Shadrix Silverquill's begin-combat "you may choose two"), each with its own target where the
+// mode needs one. `optional`: declining (an empty selection) is legal and drops the whole
+// ability.
+message PendingChoiceViewChooseTriggerModes {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 choose = 3;
+  bool optional = 4;
+  repeated ModeView modes = 5;
+}
+
+// This player (a mana ability's controller) must name one color; `amount` mana of that color
+// is added to their pool (CR 106.4 "add N mana of any one color" — Lotus Field, Kami of
+// Whispered Hopes).
+message PendingChoiceViewChooseManaColor {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 amount = 3;
+}
+
+// This player (an as-enters permanent's controller) must name a creature type for `source` (CR
+// 614.12/700.9-style "as ~ enters, choose a creature type" — Patchwork Banner). `options` is
+// the pool's known creature-type table.
+message PendingChoiceViewChooseCreatureType {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated string options = 3;
+}
+
+// This player (an as-enters permanent's controller) must name a color for `source` (CR
+// 614.12/700.9-style "as ~ enters, choose a color" — Flickering Ward). The candidates are the
+// fixed five WUBRG colors, so no `options` list is carried.
+message PendingChoiceViewChooseColor {
+  uint32 player = 1;
+  uint32 source = 2;
+}
+
+// This player (an entering permanent's controller) may have `source` enter as a copy of one of
+// `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego, Cursed
+// Mirror). Answered with the chosen creature, or a decline (the "you may").
+message PendingChoiceViewChooseCopyTarget {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player (the deployed attachment's controller) must choose a host among `items` (the
+// eligible battlefield creatures, public) for the Aura or Equipment it just put onto the
+// battlefield without casting it. An Aura's host is mandatory. Equipment's host is optional —
+// any creature this player controls, and declining leaves it unattached (`optional`).
+message PendingChoiceViewChooseAttachHost {
+  uint32 player = 1;
+  uint32 attachment = 2;
+  repeated ChoiceItem items = 3;
+  bool optional = 4;
+}
+
+// This player (the active player at their untap step) may choose not to untap any of `items` —
+// the permanents they control that "may choose not to untap" (CR 502.2 — Rubinia Soulsinger).
+// `items` are public battlefield permanents. Answering keeps the chosen subset tapped and
+// untaps the rest.
+message PendingChoiceViewDeclineUntap {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// The triggering opponent (`player`) may pay `cost` to stop `controller`'s optional draw —
+// Rhystic Study's "unless that player pays {1}". Only raised after `controller` accepts the
+// preceding `MayYesNo` pause. Paying leaves `controller`'s hand untouched; declining draws them
+// a card.
+message PendingChoiceViewPayOrControllerDraws {
+  uint32 player = 1;
+  uint32 controller = 2;
+  WireCost cost = 3;
+}
+
+// `spell` is already countered (CR 701.5b — Hinder's `countered_dest` rider) — choose the top
+// or bottom of its owner's library for it to go to instead of the graveyard.
+message PendingChoiceViewChooseCounteredSpellDestination {
+  uint32 player = 1;
+  uint32 spell = 2;
+}
+
+// Pay `cost` to keep `source`, or decline and sacrifice it — a real ETB triggered ability
+// (Rupture Spire, CR 603.3b), not Echo, though it shares `PayEchoOrSacrifice`'s shape.
+message PendingChoiceViewSacrificeUnlessPay {
+  uint32 player = 1;
+  uint32 source = 2;
+  WireCost cost = 3;
+}
+
+// Return one of `items` (a non-Lair land the player controls, public) to its owner's hand to
+// keep `source`, or decline and sacrifice it (Treva's Ruins).
+message PendingChoiceViewSacrificeUnlessReturnLand {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may put one hand creature (`items`, private to them — mana value at most the
+// paid `{X}`) face down as a 2/2 without paying its mana cost (Illusionary Mask), or decline.
+message PendingChoiceViewCastCreatureFaceDown {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// This player (the ability's controller) must choose which opponent makes an "an opponent ..."
+// decision on their behalf (Abstract Performance's pile split, Fact or Fiction's partition) —
+// `items` are the living opponents (as player-only `ChoiceItem`s), `label` the ability source's
+// name. Only raised with two or more opponents alive.
+message PendingChoiceViewChooseSplittingOpponent {
+  uint32 player = 1;
+  uint32 source = 2;
+  string label = 3;
+  repeated ChoiceItem items = 4;
+}
+
+// This player (the opponent `ChooseSplittingOpponent` named) must assign each of `items` (Fact
+// or Fiction's five revealed cards, public) to one of two piles: the answer names pile A's
+// subset, the rest form pile B. Either pile may be empty.
+message PendingChoiceViewPartitionRevealed {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player (the controller of Fact or Fiction) picks one of the two piles
+// `PartitionRevealed` just made to put into their hand; the other is milled into their
+// graveyard.
+message PendingChoiceViewChoosePileForHand {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem pile_a = 3;
+  repeated ChoiceItem pile_b = 4;
+}
+
+// The complete view one player is allowed to see: turn state, per-player facts, and the
+// objects visible to them (all public zones + their own hand; opponents' hands and all
+// libraries are counts only).
+message VisibleState {
+  uint32 viewer = 1;
+  uint32 active_player = 2;
+  // Step discriminant; see `engine::Step`.
+  uint32 step = 3;
+  uint32 priority = 4;
+  repeated PlayerView players = 5;
+  repeated ObjectView objects = 6;
+  // The stack, bottom-first (last entry is the top, which resolves next).
+  repeated StackObjectView stack = 7;
+  // Declared attackers and blocks this combat (empty outside combat).
+  CombatView combat = 8;
+  // Whether the current priority holder has a meaningful action (for "you can act" emphasis);
+  // the server auto-passes when this is false.
+  bool can_act = 9;
+  // Whether THIS viewer has yielded ("don't care") to the current stack. Always false for a
+  // spectator.
+  bool yielded = 10;
+  // Whether THIS viewer has turn-yielded (auto-pass until their turn / until they act — ADR
+  // 0029). Always false for a spectator.
+  bool turn_yielded = 11;
+  // Milliseconds until an uncontested stack auto-resolves; `0` when no stack-hold is active.
+  uint32 stack_hold_remaining_ms = 12;
+  optional PendingChoiceView pending_choice = 13;
+  // The viewer's own legal actions right now (empty for a spectator, or anyone else's seat).
+  repeated ActionView actions = 14;
+}
+
+// An `engine::Event` after per-viewer redaction. Public facts pass through unchanged; private
+// facts (a drawn card's identity) become absent for players who may not see them.
+message VisibleEvent {
+  oneof event {
+    VisibleEventSpellCast spell_cast = 1;
+    VisibleEventSpellTargetsChosen spell_targets_chosen = 2;
+    VisibleEventPreparedChanged prepared_changed = 3;
+    VisibleEventLeveledUp leveled_up = 4;
+    VisibleEventPhasedOut phased_out = 5;
+    VisibleEventPhasedIn phased_in = 6;
+    VisibleEventCreatureTypeChosen creature_type_chosen = 7;
+    VisibleEventColorChosen color_chosen = 8;
+    VisibleEventPreparedSpellCast prepared_spell_cast = 9;
+    VisibleEventAdventureSpellCast adventure_spell_cast = 10;
+    VisibleEventStepBegan step_began = 11;
+    VisibleEventTriggeredAbilityOnStack triggered_ability_on_stack = 12;
+    VisibleEventAbilityResolved ability_resolved = 13;
+    VisibleEventLandPlayed land_played = 14;
+    VisibleEventTapped tapped = 15;
+    VisibleEventUntapped untapped = 16;
+    VisibleEventRegenerationShieldCreated regeneration_shield_created = 17;
+    VisibleEventRegenerated regenerated = 18;
+    VisibleEventRegenerationShieldsExpired regeneration_shields_expired = 19;
+    VisibleEventLostSummoningSickness lost_summoning_sickness = 20;
+    VisibleEventCountersPlaced counters_placed = 21;
+    VisibleEventKindCountersPlaced kind_counters_placed = 22;
+    VisibleEventLoyaltyChanged loyalty_changed = 23;
+    VisibleEventLoyaltyActivated loyalty_activated = 24;
+    VisibleEventAbilityActivatedThisTurn ability_activated_this_turn = 25;
+    VisibleEventTriggeredAbilityThisTurn triggered_ability_this_turn = 26;
+    VisibleEventAttachedTo attached_to = 27;
+    VisibleEventTempBoost temp_boost = 28;
+    VisibleEventTempBoostsEnded temp_boosts_ended = 29;
+    VisibleEventBasePtSetUntilEndOfTurn base_pt_set_until_end_of_turn = 30;
+    VisibleEventTypesAddedUntilEndOfTurn types_added_until_end_of_turn = 31;
+    VisibleEventReanimatedCreatureBecame reanimated_creature_became = 32;
+    VisibleEventAddedSubtypes added_subtypes = 33;
+    VisibleEventBecameCopy became_copy = 34;
+    VisibleEventKeywordsStripped keywords_stripped = 35;
+    VisibleEventControlGainedUntilEndOfTurn control_gained_until_end_of_turn = 36;
+    VisibleEventControlEndedUntilEndOfTurn control_ended_until_end_of_turn = 37;
+    VisibleEventAbilitiesGranted abilities_granted = 38;
+    VisibleEventGrantedAbilitiesEnded granted_abilities_ended = 39;
+    VisibleEventControlGained control_gained = 40;
+    VisibleEventAttackerDeclared attacker_declared = 41;
+    VisibleEventTokenEnteredAttacking token_entered_attacking = 42;
+    VisibleEventGoaded goaded = 43;
+    VisibleEventGoadCleared goad_cleared = 44;
+    VisibleEventVowCountersPlaced vow_counters_placed = 45;
+    VisibleEventTimeCountersPlaced time_counters_placed = 46;
+    VisibleEventTimeCountersRemoved time_counters_removed = 47;
+    VisibleEventMustAttackDeclared must_attack_declared = 48;
+    VisibleEventDelayedTriggerScheduled delayed_trigger_scheduled = 49;
+    VisibleEventDelayedTriggersFired delayed_triggers_fired = 50;
+    VisibleEventNextCastTriggerArmed next_cast_trigger_armed = 51;
+    VisibleEventNextCastTriggerConsumed next_cast_trigger_consumed = 52;
+    VisibleEventCombatDamageWatchArmed combat_damage_watch_armed = 53;
+    VisibleEventCombatDamageWatchConsumed combat_damage_watch_consumed = 54;
+    VisibleEventCombatDamageCopyArmed combat_damage_copy_armed = 55;
+    VisibleEventExiledFromLibraryMayPlay exiled_from_library_may_play = 56;
+    VisibleEventExiledFromLibraryToChooseCastFree exiled_from_library_to_choose_cast_free = 57;
+    VisibleEventPlayFromExilePermissionArmed play_from_exile_permission_armed = 58;
+    VisibleEventPlayFromExileEnded play_from_exile_ended = 59;
+    VisibleEventBlockerDeclared blocker_declared = 60;
+    VisibleEventCombatDamageDivided combat_damage_divided = 61;
+    VisibleEventSpellDamageDivided spell_damage_divided = 62;
+    VisibleEventSpellCountersDivided spell_counters_divided = 63;
+    VisibleEventDeathtouchMarked deathtouch_marked = 64;
+    VisibleEventCombatCleared combat_cleared = 65;
+    VisibleEventCommanderCastFromCommandZone commander_cast_from_command_zone = 66;
+    VisibleEventFlashPermissionGranted flash_permission_granted = 67;
+    VisibleEventChannelColorlessManaGranted channel_colorless_mana_granted = 68;
+    VisibleEventCommanderDamageDealt commander_damage_dealt = 69;
+    VisibleEventCombatDamageDealtToPlayer combat_damage_dealt_to_player = 70;
+    VisibleEventCombatDamagePrevented combat_damage_prevented = 71;
+    VisibleEventMovedToCommandZone moved_to_command_zone = 72;
+    VisibleEventManaEmptied mana_emptied = 73;
+    VisibleEventDamageCleared damage_cleared = 74;
+    VisibleEventManaAdded mana_added = 75;
+    VisibleEventManaSpent mana_spent = 76;
+    VisibleEventPriorityPassed priority_passed = 77;
+    VisibleEventPermanentEntered permanent_entered = 78;
+    VisibleEventReanimatedToBattlefield reanimated_to_battlefield = 79;
+    VisibleEventTokenCreated token_created = 80;
+    VisibleEventTokenCeasedToExist token_ceased_to_exist = 81;
+    VisibleEventSpellCopied spell_copied = 82;
+    VisibleEventSpellCeasedToExist spell_ceased_to_exist = 83;
+    VisibleEventDamageMarked damage_marked = 84;
+    VisibleEventMovedToGraveyard moved_to_graveyard = 85;
+    VisibleEventMovedToExile moved_to_exile = 86;
+    VisibleEventExiledOnAdventure exiled_on_adventure = 87;
+    VisibleEventExiledUntilSourceLeaves exiled_until_source_leaves = 88;
+    VisibleEventExiledUntilSourceLeavesMintingIllusion exiled_until_source_leaves_minting_illusion = 89;
+    VisibleEventLeavesIllusionMinted leaves_illusion_minted = 90;
+    VisibleEventTokenGrantedReturnExiledOnLeave token_granted_return_exiled_on_leave = 91;
+    VisibleEventReturnedExiledCardToGraveyard returned_exiled_card_to_graveyard = 92;
+    VisibleEventExiledWithSource exiled_with_source = 93;
+    VisibleEventCardExiledWithSourceLeftExile card_exiled_with_source_left_exile = 94;
+    VisibleEventCastFromExileFreePermissionGranted cast_from_exile_free_permission_granted = 95;
+    VisibleEventCastFromExileFreeBottomsLibraryOnLeave cast_from_exile_free_bottoms_library_on_leave = 96;
+    VisibleEventCastFromExileFreeEnded cast_from_exile_free_ended = 97;
+    VisibleEventReturnedFromLinkedExile returned_from_linked_exile = 98;
+    VisibleEventReturnedToHand returned_to_hand = 99;
+    VisibleEventTuckedToLibrary tucked_to_library = 100;
+    VisibleEventLibraryShuffled library_shuffled = 101;
+    VisibleEventRevealedTopOfLibrary revealed_top_of_library = 102;
+    VisibleEventPutOnBottomOfLibrary put_on_bottom_of_library = 103;
+    VisibleEventSearchedToHand searched_to_hand = 104;
+    VisibleEventSearchedToBattlefield searched_to_battlefield = 105;
+    VisibleEventManifested manifested = 106;
+    VisibleEventTurnedFaceUp turned_face_up = 107;
+    VisibleEventPutOntoBattlefieldFromHand put_onto_battlefield_from_hand = 108;
+    VisibleEventMilled milled = 109;
+    VisibleEventLifeChanged life_changed = 110;
+    VisibleEventDrewFromEmptyLibrary drew_from_empty_library = 111;
+    VisibleEventPlayerLost player_lost = 112;
+    VisibleEventCitysBlessingGained citys_blessing_gained = 113;
+    VisibleEventCardDrawn card_drawn = 114;
+    VisibleEventSacrificed sacrificed = 115;
+    VisibleEventDiscarded discarded = 116;
+    VisibleEventExiledFromGraveyardMayPlay exiled_from_graveyard_may_play = 117;
+    VisibleEventAbilityCountered ability_countered = 118;
+    VisibleEventConditionedControlGained conditioned_control_gained = 119;
+    VisibleEventConditionedControlEnded conditioned_control_ended = 120;
+    VisibleEventDamageDealtToPlayer damage_dealt_to_player = 121;
+    VisibleEventFlickeredToBattlefield flickered_to_battlefield = 122;
+  }
+}
+
+message VisibleEventSpellCast {
+  uint32 spell = 1;
+  uint32 from = 2;
+  uint32 controller = 3;
+  optional WireTarget target = 4;
+  // Whether this was a flashback cast (CR 702.34) — public, like the rest of the stack.
+  bool flashback = 5;
+  // Whether this was an escape cast (CR 702.19) — public, like the rest of the stack.
+  bool escape = 6;
+}
+
+// A multi-target spell's chosen targets were recorded (CR 601.2c). Public — the stack is
+// visible, so every seat sees what a spell targets.
+message VisibleEventSpellTargetsChosen {
+  uint32 spell = 1;
+  repeated WireTarget targets = 2;
+}
+
+// A permanent's "prepared" status changed (soc/sos prepare DFCs). Public battlefield status.
+message VisibleEventPreparedChanged {
+  uint32 object = 1;
+  bool prepared = 2;
+}
+
+// A Class permanent gained a level (CR 717.2). Public battlefield status, like
+// `PreparedChanged`.
+message VisibleEventLeveledUp {
+  uint32 object = 1;
+  uint32 level = 2;
+}
+
+// A permanent phased out (CR 702.26 — Guardian of Faith). Public battlefield status.
+message VisibleEventPhasedOut {
+  uint32 object = 1;
+}
+
+// A permanent phased in (CR 702.26f — at its controller's untap). Public, the mirror of
+// `PhasedOut`.
+message VisibleEventPhasedIn {
+  uint32 object = 1;
+}
+
+// An as-enters "choose a creature type" choice was answered (CR 614.12/700.9-style —
+// Patchwork Banner). Public battlefield status, like `PreparedChanged`.
+message VisibleEventCreatureTypeChosen {
+  uint32 object = 1;
+  string subtype = 2;
+}
+
+// An as-enters "choose a color" choice was answered (CR 614.12/700.9-style — Flickering
+// Ward). Public battlefield status, like `CreatureTypeChosen`. `color` is the WUBRG index.
+message VisibleEventColorChosen {
+  uint32 object = 1;
+  uint32 color = 2;
+}
+
+// A copy of a prepared permanent's back-face spell went on the stack (soc/sos prepare DFCs).
+// Public — the stack is visible.
+message VisibleEventPreparedSpellCast {
+  uint32 spell = 1;
+  uint32 source = 2;
+  uint32 controller = 3;
+  optional WireTarget target = 4;
+  // The back face's chosen `{X}` value (0 for a non-`{X}` back face) — public, like the rest
+  // of the stack.
+  uint32 x = 5;
+}
+
+// The adventure half of an adventure card went on the stack (CR 715). Public — the stack is
+// visible.
+message VisibleEventAdventureSpellCast {
+  uint32 spell = 1;
+  uint32 source = 2;
+  uint32 controller = 3;
+  optional WireTarget target = 4;
+  // The adventure's chosen `{X}` value (0 for a non-`{X}` adventure) — public.
+  uint32 x = 5;
+}
+
+message VisibleEventStepBegan {
+  // Step discriminant; see `engine::Step`.
+  uint32 step = 1;
+  uint32 active_player = 2;
+}
+
+// A triggered ability went on the stack (its effect detail is engine-internal).
+message VisibleEventTriggeredAbilityOnStack {
+  uint32 controller = 1;
+  uint32 source = 2;
+  optional WireTarget target = 3;
+}
+
+message VisibleEventAbilityResolved {
+  uint32 source = 1;
+}
+
+message VisibleEventLandPlayed {
+  uint32 permanent = 1;
+  uint32 from = 2;
+  uint32 player = 3;
+}
+
+message VisibleEventTapped {
+  uint32 object = 1;
+}
+
+message VisibleEventUntapped {
+  uint32 object = 1;
+}
+
+// A regeneration shield was granted to a permanent (CR 701.15b).
+message VisibleEventRegenerationShieldCreated {
+  uint32 object = 1;
+}
+
+// A permanent was regenerated instead of destroyed (CR 701.15b) — tapped, removed from combat,
+// damage healed, one shield consumed.
+message VisibleEventRegenerated {
+  uint32 object = 1;
+}
+
+// A permanent's regeneration shields expired at cleanup (CR 701.15b's "this turn").
+message VisibleEventRegenerationShieldsExpired {
+  uint32 object = 1;
+}
+
+message VisibleEventLostSummoningSickness {
+  uint32 object = 1;
+}
+
+message VisibleEventCountersPlaced {
+  uint32 object = 1;
+  int32 count = 2;
+}
+
+// A named non-P/T counter (CR 122.1 — charge, story, …) was placed on (`count` positive) or
+// removed from (negative) a permanent — the `CountersPlaced` sibling for a counter kind other
+// than +1/+1. `counter_kind` mirrors `engine::CounterKind`'s discriminant.
+message VisibleEventKindCountersPlaced {
+  uint32 object = 1;
+  uint32 counter_kind = 2;
+  int32 count = 3;
+}
+
+// A planeswalker's loyalty changed by `amount` (a loyalty ability's +N / 0 / −N cost).
+message VisibleEventLoyaltyChanged {
+  uint32 object = 1;
+  int32 amount = 2;
+}
+
+// A planeswalker's once-per-turn loyalty flag was set/cleared (CR 606.3).
+message VisibleEventLoyaltyActivated {
+  uint32 object = 1;
+  bool active = 2;
+}
+
+// A `once_each_turn`-capped activated ability was activated (CR 602.2b).
+message VisibleEventAbilityActivatedThisTurn {
+  uint32 object = 1;
+  uint64 ability_index = 2;
+}
+
+// A `once_each_turn`-capped *triggered* ability (Morbid Opportunist, Tocasia's Welcome) was
+// placed on the stack.
+message VisibleEventTriggeredAbilityThisTurn {
+  uint32 source = 1;
+}
+
+// An Aura/Equipment's attachment changed (`host` absent = became unattached).
+message VisibleEventAttachedTo {
+  uint32 object = 1;
+  optional uint32 host = 2;
+}
+
+message VisibleEventTempBoost {
+  uint32 object = 1;
+  int32 power = 2;
+  int32 toughness = 3;
+}
+
+message VisibleEventTempBoostsEnded {
+  uint32 object = 1;
+}
+
+// A permanent's base power/toughness was set until end of turn (Biomass Mutation, Quandrix
+// Charm). Public battlefield status, like `TempBoost`.
+message VisibleEventBasePtSetUntilEndOfTurn {
+  uint32 object = 1;
+  int32 power = 2;
+  int32 toughness = 3;
+}
+
+// A permanent gained card types/subtypes until end of turn (Restless Spire's
+// self-animation). Public battlefield status, like `BasePtSetUntilEndOfTurn`.
+message VisibleEventTypesAddedUntilEndOfTurn {
+  uint32 object = 1;
+}
+
+// A just-reanimated permanent took on an indefinite characteristics set (Excava, the Risen
+// Past → a 1/1 Spirit with flying). Public battlefield status, like `BasePtSetUntilEndOfTurn`.
+message VisibleEventReanimatedCreatureBecame {
+  uint32 object = 1;
+}
+
+// A permanent gained an indefinite set of creature subtypes (Hofri Ghostforge's minted copy →
+// a Spirit). Public battlefield status, like `ReanimatedCreatureBecame`.
+message VisibleEventAddedSubtypes {
+  uint32 object = 1;
+}
+
+// A permanent became a copy of another creature as it entered (Altered Ego, Cursed Mirror).
+// Public — a copy is public.
+message VisibleEventBecameCopy {
+  uint32 object = 1;
+}
+
+// A permanent lost keywords until end of turn and can't regain them
+// (arcane_lighthouse's strip). Public battlefield status, like `TempBoost`.
+message VisibleEventKeywordsStripped {
+  uint32 object = 1;
+}
+
+// A one-shot control change took effect (CR 720): `object` is now controlled by `controller`
+// until end of turn (Besmirch).
+message VisibleEventControlGainedUntilEndOfTurn {
+  uint32 object = 1;
+  uint32 controller = 2;
+}
+
+// An until-end-of-turn control override ended (cleanup, CR 514.2).
+message VisibleEventControlEndedUntilEndOfTurn {
+  uint32 object = 1;
+}
+
+// `target` gained `source`'s other abilities until end of turn (CR 702.166 Backup — Guardian
+// Scalelord). Public battlefield state.
+message VisibleEventAbilitiesGranted {
+  uint32 target = 1;
+  uint32 source = 2;
+}
+
+// Every until-end-of-turn ability grant ended (cleanup, CR 514.2 / 702.166).
+message VisibleEventGrantedAbilitiesEnded {}
+
+// A permanent control change with no stated duration (CR 720 — Entrancing Melody): `object` is
+// now controlled by `controller`, with no cleanup reversion.
+message VisibleEventControlGained {
+  uint32 object = 1;
+  uint32 controller = 2;
+}
+
+message VisibleEventAttackerDeclared {
+  uint32 object = 1;
+  uint32 defender = 2;
+}
+
+// A token was put onto the battlefield already tapped and attacking `defender` (Combat
+// Calligrapher), not via the declare-attackers step (CR 508.4).
+message VisibleEventTokenEnteredAttacking {
+  uint32 token = 1;
+  uint32 defender = 2;
+}
+
+// A creature was goaded by player `by` (CR 701.38).
+message VisibleEventGoaded {
+  uint32 object = 1;
+  uint32 by = 2;
+}
+
+// Every goad done by player `by` ended (the start of `by`'s turn).
+message VisibleEventGoadCleared {
+  uint32 by = 1;
+}
+
+// A vow counter was placed on `object`, marking `protected` as the player it can't attack
+// (Promise of Loyalty). Public — a counter placement happens openly, like the other counters.
+message VisibleEventVowCountersPlaced {
+  uint32 object = 1;
+  uint32 protected = 2;
+}
+
+// `count` time counters were placed on the suspended card `card` in exile (Rousing Refrain,
+// suspend). Public — a suspended card sits face-up in exile with its counters visible.
+message VisibleEventTimeCountersPlaced {
+  uint32 card = 1;
+  uint32 count = 2;
+}
+
+// One time counter was removed from the suspended card `card` (the upkeep tick). Public, like
+// `TimeCountersPlaced`.
+message VisibleEventTimeCountersRemoved {
+  uint32 card = 1;
+}
+
+// `object` must attack `defender` this turn if able (Furygale Flocking's minted tokens).
+// Public combat state, like `Goaded`.
+message VisibleEventMustAttackDeclared {
+  uint32 object = 1;
+  uint32 defender = 2;
+}
+
+// A CR 603.7 delayed trigger was scheduled: `controller` will act the next time its step
+// begins (the effect/step detail is engine-internal, like `TriggeredAbilityOnStack`'s).
+message VisibleEventDelayedTriggerScheduled {
+  uint32 controller = 1;
+  uint32 source = 2;
+}
+
+// Every scheduled delayed trigger for one step fired.
+message VisibleEventDelayedTriggersFired {}
+
+// A CR 603.7 delayed one-shot was armed: `controller` will act the next time they cast a spell
+// matching its filter this turn (the filter/effect detail is engine-internal, like
+// `DelayedTriggerScheduled`'s).
+message VisibleEventNextCastTriggerArmed {
+  uint32 controller = 1;
+  uint32 source = 2;
+}
+
+// A `NextCastTriggerArmed` watch fired and was removed.
+message VisibleEventNextCastTriggerConsumed {
+  uint32 controller = 1;
+  uint32 source = 2;
+}
+
+// A CR 603.7 delayed watch was armed: `source` will become prepared the first time `watched`
+// deals combat damage to a player, any time later this combat.
+message VisibleEventCombatDamageWatchArmed {
+  uint32 controller = 1;
+  uint32 source = 2;
+  uint32 watched = 3;
+}
+
+// A `CombatDamageWatchArmed` watch fired and was removed.
+message VisibleEventCombatDamageWatchConsumed {
+  uint32 controller = 1;
+  uint32 source = 2;
+}
+
+// A this-turn, controller-scoped, repeatable CR 603.7 delayed watch was armed: every creature
+// `controller` controls that deals combat damage to a player for the rest of this turn mints a
+// free copy of `card` (an already-exiled instant/sorcery). Unlike `CombatDamageWatchArmed`,
+// never consumed — it keeps firing until the turn ends.
+message VisibleEventCombatDamageCopyArmed {
+  uint32 controller = 1;
+  uint32 source = 2;
+  uint32 card = 3;
+}
+
+// A card was impulse-exiled face-up and `player` may play it until end of turn, or until the
+// end of `player`'s next turn if `until_next_turn` (CR 118.6; Atsushi, the Blazing Sky).
+// Public — the card is exiled face-up, like a card milled into a graveyard.
+message VisibleEventExiledFromLibraryMayPlay {
+  uint32 player = 1;
+  uint32 card = 2;
+  uint32 from = 3;
+  bool until_next_turn = 4;
+}
+
+// A card was exiled face-up from the top of the library with no play permission attached
+// (Herald of Amity's dig) — a follow-up choice decides which one, if any, gets free-cast
+// permission. Public — the card is exiled face-up.
+message VisibleEventExiledFromLibraryToChooseCastFree {
+  uint32 player = 1;
+  uint32 card = 2;
+  uint32 from = 3;
+}
+
+// An extended impulse-draw permission's shield expired (its controller's own next turn began)
+// — it now expires at this turn's cleanup like a normal permission.
+message VisibleEventPlayFromExilePermissionArmed {
+  uint32 card = 1;
+}
+
+// All impulse-draw play-until-end-of-turn permissions that aren't still shielded expired
+// (cleanup).
+message VisibleEventPlayFromExileEnded {}
+
+message VisibleEventBlockerDeclared {
+  uint32 blocker = 1;
+  uint32 attacker = 2;
+}
+
+// A multi-blocked attacker's combat damage was divided among its blockers (public — combat
+// damage assignment is announced to the table, CR 510.1c).
+message VisibleEventCombatDamageDivided {
+  uint32 attacker = 1;
+  repeated ObjectAmount assignment = 2;
+}
+
+// A divided-damage spell's total was split among its chosen targets (public — a divided burn
+// spell's split is announced to the table, CR 601.2d, like combat's). `players` carries the
+// shares dealt to player targets ("any number of targets" includes players); `assignment` the
+// object shares.
+message VisibleEventSpellDamageDivided {
+  uint32 spell = 1;
+  repeated ObjectAmount assignment = 2;
+  repeated PlayerAmount players = 3;
+}
+
+// A divided-counters spell's total was split among its chosen targets (public — CR 601.2d, the
+// counter twin of `SpellDamageDivided`; Grove's Bounty).
+message VisibleEventSpellCountersDivided {
+  uint32 spell = 1;
+  repeated ObjectAmount assignment = 2;
+}
+
+message VisibleEventDeathtouchMarked {
+  uint32 object = 1;
+}
+
+message VisibleEventCombatCleared {}
+
+message VisibleEventCommanderCastFromCommandZone {
+  uint32 player = 1;
+}
+
+// `player` may cast spells this turn as though they had flash (CR 601.3a — Alchemist's
+// Refuge). Public — no hidden information.
+message VisibleEventFlashPermissionGranted {
+  uint32 player = 1;
+}
+
+// `player` may, at mana-ability timing, pay 1 life to add {C} for the rest of the turn (CR 605
+// — Yavimaya Bloomsage's Channel). Public — no hidden information.
+message VisibleEventChannelColorlessManaGranted {
+  uint32 player = 1;
+}
+
+message VisibleEventCommanderDamageDealt {
+  uint32 source = 1;
+  uint32 player = 2;
+  int32 amount = 3;
+}
+
+// A creature dealt combat damage to a player (public — combat damage is announced to the
+// table, CR 510.1c/510.4).
+message VisibleEventCombatDamageDealtToPlayer {
+  uint32 source = 1;
+  uint32 player = 2;
+  int32 amount = 3;
+}
+
+// `amount` combat damage that would have been dealt to `player` was prevented by a shield
+// (Inkshield, CR 615) — public, like the combat damage it replaces. The Inkling mints it
+// drives arrive as accompanying `TokenCreated` events.
+message VisibleEventCombatDamagePrevented {
+  uint32 player = 1;
+  int32 amount = 2;
+}
+
+message VisibleEventMovedToCommandZone {
+  uint32 card = 1;
+  uint32 from = 2;
+}
+
+message VisibleEventManaEmptied {
+  uint32 player = 1;
+}
+
+message VisibleEventDamageCleared {
+  uint32 object = 1;
+}
+
+message VisibleEventManaAdded {
+  uint32 player = 1;
+  // Mana kind: 0-4 = WUBRG (`engine::Color::index`), 5 = colorless `{C}`, 6 = any color, 7 =
+  // either of two colors (a dual land's credit), 8 = a restricted color-set credit (Fellwar
+  // Stone / Exotic Orchard).
+  uint32 mana = 2;
+  uint32 amount = 3;
+}
+
+message VisibleEventManaSpent {
+  uint32 player = 1;
+  // Per-color amounts removed, indexed WUBRG.
+  repeated uint32 mana = 2;
+}
+
+message VisibleEventPriorityPassed {
+  uint32 player = 1;
+}
+
+message VisibleEventPermanentEntered {
+  uint32 permanent = 1;
+  uint32 from = 2;
+}
+
+// A graveyard card was reanimated onto the battlefield under `controller`'s control.
+message VisibleEventReanimatedToBattlefield {
+  uint32 permanent = 1;
+  uint32 from = 2;
+  uint32 controller = 3;
+  // Whether it entered with a finality counter (CR 614.12 — Excava, the Risen Past).
+  bool finality = 4;
+  // Whether it entered tapped (Teacher's Pest's "... to the battlefield tapped").
+  bool tapped = 5;
+}
+
+message VisibleEventTokenCreated {
+  uint32 token = 1;
+  uint32 controller = 2;
+}
+
+message VisibleEventTokenCeasedToExist {
+  uint32 token = 1;
+}
+
+// A spell on the stack was copied (Twincast): a new spell object `copy` was put on the stack
+// above `original`, controlled by `controller`.
+message VisibleEventSpellCopied {
+  uint32 copy = 1;
+  uint32 original = 2;
+  uint32 controller = 3;
+}
+
+// A spell copy resolved and ceased to exist (it left the stack without becoming a card).
+message VisibleEventSpellCeasedToExist {
+  uint32 spell = 1;
+}
+
+message VisibleEventDamageMarked {
+  uint32 object = 1;
+  int32 amount = 2;
+  // What dealt the damage (for the log); absent for engine-internal adjustments.
+  optional uint32 source = 3;
+}
+
+message VisibleEventMovedToGraveyard {
+  uint32 card = 1;
+  uint32 from = 2;
+}
+
+message VisibleEventMovedToExile {
+  uint32 card = 1;
+  uint32 from = 2;
+}
+
+// An adventure spell resolved and was exiled "on an adventure" (CR 715.3d) as the card `card`.
+// Public, like `MovedToExile` (the exile zone is visible).
+message VisibleEventExiledOnAdventure {
+  uint32 card = 1;
+  uint32 from = 2;
+  uint32 owner = 3;
+}
+
+// The O-Ring pattern (CR 603.6e): `object` was exiled until `source` leaves the battlefield.
+message VisibleEventExiledUntilSourceLeaves {
+  uint32 source = 1;
+  uint32 object = 2;
+}
+
+// Skyclave Apparition's linked exile: `object` was exiled linked to `source`, staying exiled
+// forever — `source` leaving the battlefield mints its owner an Illusion instead of returning
+// it (see `LeavesIllusionMinted`).
+message VisibleEventExiledUntilSourceLeavesMintingIllusion {
+  uint32 source = 1;
+  uint32 object = 2;
+}
+
+// `source`'s linked exile (see `ExiledUntilSourceLeavesMintingIllusion`) finished minting its
+// Illusion token — the exiled `object` stays exiled; the mint itself is a separate, public
+// `TokenCreated`.
+message VisibleEventLeavesIllusionMinted {
+  uint32 source = 1;
+  uint32 object = 2;
+}
+
+// Hofri Ghostforge's minted Spirit token `token` gained its granted "When this token leaves
+// the battlefield, return the exiled card to its owner's graveyard" rider, linked to the
+// specific card `exiled` it must return.
+message VisibleEventTokenGrantedReturnExiledOnLeave {
+  uint32 token = 1;
+  uint32 exiled = 2;
+}
+
+// The granted rider's payoff: the exile-zone card `from` arrived in its owner's graveyard as
+// `card` (public — the graveyard is a public zone). Not a death (CR 700.4 requires "from the
+// battlefield").
+message VisibleEventReturnedExiledCardToGraveyard {
+  uint32 card = 1;
+  uint32 from = 2;
+}
+
+// The "exiled with" pattern (CR 400.10a): `object` was exiled linked to `source`, staying
+// there until a different ability of `source` cashes it out (Currency Converter).
+message VisibleEventExiledWithSource {
+  uint32 source = 1;
+  uint32 object = 2;
+}
+
+// `source`'s cash-out ability pulled `object` back out of its exiled-with pile.
+message VisibleEventCardExiledWithSourceLeftExile {
+  uint32 source = 1;
+  uint32 object = 2;
+}
+
+// Quintorius, Loremaster's activated ability granted `player` permission to cast `card` (still
+// sitting in its exiled-with pile) this turn without paying its mana cost. Public — the card is
+// exile-zone, like the rest of the "exiled with" pattern.
+message VisibleEventCastFromExileFreePermissionGranted {
+  uint32 card = 1;
+  uint32 player = 2;
+}
+
+// Quintorius, Loremaster's activated ability also granted `card` a one-shot "put into a
+// graveyard" replacement (CR 614.6) — bottom of its owner's library instead. Public, like the
+// rest of the "exiled with" pattern.
+message VisibleEventCastFromExileFreeBottomsLibraryOnLeave {
+  uint32 card = 1;
+}
+
+// Every active free-cast-from-exile permission expired (cleanup).
+message VisibleEventCastFromExileFreeEnded {}
+
+// The linked exile ended: the card `from` returned to the battlefield as `permanent`, under
+// `controller`'s control.
+message VisibleEventReturnedFromLinkedExile {
+  uint32 permanent = 1;
+  uint32 from = 2;
+  uint32 controller = 3;
+  uint32 source = 4;
+}
+
+message VisibleEventReturnedToHand {
+  uint32 card = 1;
+  uint32 from = 2;
+}
+
+message VisibleEventTuckedToLibrary {
+  uint32 card = 1;
+  uint32 from = 2;
+  bool to_top = 3;
+}
+
+// `player`'s library was shuffled (Perpetual Timepiece's mandatory shuffle). No order
+// information — the library is a hidden zone.
+message VisibleEventLibraryShuffled {
+  uint32 player = 1;
+}
+
+// The top card of `player`'s library was revealed — public to every player (CR 701.30), unlike
+// a private look. The card stays on top; a later event moves it if the effect does.
+message VisibleEventRevealedTopOfLibrary {
+  uint32 player = 1;
+  uint32 card = 2;
+  string def = 3;
+}
+
+// A previously-revealed card went to the bottom of `player`'s own library (Open the Way's
+// non-matching reveals) — public, since `RevealedTopOfLibrary` already showed it; not a zone
+// change, so `card` keeps its id.
+message VisibleEventPutOnBottomOfLibrary {
+  uint32 player = 1;
+  uint32 card = 2;
+}
+
+// A tutored library card entered `player`'s hand. Like a draw, the identity is private —
+// `card` (and the library object it came `from`, which would otherwise leak that identity by
+// its decklist-order id) are absent for anyone but the searcher.
+message VisibleEventSearchedToHand {
+  uint32 player = 1;
+  uint32 object = 2;
+  optional uint32 from = 3;
+  optional string card = 4;
+}
+
+// A searched library card was put onto the battlefield under `controller`'s control (ramp /
+// fetchland). The card is public once it's on the battlefield.
+message VisibleEventSearchedToBattlefield {
+  uint32 permanent = 1;
+  uint32 from = 2;
+  uint32 controller = 3;
+  bool tapped = 4;
+}
+
+// A library card was manifested (CR 701.34) onto the battlefield face down as a 2/2 under
+// `controller`'s control. The moved card's identity is private, so `from` is dropped — the
+// anonymous permanent is projected via `ObjectView::face_down`.
+message VisibleEventManifested {
+  uint32 permanent = 1;
+  uint32 controller = 2;
+}
+
+// A face-down permanent was turned face up (CR 701.34e) — its real card is now revealed
+// (public game information).
+message VisibleEventTurnedFaceUp {
+  uint32 permanent = 1;
+}
+
+// A hand land card was put onto the battlefield under `controller`'s control (CR 305.9, not a
+// land play — Eureka Moment, Zimone). The card is public once it's on the battlefield.
+message VisibleEventPutOntoBattlefieldFromHand {
+  uint32 permanent = 1;
+  uint32 from = 2;
+  uint32 controller = 3;
+  bool tapped = 4;
+}
+
+// A card was milled into `player`'s graveyard (public — the graveyard is a public zone).
+message VisibleEventMilled {
+  uint32 player = 1;
+  uint32 card = 2;
+  uint32 from = 3;
+}
+
+message VisibleEventLifeChanged {
+  uint32 player = 1;
+  int32 amount = 2;
+  // What caused the change (for the log); absent for setup adjustments.
+  optional uint32 source = 3;
+}
+
+message VisibleEventDrewFromEmptyLibrary {
+  uint32 player = 1;
+}
+
+message VisibleEventPlayerLost {
+  uint32 player = 1;
+}
+
+// `player` got the city's blessing (CR 702.131 Ascend) — fully public.
+message VisibleEventCitysBlessingGained {
+  uint32 player = 1;
+}
+
+// Opponents see that a draw happened, but `card` (and the library object it came `from`, which
+// would otherwise leak that identity by its decklist-order id) are absent for anyone but the
+// drawer.
+message VisibleEventCardDrawn {
+  uint32 player = 1;
+  uint32 object = 2;
+  optional uint32 from = 3;
+  optional string card = 4;
+}
+
+// A permanent was sacrificed by `by` — public (a sacrifice happens openly on the battlefield),
+// like `MovedToGraveyard`/`TokenCeasedToExist`, which fire alongside this for the actual zone
+// change.
+message VisibleEventSacrificed {
+  uint32 object = 1;
+  uint32 by = 2;
+}
+
+// A card was discarded by `player` — public (a discard happens openly to the graveyard), like
+// `Sacrificed`, which fires alongside `MovedToGraveyard` for the actual zone change.
+message VisibleEventDiscarded {
+  uint32 card = 1;
+  uint32 from = 2;
+  uint32 player = 3;
+}
+
+// A graveyard card was impulse-exiled face-up and `player` may play it until end of turn
+// (Containment Construct's discard payoff, CR 601 impulse play). Public, like
+// `ExiledFromLibraryMayPlay`.
+message VisibleEventExiledFromGraveyardMayPlay {
+  uint32 player = 1;
+  uint32 card = 2;
+  uint32 from = 3;
+}
+
+// An activated ability on the stack was countered (CR 701.5c/112.7a — Azorius Guildmage). It
+// leaves the stack and ceases to exist; nothing is hidden (which ability was countered is
+// public), so this is a straight passthrough of the engine event's `source`.
+message VisibleEventAbilityCountered {
+  uint32 source = 1;
+}
+
+// A condition-scoped control change took effect (CR 611.2b — Rubinia Soulsinger): `object` is
+// now controlled by `controller` for as long as the condition holds.
+message VisibleEventConditionedControlGained {
+  uint32 object = 1;
+  uint32 controller = 2;
+}
+
+// A condition-scoped control override ended because its condition stopped holding (the source
+// untapped, left, or changed controller — CR 611.2b).
+message VisibleEventConditionedControlEnded {
+  uint32 object = 1;
+}
+
+// `source` dealt noncombat damage to `player` (public — damage to a player is announced, CR
+// 120.1) — the noncombat twin of `CombatDamageDealtToPlayer`.
+message VisibleEventDamageDealtToPlayer {
+  uint32 source = 1;
+  uint32 player = 2;
+  int32 amount = 3;
+}
+
+// A flicker's return (immediate or the delayed end-step twin): the exiled card `from` returned
+// to the battlefield as `permanent`, under `controller`'s control.
+message VisibleEventFlickeredToBattlefield {
+  uint32 permanent = 1;
+  uint32 from = 2;
+  uint32 controller = 3;
+}
+
+// A batch of already-redacted events for one viewer plus the viewer's full render state after
+// they were applied. The `events` drive the game log / stack panel / combat highlights
+// (folded client-side); `state` is the board the client renders.
+message DeltaEnvelope {
+  uint64 seq = 1;
+  repeated VisibleEvent events = 2;
+  VisibleState state = 3;
+  // Human-readable labels of actions the server auto-submitted in this frame (a forced
+  // discard, an auto-passed priority with nothing to do) — for the client's "automatic"
+  // styling, so a forced play is never mistaken for the player's own move.
+  repeated string auto_actions = 4;
+}
+
+message SnapshotFrame {
+  uint64 seq = 1;
+  VisibleState state = 2;
+}
+
+message Heartbeat {}
+
+// The stream's per-line frame union: an initial full snapshot, a per-event delta, or a
+// keepalive heartbeat (ADR 0006).
+message StreamFrame {
+  oneof frame {
+    SnapshotFrame snapshot = 1;
+    DeltaEnvelope delta = 2;
+    Heartbeat heartbeat = 3;
+  }
+}

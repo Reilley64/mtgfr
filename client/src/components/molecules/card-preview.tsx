@@ -9,7 +9,6 @@ import * as Option from "effect/Option";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
-import type { CatalogCard, ModifierSourceView } from "~/api/generated";
 import { Button } from "~/components/atoms";
 import { cn } from "~/lib/cn";
 import {
@@ -24,6 +23,7 @@ import {
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { splitOracleText } from "~/lib/oracleText";
 import { imageUrlByPrint } from "~/lib/scryfall";
+import type { CatalogCard, ModifierSourceView } from "~/wire/types";
 
 // Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
 // the fetch rather than looking anything up by name; there is no name-based lookup anymore.

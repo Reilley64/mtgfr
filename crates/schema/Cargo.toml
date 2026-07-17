@@ -6,7 +6,6 @@ edition.workspace = true
 [dependencies]
 engine.workspace = true
 serde = { version = "1", features = ["derive"] }
-utoipa = "5"
 
 [dev-dependencies]
 cards = { workspace = true }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ActionView, ObjectView, VisibleState } from "~/api/generated";
 import { ZONE } from "~/layout";
 import { targetMode } from "~/lib/targeting";
+import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 
 function object(over: Partial<ObjectView> = {}): ObjectView {
   return {

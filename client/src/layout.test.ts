@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ObjectView, PlayerView, VisibleState } from "~/api/generated";
 import { avatarPos, boardBounds, layout, manaTrayPos, STEP, STEP_NAMES, seatBand, ZONE } from "~/layout";
 import { emptyManaPool } from "~/lib/manaPips";
+import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
 
 // Geometry constants mirrored from layout.ts (CARD_W=96, CARD_H=134, GAP=16, AVATAR_R=60):
 // STEP=112, ROW_H=150, BATTLE_H=450, BAND_STRIDE=602, COL_X=-80, COL_STRIDE=112.5. Quadrant grid:

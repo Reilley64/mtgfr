@@ -2,6 +2,8 @@
 .github
 client/node_modules
 client/dist
+client/src/wire/generated
+openapi.json
 target
 iac/.terraform
 iac/*.tfstate*

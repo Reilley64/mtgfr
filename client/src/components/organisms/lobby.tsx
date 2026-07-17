@@ -46,8 +46,11 @@ const copyTextFn = Atom.fn((text: string) =>
 // A transport failure, named like every other lobby outcome so it renders through `humanError`.
 const UNREACHABLE = "Unreachable";
 
-// A seat row's three columns: seat number, deck, badges.
-const SEAT_ROW = cn("grid grid-cols-[70px_1fr_auto] gap-sm rounded-control bg-glass-dim px-md py-xs");
+// A seat row's three columns: who (seat or username), deck, badges.
+// Username needs more than a seat-number column — 70px overflowed into the deck name.
+const SEAT_ROW = cn(
+  "grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)_auto] gap-sm rounded-control bg-glass-dim px-md py-xs",
+);
 
 export default function Lobby(props: { onStarted: () => void }) {
   const routeParams = useParams();
@@ -227,7 +230,7 @@ export default function Lobby(props: { onStarted: () => void }) {
         <Show when={apiTag()}>{(v) => <span class="text-label text-lichen/70">API {v()}</span>}</Show>
       </div>
       <div class="flex items-center gap-sm">
-        <Button type="button" onClick={onHost}>
+        <Button type="button" data-testid="lobby-host" onClick={onHost}>
           Host a table
         </Button>
       </div>
@@ -237,6 +240,7 @@ export default function Lobby(props: { onStarted: () => void }) {
         </label>
         <Field
           id="table-code"
+          data-testid="lobby-join-code"
           placeholder="Table code"
           value={code()}
           onInput={(e) => setCode(e.currentTarget.value)}
@@ -244,7 +248,7 @@ export default function Lobby(props: { onStarted: () => void }) {
           autocomplete="off"
           spellcheck={false}
         />
-        <Button type="button" onClick={onJoinCode}>
+        <Button type="button" data-testid="lobby-join" onClick={onJoinCode}>
           Join
         </Button>
       </div>
@@ -254,14 +258,16 @@ export default function Lobby(props: { onStarted: () => void }) {
   return (
     <Felt class="fixed inset-0 overflow-y-auto">
       <div class="flex min-h-full items-center justify-center p-xxl">
-        <Panel as="main">
+        <Panel as="main" data-testid="lobby">
           <h1 class="m-0 text-title">mtgfr — Lobby</h1>
 
           <Show when={table()} fallback={<Entry />}>
             <div class="flex flex-wrap items-center gap-md">
               <span class="text-label text-lichen">Table code</span>
-              <span class="select-text font-bold text-display tracking-[0.06em]">{table()}</span>
-              <Button type="button" onClick={onCopyCode}>
+              <span data-testid="lobby-table-code" class="select-text font-bold text-display tracking-[0.06em]">
+                {table()}
+              </span>
+              <Button type="button" data-testid="lobby-copy-code" onClick={onCopyCode}>
                 {copied() ? "Copied" : "Copy code"}
               </Button>
             </div>
@@ -279,13 +285,13 @@ export default function Lobby(props: { onStarted: () => void }) {
               />
             </Show>
 
-            <div class="flex flex-col gap-xs">
+            <div class="flex flex-col gap-xs" data-testid="lobby-seats">
               <For each={lobby()?.seats ?? []}>
                 {(s) => (
-                  <div class={SEAT_ROW}>
+                  <div class={SEAT_ROW} data-testid={`lobby-seat-${s.player}`} data-claimed={s.claimed ? "1" : "0"}>
                     {/* Open-seat ink: dimmer than the claimed-row text but still ≥4.5:1 against the
                         row background (glass-dim over Forest Floor ≈ #171f1c) — measured ~9.4:1. */}
-                    <span class={cn(!s.claimed && "text-lichen")}>
+                    <span class={cn("min-w-0 truncate", !s.claimed && "text-lichen")}>
                       {s.claimed ? (s.username ?? `Seat ${s.player + 1}`) : `Seat ${s.player + 1}`}
                     </span>
                     <span class={cn("min-w-0 truncate text-lichen", s.claimed && "text-mist")}>
@@ -298,7 +304,10 @@ export default function Lobby(props: { onStarted: () => void }) {
                       <Show when={s.claimed}>
                         <Show when={s.ready} fallback={<span class="text-label text-lichen">Waiting…</span>}>
                           {/* Llanowar-tinted chip on the seat row (~#1d3727) — measured ~8.4:1. */}
-                          <span class="inline-block rounded-full bg-llanowar/25 px-sm py-0.5 font-semibold text-caption text-ready-sprout">
+                          <span
+                            data-testid={`lobby-seat-${s.player}-ready`}
+                            class="inline-block rounded-full bg-llanowar/25 px-sm py-0.5 font-semibold text-caption text-ready-sprout"
+                          >
                             Ready
                           </span>
                         </Show>
@@ -328,7 +337,7 @@ export default function Lobby(props: { onStarted: () => void }) {
                 >
                   <div class="flex flex-wrap items-center gap-sm">
                     <DeckPicker />
-                    <Button type="button" onClick={onJoin}>
+                    <Button type="button" data-testid="lobby-claim" onClick={onJoin}>
                       Claim a seat
                     </Button>
                   </div>
@@ -336,17 +345,21 @@ export default function Lobby(props: { onStarted: () => void }) {
               }
             >
               <div class="flex flex-wrap items-center gap-sm">
-                <Button type="button" onClick={() => onReady(!myReady())}>
+                <Button type="button" data-testid="lobby-ready" onClick={() => onReady(!myReady())}>
                   {myReady() ? "Unready" : "Ready up"}
                 </Button>
                 <Show when={isHost()}>
                   {/* A disabled button can't be clicked, so it can never surface its own rejection —
                       the reason has to be shown next to it or the host is left guessing. */}
-                  <Button type="button" disabled={startError() !== null} onClick={onStart}>
+                  <Button type="button" data-testid="lobby-start" disabled={startError() !== null} onClick={onStart}>
                     Start game
                   </Button>
                   <Show when={startError()}>
-                    {(e) => <span class="text-caption text-lichen">{humanError(e())}</span>}
+                    {(e) => (
+                      <span data-testid="lobby-start-error" class="text-caption text-lichen">
+                        {humanError(e())}
+                      </span>
+                    )}
                   </Show>
                 </Show>
               </div>
@@ -355,7 +368,7 @@ export default function Lobby(props: { onStarted: () => void }) {
 
           <Show when={error()}>
             {(e) => (
-              <div role="alert" class="text-burn-red text-caption">
+              <div role="alert" data-testid="lobby-error" class="text-burn-red text-caption">
                 {humanError(e())}
               </div>
             )}
@@ -376,6 +389,8 @@ function humanError(code: string): string {
     UnknownTable: "No such table.",
     NotSeated: "Claim a seat first.",
     UnknownDeck: "That deck no longer exists.",
+    Draining: "Server is restarting — try again in a moment.",
+    SeedFailed: "Couldn't start the game — try again.",
     [UNREACHABLE]: "Couldn't reach the table — try again.",
   };
   return map[code] ?? code;

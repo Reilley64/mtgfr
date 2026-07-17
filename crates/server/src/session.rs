@@ -505,12 +505,10 @@ mod tests {
     use crate::db;
     use crate::decks::seed_game;
     use crate::test_support::{as_user, seat_deck, user_with_deck};
-    use axum::Json;
-    use axum::extract::{Path, State};
     use engine::PlayerId;
     use schema::{IntentEnvelope, WireIntent, to_intent};
 
-    use crate::game_loop::{YieldRequest, set_yield, submit_intent};
+    use crate::game_loop::{set_yield_core, submit_intent_core};
 
     #[test]
     fn auto_advance_skips_players_with_no_meaningful_action_and_terminates() {
@@ -1146,11 +1144,11 @@ mod tests {
                 .expect("the starting player has at least one legal action (a land to play)")
         };
 
-        let ack = submit_intent(
-            State(state.clone()),
-            as_user(&state, "p0@x.c").await,
-            Path("take".to_string()),
-            Json(IntentEnvelope {
+        let ack = submit_intent_core(
+            &state,
+            as_user(&state, "p0@x.c").await.0.id,
+            "take",
+            IntentEnvelope {
                 table_id: "take".to_string(),
                 client_seq: 0,
                 intent: WireIntent::TakeAction {
@@ -1165,10 +1163,9 @@ mod tests {
                     attackers: vec![],
                     blocks: vec![],
                 },
-            }),
+            },
         )
-        .await
-        .0;
+        .await;
         assert!(ack.accepted);
     }
 
@@ -1189,24 +1186,10 @@ mod tests {
         ));
         lock(&state.reg).tables.insert("y".to_string(), table);
 
-        let ack = set_yield(
-            State(state.clone()),
-            as_user(&state, "p1@x.c").await,
-            Path("y".to_string()),
-            Json(YieldRequest { enabled: true }),
-        )
-        .await
-        .0;
+        let ack = set_yield_core(&state, as_user(&state, "p1@x.c").await.0.id, "y", true).await;
         assert!(ack.accepted);
 
-        let ack = set_yield(
-            State(state.clone()),
-            as_user(&state, "p0@x.c").await,
-            Path("y".to_string()),
-            Json(YieldRequest { enabled: true }),
-        )
-        .await
-        .0;
+        let ack = set_yield_core(&state, as_user(&state, "p0@x.c").await.0.id, "y", true).await;
         assert!(ack.accepted);
         assert!(lock(&state.reg).tables.contains_key("y"));
     }
@@ -1224,18 +1207,17 @@ mod tests {
         table.game = Some(game);
         lock(&state.reg).tables.insert("over".to_string(), table);
 
-        let ack = submit_intent(
-            State(state.clone()),
-            as_user(&state, "p0@x.c").await,
-            Path("over".to_string()),
-            Json(IntentEnvelope {
+        let ack = submit_intent_core(
+            &state,
+            as_user(&state, "p0@x.c").await.0.id,
+            "over",
+            IntentEnvelope {
                 table_id: "over".to_string(),
                 client_seq: 0,
                 intent: WireIntent::PassPriority { player: 0 },
-            }),
+            },
         )
-        .await
-        .0;
+        .await;
         assert!(ack.accepted);
         assert!(!lock(&state.reg).tables.contains_key("over"));
     }
@@ -1306,11 +1288,11 @@ mod tests {
             .tables
             .insert("eyes-escape".to_string(), table);
 
-        let missing = submit_intent(
-            State(state.clone()),
-            as_user(&state, "eyes0@x.c").await,
-            Path("eyes-escape".to_string()),
-            Json(IntentEnvelope {
+        let missing = submit_intent_core(
+            &state,
+            as_user(&state, "eyes0@x.c").await.0.id,
+            "eyes-escape",
+            IntentEnvelope {
                 table_id: "eyes-escape".to_string(),
                 client_seq: 0,
                 intent: WireIntent::TakeAction {
@@ -1325,17 +1307,16 @@ mod tests {
                     attackers: vec![],
                     blocks: vec![],
                 },
-            }),
+            },
         )
-        .await
-        .0;
+        .await;
         assert!(!missing.accepted, "escape without exile picks must reject");
 
-        let ack = submit_intent(
-            State(state.clone()),
-            as_user(&state, "eyes0@x.c").await,
-            Path("eyes-escape".to_string()),
-            Json(IntentEnvelope {
+        let ack = submit_intent_core(
+            &state,
+            as_user(&state, "eyes0@x.c").await.0.id,
+            "eyes-escape",
+            IntentEnvelope {
                 table_id: "eyes-escape".to_string(),
                 client_seq: 1,
                 intent: WireIntent::TakeAction {
@@ -1350,10 +1331,9 @@ mod tests {
                     attackers: vec![],
                     blocks: vec![],
                 },
-            }),
+            },
         )
-        .await
-        .0;
+        .await;
         assert!(ack.accepted, "escape with exile + target: {ack:?}");
 
         let reg = lock(&state.reg);
