@@ -115,6 +115,14 @@ pub enum WireIntent {
         /// spell with no kicker. See [`engine::Intent::Cast`].
         #[serde(default)]
         kicked: bool,
+        /// Whether the caster paid the spell's buyback cost (CR 702.27c); `false` (decline) for a
+        /// spell with no buyback. See [`engine::Intent::Cast`].
+        #[serde(default)]
+        bought_back: bool,
+        /// Whether the caster is casting the spell for its evoke cost (CR 702.74a); `false` for a
+        /// spell with no evoke, or to cast it normally. See [`engine::Intent::Cast`].
+        #[serde(default)]
+        evoked: bool,
         /// The caster's declared Strive target count (CR 702.42); 0 (default) for a spell with
         /// no Strive, or "choose zero targets." See [`engine::Intent::Cast`].
         #[serde(default)]
@@ -232,12 +240,32 @@ pub enum WireIntent {
         player: u8,
         cards: Vec<ObjectId>,
     },
+    /// Answer an optional-untap choice (CR 502.2 — Rubinia Soulsinger): `keep_tapped` are the
+    /// offered permanents this player leaves tapped; every other offered permanent untaps.
+    DeclineUntap {
+        player: u8,
+        keep_tapped: Vec<ObjectId>,
+    },
     /// Answer a put-a-land-from-hand choice: `choice` is the hand land put onto the battlefield,
     /// or absent to decline.
     PutLandFromHand {
         player: u8,
         #[serde(default)]
         choice: Option<ObjectId>,
+    },
+    /// Answer a cast-a-hand-creature-face-down choice (Illusionary Mask): `choice` is the hand
+    /// creature cast face down as a 2/2, or absent to decline.
+    CastCreatureFaceDown {
+        player: u8,
+        #[serde(default)]
+        choice: Option<ObjectId>,
+    },
+    /// Answer a sacrifice-unless-return-a-land choice (Treva's Ruins): `land` is the offered
+    /// non-Lair land returned to its owner's hand, or absent to decline and sacrifice the source.
+    ReturnLandOrSacrifice {
+        player: u8,
+        #[serde(default)]
+        land: Option<ObjectId>,
     },
     /// Answer a choose-exiled-with-card choice: `choice` is the exiled-with card put into its
     /// owner's graveyard, or absent to decline.
@@ -317,6 +345,13 @@ pub enum WireIntent {
         player: u8,
         copy: Option<ObjectId>,
     },
+    /// Answer a choose-countered-spell-destination choice (CR 701.5b — Hinder's rider): `top`
+    /// puts the countered spell on top of its owner's library, `false` on the bottom. See
+    /// [`engine::Intent::ChooseTopOrBottom`].
+    ChooseTopOrBottom {
+        player: u8,
+        top: bool,
+    },
     /// Activate a hand card's Cycling ability (CR 702.29a): pay its cycling cost, discard the
     /// card, draw one.
     Cycle {
@@ -347,6 +382,12 @@ pub enum WireIntent {
     TurnFaceUp {
         player: u8,
         permanent: ObjectId,
+    },
+    /// Cast a hand card face down as a 2/2 for {3} (CR 702.37b — morph): pay the flat {3} and put
+    /// it on the stack as a face-down creature spell. See [`engine::Intent::CastFaceDown`].
+    CastFaceDown {
+        player: u8,
+        card: ObjectId,
     },
     /// Cast a copy of a prepared permanent's back-face spell (soc/sos prepare DFCs): pay the back
     /// face's cost, put the copy on the stack targeting `target`, and unprepare `source`.
@@ -435,6 +476,8 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
             ..
@@ -448,6 +491,8 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
         },
@@ -484,7 +529,13 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         SearchLibrary { choice, .. } => SearchLibrary { player, choice },
         ChooseSacrifices { sacrifices, .. } => ChooseSacrifices { player, sacrifices },
         Discard { cards, .. } => Discard { player, cards },
+        DeclineUntap { keep_tapped, .. } => DeclineUntap {
+            player,
+            keep_tapped,
+        },
         PutLandFromHand { choice, .. } => PutLandFromHand { player, choice },
+        CastCreatureFaceDown { choice, .. } => CastCreatureFaceDown { player, choice },
+        ReturnLandOrSacrifice { land, .. } => ReturnLandOrSacrifice { player, land },
         ChooseExiledWithCard { choice, .. } => ChooseExiledWithCard { player, choice },
         ChooseExiledWithCardToCast { choice, .. } => ChooseExiledWithCardToCast { player, choice },
         ChooseExiledDigToCastFree { choice, .. } => ChooseExiledDigToCastFree { player, choice },
@@ -509,6 +560,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ChooseColor { color, .. } => ChooseColor { player, color },
         ChooseAttachHost { host, .. } => ChooseAttachHost { player, host },
         ChooseCopyTarget { copy, .. } => ChooseCopyTarget { player, copy },
+        ChooseTopOrBottom { top, .. } => ChooseTopOrBottom { player, top },
         ChooseMode { mode, .. } => ChooseMode { player, mode },
         ChooseTriggerModes { modes, .. } => ChooseTriggerModes { player, modes },
         Cycle { card, .. } => Cycle { player, card },
@@ -516,6 +568,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         Suspend { card, .. } => Suspend { player, card },
         Encore { card, .. } => Encore { player, card },
         TurnFaceUp { permanent, .. } => TurnFaceUp { player, permanent },
+        CastFaceDown { card, .. } => CastFaceDown { player, card },
         CastPrepared {
             source, target, x, ..
         } => CastPrepared {
@@ -579,6 +632,8 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
         } => Intent::Cast {
@@ -594,6 +649,8 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
         },
@@ -710,9 +767,24 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             cards,
         },
+        WireIntent::DeclineUntap {
+            player,
+            keep_tapped,
+        } => Intent::DeclineUntap {
+            player: PlayerId(player),
+            keep_tapped,
+        },
         WireIntent::PutLandFromHand { player, choice } => Intent::PutLandFromHand {
             player: PlayerId(player),
             choice,
+        },
+        WireIntent::CastCreatureFaceDown { player, choice } => Intent::CastCreatureFaceDown {
+            player: PlayerId(player),
+            choice,
+        },
+        WireIntent::ReturnLandOrSacrifice { player, land } => Intent::ReturnLandOrSacrifice {
+            player: PlayerId(player),
+            land,
         },
         WireIntent::ChooseExiledWithCard { player, choice } => Intent::ChooseExiledWithCard {
             player: PlayerId(player),
@@ -784,6 +856,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             copy,
         },
+        WireIntent::ChooseTopOrBottom { player, top } => Intent::ChooseTopOrBottom {
+            player: PlayerId(player),
+            top,
+        },
         WireIntent::Cycle { player, card } => Intent::Cycle {
             player: PlayerId(player),
             card,
@@ -803,6 +879,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         WireIntent::TurnFaceUp { player, permanent } => Intent::TurnFaceUp {
             player: PlayerId(player),
             permanent,
+        },
+        WireIntent::CastFaceDown { player, card } => Intent::CastFaceDown {
+            player: PlayerId(player),
+            card,
         },
         WireIntent::CastPrepared {
             player,

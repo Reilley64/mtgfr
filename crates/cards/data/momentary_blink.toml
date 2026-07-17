@@ -1,0 +1,29 @@
+# Exile target creature you control, then return it to the battlefield under its owner's control.
+# Flashback {3}{U} (You may cast this card from your graveyard for its flashback cost. Then exile it.)
+name = "Momentary Blink"
+otags = ["castable-from-graveyard", "cycle-tsp-forward-flashback", "exile-self", "flicker-creature", "more-expensive-than-mv", "protects-creature", "single-target-instant-sorcery"]
+set = "dmr"
+id = "a3ec6b5d-08ec-4ae0-b1db-c4b87a1849c7"
+default_print = "619c620d-1920-40d1-98d4-df5607f84d26"
+oracle = "Exile target creature you control, then return it to the battlefield under its owner's control.\nFlashback {3}{U} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+
+[cost]
+generic = 1
+white = 1
+
+# Flashback {3}{U} (CR 702.34) — cast from the graveyard for this alternative cost, then exiled on resolve.
+[flashback]
+generic = 3
+blue = 1
+
+[kind]
+type = "instant"
+
+# Exile target creature you control, then return it to the battlefield under its owner's control.
+[[abilities]]
+timing = "spell"
+
+# Exile target creature you control, then return it to the battlefield under its owner's control.
+[[abilities.effects]]
+type = "flicker_target"
+target = "creature_you_control"

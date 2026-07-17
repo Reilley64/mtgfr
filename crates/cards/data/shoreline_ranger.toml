@@ -1,0 +1,33 @@
+# Flying
+# Islandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand,
+# then shuffle.)
+name = "Shoreline Ranger"
+otags = ["activate-from-hand", "cheaper-than-mv", "cycle-scg-5m-landcycler", "evasion", "french-vanilla", "tutor-land-island", "tutor-to-hand", "type-errata", "unique-type-line"]
+set = "a25"
+subtypes = ["Bird", "Soldier", "Ranger"]
+id = "606fbf99-d3e3-4131-b991-3cb71c003834"
+default_print = "a9957cbe-da88-41fe-a4aa-e32ec9e7aa38"
+oracle = "Flying\nIslandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it, put it into your hand, then shuffle.)"
+keywords = ["flying"]
+
+[cost]
+generic = 5
+blue = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 4
+
+# Islandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it,
+# put it into your hand, then shuffle.)
+[hand_ability]
+
+[hand_ability.cost]
+generic = 2
+
+# Search your library for an Island card, reveal it, put it into your hand, then shuffle.
+[[hand_ability.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Island"] }
+to_zone = "hand"

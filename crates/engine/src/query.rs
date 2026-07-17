@@ -108,6 +108,9 @@ impl Game {
                     if self.suspend_listable(player, id, available) {
                         actions.push(MeaningfulAction::Suspend { card: id });
                     }
+                    if self.cast_face_down_listable(player, id, available) {
+                        actions.push(MeaningfulAction::CastFaceDown { card: id });
+                    }
                 }
                 // A non-mana activated ability the player can afford, or a prepared back-face cast. (CR 602, CR 601, CR 113)
                 Object::Permanent(p) => {
@@ -215,6 +218,34 @@ impl Game {
         Self::affordable_from(available, *suspend.cost, None)
     }
 
+    /// Whether `card` may be offered a face-down morph cast (CR 702.37b): priority holder, a hand
+    /// card with a morph cost, castable at creature-spell (sorcery) speed, and the flat {3}
+    /// affordable. The real cost is irrelevant — a face-down cast always pays {3}.
+    fn cast_face_down_listable(
+        &self,
+        player: PlayerId,
+        card: ObjectId,
+        available: ManaPool,
+    ) -> bool {
+        if player != self.priority {
+            return false;
+        }
+        let Object::Card(c) = &self.objects[card as usize] else {
+            return false;
+        };
+        if c.zone != Zone::Hand || c.owner != player || c.def.morph.is_none() {
+            return false;
+        }
+        if !self.can_take_sorcery_speed_action(player) {
+            return false;
+        }
+        let face_down_cost = Cost {
+            generic: 3,
+            ..Cost::FREE
+        };
+        Self::affordable_from(available, face_down_cost, None)
+    }
+
     /// Whether `card` may be offered as an Encore action (CR 702.140): priority holder, in the
     /// owner's graveyard with an affordable encore cost, at sorcery speed (CR 702.140b — active
     /// player, a main phase, empty stack).
@@ -259,7 +290,10 @@ impl Game {
         if !matches!(perm.def.kind, CardKind::Creature { .. }) {
             return false;
         }
-        Self::affordable_from(available, perm.def.cost, None)
+        // Morph turns up for its morph cost (CR 702.37c); a manifest for its printed cost — the
+        // same fork as `Game::turn_face_up`.
+        let cost = perm.def.morph.unwrap_or(perm.def.cost);
+        Self::affordable_from(available, cost, None)
     }
 
     /// Whether `source` may offer a prepared back-face cast in the action list (timing +
@@ -297,6 +331,8 @@ impl Game {
                 Zone::Battlefield,
                 0,
                 false,
+                false,
+                false,
                 0,
                 0,
             );
@@ -313,6 +349,8 @@ impl Game {
                     0,
                     Zone::Battlefield,
                     0,
+                    false,
+                    false,
                     false,
                     0,
                     0,
@@ -762,6 +800,36 @@ impl Game {
                 })
                 .map(Target::Object)
                 .collect(),
+            // A spell on the stack with exactly one target (Willbender's "target spell … with a
+            // single target", CR 114.6). Any controller's spell — Willbender bends an opponent's
+            // just as readily as its controller's own.
+            TargetSpec::SingleTargetSpellOnStack => self
+                .stack
+                .iter()
+                .filter_map(|item| match *item {
+                    StackItem::Spell(id) => Some(id),
+                    _ => None,
+                })
+                .filter(|&id| self.spell_has_single_target(id))
+                .map(Target::Object)
+                .collect(),
+            // An activated ability on the stack (Azorius Guildmage's "counter target activated
+            // ability", CR 112.7a). Any controller's — Azorius counters an opponent's just as
+            // readily. Keyed by the ability's `source` id (see the spec's identity ponytail); only
+            // `activated` entries are yielded, so a triggered ability on the stack is not a legal
+            // target, and a mana ability never reaches the stack to be one.
+            TargetSpec::ActivatedAbilityOnStack => self
+                .stack
+                .iter()
+                .filter_map(|item| match *item {
+                    StackItem::Ability {
+                        source,
+                        activated: true,
+                        ..
+                    } => Some(Target::Object(source)),
+                    _ => None,
+                })
+                .collect(),
             // A fixed reference to the ability's own source (Hangarback's "this creature",
             // Gorma's/Primordial Hydra's counter abilities) — empty only if `source` has since
             // left the battlefield (CR 608.2b: nothing left to refer to).
@@ -798,6 +866,10 @@ impl Game {
             TargetSpec::ThisPermanent
                 | TargetSpec::EnchantedCreature
                 | TargetSpec::ThisAurasGraveyardTarget
+                // The ability on the stack is the target, not its source permanent — the source's
+                // own shroud/hexproof/protection (CR 702.11/702.16b/702.18) doesn't shield its
+                // ability, so don't run the battlefield-permanent filter against the source id.
+                | TargetSpec::ActivatedAbilityOnStack
         ) {
             return targets;
         }
@@ -1144,6 +1216,14 @@ impl Game {
         if filter.nonlegendary && self.def_of(id).legendary {
             return false;
         }
+        // Non-Lair land exclusion (CR 305 — Treva's Ruins' "non-Lair land"). Reads the printed
+        // land-type list directly, not `CardDef::subtypes` (see the field's doc).
+        if filter.nonlair
+            && let CardKind::Land { subtypes, .. } = self.def_of(id).kind
+            && subtypes.contains(&"Lair")
+        {
+            return false;
+        }
         // Strictly lesser power than the filter's own source (Mentor, CR 702.121a). No-op
         // without a source — every filter that sets this pairs it with a targeted ability,
         // which always threads one.
@@ -1224,6 +1304,8 @@ mod permanent_filter_tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -1240,6 +1322,7 @@ mod permanent_filter_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 

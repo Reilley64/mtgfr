@@ -1,0 +1,34 @@
+# Kicker {2}{U} (You may pay an additional {2}{U} as you cast this spell.)
+# Destroy target artifact or enchantment. If this spell was kicked, draw two cards.
+name = "Dismantling Blow"
+otags = ["cycle-inv-c-ally-kicker-spell", "hand-positive", "naturalize-with-set-mechanic", "offcolor-additional-cost", "pure-draw", "removal-destroy", "single-target-instant-sorcery", "spot-removal"]
+set = "mh1"
+id = "300cba5a-adbb-4852-be06-ac00d9d6fd37"
+default_print = "70edc5da-4477-49f6-bbcc-f208fdaae0d3"
+oracle = "Kicker {2}{U} (You may pay an additional {2}{U} as you cast this spell.)\nDestroy target artifact or enchantment. If this spell was kicked, draw two cards."
+identity = ["blue"]
+
+[cost]
+generic = 2
+white = 1
+
+[cost.additional.kicker]
+generic = 2
+blue = 1
+
+[kind]
+type = "instant"
+
+# Destroy target artifact or enchantment. If this spell was kicked, draw two cards.
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact or enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact_or_enchantment" } }
+
+# If this spell was kicked, draw two cards.
+[[abilities.effects]]
+type = "draw_cards"
+count = { if_kicked = 2, else = 0 }

@@ -27,6 +27,7 @@ fn amount_label(amount: Amount) -> String {
         Amount::SourcePower => "its power".to_string(),
         Amount::SourceToughness => "its toughness".to_string(),
         Amount::TargetPower => "target's power".to_string(),
+        Amount::TargetToughness => "target's toughness".to_string(),
         Amount::TargetManaValue => "target's mana value".to_string(),
         Amount::PerCounterOnSource => "1 per +1/+1 counter on it".to_string(),
         Amount::PerCounterOfKindOnSource { kind } => {
@@ -42,6 +43,7 @@ fn amount_label(amount: Amount) -> String {
         Amount::LifeGainedThisTurn => "life gained this turn".to_string(),
         Amount::SpellsCastThisTurn => "spells cast this turn".to_string(),
         Amount::CardsInTargetPlayerHand => "1 per card in target opponent's hand".to_string(),
+        Amount::CardsInYourHand => "1 per card in your hand".to_string(),
         Amount::CommanderCastsFromCommandZone => {
             "the number of times they've cast their commander from the command zone".to_string()
         }
@@ -53,6 +55,7 @@ fn amount_label(amount: Amount) -> String {
                 .to_string()
         }
         Amount::SacrificedCreaturePower => "the sacrificed creature's power".to_string(),
+        Amount::SacrificedCreatureToughness => "the sacrificed creature's toughness".to_string(),
         Amount::CommanderColorCount => {
             "the number of colors in your commander's color identity".to_string()
         }
@@ -101,6 +104,7 @@ fn amount_label(amount: Amount) -> String {
             "1 per instant or sorcery card in your graveyard".to_string()
         }
         Amount::CombatDamageDealt => "the damage dealt".to_string(),
+        Amount::TriggeringDamageDealt => "that much".to_string(),
     }
 }
 
@@ -261,6 +265,7 @@ fn card_filter_label(filter: CardFilter) -> String {
         CardFilter::AuraOrEquipment => "an Aura or Equipment card".to_string(),
         CardFilter::Aura => "an Aura card".to_string(),
         CardFilter::ArtifactOrCreature => "an artifact or creature card".to_string(),
+        CardFilter::ArtifactOrEnchantment => "an artifact or enchantment card".to_string(),
     }
 }
 
@@ -293,6 +298,7 @@ impl Effect {
                 let dest = match matched_dest {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
+                    SearchDest::LibraryTop => "on top of your library",
                 };
                 format!(
                     "Reveal cards from the top of your library until you reveal {} {}, put them {}, and put the rest on the bottom of your library",
@@ -325,6 +331,7 @@ impl Effect {
                 let dest = match matched_dest {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
+                    SearchDest::LibraryTop => "on top of your library",
                 };
                 format!(
                     "Reveal the top {} cards of your library, put all cards among them that are {} {}, and put the rest on the bottom of your library",
@@ -363,12 +370,20 @@ impl Effect {
                     )
                 }
             }
-            Effect::PumpSelfUntilEndOfTurn { power, toughness } => {
-                format!(
-                    "+{}/+{} until end of turn",
-                    amount_label(power),
-                    amount_label(toughness)
-                )
+            Effect::PumpSelfUntilEndOfTurn {
+                power,
+                toughness,
+                keywords,
+            } => {
+                let (power, toughness) = (amount_label(power), amount_label(toughness));
+                if keywords.is_empty() {
+                    format!("+{power}/+{toughness} until end of turn")
+                } else {
+                    format!(
+                        "+{power}/+{toughness} and gains {} until end of turn",
+                        keyword_list_label(keywords)
+                    )
+                }
             }
             Effect::PumpCreaturesYouControlUntilEndOfTurn {
                 power,
@@ -396,6 +411,14 @@ impl Effect {
                     "Permanents you control gain {} until end of turn",
                     keyword_list_label(keywords)
                 )
+            }
+            Effect::KeywordAnthemStatic { keywords, filter } => {
+                let scope = if filter.other {
+                    "Other permanents you control have"
+                } else {
+                    "Permanents you control have"
+                };
+                format!("{scope} {}", keyword_list_label(keywords))
             }
             Effect::SetBasePtCreaturesYouControlUntilEndOfTurn {
                 power,
@@ -464,8 +487,10 @@ impl Effect {
                 has_counters,
                 condition: _,
                 from_graveyard: _,
+                all_players,
             } => {
                 let scope = match subtypes {
+                    _ if all_players => "All creatures".to_string(),
                     _ if chosen_subtype => "Creatures you control of the chosen type".to_string(),
                     [] if self_only => "This creature".to_string(),
                     [] => "Creatures you control".to_string(),
@@ -514,11 +539,27 @@ impl Effect {
                     format!("{scope} have {}", keyword_list_label(keywords))
                 }
             }
+            Effect::TappedForManaBonus { scope, bonus_color } => match (scope, bonus_color) {
+                (LandTapScope::EnchantedHost, _) => {
+                    "Whenever enchanted land is tapped for mana, its controller adds an additional \
+                     one mana of any color"
+                        .to_string()
+                }
+                (LandTapScope::Controller, _) => {
+                    "Whenever you tap a land for mana, add one mana of any type that land produced"
+                        .to_string()
+                }
+            },
             Effect::TriggerDoublingStatic { .. } => {
                 "That triggered ability triggers an additional time".to_string()
             }
             Effect::PreventNoncombatDamageToOtherCreaturesYouControl => {
                 "Prevent all noncombat damage that would be dealt to other creatures you control"
+                    .to_string()
+            }
+            Effect::PreventDamageToSelfRemovingCounter => {
+                "If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 \
+                 counter from this creature"
                     .to_string()
             }
             Effect::NoMaximumHandSize => "You have no maximum hand size".to_string(),
@@ -550,6 +591,9 @@ impl Effect {
             }
             Effect::PreventCombatDamageToYouCreatingTokens { .. } => {
                 "Prevent all combat damage that would be dealt to you this turn, creating a token per point prevented".to_string()
+            }
+            Effect::PreventAllCombatDamageThisTurn => {
+                "Prevent all combat damage that would be dealt this turn".to_string()
             }
             Effect::PlaceVowCounters { .. } => "Put a vow counter on each surviving creature".to_string(),
             Effect::DestroyTarget { .. } => "Destroy target".to_string(),
@@ -759,6 +803,19 @@ impl Effect {
                 "Exile target until this leaves the battlefield".to_string()
             }
             Effect::ExileTargetMintingIllusionOnLeave { .. } => "Exile target".to_string(),
+            Effect::FlickerTarget {
+                return_at: None, ..
+            } => "Exile target creature, then return it to the battlefield under its owner's \
+                  control"
+                .to_string(),
+            Effect::FlickerTarget {
+                return_at: Some(_), ..
+            } => "Exile target creature. Return that card to the battlefield under its owner's \
+                  control at the beginning of the next end step"
+                .to_string(),
+            Effect::ReturnFlickeredCard { .. } => {
+                "Return that card to the battlefield under its owner's control".to_string()
+            }
             Effect::ExileTopMayPlay {
                 count,
                 until_next_turn,
@@ -785,6 +842,11 @@ impl Effect {
                 "Exile the top four cards in one pile, then the top four in a second pile. An \
                  opponent chooses one pile; put it into your graveyard. You may cast a card from \
                  the other pile without paying its mana cost; put the rest into your hand"
+                    .to_string()
+            }
+            Effect::RevealTopSplitPiles => {
+                "Reveal the top five cards of your library. An opponent separates those cards \
+                 into two piles. Put one pile into your hand and the other into your graveyard"
                     .to_string()
             }
             Effect::EachPlayerExilesUntilNonlandOpponentPicks => {
@@ -892,11 +954,23 @@ impl Effect {
                  battlefield"
                     .to_string()
             }
+            Effect::TuckPermanentIntoLibrary { to_top: true, .. } => {
+                "Put target permanent on top of its owner's library".to_string()
+            }
+            Effect::TuckPermanentIntoLibrary { to_top: false, .. } => {
+                "Put target permanent on the bottom of its owner's library".to_string()
+            }
             Effect::Mill { count, .. } => format!("Target player mills {}", amount_label(count)),
             Effect::ExileGraveyard => "Exile target player's graveyard".to_string(),
             Effect::ExileAllGraveyards => "Exile all graveyards".to_string(),
             Effect::DrainTarget { amount, .. } => {
                 format!("Target player loses {amount}, you gain {amount}")
+            }
+            Effect::TargetPlayerGainsLife { amount, .. } => {
+                format!("Target player gains {amount} life")
+            }
+            Effect::TargetPlayerMayDraw { count, .. } => {
+                format!("Target player may draw {}", amount_label(count))
             }
             Effect::EachOpponentDrain { amount, sum_gain } => {
                 let amount_str = amount_label(amount);
@@ -934,14 +1008,37 @@ impl Effect {
             Effect::Discard {
                 count,
                 target_player: false,
+                or_one_matching: None,
             } => format!("Discard {count}"),
             Effect::Discard {
                 count,
                 target_player: true,
+                or_one_matching: None,
             } => format!("Target player discards {count}"),
+            Effect::Discard {
+                count,
+                target_player: false,
+                or_one_matching: Some(_),
+            } => format!("Discard {count} unless you discard a land card"),
+            Effect::Discard {
+                count,
+                target_player: true,
+                or_one_matching: Some(_),
+            } => format!("Target player discards {count} unless they discard a land card"),
             Effect::PutLandFromHand { tapped } => {
                 let suffix = if tapped { " tapped" } else { "" };
                 format!("Put a land from hand onto the battlefield{suffix}")
+            }
+            Effect::CastCreatureFaceDown => {
+                "Cast a creature card from hand face down as a 2/2".to_string()
+            }
+            // ponytail: generic pips only (Rupture Spire's {1}) — no pool card needs a colored
+            // sacrifice-unless-pay cost yet; extend if one does.
+            Effect::SacrificeSelfUnlessPay { cost } => {
+                format!("Sacrifice this unless you pay {{{}}}", cost.generic)
+            }
+            Effect::SacrificeSelfUnlessReturnLand { .. } => {
+                "Sacrifice this unless you return a non-Lair land you control".to_string()
             }
             // A sequence reads as its steps joined by ", then " (Faithless Looting's "Draw 2, then
             // discard 2").
@@ -970,6 +1067,9 @@ impl Effect {
             Effect::CopyTargetSpell => "Copy target spell".to_string(),
             Effect::CopyThisSpell { .. } => "Copy this spell".to_string(),
             Effect::RetargetSpellCopy { .. } => "Choose new targets for the copy".to_string(),
+            Effect::ChangeTargetOfTargetSpellOrAbility { .. } => {
+                "Change the target of target spell or ability with a single target".to_string()
+            }
             Effect::CopyTriggeringSpell { count, .. } => {
                 format!("Copy it {} times", amount_label(count))
             }
@@ -994,15 +1094,29 @@ impl Effect {
             Effect::CounterTargetSpell {
                 unless_pays: None,
                 filter,
+                countered_dest: None,
             } => format!("Counter target {}", counter_target_spell_noun(filter)),
+            Effect::CounterTargetSpell {
+                unless_pays: None,
+                filter,
+                countered_dest: Some(CounteredDest::LibraryTopOrBottom),
+            } => format!(
+                "Counter target {}. If that spell is countered this way, put that card on the \
+                 top or bottom of its owner's library instead of into that player's graveyard",
+                counter_target_spell_noun(filter)
+            ),
             Effect::CounterTargetSpell {
                 unless_pays: Some(amount),
                 filter,
+                ..
             } => format!(
                 "Counter target {} unless its controller pays {}",
                 counter_target_spell_noun(filter),
                 amount_label(amount)
             ),
+            Effect::CounterTargetActivatedAbility => {
+                "Counter target activated ability".to_string()
+            }
             Effect::ScheduleAtNextUpkeep { then, fire_at, .. } => {
                 let when = match fire_at {
                     Step::End => "the next end step",
@@ -1060,6 +1174,7 @@ impl Effect {
                 let dest = match to_zone {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
+                    SearchDest::LibraryTop => "on top of your library, revealing it",
                 };
                 format!("Search your library for {what}, put it {dest}")
             }
@@ -1079,6 +1194,9 @@ impl Effect {
             }
             Effect::EachPlayerExilesFromGraveyard => {
                 "Each player exiles a card from their graveyard".to_string()
+            }
+            Effect::TargetPlayerExilesFromGraveyard { .. } => {
+                "Target player exiles a card from their graveyard".to_string()
             }
             Effect::CasterKeepsOneOfEachTypePerPlayer => {
                 "For each player, you choose an artifact, a creature, an enchantment, and a \
@@ -1129,12 +1247,19 @@ impl Effect {
                 card_filter_label(filter)
             ),
             Effect::MayDiscard { .. } => "You may discard a card".to_string(),
+            Effect::MayDrawUnlessPays { cost, .. } => {
+                format!("You may draw a card unless that player pays {}", amount_label(cost))
+            }
             Effect::TapTarget { .. } => "Tap target".to_string(),
             Effect::UntapTarget { .. } => "Untap target".to_string(),
             Effect::GainControlUntilEndOfTurn { .. } => {
                 "Gain control of target creature until end of turn".to_string()
             }
             Effect::GainControl { .. } => "Gain control of target creature".to_string(),
+            Effect::GainControlWhile { .. } => {
+                "Gain control of target creature for as long as you control this and it remains tapped"
+                    .to_string()
+            }
             Effect::GrantSourceAbilitiesUntilEndOfTurn => {
                 "It gains this creature's other abilities until end of turn".to_string()
             }
@@ -1152,6 +1277,7 @@ impl Effect {
                 format!("Defending player sacrifices {count} permanents of their choice")
             }
             Effect::SacrificeObject { .. } => "Sacrifice it".to_string(),
+            Effect::SacrificeSource => "Sacrifice it".to_string(),
             Effect::SacrificeEnchantedCreature { .. } => {
                 "That creature's controller sacrifices it".to_string()
             }
@@ -1227,6 +1353,7 @@ mod tests {
                     Effect::Discard {
                         count: 2,
                         target_player: false,
+                        or_one_matching: None,
                     },
                 ],
             }

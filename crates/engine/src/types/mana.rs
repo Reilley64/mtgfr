@@ -54,6 +54,7 @@ impl Cost {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -74,6 +75,56 @@ impl Cost {
             ..self
         }
     }
+
+    /// Whether this mana cost "could be paid by some amount of, or all of" a spent-mana multiset
+    /// (Illusionary Mask's `{X}` test, CR 107.3). `spent` is [`ManaPool::spent_counts`]'s shape:
+    /// one count per color plus a sixth bucket of credits with no one specific color. Each colored
+    /// pip needs a spent unit of its color; each hybrid pip (CR 107.4e — `{a/b}`) a unit of either
+    /// of its two colors; generic pips take any remaining unit. This cost's own `{X}` is
+    /// necessarily chosen as 0 for a cast it must fund at 0 (CR 107.3b), so its `x` pips need
+    /// nothing.
+    /// ponytail: `{C}` pips are treated as unpayable — the sixth bucket can't tell true colorless
+    /// from an "any"/dual credit (mana of a color is never colorless); no pool creature card
+    /// prints `{C}` in its cost. Split the bucket if one lands.
+    pub fn payable_from_multiset(&self, spent: &[u8; 6]) -> bool {
+        if self.colorless > 0 {
+            return false;
+        }
+        let mut remaining = *spent;
+        for (remaining, &pips) in remaining.iter_mut().zip(self.colored.iter()) {
+            if *remaining < pips {
+                return false;
+            }
+            *remaining -= pips;
+        }
+        if !hybrid_pips_assignable(self.hybrid, &mut remaining) {
+            return false;
+        }
+        let left: u32 = remaining.iter().map(|&n| u32::from(n)).sum();
+        left >= u32::from(self.generic)
+    }
+}
+
+/// Assign each hybrid pip (CR 107.4e — `{a/b}`) one remaining spent unit of either of its colors,
+/// backtracking when a pick strands a later pip. On success the picks stay deducted from
+/// `remaining`; which colors fund which pips never changes the total left for generic, so any
+/// successful assignment is as good as any other. Exhaustive (2^pips), but a real cost carries at
+/// most a handful of hybrid pips.
+fn hybrid_pips_assignable(pips: &[(Color, Color)], remaining: &mut [u8; 6]) -> bool {
+    let Some((&(a, b), rest)) = pips.split_first() else {
+        return true;
+    };
+    for color in [a, b] {
+        if remaining[color.index()] == 0 {
+            continue;
+        }
+        remaining[color.index()] -= 1;
+        if hybrid_pips_assignable(rest, remaining) {
+            return true;
+        }
+        remaining[color.index()] += 1;
+    }
+    false
 }
 
 /// An additional cost to cast a spell (CR 601.2f), on top of its mana cost. Paid synchronously
@@ -126,6 +177,17 @@ pub struct AdditionalCost {
     /// (`{N}` any number of times, CR 702.34) or a two-kicker-costs card (Rite of Flame-style
     /// "Kicker {1}, Kicker {R}") isn't modeled; grow those from a real card that needs one.
     pub kicker: Option<&'static Cost>,
+    /// Buyback (CR 702.27) — "You may pay an additional [cost] as you cast this spell. If you
+    /// do, put this card into your hand as it resolves" (Capsize's "Buyback {3}"). `None` for a
+    /// spell with no buyback. Entirely optional, mirroring [`Self::kicker`]'s own opt-in shape:
+    /// the caster chooses whether to pay when casting (CR 702.27c), recorded on the resulting
+    /// [`Spell::bought_back`] for [`Game::finish_instant_sorcery_resolution`] to branch on (CR
+    /// 702.27d — the card returns to its owner's hand instead of the graveyard). A `&'static`
+    /// reference for the same recursive-`Cost` reason as [`Self::kicker`]. TOML
+    /// `[cost.additional.buyback]` — the same shape as `[cost.additional.kicker]`.
+    /// ponytail: single-buyback only, mirroring kicker's own single-cost shape — no pool card
+    /// prints two buyback costs; grow that if one ever does.
+    pub buyback: Option<&'static Cost>,
     /// Strive (CR 702.42) — "This spell costs [cost] more to cast for each target beyond the
     /// first" (Twinflame's `{2}{R}`). `None` for a spell with no Strive. Unlike kicker (paid or
     /// not), Strive's total depends on *how many* targets the caster commits to: CR 601.2c
@@ -522,6 +584,42 @@ impl ManaPool {
                 mine.key = None;
             }
         }
+    }
+
+    /// The colors actually spent in this multiset (CR 106.9's "spent to cast" query — Court
+    /// Hussar's "unless {W} was spent to cast it"): `true` at index `i` iff any of `colored[i]`
+    /// was spent. Read off the exact payment [`ManaPool::spend_plan`] returns, right after
+    /// [`Game::settle_payment`](crate::Game::settle_payment) appends its [`Event::ManaSpent`].
+    /// ponytail: only literally-colored `colored` credits count — a dual ([`Mana::Either`]),
+    /// restricted-set ([`Mana::OfColors`]), or "any" ([`Mana::Any`]) credit spent toward a pip
+    /// never resolves to one specific color in this model (see this type's own doc), so paying,
+    /// say, a generic cost entirely from a Tundra never counts as white (or blue) spent here. No
+    /// pool card's mana base exercises that gap yet; widen if a dual/filter-land-heavy deck needs it.
+    pub(crate) fn colors_spent(&self) -> [bool; Color::COUNT] {
+        self.colored.map(|n| n > 0)
+    }
+
+    /// The multiset of mana actually spent, counted per kind for Illusionary Mask's CR 107.3
+    /// "the mana you spent on {X}" payability test ([`Cost::payable_from_multiset`]): one count
+    /// per color, plus a sixth bucket for every credit that never resolves to one specific color
+    /// in this model — colorless, "any", dual, restricted-set, and spend-restricted credits (the
+    /// same modeling line as [`ManaPool::colors_spent`]'s ponytail; those pay only generic pips).
+    /// Read off the exact payment [`ManaPool::spend_plan`] returns, like `colors_spent`.
+    pub(crate) fn spent_counts(&self) -> [u8; 6] {
+        let sum = |xs: &[u8]| xs.iter().map(|&n| u32::from(n)).sum::<u32>();
+        let other = u32::from(self.colorless)
+            + u32::from(self.any)
+            + sum(&self.either)
+            + sum(&self.of_colors)
+            + self
+                .restricted
+                .iter()
+                .map(|s| u32::from(s.amount))
+                .sum::<u32>();
+        let mut counts = [0u8; 6];
+        counts[..Color::COUNT].copy_from_slice(&self.colored);
+        counts[Color::COUNT] = other.min(u8::MAX.into()) as u8;
+        counts
     }
 
     /// This pool capped at `cap`, per bucket (CR 500.4's "until end of turn" mana exception,

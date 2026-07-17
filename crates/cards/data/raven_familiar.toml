@@ -1,0 +1,42 @@
+# Flying
+# Echo {2}{U} (At the beginning of your upkeep, if this came under your control since the beginning of your last
+# upkeep, sacrifice it unless you pay its echo cost.)
+# When this creature enters, look at the top three cards of your library. Put one of them into your hand and the rest
+# on the bottom of your library in any order.
+name = "Raven Familiar"
+otags = ["drawback", "evasion", "hand-neutral", "impulse", "intervening-if-clause", "virtual-french-vanilla"]
+set = "c13"
+subtypes = ["Bird"]
+id = "47aabd9d-0f68-490a-a2ae-5cd9ef689be6"
+default_print = "8b60227d-74de-4f2a-b281-3512dd77ffe8"
+oracle = "Flying\nEcho {2}{U} (At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay its echo cost.)\nWhen this creature enters, look at the top three cards of your library. Put one of them into your hand and the rest on the bottom of your library in any order."
+keywords = ["flying"]
+
+[cost]
+generic = 2
+blue = 1
+
+# Echo {2}{U}
+[echo]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+
+# When this creature enters, look at the top three cards of your library. Put one of them into
+# your hand and the rest on the bottom of your library in any order.
+[[abilities]]
+timing = "etb"
+
+# look at the top three cards of your library. Put one of them into your hand and the rest on the
+# bottom of your library in any order.
+[[abilities.effects]]
+type = "look_at_top"
+count = 3
+up_to = 1
+min = 1
+dest = "hand"
+rest = "bottom"

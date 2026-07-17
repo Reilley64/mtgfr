@@ -1,0 +1,42 @@
+# {2}{W}: Tap target creature.
+# {2}{U}: Counter target activated ability. (Mana abilities can't be targeted.)
+name = "Azorius Guildmage"
+otags = ["activated-ability", "counterspell-ability", "counterspell-reusable", "cycle-block-rav-guildmage", "mana-sink", "repeatable-crime", "tapper-creature"]
+set = "rvr"
+subtypes = ["Vedalken", "Wizard"]
+id = "16f61f69-cdde-4b6c-b855-c74db9038ceb"
+default_print = "288c751e-a042-45a9-adce-7001bb0ce512"
+oracle = "{2}{W}: Tap target creature.\n{2}{U}: Counter target activated ability. (Mana abilities can't be targeted.)"
+
+[cost]
+hybrid = [["white", "blue"], ["white", "blue"]]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# {2}{W}: Tap target creature.
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 2
+white = 1
+
+# Tap target creature.
+[[abilities.effects]]
+type = "tap_target"
+target = "creature"
+
+# {2}{U}: Counter target activated ability. (Mana abilities can't be targeted.)
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 2
+blue = 1
+
+# Counter target activated ability.
+[[abilities.effects]]
+type = "counter_target_activated_ability"

@@ -1,0 +1,29 @@
+# Defender (This creature can't attack.)
+# When this creature enters, draw a card.
+name = "Jungle Barrier"
+otags = ["cantrip", "cycle-apc-u-two-color", "cycle-ima-draft-signpost", "drawback", "hand-neutral", "triggered-ability", "type-errata", "virtual-french-vanilla"]
+set = "ima"
+subtypes = ["Plant", "Wall"]
+id = "dcf65293-14a0-46a5-a0b0-ca2b7fda8bef"
+default_print = "a8097e6e-c04e-4266-a8f4-07e5fb0638d4"
+oracle = "Defender (This creature can't attack.)\nWhen this creature enters, draw a card."
+keywords = ["defender"]
+
+[cost]
+generic = 2
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 6
+
+# When this creature enters, draw a card.
+[[abilities]]
+timing = "etb"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

@@ -42,7 +42,13 @@ pub enum Answer {
     Discard {
         cards: Vec<ObjectId>,
     },
+    DeclineUntap {
+        keep_tapped: Vec<ObjectId>,
+    },
     PutLand {
+        choice: Option<ObjectId>,
+    },
+    ReturnLand {
         choice: Option<ObjectId>,
     },
     ChooseExiled {
@@ -95,6 +101,9 @@ pub enum Answer {
     CopyTarget {
         copy: Option<ObjectId>,
     },
+    TopOrBottom {
+        top: bool,
+    },
 }
 
 /// Encode a form answer into the WireIntent that answers `view`.
@@ -132,7 +141,15 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
             sacrifices: ids,
         },
         Answer::Discard { cards } => WireIntent::Discard { player, cards },
+        Answer::DeclineUntap { keep_tapped } => WireIntent::DeclineUntap {
+            player,
+            keep_tapped,
+        },
         Answer::PutLand { choice } => WireIntent::PutLandFromHand { player, choice },
+        Answer::ReturnLand { choice } => WireIntent::ReturnLandOrSacrifice {
+            player,
+            land: choice,
+        },
         Answer::ChooseExiled { choice } => WireIntent::ChooseExiledWithCard { player, choice },
         Answer::SelectTop { cards } => WireIntent::SelectFromTop { player, cards },
         Answer::Mode { mode } => WireIntent::ChooseMode { player, mode },
@@ -164,6 +181,7 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
         }
         Answer::AttachHost { host } => WireIntent::ChooseAttachHost { player, host },
         Answer::CopyTarget { copy } => WireIntent::ChooseCopyTarget { player, copy },
+        Answer::TopOrBottom { top } => WireIntent::ChooseTopOrBottom { player, top },
     }
 }
 
@@ -174,9 +192,14 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::ChooseSpellTargets { player, .. }
         | PendingChoiceView::ChooseTargetPlayers { player, .. }
         | PendingChoiceView::MayYesNo { player, .. }
+        | PendingChoiceView::DeclineUntap { player, .. }
         | PendingChoiceView::PayCost { player, .. }
         | PendingChoiceView::PayOrCounter { player, .. }
+        | PendingChoiceView::PayOrControllerDraws { player, .. }
+        | PendingChoiceView::ChooseCounteredSpellDestination { player, .. }
         | PendingChoiceView::PayEchoOrSacrifice { player, .. }
+        | PendingChoiceView::SacrificeUnlessPay { player, .. }
+        | PendingChoiceView::SacrificeUnlessReturnLand { player, .. }
         | PendingChoiceView::AssignCombatDamage { player, .. }
         | PendingChoiceView::DivideSpellDamage { player, .. }
         | PendingChoiceView::DivideCounters { player, .. }
@@ -200,12 +223,16 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::MayDiscard { player, .. }
         | PendingChoiceView::Discard { player, .. }
         | PendingChoiceView::PutLandFromHand { player, .. }
+        | PendingChoiceView::CastCreatureFaceDown { player, .. }
         | PendingChoiceView::ChooseExiledWithCard { player, .. }
         | PendingChoiceView::ChooseExiledWithCardToCast { player, .. }
         | PendingChoiceView::ChooseExiledDigToCastFree { player, .. }
         | PendingChoiceView::DanceExileMore { player, .. }
         | PendingChoiceView::OpponentChoosesPile { player, .. }
         | PendingChoiceView::OpponentChoosesExiledNonland { player, .. }
+        | PendingChoiceView::ChooseSplittingOpponent { player, .. }
+        | PendingChoiceView::PartitionRevealed { player, .. }
+        | PendingChoiceView::ChoosePileForHand { player, .. }
         | PendingChoiceView::ChooseExiledToCastFree { player, .. }
         | PendingChoiceView::RevealedCardToBattlefieldOrHand { player, .. }
         | PendingChoiceView::ChooseMode { player, .. }

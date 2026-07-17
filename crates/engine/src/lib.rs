@@ -43,6 +43,7 @@ mod zones;
 
 /// Shared Effect-resolution context for [`Game::run`] / [`Game::run_sequence`].
 pub(crate) use resolution::ResolveCtx;
+pub use state::ControlCondition;
 pub use types::*;
 
 /// The authoritative state of one game.
@@ -242,6 +243,8 @@ impl Game {
                     graveyard_exile,
                     sacrifice_cost,
                     kicked,
+                    bought_back,
+                    evoked,
                     strive_count,
                     replicate_count,
                 } => self.cast(
@@ -254,6 +257,8 @@ impl Game {
                     graveyard_exile,
                     sacrifice_cost,
                     kicked,
+                    bought_back,
+                    evoked,
                     strive_count,
                     replicate_count,
                 )?,
@@ -282,6 +287,7 @@ impl Game {
                     object,
                     target,
                 } => self.cast_bestow(player, object, target)?,
+                Intent::CastFaceDown { player, card } => self.cast_face_down(player, card)?,
                 Intent::TapForMana { player, object } => self.tap_for_mana(player, object)?,
                 Intent::ChannelColorlessMana { player } => self.channel_colorless_mana(player)?,
                 Intent::Concede { player } => self.concede(player),
@@ -397,6 +403,8 @@ impl Game {
                 graveyard_exile,
                 &[],
                 false,
+                false,
+                false,
                 0,
                 0,
                 playable::CastPlayKind::OneClick,
@@ -417,6 +425,7 @@ impl Game {
             MeaningfulAction::CastPrepared { source } => {
                 self.cast_prepared(player, source, target, x)
             }
+            MeaningfulAction::CastFaceDown { card } => self.cast_face_down(player, card),
             MeaningfulAction::DeclareAttackers => self.declare_attackers(player, &attackers),
             MeaningfulAction::DeclareBlockers => self.declare_blockers(player, &blocks),
         }
@@ -717,6 +726,8 @@ mod refresh_actions_tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -731,6 +742,7 @@ mod refresh_actions_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -815,6 +827,8 @@ mod refresh_actions_tests {
                 flashback: None,
                 echo: None,
                 bestow: None,
+                morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -829,6 +843,7 @@ mod refresh_actions_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         );
         game.refresh_actions();

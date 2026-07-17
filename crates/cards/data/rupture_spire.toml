@@ -1,0 +1,32 @@
+# This land enters tapped.
+# When this land enters, sacrifice it unless you pay {1}.
+# {T}: Add one mana of any color.
+name = "Rupture Spire"
+otags = ["activated-ability", "rainbow-land", "triggered-ability", "rupture-spire"]
+set = "cmr"
+id = "7eadffcb-1e15-44c1-b1db-78c71b8ec1ce"
+default_print = "c7ef4b15-efab-4255-ac2d-7794f253aa52"
+oracle = "This land enters tapped.\nWhen this land enters, sacrifice it unless you pay {1}.\n{T}: Add one mana of any color."
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# When this land enters, sacrifice it unless you pay {1}.
+[[abilities]]
+timing = "etb"
+
+# sacrifice it unless you pay {1}.
+[[abilities.effects]]
+type = "sacrifice_self_unless_pay"
+cost = { generic = 1 }
+
+# {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]

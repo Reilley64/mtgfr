@@ -1,0 +1,34 @@
+# Flying
+# When this creature enters, draw two cards.
+# Evoke {2}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)
+name = "Mulldrifter"
+otags = ["cheaper-than-mv", "evasion", "hand-positive", "intervening-if-clause", "pure-draw", "virtual-french-vanilla"]
+set = "ecc"
+subtypes = ["Elemental"]
+id = "24d0f5e7-0d9e-4b76-900e-a7274e80312d"
+default_print = "3de308cc-14ac-407e-99e7-568572ecd0e7"
+oracle = "Flying\nWhen this creature enters, draw two cards.\nEvoke {2}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)"
+keywords = ["flying"]
+
+[cost]
+generic = 4
+blue = 1
+
+# Evoke {2}{U}
+[evoke]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, draw two cards.
+[[abilities]]
+timing = "etb"
+
+# draw two cards.
+[[abilities.effects]]
+type = "draw_cards"
+count = 2

@@ -119,6 +119,12 @@ pub enum VisibleEvent {
     AbilityResolved {
         source: ObjectId,
     },
+    /// An activated ability on the stack was countered (CR 701.5c/112.7a — Azorius Guildmage). It
+    /// leaves the stack and ceases to exist; nothing is hidden (which ability was countered is
+    /// public), so this is a straight passthrough of the engine event's `source`.
+    AbilityCountered {
+        source: ObjectId,
+    },
     LandPlayed {
         permanent: ObjectId,
         from: ObjectId,
@@ -250,6 +256,17 @@ pub enum VisibleEvent {
     ControlGained {
         object: ObjectId,
         controller: u8,
+    },
+    /// A condition-scoped control change took effect (CR 611.2b — Rubinia Soulsinger): `object` is
+    /// now controlled by `controller` for as long as the condition holds.
+    ConditionedControlGained {
+        object: ObjectId,
+        controller: u8,
+    },
+    /// A condition-scoped control override ended because its condition stopped holding (the source
+    /// untapped, left, or changed controller — CR 611.2b).
+    ConditionedControlEnded {
+        object: ObjectId,
     },
     AttackerDeclared {
         object: ObjectId,
@@ -413,6 +430,13 @@ pub enum VisibleEvent {
         player: u8,
         amount: i32,
     },
+    /// `source` dealt noncombat damage to `player` (public — damage to a player is announced,
+    /// CR 120.1) — the noncombat twin of `CombatDamageDealtToPlayer`.
+    DamageDealtToPlayer {
+        source: ObjectId,
+        player: u8,
+        amount: i32,
+    },
     /// `amount` combat damage that would have been dealt to `player` was prevented by a shield
     /// (Inkshield, CR 615) — public, like the combat damage it replaces. The Inkling mints it
     /// drives arrive as accompanying `TokenCreated` events.
@@ -567,6 +591,13 @@ pub enum VisibleEvent {
         from: ObjectId,
         controller: u8,
         source: ObjectId,
+    },
+    /// A flicker's return (immediate or the delayed end-step twin): the exiled card `from`
+    /// returned to the battlefield as `permanent`, under `controller`'s control.
+    FlickeredToBattlefield {
+        permanent: ObjectId,
+        from: ObjectId,
+        controller: u8,
     },
     ReturnedToHand {
         card: ObjectId,

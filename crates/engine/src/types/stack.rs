@@ -34,6 +34,17 @@ pub enum Intent {
         /// default — decline) for a spell with no kicker. Recorded on the resulting
         /// [`Spell::kicked`].
         kicked: bool,
+        /// Whether the caster paid the spell's buyback cost ([`AdditionalCost::buyback`] — CR
+        /// 702.27c), folding it into the mana paid alongside the printed cost, mirroring
+        /// `kicked`'s own opt-in shape. `false` (the default — decline) for a spell with no
+        /// buyback. Recorded on the resulting [`Spell::bought_back`].
+        bought_back: bool,
+        /// Whether the caster is casting the spell for its evoke cost (CR 702.74a —
+        /// [`CardDef::evoke`]), charged instead of the printed cost. `false` (the default) for a
+        /// spell with no evoke, or to cast it normally. Recorded on the resulting
+        /// [`Spell::evoked`]; the resulting permanent is sacrificed the instant it enters (see
+        /// [`Permanent::evoked`]).
+        evoked: bool,
         /// The caster's declared Strive target count ([`AdditionalCost::strive`] — CR 601.2c/
         /// 601.2f/702.42), settled before the stack since Strive's total cost depends on it (see
         /// [`AdditionalCost::strive`]'s own doc). 0 (the default) for a spell with no Strive, or
@@ -107,6 +118,11 @@ pub enum Intent {
         object: ObjectId,
         target: Option<Target>,
     },
+    /// Cast a hand card face down as a 2/2 creature for {3} (CR 702.37b — morph). `card` is the
+    /// card in `player`'s hand (its [`CardDef::morph`] makes it eligible). Casting pays a flat
+    /// generic {3} and puts it on the stack as a face-down creature spell; on resolution it
+    /// enters as a face-down 2/2 permanent (CR 708.2). See [`Game::cast_face_down`].
+    CastFaceDown { player: PlayerId, card: ObjectId },
     /// Tap a land for one mana (a mana ability — doesn't use the stack).
     TapForMana { player: PlayerId, object: ObjectId },
     /// Pay 1 life to add {C} under a Channel-style temporary grant (a mana ability — doesn't use
@@ -154,8 +170,23 @@ pub enum Intent {
     },
     /// Answer a [`PendingChoice::MayYesNo`]: accept or decline an optional trigger.
     AnswerMay { player: PlayerId, yes: bool },
+    /// Answer a [`PendingChoice::DeclineUntap`] (CR 502.2 — Rubinia Soulsinger's "you may choose
+    /// not to untap"): `keep_tapped` are the offered permanents the player leaves tapped; every
+    /// other offered permanent untaps.
+    DeclineUntap {
+        player: PlayerId,
+        keep_tapped: Vec<ObjectId>,
+    },
     /// Answer a [`PendingChoice::PayCost`]: pay the cost (getting the effect) or decline.
     PayOptionalCost { player: PlayerId, pay: bool },
+    /// Answer a [`PendingChoice::PayCost`] whose `cost` carries a chosen `{X}` (CR 107.3 — Decree
+    /// of Justice's cycling rider "you may pay {X}. If you do, create X 1/1 white Soldier
+    /// creature tokens."): pay `cost.with_x(x)` and thread `x` onto the placed ability so its own
+    /// `Amount::X` reads it, or decline (`x` ignored). A distinct variant from
+    /// [`Self::PayOptionalCost`] rather than widening its `x`-less shape — no other `PayCost`
+    /// answerer in the pool needs an `{X}`, and this keeps every existing plain pay/decline call
+    /// site untouched. See [`Game::pay_optional_cost_with_x`](crate::Game::pay_optional_cost_with_x).
+    PayOptionalCostX { player: PlayerId, pay: bool, x: u32 },
     /// Answer a [`PendingChoice::AssignCombatDamage`] with `(blocker, amount)` assignments.
     AssignDamage {
         player: PlayerId,
@@ -224,6 +255,19 @@ pub enum Intent {
         player: PlayerId,
         choice: Option<ObjectId>,
     },
+    /// Answer a [`PendingChoice::CastCreatureFaceDown`]: `choice` is the hand creature card cast
+    /// face down as a 2/2 (one of the offered candidates), or `None` to decline (Illusionary Mask).
+    CastCreatureFaceDown {
+        player: PlayerId,
+        choice: Option<ObjectId>,
+    },
+    /// Answer a [`PendingChoice::SacrificeUnlessReturnLand`]: `land` is the offered non-Lair land
+    /// returned to its owner's hand (keeping the source), or `None` to decline and sacrifice the
+    /// source instead.
+    ReturnLandOrSacrifice {
+        player: PlayerId,
+        land: Option<ObjectId>,
+    },
     /// Answer a [`PendingChoice::ChooseExiledWithCard`]: `choice` is the exiled-with card put
     /// into its owner's graveyard (one of the offered candidates), or `None` to decline.
     ChooseExiledWithCard {
@@ -290,6 +334,9 @@ pub enum Intent {
         player: PlayerId,
         copy: Option<ObjectId>,
     },
+    /// Answer a [`PendingChoice::ChooseCounteredSpellDestination`] (Hinder's CR 701.5b rider):
+    /// `top` puts the countered card on top of its owner's library, `false` on the bottom.
+    ChooseTopOrBottom { player: PlayerId, top: bool },
     /// Decline to act; pass priority.
     PassPriority { player: PlayerId },
     /// Leave the game (CR 104.3a). Legal at any time, with or without priority, and even while the
@@ -359,7 +406,8 @@ impl Intent {
             Intent::Cycle { card, .. }
             | Intent::ActivateHandAbility { card, .. }
             | Intent::Suspend { card, .. }
-            | Intent::Encore { card, .. } => vec![*card],
+            | Intent::Encore { card, .. }
+            | Intent::CastFaceDown { card, .. } => vec![*card],
             Intent::TurnFaceUp { permanent, .. } => vec![*permanent],
             Intent::CastPrepared { source, target, .. }
             | Intent::CastAdventure { source, target, .. } => once(*source)
@@ -399,14 +447,17 @@ impl Intent {
                 .collect(),
             Intent::SearchLibrary { choice, .. }
             | Intent::PutLandFromHand { choice, .. }
+            | Intent::CastCreatureFaceDown { choice, .. }
             | Intent::ChooseExiledWithCard { choice, .. }
             | Intent::ChooseExiledWithCardToCast { choice, .. }
             | Intent::ChooseExiledDigToCastFree { choice, .. }
             | Intent::RevealedCardToBattlefieldOrHand { choice, .. } => {
                 choice.iter().copied().collect()
             }
+            Intent::ReturnLandOrSacrifice { land, .. } => land.iter().copied().collect(),
             Intent::ChooseSacrifices { sacrifices, .. } => sacrifices.clone(),
             Intent::Discard { cards, .. } => cards.clone(),
+            Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
             Intent::ChooseAttachHost { host, .. } => host.iter().copied().collect(),
             Intent::ChooseCopyTarget { copy, .. } => copy.iter().copied().collect(),
             // The carried params reference real object ids (the action's own object is looked
@@ -442,11 +493,13 @@ impl Intent {
             | Intent::ChooseTargetPlayers { .. }
             | Intent::AnswerMay { .. }
             | Intent::PayOptionalCost { .. }
+            | Intent::PayOptionalCostX { .. }
             | Intent::ChooseMode { .. }
             | Intent::ChooseOpponentPile { .. }
             | Intent::ChooseManaColor { .. }
             | Intent::ChooseCreatureType { .. }
             | Intent::ChooseColor { .. }
+            | Intent::ChooseTopOrBottom { .. }
             | Intent::PassPriority { .. }
             | Intent::Concede { .. } => Vec::new(),
         }
@@ -465,6 +518,7 @@ impl Intent {
             | Intent::CastPrepared { player, .. }
             | Intent::CastAdventure { player, .. }
             | Intent::CastBestow { player, .. }
+            | Intent::CastFaceDown { player, .. }
             | Intent::TapForMana { player, .. }
             | Intent::ChannelColorlessMana { player, .. }
             | Intent::ActivateAbility { player, .. }
@@ -475,8 +529,10 @@ impl Intent {
             | Intent::ChooseTargetPlayers { player, .. }
             | Intent::AnswerMay { player, .. }
             | Intent::PayOptionalCost { player, .. }
+            | Intent::PayOptionalCostX { player, .. }
             | Intent::AssignDamage { player, .. }
             | Intent::DivideSpellDamage { player, .. }
+            | Intent::DeclineUntap { player, .. }
             | Intent::ArrangeTop { player, .. }
             | Intent::SelectFromTop { player, .. }
             | Intent::DistributeTop { player, .. }
@@ -485,6 +541,8 @@ impl Intent {
             | Intent::ChooseSacrifices { player, .. }
             | Intent::Discard { player, .. }
             | Intent::PutLandFromHand { player, .. }
+            | Intent::CastCreatureFaceDown { player, .. }
+            | Intent::ReturnLandOrSacrifice { player, .. }
             | Intent::ChooseExiledWithCard { player, .. }
             | Intent::ChooseExiledWithCardToCast { player, .. }
             | Intent::ChooseExiledDigToCastFree { player, .. }
@@ -497,6 +555,7 @@ impl Intent {
             | Intent::ChooseColor { player, .. }
             | Intent::ChooseCopyTarget { player, .. }
             | Intent::ChooseAttachHost { player, .. }
+            | Intent::ChooseTopOrBottom { player, .. }
             | Intent::TakeAction { player, .. }
             | Intent::PassPriority { player }
             | Intent::Concede { player } => *player,
@@ -517,8 +576,10 @@ impl Intent {
             | Intent::ChooseTargetPlayers { .. }
             | Intent::AnswerMay { .. }
             | Intent::PayOptionalCost { .. }
+            | Intent::PayOptionalCostX { .. }
             | Intent::AssignDamage { .. }
             | Intent::DivideSpellDamage { .. }
+            | Intent::DeclineUntap { .. }
             | Intent::ArrangeTop { .. }
             | Intent::SelectFromTop { .. }
             | Intent::DistributeTop { .. }
@@ -527,6 +588,8 @@ impl Intent {
             | Intent::ChooseSacrifices { .. }
             | Intent::Discard { .. }
             | Intent::PutLandFromHand { .. }
+            | Intent::CastCreatureFaceDown { .. }
+            | Intent::ReturnLandOrSacrifice { .. }
             | Intent::ChooseExiledWithCard { .. }
             | Intent::ChooseExiledWithCardToCast { .. }
             | Intent::ChooseExiledDigToCastFree { .. }
@@ -538,7 +601,8 @@ impl Intent {
             | Intent::ChooseCreatureType { .. }
             | Intent::ChooseColor { .. }
             | Intent::ChooseCopyTarget { .. }
-            | Intent::ChooseAttachHost { .. } => true,
+            | Intent::ChooseAttachHost { .. }
+            | Intent::ChooseTopOrBottom { .. } => true,
             Intent::Cast { .. }
             | Intent::PlayLand { .. }
             | Intent::Cycle { .. }
@@ -549,6 +613,7 @@ impl Intent {
             | Intent::CastPrepared { .. }
             | Intent::CastAdventure { .. }
             | Intent::CastBestow { .. }
+            | Intent::CastFaceDown { .. }
             | Intent::TapForMana { .. }
             | Intent::ChannelColorlessMana { .. }
             | Intent::ActivateAbility { .. }
@@ -559,6 +624,20 @@ impl Intent {
             | Intent::Concede { .. } => false,
         }
     }
+}
+
+/// What [`PendingChoice::ChooseSplittingOpponent`] resumes into once the opponent is chosen. The
+/// split data (piles/reveal) was already computed before the chooser pause — it doesn't depend on
+/// which opponent answers — so this just carries it across that pause to the next one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SplittingContinuation {
+    /// Abstract Performance: the chosen opponent picks one of the two already-exiled piles.
+    ExilePiles {
+        pile_a: Vec<ObjectId>,
+        pile_b: Vec<ObjectId>,
+    },
+    /// Fact or Fiction: the chosen opponent partitions the five already-revealed cards.
+    Partition { revealed: Vec<ObjectId> },
 }
 
 /// A decision the engine is waiting on. While one is pending, only the matching
@@ -606,6 +685,15 @@ pub enum PendingChoice {
         source: ObjectId,
         effect: Effect,
     },
+    /// `player` (the active player at their untap step) may choose not to untap each of
+    /// `permanents` — the permanents they control that carry [`CardDef::may_choose_not_to_untap`]
+    /// (CR 502.2 — Rubinia Soulsinger). Raised as a turn-based-action pause; answered by
+    /// [`Intent::DeclineUntap`], which untaps every offered permanent the player didn't keep tapped
+    /// and resumes the interrupted untap step.
+    DeclineUntap {
+        player: PlayerId,
+        permanents: Vec<ObjectId>,
+    },
     /// `player` may pay `cost` to get an optional triggered ability (`source`'s `effect`).
     /// Answered by [`Intent::PayOptionalCost`].
     PayCost {
@@ -624,6 +712,24 @@ pub enum PendingChoice {
         cost: Cost,
         spell: ObjectId,
     },
+    /// `player` (the triggering opponent) may pay `cost` to stop `controller`'s optional draw —
+    /// Rhystic Study's "unless that player pays {1}" ([`Effect::MayDrawUnlessPays`]). Only raised
+    /// after `controller` accepts the preceding [`Self::MayYesNo`] pause (the real card's ruling:
+    /// declining to draw never even offers a pay window). Paying leaves `controller`'s hand
+    /// untouched; declining draws them a card. Answered by [`Intent::PayOptionalCost`], the same
+    /// "declining does something" polarity as [`Self::PayOrCounter`], but the something is a
+    /// draw rather than a counter.
+    PayOrControllerDraws {
+        player: PlayerId,
+        controller: PlayerId,
+        cost: Cost,
+    },
+    /// `player` (Hinder's controller) must choose the top or bottom of `spell`'s owner's library
+    /// (CR 701.5b — [`Effect::CounterTargetSpell`]'s `countered_dest` rider): `spell` is already
+    /// countered — still a live [`crate::Object::Spell`] on the stack until this answers — and
+    /// this choice picks where it goes instead of into the graveyard. Answered by
+    /// [`Intent::ChooseTopOrBottom`].
+    ChooseCounteredSpellDestination { player: PlayerId, spell: ObjectId },
     /// `player` (the permanent's controller) may pay `cost` (its printed Echo cost) to keep
     /// `source`, or decline and sacrifice it (CR 702.31c/d — "sacrifice it unless you pay its
     /// echo cost"). Answered by [`Intent::PayOptionalCost`], the permanent-scoped twin of
@@ -633,6 +739,26 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         cost: Cost,
+    },
+    /// `player` (`source`'s controller) may pay `cost` to keep `source`, or decline and sacrifice
+    /// it — Rupture Spire's own ETB triggered ability (CR 603.3b), NOT Echo, though it shares
+    /// [`Self::PayEchoOrSacrifice`]'s pay-or-sacrifice polarity and its
+    /// [`Intent::PayOptionalCost`] answer shape. Kept as its own variant (rather than reused)
+    /// because it's a real triggered ability firing once at ETB, not Echo's own upkeep-scoped
+    /// keyword (CR 702.31) — conflating the two would misname what's happening on the stack.
+    SacrificeUnlessPay {
+        player: PlayerId,
+        source: ObjectId,
+        cost: Cost,
+    },
+    /// `player` (`source`'s controller) must return one of `candidates` (their own non-Lair
+    /// lands) to its owner's hand to keep `source`, or decline and sacrifice it — Treva's Ruins'
+    /// own ETB triggered ability. The land-bounce twin of [`Self::SacrificeUnlessPay`]; answered
+    /// by [`Intent::ReturnLandOrSacrifice`]. `candidates` are public battlefield permanents.
+    SacrificeUnlessReturnLand {
+        player: PlayerId,
+        source: ObjectId,
+        candidates: Vec<ObjectId>,
     },
     /// `player` (the attacker's controller) must divide `attacker`'s combat damage among its
     /// `blockers`. Answered by [`Intent::AssignDamage`].
@@ -963,10 +1089,14 @@ pub enum PendingChoice {
     /// rummage half, Faithless Looting): choose `count` of `hand` (their whole hand, kept for
     /// stable validation) to put into the graveyard. Answered by [`Intent::Discard`], like a
     /// cleanup discard — but resuming the resolving ability's sequence rather than a step change.
+    /// `or_one_matching` mirrors [`Effect::Discard::or_one_matching`]: when `Some`, a one-card
+    /// answer matching the filter is accepted instead of the full `count`-card answer
+    /// (Compulsive Research's land escape valve).
     DiscardCards {
         player: PlayerId,
         hand: Vec<ObjectId>,
         count: usize,
+        or_one_matching: Option<CardFilter>,
     },
     /// `player` may put one of `candidates` (their hand's land cards) onto the battlefield
     /// (`tapped` if it enters tapped), or decline ("up to one" — CR 305.9 special action, an
@@ -974,6 +1104,16 @@ pub enum PendingChoice {
     PutLandFromHand {
         player: PlayerId,
         tapped: bool,
+        candidates: Vec<ObjectId>,
+    },
+    /// `player` may cast one of `candidates` — the creature cards in their hand whose mana cost
+    /// could be paid by some amount of, or all of, the mana spent on the `{X}` paid (CR 107.3,
+    /// [`Cost::payable_from_multiset`]) — face down as a 2/2 creature spell without paying its
+    /// mana cost, or decline ("you may" — [`Effect::CastCreatureFaceDown`], Illusionary Mask,
+    /// resolving).
+    /// Answered by [`Intent::CastCreatureFaceDown`]. The candidates are hand cards, so private.
+    CastCreatureFaceDown {
+        player: PlayerId,
         candidates: Vec<ObjectId>,
     },
     /// `player` must choose up to one of `candidates` — the cards exiled with `source`
@@ -1035,6 +1175,49 @@ pub enum PendingChoice {
         source: ObjectId,
         nonlands: Vec<ObjectId>,
         exiled: Vec<ObjectId>,
+    },
+    /// `player` (the ability's controller) must choose which opponent makes an "an opponent ..."
+    /// decision on their behalf — shared by Abstract Performance's pile split
+    /// ([`Effect::OpponentSplitsExilePiles`]) and Fact or Fiction's partition
+    /// ([`Effect::RevealTopSplitPiles`]): a settled ruling (not a numbered CR section) gives the
+    /// ability's controller the pick of *which* opponent "an opponent" means, when more than one
+    /// is alive. `legal` lists the living opponents; only raised when there are at least two
+    /// ([`Game::begin_choose_splitting_opponent`] resumes immediately with the sole opponent
+    /// otherwise — the same collapse this choice's predecessor hardcoded). Answered by
+    /// [`Intent::ChooseTargets`] (reusing its "single `Target::Player`" wire shape —
+    /// [`Game::choose_targets`] special-cases this pause the same way it already does
+    /// `Effect::Fight`/`Effect::Demonstrate`'s mid-resolution picks). Resumes into whichever pause
+    /// `then` names, now addressed to the chosen opponent.
+    ChooseSplittingOpponent {
+        player: PlayerId,
+        source: ObjectId,
+        legal: Vec<PlayerId>,
+        then: SplittingContinuation,
+    },
+    /// `player` (the opponent [`Self::ChooseSplittingOpponent`] named) must assign each of
+    /// `revealed` — the cards [`Effect::RevealTopSplitPiles`] revealed off `controller`'s library
+    /// (still library-resident and public, CR 701.16 "reveal" makes them visible to everyone) —
+    /// to one of two piles: the answer names pile A's subset (reusing
+    /// [`Intent::ChooseSacrifices`]'s "name the subset" wire shape), everything else in `revealed`
+    /// forms pile B. Either pile may be empty (CR "separates ... into two piles" allows a 0/5
+    /// split). `controller` then picks which pile to keep on a [`Self::ChoosePileForHand`].
+    PartitionRevealed {
+        player: PlayerId,
+        controller: PlayerId,
+        source: ObjectId,
+        revealed: Vec<ObjectId>,
+    },
+    /// `player` (the controller of [`Effect::RevealTopSplitPiles`]) picks one of the two piles
+    /// [`Self::PartitionRevealed`] just made to put into their hand (CR "Put one pile into your
+    /// hand"); the other goes to their graveyard (CR "and the other into your graveyard").
+    /// Answered by [`Intent::ChooseOpponentPile`] (reusing Abstract Performance's "pick pile 0 or
+    /// 1" wire shape — the addressee here is the controller, not an opponent; the name is kept
+    /// for wire reuse).
+    ChoosePileForHand {
+        player: PlayerId,
+        source: ObjectId,
+        pile_a: Vec<ObjectId>,
+        pile_b: Vec<ObjectId>,
     },
     /// `player` (the ability's controller) may choose up to `count` of `candidates` — castable
     /// cards among the exile pile `exiled` — to grant the free-cast permission (CR 118.5). Answered
@@ -1115,8 +1298,10 @@ pub enum PendingChoice {
     /// [`Intent::ChooseColor`], which sets `source`'s [`Permanent::chosen_color`].
     ChooseColor { player: PlayerId, source: ObjectId },
     /// `player` (an entering permanent's controller) may have `source` enter as a copy of one of
-    /// `candidates` (every other creature on the battlefield — CR 706/707.2, Altered Ego, Cursed
-    /// Mirror). Answered by [`Intent::ChooseCopyTarget`]: `Some(creature)` copies it (overwriting
+    /// `candidates` (every other object of the marker's [`EnterAsCopy::of`] type on the
+    /// battlefield — CR 706/707.2: a creature for Altered Ego/Cursed Mirror, an enchantment
+    /// (including an Aura) for Copy Enchantment). Answered by [`Intent::ChooseCopyTarget`]:
+    /// `Some(object)` copies it (overwriting
     /// `source`'s `def` and applying the [`EnterAsCopy`] riders carried here), `None` declines
     /// ("you may" — `source` stays its printed self). Only raised when at least one candidate
     /// exists ([`Game::begin_enter_as_copy`]). `until_eot`/`extra_counters`/`gains_haste` are the
@@ -1270,9 +1455,14 @@ impl PendingChoice {
             | PendingChoice::ChooseSpellTargets { player, .. }
             | PendingChoice::ChooseAbilityTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
+            | PendingChoice::DeclineUntap { player, .. }
             | PendingChoice::PayCost { player, .. }
             | PendingChoice::PayOrCounter { player, .. }
+            | PendingChoice::PayOrControllerDraws { player, .. }
+            | PendingChoice::ChooseCounteredSpellDestination { player, .. }
             | PendingChoice::PayEchoOrSacrifice { player, .. }
+            | PendingChoice::SacrificeUnlessPay { player, .. }
+            | PendingChoice::SacrificeUnlessReturnLand { player, .. }
             | PendingChoice::AssignCombatDamage { player, .. }
             | PendingChoice::DivideSpellDamage { player, .. }
             | PendingChoice::DivideCounters { player, .. }
@@ -1294,6 +1484,7 @@ impl PendingChoice {
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
             | PendingChoice::PutLandFromHand { player, .. }
+            | PendingChoice::CastCreatureFaceDown { player, .. }
             | PendingChoice::ChooseMode { player, .. }
             | PendingChoice::ChooseTriggerModes { player, .. }
             | PendingChoice::ChooseExiledWithCard { player, .. }
@@ -1302,6 +1493,9 @@ impl PendingChoice {
             | PendingChoice::DanceExileMore { player, .. }
             | PendingChoice::OpponentChoosesPile { player, .. }
             | PendingChoice::OpponentChoosesExiledNonland { player, .. }
+            | PendingChoice::ChooseSplittingOpponent { player, .. }
+            | PendingChoice::PartitionRevealed { player, .. }
+            | PendingChoice::ChoosePileForHand { player, .. }
             | PendingChoice::ChooseExiledToCastFree { player, .. }
             | PendingChoice::RevealedCardToBattlefieldOrHand { player, .. }
             | PendingChoice::ChooseOwnSacrifices { player, .. }
@@ -1377,6 +1571,11 @@ pub(crate) enum StackItem {
         controller: PlayerId,
         source: ObjectId,
         effect: Effect,
+        /// Whether this is an *activated* ability (CR 602 — a permanent's activated ability,
+        /// cycling/hand activation, or a copy of one) rather than a *triggered* ability (CR 603).
+        /// Read by [`TargetSpec::ActivatedAbilityOnStack`](crate::TargetSpec) so "counter target
+        /// activated ability" (Azorius Guildmage) never reaches a triggered ability on the stack.
+        activated: bool,
         /// The chosen target of the ability's first target clause, if it targets.
         target: Option<Target>,
         /// The chosen targets of a *second* independent target clause (CR 603.3d — Kinetic Ooze's
@@ -1387,6 +1586,12 @@ pub(crate) enum StackItem {
         /// The chosen `{X}` for an activated ability whose cost contains `{X}` (or a copy of one,
         /// CR 707.10c); `0` for every triggered ability. Read at resolution for `Amount::X`.
         x: u32,
+        /// The multiset of mana actually spent activating this ability
+        /// ([`ManaPool::spent_counts`]'s shape) — Illusionary Mask's CR 107.3 "the mana you spent
+        /// on {X}" test reads it at resolution. All zeroes for every triggered ability, and for a
+        /// CR 707.10c copy (a copy is created, not activated, so no mana was spent on it —
+        /// converge's own copy ruling shape).
+        spent_mana: [u8; 6],
     },
 }
 
@@ -1435,6 +1640,9 @@ pub enum Event {
         sacrifice_count: u8,
         /// Whether the caster paid the spell's kicker cost (CR 702.33d); see [`Spell::kicked`].
         kicked: bool,
+        /// Whether the caster paid the spell's buyback cost (CR 702.27c); see
+        /// [`Spell::bought_back`].
+        bought_back: bool,
         /// The caster's declared Strive target count (CR 702.42), 0 for a spell with no Strive;
         /// see [`Spell::strive_count`].
         strive_count: u8,
@@ -1444,6 +1652,18 @@ pub enum Event {
         /// Whether this was a bestow cast (CR 702.103 — for [`CardDef::bestow`], as an Aura spell);
         /// see [`Spell::bestowed`]. `false` for an ordinary cast.
         bestowed: bool,
+        /// Whether this was a face-down morph cast (CR 702.37b — [`Intent::CastFaceDown`]); see
+        /// [`Spell::face_down`]. `false` for an ordinary face-up cast.
+        face_down: bool,
+        /// Whether this face-down cast was Illusionary Mask's `{X}` (CR 615); see [`Spell::masked`].
+        /// `false` for a plain morph/manifest face-down cast.
+        masked: bool,
+        /// Whether this was an evoke cast (CR 702.74a — for [`CardDef::evoke`]); see
+        /// [`Spell::evoked`]. `false` for an ordinary cast.
+        evoked: bool,
+        /// The colors of mana actually spent to pay this cast's cost (CR 106.9); see
+        /// [`Spell::spent_colors`].
+        spent_colors: [bool; Color::COUNT],
     },
     /// A multi-target spell's chosen targets (CR 601.2c) were recorded onto `spell` — either
     /// auto-filled at cast (when the choice was forced) or answered via [`Intent::ChooseTargets`].
@@ -1531,9 +1751,21 @@ pub enum Event {
         /// doubling rider); empty for a single-clause ability.
         targets_second: TargetList,
         x: u32,
+        /// The multiset of mana actually spent activating the ability, carried onto
+        /// [`StackItem::Ability::spent_mana`] (Illusionary Mask's CR 107.3 test). All zeroes for
+        /// every triggered ability and for a CR 707.10c copy.
+        spent_mana: [u8; 6],
+        /// Whether this is an *activated* ability (CR 602) rather than a triggered one (CR 603) —
+        /// carried onto [`StackItem::Ability::activated`] so "counter target activated ability"
+        /// (Azorius Guildmage) can tell the two apart. `false` for every triggered ability.
+        activated: bool,
     },
     /// The top ability of the stack finished resolving and left the stack.
     AbilityResolved { source: ObjectId },
+    /// An activated ability on the stack was countered (CR 701.5c / 112.7a — Azorius Guildmage):
+    /// the topmost `StackItem::Ability` with this `source` is removed and ceases to exist. Unlike
+    /// a countered spell there is no card to move to a graveyard.
+    AbilityCountered { source: ObjectId },
     /// A new step began (also carries the active player, which changes each turn).
     StepBegan { step: Step, active_player: PlayerId },
     /// A land `from` was played from hand and became the permanent `permanent`.
@@ -1704,6 +1936,20 @@ pub enum Event {
         object: ObjectId,
         controller: PlayerId,
     },
+    /// A condition-scoped control-changing effect (CR 611.2b — Rubinia Soulsinger's "for as long
+    /// as you control Rubinia and Rubinia remains tapped") took effect: `object` is now controlled
+    /// by `controller` while `condition` holds. Read back by [`Game::controller_of`] via
+    /// [`Game::conditioned_control_overrides`]; reverted automatically by
+    /// [`Event::ConditionedControlEnded`] the moment the condition fails (a state-based check).
+    ConditionedControlGained {
+        object: ObjectId,
+        controller: PlayerId,
+        condition: crate::ControlCondition,
+    },
+    /// A condition-scoped control override on `object` ended because its condition no longer holds
+    /// (the source untapped, left the battlefield, or changed controller — CR 611.2b); control
+    /// reverts to the owner (or an active `ControlAttached` Aura, if still attached).
+    ConditionedControlEnded { object: ObjectId },
     /// A creature was declared as an attacker, attacking `defender`.
     AttackerDeclared {
         object: ObjectId,
@@ -1895,6 +2141,17 @@ pub enum Event {
         player: PlayerId,
         amount: i32,
     },
+    /// `source` dealt `amount` *noncombat* damage to `player` (CR 120.1) — a marker distinct
+    /// from the `LifeChanged` it accompanies in [`Effect::DealDamage`]'s player arm, since
+    /// non-damage life loss (drain, pay-life) also emits `LifeChanged` with a `source` but must
+    /// not fire a [`Trigger::DealsDamageToOpponent`] watch. The noncombat twin of
+    /// [`Self::CombatDamageDealtToPlayer`], same [`Self::Sacrificed`]-vs-`MovedToGraveyard`
+    /// marker precedent. See [`Game::queue_deals_damage_to_opponent_triggers`].
+    DamageDealtToPlayer {
+        source: ObjectId,
+        player: PlayerId,
+        amount: i32,
+    },
     /// `amount` combat damage that would have been dealt to `player` was prevented by a
     /// [`combat_damage_prevention_shields`](crate::state::CombatExtras::combat_damage_prevention_shields)
     /// entry (Inkshield, CR 615) — a marker replacing the `LifeChanged`/commander-damage this
@@ -2062,6 +2319,16 @@ pub enum Event {
         from: ObjectId,
         controller: PlayerId,
         source: ObjectId,
+    },
+    /// A flicker (CR 400.7 — a new object, [`Effect::FlickerTarget`]/
+    /// [`Effect::ReturnFlickeredCard`]): the exiled card `from` returns to the battlefield as the
+    /// fresh permanent `permanent`, under its owner's control (`controller`) — same shape as
+    /// [`Self::ReturnedFromLinkedExile`], but unconditioned on any other permanent leaving. Fires
+    /// ETB triggers like any other entry.
+    FlickeredToBattlefield {
+        permanent: ObjectId,
+        from: ObjectId,
+        controller: PlayerId,
     },
     /// `from` was returned from the battlefield to its owner's hand as the card `card` (bounce).
     ReturnedToHand { card: ObjectId, from: ObjectId },
@@ -2267,6 +2534,9 @@ pub enum MeaningfulAction {
     TurnFaceUp { permanent: ObjectId },
     /// Cast a prepared permanent's back-face spell (soc/sos prepare DFCs).
     CastPrepared { source: ObjectId },
+    /// Cast `card` from hand face down as a 2/2 for {3} (CR 702.37b — morph). Offered only for a
+    /// hand card whose [`CardDef::morph`] is `Some` and whose controller can pay the {3}.
+    CastFaceDown { card: ObjectId },
     /// Declare attackers: the player has a creature able to attack this combat.
     DeclareAttackers,
     /// Declare blocks: the player has a creature able to block an attacker this combat.

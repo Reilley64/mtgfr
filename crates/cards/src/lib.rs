@@ -175,8 +175,33 @@ mana = [["black", "green"]]
             "one credit of either black or green"
         );
 
-        // A same-color "dual" and a three-color array are both load errors.
-        for produces in ["[\"green\", \"green\"]", "[\"white\", \"blue\", \"black\"]"] {
+        // A 3-color array (a triome's fixed choice — Treva's Ruins) normalizes to `Mana::OfColors`.
+        let triome = "name = \"Test Triome\"\n\n[kind]\ntype = \"artifact\"\n\n[[abilities]]\ntiming = \"activated\"\ntaps_self = true\n\n[[abilities.effects]]\ntype = \"add_mana\"\nmana = [[\"blue\", \"white\", \"green\"]]\n";
+        let def: CardDef = toml::from_str(triome).expect("a 3-color add_mana batch parses");
+        let Effect::AddMana { mana: produced, .. } = def.abilities[0].effect else {
+            panic!("expected an add_mana effect");
+        };
+        assert_eq!(
+            produced,
+            {
+                let mut pool = engine::ManaPool::default();
+                let mask = 1 << Color::Blue.index()
+                    | 1 << Color::White.index()
+                    | 1 << Color::Green.index();
+                pool.add(Mana::OfColors(mask), 1);
+                pool
+            },
+            "one credit of blue, white, or green"
+        );
+
+        // A same-color "dual", a duplicate-color triome, and an out-of-range (1 or 5 color)
+        // array are all load errors.
+        for produces in [
+            "[\"green\", \"green\"]",
+            "[\"white\", \"blue\", \"white\"]",
+            "[\"green\"]",
+            "[\"white\", \"blue\", \"black\", \"red\", \"green\"]",
+        ] {
             let card = format!(
                 "name = \"Test Bad Dual\"\nid = \"00000000-0000-0000-0000-000000000001\"\ndefault_print = \"00000000-0000-0000-0000-000000000002\"\n\n[kind]\ntype = \"land\"\nproduces = {produces}\n"
             );
@@ -329,6 +354,31 @@ keywords = ["flying"]
         );
         assert!(token.keywords.contains(&Keyword::Flying));
         assert!(token.abilities.is_empty());
+    }
+
+    /// Regression: Rubinia shipped with a hallucinated frame — {2}{W}{U}{U}, 2/4, flying — which
+    /// no ability-level test caught but the deck-legality identity check rejected live (every green
+    /// card read as off-identity). Pin the printed frame (CR 903.4 identity flows from these pips).
+    #[test]
+    fn rubinia_soulsingers_printed_frame() {
+        let rubinia = get_by_name("Rubinia Soulsinger").expect("Rubinia Soulsinger is in the pool");
+        assert_eq!(
+            rubinia.kind,
+            CardKind::Creature {
+                power: 2,
+                toughness: 3,
+                also: TypeSet::NONE
+            }
+        );
+        assert_eq!(rubinia.cost.generic, 2);
+        assert_eq!(rubinia.cost.colored[Color::Green.index()], 1);
+        assert_eq!(rubinia.cost.colored[Color::White.index()], 1);
+        assert_eq!(rubinia.cost.colored[Color::Blue.index()], 1);
+        assert!(rubinia.legendary);
+        assert!(
+            rubinia.keywords.is_empty(),
+            "the printed card has no keywords (no flying)"
+        );
     }
 
     #[test]
@@ -878,6 +928,7 @@ keywords = ["flying"]
                     Effect::Discard {
                         count: 2,
                         target_player: true,
+                        or_one_matching: None,
                     },
                 ],
             }
@@ -968,6 +1019,7 @@ keywords = ["flying"]
             Effect::CounterTargetSpell {
                 unless_pays: None,
                 filter: SpellFilter::ArtifactOrEnchantment,
+                countered_dest: None,
             }
         ));
         assert!(matches!(
@@ -1032,7 +1084,8 @@ keywords = ["flying"]
                 steps: [
                     Effect::PumpSelfUntilEndOfTurn {
                         power: Amount::Fixed(1),
-                        toughness: Amount::Fixed(1)
+                        toughness: Amount::Fixed(1),
+                        ..
                     },
                     Effect::GainLife {
                         amount: Amount::Fixed(1)
@@ -1516,6 +1569,7 @@ keywords = ["flying"]
                 Effect::Discard {
                     count: 2,
                     target_player: false,
+                    or_one_matching: None,
                 },
             ],
             "draw two, then discard two — in order"

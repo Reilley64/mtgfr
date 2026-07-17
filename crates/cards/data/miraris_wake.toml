@@ -1,0 +1,36 @@
+# Creatures you control get +1/+1.
+# Whenever you tap a land for mana, add one mana of any type that land produced.
+name = "Mirari's Wake"
+otags = ["anthem", "mana-increaser", "power-boost-to-all", "toughness-boost-to-all", "triggered-ability"]
+set = "cmm"
+id = "852657c0-18a4-4b28-b9ae-7728acdb5044"
+default_print = "ef4fa4e8-39e8-47a6-b975-ff5d46e59edd"
+oracle = "Creatures you control get +1/+1.\nWhenever you tap a land for mana, add one mana of any type that land produced."
+
+[cost]
+generic = 3
+green = 1
+white = 1
+
+[kind]
+type = "enchantment"
+
+# Creatures you control get +1/+1.
+[[abilities]]
+timing = "static"
+
+# Creatures you control get +1/+1.
+[[abilities.effects]]
+type = "anthem_static"
+power = 1
+toughness = 1
+
+# Whenever you tap a land for mana, add one mana of any type that land produced.
+[[abilities]]
+timing = "static"
+
+# Whenever you tap a land for mana, add one mana of any type that land produced.
+[[abilities.effects]]
+type = "tapped_for_mana_bonus"
+scope = "controller"
+bonus_color = "produced"

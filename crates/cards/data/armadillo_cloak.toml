@@ -1,0 +1,38 @@
+# Enchant creature
+# Enchanted creature gets +2/+2 and has trample.
+# Whenever enchanted creature deals damage, you gain that much life.
+name = "Armadillo Cloak"
+otags = ["combat-neutral-damage-trigger", "cycle-ema-draft-signpost", "cycle-inv-c-two-color", "cycle-vma-draft-signpost", "gives-trample", "old-lifelink", "repeatable-lifegain"]
+set = "ema"
+subtypes = ["Aura"]
+id = "15397a59-70a8-441f-abf7-230405a1602b"
+default_print = "fa232c65-dbb4-4414-bd95-b3bbd321c653"
+oracle = "Enchant creature\nEnchanted creature gets +2/+2 and has trample.\nWhenever enchanted creature deals damage, you gain that much life."
+
+[cost]
+generic = 1
+green = 1
+white = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +2/+2 and has trample.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +2/+2 and has trample
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 2
+toughness = 2
+keywords = ["trample"]
+
+# Whenever enchanted creature deals damage, you gain that much life.
+[[abilities]]
+timing = "enchanted_creature_deals_damage"
+
+# you gain that much life
+[[abilities.effects]]
+type = "gain_life"
+amount = "triggering_damage_dealt"

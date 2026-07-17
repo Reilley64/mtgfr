@@ -1,0 +1,33 @@
+# Vigilance
+# Plainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put it into your hand,
+# then shuffle.)
+name = "Noble Templar"
+otags = ["activate-from-hand", "cheaper-than-mv", "cycle-scg-5m-landcycler", "french-vanilla", "tutor-land-plains", "tutor-to-hand", "type-addition-human"]
+set = "a25"
+subtypes = ["Human", "Cleric", "Soldier"]
+id = "e7079969-8d88-4f18-a872-2661bed6ff74"
+default_print = "82073551-8106-4e88-8d55-913d86bbe48a"
+oracle = "Vigilance\nPlainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put it into your hand, then shuffle.)"
+keywords = ["vigilance"]
+
+[cost]
+generic = 5
+white = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 6
+
+# Plainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put
+# it into your hand, then shuffle.)
+[hand_ability]
+
+[hand_ability.cost]
+generic = 2
+
+# Search your library for a Plains card, reveal it, put it into your hand, then shuffle.
+[[hand_ability.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Plains"] }
+to_zone = "hand"

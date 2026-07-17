@@ -93,6 +93,19 @@ impl Game {
         }
     }
 
+    /// Shuffle `player`'s library, then put `card` on top (CR 701.19 — Enlightened Tutor/Sterling
+    /// Grove's "reveal it, then shuffle and put that card on top"). Pulls `card` out first so the
+    /// shuffle can't relocate it — equivalent to shuffling everything and then overriding its
+    /// position, since a uniform shuffle treats every card symmetrically before the override.
+    /// Same-zone reorder, not a zone change (CR 400.7) — `card` keeps its object id.
+    pub(crate) fn shuffle_then_put_on_top(&mut self, player: PlayerId, card: ObjectId) {
+        self.players[player.0 as usize]
+            .library
+            .retain(|&o| o != card);
+        self.shuffle(player);
+        self.players[player.0 as usize].library.insert(0, card);
+    }
+
     /// Draw the top card of `player`'s library into their hand. Drawing from an
     /// empty library flags the player to lose on the next SBA sweep (rule 104.3c).
     pub fn draw_card(&mut self, player: PlayerId) -> Vec<Event> {

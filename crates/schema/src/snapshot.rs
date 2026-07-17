@@ -277,6 +277,27 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
+        // The label must not leak the hidden card's identity (CR 708.2) — a plain "Cast face down".
+        MeaningfulAction::CastFaceDown { card } => ActionView {
+            id: action.id,
+            kind: "cast_face_down".to_string(),
+            object: Some(card),
+            ability_index: None,
+            section: "hand".to_string(),
+            label: "Cast face down".to_string(),
+            needs_target: false,
+            targets: Vec::new(),
+            modal: None,
+            sacrifice_choices: None,
+            discard_choices: None,
+            discard_count: 0,
+            graveyard_exile_choices: None,
+            graveyard_exile_min: 0,
+            graveyard_exile_max: 0,
+            has_x: false,
+            auto_tap: Vec::new(),
+            required_attacks: Vec::new(),
+        },
         MeaningfulAction::Suspend { card } => ActionView {
             id: action.id,
             kind: "suspend".to_string(),
@@ -1275,6 +1296,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1392,6 +1415,8 @@ mod tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -1408,6 +1433,7 @@ mod tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -1432,6 +1458,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1584,6 +1612,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1847,6 +1877,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1881,6 +1913,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -1929,6 +1963,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -2029,6 +2065,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })

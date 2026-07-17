@@ -29,10 +29,38 @@ impl Game {
             PendingChoice::OrderTriggers {
                 source, effects, ..
             } => {
-                // ponytail: ordered triggers carry no target yet (see place_pending_triggers).
-                let ordered: Vec<(Effect, Option<Target>)> =
-                    order.iter().map(|&i| (effects[i], None)).collect();
-                self.push_ability_group(player, source, &ordered, &mut events);
+                // CR 603.3d: each ability's target is chosen as *it* goes on the stack, in the
+                // chosen order — so re-queue the ordered abilities as N one-ability
+                // `TriggerGroup`s (front of the queue, in `order`) and place them one at a time
+                // through the normal path (`Game::place_pending_triggers` /
+                // `place_targeted_ability`), the same way a delayed or reflexive trigger rides
+                // that path. `expanded: true`: this group already ran its trigger-doubling pass
+                // before `OrderTriggers` was raised (see `place_pending_triggers`), so it must
+                // not double again.
+                for (offset, &i) in order.iter().enumerate() {
+                    self.pending_trigger_groups.insert(
+                        offset,
+                        TriggerGroup {
+                            controller: player,
+                            source,
+                            abilities: vec![Ability {
+                                // Fabricated placeholder — the real `Ability` (with its own
+                                // `optional`/`cost`/`condition`) was already consumed building
+                                // `effects` above; `place_pending_triggers` only reads
+                                // `effect`/`optional`/`cost`/`once_each_turn` off this one.
+                                timing: Timing::Triggered(Trigger::Upkeep),
+                                effect: effects[i],
+                                optional: false,
+                                min_level: 0,
+                                cost: Cost::FREE,
+                                condition: None,
+                                once_each_turn: false,
+                            }],
+                            expanded: true,
+                        },
+                    );
+                }
+                self.place_pending_triggers(&mut events);
             }
             _ => unreachable!("guarded to ordering choices above"),
         }
@@ -56,6 +84,15 @@ impl Game {
         }) = self.pending_choice.clone()
         {
             return self.choose_spell_targets_answer(spell, clause, min, max, &legal, targets);
+        }
+        if let Some(PendingChoice::ChooseSplittingOpponent {
+            player: controller,
+            source,
+            legal,
+            then,
+        }) = self.pending_choice.clone()
+        {
+            return self.choose_splitting_opponent_answer(controller, source, legal, then, targets);
         }
         if let Some(PendingChoice::ChooseAbilityTargets {
             player: chooser,
@@ -544,6 +581,34 @@ impl Game {
                         optional: false,
                     },
                 );
+            } else if let Effect::TargetPlayerMayDraw { count, .. } = effect {
+                // Questing Phelddagrif's blue rider: `player` here is the *targeted* opponent who
+                // just answered "yes" (not the ability's own controller, unlike every other arm
+                // in this function) — draw them `count` cards directly, no further pause (CR
+                // 601.2c: no pay window rides behind this rider).
+                let n = self.resolve_count(count, player, source, None, 0);
+                let evs = self.draw_events(player, n);
+                self.apply_all(&evs);
+                events.extend(evs);
+            } else if let Effect::MayDrawUnlessPays { cost, caster } = effect {
+                // Rhystic Study: `player` (the controller) said they want to draw, so now
+                // `caster` (the triggering opponent, baked in by `contextualize_effect`) gets a
+                // chance to pay `cost` and stop it — see `Game::pay_or_controller_draws`.
+                let caster = caster.expect(
+                    "caster baked in by contextualize_effect at CastSpell trigger placement",
+                );
+                let generic = self.resolve_count(cost, player, source, None, 0);
+                pending::raise_choice(
+                    self,
+                    PendingChoice::PayOrControllerDraws {
+                        player: caster,
+                        controller: player,
+                        cost: Cost {
+                            generic: generic as u8,
+                            ..Cost::FREE
+                        },
+                    },
+                );
             } else {
                 // A targeted "may" (Sun Titan) pauses again to choose its target; a targetless
                 // one (Solemn's dies-draw) goes straight on the stack. NoLegalTarget = accepted
@@ -585,6 +650,53 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::PayCost`] whose `cost` carries a chosen `{X}` (CR 107.3 —
+    /// Decree of Justice's "When you cycle this card, you may pay {X}."): pay `cost.with_x(x)`
+    /// to get the optional trigger, threading `x` onto the placed ability the same way an
+    /// activated ability's own `{X}` cost does (see [`Game::push_ability_group_with_x`]), so its
+    /// `Amount::X` reads the chosen value — or decline (`x` ignored). An unaffordable "pay"
+    /// leaves the choice pending so the player can still decline, mirroring
+    /// [`Game::pay_optional_cost`].
+    /// ponytail: targetless only (`push_ability_group_with_x` skips the target-choice dance in
+    /// [`Game::place_targeted_ability`]) — no pool card pairs an `{X}`-cost optional trigger with
+    /// a target; route through `place_targeted_ability`'s own X-threading path if one ever does.
+    pub(crate) fn pay_optional_cost_with_x(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+        x: u32,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PayCost {
+            source,
+            cost,
+            effect,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+
+        let mut events = Vec::new();
+        if !pay {
+            self.finish_answer();
+            return Ok(events);
+        }
+        // Settle the mana (auto-tapping lands for a pool shortfall, folding the chosen `{X}`
+        // into generic per CR 107.3); unaffordable leaves the choice pending with nothing tapped.
+        self.settle_payment(player, cost.with_x(x), None, None, &mut events)?;
+        self.finish_answer();
+        self.push_ability_group_with_x(
+            player,
+            source,
+            &[(effect, None)],
+            x,
+            [0; 6],
+            false,
+            &mut events,
+        );
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::PayOrCounter`]: pay `cost` to save the target spell, or decline
     /// and let it be countered. The mirror image of [`Game::pay_optional_cost`] — same
     /// [`Intent::PayOptionalCost`] shape, opposite default (declining here *does* something: the
@@ -617,6 +729,64 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::PayOrControllerDraws`]: `player` (the triggering opponent) pays
+    /// `cost` to stop `controller`'s draw, or declines and lets it happen — Rhystic Study's
+    /// "unless that player pays {1}". Same [`Intent::PayOptionalCost`] shape and "declining does
+    /// something" polarity as [`Game::pay_or_counter`], but the "something" is a draw rather than
+    /// a counter.
+    pub(crate) fn pay_or_controller_draws(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PayOrControllerDraws {
+            controller, cost, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+
+        if !pay {
+            self.finish_answer();
+            let evs = self.draw_events(controller, 1);
+            self.apply_all(&evs);
+            return Ok(evs);
+        }
+        let mut events = Vec::new();
+        self.settle_payment(player, cost, None, None, &mut events)?;
+        self.finish_answer();
+        // Paying stops the draw outright — nothing further happens.
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::ChooseCounteredSpellDestination`] (Hinder's CR 701.5b rider):
+    /// `top` puts the already-countered `spell` on top of its owner's library instead of the
+    /// bottom. `_player` isn't needed beyond `submit`'s choice-gate actor check (like
+    /// [`Game::choose_color`]).
+    pub(crate) fn choose_countered_spell_destination(
+        &mut self,
+        _player: PlayerId,
+        top: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseCounteredSpellDestination { spell, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        self.push_apply(
+            &mut events,
+            Event::TuckedToLibrary {
+                card: self.next_object_id(),
+                from: spell,
+                to_top: top,
+            },
+        );
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::PayEchoOrSacrifice`]: pay Echo's cost to keep `source`, or
     /// decline and sacrifice it (CR 702.31d). The permanent-scoped twin of
     /// [`Game::pay_or_counter`] — same [`Intent::PayOptionalCost`] shape and "declining does
@@ -642,6 +812,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );
@@ -654,6 +825,141 @@ impl Game {
         // CR 702.31e: this upkeep is now "since your last upkeep" — echo won't ask again.
         self.permanent_mut(source).echo_unpaid = false;
         self.finish_answer();
+        Ok(events)
+    }
+
+    /// Begin Rupture Spire's own ETB trigger ([`Effect::SacrificeSelfUnlessPay`]): pause on a
+    /// [`PendingChoice::SacrificeUnlessPay`] over `source`'s pay-or-sacrifice cost.
+    pub(crate) fn begin_sacrifice_unless_pay(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        cost: Cost,
+    ) {
+        self.pause_for(PendingChoice::SacrificeUnlessPay {
+            player: controller,
+            source,
+            cost,
+        });
+    }
+
+    /// Answer a [`PendingChoice::SacrificeUnlessPay`]: pay `cost` to keep `source`, or decline
+    /// and sacrifice it (CR 701.16). Rupture Spire's own-ETB twin of [`Game::pay_echo`] — same
+    /// [`Intent::PayOptionalCost`] shape and polarity, kept as its own handler since it isn't
+    /// Echo (see the variant's doc). An unaffordable "pay" leaves the choice pending.
+    pub(crate) fn pay_sacrifice_unless(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::SacrificeUnlessPay { source, cost, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+
+        if !pay {
+            self.finish_answer();
+            let mut events = Vec::new();
+            self.run(
+                Effect::SacrificeObject {
+                    object: Some(source),
+                },
+                ResolveCtx {
+                    controller: player,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                    spent_mana: [0; 6],
+                },
+                &mut events,
+            );
+            return Ok(events);
+        }
+        let mut events = Vec::new();
+        self.settle_payment(player, cost, None, None, &mut events)?;
+        self.finish_answer();
+        Ok(events)
+    }
+
+    /// Begin Treva's Ruins' own ETB trigger ([`Effect::SacrificeSelfUnlessReturnLand`]): offer
+    /// `controller`'s permanents matching `filter` (the "non-Lair land you control" gate) as
+    /// candidates to bounce, pausing on a [`PendingChoice::SacrificeUnlessReturnLand`]. With no
+    /// matching land, there's nothing to return — sacrifice `source` outright, no pause (the
+    /// same "no real decision" shortcut [`Game::begin_may_sacrifice`] uses).
+    pub(crate) fn begin_sacrifice_unless_return_land(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        filter: PermanentFilter,
+        events: &mut Vec<Event>,
+    ) {
+        let candidates = self.edict_options(controller, filter);
+        if candidates.is_empty() {
+            self.run(
+                Effect::SacrificeObject {
+                    object: Some(source),
+                },
+                ResolveCtx {
+                    controller,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                    spent_mana: [0; 6],
+                },
+                events,
+            );
+            return;
+        }
+        self.pause_for(PendingChoice::SacrificeUnlessReturnLand {
+            player: controller,
+            source,
+            candidates,
+        });
+    }
+
+    /// Answer a [`PendingChoice::SacrificeUnlessReturnLand`]: `land` (one of the offered
+    /// candidates) returns to its owner's hand and `source` stays; `None` declines and
+    /// sacrifices `source` instead (CR 701.16).
+    pub(crate) fn return_land_or_sacrifice(
+        &mut self,
+        player: PlayerId,
+        land: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::SacrificeUnlessReturnLand {
+            source, candidates, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if land.is_some_and(|l| !candidates.contains(&l)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        match land {
+            None => self.run(
+                Effect::SacrificeObject {
+                    object: Some(source),
+                },
+                ResolveCtx {
+                    controller: player,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                    spent_mana: [0; 6],
+                },
+                &mut events,
+            ),
+            Some(chosen) => {
+                let card = self.next_object_id();
+                self.push_apply(&mut events, Event::ReturnedToHand { card, from: chosen });
+            }
+        }
         Ok(events)
     }
 
@@ -860,8 +1166,16 @@ impl Game {
 
     /// Begin an [`Effect::Discard`]: pause on a [`PendingChoice::DiscardCards`] for `player` to
     /// pick which `count` cards to pitch. Fewer than `count` in hand discards the whole hand; an
-    /// empty hand raises no choice (a harmless no-op).
-    pub(crate) fn begin_discard(&mut self, player: PlayerId, count: u32) {
+    /// empty hand raises no choice (a harmless no-op). `or_one_matching` carries the effect's
+    /// land-escape-valve filter (`None` for a plain discard) straight through to the pending
+    /// choice — [`Game::answer_discard`] is where a hand with no matching card collapses back to
+    /// the plain `count`-card shape.
+    pub(crate) fn begin_discard(
+        &mut self,
+        player: PlayerId,
+        count: u32,
+        or_one_matching: Option<CardFilter>,
+    ) {
         let hand = self.hand_of(player);
         let count = (count as usize).min(hand.len());
         if count == 0 {
@@ -871,6 +1185,7 @@ impl Game {
             player,
             hand,
             count,
+            or_one_matching,
         });
     }
 
@@ -1067,6 +1382,17 @@ impl Game {
             .collect();
         match rest {
             RestDest::Bottom => self.bottom_pile_in_library(player, &bottomed, &mut events),
+            RestDest::Hand => {
+                for from in bottomed {
+                    let event = Event::SearchedToHand {
+                        player,
+                        object: self.next_object_id(),
+                        from,
+                        card: self.def_of(from),
+                    };
+                    self.push_apply(&mut events, event);
+                }
+            }
         }
         Ok(events)
     }
@@ -1415,6 +1741,14 @@ impl Game {
                 controller: player,
                 tapped,
             },
+            // Enlightened Tutor / Sterling Grove: the found card is revealed in place (CR
+            // 701.30) — it hasn't left the library yet, so no zone-move event here; the shuffle
+            // and top-placement below finish the job.
+            SearchDest::LibraryTop => Event::RevealedTopOfLibrary {
+                player,
+                card: from,
+                def: self.def_of(from),
+            },
         };
         self.push_apply(&mut events, event);
 
@@ -1436,7 +1770,13 @@ impl Game {
         }
         // Always shuffle at the true end of the search (CR 701.19). ponytail: library order
         // isn't event-sourced (like scry / `shuffle`) — mutate it directly.
-        self.shuffle(player);
+        if dest == SearchDest::LibraryTop {
+            // "…then shuffle and put that card on top" — `from` never left the library, so put
+            // it back on top after the shuffle instead of shuffling it in with everything else.
+            self.shuffle_then_put_on_top(player, from);
+        } else {
+            self.shuffle(player);
+        }
         Ok(events)
     }
 
@@ -1492,6 +1832,53 @@ impl Game {
         Ok(events)
     }
 
+    /// Begin an [`Effect::CastCreatureFaceDown`] (Illusionary Mask): pause on a
+    /// [`PendingChoice::CastCreatureFaceDown`] over `player`'s hand creature cards whose mana
+    /// cost "could be paid by some amount of, or all of" the mana spent on the activation's `{X}`
+    /// (`spent_mana`, [`Cost::payable_from_multiset`] — CR 107.3). "You may," so no payable
+    /// creature raises no choice (a harmless no-op, same shape as
+    /// [`Game::begin_put_land_from_hand`]).
+    pub(crate) fn begin_cast_creature_face_down(&mut self, player: PlayerId, spent_mana: [u8; 6]) {
+        let candidates: Vec<ObjectId> = self
+            .hand_of(player)
+            .into_iter()
+            .filter(|&id| matches!(self.def_of(id).kind, CardKind::Creature { .. }))
+            .filter(|&id| self.def_of(id).cost.payable_from_multiset(&spent_mana))
+            .collect();
+        if candidates.is_empty() {
+            return; // nothing payable — don't pause.
+        }
+        self.pause_for(PendingChoice::CastCreatureFaceDown { player, candidates });
+    }
+
+    /// Answer a [`PendingChoice::CastCreatureFaceDown`]: cast the chosen hand creature (one of the
+    /// offered candidates) face down as a 2/2 creature spell (CR 708.2) without paying its mana
+    /// cost, or decline (`choice = None`).
+    pub(crate) fn cast_creature_face_down(
+        &mut self,
+        player: PlayerId,
+        choice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::CastCreatureFaceDown { candidates, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.is_some_and(|c| !candidates.contains(&c)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        if let Some(card) = choice {
+            // No mana was spent casting it (cast "without paying its mana cost"), so no colors.
+            // Masked (CR 615): Illusionary Mask's face-down creature turns face up when it would
+            // assign or deal damage, be dealt damage, or become tapped.
+            self.push_face_down_spell_cast(player, card, [false; Color::COUNT], true, &mut events);
+        }
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::ChooseMode`]: resolve the chosen mode of a "choose one" triggered
     /// ability ([`Effect::ChooseOne`]) through the ordinary resolution pipeline, carrying the
     /// trigger's own `source`/`target`/`x` context. The chosen sub-effect may itself pause.
@@ -1524,6 +1911,7 @@ impl Game {
                 target,
                 targets_second: TargetList::default(),
                 x,
+                spent_mana: [0; 6],
             },
             &mut events,
         );
@@ -1598,7 +1986,7 @@ impl Game {
         self.finish_answer();
 
         let mut events = Vec::new();
-        self.push_ability_group(player, source, &resolved, &mut events);
+        self.push_ability_group(player, source, &resolved, false, &mut events);
         Ok(events)
     }
 
@@ -1868,11 +2256,15 @@ impl Game {
         }
     }
 
-    /// The opponent who makes an "an opponent chooses" decision on `controller`'s behalf (Abstract
-    /// Performance's pile pick, Plargg and Nassari's nonland pick): the next living player reached
-    /// walking turn order forward from `controller` — CR 101.4's APNAP/turn-order tie-break gives a
-    /// multiplayer "an opponent" a single well-defined answer, not a controller pick among several.
-    /// `None` only if `controller` is the sole living player left (unreachable in a real game).
+    /// The opponent who makes an "an opponent chooses" decision on `controller`'s behalf (Plargg
+    /// and Nassari's nonland pick): the next living player reached walking turn order forward
+    /// from `controller`.
+    /// ponytail: hardcodes the next opponent in turn order rather than the controller's own pick
+    /// (the same approximation [`Self::begin_choose_splitting_opponent`] used to carry for
+    /// Abstract Performance and Fact or Fiction, before their shared chooser fixed it) — migrate
+    /// Plargg and Nassari to that chooser if a pool card ever needs "an opponent" here to be a
+    /// genuine choice. `None` only if `controller` is the sole living player left (unreachable in
+    /// a real game).
     pub(crate) fn next_opponent_in_turn_order(&self, controller: PlayerId) -> Option<PlayerId> {
         let n = self.players.len();
         (1..n)
@@ -2116,8 +2508,8 @@ impl Game {
 
     /// Begin Abstract Performance ([`Effect::OpponentSplitsExilePiles`]): exile the top four
     /// (CR 701.9 face-down — hidden from every viewer but `controller`) then the next four
-    /// (face-up) of `controller`'s library into two piles, then pause on an
-    /// [`PendingChoice::OpponentChoosesPile`] for the next opponent in turn order to pick one.
+    /// (face-up) of `controller`'s library into two piles, then hand off to the shared
+    /// [`Self::begin_choose_splitting_opponent`] chooser to pick who picks a pile.
     pub(crate) fn begin_opponent_splits_exile_piles(
         &mut self,
         controller: PlayerId,
@@ -2126,16 +2518,208 @@ impl Game {
     ) {
         let pile_a = self.exile_top_into_pile(controller, 4, true, events);
         let pile_b = self.exile_top_into_pile(controller, 4, false, events);
-        let Some(opponent) = self.next_opponent_in_turn_order(controller) else {
-            return; // ponytail: no opponent to choose — cards stay exiled (unreachable in a game).
-        };
-        self.pause_for(PendingChoice::OpponentChoosesPile {
-            player: opponent,
+        self.begin_choose_splitting_opponent(
             controller,
+            source,
+            SplittingContinuation::ExilePiles { pile_a, pile_b },
+        );
+    }
+
+    /// Begin Fact or Fiction ([`Effect::RevealTopSplitPiles`]): reveal the top five of
+    /// `controller`'s library (all public, CR 701.16; a short library reveals only what's there,
+    /// CR 120.3 "as many as possible" — an empty library reveals nothing and raises no pause),
+    /// then hand off to the shared [`Self::begin_choose_splitting_opponent`] chooser to pick who
+    /// partitions them.
+    pub(crate) fn begin_reveal_top_split_piles(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        events: &mut Vec<Event>,
+    ) {
+        let revealed: Vec<ObjectId> = self.players[controller.0 as usize]
+            .library
+            .iter()
+            .take(5)
+            .copied()
+            .collect();
+        for &card in &revealed {
+            self.push_apply(
+                events,
+                Event::RevealedTopOfLibrary {
+                    player: controller,
+                    card,
+                    def: self.def_of(card),
+                },
+            );
+        }
+        if revealed.is_empty() {
+            return; // an empty library reveals nothing — no pile to split.
+        }
+        self.begin_choose_splitting_opponent(
+            controller,
+            source,
+            SplittingContinuation::Partition { revealed },
+        );
+    }
+
+    /// The shared "an opponent ..." chooser for [`Effect::OpponentSplitsExilePiles`] and
+    /// [`Effect::RevealTopSplitPiles`]: with more than one opponent alive, `controller` picks
+    /// which one on a [`PendingChoice::ChooseSplittingOpponent`]; with at most one, resume
+    /// immediately (the "single-legal-choice" collapse — no real choice to offer). `then` carries
+    /// the split data already computed, so it's ready the instant the opponent is known.
+    fn begin_choose_splitting_opponent(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        then: SplittingContinuation,
+    ) {
+        let legal: Vec<PlayerId> = self.living_players().filter(|&p| p != controller).collect();
+        match legal.as_slice() {
+            [] => {} // ponytail: no opponent to choose or split — unreachable in a real game.
+            [only] => self.resume_splitting_opponent(*only, controller, source, then),
+            _ => self.pause_for(PendingChoice::ChooseSplittingOpponent {
+                player: controller,
+                source,
+                legal,
+                then,
+            }),
+        }
+    }
+
+    /// Answer a [`PendingChoice::ChooseSplittingOpponent`]: `opponent` must be one of the choice's
+    /// `legal` candidates. Resumes via [`Self::resume_splitting_opponent`].
+    fn choose_splitting_opponent_answer(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        legal: Vec<PlayerId>,
+        then: SplittingContinuation,
+        targets: Vec<Target>,
+    ) -> Result<Vec<Event>, Reject> {
+        let [Target::Player(opponent)] = targets[..] else {
+            return Err(Reject::IllegalChoice);
+        };
+        if !legal.contains(&opponent) {
+            return Err(Reject::IllegalTarget);
+        }
+        self.finish_answer();
+        self.resume_splitting_opponent(opponent, controller, source, then);
+        Ok(Vec::new())
+    }
+
+    /// Resume [`Self::begin_choose_splitting_opponent`] once the splitting opponent is known:
+    /// pause `opponent` on whichever pause `then` names.
+    fn resume_splitting_opponent(
+        &mut self,
+        opponent: PlayerId,
+        controller: PlayerId,
+        source: ObjectId,
+        then: SplittingContinuation,
+    ) {
+        match then {
+            SplittingContinuation::ExilePiles { pile_a, pile_b } => {
+                self.pause_for(PendingChoice::OpponentChoosesPile {
+                    player: opponent,
+                    controller,
+                    source,
+                    pile_a,
+                    pile_b,
+                });
+            }
+            SplittingContinuation::Partition { revealed } => {
+                self.pause_for(PendingChoice::PartitionRevealed {
+                    player: opponent,
+                    controller,
+                    source,
+                    revealed,
+                });
+            }
+        }
+    }
+
+    /// Answer a [`PendingChoice::PartitionRevealed`] (Fact or Fiction): `pile_a` names the subset
+    /// of `revealed` the chosen opponent puts into pile A (reusing
+    /// [`Intent::ChooseSacrifices`]'s "name the subset" wire shape); everything else in `revealed`
+    /// forms pile B. Either may be empty. Pauses `controller` on a
+    /// [`PendingChoice::ChoosePileForHand`] to pick which pile to keep.
+    pub(crate) fn partition_revealed(
+        &mut self,
+        _player: PlayerId,
+        pile_a: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PartitionRevealed {
+            controller,
+            source,
+            revealed,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        for (i, id) in pile_a.iter().enumerate() {
+            // Each card in pile A must be one of the revealed five, named at most once.
+            if !revealed.contains(id) || pile_a[..i].contains(id) {
+                return Err(Reject::IllegalChoice);
+            }
+        }
+        self.finish_answer();
+        let pile_b: Vec<ObjectId> = revealed
+            .into_iter()
+            .filter(|id| !pile_a.contains(id))
+            .collect();
+        self.pause_for(PendingChoice::ChoosePileForHand {
+            player: controller,
             source,
             pile_a,
             pile_b,
         });
+        Ok(Vec::new())
+    }
+
+    /// Answer a [`PendingChoice::ChoosePileForHand`] (Fact or Fiction): the chosen pile goes to
+    /// `player`'s hand (CR "Put one pile into your hand"), the other is milled into their
+    /// graveyard (CR "and the other into your graveyard" — [`Event::Milled`], since these cards
+    /// never left the library).
+    pub(crate) fn choose_pile_for_hand(
+        &mut self,
+        player: PlayerId,
+        pile: u8,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChoosePileForHand { pile_a, pile_b, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        let (to_hand, to_graveyard) = match pile {
+            0 => (pile_a, pile_b),
+            1 => (pile_b, pile_a),
+            _ => return Err(Reject::IllegalChoice),
+        };
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        for from in to_hand {
+            self.push_apply(
+                &mut events,
+                Event::SearchedToHand {
+                    player,
+                    object: self.next_object_id(),
+                    from,
+                    card: self.def_of(from),
+                },
+            );
+        }
+        for from in to_graveyard {
+            self.push_apply(
+                &mut events,
+                Event::Milled {
+                    player,
+                    card: self.next_object_id(),
+                    from,
+                },
+            );
+        }
+        Ok(events)
     }
 
     /// Answer a [`PendingChoice::OpponentChoosesPile`]: the chosen pile goes to `controller`'s
@@ -2744,10 +3328,11 @@ impl Game {
         Ok(events)
     }
 
-    /// Begin an enter-as-copy replacement (CR 706/707.2 — Altered Ego, Cursed Mirror): as
-    /// `source` enters, its controller may have it become a copy of any *other* creature on the
-    /// battlefield. With no other creature to copy there's no real decision — skip straight past
-    /// (the printed permanent stands), the same "nothing to choose" treatment
+    /// Begin an enter-as-copy replacement (CR 706/707.2 — Altered Ego, Cursed Mirror, Copy
+    /// Enchantment): as `source` enters, its controller may have it become a copy of any *other*
+    /// object on the battlefield matching `marker.of` (a creature by default; an enchantment,
+    /// including an Aura, for Copy Enchantment). With no candidate there's no real decision — skip
+    /// straight past (the printed permanent stands), the same "nothing to choose" treatment
     /// [`Game::begin_devour`] gives an empty board.
     pub(crate) fn begin_enter_as_copy(
         &mut self,
@@ -2759,7 +3344,13 @@ impl Game {
             .permanent_ids(|_| true)
             .collect::<Vec<_>>()
             .into_iter()
-            .filter(|&id| id != source && self.is_creature_on_battlefield(id))
+            .filter(|&id| {
+                id != source
+                    && match marker.of {
+                        CopyTargetKind::Creature => self.is_creature_on_battlefield(id),
+                        CopyTargetKind::Enchantment => self.is_enchantment_on_battlefield(id),
+                    }
+            })
             .collect();
         if candidates.is_empty() {
             return;
@@ -2852,6 +3443,13 @@ impl Game {
                     source_name,
                 },
             );
+        }
+        // Copy Enchantment copying an Aura (CR 707.2 read with CR 303.4f): the copy entered
+        // unattached above (`BecameCopy` only overwrites `def`), so it must now pause to choose a
+        // host among legal enchant targets — the same deployed-Aura attach path a searched-out or
+        // reanimated Aura uses.
+        if def.kind == CardKind::Aura {
+            self.maybe_pause_attach_deployed_aura(source, player);
         }
         Ok(events)
     }
@@ -3128,6 +3726,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );
@@ -3291,6 +3890,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 events,
             );
@@ -3563,6 +4163,14 @@ impl Game {
         self.prompt_next_graveyard_exile(affected, source);
     }
 
+    /// Begin the single-player graveyard exile ([`Effect::TargetPlayerExilesFromGraveyard`] —
+    /// Relic of Progenitus's "Target player exiles a card from their graveyard"): the one-player
+    /// special case of [`Self::begin_each_player_exile`]'s fan-out — same pause, no `remaining`
+    /// players queued behind it, and no payoff tally to reset.
+    pub(crate) fn begin_target_player_exile(&mut self, player: PlayerId, source: ObjectId) {
+        self.prompt_next_graveyard_exile(vec![player], source);
+    }
+
     /// Pause on the next affected player who has a graveyard card to exile (skipping any with an
     /// empty graveyard), or — when none remain — return, letting the enclosing sequence resume.
     pub(crate) fn prompt_next_graveyard_exile(
@@ -3748,6 +4356,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );
@@ -3796,23 +4405,30 @@ impl Game {
         player: PlayerId,
         cards: Vec<ObjectId>,
     ) -> Result<Vec<Event>, Reject> {
-        let (chooser, hand, count, is_cleanup) = match self.pending_choice.clone() {
+        let (chooser, hand, count, or_one_matching, is_cleanup) = match self.pending_choice.clone()
+        {
             Some(PendingChoice::DiscardToHandSize {
                 player,
                 hand,
                 count,
-            }) => (player, hand, count, true),
+            }) => (player, hand, count, None, true),
             Some(PendingChoice::DiscardCards {
                 player,
                 hand,
                 count,
-            }) => (player, hand, count, false),
+                or_one_matching,
+            }) => (player, hand, count, or_one_matching, false),
             _ => return Err(Reject::IllegalChoice),
         };
-        // Exactly `count` distinct cards, each currently in this player's hand.
+        // Exactly `count` distinct cards, each currently in this player's hand — or, when the
+        // effect carries a land-escape-valve filter, a single matching card instead (Compulsive
+        // Research's "unless they discard a land card").
         let distinct = cards.iter().collect::<std::collections::HashSet<_>>().len();
         let all_in_hand = cards.iter().all(|c| hand.contains(c));
-        if player != chooser || cards.len() != count || distinct != cards.len() || !all_in_hand {
+        let full_discard = cards.len() == count && distinct == cards.len();
+        let land_escape = or_one_matching
+            .is_some_and(|filter| cards.len() == 1 && filter.matches(self.def_of(cards[0])));
+        if player != chooser || !all_in_hand || !(full_discard || land_escape) {
             return Err(Reject::IllegalChoice); // invalid — the choice stays pending
         }
 
@@ -3826,6 +4442,39 @@ impl Game {
         if is_cleanup {
             events.extend(self.advance_step());
         }
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::DeclineUntap`] (CR 502.2 — Rubinia Soulsinger's "you may choose
+    /// not to untap"): untap every offered permanent the active player didn't keep tapped, then
+    /// resume the interrupted untap step (the same step-transition resume as a cleanup discard).
+    /// Leaving a permanent tapped is exactly what sustains a "remains tapped" control condition —
+    /// the SBA sweep after this answer reverts any steal whose source the player chose to untap.
+    pub(crate) fn answer_decline_untap(
+        &mut self,
+        player: PlayerId,
+        keep_tapped: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::DeclineUntap {
+            player: chooser,
+            permanents,
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        // The answer must come from the asked player and only name permanents that were offered.
+        if player != chooser || !keep_tapped.iter().all(|id| permanents.contains(id)) {
+            return Err(Reject::IllegalChoice); // invalid — the choice stays pending
+        }
+
+        self.finish_answer();
+        let mut events = Vec::new();
+        for id in permanents {
+            if !keep_tapped.contains(&id) {
+                self.push_apply(&mut events, Event::Untapped { object: id });
+            }
+        }
+        events.extend(self.advance_step());
         Ok(events)
     }
 }
@@ -3919,6 +4568,8 @@ mod tests {
                 flashback: None,
                 echo: None,
                 bestow: None,
+                morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -3933,6 +4584,7 @@ mod tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         )
     }

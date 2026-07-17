@@ -147,6 +147,22 @@ describe("choiceIntent", () => {
       { kind: "attach_host", host: 4 },
       { kind: "choose_attach_host", player: 2, host: 4 },
     ],
+    [
+      { kind: "keep_tapped", ids: [3, 4] },
+      { kind: "decline_untap", player: 2, keep_tapped: [3, 4] },
+    ],
+    [
+      { kind: "top_or_bottom", top: true },
+      { kind: "choose_top_or_bottom", player: 2, top: true },
+    ],
+    [
+      { kind: "return_land", land: null },
+      { kind: "return_land_or_sacrifice", player: 2, land: null },
+    ],
+    [
+      { kind: "cast_face_down_choice", choice: 6 },
+      { kind: "cast_creature_face_down", player: 2, choice: 6 },
+    ],
   ];
 
   it.each(cases)("maps %o", (answer, intent) => {

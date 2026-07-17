@@ -125,12 +125,14 @@ impl Game {
                     cache.invalidate_object(old_host);
                 }
             }
-            Event::PermanentEntered { from, .. } => {
-                let owner = match self.objects[from as usize] {
-                    Object::Spell(s) => s.controller,
-                    _ => return,
-                };
-                cache.invalidate_owner(self, owner);
+            // ponytail: board-wide invalidation on every permanent entering (correct but coarse,
+            // mirroring `LifeChanged` below) — a cross-owner count anthem (Yavimaya Enchantress's
+            // "for each enchantment on the battlefield") goes stale on an *opponent's* entry, since
+            // no owner-side event touches the anthem's own controller. Narrow to "only when a
+            // cross-owner `per_permanent` anthem exists on the board" if recompute cost ever shows
+            // up in a profile.
+            Event::PermanentEntered { .. } => {
+                cache.invalidate_all_battlefield(self);
             }
             Event::LandPlayed { player, .. }
             | Event::TokenCreated {
@@ -138,11 +140,24 @@ impl Game {
             } => {
                 cache.invalidate_owner(self, player);
             }
-            Event::ReanimatedToBattlefield { controller, .. }
-            | Event::SearchedToBattlefield { controller, .. }
-            | Event::Manifested { controller, .. }
-            | Event::PutOntoBattlefieldFromHand { controller, .. } => {
+            // A hand-size static (Empyrial Armor's `grant_to_attached`) depends on the player's
+            // hand count, which these events change: a draw/tutor-to-hand grows it, a cast
+            // shrinks it (a discard rides `MovedToGraveyard` below instead, already covered).
+            Event::CardDrawn { player, .. } | Event::SearchedToHand { player, .. } => {
+                cache.invalidate_owner(self, player);
+            }
+            Event::SpellCast { controller, .. } => {
                 cache.invalidate_owner(self, controller);
+            }
+            // ponytail: board-wide invalidation on every non-cast battlefield entry (correct but
+            // coarse, same cross-owner reasoning as `PermanentEntered` above — a searched/
+            // reanimated/manifested/put-onto-battlefield enchantment can belong to any player).
+            Event::ReanimatedToBattlefield { .. }
+            | Event::FlickeredToBattlefield { .. }
+            | Event::SearchedToBattlefield { .. }
+            | Event::Manifested { .. }
+            | Event::PutOntoBattlefieldFromHand { .. } => {
+                cache.invalidate_all_battlefield(self);
             }
             // Turning face up swaps the anonymous 2/2 for the real card's characteristics.
             Event::TurnedFaceUp { permanent } => cache.invalidate_object(permanent),
@@ -152,13 +167,15 @@ impl Game {
             Event::BecameCopy { object, .. } => {
                 cache.invalidate_owner(self, self.controller_of(object));
             }
+            // ponytail: board-wide invalidation on every permanent leaving the battlefield
+            // (correct but coarse, same cross-owner reasoning as `PermanentEntered` above — a
+            // leaving enchantment can belong to any player, not just this anthem's controller).
             Event::MovedToGraveyard { from, .. }
             | Event::MovedToExile { from, .. }
             | Event::ReturnedToHand { from, .. }
             | Event::TuckedToLibrary { from, .. } => {
                 let attached_host = self.as_permanent(from).and_then(|p| p.attached_to);
-                let owner = self.owner_of(from);
-                cache.invalidate_owner(self, owner);
+                cache.invalidate_all_battlefield(self);
                 if let Some(host) = attached_host {
                     cache.invalidate_object(host);
                 }

@@ -571,7 +571,11 @@ function DeckBuilderSignedIn() {
             }}
             onPointerDown={(e) => {
               const title = known[commander.id]?.name ?? commander.id;
-              startMenuPress(title, [{ label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) }], e);
+              startMenuPress(
+                title,
+                [{ label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) }],
+                e,
+              );
             }}
             onPointerMove={moveMenuPress}
             onPointerUp={clearMenuPress}
@@ -580,9 +584,12 @@ function DeckBuilderSignedIn() {
             onContextMenu={(e) => {
               e.preventDefault();
               clearMenuPress();
-              openMenuAt(known[commander.id]?.name ?? commander.id, [
-                { label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) },
-              ], e.clientX, e.clientY);
+              openMenuAt(
+                known[commander.id]?.name ?? commander.id,
+                [{ label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) }],
+                e.clientX,
+                e.clientY,
+              );
             }}
             onMouseMove={(e) => setHover({ id: commander.id, print: commander.print, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHover(null)}

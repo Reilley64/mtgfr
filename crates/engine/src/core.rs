@@ -146,6 +146,8 @@ impl Game {
                     target,
                     targets_second: _,
                     x: _,
+                    spent_mana: _,
+                    activated: _,
                 } => StackEntry::Ability {
                     controller,
                     source,
@@ -350,6 +352,18 @@ impl Game {
                 if let Some(&(_, controller, _)) = self
                     .play_permissions
                     .control_overrides
+                    .iter()
+                    .find(|&&(o, ..)| o == id)
+                {
+                    return controller;
+                }
+                // A condition-scoped steal (Effect::GainControlWhile, Rubinia Soulsinger) — same
+                // "an active entry wins" precedence. An entry stays live only while its condition
+                // holds: the moment it fails, the SBA sweep (`check_conditioned_control_reversions`)
+                // drops it, so a present entry means the steal is still in force.
+                if let Some(&(_, controller, _)) = self
+                    .play_permissions
+                    .conditioned_control_overrides
                     .iter()
                     .find(|&&(o, ..)| o == id)
                 {
@@ -563,6 +577,18 @@ impl Game {
             Object::Spell(s) => s.targets.primary().or_else(|| s.modes.first_target()),
             _ => None,
         }
+    }
+
+    /// Whether the spell at `id` currently has exactly one target (CR 114.6's "single target" —
+    /// Willbender). Counts the chosen targets across both independent clauses; `false` if `id`
+    /// isn't a spell or targets zero/two-plus.
+    /// ponytail: a modal spell's per-mode targets aren't counted (they live on `modes`, not the
+    /// clause lists) — no pool card bends a modal spell, so the clause count is exact for what's here.
+    pub(crate) fn spell_has_single_target(&self, id: ObjectId) -> bool {
+        let Object::Spell(s) = &self.objects[id as usize] else {
+            return false;
+        };
+        s.targets.iter().count() + s.targets_second.iter().count() == 1
     }
 
     /// How many permanents were sacrificed to pay a spell's additional sacrifice cost

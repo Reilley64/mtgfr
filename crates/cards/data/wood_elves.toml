@@ -1,0 +1,29 @@
+# When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle.
+name = "Wood Elves"
+otags = ["land-ramp", "mini-refund", "triggered-ability", "tutor-land-forest", "tutor-land-to-battlefield", "type-errata-summon-creature", "virtual-vanilla"]
+set = "hob"
+subtypes = ["Elf", "Scout"]
+id = "8973bd99-20f8-4867-90ef-50392147ee1b"
+default_print = "2476e42b-b209-4207-8ed9-cb668f89b218"
+oracle = "When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle."
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature enters, search your library for a Forest card, put that card onto the
+# battlefield, then shuffle.
+[[abilities]]
+timing = "etb"
+
+# search your library for a Forest card, put that card onto the battlefield, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Forest"] }
+to_zone = "battlefield"
+tapped = false

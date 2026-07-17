@@ -132,6 +132,14 @@ impl Game {
                 push(source_name, ModifierContribution::Controls);
             }
         }
+        for &(host, _, condition) in &self.play_permissions.conditioned_control_overrides {
+            if host == object {
+                push(
+                    self.source_name_of(condition.source),
+                    ModifierContribution::Controls,
+                );
+            }
+        }
 
         for attachment in self.attachments(object) {
             let name = self.def_of(attachment).name;
@@ -180,9 +188,8 @@ impl Game {
         if let Some(candidate_permanent) = self.as_permanent(object) {
             let owner = candidate_permanent.owner;
             for &id in &self.battlefield() {
-                let p = match self.as_permanent(id) {
-                    Some(p) if p.owner == owner => p,
-                    _ => continue,
+                let Some(p) = self.as_permanent(id) else {
+                    continue;
                 };
                 for ability in p.def.abilities {
                     let (
@@ -195,12 +202,16 @@ impl Game {
                             colors,
                             exclude_source,
                             attacking_only,
+                            all_players,
                             ..
                         },
                     ) = (ability.timing, ability.effect)
                     else {
                         continue;
                     };
+                    if !all_players && p.owner != owner {
+                        continue;
+                    }
                     if exclude_source && id == object {
                         continue;
                     }
@@ -660,6 +671,77 @@ impl Game {
         })
     }
 
+    /// Whether a live Aura attached to `host` carries a static [`Effect::GrantToAttached`]
+    /// with `cant_attack = true` (Faith's Fetters/Prison Term — "Enchanted permanent/creature
+    /// can't attack"), the reverse of [`Self::goaded_by_attachment`]'s "must attack". Continuous,
+    /// read off the attachment scan, so it lifts the instant the Aura leaves.
+    pub(crate) fn host_cant_attack(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect),
+                        (
+                            Timing::Static,
+                            Effect::GrantToAttached {
+                                cant_attack: true,
+                                ..
+                            }
+                        )
+                    )
+                })
+        })
+    }
+
+    /// The block-legality twin of [`Self::host_cant_attack`]: whether a live attached Aura's
+    /// [`Effect::GrantToAttached`] carries `cant_block = true`.
+    pub(crate) fn host_cant_block(&self, host: ObjectId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect),
+                        (
+                            Timing::Static,
+                            Effect::GrantToAttached {
+                                cant_block: true,
+                                ..
+                            }
+                        )
+                    )
+                })
+        })
+    }
+
+    /// The strictest [`AbilityRestriction`] a live attached Aura's [`Effect::GrantToAttached`]
+    /// imposes on `host`'s own activated abilities (Faith's Fetters' `mana_only` carve-out vs
+    /// Prison Term's unqualified `none`), or `None` if no attached Aura restricts them.
+    /// ponytail: takes the first such grant; the pool never stacks two ability-restricting Auras
+    /// on one host, so no ordering between competing restrictions is needed yet.
+    pub(crate) fn host_activated_ability_restriction(
+        &self,
+        host: ObjectId,
+    ) -> Option<AbilityRestriction> {
+        self.attachments(host).into_iter().find_map(|id| {
+            if self.is_phased_out(id) {
+                return None;
+            }
+            self.def_of(id)
+                .abilities
+                .iter()
+                .find_map(|a| match (a.timing, a.effect) {
+                    (
+                        Timing::Static,
+                        Effect::GrantToAttached {
+                            activated_abilities: Some(restriction),
+                            ..
+                        },
+                    ) => Some(restriction),
+                    _ => None,
+                })
+        })
+    }
+
     /// The `(power, toughness)` a [`Effect::SetAttachedBasePT`] Aura forces onto `host`'s base,
     /// if any is attached — the CR 613.3(7b) base-P/T-set entry [`Game::pt_layers`] emits, applied
     /// before the 7c counters/pumps/anthems/grants.
@@ -1047,6 +1129,7 @@ impl Game {
         }
         keywords.extend(self.chosen_color_protection_grants(object));
         keywords.extend(self.anthem_keywords(object));
+        keywords.extend(self.keyword_anthem_static_grants(object));
         // "Lose ... and can't have" (CR 702.11e/702.18d — arcane_lighthouse): strip these off
         // the fully-unioned set last, so a keyword granted by any source above — including one
         // applied *after* the strip landed this turn — is filtered right back out.
@@ -1059,34 +1142,41 @@ impl Game {
     /// Every static [`Effect::AnthemStatic`] that applies to `candidate`, paired with the
     /// [`ObjectId`] of the permanent carrying it (its source — needed to resolve a dynamic
     /// `power`/`toughness` [`Amount`] and to honor `self_only`): on a permanent `candidate`'s
-    /// owner also owns, matching its `subtype`/`attacking_only`/`self_only` filter (`None`/
-    /// `false` matches everything, same as the old untyped anthem). The shared scan behind
-    /// [`Game::anthem_pt_bonus`] and [`Game::anthem_keywords`] — a filtered anthem has to be
-    /// tested per candidate creature, unlike the old controller-wide flat bonus.
+    /// owner also owns (or, for an `all_players` anthem, any permanent at all), matching its
+    /// `subtype`/`attacking_only`/`self_only` filter (`None`/`false` matches everything, same as
+    /// the old untyped anthem). The shared scan behind [`Game::anthem_pt_bonus`] and
+    /// [`Game::anthem_keywords`] — a filtered anthem has to be tested per candidate creature,
+    /// unlike the old controller-wide flat bonus.
     fn matching_anthems(&self, candidate: ObjectId) -> Vec<(ObjectId, Effect)> {
         let Some(candidate_permanent) = self.as_permanent(candidate) else {
             return Vec::new();
         };
         let owner = candidate_permanent.owner;
         let mut matches = Vec::new();
-        // Battlefield anthems (`from_graveyard == false`) on permanents the owner controls,
-        // plus graveyard anthems (`from_graveyard == true`) on the owner's graveyard cards that
-        // function there (CR 603.6e continuous-analog — Anger's "as long as this card is in your
-        // graveyard … creatures you control have haste"). The `bool` tags which zone each
-        // source is in so the two anthem kinds never leak across (a graveyard-only anthem's
-        // battlefield copy grants nothing, and vice versa).
+        // Battlefield anthems (`from_graveyard == false`) on every permanent, plus graveyard
+        // anthems (`from_graveyard == true`) on the owner's graveyard cards that function there
+        // (CR 603.6e continuous-analog — Anger's "as long as this card is in your graveyard …
+        // creatures you control have haste"). The `bool` tags which zone each source is in so
+        // the two anthem kinds never leak across (a graveyard-only anthem's battlefield copy
+        // grants nothing, and vice versa). The "source's controller controls candidate" gate is
+        // applied per-ability below (skipped for `all_players`), not by pre-filtering sources
+        // here — an `all_players` anthem's source can belong to any player.
         let battlefield_sources = self
             .objects
             .iter()
             .enumerate()
-            .filter(|(_, object)| matches!(object, Object::Permanent(p) if p.owner == owner))
-            .map(|(index, _)| (index as ObjectId, false));
+            .filter_map(|(index, object)| match object {
+                Object::Permanent(p) => Some((index as ObjectId, false, p.owner)),
+                _ => None,
+            });
         let graveyard_sources = self
             .graveyard_cards(owner)
             .into_iter()
             .filter(|&id| self.def_of(id).functions_in_graveyard)
-            .map(|id| (id, true));
-        for (source, source_in_graveyard) in battlefield_sources.chain(graveyard_sources) {
+            .map(|id| (id, true, owner));
+        for (source, source_in_graveyard, source_owner) in
+            battlefield_sources.chain(graveyard_sources)
+        {
             for ability in self.functional_abilities(source) {
                 let (
                     Timing::Static,
@@ -1102,6 +1192,7 @@ impl Game {
                         has_counters,
                         condition,
                         from_graveyard,
+                        all_players,
                         ..
                     },
                 ) = (ability.timing, ability.effect)
@@ -1109,6 +1200,9 @@ impl Game {
                     continue;
                 };
                 if from_graveyard != source_in_graveyard {
+                    continue;
+                }
+                if !all_players && source_owner != owner {
                     continue;
                 }
                 // A level-gated anthem functions only at or above its level (CR 717.5). A
@@ -1157,7 +1251,7 @@ impl Game {
                 // against the anthem source's own controller, same as its cost/trigger reads
                 // would be.
                 if let Some(cond) = condition
-                    && !self.condition_holds(cond, TriggerContext::of(owner))
+                    && !self.condition_holds(cond, TriggerContext::of(source_owner))
                 {
                     continue;
                 }
@@ -1197,6 +1291,31 @@ impl Game {
         false
     }
 
+    /// Whether `target` itself carries Phantom Centaur's self-shield (CR 615: "If damage would
+    /// be dealt to Phantom Centaur, prevent that damage."). Unlike
+    /// [`Game::noncombat_damage_prevented_to_creature`]'s "other creatures you control" scan,
+    /// this is self-only — true iff `target` has a `(Timing::Static,
+    /// PreventDamageToSelfRemovingCounter)` ability of its own — and applies to combat damage
+    /// too (Tajic's static skips combat; Phantom Centaur's doesn't).
+    pub(crate) fn phantom_shield_active(&self, target: ObjectId) -> bool {
+        self.functional_abilities(target).iter().any(|ability| {
+            ability.timing == Timing::Static
+                && matches!(ability.effect, Effect::PreventDamageToSelfRemovingCounter)
+        })
+    }
+
+    /// The "remove a +1/+1 counter" event Phantom Centaur's shield fires alongside each
+    /// prevented damage-dealing event (CR 615) — `None` when there's no counter left to remove
+    /// (the shield still applies; it just has nothing to take, CR 615's replacement effect
+    /// doesn't create counters from nothing).
+    pub(crate) fn phantom_shield_counter_removal(&self, target: ObjectId) -> Option<Event> {
+        (self.plus_counters(target) > 0).then_some(Event::CountersPlaced {
+            object: target,
+            count: -1,
+            source_name: self.def_of(target).name,
+        })
+    }
+
     /// The total (power, toughness) bonus [`Game::matching_anthems`] grants to `candidate`.
     pub(crate) fn anthem_pt_bonus(&self, candidate: ObjectId) -> (i32, i32) {
         let owner = self.owner_of(candidate);
@@ -1223,6 +1342,49 @@ impl Game {
                 _ => Vec::new(),
             })
             .collect()
+    }
+
+    /// Every keyword a static [`Effect::KeywordAnthemStatic`] elsewhere on the battlefield grants
+    /// to `candidate` (Sterling Grove's "Other enchantments you control have shroud"). The
+    /// bare-`PermanentFilter` static twin of
+    /// [`Effect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn`]'s one-shot grant — same "you
+    /// control" scan and filter shape (`filter.other` reaches "**other** enchantments"), but read
+    /// fresh here on every recompute instead of resolved once onto `temp_keywords`. Not folded
+    /// into [`Game::matching_anthems`]/[`Game::anthem_keywords`]: those destructure
+    /// [`Effect::AnthemStatic`] specifically for its P/T + subtype/color/etc axes, which this
+    /// effect has none of.
+    fn keyword_anthem_static_grants(&self, candidate: ObjectId) -> Vec<Keyword> {
+        if self.as_permanent(candidate).is_none() {
+            return Vec::new();
+        }
+        let candidate_controller = self.controller_of(candidate);
+        let mut keywords = Vec::new();
+        for (source, object) in self.objects.iter().enumerate() {
+            if !matches!(object, Object::Permanent(_)) {
+                continue;
+            }
+            let source = source as ObjectId;
+            if self.controller_of(source) != candidate_controller {
+                continue;
+            }
+            for ability in self.functional_abilities(source) {
+                let (
+                    Timing::Static,
+                    Effect::KeywordAnthemStatic {
+                        keywords: granted,
+                        filter,
+                    },
+                ) = (ability.timing, ability.effect)
+                else {
+                    continue;
+                };
+                if !self.permanent_matches(&filter, candidate, candidate_controller, Some(source)) {
+                    continue;
+                }
+                keywords.extend_from_slice(granted);
+            }
+        }
+        keywords
     }
 
     /// Every activated mana ability granted to `candidate` by a live static
@@ -1748,6 +1910,7 @@ mod cache_tests {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -1787,6 +1950,8 @@ mod cache_tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -1803,6 +1968,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -1824,6 +1990,7 @@ mod cache_tests {
                 has_counters: false,
                 condition: None,
                 from_graveyard: false,
+                all_players: false,
             },
             optional: false,
             min_level: 0,
@@ -1859,6 +2026,8 @@ mod cache_tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -1875,6 +2044,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -1939,10 +2109,15 @@ mod cache_tests {
                 counter_division: DamageAssignment::default(),
                 sacrifice_count: 0,
                 kicked: false,
+                bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
                 serra_recursion: false,
                 bestowed: false,
+                face_down: false,
+                masked: false,
+                evoked: false,
+                spent_colors: [false; Color::COUNT],
             }),
         );
         let permanent = game.objects.len() as ObjectId;
@@ -2013,6 +2188,8 @@ mod cache_tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -2027,6 +2204,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -2101,6 +2279,7 @@ mod characteristic_query_tests {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -2142,6 +2321,8 @@ mod characteristic_query_tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -2156,6 +2337,7 @@ mod characteristic_query_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -2194,6 +2376,8 @@ mod characteristic_query_tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -2208,6 +2392,7 @@ mod characteristic_query_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 
@@ -2277,6 +2462,8 @@ mod characteristic_query_tests {
                 flashback: None,
                 echo: None,
                 bestow: None,
+                morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -2291,6 +2478,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         );
         let colorless = game.spawn_on_battlefield(P0, creature_with(&[]));
@@ -2348,6 +2536,8 @@ mod characteristic_query_tests {
                 flashback: None,
                 echo: None,
                 bestow: None,
+                morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -2362,6 +2552,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         );
         assert!(game.damage_prevented_by_protection(knight, Some(black_source)));
@@ -2417,6 +2608,8 @@ mod characteristic_query_tests {
                 flashback: None,
                 echo: None,
                 bestow: None,
+                morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -2431,6 +2624,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
         );
         assert_eq!(

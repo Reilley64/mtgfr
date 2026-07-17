@@ -169,6 +169,21 @@ impl<'a> ChoiceCtx<'a> {
                 spell,
                 cost: wire_cost(cost),
             },
+            engine::PendingChoice::PayOrControllerDraws {
+                player,
+                controller,
+                cost,
+            } => PendingChoiceView::PayOrControllerDraws {
+                player: player.0,
+                controller: controller.0,
+                cost: wire_cost(cost),
+            },
+            engine::PendingChoice::ChooseCounteredSpellDestination { player, spell } => {
+                PendingChoiceView::ChooseCounteredSpellDestination {
+                    player: player.0,
+                    spell,
+                }
+            }
             engine::PendingChoice::PayEchoOrSacrifice {
                 player,
                 source,
@@ -177,6 +192,24 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 cost: wire_cost(cost),
+            },
+            engine::PendingChoice::SacrificeUnlessPay {
+                player,
+                source,
+                cost,
+            } => PendingChoiceView::SacrificeUnlessPay {
+                player: player.0,
+                source,
+                cost: wire_cost(cost),
+            },
+            engine::PendingChoice::SacrificeUnlessReturnLand {
+                player,
+                source,
+                candidates,
+            } => PendingChoiceView::SacrificeUnlessReturnLand {
+                player: player.0,
+                source,
+                items: self.label_items(candidates),
             },
             engine::PendingChoice::AssignCombatDamage {
                 player,
@@ -440,17 +473,32 @@ impl<'a> ChoiceCtx<'a> {
                 player,
                 hand,
                 count,
+                ..
             } => PendingChoiceView::Discard {
                 player: player.0,
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
             },
+            engine::PendingChoice::DeclineUntap { player, permanents } => {
+                PendingChoiceView::DeclineUntap {
+                    player: player.0,
+                    items: self.label_items(permanents),
+                }
+            }
             engine::PendingChoice::PutLandFromHand {
                 player, candidates, ..
             } => PendingChoiceView::PutLandFromHand {
                 player: player.0,
                 items: private_items(player, self.viewer, candidates, |ids| self.label_items(ids)),
             },
+            engine::PendingChoice::CastCreatureFaceDown { player, candidates } => {
+                PendingChoiceView::CastCreatureFaceDown {
+                    player: player.0,
+                    items: private_items(player, self.viewer, candidates, |ids| {
+                        self.label_items(ids)
+                    }),
+                }
+            }
             engine::PendingChoice::ChooseExiledWithCard {
                 player,
                 source,
@@ -513,6 +561,38 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 items: self.label_items(nonlands),
+            },
+            engine::PendingChoice::ChooseSplittingOpponent {
+                player,
+                source,
+                legal,
+                ..
+            } => PendingChoiceView::ChooseSplittingOpponent {
+                player: player.0,
+                source,
+                label: self.game.def_of(source).name.to_string(),
+                items: self.label_players(legal),
+            },
+            engine::PendingChoice::PartitionRevealed {
+                player,
+                source,
+                revealed,
+                ..
+            } => PendingChoiceView::PartitionRevealed {
+                player: player.0,
+                source,
+                items: self.label_items(revealed),
+            },
+            engine::PendingChoice::ChoosePileForHand {
+                player,
+                source,
+                pile_a,
+                pile_b,
+            } => PendingChoiceView::ChoosePileForHand {
+                player: player.0,
+                source,
+                pile_a: self.label_items(pile_a),
+                pile_b: self.label_items(pile_b),
             },
             engine::PendingChoice::ChooseExiledToCastFree {
                 player,
@@ -743,6 +823,18 @@ mod coverage_tests {
                 |view| matches!(view, PendingChoiceView::PayOrCounter { .. }),
             ),
             (
+                PendingChoice::ChooseCounteredSpellDestination {
+                    player: PlayerId(0),
+                    spell,
+                },
+                |view| {
+                    matches!(
+                        view,
+                        PendingChoiceView::ChooseCounteredSpellDestination { .. }
+                    )
+                },
+            ),
+            (
                 PendingChoice::AssignCombatDamage {
                     player: PlayerId(0),
                     attacker: source,
@@ -822,6 +914,7 @@ mod coverage_tests {
                     player: PlayerId(0),
                     hand: vec![hand_card],
                     count: 2,
+                    or_one_matching: None,
                 },
                 |view| matches!(view, PendingChoiceView::Discard { count: 2, .. }),
             ),
@@ -832,6 +925,13 @@ mod coverage_tests {
                     tapped: false,
                 },
                 |view| matches!(view, PendingChoiceView::PutLandFromHand { .. }),
+            ),
+            (
+                PendingChoice::CastCreatureFaceDown {
+                    player: PlayerId(0),
+                    candidates: vec![hand_card],
+                },
+                |view| matches!(view, PendingChoiceView::CastCreatureFaceDown { .. }),
             ),
             (
                 PendingChoice::ChooseExiledWithCard {
@@ -857,6 +957,30 @@ mod coverage_tests {
             let view = project_pending_choice(&game, Some(PlayerId(0)), choice);
             assert!(check(view), "unexpected projection");
         }
+    }
+
+    /// Illusionary Mask's offered hand creatures are private (CR — a hidden hand): a non-owner
+    /// viewer sees the choice but not which cards, while the owner sees them.
+    #[test]
+    fn cast_creature_face_down_candidates_are_redacted_for_non_owner() {
+        let mut game = Game::new();
+        let hand_card = game.spawn_in_hand(PlayerId(0), def("Grizzly Bear"));
+        let choice = PendingChoice::CastCreatureFaceDown {
+            player: PlayerId(0),
+            candidates: vec![hand_card],
+        };
+
+        let owner_view = project_pending_choice(&game, Some(PlayerId(0)), choice.clone());
+        let PendingChoiceView::CastCreatureFaceDown { items, .. } = owner_view else {
+            panic!("expected CastCreatureFaceDown");
+        };
+        assert_eq!(items.len(), 1, "the owner sees the offered creature");
+
+        let opponent_view = project_pending_choice(&game, Some(PlayerId(1)), choice);
+        let PendingChoiceView::CastCreatureFaceDown { items, .. } = opponent_view else {
+            panic!("expected CastCreatureFaceDown");
+        };
+        assert!(items.is_empty(), "a non-owner sees no hand cards");
     }
 
     #[test]

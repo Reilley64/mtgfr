@@ -1,0 +1,32 @@
+# When this creature enters, reveal the top card of your library. If it's a land card, put it
+# onto the battlefield. Otherwise, put that card into your hand.
+name = "Coiling Oracle"
+otags = ["cantrip", "cycle-cn2-draft-signpost", "cycle-rvr-c-two-color", "hand-neutral", "land-ramp", "multiple-species-types", "triggered-ability", "unique-type-line", "virtual-vanilla", "land-or-hand"]
+set = "rvr"
+subtypes = ["Snake", "Elf", "Druid"]
+id = "69fd4ddf-9ed8-4c56-bef3-9944daf05e4f"
+default_print = "559ff1b1-018c-4e08-9531-8af20af47d05"
+oracle = "When this creature enters, reveal the top card of your library. If it's a land card, put it onto the battlefield. Otherwise, put that card into your hand."
+
+[cost]
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature enters, reveal the top card of your library. If it's a land card, put it
+# onto the battlefield. Otherwise, put that card into your hand.
+[[abilities]]
+timing = "etb"
+
+# reveal the top card of your library. If it's a land card, put it onto the battlefield.
+# Otherwise, put that card into your hand.
+[[abilities.effects]]
+type = "reveal_top_cards"
+count = 1
+filter = "land"
+matched_dest = "battlefield"
+rest_dest = "hand"

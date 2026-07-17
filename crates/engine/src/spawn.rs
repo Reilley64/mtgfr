@@ -6,9 +6,13 @@
 use crate::*;
 
 impl Game {
-    /// Test/setup helper: create a card in `player`'s hand, returning its id.
+    /// Test/setup helper: create a card in `player`'s hand, returning its id. Invalidates
+    /// `player`'s cached characteristics — a hand-count static (Empyrial Armor's
+    /// `grant_to_attached`) reads live off the hand, so a battlefield permanent's cached P/T
+    /// would otherwise go stale the instant a test drops a card in here after an earlier read;
+    /// see [`Self::spawn_in_graveyard`]'s doc comment.
     pub fn spawn_in_hand(&mut self, player: PlayerId, def: CardDef) -> ObjectId {
-        self.create_object(
+        let id = self.create_object(
             None,
             Object::Card(Card {
                 def,
@@ -17,7 +21,10 @@ impl Game {
                 commander: false,
                 face_down: false,
             }),
-        )
+        );
+        self.characteristics_cache
+            .write(|cache| cache.invalidate_owner(self, player));
+        id
     }
 
     /// Test/setup helper: create a card directly in `player`'s graveyard, returning its id.

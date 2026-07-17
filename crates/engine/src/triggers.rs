@@ -35,6 +35,7 @@ impl Game {
                 Event::PermanentEntered { permanent, .. }
                 | Event::ReanimatedToBattlefield { permanent, .. }
                 | Event::ReturnedFromLinkedExile { permanent, .. }
+                | Event::FlickeredToBattlefield { permanent, .. }
                 | Event::SearchedToBattlefield { permanent, .. }
                 | Event::PutOntoBattlefieldFromHand { permanent, .. }
                 // A manifest enters the battlefield as a creature (CR 701.34); its own `Etb` scans
@@ -42,10 +43,28 @@ impl Game {
                 // "whenever a creature enters" watches see it.
                 | Event::Manifested { permanent, .. }
                 | Event::LandPlayed { permanent, .. } => {
+                    // Evoke (CR 702.74a): queued *before* the permanent's own `Etb` trigger below
+                    // so it lands underneath it on the stack and so resolves *after* — an ETB
+                    // payoff (Mulldrifter's draw two) still happens before the sacrifice.
+                    // ponytail: no ordering choice is raised for the controller's own simultaneous
+                    // triggers (CR 603.3b) — the two are queued as separate single-ability groups
+                    // rather than one multi-ability group, so `place_pending_triggers` places both
+                    // without pausing. Grow into a real `OrderTriggers` choice if an evoke card
+                    // ever needs the controller to choose the other order.
+                    if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
+                        self.queue_evoke_sacrifice(permanent);
+                    }
                     self.queue_self_trigger(permanent, Trigger::Etb);
                     // ponytail: watch-others companion to the self `Etb` above — constellation/
                     //   landfall watch *any other* permanent's entry, not their own.
                     self.queue_permanent_enters_triggers(permanent);
+                }
+                // Turned face up (CR 702.37f): scan the now-revealed permanent's own abilities for
+                // a turned-face-up trigger. The flag is already cleared (the apply ran first), so
+                // its real abilities are visible — the same self-scan idiom as the `Etb` above,
+                // but not entering the battlefield, so no watch-others enters triggers.
+                Event::TurnedFaceUp { permanent } => {
+                    self.queue_self_trigger(permanent, Trigger::TurnedFaceUp);
                 }
                 Event::TokenCreated {
                     token,
@@ -395,9 +414,34 @@ impl Game {
                 // Combat damage to a player (CR 510.2) — never a non-combat life loss, which
                 // only emits `LifeChanged`, and never combat damage to a *creature*, which (CR 510, CR 120.3, CR 506)
                 // emits `DamageMarked` instead.
-                Event::CombatDamageDealtToPlayer { source, amount, .. } => {
-                    self.queue_combat_damage_triggers(source, amount)
+                Event::CombatDamageDealtToPlayer {
+                    source,
+                    player,
+                    amount,
+                } => {
+                    self.queue_combat_damage_triggers(source, amount);
+                    // Armadillo Cloak's attached-host damage watch: this creature dealt combat
+                    // damage to a player. See `queue_enchanted_creature_deals_damage_triggers`.
+                    self.queue_enchanted_creature_deals_damage_triggers(source, amount);
+                    // Looter il-Kor's "deals damage to an opponent" — combat damage is the
+                    // combat half of that watch; the noncombat half is the arm below.
+                    self.queue_deals_damage_to_opponent_triggers(source, player);
                 }
+                // Noncombat damage dealt to a player (CR 120.1) — the marker
+                // `Effect::DealDamage`'s player arm pushes alongside its `LifeChanged`, never a
+                // non-damage life loss (drain, pay-life), which only emits `LifeChanged`.
+                Event::DamageDealtToPlayer { source, player, .. } => {
+                    self.queue_deals_damage_to_opponent_triggers(source, player);
+                }
+                // Damage marked on a creature (CR 120.3/506) — `Game::deal_creature_damage` is the
+                // shared choke behind both combat damage to a blocker/attacker and noncombat
+                // creature damage (fight, CR 701.12), so this one event arm covers both for
+                // Armadillo Cloak's attached-host damage watch.
+                Event::DamageMarked {
+                    source: Some(source),
+                    amount,
+                    ..
+                } => self.queue_enchanted_creature_deals_damage_triggers(source, amount),
                 _ => {}
             }
         }
@@ -559,6 +603,30 @@ impl Game {
             ..TriggerContext::of(self.owner_of(source))
         };
         self.queue_trigger_group(ctx, source, self.def_of(source), trigger);
+    }
+
+    /// Queue evoke's "sacrificed when it enters" (CR 702.74a) as its own single-ability
+    /// [`TriggerGroup`], reusing [`Effect::SacrificeObject`] against `evoked_permanent` itself —
+    /// the same synthetic-`then` shape a delayed sacrifice trigger uses (see that variant's doc),
+    /// fabricated here since it isn't one of the permanent's own printed abilities. Its
+    /// `timing`/`condition` are inert placeholders, like [`Game::fire_delayed_triggers`]'s.
+    pub(crate) fn queue_evoke_sacrifice(&mut self, evoked_permanent: ObjectId) {
+        self.pending_trigger_groups.push(TriggerGroup {
+            expanded: false,
+            controller: self.owner_of(evoked_permanent),
+            source: evoked_permanent,
+            abilities: vec![Ability {
+                timing: Timing::Triggered(Trigger::Etb),
+                effect: Effect::SacrificeObject {
+                    object: Some(evoked_permanent),
+                },
+                optional: false,
+                min_level: 0,
+                cost: Cost::FREE,
+                condition: None,
+                once_each_turn: false,
+            }],
+        });
     }
 
     /// Queue watch-others death triggers for the death of one creature (whose id was `dying`,
@@ -1076,6 +1144,7 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
+                triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
                 triggering_spell: None,
                 source_power: None,
@@ -1083,6 +1152,7 @@ impl Game {
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
+                triggering_caster: None,
             };
             self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::PlayerAttacksYourOpponent);
         }
@@ -1204,6 +1274,7 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
+                triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
                 triggering_spell: None,
                 source_power: None,
@@ -1211,6 +1282,7 @@ impl Game {
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
+                triggering_caster: None,
             };
             self.queue_trigger_group(
                 ctx,
@@ -1219,6 +1291,68 @@ impl Game {
                 Trigger::EnchantedCreatureAttacks,
             );
         }
+    }
+
+    /// Queue attached-host damage-watch triggers (CR 609.7/702, Armadillo Cloak: "Whenever
+    /// enchanted creature deals damage, you gain that much life"): `source` (a creature) just
+    /// dealt `amount` damage — combat or noncombat, to a creature or a player alike, since both
+    /// [`Game::deal_creature_damage`](Self::deal_creature_damage) and
+    /// [`Game::damage_player`](Self::damage_player) reach here off the events they emit. Each
+    /// permanent attached to `source` (Auras, mirroring
+    /// [`queue_enchanted_creature_attacks_triggers`](Self::queue_enchanted_creature_attacks_triggers))
+    /// fires its `EnchantedCreatureDealsDamage` ability, controlled by *that Aura's own
+    /// controller* — not the host's. `amount` rides in `ctx.triggering_damage_dealt`
+    /// (`Amount::TriggeringDamageDealt`). A prevented or zero-amount hit never reaches here — both
+    /// callers guard-return before emitting the underlying event — so no zero-life-gain fire.
+    /// ponytail: fires once per damage *event* (per blocker, plus trample overflow separately),
+    /// not once per CR 609.7 simultaneous-combat-damage event summed. Net life is identical for
+    /// Armadillo Cloak (the summed amount is the same either way); revisit if a payoff ever counts
+    /// the number of triggers rather than the total (e.g. a per-fire "draw a card").
+    pub(crate) fn queue_enchanted_creature_deals_damage_triggers(
+        &mut self,
+        source: ObjectId,
+        amount: i32,
+    ) {
+        for aura in self.attachments(source) {
+            let ctx = TriggerContext {
+                triggering_damage_dealt: Some(amount),
+                ..TriggerContext::of(self.controller_of(aura))
+            };
+            self.queue_trigger_group(
+                ctx,
+                aura,
+                self.def_of(aura),
+                Trigger::EnchantedCreatureDealsDamage,
+            );
+        }
+    }
+
+    /// Queue "deals damage to an opponent" triggers (CR 603.3, Looter il-Kor: "Whenever this
+    /// creature deals damage to an opponent, draw a card, then discard a card."): `source` just
+    /// dealt damage to `player`, combat ([`Event::CombatDamageDealtToPlayer`]) or noncombat
+    /// ([`Event::DamageDealtToPlayer`]) alike. Self-scoped — only `source`'s own
+    /// [`Trigger::DealsDamageToOpponent`] abilities fire, and only when `player` is an opponent
+    /// of `source`'s controller (every other player is, CR 102.3). A spell's own damage never
+    /// reaches the trigger scan: its `source` is a stack object, not a battlefield permanent.
+    /// A prevented or zero-amount hit never emits either underlying event, so no spurious fire.
+    pub(crate) fn queue_deals_damage_to_opponent_triggers(
+        &mut self,
+        source: ObjectId,
+        player: PlayerId,
+    ) {
+        if self.as_permanent(source).is_none() {
+            return;
+        }
+        let controller = self.controller_of(source);
+        if player == controller {
+            return;
+        }
+        self.queue_trigger_group(
+            TriggerContext::of(controller),
+            source,
+            self.def_of(source),
+            Trigger::DealsDamageToOpponent,
+        );
     }
 
     /// Queue Aura-attached death triggers (CR "When enchanted creature dies…"): the death twin of
@@ -1395,6 +1529,7 @@ impl Game {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
+            triggering_damage_dealt: None,
             dying_enchanted_creature: None,
             triggering_spell: None,
             source_power: None,
@@ -1402,6 +1537,7 @@ impl Game {
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,
+            triggering_caster: None,
         };
         for id in self.battlefield() {
             if self.owner_of(id) != player {
@@ -1743,6 +1879,10 @@ impl Game {
                 // matched ability's `Effect::CopyTriggeringSpell` by `contextualize_effect`
                 // below, same last-known-information shape as `cast_x` above.
                 triggering_spell: Some(spell),
+                // Rhystic Study's "unless that player pays" payoff needs the caster's identity,
+                // not just the watcher's own controller (they differ whenever `caster` is
+                // `Opponent`/`AnyPlayer`) — see `TriggerContext::triggering_caster`.
+                triggering_caster: Some(spell_controller),
                 ..TriggerContext::of(controller)
             };
             let abilities: Vec<Ability> = self
@@ -2296,6 +2436,7 @@ impl Game {
                     effect: Effect::PumpSelfUntilEndOfTurn {
                         power: Amount::Fixed(1),
                         toughness: Amount::Fixed(1),
+                        keywords: &[],
                     },
                     optional: false,
                     min_level: 0,
@@ -2582,6 +2723,11 @@ impl Game {
             // resolve site (`Game::run`), which intercepts it directly against its own `source`
             // parameter before falling through here (Kinetic Ooze's X-threshold riders).
             Condition::SourceEnteredWithXAtLeast { .. } => false,
+            // ponytail: source-object-based like `SourceEnteredWithXAtLeast` above — `TriggerContext`
+            // carries no source id either. Reachable only through the `Effect::Conditional` resolve
+            // site (`Game::run`), which intercepts it directly against its own `source` parameter
+            // before falling through here (Court Hussar's "unless {W} was spent to cast it").
+            Condition::ColorWasSpentToCastThis { .. } => false,
             Condition::All { conditions } => {
                 conditions.iter().all(|&c| self.condition_holds(c, ctx))
             }
@@ -2769,6 +2915,9 @@ impl Game {
             Amount::TargetPower => {
                 self.power(expect_object_target(target, "a power-derived amount"))
             }
+            Amount::TargetToughness => {
+                self.toughness(expect_object_target(target, "a toughness-derived amount"))
+            }
             Amount::TargetManaValue => self
                 .def_of(expect_object_target(target, "a mana-value amount"))
                 .mana_value() as i32,
@@ -2789,6 +2938,8 @@ impl Game {
                     "a target-player-hand amount resolves with a chosen player target, got {other:?}"
                 ),
             },
+            // A live read off the effect's controller (Empyrial Armor) — no target involved.
+            Amount::CardsInYourHand => self.hand_of(controller).len() as i32,
             // ponytail: reads the single commander's counter (matches the shared command_casts
             // tax counter, apply.rs). A partner-commander pair would need to sum both commanders'
             // counts; no soc-pool player has more than one commander.
@@ -2830,6 +2981,11 @@ impl Game {
             // `Fixed` before the ability reaches the stack — see the variant's own doc comment.
             Amount::SacrificedCreaturePower => panic!(
                 "Amount::SacrificedCreaturePower must be contextualized to Fixed before resolving"
+            ),
+            // A placeholder [`contextualize_sacrifice_effect`] must have already rewritten to
+            // `Fixed` before the ability reaches the stack — see the variant's own doc comment.
+            Amount::SacrificedCreatureToughness => panic!(
+                "Amount::SacrificedCreatureToughness must be contextualized to Fixed before resolving"
             ),
             Amount::CommanderColorCount => self
                 .commander_identity_of(controller)
@@ -2913,6 +3069,12 @@ impl Game {
             // so a live read here never happens for the pool. The arm exists only so this match
             // stays exhaustive.
             Amount::CombatDamageDealt => 0,
+            // ponytail: same placeholder shape as `CombatDamageDealt` above — `fill_triggering_damage_dealt`
+            // must have already rewritten it to `Fixed` with the dealt amount before an
+            // `EnchantedCreatureDealsDamage` watch's ability reaches the stack (see
+            // `queue_enchanted_creature_deals_damage_triggers`), so a live read here never happens
+            // for the pool. The arm exists only so this match stays exhaustive.
+            Amount::TriggeringDamageDealt => 0,
         }
     }
 
@@ -3275,7 +3437,7 @@ impl Game {
     ) -> Placement {
         let spec = effect.target();
         if spec == TargetSpec::None {
-            self.push_ability_group(player, source, &[(effect, None)], events);
+            self.push_ability_group(player, source, &[(effect, None)], false, events);
             return Placement::Placed;
         }
         let x = self.ability_source_x(source);
@@ -3292,7 +3454,7 @@ impl Game {
             let Some(&fixed) = legal.first() else {
                 return Placement::NoLegalTarget;
             };
-            self.push_ability_group(player, source, &[(effect, Some(fixed))], events);
+            self.push_ability_group(player, source, &[(effect, Some(fixed))], false, events);
             return Placement::Placed;
         }
         let legal = self.legal_targets_for(spec, source, player, [false; Color::COUNT], x);
@@ -3351,10 +3513,15 @@ impl Game {
         controller: PlayerId,
     ) -> Option<(TargetSpec, TargetCount)> {
         for &step in steps {
-            if let Effect::Conditional { condition, then } = step {
+            if let Effect::Conditional {
+                condition,
+                then,
+                negate,
+            } = step
+            {
                 // CR 603.4: a gated clause is only a real target clause when its intervening-if
                 // holds as the trigger goes on the stack.
-                if self.placement_condition_holds(condition, source, controller)
+                if (self.placement_condition_holds(condition, source, controller) != negate)
                     && let Some(found) = self.second_clause_in(then, source, controller)
                 {
                     return Some(found);
@@ -3452,22 +3619,30 @@ impl Game {
         controller: PlayerId,
         source: ObjectId,
         abilities: &[(Effect, Option<Target>)],
+        activated: bool,
         events: &mut Vec<Event>,
     ) {
-        // Triggered abilities carry no `{X}` — an activated (or copied) `{X}` ability goes on the
-        // stack via `push_activated_ability` instead, which threads its chosen X.
-        self.push_ability_group_with_x(controller, source, abilities, 0, events);
+        // Triggered abilities carry no `{X}` (and spent no mana) — an activated (or copied) `{X}`
+        // ability goes on the stack via `push_ability_group_with_x` instead, which threads both.
+        self.push_ability_group_with_x(controller, source, abilities, 0, [0; 6], activated, events);
     }
 
     /// [`push_ability_group`](Self::push_ability_group) threading a chosen `{X}` (CR 107.3) onto
     /// each ability — for an activated ability whose cost contains `{X}`, or a CR 707.10c copy of
-    /// one, whose `Amount::X` reads that value at resolution.
+    /// one, whose `Amount::X` reads that value at resolution — plus the multiset of mana actually
+    /// spent activating it (`spent_mana`, [`StackItem::Ability::spent_mana`] — Illusionary Mask's
+    /// CR 107.3 payability test; all zeroes except a real activation payment). `activated` marks
+    /// the placed item as an activated (vs triggered) ability — see
+    /// [`StackItem::Ability::activated`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn push_ability_group_with_x(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
         abilities: &[(Effect, Option<Target>)],
         x: u32,
+        spent_mana: [u8; 6],
+        activated: bool,
         events: &mut Vec<Event>,
     ) {
         for &(effect, target) in abilities {
@@ -3480,6 +3655,8 @@ impl Game {
                     target,
                     targets_second: TargetList::default(),
                     x,
+                    spent_mana,
+                    activated,
                 },
             );
         }
@@ -3509,6 +3686,10 @@ impl Game {
                 target,
                 targets_second,
                 x: 0,
+                spent_mana: [0; 6],
+                // Only a triggered ability (CR 603.3d — Kinetic Ooze's second target clause) ever
+                // goes on the stack with a `targets_second`; never an activated one.
+                activated: false,
             },
         );
         self.consecutive_passes = 0;
