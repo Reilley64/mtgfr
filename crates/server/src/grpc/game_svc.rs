@@ -33,6 +33,15 @@ fn ack_msg(ack: crate::game_loop::Ack) -> pb::Ack {
     }
 }
 
+/// Scrubbed intent discriminant for spans (no payloads).
+fn intent_kind_label(intent: &schema::WireIntent) -> String {
+    let dbg = format!("{intent:?}");
+    dbg.split([' ', '{'])
+        .next()
+        .unwrap_or("unknown")
+        .to_string()
+}
+
 #[tonic::async_trait]
 impl pb::game_server::Game for GameSvc {
     type StreamStream =
@@ -96,20 +105,26 @@ impl pb::game_server::Game for GameSvc {
         &self,
         request: Request<pb::IntentRequest>,
     ) -> Result<Response<pb::Ack>, Status> {
+        // Parent span is created by `trace::TraceLayer` for every gRPC method.
         let user = auth_ctx::authenticate(&self.state, &request).await?;
         let inner = request.into_inner();
+        let table_id = inner.table_id.clone();
+        tracing::Span::current().record("table_id", tracing::field::display(&table_id));
         let envelope = map::intent_envelope_from_pb(
             inner
                 .envelope
                 .ok_or_else(|| Status::invalid_argument("missing envelope"))?,
         )
         .map_err(Status::invalid_argument)?;
-        if envelope.table_id != inner.table_id {
+        if envelope.table_id != table_id {
             return Err(Status::invalid_argument(
                 "envelope.table_id does not match IntentRequest.table_id",
             ));
         }
-        let ack = submit_intent_core(&self.state, user.id, &inner.table_id, envelope).await;
+        let intent_kind = intent_kind_label(&envelope.intent);
+        tracing::Span::current().record("intent.kind", intent_kind.as_str());
+        let ack = submit_intent_core(&self.state, user.id, &table_id, envelope).await;
+        tracing::Span::current().record("accepted", ack.accepted);
         Ok(Response::new(ack_msg(ack)))
     }
 

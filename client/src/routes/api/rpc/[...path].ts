@@ -1,13 +1,15 @@
 // Same-origin `/api/rpc` gateway: cookie/body plumbing around `dispatchRpc`.
 
 import type { APIEvent } from "@solidjs/start/server";
+import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import { deleteCookie, getCookie, setCookie } from "vinxi/http";
 import { createWebDb } from "~/db/client";
+import { runTraced } from "~/effect/otel";
 import { grpcUpstreamFromPodDns } from "~/lib/apiUpstream";
 import { grpcUpstream } from "~/lib/apiUpstreamAuth";
 import { lookupTableRoute } from "~/lib/lobbyStore";
-import { GrpcCallError, httpStatusOf } from "~/wire/grpcClient";
+import { GrpcCallError, httpStatusOf, runWithTraceparent } from "~/wire/grpcClient";
 import { dispatchRpc, type RpcOutcome } from "~/wire/rpcServer";
 import type { StreamFrame } from "~/wire/types";
 
@@ -100,6 +102,7 @@ function outcomeToResponse(outcome: RpcOutcome): Response | Promise<Response> {
 async function handle(event: APIEvent): Promise<Response> {
   const segments = (event.params.path ?? "").split("/").filter(Boolean);
   const sessionToken = getCookie(event.nativeEvent, SESSION_COOKIE) ?? null;
+  const traceparent = event.request.headers.get("traceparent");
 
   let body: unknown;
   if (event.request.method === "POST" || event.request.method === "PUT") {
@@ -110,11 +113,29 @@ async function handle(event: APIEvent): Promise<Response> {
     }
   }
 
-  const outcome = await dispatchRpc(segments, event.request.method, body, new URL(event.request.url).searchParams, {
-    sessionToken,
-    defaultAddress: grpcUpstream(),
-    resolveTableAddress,
-  });
+  const spanName = `rpc ${segments.join("/") || "root"}`;
+  const outcome = await runTraced(
+    Effect.gen(function* () {
+      return yield* Effect.tryPromise({
+        try: () =>
+          runWithTraceparent(traceparent, () =>
+            dispatchRpc(segments, event.request.method, body, new URL(event.request.url).searchParams, {
+              sessionToken,
+              defaultAddress: grpcUpstream(),
+              resolveTableAddress,
+            }),
+          ),
+        catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+      });
+    }).pipe(
+      Effect.withSpan(spanName, {
+        attributes: {
+          "http.method": event.request.method,
+          "rpc.path": segments.join("/"),
+        },
+      }),
+    ),
+  );
 
   if (outcome.kind === "json" && outcome.setSessionToken) {
     setCookie(event.nativeEvent, SESSION_COOKIE, outcome.setSessionToken, {

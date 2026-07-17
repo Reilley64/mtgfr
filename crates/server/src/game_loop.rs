@@ -47,11 +47,22 @@ pub(crate) async fn submit_intent_core(
     table_id: &str,
     env: IntentEnvelope,
 ) -> Ack {
+    let span = tracing::info_span!(
+        "submit_intent_core",
+        table_id = %table_id,
+        user_id = user_id,
+        accepted = tracing::field::Empty,
+    );
+    let _enter = span.enter();
+
     let (ack, log_row) = {
         let mut reg = lock(&state.reg);
         let (table, seat) = match seated_table(&mut reg, table_id, user_id) {
             Ok(pair) => pair,
-            Err(ack) => return ack,
+            Err(ack) => {
+                span.record("accepted", false);
+                return ack;
+            }
         };
         let intent = to_intent_for_seat(env.intent.clone(), PlayerId(seat));
         let (result, disposition) = TableSession::new(table).submit(intent);
@@ -65,6 +76,7 @@ pub(crate) async fn submit_intent_core(
         );
         let seq = table.seq;
         let ack = Ack::from(result);
+        span.record("accepted", ack.accepted);
         settle_after_apply(&mut reg, state, table_id, disposition, seq);
         (ack, log_row)
     };

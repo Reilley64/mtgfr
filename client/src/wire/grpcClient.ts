@@ -1,6 +1,7 @@
 // Server-only gRPC client for the BFF. Do not import from the browser bundle.
 // Channels/runtimes are cached per base URL.
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { GrpcClientProtocol, type GrpcStatusCode, GrpcStatusError } from "@effect-grpc/effect-grpc";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -48,6 +49,14 @@ import type {
 } from "~/wire/types";
 
 export const SESSION_METADATA_KEY = "x-session-token";
+export const TRACEPARENT_METADATA_KEY = "traceparent";
+
+const traceAls = new AsyncLocalStorage<string | null>();
+
+/** Run `fn` with a W3C traceparent visible to outbound gRPC `callOpts` (per-request). */
+export function runWithTraceparent<T>(traceparent: string | null, fn: () => T): T {
+  return traceAls.run(traceparent, fn);
+}
 
 const AllGrpcRegistry = new Map([
   ...AuthGrpcRegistry,
@@ -61,9 +70,14 @@ function meFromProto(me: ProtoMe): Me {
   return { id: Number(me.id), email: me.email, username: me.username };
 }
 
-function sessionOpts(sessionToken: string | null) {
-  if (!sessionToken) return undefined;
-  return { metadata: [[SESSION_METADATA_KEY, sessionToken] as const] };
+/** Build gRPC call metadata: session cookie token + optional W3C traceparent. */
+export function callOpts(sessionToken: string | null, traceparent?: string | null) {
+  const tp = traceparent ?? traceAls.getStore() ?? null;
+  const metadata: Array<readonly [string, string]> = [];
+  if (sessionToken) metadata.push([SESSION_METADATA_KEY, sessionToken]);
+  if (tp) metadata.push([TRACEPARENT_METADATA_KEY, tp]);
+  if (metadata.length === 0) return undefined;
+  return { metadata };
 }
 
 export class GrpcCallError extends Error {
@@ -183,7 +197,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const auth = yield* AuthClient;
-            const res = yield* auth.signup(req, sessionOpts(sessionToken));
+            const res = yield* auth.signup(req, callOpts(sessionToken));
             if (!res.me) throw new Error("AuthSession missing me");
             return { me: meFromProto(res.me), sessionToken: res.sessionToken };
           }),
@@ -193,7 +207,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const auth = yield* AuthClient;
-            const res = yield* auth.login(req, sessionOpts(sessionToken));
+            const res = yield* auth.login(req, callOpts(sessionToken));
             if (!res.me) throw new Error("AuthSession missing me");
             return { me: meFromProto(res.me), sessionToken: res.sessionToken };
           }),
@@ -203,7 +217,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const auth = yield* AuthClient;
-            yield* auth.logout({}, sessionOpts(sessionToken));
+            yield* auth.logout({}, callOpts(sessionToken));
           }),
         ),
       getMe: (sessionToken) =>
@@ -211,7 +225,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const auth = yield* AuthClient;
-            return meFromProto(yield* auth.getMe({}, sessionOpts(sessionToken)));
+            return meFromProto(yield* auth.getMe({}, callOpts(sessionToken)));
           }),
         ),
     },
@@ -221,7 +235,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const decks = yield* DecksClient;
-            const deck = yield* decks.create(saveDeckToProto(req), sessionOpts(sessionToken));
+            const deck = yield* decks.create(saveDeckToProto(req), callOpts(sessionToken));
             return deckDetailFromProto(deck);
           }),
         ),
@@ -230,7 +244,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const decks = yield* DecksClient;
-            const res = yield* decks.list({}, sessionOpts(sessionToken));
+            const res = yield* decks.list({}, callOpts(sessionToken));
             return deckSummaryListFromProto(res.decks);
           }),
         ),
@@ -239,7 +253,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const decks = yield* DecksClient;
-            const deck = yield* decks.get({ id: BigInt(id) }, sessionOpts(sessionToken));
+            const deck = yield* decks.get({ id: BigInt(id) }, callOpts(sessionToken));
             return deckDetailFromProto(deck);
           }),
         ),
@@ -248,10 +262,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const decks = yield* DecksClient;
-            const deck = yield* decks.update(
-              { id: BigInt(id), request: saveDeckToProto(req) },
-              sessionOpts(sessionToken),
-            );
+            const deck = yield* decks.update({ id: BigInt(id), request: saveDeckToProto(req) }, callOpts(sessionToken));
             return deckDetailFromProto(deck);
           }),
         ),
@@ -260,7 +271,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const decks = yield* DecksClient;
-            yield* decks.delete({ id: BigInt(id) }, sessionOpts(sessionToken));
+            yield* decks.delete({ id: BigInt(id) }, callOpts(sessionToken));
           }),
         ),
     },
@@ -301,7 +312,7 @@ export function grpcClient(address: string): GrpcClient {
             const game = yield* GameClient;
             return yield* game.submitIntent(
               { tableId, envelope: intentEnvelopeToProto(envelope) },
-              sessionOpts(sessionToken),
+              callOpts(sessionToken),
             );
           }),
         ),
@@ -310,7 +321,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const game = yield* GameClient;
-            return yield* game.setYield({ tableId, enabled }, sessionOpts(sessionToken));
+            return yield* game.setYield({ tableId, enabled }, callOpts(sessionToken));
           }),
         ),
       setTurnYield: (tableId, enabled, sessionToken) =>
@@ -318,7 +329,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const game = yield* GameClient;
-            return yield* game.setTurnYield({ tableId, enabled }, sessionOpts(sessionToken));
+            return yield* game.setTurnYield({ tableId, enabled }, callOpts(sessionToken));
           }),
         ),
       setStackDwell: (tableId, dwelling, sessionToken) =>
@@ -326,10 +337,13 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const game = yield* GameClient;
-            return yield* game.setStackDwell({ tableId, dwelling }, sessionOpts(sessionToken));
+            return yield* game.setStackDwell({ tableId, dwelling }, callOpts(sessionToken));
           }),
         ),
       stream(tableId, sessionToken) {
+        // Capture metadata while ALS still holds the request's traceparent — the stream fiber
+        // starts later (first `next()`), after `runWithTraceparent` has exited.
+        const opts = callOpts(sessionToken);
         // Pump the Effect stream into a buffer on a forked fiber so `return()` (SSE cancel /
         // reconnect) can `Fiber.interrupt` and tear down the upstream tonic subscription —
         // `Stream.toAsyncIterableEffect` alone does not interrupt when the consumer stops.
@@ -371,7 +385,7 @@ export function grpcClient(address: string): GrpcClient {
           fiber = runtime.runFork(
             Effect.gen(function* () {
               const game = yield* GameClient;
-              yield* game.stream({ tableId }, sessionOpts(sessionToken)).pipe(
+              yield* game.stream({ tableId }, opts).pipe(
                 Stream.map((msg) => streamFrameFromProto(msg)),
                 Stream.mapError(toCallError),
                 Stream.runForEach((frame) => Effect.sync(() => deliver({ done: false, value: frame }))),
@@ -414,7 +428,7 @@ export function grpcClient(address: string): GrpcClient {
           key,
           Effect.gen(function* () {
             const tables = yield* TablesClient;
-            const response = yield* tables.seed(seedRequestToProto(req), sessionOpts(sessionToken));
+            const response = yield* tables.seed(seedRequestToProto(req), callOpts(sessionToken));
             return seedResponseFromProto(response);
           }),
         ),

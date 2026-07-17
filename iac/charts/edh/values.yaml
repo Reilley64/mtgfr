@@ -8,3 +8,7 @@ cookieDomain: ""
 corsOrigin: ""
 logLevel: info
 dbSecretName: mtgfr-db
+# OTLP HTTP → Alloy (empty = no export; local/dev).
+otelExporterOtlpEndpoint: "http://alloy.observability.svc:4318"
+# BFF proxies browser Faro collect to Alloy's faro.receiver.
+faroCollectUpstream: "http://alloy.observability.svc:12347/collect"

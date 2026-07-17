@@ -8,6 +8,7 @@ mod decks_svc;
 mod game_svc;
 pub(crate) mod map;
 mod tables_svc;
+mod trace;
 #[cfg(test)]
 mod tests;
 
@@ -23,6 +24,8 @@ use tonic::transport::Server;
 
 use crate::AppState;
 
+use self::trace::TraceLayer;
+
 /// Build and serve every gRPC service on `addr`, sharing `state` with the Axum app. Runs until
 /// `shutdown` resolves (SIGTERM/Ctrl-C — see `main.rs::await_shutdown_signal`).
 pub async fn serve(
@@ -31,6 +34,7 @@ pub async fn serve(
     shutdown: impl Future<Output = ()> + Send + 'static,
 ) -> Result<(), tonic::transport::Error> {
     Server::builder()
+        .layer(TraceLayer)
         .add_service(pb::auth_server::AuthServer::new(auth_svc::AuthSvc::new(
             state.clone(),
         )))

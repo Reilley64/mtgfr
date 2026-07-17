@@ -29,6 +29,7 @@ pub mod precons;
 mod session;
 pub mod settings;
 mod stream;
+pub mod telemetry;
 #[cfg(test)]
 pub(crate) mod test_support;
 use decks::Table;

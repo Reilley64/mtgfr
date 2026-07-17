@@ -806,6 +806,13 @@ impl Game {
             self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
+        // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like
+        // Inkshield's above, but every player and no token mint. Still surfaced as the same
+        // `Event::CombatDamagePrevented` for observability.
+        if self.combat_extras.prevent_all_combat_damage_this_turn {
+            self.push_apply(events, Event::CombatDamagePrevented { player, amount });
+            return;
+        }
         self.push_apply(
             events,
             Event::LifeChanged {

@@ -39,6 +39,12 @@ spec:
               value: "http://edh-api.{{ .Values.namespace }}.svc:8080"
             - name: GRPC_UPSTREAM
               value: "edh-api.{{ .Values.namespace }}.svc:50051"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otelExporterOtlpEndpoint | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: "edh-web"
+            - name: FARO_COLLECT_UPSTREAM
+              value: {{ .Values.faroCollectUpstream | quote }}
           livenessProbe:
             httpGet:
               path: /api/meta/health/v1
