@@ -428,6 +428,11 @@ pub enum PendingChoiceView {
         source: ObjectId,
         label: String,
     },
+    /// This player (the active player at their untap step) may choose not to untap any of `items`
+    /// — the permanents they control that "may choose not to untap" (CR 502.2 — Rubinia
+    /// Soulsinger). `items` are public battlefield permanents. Answering keeps the chosen subset
+    /// tapped and untaps the rest.
+    DeclineUntap { player: u8, items: Vec<ChoiceItem> },
     /// The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
     /// effect label so the client can say what paying does.
     PayCost {
@@ -444,12 +449,38 @@ pub enum PendingChoiceView {
         spell: ObjectId,
         cost: WireCost,
     },
+    /// The triggering opponent (`player`) may pay `cost` to stop `controller`'s optional draw —
+    /// Rhystic Study's "unless that player pays {1}". Only raised after `controller` accepts the
+    /// preceding `MayYesNo` pause. Paying leaves `controller`'s hand untouched; declining draws
+    /// them a card.
+    PayOrControllerDraws {
+        player: u8,
+        controller: u8,
+        cost: WireCost,
+    },
+    /// `spell` is already countered (CR 701.5b — Hinder's `countered_dest` rider) — choose the
+    /// top or bottom of its owner's library for it to go to instead of the graveyard.
+    ChooseCounteredSpellDestination { player: u8, spell: ObjectId },
     /// Pay `cost` (Echo) to keep `source`, or decline and sacrifice it (CR 702.31 — the
     /// permanent-scoped twin of `PayOrCounter`).
     PayEchoOrSacrifice {
         player: u8,
         source: ObjectId,
         cost: WireCost,
+    },
+    /// Pay `cost` to keep `source`, or decline and sacrifice it — a real ETB triggered ability
+    /// (Rupture Spire, CR 603.3b), not Echo, though it shares `PayEchoOrSacrifice`'s shape.
+    SacrificeUnlessPay {
+        player: u8,
+        source: ObjectId,
+        cost: WireCost,
+    },
+    /// Return one of `items` (a non-Lair land the player controls, public) to its owner's hand
+    /// to keep `source`, or decline and sacrifice it (Treva's Ruins).
+    SacrificeUnlessReturnLand {
+        player: u8,
+        source: ObjectId,
+        items: Vec<ChoiceItem>,
     },
     /// Blockers to divide the attacker's damage among.
     AssignCombatDamage {
@@ -616,6 +647,9 @@ pub enum PendingChoiceView {
     /// This player may put one hand land (`items`, private to them) onto the battlefield, or
     /// decline.
     PutLandFromHand { player: u8, items: Vec<ChoiceItem> },
+    /// This player may cast one hand creature (`items`, private to them — mana value at most the
+    /// paid `{X}`) face down as a 2/2 without paying its mana cost (Illusionary Mask), or decline.
+    CastCreatureFaceDown { player: u8, items: Vec<ChoiceItem> },
     /// This player may put one card exiled with `source` (`items`, public — exile-zone) into its
     /// owner's graveyard, or decline.
     ChooseExiledWithCard {
@@ -666,6 +700,33 @@ pub enum PendingChoiceView {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
+    },
+    /// This player (the ability's controller) must choose which opponent makes an "an opponent
+    /// ..." decision on their behalf (Abstract Performance's pile split, Fact or Fiction's
+    /// partition) — `items` are the living opponents (as player-only [`ChoiceItem`]s, `label`
+    /// the ability source's name. Only raised with two or more opponents alive.
+    ChooseSplittingOpponent {
+        player: u8,
+        source: ObjectId,
+        label: String,
+        items: Vec<ChoiceItem>,
+    },
+    /// This player (the opponent `ChooseSplittingOpponent` named) must assign each of `items`
+    /// (Fact or Fiction's five revealed cards, public) to one of two piles: the answer names pile
+    /// A's subset, the rest form pile B. Either pile may be empty.
+    PartitionRevealed {
+        player: u8,
+        source: ObjectId,
+        items: Vec<ChoiceItem>,
+    },
+    /// This player (the controller of Fact or Fiction) picks one of the two piles
+    /// `PartitionRevealed` just made to put into their hand; the other is milled into their
+    /// graveyard.
+    ChoosePileForHand {
+        player: u8,
+        source: ObjectId,
+        pile_a: Vec<ChoiceItem>,
+        pile_b: Vec<ChoiceItem>,
     },
     /// This player (the controller) may choose up to `count` of `items` (public — exile-zone) to
     /// grant the free-cast permission (CR 118.5); the rest go to hand or stay exiled per the card

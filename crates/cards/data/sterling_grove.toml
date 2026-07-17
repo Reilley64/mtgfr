@@ -1,0 +1,41 @@
+# Other enchantments you control have shroud. (They can't be the targets of spells or abilities.)
+# {1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then shuffle and put that
+# card on top.
+name = "Sterling Grove"
+otags = ["activated-ability", "cycle-inv-sac-enchantment", "gives-shroud", "keyword-anthem", "protects-all", "protects-enchantment", "sacrifice-self", "synergy-enchantment", "tutor-enchantment", "tutor-to-top"]
+set = "mh2"
+id = "2c275a85-5a15-46cd-a6e7-add63f9b853d"
+default_print = "ba03e105-a76c-4769-a35a-d780448890ec"
+oracle = "Other enchantments you control have shroud. (They can't be the targets of spells or abilities.)\n{1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then shuffle and put that card on top."
+
+[cost]
+green = 1
+white = 1
+
+[kind]
+type = "enchantment"
+
+# Other enchantments you control have shroud.
+[[abilities]]
+timing = "static"
+
+# Other enchantments you control have shroud.
+[[abilities.effects]]
+type = "keyword_anthem_static"
+keywords = ["shroud"]
+filter = { types = ["enchantment"], other = true }
+
+# {1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then
+# shuffle and put that card on top.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 1
+
+# Search your library for an enchantment card, reveal it, then shuffle and put that card on top.
+[[abilities.effects]]
+type = "search_library"
+filter = "enchantment"
+to_zone = "library_top"

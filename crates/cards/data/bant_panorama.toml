@@ -1,0 +1,32 @@
+# {T}: Add {C}.
+# {1}, {T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card, put it onto the
+# battlefield tapped, then shuffle.
+name = "Bant Panorama"
+otags = ["activated-ability", "cycle-ala-panorama", "tutor-land-basic-forest", "tutor-land-basic-island", "tutor-land-basic-plains"]
+set = "ncc"
+id = "0a1d817d-dce8-4e83-a380-909f7c9eee46"
+default_print = "dc506497-4ecd-41d3-9042-f92f498251b0"
+oracle = "{T}: Add {C}.\n{1}, {T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle."
+
+# {T}: Add {C}.
+[kind]
+type = "land"
+produces = "colorless"
+
+# {1}, {T}, Sacrifice this land: Search your library for a basic Forest, Plains, or Island card,
+# put it onto the battlefield tapped, then shuffle.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 1
+
+# Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield
+# tapped, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = { basic_land_with_subtype = ["Forest", "Plains", "Island"] }
+to_zone = "battlefield"
+tapped = true

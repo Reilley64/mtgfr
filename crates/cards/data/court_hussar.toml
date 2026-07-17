@@ -1,0 +1,47 @@
+# Vigilance
+# When this creature enters, look at the top three cards of your library, then put one of them
+# into your hand and the rest on the bottom of your library in any order.
+# When this creature enters, sacrifice it unless {W} was spent to cast it.
+name = "Court Hussar"
+otags = ["color-spent-matters", "cycle-a25-allied-enhanced", "cycle-rav-backward-boost", "hand-neutral", "impulse", "triggered-ability", "virtual-french-vanilla"]
+set = "a25"
+subtypes = ["Vedalken", "Knight"]
+id = "74fedfc4-3eb7-4845-9d3e-9d5243a0062a"
+default_print = "f3843e98-192c-44a2-be54-9ba79e51657c"
+oracle = "Vigilance\nWhen this creature enters, look at the top three cards of your library, then put one of them into your hand and the rest on the bottom of your library in any order.\nWhen this creature enters, sacrifice it unless {W} was spent to cast it."
+keywords = ["vigilance"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 3
+
+# When this creature enters, look at the top three cards of your library, then put one of them
+# into your hand and the rest on the bottom of your library in any order.
+[[abilities]]
+timing = "etb"
+
+# look at the top three cards of your library, then put one of them into your hand and the rest on
+# the bottom of your library in any order.
+[[abilities.effects]]
+type = "look_at_top"
+count = 3
+up_to = 1
+min = 1
+dest = "hand"
+rest = "bottom"
+
+# When this creature enters, sacrifice it unless {W} was spent to cast it.
+[[abilities]]
+timing = "etb"
+
+# sacrifice it unless {W} was spent to cast it.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "color_was_spent_to_cast_this", color = "white" }
+negate = true
+then = [{ type = "sacrifice_source" }]

@@ -1,0 +1,28 @@
+# This creature gets +1/+1 for each enchantment on the battlefield.
+name = "Yavimaya Enchantress"
+otags = ["ethereal-armor", "type-addition-human"]
+set = "c18"
+subtypes = ["Human", "Druid"]
+id = "495fc654-7986-4d76-9d5c-bc1484e98de2"
+default_print = "e7255a92-12eb-4506-a3fa-996cd38ca836"
+oracle = "This creature gets +1/+1 for each enchantment on the battlefield."
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# This creature gets +1/+1 for each enchantment on the battlefield.
+[[abilities]]
+timing = "static"
+
+# This creature gets +1/+1 for each enchantment on the battlefield.
+[[abilities.effects]]
+type = "anthem_static"
+self_only = true
+power = { per_permanent = { types = "enchantment" } }
+toughness = { per_permanent = { types = "enchantment" } }

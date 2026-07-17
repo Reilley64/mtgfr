@@ -182,7 +182,14 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::SearchLibrary { choice, .. } => format!("search {}", opt_id(choice)),
         WireIntent::ChooseSacrifices { sacrifices, .. } => format!("sacrifice {sacrifices:?}"),
         WireIntent::Discard { cards, .. } => format!("discard {cards:?}"),
+        WireIntent::DeclineUntap { keep_tapped, .. } => format!("keep-tapped {keep_tapped:?}"),
         WireIntent::PutLandFromHand { choice, .. } => format!("put-land {}", opt_id(choice)),
+        WireIntent::CastCreatureFaceDown { choice, .. } => {
+            format!("cast-creature-face-down {}", opt_id(choice))
+        }
+        WireIntent::ReturnLandOrSacrifice { land, .. } => {
+            format!("return-land-or-sacrifice {}", opt_id(land))
+        }
         WireIntent::ChooseExiledWithCard { choice, .. } => {
             format!("choose-exiled {}", opt_id(choice))
         }
@@ -203,11 +210,13 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::ChooseColor { color, .. } => format!("color {color}"),
         WireIntent::ChooseAttachHost { host, .. } => format!("attach-host {}", opt_id(host)),
         WireIntent::ChooseCopyTarget { copy, .. } => format!("copy-target {}", opt_id(copy)),
+        WireIntent::ChooseTopOrBottom { top, .. } => format!("top-or-bottom {top}"),
         WireIntent::Cycle { card, .. } => format!("cycle {card}"),
         WireIntent::ActivateHandAbility { card, .. } => format!("activate hand ability {card}"),
         WireIntent::Suspend { card, .. } => format!("suspend {card}"),
         WireIntent::Encore { card, .. } => format!("encore {card}"),
         WireIntent::TurnFaceUp { permanent, .. } => format!("turn-face-up {permanent}"),
+        WireIntent::CastFaceDown { card, .. } => format!("cast-face-down {card}"),
         WireIntent::CastPrepared { source, target, .. } => {
             format!("cast-prepared {source}>{}", opt(target))
         }

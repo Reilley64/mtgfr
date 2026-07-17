@@ -1,0 +1,30 @@
+# Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its
+# toughness.
+name = "Condemn"
+otags = ["hate-attacker", "lifegain", "opponent-lifegain", "removal-creature", "removal-tuck", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
+set = "rvr"
+id = "377d31b5-0a48-4d5b-91bd-b5a62d4f7899"
+default_print = "0c93201b-7664-4bfd-a462-f1c684ebedf6"
+oracle = "Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness."
+
+[cost]
+white = 1
+
+[kind]
+type = "instant"
+
+# Put target attacking creature on the bottom of its owner's library. Its controller gains life
+# equal to its toughness.
+[[abilities]]
+timing = "spell"
+
+# Its controller gains life equal to its toughness. (Read before the tuck moves the creature off
+# the battlefield — same last-known-information ordering as Swords to Plowshares' power rider.)
+[[abilities.effects]]
+type = "gain_life_target_controller"
+amount = "target_toughness"
+
+# Put target attacking creature on the bottom of its owner's library.
+[[abilities.effects]]
+type = "tuck_permanent_into_library"
+target = { permanent = { types = "creature", attacking = true } }

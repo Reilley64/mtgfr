@@ -1,0 +1,41 @@
+# {T}: Target player exiles a card from their graveyard.
+# {1}, Exile this artifact: Exile all graveyards. Draw a card.
+name = "Relic of Progenitus"
+otags = ["activated-ability", "exile-self", "hand-neutral", "namesake-spell", "pure-draw", "repeatable-crime", "sweeper-graveyard"]
+set = "ema"
+id = "6a9c3401-570c-41cb-a605-75dfa57d6ab7"
+default_print = "436cd66c-0622-43cd-8748-af4d21a2db3f"
+oracle = "{T}: Target player exiles a card from their graveyard.\n{1}, Exile this artifact: Exile all graveyards. Draw a card."
+
+[cost]
+generic = 1
+
+[kind]
+type = "artifact"
+
+# {T}: Target player exiles a card from their graveyard.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Target player exiles a card from their graveyard.
+[[abilities.effects]]
+type = "target_player_exiles_from_graveyard"
+target = "player"
+
+# {1}, Exile this artifact: Exile all graveyards. Draw a card.
+[[abilities]]
+timing = "activated"
+exile_self = true
+
+[abilities.activation_cost]
+generic = 1
+
+# Exile all graveyards.
+[[abilities.effects]]
+type = "exile_all_graveyards"
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

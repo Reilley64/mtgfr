@@ -548,6 +548,22 @@ pub struct CardDef {
     /// `None` for a card without bestow. `[bestow]` in TOML, the same `[cost]`-table shape as
     /// [`Self::echo`].
     pub bestow: Option<Cost>,
+    /// Morph (CR 702.37 — Willbender): "You may cast this card face down as a 2/2 creature for
+    /// {3}. Turn it face up any time for its morph cost." `None` for a card without morph.
+    /// `Some(cost)` is the card's *morph cost*: casting the card face down instead pays a flat
+    /// generic {3} (CR 702.37b — [`Intent::CastFaceDown`]), and this cost is what turns the
+    /// resulting face-down permanent face up ([`Game::turn_face_up`], CR 702.37c) rather than the
+    /// printed cost a manifest pays. `[morph]` in TOML, the same `[cost]`-table shape as
+    /// [`Self::bestow`].
+    pub morph: Option<Cost>,
+    /// Evoke (CR 702.74 — Mulldrifter): "You may cast this spell for its evoke cost. If you do,
+    /// it's sacrificed when it enters." `None` for a card without evoke. `Some(cost)` is the
+    /// card's alternative evoke cost, charged instead of the printed `[cost]` when the caster
+    /// declares it (CR 702.74a — [`Spell::evoked`]); the resulting permanent is sacrificed the
+    /// instant it enters, via a self-sacrifice trigger queued alongside its own ETB triggers so
+    /// an ETB payoff (Mulldrifter's draw two) still resolves first (CR 702.74a, CR 603.3b — see
+    /// [`Permanent::evoked`]). `[evoke]` in TOML, the same `[cost]`-table shape as [`Self::echo`].
+    pub evoke: Option<Cost>,
     /// Delve (CR 702.66): "Each card you exile from your graveyard while casting this spell pays
     /// for {1}." `true` makes the card's cast accept a player-chosen number of graveyard cards to
     /// exile as part of casting (from hand, unlike flashback/escape), each reducing the cast's
@@ -640,10 +656,12 @@ pub struct CardDef {
     pub suspend: Option<Suspend>,
     /// Enter-as-a-copy replacement (CR 706/707.2), carried as a rules-keyword marker rather than a
     /// `[[abilities]]` (like [`Self::devour`]): as this permanent enters, its controller may have
-    /// it enter as a copy of any creature on the battlefield, with the riders in [`EnterAsCopy`]
-    /// (Altered Ego's X extra +1/+1 counters; Cursed Mirror's until-end-of-turn duration + haste).
-    /// The pause fires at the enter event, before ETB triggers (see `Game::begin_enter_as_copy`).
-    /// `None` for a card without the replacement. `enter_as_copy = { .. }` in TOML.
+    /// it enter as a copy of any object of the [`EnterAsCopy::of`] type on the battlefield, with
+    /// the riders in [`EnterAsCopy`] (Altered Ego's X extra +1/+1 counters; Cursed Mirror's
+    /// until-end-of-turn duration + haste; Copy Enchantment's `of = "enchantment"`, which may copy
+    /// an Aura and then pause to choose a host). The pause fires at the enter event, before ETB
+    /// triggers (see `Game::begin_enter_as_copy`). `None` for a card without the replacement.
+    /// `enter_as_copy = { .. }` in TOML.
     pub enter_as_copy: Option<EnterAsCopy>,
     /// Encore [cost] (CR 702.140 — Angel of Indemnity): "[cost], Exile this card from your
     /// graveyard: For each opponent, create a token copy of this card that attacks that opponent
@@ -654,13 +672,19 @@ pub struct CardDef {
     /// stored as a pip). A `&'static Cost` (leaked at load, like [`Self::suspend`]'s cost) so
     /// [`CardDef`] stays `Copy`. `[encore]` in TOML, the same `[cost]`-table shape as a spell's cost.
     pub encore: Option<&'static Cost>,
+    /// "You may choose not to untap this during your untap step" (CR 502.2 — Rubinia Soulsinger):
+    /// the untap turn-based action pauses this permanent's controller on a yes/no for each such
+    /// permanent they control, letting them leave it tapped ([`PendingChoice::DeclineUntap`]).
+    /// `false` for every ordinary permanent. `may_choose_not_to_untap = true` in TOML.
+    pub may_choose_not_to_untap: bool,
 }
 
 /// The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars,
 /// no `Vec` — so [`CardDef`] stays `Copy`. `until_eot` reverts the copy at cleanup (Cursed Mirror,
 /// [`Permanent::reverts_to_def_eot`]); `extra_counters` are additional +1/+1 counters the copy
 /// enters with (Altered Ego's X); `gains_haste` grants the copy haste (Cursed Mirror's "except it
-/// has haste").
+/// has haste"); `of` is the copyable type axis (Copy Enchantment's "any enchantment", CR 707.2,
+/// vs. the default "any creature").
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -674,6 +698,23 @@ pub struct EnterAsCopy {
     pub extra_counters: Amount,
     #[cfg_attr(feature = "card-dsl", serde(default))]
     pub gains_haste: bool,
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub of: CopyTargetKind,
+}
+
+/// The candidate-object type [`CardDef::enter_as_copy`] may copy (CR 706/707.2): `Creature` (the
+/// default — Altered Ego, Cursed Mirror) or `Enchantment` (Copy Enchantment, which includes Auras
+/// — CR 303.2). `enter_as_copy = { of = "enchantment" }` in TOML; absent means `Creature`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+pub enum CopyTargetKind {
+    #[default]
+    Creature,
+    Enchantment,
 }
 
 /// Suspend N—[cost] (CR 702.62), carried by [`CardDef::suspend`]. `counters` is the N time
@@ -838,7 +879,10 @@ pub(crate) fn fresh_permanent(
         serra_recursion: false,
         bestowed: false,
         face_down: false,
+        masked: false,
+        evoked: false,
         reverts_to_def_eot: None,
+        spent_colors: [false; Color::COUNT],
     }
 }
 
@@ -938,6 +982,8 @@ pub fn treasure_token() -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -954,6 +1000,7 @@ pub fn treasure_token() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -992,6 +1039,8 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -1008,6 +1057,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -1048,6 +1098,8 @@ pub(crate) fn illusion_token() -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -1064,6 +1116,7 @@ pub(crate) fn illusion_token() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -1161,6 +1214,11 @@ pub(crate) struct Spell {
     /// of Replication's "If this spell was kicked, create five of those tokens instead") via
     /// [`Game::spell_was_kicked`], the kicked-flag sibling of [`Self::sacrifice_count`]'s read.
     pub(crate) kicked: bool,
+    /// Whether the caster paid this spell's buyback cost (CR 702.27c — [`AdditionalCost::buyback`]),
+    /// `false` for a spell with no buyback or a decline. Read by
+    /// [`Game::finish_instant_sorcery_resolution`] (Capsize's "put this card into your hand as it
+    /// resolves" instead of the graveyard), the buyback-flag sibling of [`Self::kicked`]'s read.
+    pub(crate) bought_back: bool,
     /// The caster's declared Strive target count (CR 702.42 — [`AdditionalCost::strive`]), 0 if
     /// the spell has no Strive cost. Settled before the spell hits the stack (CR 601.2c precedes
     /// 601.2f) and recorded here the way `sacrifice_count`/`kicked` are; read back by
@@ -1185,6 +1243,30 @@ pub(crate) struct Spell {
     /// creature, and the resulting permanent carries [`Permanent::bestowed`]. `false` for an
     /// ordinary creature cast.
     pub(crate) bestowed: bool,
+    /// Whether this spell was cast face down (CR 702.37b — a morph cast, [`Intent::CastFaceDown`]):
+    /// a 2/2 colorless creature spell whose real characteristics are hidden. Copied onto the
+    /// resulting [`Permanent::face_down`] when the spell resolves ([`Event::PermanentEntered`]),
+    /// so the permanent enters face down (CR 708). `false` for an ordinary face-up cast.
+    pub(crate) face_down: bool,
+    /// Whether this face-down spell was cast by Illusionary Mask's `{X}` ability (CR 615). Copied
+    /// onto the resulting [`Permanent::masked`], which carries the card's self-replacement: a
+    /// masked face-down creature that would assign or deal damage, be dealt damage, or become
+    /// tapped is turned face up first. Only Illusionary Mask sets it; a plain morph/manifest
+    /// face-down cast leaves it `false`.
+    pub(crate) masked: bool,
+    /// Whether this spell was cast for its evoke cost (CR 702.74a — [`CardDef::evoke`]). Copied
+    /// onto the resulting [`Permanent::evoked`] when the spell resolves ([`Event::PermanentEntered`]),
+    /// so the permanent is sacrificed the instant it enters. `false` for an ordinary cast.
+    pub(crate) evoked: bool,
+    /// The colors of mana actually spent to cast this spell (CR 106.9 — Court Hussar's "unless
+    /// {W} was spent to cast it"), snapshotted from [`ManaPool::colors_spent`] against the
+    /// [`Event::ManaSpent`] [`Game::settle_payment`](crate::Game::settle_payment) appends right
+    /// before this spell hits the stack. Copied onto the resulting [`Permanent::spent_colors`]
+    /// when the spell resolves, the same "read the spell's own info before it's gone" idiom as
+    /// `entered_with_x`. `[false; Color::COUNT]` for a spell that paid no mana (a copy, a free
+    /// cast) or a cast form (adventure, prepared copy) this snapshot isn't wired through yet — no
+    /// pool card checks color-spent off those forms.
+    pub(crate) spent_colors: [bool; Color::COUNT],
 }
 
 /// A permanent on the battlefield, with its mutable per-object state.
@@ -1399,6 +1481,19 @@ pub(crate) struct Permanent {
     /// morph / megamorph / disguise) — no morph card is in the pool, so only plain manifest is
     /// built; a morph card would add its face-down cost + the morph keyword on top of this status.
     pub(crate) face_down: bool,
+    /// Whether this face-down permanent was put onto the battlefield by Illusionary Mask (CR 615):
+    /// while `masked && face_down`, it turns face up for free (no morph/manifest cost) the instant
+    /// it would assign or deal damage, be dealt damage, or become tapped (the printed "instead it's
+    /// turned face up and ..." self-replacement — consulted at the damage/tap chokes). Set from the
+    /// casting [`Spell::masked`]; `false` for a plain morph/manifest face-down permanent, which is
+    /// never turned face up by interaction. Runtime state, not TOML-authored.
+    pub(crate) masked: bool,
+    /// Whether this permanent was cast for its evoke cost (CR 702.74a — [`CardDef::evoke`]): it is
+    /// sacrificed the instant it enters, via a self-sacrifice trigger queued alongside its own ETB
+    /// triggers so an ETB payoff (Mulldrifter's draw two) resolves first. Set as it enters from the
+    /// casting [`Spell::evoked`]; runtime state, not TOML-authored, defaulted `false` like
+    /// `bestowed`.
+    pub(crate) evoked: bool,
     /// The `def` to restore at cleanup for an *until-end-of-turn* enter-as-copy (Cursed Mirror,
     /// CR 706/613 — "become a copy … until end of turn"): when the copy is established, the
     /// permanent's original printed `def` is stashed here and `def` is overwritten with the copied
@@ -1408,11 +1503,23 @@ pub(crate) struct Permanent {
     /// `&'static CardDef` (leaked at the copy step, like [`CardDef::back`]) so [`Permanent`] stays
     /// `Copy` and small (a pointer, not a second inlined [`CardDef`]).
     pub(crate) reverts_to_def_eot: Option<&'static CardDef>,
+    /// The colors of mana spent to cast the spell that became this permanent (CR 106.9), fixed
+    /// for the rest of this permanent's existence — copied from [`Spell::spent_colors`] as it
+    /// enters, the same "read the spell's own info before it's gone" idiom as `entered_with_x`.
+    /// Read by [`Condition::ColorWasSpentToCastThis`] (Court Hussar's "unless {W} was spent to
+    /// cast it"). `[false; Color::COUNT]` for a token, a reanimated/reconstructed permanent, or
+    /// any permanent whose casting spell paid no mana or isn't wired through yet (see
+    /// [`Spell::spent_colors`]'s doc).
+    pub(crate) spent_colors: [bool; Color::COUNT],
 }
 
 /// One slot in the object arena. A card's slot becomes [`Object::Moved`] when it changes
 /// zones (a fresh slot/id is minted for its new form); `to` points at that new id so an
 /// old id's lineage can still be followed (see [`Game::zone_of`]).
+// The `Spell`/`Permanent` variants inline a whole `CardDef` and are near-equal in size (~2.3 KB);
+// the id-indexed object arena needs `Object: Copy`, so boxing a variant isn't an option — the same
+// carve-out the sibling `Copy` enums in this crate take.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Object {
     Card(Card),

@@ -43,6 +43,10 @@ pub enum Trigger {
     /// When this permanent enters the battlefield (ETB). Spelled `"etb"` in TOML (`"etb_triggered"`
     /// is an accepted alias — see `de::TriggerTag`).
     Etb,
+    /// When this permanent is turned face up (CR 702.37f — a morph/megamorph turned-face-up
+    /// trigger). Fires off [`Event::TurnedFaceUp`] by scanning the now-revealed object's own
+    /// abilities. Spelled `"turned_face_up"` in TOML.
+    TurnedFaceUp,
     /// When this creature is declared as an attacker.
     Attacks,
     /// When this creature dies (moves from the battlefield to the graveyard, or — for a
@@ -164,6 +168,17 @@ pub enum Trigger {
     /// is captured in `Game::apply`'s death-event handling and read back by
     /// [`Game::queue_enchanted_creature_dies_triggers`].
     EnchantedCreatureDies,
+    /// Whenever the creature this Aura is attached to deals damage, combat or noncombat alike (CR
+    /// 609.7/702, Armadillo Cloak: "Whenever enchanted creature deals damage, you gain that much
+    /// life"). A second attached-host watch fired straight off [`Self::EnchantedCreatureAttacks`]'s
+    /// `self.attachments(host)` shape: placed on the Aura, controlled by *that Aura's own
+    /// controller* — not the host's — so it fires *for* the host's damage while belonging to
+    /// whoever cast the Aura. Distinct from lifelink (CR 702.15e, a static replacement bundled
+    /// into the damage event itself): this is a separate triggered ability that goes on the stack,
+    /// so it stacks additively with real lifelink on the same creature rather than doubling into
+    /// it. The dealt amount rides in [`TriggerContext::triggering_damage_dealt`]
+    /// (`Amount::TriggeringDamageDealt`); see [`Game::queue_enchanted_creature_deals_damage_triggers`].
+    EnchantedCreatureDealsDamage,
     /// Whenever *any* enchanted creature dies (CR 603.6c, Hateful Eidolon: "Whenever an
     /// enchanted creature dies, draw a card for each Aura you controlled that was attached to
     /// it.") — a watch-others twin of [`EnchantedCreatureDies`](Self::EnchantedCreatureDies):
@@ -215,6 +230,16 @@ pub enum Trigger {
     /// [`Event::CombatDamageDealtToPlayer`], not `LifeChanged` (non-combat life loss — drain,
     /// pay-life — must not fire it); see [`Game::queue_combat_damage_triggers`].
     DealsCombatDamageToPlayer { who: CombatDamageScope },
+    /// Whenever this permanent deals damage to an *opponent* of its controller, combat or
+    /// noncombat alike (CR 603.3, Looter il-Kor: "Whenever this creature deals damage to an
+    /// opponent, draw a card, then discard a card."). Self-scoped and fieldless — contrast
+    /// [`DealsCombatDamageToPlayer`](Self::DealsCombatDamageToPlayer), which is combat-only and
+    /// scope-carrying. Fires off [`Event::CombatDamageDealtToPlayer`] (the combat half) and
+    /// [`Event::DamageDealtToPlayer`] (the noncombat half — a marker distinct from the
+    /// `LifeChanged` it accompanies, since non-damage life loss also emits `LifeChanged` with a
+    /// `source`); every player other than the controller is an opponent (CR 102.3). See
+    /// [`Game::queue_deals_damage_to_opponent_triggers`].
+    DealsDamageToOpponent,
     /// Whenever a player casts a spell matching `filter` (CR: the general form behind
     /// [`Magecraft`](Self::Magecraft) and its kin) — a data-driven cast-watch. `caster` scopes
     /// whose cast counts, relative to the ability's own controller ([`CasterScope::You`] default,
@@ -398,6 +423,15 @@ pub enum Trigger {
     /// spell whose spec is itself single-target). Fires under the *targeted permanent's own
     /// controller*, same as `BecomesTargeted`; see [`Game::queue_spell_targets_this_only_triggers`].
     SpellTargetsThisOnly { filter: SpellFilter },
+    /// "When you cycle this card" (CR 702.29e): a triggered ability on the cycled card's *own*
+    /// text that fires off the cycling activation's discard, stacking above the fixed "draw a
+    /// card" (Krosan Tusker's "you may search your library for a basic land card … (Do this
+    /// before you draw.)"; Decree of Justice's "you may pay {X}. If you do, create X 1/1 white
+    /// Soldier creature tokens"). Scanned off the cycled card's own `def` at the cycling choke —
+    /// not a battlefield watcher — mirroring [`YouCastThis`](Self::YouCastThis)'s self-scan; see
+    /// [`Game::cycle`](crate::Game::cycle). Fieldless: every pool consumer is self-only ("this
+    /// card"), so no filter/scope axis exists yet (flag-don't-force).
+    Cycled,
 }
 
 /// Which cast a [`Trigger::SpendManaToCast`] watch accepts as "this mana was spent to cast …",
@@ -538,6 +572,13 @@ pub(crate) struct TriggerContext {
     /// other trigger, same shape as `dying_source_stats` above. See
     /// [`Game::queue_combat_damage_triggers`] for where this is captured.
     pub(crate) combat_damage: Option<i32>,
+    /// CR 609.7/603.10a last-known information: the amount of damage the enchanted host just
+    /// dealt (combat or noncombat alike), for a [`Trigger::EnchantedCreatureDealsDamage`] watch's
+    /// `Amount::TriggeringDamageDealt` reads (Armadillo Cloak's "you gain that much life"). `None`
+    /// for every other trigger, same shape as `combat_damage` above (which this doesn't reuse: that
+    /// field is specifically CR 510.2 combat damage *to a player*). See
+    /// [`Game::queue_enchanted_creature_deals_damage_triggers`] for where this is captured.
+    pub(crate) triggering_damage_dealt: Option<i32>,
     /// The dying creature's graveyard-object id, for a [`Trigger::EnchantedCreatureDies`]
     /// ability's look-back reanimation payoff (Changing Loyalty's "return it to the battlefield
     /// under your control", Gift of Immortality's "return that card … under its owner's
@@ -592,6 +633,13 @@ pub(crate) struct TriggerContext {
     /// this source and copies its effect/target/`{X}`. `None` for every other trigger. See
     /// [`Game::queue_activate_ability_triggers`] for where this is captured.
     pub(crate) triggering_ability: Option<ObjectId>,
+    /// The player who cast the triggering spell, for a [`Trigger::CastSpell`] watch's own
+    /// "unless that player pays" payoff (Rhystic Study's "you may draw a card unless that player
+    /// pays {1}" — [`Effect::MayDrawUnlessPays`]). Distinct from `TriggerContext::controller`
+    /// (the watcher's own controller) precisely when `caster: CasterScope::Opponent`/`AnyPlayer`
+    /// — `controller` alone can't name the payer for those scopes. `None` for every other
+    /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.
+    pub(crate) triggering_caster: Option<PlayerId>,
 }
 
 impl TriggerContext {
@@ -608,6 +656,7 @@ impl TriggerContext {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
+            triggering_damage_dealt: None,
             dying_enchanted_creature: None,
             triggering_spell: None,
             source_power: None,
@@ -615,6 +664,7 @@ impl TriggerContext {
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,
+            triggering_caster: None,
         }
     }
 }

@@ -1,0 +1,25 @@
+# Enchant permanent
+# You control enchanted permanent.
+name = "Confiscate"
+otags = ["land-ramp", "single-english-word-name", "theft-permanent"]
+set = "fdn"
+subtypes = ["Aura"]
+id = "d599a38c-7719-443e-bb59-55bd43a8fee6"
+default_print = "a98a1553-e5f3-4c9c-833d-579e82e1708f"
+oracle = "Enchant permanent\nYou control enchanted permanent."
+enchant = {}
+
+[cost]
+generic = 4
+blue = 2
+
+[kind]
+type = "aura"
+
+# You control enchanted permanent.
+[[abilities]]
+timing = "static"
+
+# You control enchanted permanent.
+[[abilities.effects]]
+type = "control_attached"

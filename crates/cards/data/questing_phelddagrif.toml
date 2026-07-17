@@ -1,0 +1,76 @@
+# {G}: This creature gets +1/+1 until end of turn. Target opponent creates a 1/1 green Hippo creature token.
+# {W}: This creature gains protection from black and from red until end of turn. Target opponent gains 2 life.
+# {U}: This creature gains flying until end of turn. Target opponent may draw a card.
+name = "Questing Phelddagrif"
+otags = ["activated-ability", "bottomless-mana-sink", "cycle-pls-r-tricolor", "donate-token", "drawback", "gains-flying", "gains-protection", "hate-black", "hate-red", "jump", "opponent-lifegain", "repeatable-crime"]
+set = "pls"
+subtypes = ["Phelddagrif"]
+id = "97f3afdb-dcee-44da-b210-c8d20030baff"
+default_print = "cea4cfef-6736-42a5-9f3e-10de8d0cd8d3"
+oracle = "{G}: This creature gets +1/+1 until end of turn. Target opponent creates a 1/1 green Hippo creature token.\n{W}: This creature gains protection from black and from red until end of turn. Target opponent gains 2 life.\n{U}: This creature gains flying until end of turn. Target opponent may draw a card."
+
+[cost]
+generic = 1
+green = 1
+white = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# {G}: This creature gets +1/+1 until end of turn. Target opponent creates a 1/1 green Hippo
+# creature token.
+[[abilities]]
+timing = "activated"
+activation_cost = { green = 1 }
+
+# This creature gets +1/+1 until end of turn.
+[[abilities.effects]]
+type = "pump_self_until_end_of_turn"
+power = 1
+toughness = 1
+
+# Target opponent creates a 1/1 green Hippo creature token.
+[[abilities.effects]]
+type = "create_token"
+controller = "target_opponent"
+token = { name = "Hippo", power = 1, toughness = 1, colors = ["green"], subtypes = ["Hippo"] }
+
+# {W}: This creature gains protection from black and from red until end of turn. Target opponent
+# gains 2 life.
+[[abilities]]
+timing = "activated"
+activation_cost = { white = 1 }
+
+# This creature gains protection from black and from red until end of turn.
+[[abilities.effects]]
+type = "pump_self_until_end_of_turn"
+power = 0
+toughness = 0
+keywords = [{ protection = "black" }, { protection = "red" }]
+
+# Target opponent gains 2 life.
+[[abilities.effects]]
+type = "target_player_gains_life"
+amount = 2
+opponent = true
+
+# {U}: This creature gains flying until end of turn. Target opponent may draw a card.
+[[abilities]]
+timing = "activated"
+activation_cost = { blue = 1 }
+
+# This creature gains flying until end of turn.
+[[abilities.effects]]
+type = "pump_self_until_end_of_turn"
+power = 0
+toughness = 0
+keywords = ["flying"]
+
+# Target opponent may draw a card.
+[[abilities.effects]]
+type = "target_player_may_draw"
+count = 1
+opponent = true

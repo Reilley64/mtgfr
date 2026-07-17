@@ -1,0 +1,32 @@
+# {T}: Draw a card, then discard a card.
+name = "Merfolk Looter"
+otags = ["activated-ability", "hand-neutral", "type-errata", "repeatable-loot"]
+set = "afc"
+subtypes = ["Merfolk", "Rogue"]
+id = "67362406-b1ca-49e2-800d-9050bfe8742a"
+default_print = "6d740928-bf61-4420-a403-63097538b97d"
+oracle = "{T}: Draw a card, then discard a card."
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Draw a card, then discard a card.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# then discard a card.
+[[abilities.effects]]
+type = "discard"
+count = 1

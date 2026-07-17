@@ -1,0 +1,17 @@
+# You may have this enchantment enter as a copy of any enchantment on the battlefield.
+name = "Copy Enchantment"
+otags = ["clone", "copy-enchantment", "fun-ruling"]
+set = "rvr"
+id = "87bc0b1f-49ef-4c06-9049-2c148b467882"
+default_print = "ce82b316-8982-41bf-a990-6b776a9e83ac"
+oracle = "You may have this enchantment enter as a copy of any enchantment on the battlefield."
+
+# You may have this enchantment enter as a copy of any enchantment on the battlefield.
+enter_as_copy = { of = "enchantment" }
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "enchantment"

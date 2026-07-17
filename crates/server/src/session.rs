@@ -693,6 +693,8 @@ mod tests {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -708,6 +710,7 @@ mod tests {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         suspend: None,
     };
 
@@ -730,6 +733,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })

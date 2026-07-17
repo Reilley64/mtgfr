@@ -1,0 +1,31 @@
+# Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand,
+# then shuffle.)
+name = "Wirewood Guardian"
+otags = ["activate-from-hand", "cheaper-than-mv", "french-vanilla", "tutor-land-forest", "tutor-to-hand", "virtual-vanilla"]
+set = "scg"
+subtypes = ["Elf", "Mutant"]
+id = "61ade140-5b11-4882-82e5-a075fc80b260"
+default_print = "e8676b1f-e37c-4ae1-9dbe-d000369fa422"
+oracle = "Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put it into your hand, then shuffle.)"
+
+[cost]
+generic = 5
+green = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put
+# it into your hand, then shuffle.)
+[hand_ability]
+
+[hand_ability.cost]
+generic = 2
+
+# Search your library for a Forest card, reveal it, put it into your hand, then shuffle.
+[[hand_ability.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Forest"] }
+to_zone = "hand"

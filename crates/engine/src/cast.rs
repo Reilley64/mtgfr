@@ -127,6 +127,12 @@ impl Game {
     /// `kicked` folds [`AdditionalCost::kicker`]'s cost on top (CR 702.33d) — `false` for a
     /// spell with no kicker, or when pricing without picking one (list/one-click never offer it,
     /// matching the declinable default).
+    /// `bought_back` folds [`AdditionalCost::buyback`]'s cost on top (CR 702.27c), mirroring
+    /// `kicked`'s own fold — `false` for a spell with no buyback, or when pricing without picking
+    /// one (list/one-click never offer it, matching kicker's own declinable default).
+    /// `evoked` charges [`CardDef::evoke`] instead of the printed cost (CR 702.74a) — `false` for
+    /// a spell with no evoke, or when pricing without declaring it (list/one-click never offer
+    /// it, matching kicker's own declinable default above).
     /// `strive_count` folds [`AdditionalCost::strive`]'s cost on top, multiplied by
     /// `strive_count.saturating_sub(1)` (CR 702.42 — "for each target beyond the first") — 0 for
     /// a spell with no Strive, or when pricing without a declared count (list/one-click price at
@@ -146,6 +152,8 @@ impl Game {
         zone: Zone,
         delve_count: u8,
         kicked: bool,
+        bought_back: bool,
+        evoked: bool,
         strive_count: u8,
         replicate_count: u8,
     ) -> Cost {
@@ -170,6 +178,11 @@ impl Game {
                 .or(def.escape.map(|escape| escape.cost))
                 .or(def.graveyard_cast_cost)
                 .unwrap_or(def.cost)
+        } else if evoked {
+            // Evoke (CR 702.74a): the caster's declared evoke cost replaces the printed cost —
+            // `validate_cast_cost_picks` already rejects `evoked` on a card with no evoke cost,
+            // so this only sees a real one.
+            def.evoke.unwrap_or(def.cost)
         } else {
             def.cost
         };
@@ -207,6 +220,17 @@ impl Game {
                 *pip = pip.saturating_add(*extra);
             }
             cost.colorless = cost.colorless.saturating_add(kicker.colorless);
+        }
+        // Buyback (CR 702.27c): the caster's chosen buyback cost, paid alongside the printed
+        // cost, mirroring kicker's own fold above.
+        // ponytail: sums generic/colored/colorless pips only, mirroring kicker's own pip-only
+        // fold — no pool buyback cost carries a hybrid pip.
+        if bought_back && let Some(buyback) = base.additional.buyback {
+            cost.generic = cost.generic.saturating_add(buyback.generic);
+            for (pip, extra) in cost.colored.iter_mut().zip(buyback.colored.iter()) {
+                *pip = pip.saturating_add(*extra);
+            }
+            cost.colorless = cost.colorless.saturating_add(buyback.colorless);
         }
         // Strive (CR 601.2f/702.42): "{2}{R} more to cast for each target beyond the first" —
         // the caster's declared target count (settled pre-stack, see `Intent::Cast::strive_count`'s
@@ -263,6 +287,8 @@ impl Game {
         graveyard_exile: Vec<ObjectId>,
         sacrifice_cost: Vec<ObjectId>,
         kicked: bool,
+        bought_back: bool,
+        evoked: bool,
         strive_count: u8,
         replicate_count: u8,
     ) -> Result<Vec<Event>, Reject> {
@@ -276,6 +302,8 @@ impl Game {
             &graveyard_exile,
             &sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
             playable::CastPlayKind::Full,
@@ -294,6 +322,8 @@ impl Game {
         graveyard_exile: &[ObjectId],
         sacrifice_cost: &[ObjectId],
         kicked: bool,
+        bought_back: bool,
+        evoked: bool,
         strive_count: u8,
         replicate_count: u8,
         kind: CastPlayKind,
@@ -309,6 +339,8 @@ impl Game {
                 graveyard_exile,
                 sacrifice_cost,
                 kicked,
+                bought_back,
+                evoked,
                 strive_count,
                 replicate_count,
             },
@@ -338,6 +370,10 @@ impl Game {
             Some(def.spell_characteristics()),
             &mut events,
         )?;
+        // CR 106.9's "spent to cast" query (Court Hussar's "unless {W} was spent to cast it"):
+        // read right off the `Event::ManaSpent` `settle_payment` just appended, before any later
+        // event dilutes the `events` tail.
+        let spent_colors = spent_colors_from(&events);
         // ponytail: the additional discard is a *cost* (CR 601.2h — paid pre-stack, before
         // SpellCast below), distinct from a resolution-time `Effect::Discard`. Applied
         // incrementally (not a single `apply_all`) so each `next_object_id()` — one per discarded
@@ -419,9 +455,14 @@ impl Game {
                 escape: cast_via_escape,
                 sacrifice_count: sacrifice_cost.len() as u8,
                 kicked,
+                bought_back,
                 strive_count,
                 replicate_count,
                 bestowed: false,
+                face_down: false,
+                masked: false,
+                evoked,
+                spent_colors,
             },
         );
         if from_command {
@@ -812,10 +853,7 @@ impl Game {
         };
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
-        // before the discard) and "discard this card" (CR 702.29a) — before the draw.
-        // ponytail: CR 702.29 — cycling's ability uses the stack; resolved immediately here
-        // since no pool card responds to a cycling activation. Put it on the stack (a real (CR 702.28, CR 405)
-        // source-less activated ability) if a responder ever needs to interact with it. (CR 602, CR 113)
+        // before the discard) and "discard this card" (CR 702.29a) — before the ability resolves.
         let mut events = Vec::new();
         self.settle_payment(player, cost, None, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
@@ -826,10 +864,35 @@ impl Game {
                 from: card,
             },
         );
-        for event in self.draw_events(player, 1) {
-            self.push_apply(&mut events, event);
+        // CR 702.29a: cycling is an activated ability — its "Draw a card" goes on the stack as a
+        // real (source-less) activated ability, so a responder (Azorius Guildmage's "counter
+        // target activated ability") can interact with it before it resolves. `card` is the
+        // now-discarded card, last-known information like any other post-move source.
+        self.push_ability_group(
+            player,
+            card,
+            &[(
+                Effect::DrawCards {
+                    count: Amount::Fixed(1),
+                },
+                None,
+            )],
+            true,
+            &mut events,
+        );
+        // CR 702.29e: "when you cycle this card" triggers off the discard above and — placed by
+        // the ordinary trigger pipeline in `after_events` — lands on top of the draw already on
+        // the stack, so it resolves first (Krosan Tusker's "(Do this before you draw.)"). Scanned
+        // off the cycled card's own def, mirroring `Trigger::YouCastThis`'s self-scan.
+        if c.def
+            .abilities
+            .iter()
+            .any(|a| a.timing == Timing::Triggered(Trigger::Cycled))
+        {
+            self.queue_trigger_group(TriggerContext::of(player), card, c.def, Trigger::Cycled);
         }
-        // An action resets the pass count; the cycler keeps priority (CR 117.3c).
+        // An action resets the pass count; the cycler keeps priority (CR 117.3c) — overriding the
+        // active-player default `push_ability_group` set.
         self.consecutive_passes = 0;
         self.priority = player;
         Ok(events)
@@ -863,10 +926,7 @@ impl Game {
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
         // before the discard) and "discard this card" (the rest of the cost) — before the
-        // ability's effects run.
-        // ponytail: CR 113.6/602 — like cycling, this ability uses the stack; resolved
-        // immediately here since no pool card responds to its activation. Put it on the stack
-        // (a real source-less activated ability) if a responder ever needs to interact with it.
+        // ability goes on the stack.
         let mut events = Vec::new();
         self.settle_payment(player, ability.cost, None, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
@@ -877,17 +937,20 @@ impl Game {
                 from: card,
             },
         );
-        let ctx = ResolveCtx {
-            controller: player,
-            source: card,
-            target: None,
-            targets_second: TargetList::default(),
-            x: 0,
+        // CR 113.6/602: this is an activated ability — its authored payload goes on the stack (a
+        // single stack ability, `Sequence`-wrapped when it has more than one step) so a responder
+        // (Azorius Guildmage) can interact with it, just like cycling's draw above. `card` is the
+        // now-discarded source, last-known information.
+        // ponytail: a hand ability's payload takes no target in the pool (Magma Opus's Treasure,
+        // the landcyclers' library search); pushed with `None`. Thread a chosen target through
+        // here if a targeted hand ability ever appears.
+        let effect = match ability.effects {
+            [single] => *single,
+            steps => Effect::Sequence { steps },
         };
-        for effect in ability.effects {
-            self.run(*effect, ctx, &mut events);
-        }
-        // An action resets the pass count; the activator keeps priority (CR 117.3c).
+        self.push_ability_group(player, card, &[(effect, None)], true, &mut events);
+        // An action resets the pass count; the activator keeps priority (CR 117.3c) — overriding
+        // the active-player default `push_ability_group` set.
         self.consecutive_passes = 0;
         self.priority = player;
         Ok(events)
@@ -1043,10 +1106,11 @@ impl Game {
         Ok(events)
     }
 
-    /// Turn a face-down manifested permanent face up (CR 701.34e — Reality Shift's manifest): a
-    /// special action (no stack) usable any time its controller has priority. Pay the hidden
-    /// creature card's mana cost, then clear the face-down flag to reveal it. Only a creature card
-    /// may be turned face up (a noncreature manifest stays a 2/2 forever).
+    /// Turn a face-down permanent face up: a special action (no stack) usable any time its
+    /// controller has priority. Pay the reveal cost — a morph card's *morph* cost (CR 702.37c) if
+    /// it has one, otherwise a manifest's hidden *printed* cost (CR 701.34e — Reality Shift) — then
+    /// clear the face-down flag to reveal it. Only a creature card may be turned face up (a
+    /// noncreature manifest stays a 2/2 forever).
     pub(crate) fn turn_face_up(
         &mut self,
         player: PlayerId,
@@ -1065,20 +1129,48 @@ impl Game {
         let CardKind::Creature { .. } = perm.def.kind else {
             return Err(Reject::CannotActivate);
         };
-        let cost = perm.def.cost;
+        // A morph card turns up for its morph cost (CR 702.37c); a manifest (no morph) pays the
+        // hidden card's printed cost (CR 701.34e).
+        // ponytail: a manifested *morph* card (CR 702.37j — pay either the {3}-back manifest turn
+        // or the morph cost) isn't modeled; no pool card manifests a morph card, so a `morph`
+        // card here was always a morph cast and its morph cost is correct. Add the dual-cost fork
+        // when a card first manifests a morph card.
+        let cost = perm.def.morph.unwrap_or(perm.def.cost);
 
         // Pay the hidden card's mana cost (auto-tapping lands; an unpayable cost rejects before the
         // reveal), then flip it face up.
         let mut events = Vec::new();
         self.settle_payment(player, cost, None, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
-        let reveal = Event::TurnedFaceUp { permanent };
-        self.apply(&reveal);
-        events.push(reveal);
+        self.turn_face_up_free(permanent, &mut events);
         // A special action resets the pass count; the player keeps priority (CR 117.3c).
         self.consecutive_passes = 0;
         self.priority = player;
         Ok(events)
+    }
+
+    /// Reveal a face-down `permanent` — emit and apply [`Event::TurnedFaceUp`] with none of the
+    /// special-action bookkeeping (no payment, no priority/pass reset). This is the shared reveal
+    /// tail of the [`Game::turn_face_up`] special action and also the free flip driven by
+    /// Illusionary Mask's CR 615 replacement (see [`Game::flip_masked`]), which reveals a masked
+    /// creature mid-event without it being an action.
+    pub(crate) fn turn_face_up_free(&mut self, permanent: ObjectId, events: &mut Vec<Event>) {
+        self.push_apply(events, Event::TurnedFaceUp { permanent });
+    }
+
+    /// Illusionary Mask's CR 615 self-replacement: if `object` is a masked face-down permanent, it
+    /// "is turned face up" first (for free) the instant it would assign or deal damage, be dealt
+    /// damage, or become tapped — so the interaction then proceeds on the revealed creature (its
+    /// real characteristics come from `def` once `face_down` clears). A no-op for a plain
+    /// morph/manifest face-down permanent (not `masked`) or an already-face-up one.
+    pub(crate) fn flip_masked(&mut self, object: ObjectId, events: &mut Vec<Event>) {
+        let Some(perm) = self.as_permanent(object) else {
+            return;
+        };
+        if !perm.masked || !perm.face_down {
+            return;
+        }
+        self.turn_face_up_free(object, events);
     }
 
     /// Cast a copy of a prepared permanent's back-face spell (soc/sos prepare DFCs — Kirol,
@@ -1156,6 +1248,8 @@ impl Game {
             x,
             Zone::Battlefield,
             0,
+            false,
+            false,
             false,
             0,
             0,
@@ -1257,6 +1351,8 @@ impl Game {
             Zone::Hand,
             0,
             false,
+            false,
+            false,
             0,
             0,
         );
@@ -1341,6 +1437,7 @@ impl Game {
             Some(def.spell_characteristics()),
             &mut events,
         )?;
+        let spent_colors = spent_colors_from(&events);
         let spell = self.next_object_id();
         self.push_apply(
             &mut events,
@@ -1355,15 +1452,108 @@ impl Game {
                 escape: false,
                 sacrifice_count: 0,
                 kicked: false,
+                bought_back: false,
                 strive_count: 0,
                 replicate_count: 0,
                 bestowed: true,
+                face_down: false,
+                masked: false,
+                evoked: false,
+                spent_colors,
             },
         );
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
         self.consecutive_passes = 0;
         self.priority = player;
         Ok(events)
+    }
+
+    /// Cast a hand card face down as a 2/2 creature for {3} (CR 702.37b — morph). Any card whose
+    /// [`CardDef::morph`] is `Some` may be cast this way, paying a flat generic {3} (independent
+    /// of the card's morph cost, which is what turns it face up later). It lands as a face-down
+    /// creature spell → face-down permanent (CR 708.2: a 2/2 colorless creature with no name,
+    /// types, or abilities until turned up). Cast at ordinary creature-spell timing (sorcery
+    /// speed).
+    ///
+    /// ponytail: a flat {3}, not routed through `cast_cost` — no cost reducer / ward pipeline
+    /// interacts with a face-down cast (its real cost is hidden). Route through `cast_cost` if a
+    /// pool card ever reduces the face-down cast cost.
+    pub(crate) fn cast_face_down(
+        &mut self,
+        player: PlayerId,
+        card: ObjectId,
+    ) -> Result<Vec<Event>, Reject> {
+        // Casting requires priority (CR 117.1a).
+        if player != self.priority {
+            return Err(Reject::NotYourPriority);
+        }
+        // A morph card is cast face down from its owner's hand.
+        if self.playable_zone(card, player) != Some(Zone::Hand) {
+            return Err(Reject::NotCastable);
+        }
+        if self.def_of(card).morph.is_none() {
+            return Err(Reject::NotCastable);
+        }
+        // A face-down creature spell obeys creature-spell timing — sorcery speed only.
+        if !self.can_take_sorcery_speed_action(player) {
+            return Err(Reject::WrongTiming);
+        }
+        // CR 702.37b: the face-down cast cost is a flat generic {3}, not the card's printed or
+        // morph cost. Settle first — the last fallible step, so an unpayable {3} rejects with the
+        // card still in hand.
+        let face_down_cost = Cost {
+            generic: 3,
+            ..Cost::FREE
+        };
+        let mut events = Vec::new();
+        self.settle_payment(player, face_down_cost, None, None, &mut events)?;
+        let spent_colors = spent_colors_from(&events);
+        // A morph cast is not masked — only Illusionary Mask sets the CR 615 replacement.
+        self.push_face_down_spell_cast(player, card, spent_colors, false, &mut events);
+        // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
+        self.consecutive_passes = 0;
+        self.priority = player;
+        Ok(events)
+    }
+
+    /// Put `card` onto the stack as a face-down 2/2 creature spell (CR 708.2) controlled by
+    /// `player`, `spent_colors` recording which colors (if any) were spent casting it. Shared by
+    /// morph's flat `{3}` cast ([`Game::cast_face_down`]) and Illusionary Mask's free `{X}` cast
+    /// ([`Game::cast_creature_face_down`]) — the two differ only in what (if anything) was paid and
+    /// whether the result is `masked` (Illusionary Mask's CR 615 turn-face-up-on-interaction
+    /// replacement), so neither the priority reset nor the payment lives here.
+    pub(crate) fn push_face_down_spell_cast(
+        &mut self,
+        player: PlayerId,
+        card: ObjectId,
+        spent_colors: [bool; Color::COUNT],
+        masked: bool,
+        events: &mut Vec<Event>,
+    ) {
+        let spell = self.next_object_id();
+        self.push_apply(
+            events,
+            Event::SpellCast {
+                spell,
+                from: card,
+                controller: player,
+                target: None,
+                x: 0,
+                modes: Modes::default(),
+                flashback: false,
+                escape: false,
+                sacrifice_count: 0,
+                kicked: false,
+                bought_back: false,
+                strive_count: 0,
+                replicate_count: 0,
+                bestowed: false,
+                face_down: true,
+                masked,
+                evoked: false,
+                spent_colors,
+            },
+        );
     }
 
     /// The gates on activating ability `index` of `source` that don't depend on the chosen
@@ -1415,6 +1605,16 @@ impl Game {
         let Timing::Activated(cost) = ability.timing else {
             return Err(Reject::CannotActivate);
         };
+        // A Pacifism-family Aura's "activated abilities can't be activated[, unless they're mana
+        // abilities]" restriction (Faith's Fetters, Prison Term; CR 605.3a exempts mana abilities
+        // under the `mana_only` axis, nothing exempts under `none`).
+        if let Some(restriction) = self.host_activated_ability_restriction(source) {
+            let mana_exempt = restriction == AbilityRestriction::ManaAbilitiesOnly
+                && ability.effect.is_mana_ability();
+            if !mana_exempt {
+                return Err(Reject::CannotActivate);
+            }
+        }
         // A Class's "Level N" ability (CR 717.2 — "Gain the next level as a sorcery"): activatable
         // only to gain the *next* level, so its source must currently sit at exactly `level - 1`
         // (each level gained exactly once). Supersedes the `min_level` gate below (level-up
@@ -1556,7 +1756,13 @@ impl Game {
                     active: true,
                 },
             );
-            self.push_ability_group(player, object, &[(ability.effect, target)], &mut events);
+            self.push_ability_group(
+                player,
+                object,
+                &[(ability.effect, target)],
+                true,
+                &mut events,
+            );
             return Ok(events);
         }
         // Equip targets a creature you control (CR 702.6e; its timing is gated above).
@@ -1592,14 +1798,17 @@ impl Game {
                 chosen
             }
         };
-        // Read the sacrificed creature's power *before* it's sacrificed (Dina, Soul Steeper's
-        // "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters", X = that power) — by
-        // the time the ability resolves off the stack, the creature is gone and there's nothing
-        // left to read `Amount::SourcePower` from. No pool card combines `SourcePower` with a
-        // multi-creature sacrifice cost, so the first sacrificed creature is the only one that
-        // can matter here.
+        // Read the sacrificed creature's power/toughness *before* it's sacrificed (Dina, Soul
+        // Steeper's "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters", X = that
+        // power; Miren, the Moaning Well's "gain life equal to the sacrificed creature's
+        // toughness") — by the time the ability resolves off the stack, the creature is gone and
+        // there's nothing left to read `Amount::SourcePower`/`SourceToughness` from. No pool card
+        // combines `SourcePower`/`SourceToughness` with a multi-creature sacrifice cost, so the
+        // first sacrificed creature is the only one that can matter here.
         let effect = match sacrificed.first() {
-            Some(&id) => contextualize_sacrifice_effect(ability.effect, self.power(id)),
+            Some(&id) => {
+                contextualize_sacrifice_effect(ability.effect, self.power(id), self.toughness(id))
+            }
             None => ability.effect,
         };
         // Pay the cost. The mana settles first (auto-tapping lands for a pool shortfall) so an
@@ -1611,6 +1820,10 @@ impl Game {
         let exclude = cost.taps_self.then_some(object);
         self.settle_payment(player, cost.mana.with_x(x), exclude, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
+        // Read what the payment actually spent right off its trailing `ManaSpent`, before any
+        // later push dilutes the tail — Illusionary Mask's "the mana you spent on {X}" (CR 107.3)
+        // reads this multiset when the ability resolves.
+        let spent_mana = spent_counts_from(&events);
         if cost.once_each_turn {
             self.push_apply(
                 &mut events,
@@ -1764,6 +1977,7 @@ impl Game {
                     target,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );
@@ -1793,12 +2007,28 @@ impl Game {
                     }
                 }
             }
+            // Fertile Ground / Mirari's Wake fire off an `add_mana` land's tap too (a painland,
+            // filter land, or any land whose mana is an explicit ability rather than `produces`
+            // sugar). The helper's land-guard skips a non-land mana source (Sol Ring, a dork).
+            // ponytail: a `single_color` land (Lotus Field) returns above before reaching here, so
+            // its tap fires no watch — no pool land is both `single_color` and a watch host; move
+            // this call above that early return if one ever is.
+            self.land_tapped_for_mana(object, player, &mut events);
             return Ok(events);
         }
 
         // Non-mana activated abilities go on the stack, reusing the trigger placement path,
-        // threading the chosen `{X}` so `Amount::X` resolves against it (CR 107.3).
-        self.push_ability_group_with_x(player, object, &[(effect, target)], x, &mut events);
+        // threading the chosen `{X}` so `Amount::X` resolves against it (CR 107.3) and the spent
+        // multiset for Illusionary Mask's payability test.
+        self.push_ability_group_with_x(
+            player,
+            object,
+            &[(effect, target)],
+            x,
+            spent_mana,
+            true,
+            &mut events,
+        );
         // CR 707.10: "Whenever you … activate an ability, if that ability's activation cost
         // contains {X}, copy that ability" (Unbound Flourishing). Fire the watch off the just-
         // placed ability — the copy trigger lands above it (CR 603.3b) and, on resolution, mints
@@ -1810,6 +2040,31 @@ impl Game {
             self.queue_activate_ability_triggers(player, object);
         }
         Ok(events)
+    }
+}
+
+/// The colors of mana actually spent by the payment [`Game::settle_payment`] just appended to
+/// `events` (CR 106.9 — Court Hussar's "unless {W} was spent to cast it"), read off its trailing
+/// [`Event::ManaSpent`]. `settle_payment` always pushes that event last on success (any tap
+/// events it needs come first), so this only ever runs immediately after such a call, before any
+/// later push dilutes the tail.
+fn spent_colors_from(events: &[Event]) -> [bool; Color::COUNT] {
+    match events.last() {
+        Some(Event::ManaSpent { mana, .. }) => mana.colors_spent(),
+        // unreachable: see this fn's doc — `settle_payment` always ends with `ManaSpent`.
+        _ => [false; Color::COUNT],
+    }
+}
+
+/// The per-kind counts of mana actually spent by the payment [`Game::settle_payment`] just
+/// appended to `events` ([`ManaPool::spent_counts`] — Illusionary Mask's CR 107.3 "the mana you
+/// spent on {X}" test), read off its trailing [`Event::ManaSpent`] exactly the way
+/// [`spent_colors_from`] reads the colors (and under the same always-last guarantee).
+fn spent_counts_from(events: &[Event]) -> [u8; 6] {
+    match events.last() {
+        Some(Event::ManaSpent { mana, .. }) => mana.spent_counts(),
+        // unreachable: see `spent_colors_from`'s doc — `settle_payment` always ends with `ManaSpent`.
+        _ => [0; 6],
     }
 }
 

@@ -72,6 +72,24 @@ pub enum TargetSpec {
     /// "target noncreature spell" and Quandrix Command's "target artifact or enchantment spell"
     /// narrow it). [`Effect::CounterTargetSpell::filter`] supplies the filter.
     SpellOnStack(SpellFilter),
+    /// A spell currently on the stack that has exactly one target (Willbender's "target spell …
+    /// with a single target", CR 114.6). Targets the stack object; used by
+    /// [`Effect::ChangeTargetOfTargetSpellOrAbility`] to pick the spell to bend.
+    /// ponytail: CR's "spell or ability" also reaches a single-target activated/triggered ability
+    /// on the stack, but stack abilities carry no object identity in this engine (they're keyed by
+    /// source, not a chosen `Target`), so only spells are targetable here — see #163's residual gap.
+    #[cfg_attr(feature = "card-dsl", serde(rename = "single_target_spell_on_stack"))]
+    SingleTargetSpellOnStack,
+    /// An *activated* ability currently on the stack (Azorius Guildmage's "Counter target
+    /// activated ability", CR 112.7a). Targets the ability's stack item by its `source` id, not a
+    /// card in a zone. Mana abilities never reach the stack (CR 605.3b); triggered abilities are
+    /// excluded here (only `StackItem::Ability { activated: true }` entries are yielded).
+    /// ponytail: keyed by the ability's `source` id — stack abilities carry no object identity of
+    /// their own in this engine (same gap #163's `SingleTargetSpellOnStack` note names). If two
+    /// activated abilities on the stack shared a source, resolution counters the topmost match; no
+    /// pool card produces that, and Azorius counters exactly one. Give stack abilities real object
+    /// identity when a card forces the distinction.
+    ActivatedAbilityOnStack,
     /// A target artifact, enchantment, or planeswalker on the battlefield (Fracture). The
     /// noncreature-permanent removal set the pool needs; Auras count as enchantments.
     ArtifactEnchantmentOrPlaneswalker,
@@ -321,6 +339,11 @@ pub enum CardFilter {
     /// creature card from your graveyard"). The unbounded twin of
     /// [`ArtifactOrCreatureWithManaValueAtMost`](Self::ArtifactOrCreatureWithManaValueAtMost).
     ArtifactOrCreature,
+    /// An artifact or enchantment card, no mana-value bound (Enlightened Tutor: "Search your
+    /// library for an artifact or enchantment card"). Reads [`CardKind::types`] rather than a raw
+    /// [`CardKind`] match, so an Aura counts (it's still an enchantment card, CR 205.4a) the same
+    /// way [`Enchantment`](Self::Enchantment) does.
+    ArtifactOrEnchantment,
 }
 
 impl CardFilter {
@@ -389,6 +412,10 @@ impl CardFilter {
             CardFilter::ArtifactOrCreature => {
                 matches!(def.kind, CardKind::Artifact | CardKind::Creature { .. })
             }
+            CardFilter::ArtifactOrEnchantment => def
+                .kind
+                .types()
+                .intersects(TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT)),
         }
     }
 }
@@ -406,6 +433,11 @@ pub enum SearchDest {
     /// Onto the battlefield under the searcher's control (ramp / fetchlands), tapped per the
     /// effect's `tapped` flag.
     Battlefield,
+    /// Onto the top of the searcher's own library, revealed as it's found (Enlightened Tutor,
+    /// Sterling Grove: "reveal it, then shuffle and put that card on top" — CR 701.19). A
+    /// same-zone reorder, not a zone change (CR 400.7) — the card never leaves the library, so it
+    /// keeps its object id, the same way [`Event::PutOnBottomOfLibrary`] does for the bottom.
+    LibraryTop,
 }
 
 /// Where a card selected by [`Effect::LookAtTop`] goes (the "put that card into …" destination).
@@ -428,10 +460,11 @@ pub enum TopDest {
     Battlefield,
 }
 
-/// Where the *non-selected* looked-at cards go at the end of an [`Effect::LookAtTop`].
-/// ponytail: only `Bottom` is in scope ("put the rest on the bottom"). A `Graveyard` arm (a
-/// look-then-select whose rest is milled) is the next unlock; add it (routing through
-/// [`Event::Milled`], the surveil path) from the first card that needs it.
+/// Where the *non-matching* revealed/looked-at cards go, shared by [`Effect::LookAtTop`],
+/// [`Effect::RevealUntil`], and [`Effect::RevealTopCards`].
+/// ponytail: a `Graveyard` arm (a look-then-select whose rest is milled) is the next unlock;
+/// add it (routing through [`Event::Milled`], the surveil path) from the first card that needs
+/// it.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -442,6 +475,9 @@ pub enum RestDest {
     /// On the bottom of the selecting player's library (the common case).
     #[default]
     Bottom,
+    /// Into the selecting player's hand (Coiling Oracle's "Otherwise, put that card into your
+    /// hand").
+    Hand,
 }
 
 /// Whose library a [`Effect::SearchLibrary`] searches (CR 701.19 — "search their library").
@@ -644,6 +680,14 @@ pub struct PermanentFilter {
     /// Ever-Changing's "up to one target *nonlegendary* creature you control"). `false` (default)
     /// imposes no restriction. Reads the current (possibly copied) [`CardDef::legendary`].
     pub nonlegendary: bool,
+    /// Excludes the "Lair" land subtype (CR 305 — Treva's Ruins' "return a *non-Lair* land you
+    /// control"). `false` (default) imposes no restriction. Reads the printed land-type list
+    /// directly ([`CardKind::Land::subtypes`], the rules-relevant one — see that field's doc),
+    /// not [`CardDef::subtypes`].
+    /// ponytail: a single bool covers the pool's one "not this land subtype" need, same shape as
+    /// `nonbasic`/`nonlegendary` above; generalize to a `subtypes_exclude` list if a second
+    /// land-subtype exclusion turns up.
+    pub nonlair: bool,
 }
 
 impl PermanentFilter {
@@ -673,6 +717,7 @@ impl PermanentFilter {
             nonbasic: false,
             name: None,
             nonlegendary: false,
+            nonlair: false,
         }
     }
 }
@@ -729,6 +774,12 @@ pub enum TokenController {
     /// every other `TokenController` variant (which take their recipient from context, not a
     /// target of their own).
     TargetPlayer,
+    /// The ability's own chosen Player target, restricted to an opponent (CR "target opponent" —
+    /// Questing Phelddagrif's "Target opponent creates a 1/1 ... Hippo ... token", CR 111.4). The
+    /// opponent-restricted twin of [`TargetPlayer`](Self::TargetPlayer): same [`Target::Player`]
+    /// resolution, narrower [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer)
+    /// legal-target set.
+    TargetOpponent,
 }
 
 /// Who acts when a [`Effect::ScheduleAtNextUpkeep`] delayed trigger fires (CR 603.7).

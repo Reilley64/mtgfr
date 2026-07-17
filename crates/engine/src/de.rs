@@ -224,6 +224,8 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -238,6 +240,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         },
     })
 }
@@ -367,6 +370,14 @@ impl<'de> Deserialize<'de> for CardDef {
             /// absent for a card without bestow.
             #[serde(default)]
             bestow: Option<Cost>,
+            /// Morph (CR 702.37) — `[morph]` with the same `[cost]`-table shape as `[bestow]` (the
+            /// card's morph cost); absent for a card without morph.
+            #[serde(default)]
+            morph: Option<Cost>,
+            /// Evoke (CR 702.74) — `[evoke]` with the same `[cost]`-table shape as `[echo]`;
+            /// absent for a card without evoke.
+            #[serde(default)]
+            evoke: Option<Cost>,
             /// Delve (CR 702.66) — `delve = true`; absent (`false`) for a card without delve.
             #[serde(default)]
             delve: bool,
@@ -425,6 +436,11 @@ impl<'de> Deserialize<'de> for CardDef {
             /// Absent for a card without one.
             #[serde(default)]
             hand_ability: Option<HandActivatedAbility>,
+            /// "You may choose not to untap this during your untap step" (CR 502.2 — Rubinia
+            /// Soulsinger) — `may_choose_not_to_untap = true`; absent (`false`) for every ordinary
+            /// permanent.
+            #[serde(default)]
+            may_choose_not_to_untap: bool,
         }
 
         let card = Card::deserialize(d)?;
@@ -463,6 +479,8 @@ impl<'de> Deserialize<'de> for CardDef {
             flashback: card.flashback,
             echo: card.echo,
             bestow: card.bestow,
+            morph: card.morph,
+            evoke: card.evoke,
             delve: card.delve,
             escape: card.escape,
             retrace: card.retrace,
@@ -482,6 +500,7 @@ impl<'de> Deserialize<'de> for CardDef {
             // reference can live on the `CardDef`.
             encore: card.encore.map(|cost| &*Box::leak(Box::new(cost))),
             hand_ability: card.hand_ability,
+            may_choose_not_to_untap: card.may_choose_not_to_untap,
         })
     }
 }
@@ -573,6 +592,7 @@ impl<'de> Deserialize<'de> for Cost {
 /// "one_or_more", filter = "creature" }` spells an optional "sacrifice any number of permanents"
 /// cost (Plumb the Forbidden) — `count` is a marker; only `"one_or_more"` is modeled.
 /// `kicker = { generic = 5 }` spells Kicker (CR 702.33) — the same table shape as `[cost]`.
+/// `buyback = { generic = 3 }` spells Buyback (CR 702.27) — same table shape.
 /// `strive = { generic = 2, red = 1 }` spells Strive (CR 702.42) — same table shape, the
 /// per-extra-target cost. `replicate = { generic = 2 }` spells Replicate (CR 702.108) — same
 /// table shape, the per-payment cost.
@@ -604,6 +624,9 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             sacrifice: Option<RawSacrifice>,
             /// `[cost.additional.kicker]` — Kicker (CR 702.33), the same table shape as `[cost]`.
             kicker: Option<Cost>,
+            /// `[cost.additional.buyback]` — Buyback (CR 702.27), the same table shape as
+            /// `[cost]`.
+            buyback: Option<Cost>,
             /// `[cost.additional.strive]` — Strive (CR 702.42), the same table shape as `[cost]`.
             strive: Option<Cost>,
             /// `[cost.additional.replicate]` — Replicate (CR 702.108), the same table shape as
@@ -641,6 +664,7 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             pay_life,
             sacrifice,
             kicker: raw.kicker.map(|c| &*Box::leak(Box::new(c))),
+            buyback: raw.buyback.map(|c| &*Box::leak(Box::new(c))),
             strive: raw.strive.map(|c| &*Box::leak(Box::new(c))),
             replicate: raw.replicate.map(|c| &*Box::leak(Box::new(c))),
         })
@@ -721,9 +745,10 @@ impl<'de> Deserialize<'de> for CardKind {
 }
 
 /// A mana symbol in TOML: a bare string — a color name, `"colorless"` (`{C}`), or `"any"` —
-/// or a two-color array (`["green", "blue"]`) for a dual's "either of two colors"
-/// ([`Mana::Either`], normalized to WUBRG order so both spellings intern identically).
-/// Color spellings delegate to [`Color`]'s derive so they live in exactly one place.
+/// or a color array (`["green", "blue"]`) for a fixed choice among 2–4 distinct colors: exactly
+/// two normalizes to [`Mana::Either`] (a dual's "either of two colors"), three or four to
+/// [`Mana::OfColors`] (a triome's "{G}, {W}, or {U}" — Treva's Ruins). Color spellings delegate
+/// to [`Color`]'s derive so they live in exactly one place.
 impl<'de> Deserialize<'de> for Mana {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct ManaVisitor;
@@ -732,7 +757,10 @@ impl<'de> Deserialize<'de> for Mana {
             type Value = Mana;
 
             fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.write_str("a mana symbol (a color name, \"colorless\", or \"any\") or a two-color array (a dual's \"either\")")
+                f.write_str(
+                    "a mana symbol (a color name, \"colorless\", or \"any\") or a 2-to-4-color \
+                     array (a fixed choice of colors)",
+                )
             }
 
             fn visit_str<E: de::Error>(self, symbol: &str) -> Result<Mana, E> {
@@ -744,26 +772,34 @@ impl<'de> Deserialize<'de> for Mana {
             }
 
             fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Mana, A::Error> {
-                let two = &"exactly two distinct colors";
-                let first: Color = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, two))?;
-                let second: Color = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(1, two))?;
-                if seq.next_element::<Color>()?.is_some() {
-                    return Err(de::Error::invalid_length(3, two));
+                let hint = &"2 to 4 distinct colors";
+                let mut colors: Vec<Color> = Vec::new();
+                while let Some(color) = seq.next_element::<Color>()? {
+                    colors.push(color);
                 }
-                if first == second {
-                    return Err(de::Error::custom(
-                        "a dual's two colors must differ (spell a mono producer as one color)",
-                    ));
+                if colors.len() < 2 || colors.len() > 4 {
+                    return Err(de::Error::invalid_length(colors.len(), hint));
                 }
-                // Normalize to WUBRG order so ["green", "blue"] == ["blue", "green"].
-                if first.index() < second.index() {
-                    return Ok(Mana::Either(first, second));
+                let mut mask: u8 = 0;
+                for &color in &colors {
+                    let bit = 1 << color.index();
+                    if mask & bit != 0 {
+                        return Err(de::Error::custom(
+                            "a color-choice mana symbol's colors must be distinct (spell a mono \
+                             producer as one color)",
+                        ));
+                    }
+                    mask |= bit;
                 }
-                Ok(Mana::Either(second, first))
+                if colors.len() == 2 {
+                    // Normalize to WUBRG order so ["green", "blue"] == ["blue", "green"].
+                    return Ok(if colors[0].index() < colors[1].index() {
+                        Mana::Either(colors[0], colors[1])
+                    } else {
+                        Mana::Either(colors[1], colors[0])
+                    });
+                }
+                Ok(Mana::OfColors(mask))
             }
         }
 
@@ -871,15 +907,18 @@ impl<'de> Deserialize<'de> for Amount {
             "source_power",
             "source_toughness",
             "target_power",
+            "target_toughness",
             "target_mana_value",
             "per_counter_on_source",
             "life_gained_this_turn",
             "spells_cast_this_turn",
             "cards_in_target_player_hand",
+            "cards_in_your_hand",
             "commander_casts_from_command_zone",
             "creatures_died_this_turn",
             "nontoken_creatures_entered_this_turn",
             "sacrificed_creature_power",
+            "sacrificed_creature_toughness",
             "commander_color_count",
             "total_power_you_control",
             "triggering_spell_mana_value",
@@ -896,6 +935,7 @@ impl<'de> Deserialize<'de> for Amount {
             "one_plus_instants_and_sorceries_cast_this_turn",
             "instant_or_sorcery_cards_in_your_graveyard",
             "combat_damage_dealt",
+            "triggering_damage_dealt",
         ];
 
         impl<'de> Visitor<'de> for AmountVisitor {
@@ -923,17 +963,20 @@ impl<'de> Deserialize<'de> for Amount {
                     "source_power" => Amount::SourcePower,
                     "source_toughness" => Amount::SourceToughness,
                     "target_power" => Amount::TargetPower,
+                    "target_toughness" => Amount::TargetToughness,
                     "target_mana_value" => Amount::TargetManaValue,
                     "per_counter_on_source" => Amount::PerCounterOnSource,
                     "life_gained_this_turn" => Amount::LifeGainedThisTurn,
                     "spells_cast_this_turn" => Amount::SpellsCastThisTurn,
                     "cards_in_target_player_hand" => Amount::CardsInTargetPlayerHand,
+                    "cards_in_your_hand" => Amount::CardsInYourHand,
                     "commander_casts_from_command_zone" => Amount::CommanderCastsFromCommandZone,
                     "creatures_died_this_turn" => Amount::CreaturesDiedThisTurn,
                     "nontoken_creatures_entered_this_turn" => {
                         Amount::NontokenCreaturesEnteredThisTurn
                     }
                     "sacrificed_creature_power" => Amount::SacrificedCreaturePower,
+                    "sacrificed_creature_toughness" => Amount::SacrificedCreatureToughness,
                     "commander_color_count" => Amount::CommanderColorCount,
                     "total_power_you_control" => Amount::TotalPowerYouControl,
                     "triggering_spell_mana_value" => Amount::TriggeringSpellManaValue,
@@ -958,6 +1001,7 @@ impl<'de> Deserialize<'de> for Amount {
                         Amount::InstantOrSorceryCardsInYourGraveyard
                     }
                     "combat_damage_dealt" => Amount::CombatDamageDealt,
+                    "triggering_damage_dealt" => Amount::TriggeringDamageDealt,
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
@@ -1294,6 +1338,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     name: Option<String>,
                     #[serde(default)]
                     nonlegendary: bool,
+                    #[serde(default)]
+                    nonlair: bool,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1321,6 +1367,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     nonbasic: t.nonbasic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
+                    nonlair: t.nonlair,
                 })
             }
         }
@@ -1424,6 +1471,7 @@ impl<'de> Deserialize<'de> for SacrificeCost {
 enum TriggerTag {
     #[serde(alias = "etb_triggered")]
     Etb,
+    TurnedFaceUp,
     Attacks,
     Dies,
     CreatureDies,
@@ -1455,12 +1503,16 @@ enum TriggerTag {
     #[serde(alias = "equipped_creature_attacks")]
     EnchantedCreatureAttacks,
     EnchantedCreatureDies,
+    /// Whenever the enchanted host deals damage, combat or noncombat (Armadillo Cloak's "you gain
+    /// that much life"). See [`Trigger::EnchantedCreatureDealsDamage`].
+    EnchantedCreatureDealsDamage,
     AnEnchantedCreatureDies,
     CreatureEnchantedByYourAuraAttacks,
     YouSacrifice,
     AnyPlayerSacrifices,
     YouDiscard,
     DealsCombatDamageToPlayer,
+    DealsDamageToOpponent,
     CastSpell,
     PlayerDraws,
     ActivateAbility,
@@ -1483,6 +1535,7 @@ enum TriggerTag {
     ZeroBasePowerCreaturesYouControlDealCombatDamage,
     SpendManaToCast,
     YouLoseLifeFirstTimeEachTurn,
+    Cycled,
 }
 
 /// An `[[abilities]]` table is flat in TOML: the timing is a string, and an activated
@@ -1647,6 +1700,7 @@ impl<'de> Deserialize<'de> for Ability {
         let timing = match flat.timing {
             TimingName::Trigger(tag) => Timing::Triggered(match tag {
                 TriggerTag::Etb => Trigger::Etb,
+                TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
                 TriggerTag::Attacks => Trigger::Attacks,
                 TriggerTag::Dies => Trigger::Dies,
                 TriggerTag::CreatureDies => Trigger::CreatureDies,
@@ -1689,6 +1743,7 @@ impl<'de> Deserialize<'de> for Ability {
                 }
                 TriggerTag::EnchantedCreatureAttacks => Trigger::EnchantedCreatureAttacks,
                 TriggerTag::EnchantedCreatureDies => Trigger::EnchantedCreatureDies,
+                TriggerTag::EnchantedCreatureDealsDamage => Trigger::EnchantedCreatureDealsDamage,
                 TriggerTag::AnEnchantedCreatureDies => Trigger::AnEnchantedCreatureDies,
                 TriggerTag::CreatureEnchantedByYourAuraAttacks => {
                     Trigger::CreatureEnchantedByYourAuraAttacks {
@@ -1705,6 +1760,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::DealsCombatDamageToPlayer => {
                     Trigger::DealsCombatDamageToPlayer { who: flat.who }
                 }
+                TriggerTag::DealsDamageToOpponent => Trigger::DealsDamageToOpponent,
                 TriggerTag::CastSpell => Trigger::CastSpell {
                     filter: flat.spell_filter,
                     caster: flat.caster,
@@ -1749,6 +1805,7 @@ impl<'de> Deserialize<'de> for Ability {
                     predicate: flat.spend_predicate,
                 },
                 TriggerTag::YouLoseLifeFirstTimeEachTurn => Trigger::YouLoseLifeFirstTimeEachTurn,
+                TriggerTag::Cycled => Trigger::Cycled,
             }),
             TimingName::Special(SpecialTiming::Spell) => Timing::Spell,
             TimingName::Special(SpecialTiming::Static) => Timing::Static,

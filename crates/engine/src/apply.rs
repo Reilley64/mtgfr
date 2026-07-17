@@ -7,6 +7,26 @@
 use crate::*;
 
 impl Game {
+    /// Whether `host` is a legal object for `attachment` (an Aura or Equipment) to be attached to
+    /// right now: `attachment`'s own `def.enchant` filter re-checked against its live host, or the
+    /// default "enchant creature" filter when it has none (a plain Aura, or Equipment — the DSL
+    /// has no attach-filter surface for Equipment beyond "must be a creature"). Used both at an
+    /// Aura's cast-time legality re-check (CR 303.4f) and by the CR 704.5m/n state-based action
+    /// below, so an Aura like Confiscate ("Enchant permanent") isn't held to the default
+    /// enchant-creature restriction its `enchant` filter doesn't actually impose.
+    pub(crate) fn attachment_host_legal(&self, attachment: ObjectId, host: ObjectId) -> bool {
+        let filter = self
+            .def_of(attachment)
+            .enchant
+            .unwrap_or(PermanentFilter::of(TypeSet::CREATURE));
+        self.permanent_matches(
+            &filter,
+            host,
+            self.controller_of(attachment),
+            Some(attachment),
+        )
+    }
+
     /// Re-check state-based actions and return the events they produce.
     /// A player at 0-or-less life loses; a creature with lethal marked damage dies.
     pub(crate) fn check_state_based_actions(&self) -> Vec<Event> {
@@ -76,7 +96,7 @@ impl Game {
             let host_illegal = match p.attached_to {
                 // unattached Aura is illegal, unless it's this Aura awaiting its host choice
                 None => matches!(p.def.kind, CardKind::Aura) && awaiting_host != Some(id),
-                Some(host) => !self.is_creature_on_battlefield(host) || leaving.contains(&host),
+                Some(host) => !self.attachment_host_legal(id, host) || leaving.contains(&host),
             };
             if !host_illegal {
                 continue;
@@ -158,6 +178,7 @@ impl Game {
         let bound = self.objects.len() + self.players.len() + 1;
         for _ in 0..bound {
             let mut sba = self.check_state_based_actions();
+            sba.extend(self.check_conditioned_control_reversions());
             sba.extend(self.check_linked_exile_returns());
             sba.extend(self.check_leaves_battlefield_illusions());
             sba.extend(self.take_serra_lifegain_events());
@@ -188,6 +209,33 @@ impl Game {
                 source: None,
             })
             .collect()
+    }
+
+    /// CR 611.2b: for each condition-scoped control override whose [`ControlCondition`] no longer
+    /// holds — the source left the battlefield, its controller (the thief) lost control of it, or
+    /// (Rubinia Soulsinger's clause) it untapped — end the steal. Detected the same state-based way
+    /// as [`Game::check_linked_exile_returns`] (swept to a fixpoint), so control reverts on its own
+    /// the instant the condition breaks rather than through a triggered ability.
+    pub(crate) fn check_conditioned_control_reversions(&self) -> Vec<Event> {
+        self.play_permissions
+            .conditioned_control_overrides
+            .iter()
+            .filter(|&&(_, thief, condition)| !self.control_condition_holds(thief, condition))
+            .map(|&(object, ..)| Event::ConditionedControlEnded { object })
+            .collect()
+    }
+
+    /// Whether a condition-scoped steal's [`ControlCondition`] still holds for `thief` (the
+    /// override's controller): its source is still a battlefield permanent controlled by `thief`
+    /// and — when `needs_tapped` (Rubinia's "remains tapped") — still tapped.
+    fn control_condition_holds(&self, thief: PlayerId, condition: ControlCondition) -> bool {
+        let Some(source) = self.as_permanent(condition.source) else {
+            return false;
+        };
+        if condition.needs_tapped && !source.tapped {
+            return false;
+        }
+        self.controller_of(condition.source) == thief
     }
 
     /// The O-Ring pattern (CR 603.6e): for each `(source, exiled)` link still on
@@ -373,9 +421,14 @@ impl Game {
                 escape,
                 sacrifice_count,
                 kicked,
+                bought_back,
                 strive_count,
                 replicate_count,
                 bestowed,
+                face_down,
+                masked,
+                evoked,
+                spent_colors,
             } => {
                 let (def, commander) = match self.objects[from as usize] {
                     Object::Card(c) => (c.def, c.commander),
@@ -420,10 +473,15 @@ impl Game {
                         counter_division: DamageAssignment::default(),
                         sacrifice_count,
                         kicked,
+                        bought_back,
                         strive_count,
                         replicate_count,
                         serra_recursion,
                         bestowed,
+                        face_down,
+                        masked,
+                        evoked,
+                        spent_colors,
                     }),
                 );
                 if serra_recursion {
@@ -492,10 +550,19 @@ impl Game {
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
                         kicked: false,
+                        bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
                         serra_recursion: false,
                         bestowed: false,
+                        face_down: false,
+                        masked: false,
+                        evoked: false,
+                        // ponytail: an adventure cast still pays real mana (`settle_payment` runs
+                        // above), but no adventure card checks color-spent yet — wire this from
+                        // the same `Event::ManaSpent` snapshot `Event::SpellCast` uses
+                        // (`Game::cast_adventure`) if one ever does.
+                        spent_colors: [false; Color::COUNT],
                     }),
                 );
                 assert_eq!(id, spell);
@@ -577,10 +644,16 @@ impl Game {
                             counter_division: DamageAssignment::default(),
                             sacrifice_count: 0,
                             kicked: false,
+                            bought_back: false,
                             strive_count: 0,
                             replicate_count: 0,
                             serra_recursion: false,
                             bestowed: false,
+                            face_down: false,
+                            masked: false,
+                            evoked: false,
+                            // A copy pays no cost (CR 707.10) — nothing was spent to "cast" it.
+                            spent_colors: [false; Color::COUNT],
                         },
                     }),
                 );
@@ -648,10 +721,19 @@ impl Game {
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
                         kicked: false,
+                        bought_back: false,
                         strive_count: 0,
                         replicate_count: 0,
                         serra_recursion: false,
                         bestowed: false,
+                        face_down: false,
+                        masked: false,
+                        evoked: false,
+                        // ponytail: a prepared cast still pays real mana (`settle_payment` runs
+                        // in `Game::cast_prepared`), but no prepare card checks color-spent yet —
+                        // wire this from the same `Event::ManaSpent` snapshot `Event::SpellCast`
+                        // uses if one ever does.
+                        spent_colors: [false; Color::COUNT],
                     }),
                 );
                 assert_eq!(id, spell);
@@ -673,20 +755,34 @@ impl Game {
                 target,
                 targets_second,
                 x,
+                spent_mana,
+                activated,
             } => {
                 self.stack.push(StackItem::Ability {
                     controller,
                     source,
                     effect,
+                    activated,
                     target,
                     targets_second,
                     x,
+                    spent_mana,
                 });
             }
             Event::AbilityResolved { .. } => {
                 // The resolving ability is always the top of the stack.
                 debug_assert!(matches!(self.stack.last(), Some(StackItem::Ability { .. })));
                 self.stack.pop();
+            }
+            // CR 701.5c/112.7a: a countered activated ability ceases to exist — remove the
+            // topmost stack ability with this source (the target this counter resolved against;
+            // see `TargetSpec::ActivatedAbilityOnStack`'s identity ponytail). No card moves.
+            Event::AbilityCountered { source } => {
+                if let Some(i) = self.stack.iter().rposition(
+                    |item| matches!(item, StackItem::Ability { source: s, .. } if *s == source),
+                ) {
+                    self.stack.remove(i);
+                }
             }
             Event::StepBegan {
                 step,
@@ -744,6 +840,10 @@ impl Game {
                     // cleared here is behavior-exact for "this turn", the same idiom `must_attack`
                     // and `pending_next_cast` use.
                     self.combat_extras.combat_damage_prevention_shields.clear();
+                    // ponytail: "Prevent all combat damage … this turn" (Moment's Peace, #150)
+                    // expires at the next Untap — same behavior-exact turn-boundary idiom as the
+                    // per-player Inkshield shield just above.
+                    self.combat_extras.prevent_all_combat_damage_this_turn = false;
                     // "Entered the battlefield this turn" (Oran-Rief, the Vastwood) expires at
                     // the same turn boundary — every battlefield permanent's, not just the
                     // active player's (a new turn, anyone's, ends "this turn").
@@ -1006,6 +1106,19 @@ impl Game {
                     .permanent_control_overrides
                     .push((object, controller));
             }
+            Event::ConditionedControlGained {
+                object,
+                controller,
+                condition,
+            } => {
+                self.play_permissions
+                    .conditioned_control_overrides
+                    .push((object, controller, condition));
+            }
+            Event::ConditionedControlEnded { object } => self
+                .play_permissions
+                .conditioned_control_overrides
+                .retain(|&(o, ..)| o != object),
             Event::AttackerDeclared { object, defender } => {
                 self.combat.attackers.push(object);
                 self.combat.attack_targets.push((object, defender));
@@ -1217,6 +1330,9 @@ impl Game {
             // in `enqueue_triggers`, but it mutates no state of its own (the life loss it
             // accompanies already applied via `LifeChanged`).
             Event::CombatDamageDealtToPlayer { .. } => {}
+            // A marker only — the noncombat twin of the arm above, read by
+            // `Game::queue_deals_damage_to_opponent_triggers`.
+            Event::DamageDealtToPlayer { .. } => {}
             // A marker only — the prevented damage's absence (no `LifeChanged`) and the Inkling
             // mints (accompanying `TokenCreated` events) carry all the state; this event mutates
             // nothing itself.
@@ -1284,20 +1400,36 @@ impl Game {
             }
             Event::PriorityPassed { .. } => {}
             Event::PermanentEntered { permanent, from } => {
-                let (def, owner, commander, x, serra_recursion, bestowed, copy, cast_target) =
-                    match self.objects[from as usize] {
-                        Object::Spell(s) => (
-                            s.def,
-                            s.controller,
-                            s.commander,
-                            s.x,
-                            s.serra_recursion,
-                            s.bestowed,
-                            s.copy,
-                            s.targets.primary(),
-                        ),
-                        _ => panic!("PermanentEntered source {from} is not a spell"),
-                    };
+                let (
+                    def,
+                    owner,
+                    commander,
+                    x,
+                    serra_recursion,
+                    bestowed,
+                    copy,
+                    cast_target,
+                    face_down,
+                    masked,
+                    evoked,
+                    spent_colors,
+                ) = match self.objects[from as usize] {
+                    Object::Spell(s) => (
+                        s.def,
+                        s.controller,
+                        s.commander,
+                        s.x,
+                        s.serra_recursion,
+                        s.bestowed,
+                        s.copy,
+                        s.targets.primary(),
+                        s.face_down,
+                        s.masked,
+                        s.evoked,
+                        s.spent_colors,
+                    ),
+                    _ => panic!("PermanentEntered source {from} is not a spell"),
+                };
                 let id = self.create_object(
                     Some(from),
                     Object::Permanent(fresh_permanent(def, owner, true, commander)),
@@ -1318,6 +1450,22 @@ impl Game {
                 // Bestow (CR 702.103d): a bestowed spell enters as a dual-nature Aura/creature — it
                 // is an Aura while attached, a creature once it stops being attached.
                 self.permanent_mut(permanent).bestowed = bestowed;
+                // Morph (CR 702.37b/708): a face-down creature spell enters as a face-down 2/2 —
+                // its real characteristics stay hidden (the characteristics choke reads this flag)
+                // until it's turned face up.
+                self.permanent_mut(permanent).face_down = face_down;
+                // Masked (CR 615 — Illusionary Mask): a face-down creature it put onto the
+                // battlefield turns face up when it would assign or deal damage, be dealt damage,
+                // or become tapped. `false` for a plain morph/manifest face-down permanent.
+                self.permanent_mut(permanent).masked = masked;
+                // Evoke (CR 702.74a): an evoked spell's resulting permanent is sacrificed the
+                // instant it enters — the self-sacrifice fires as its own trigger, queued
+                // alongside the permanent's ETB triggers (`Game::enqueue_triggers`), so an ETB
+                // payoff (Mulldrifter's draw two) still resolves first.
+                self.permanent_mut(permanent).evoked = evoked;
+                // See `Permanent::spent_colors`'s doc — same "read it before the spell is gone"
+                // idiom as `entered_with_x` above (Court Hussar's "unless {W} was spent to cast it").
+                self.permanent_mut(permanent).spent_colors = spent_colors;
                 // CR 707.10a: a copy of a permanent spell becomes a token as it resolves — it
                 // ceases to exist (rather than going to the graveyard) once it leaves the
                 // battlefield, via the same `Permanent::token` machinery any other token uses.
@@ -1643,6 +1791,22 @@ impl Game {
                 self.exile_links
                     .until_source_leaves
                     .retain(|&(s, o)| !(s == source && o == from));
+            }
+            // A flicker's return (immediate `FlickerTarget` or the delayed `ReturnFlickeredCard`):
+            // the exiled card `from` returns as the fresh permanent `permanent`, same shape as
+            // `ReturnedFromLinkedExile` above.
+            Event::FlickeredToBattlefield {
+                permanent,
+                from,
+                controller,
+            } => {
+                let def = self.def_of(from);
+                let commander = self.is_commander(from);
+                let id = self.create_object(
+                    Some(from),
+                    Object::Permanent(fresh_permanent(def, controller, true, commander)),
+                );
+                assert_eq!(id, permanent);
             }
             Event::ReturnedToHand { card, from } => {
                 // A bounce sends the permanent to its *owner's* hand, not the caster's.

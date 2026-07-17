@@ -1,0 +1,44 @@
+# This land enters tapped.
+# {T}: Add {G}, {W}, or {U}.
+name = "Seaside Citadel"
+otags = ["activated-ability", "cycle-ala-shardland"]
+set = "ecc"
+id = "2ae77795-6a80-498b-bf69-6fd612f601e4"
+default_print = "b681599f-aa7a-4b3a-a36a-dc6d70fd6a11"
+oracle = "This land enters tapped.\n{T}: Add {G}, {W}, or {U}."
+enters_tapped = true
+
+# The `produces` sugar stops at two colors, so each of the tri-land's three colors is its own
+# tap-for-one mana ability.
+[kind]
+type = "land"
+
+# {T}: Add {G}, {W}, or {U}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {G}
+[[abilities.effects]]
+type = "add_mana"
+mana = ["green"]
+
+# {T}: Add {G}, {W}, or {U}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {W}
+[[abilities.effects]]
+type = "add_mana"
+mana = ["white"]
+
+# {T}: Add {G}, {W}, or {U}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {U}
+[[abilities.effects]]
+type = "add_mana"
+mana = ["blue"]

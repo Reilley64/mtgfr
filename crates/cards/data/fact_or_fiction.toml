@@ -1,0 +1,25 @@
+# Reveal the top five cards of your library. An opponent separates those cards into two piles. Put one pile into
+# your hand and the other into your graveyard.
+name = "Fact or Fiction"
+otags = ["alliteration", "hand-positive", "meme", "minigame", "mulch", "pile", "fact-or-fiction"]
+set = "cmm"
+id = "437b2dab-15e0-4b9a-a204-58622d37a3b3"
+default_print = "04588d2f-9e90-4f83-b85e-67e4bc222a62"
+oracle = "Reveal the top five cards of your library. An opponent separates those cards into two piles. Put one pile into your hand and the other into your graveyard."
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "instant"
+
+# Reveal the top five cards of your library. An opponent separates those cards into two piles. Put one pile into
+# your hand and the other into your graveyard.
+[[abilities]]
+timing = "spell"
+
+# Reveal the top five cards of your library. An opponent separates those cards into two piles. Put one pile into
+# your hand and the other into your graveyard.
+[[abilities.effects]]
+type = "reveal_top_split_piles"

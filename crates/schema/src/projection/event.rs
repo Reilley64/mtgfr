@@ -57,6 +57,11 @@ pub(crate) fn project_event(
             // reasoning as `sacrifice_count` above — no UI reads it yet. Add it when a kicker
             // card's UI wants to show "kicked."
             kicked: _,
+            // ponytail: whether the spell was bought back (CR 702.27) isn't surfaced on the wire
+            // either, same reasoning as `sacrifice_count`/`kicked` above — no UI reads it yet (the
+            // client sees the resulting `ReturnedToHand` event instead). Add it when a buyback
+            // card's UI wants to badge the cast itself as "bought back."
+            bought_back: _,
             // ponytail: the declared Strive count isn't surfaced on the wire either, same
             // reasoning as `sacrifice_count`/`kicked` above — no UI reads it yet. Add it when a
             // Strive card's UI wants to show "cast for N targets."
@@ -69,6 +74,26 @@ pub(crate) fn project_event(
             // either, same reasoning as `sacrifice_count`/`kicked` above — no UI reads it yet. Add
             // a `bestowed` to VisibleEvent::SpellCast when the UI wants to show "bestowed."
             bestowed: _,
+            // ponytail: whether the spell was cast face down (CR 702.37) isn't surfaced on the
+            // wire either — the client reads face-down status off the resulting permanent's
+            // redacted catalog entry, not this event. Add a `face_down` here when a UI wants to
+            // badge the stack item itself as a morph cast.
+            face_down: _,
+            // ponytail: whether the face-down cast was Illusionary Mask's (CR 615 `masked`) isn't
+            // surfaced on the wire — the client reads face-down status off the redacted catalog
+            // entry, and the reveal arrives as its own `TurnedFaceUp` event. Add a `masked` here
+            // only if a UI wants to badge the stack item itself.
+            masked: _,
+            // ponytail: whether the spell was cast for evoke (CR 702.74a) isn't surfaced on the
+            // wire either, same reasoning as `bestowed`/`face_down` above — no UI reads it yet
+            // (the client reads the resulting sacrifice off its own event). Add an `evoked` here
+            // when a UI wants to badge the stack item itself as an evoke cast.
+            evoked: _,
+            // ponytail: the colors spent to cast (CR 106.9) aren't surfaced on the wire — the
+            // mana you spent isn't secret, but no UI reads it yet (it feeds an ETB self-sacrifice
+            // condition the client just sees the resulting event for). Add it here if a UI ever
+            // wants to badge the cast itself with which colors funded it.
+            spent_colors: _,
         } => VisibleEvent::SpellCast {
             spell,
             from,
@@ -142,6 +167,7 @@ pub(crate) fn project_event(
             target: target.map(WireTarget::of),
         },
         Event::AbilityResolved { source } => VisibleEvent::AbilityResolved { source },
+        Event::AbilityCountered { source } => VisibleEvent::AbilityCountered { source },
         Event::LandPlayed {
             permanent,
             from,
@@ -264,6 +290,17 @@ pub(crate) fn project_event(
             object,
             controller: controller.0,
         },
+        Event::ConditionedControlGained {
+            object,
+            controller,
+            condition: _,
+        } => VisibleEvent::ConditionedControlGained {
+            object,
+            controller: controller.0,
+        },
+        Event::ConditionedControlEnded { object } => {
+            VisibleEvent::ConditionedControlEnded { object }
+        }
         Event::AttackerDeclared { object, defender } => VisibleEvent::AttackerDeclared {
             object,
             defender: defender.0,
@@ -428,6 +465,15 @@ pub(crate) fn project_event(
             player: player.0,
             amount,
         },
+        Event::DamageDealtToPlayer {
+            source,
+            player,
+            amount,
+        } => VisibleEvent::DamageDealtToPlayer {
+            source,
+            player: player.0,
+            amount,
+        },
         Event::CombatDamagePrevented { player, amount } => VisibleEvent::CombatDamagePrevented {
             player: player.0,
             amount,
@@ -530,6 +576,15 @@ pub(crate) fn project_event(
             from,
             controller: controller.0,
             source,
+        },
+        Event::FlickeredToBattlefield {
+            permanent,
+            from,
+            controller,
+        } => VisibleEvent::FlickeredToBattlefield {
+            permanent,
+            from,
+            controller: controller.0,
         },
         Event::ReturnedToHand { card, from } => VisibleEvent::ReturnedToHand { card, from },
         Event::TuckedToLibrary { card, from, to_top } => {

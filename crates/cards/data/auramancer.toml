@@ -1,0 +1,28 @@
+# When this creature enters, you may return target enchantment card from your graveyard to your hand.
+name = "Auramancer"
+otags = ["cycle-ody-retriever", "regrowth-enchantment", "triggered-ability", "type-addition-human", "virtual-vanilla"]
+set = "dsc"
+subtypes = ["Human", "Wizard"]
+id = "bd5eb181-6a69-4dc2-93a0-fa000291bc3d"
+default_print = "d0957032-6d98-4cac-889b-890e9bfe1f86"
+oracle = "When this creature enters, you may return target enchantment card from your graveyard to your hand."
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, you may return target enchantment card from your graveyard to your
+# hand.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# return target enchantment card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "enchantment" } }

@@ -1,0 +1,13 @@
+# This land enters tapped.
+# {T}: Add {G} or {W}.
+name = "Elfhame Palace"
+otags = ["activated-ability", "cycle-inv-dual-tapland"]
+set = "c17"
+id = "cade8b94-2998-4d23-87bb-9fbdddd19dea"
+default_print = "1ddd0084-349d-4d5f-86af-a3a65dcce73a"
+oracle = "This land enters tapped.\n{T}: Add {G} or {W}."
+enters_tapped = true
+
+[kind]
+type = "land"
+produces = ["green", "white"]

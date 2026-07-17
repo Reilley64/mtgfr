@@ -1,0 +1,33 @@
+# Shadow (This creature can block or be blocked by only creatures with shadow.)
+# Whenever this creature deals damage to an opponent, draw a card, then discard a card.
+name = "Looter il-Kor"
+otags = ["combat-neutral-damage-trigger", "evasion", "repeatable-loot", "restricted-blocker", "saboteur"]
+set = "cmm"
+subtypes = ["Kor", "Rogue"]
+id = "c87e3b1d-2d24-4f1c-84e8-1c21a347cdc2"
+default_print = "7083c77c-166f-4c6f-a2ca-dd1b877ff5f7"
+oracle = "Shadow (This creature can block or be blocked by only creatures with shadow.)\nWhenever this creature deals damage to an opponent, draw a card, then discard a card."
+keywords = ["shadow"]
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Whenever this creature deals damage to an opponent, draw a card, then discard a card.
+[[abilities]]
+timing = "deals_damage_to_opponent"
+
+# draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# then discard a card.
+[[abilities.effects]]
+type = "discard"
+count = 1

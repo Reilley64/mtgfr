@@ -38,6 +38,11 @@ impl Game {
         if self.has_keyword(blocker, Keyword::CantBlock) {
             return false;
         }
+        // "Enchanted permanent/creature can't … block" (Faith's Fetters, Prison Term): a live
+        // attached Aura's continuous `cant_block` grant.
+        if self.host_cant_block(blocker) {
+            return false;
+        }
         // Decayed (CR 702.148b): "A creature with decayed can't block."
         if self.has_keyword(blocker, Keyword::Decayed) {
             return false;
@@ -150,6 +155,10 @@ impl Game {
             && !p.tapped
             && !self.is_sick_without_haste(creature)
             && !self.has_keyword(creature, Keyword::Defender)
+            // "Enchanted permanent/creature can't attack" (Faith's Fetters, Prison Term): the
+            // reverse of goad's "must attack", a live attached Aura's continuous `cant_attack`
+            // grant.
+            && !self.host_cant_attack(creature)
             && self
                 .living_players()
                 .any(|d| d != self.controller_of(creature))
@@ -224,8 +233,10 @@ impl Game {
     }
 
     /// Test/setup helper: tap `object` (routed through an event so state stays mutated only
-    /// by [`Game::apply`]).
+    /// by [`Game::apply`]). A masked Illusionary Mask creature (CR 615) is turned face up first.
     pub fn tap(&mut self, object: ObjectId) {
+        let mut events = Vec::new();
+        self.flip_masked(object, &mut events);
         self.apply(&Event::Tapped { object });
     }
 
@@ -425,6 +436,8 @@ impl Game {
                 },
             );
             if !self.has_keyword(a, Keyword::Vigilance) {
+                // CR 615: a masked Illusionary Mask attacker becoming tapped is turned face up first.
+                self.flip_masked(a, &mut events);
                 self.push_apply(&mut events, Event::Tapped { object: a });
             }
             // Decayed (CR 702.148c): "When it attacks, sacrifice it at the beginning of the end
@@ -551,6 +564,12 @@ impl Game {
             if self.as_permanent(attacker).is_none() {
                 continue;
             }
+            // CR 615: a masked attacker that would assign or deal combat damage is turned face up
+            // first — before its power is read below, so it deals its real power. (An attacker is
+            // normally revealed earlier by the declare-time tap; this covers a vigilant one.)
+            if self.deals_this_batch(attacker, first_strike_batch) {
+                self.flip_masked(attacker, events);
+            }
             // The defending player may have been eliminated by the between-substeps SBA sweep (CR 704)
             // (first strike killed them); their attackers stay in combat but have nothing to hit. (CR 702.7, CR 506)
             let Some(defender) = self.defender_of(attacker) else {
@@ -569,6 +588,9 @@ impl Game {
                 if self.as_permanent(blocker).is_some()
                     && self.deals_this_batch(blocker, first_strike_batch)
                 {
+                    // CR 615: a masked blocker that would deal combat damage is turned face up
+                    // first — before its power is read, so it deals its real power.
+                    self.flip_masked(blocker, events);
                     self.damage_creature(blocker, attacker, events);
                 }
             }
@@ -585,6 +607,17 @@ impl Game {
         defender: PlayerId,
         events: &mut Vec<Event>,
     ) {
+        // CR 615: a masked blocker that would be dealt combat damage is turned face up first, before
+        // the lethal-damage split reads its (now real) toughness below.
+        for &blocker in blockers {
+            self.flip_masked(blocker, events);
+        }
+        // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
+        // shield cancels the attacker's damage to every blocker before any is assigned, so no
+        // trample overflow is computed either — same silent guard as `deal_creature_damage`'s.
+        if self.combat_extras.prevent_all_combat_damage_this_turn {
+            return;
+        }
         let deathtouch = self.has_keyword(attacker, Keyword::Deathtouch);
         let power = self.power(attacker);
 
@@ -626,6 +659,17 @@ impl Game {
             // isn't counted as dealt, so with trample it carries to the player — a minor (CR 702)
             // inaccuracy no pool card exercises (a trampler blocked by a protected creature).
             if self.damage_prevented_by_protection(blocker, Some(attacker)) {
+                continue;
+            }
+            // A blocking Phantom Centaur prevents this share and removes one of its own +1/+1
+            // counters instead (CR 615) — the same self-shield `deal_creature_damage` applies
+            // on the blocker-to-attacker path. ponytail: like the protection guard above, the
+            // prevented share isn't counted as dealt, so a trampler carries it to the player — a
+            // minor inaccuracy no pool card exercises (a trampler blocked by Phantom Centaur).
+            if self.phantom_shield_active(blocker) {
+                if let Some(removal) = self.phantom_shield_counter_removal(blocker) {
+                    self.push_apply(events, removal);
+                }
                 continue;
             }
             dealt += amount;
@@ -676,13 +720,32 @@ impl Game {
         if amount <= 0 {
             return;
         }
+        // CR 615: a masked Illusionary Mask creature that would be dealt damage is turned face up
+        // first, then the damage lands on the revealed creature (prevention still checks it).
+        self.flip_masked(target, events);
         if self.damage_prevented_by_protection(target, Some(source)) {
+            return;
+        }
+        // Phantom Centaur (CR 615): "If damage would be dealt to Phantom Centaur, prevent that
+        // damage. Remove a +1/+1 counter from Phantom Centaur." Self-only, but unlike Tajic's
+        // noncombat-only static, this applies to combat damage too — checked regardless of
+        // `combat`.
+        if self.phantom_shield_active(target) {
+            if let Some(removal) = self.phantom_shield_counter_removal(target) {
+                self.push_apply(events, removal);
+            }
             return;
         }
         // ponytail: silent prevention — a prevented noncombat hit just produces no `DamageMarked`
         // (no event), since Tajic reads no prevented total. Emit an `Event::DamagePrevented` here
         // (mirror Inkshield's `Event::CombatDamagePrevented`) only if a later card must observe it.
         if !combat && self.noncombat_damage_prevented_to_creature(target) {
+            return;
+        }
+        // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
+        // shield silently cancels combat damage to a creature — same silent-prevention style as
+        // the noncombat guard above (no event; nothing in the pool reads a prevented total here).
+        if combat && self.combat_extras.prevent_all_combat_damage_this_turn {
             return;
         }
         self.push_apply(
@@ -703,6 +766,11 @@ impl Game {
     /// other, simultaneously — both powers are read before either amount is applied (CR
     /// 510.2/701.12c), so neither side's damage affects how much the other deals.
     pub(crate) fn fight(&mut self, a: ObjectId, b: ObjectId, events: &mut Vec<Event>) {
+        // CR 615: a masked Illusionary Mask creature that would deal damage is turned face up first
+        // — before its power is read, so it deals its real power (its being-dealt-damage flip rides
+        // on `deal_creature_damage` below).
+        self.flip_masked(a, events);
+        self.flip_masked(b, events);
         let power_a = self.power(a);
         let power_b = self.power(b);
         // Fight damage is noncombat (CR 701.12), so it passes `combat = false` — Tajic's static
@@ -729,6 +797,13 @@ impl Game {
         // one of the shield's tokens under `player`. Consulted before the life loss so the
         // prevention wholly replaces it.
         if self.prevent_combat_damage_to_player(player, amount, events) {
+            return;
+        }
+        // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like
+        // Inkshield's above, but every player and no token mint. Still surfaced as the same
+        // `Event::CombatDamagePrevented` for observability.
+        if self.combat_extras.prevent_all_combat_damage_this_turn {
+            self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
         self.push_apply(

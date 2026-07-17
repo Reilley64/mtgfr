@@ -29,7 +29,16 @@ fn land_permanent(events: &[Event]) -> ObjectId {
 fn advance_until(game: &mut Game, predicate: impl Fn(&Game) -> bool) {
     let mut guard = 0;
     while !predicate(game) {
-        if game.current_step() == Step::DeclareAttackers && !game.attackers_declared() {
+        if let Some(PendingChoice::DeclineUntap { player, .. }) = game.pending_choice() {
+            // Neutral default: untap everything (Rubinia Soulsinger's optional-untap pause). A test
+            // that wants to keep a permanent tapped stops on this choice via its predicate and
+            // answers it itself before advancing further.
+            game.submit(Intent::DeclineUntap {
+                player,
+                keep_tapped: vec![],
+            })
+            .unwrap();
+        } else if game.current_step() == Step::DeclareAttackers && !game.attackers_declared() {
             let player = game.active_player();
             let attackers = game.required_attacks(player);
             game.submit(Intent::DeclareAttackers { player, attackers })
@@ -267,6 +276,8 @@ fn casting_pays_the_spells_cost_from_the_pool() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -302,6 +313,7 @@ const NO_ADD: AdditionalCost = AdditionalCost {
     pay_life: 0,
     sacrifice: None,
     kicker: None,
+    buyback: None,
     strive: None,
     replicate: None,
 };
@@ -340,6 +352,8 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     flashback: Some(flash_cost(2, [0; 5], NO_ADD)),
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -356,6 +370,7 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Total mana (every color plus colorless) currently in `player`'s pool.
@@ -402,6 +417,8 @@ fn flashback_casts_a_spell_from_the_graveyard_then_exiles_it() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -433,6 +450,8 @@ fn flashback_rejected_when_card_lacks_flashback() {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -449,6 +468,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         ..FLASHBACK_DRAW
     };
     let object = game.spawn_in_graveyard(PlayerId(0), no_flashback);
@@ -464,6 +484,8 @@ fn flashback_rejected_when_card_lacks_flashback() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -481,6 +503,8 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         flashback: Some(flash_cost(1, [0; 5], NO_ADD)),
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         functions_in_graveyard: false,
         enchant: None,
         enchant_graveyard: false,
@@ -492,6 +516,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         ..FLASHBACK_DRAW
     };
     let object = game.spawn_in_graveyard(PlayerId(0), cheap_flashback);
@@ -507,6 +532,8 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -528,6 +555,7 @@ fn flashback_with_pay_life_additional_cost() {
                 pay_life: 3,
                 sacrifice: None,
                 kicker: None,
+                buyback: None,
                 strive: None,
                 replicate: None,
             },
@@ -543,6 +571,7 @@ fn flashback_with_pay_life_additional_cost() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         ..FLASHBACK_DRAW
     };
 
@@ -562,6 +591,8 @@ fn flashback_with_pay_life_additional_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -587,6 +618,8 @@ fn flashback_with_pay_life_additional_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -631,6 +664,8 @@ fn raffines_guidance_casts_from_graveyard_for_alt_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -671,6 +706,8 @@ fn raffines_guidance_graveyard_cast_charges_the_alt_cost_not_the_printed_cost() 
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -700,6 +737,8 @@ fn retrace_recasts_from_graveyard_by_discarding_a_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -737,6 +776,8 @@ fn retrace_requires_a_land_in_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -753,6 +794,8 @@ fn retrace_requires_a_land_in_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -776,6 +819,8 @@ fn retrace_is_repeatable() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -799,6 +844,8 @@ fn retrace_is_repeatable() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -842,6 +889,8 @@ fn treasure_cruise_delve_reduces_generic_cost() {
         graveyard_exile: fodder.clone(),
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -1006,6 +1055,8 @@ fn serra_paragon_plays_a_land_from_graveyard_once_per_turn() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -1036,6 +1087,8 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -1054,6 +1107,8 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -1071,6 +1126,8 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -1096,6 +1153,8 @@ fn serra_paragon_recursion_card_exiles_and_gains_2_on_death() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -1123,6 +1182,8 @@ fn serra_paragon_recursion_card_exiles_and_gains_2_on_death() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -1188,6 +1249,8 @@ fn a_normally_cast_permanent_dies_to_the_graveyard_without_serra_rider() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -1225,6 +1288,7 @@ const TWO_ETB: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -1280,6 +1344,8 @@ const TWO_ETB: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1296,6 +1362,7 @@ const TWO_ETB: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature whose single ETB trigger deals 2 damage to a target creature —
@@ -1352,6 +1419,8 @@ const PINGER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1368,6 +1437,7 @@ const PINGER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature with an optional ("you may") ETB draw — exercises the yes/no prompt.
@@ -1413,6 +1483,8 @@ const MAY_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1429,6 +1501,7 @@ const MAY_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Like [`MAY_DRAW`] but you must pay {1} to draw — exercises the pay-or-decline prompt.
@@ -1481,6 +1554,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
                 pay_life: 0,
                 sacrifice: None,
                 kicker: None,
+                buyback: None,
                 strive: None,
                 replicate: None,
             },
@@ -1491,6 +1565,8 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1507,6 +1583,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature whose ETB looks at the top three cards, may put a land into hand, and
@@ -1561,6 +1638,8 @@ const LOOK_DIG: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1577,6 +1656,7 @@ const LOOK_DIG: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature whose ETB looks at the top seven cards and must put exactly two into
@@ -1631,6 +1711,8 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1647,6 +1729,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature whose ETB looks at the top three cards, may put an Aura or Equipment card
@@ -1702,6 +1785,8 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -1718,6 +1803,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Resolve the top of the stack by having both players pass in succession.
@@ -1799,6 +1885,8 @@ const fn creature(
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -1815,6 +1903,7 @@ const fn creature(
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -1970,6 +2059,8 @@ impl TestGame {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }
@@ -1989,6 +2080,8 @@ struct Casting<'g> {
     graveyard_exile: Vec<ObjectId>,
     sacrifice_cost: Vec<ObjectId>,
     kicked: bool,
+    bought_back: bool,
+    evoked: bool,
     strive_count: u8,
     replicate_count: u8,
 }
@@ -2041,6 +2134,20 @@ impl Casting<'_> {
         self
     }
 
+    /// Pay the spell's buyback cost (CR 702.27c). Unset (`false` — decline) for a spell with no
+    /// buyback, or to not pay an optional one.
+    fn bought_back(mut self, bought_back: bool) -> Self {
+        self.bought_back = bought_back;
+        self
+    }
+
+    /// Cast for the spell's evoke cost (CR 702.74a) instead of its printed cost. Unset (`false`
+    /// — cast normally) for a spell with no evoke.
+    fn evoked(mut self, evoked: bool) -> Self {
+        self.evoked = evoked;
+        self
+    }
+
     /// Declare a Strive target count (CR 702.42). Unset (0) for a spell with no Strive, or
     /// "choose zero targets."
     fn striving(mut self, strive_count: u8) -> Self {
@@ -2068,6 +2175,8 @@ impl Casting<'_> {
             graveyard_exile: self.graveyard_exile,
             sacrifice_cost: self.sacrifice_cost,
             kicked: self.kicked,
+            bought_back: self.bought_back,
+            evoked: self.evoked,
             strive_count: self.strive_count,
             replicate_count: self.replicate_count,
         })
@@ -2091,6 +2200,8 @@ impl Casting<'_> {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
         } = self;
@@ -2105,6 +2216,8 @@ impl Casting<'_> {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
         })
@@ -2335,6 +2448,8 @@ fn declare_attackers_survives_a_ceased_token() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -2513,6 +2628,8 @@ fn capstone_a_scripted_game_plays_to_a_win() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -2564,6 +2681,8 @@ fn casting_the_commander_from_the_command_zone_taxes_each_recast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -2597,6 +2716,8 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -2627,6 +2748,8 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -2657,6 +2780,8 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -2685,6 +2810,8 @@ fn a_dying_commander_returns_to_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -2702,6 +2829,8 @@ fn a_dying_commander_returns_to_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3131,6 +3260,8 @@ fn leitmotif_copies_self_on_big_instant_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3170,6 +3301,8 @@ fn leitmotif_does_not_copy_on_small_instant_or_creature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3201,6 +3334,8 @@ fn leitmotif_does_not_copy_on_small_instant_or_creature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3369,6 +3504,8 @@ fn venerable_warsinger_pumped_reanimates_higher_mv() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3484,6 +3621,8 @@ fn guardian_scalelord_pumped_reanimates_higher_mv() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3524,6 +3663,8 @@ fn guardian_scalelord_backup_grants_flying_and_attack_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3601,6 +3742,8 @@ fn guardian_scalelord_backup_on_itself_grants_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3790,6 +3933,8 @@ fn a_pump_lasts_until_end_of_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -3888,6 +4033,8 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -3904,6 +4051,7 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Target creature gains flying until end of turn." — isolates a
@@ -3952,6 +4100,8 @@ const GRANT_FLYING: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -3968,6 +4118,7 @@ const GRANT_FLYING: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Target creature gains indestructible until end of turn."
@@ -4014,6 +4165,8 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4030,6 +4183,7 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Destroy target creature." — isolates `DestroyTarget` from any
@@ -4082,6 +4236,8 @@ const DESTROY: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4098,6 +4254,7 @@ const DESTROY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Destroy target permanent." — like `DESTROY` above but any permanent
@@ -4150,6 +4307,8 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4166,6 +4325,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Destroy target nonbasic land." — exercises
@@ -4221,6 +4381,8 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4237,6 +4399,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Exile target creature card from a graveyard." — proves a look-back
@@ -4288,6 +4451,8 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4304,6 +4469,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Exile target card from a graveyard." — like
@@ -4359,6 +4525,8 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4375,6 +4543,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only exile spell targeting a noncreature artifact or noncreature enchantment —
@@ -4429,6 +4598,8 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4445,6 +4616,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only exile spell targeting a creature with power 2 or less — exercises
@@ -4499,6 +4671,8 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4515,6 +4689,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only exile spell targeting any enchantment — exercises the `also: TypeSet`
@@ -4566,6 +4741,8 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4582,6 +4759,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only exile spell targeting any artifact — the artifact-side twin of
@@ -4633,6 +4811,8 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4649,6 +4829,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only 2/2 with intrinsic shroud (CR 702.18) — can't be the target of any
@@ -4685,6 +4866,8 @@ const SHROUD_CREATURE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4701,6 +4884,7 @@ const SHROUD_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only 2/2 with intrinsic hexproof (CR 702.11) — can't be the target of spells/
@@ -4737,6 +4921,8 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4753,6 +4939,7 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Creatures you control gain indestructible until end of turn." —
@@ -4801,6 +4988,8 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4817,6 +5006,7 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only instant "Creatures you control gain flying and get +X/+X until end of turn,
@@ -4864,6 +5054,8 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4880,6 +5072,7 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature "Target creature can't be blocked this turn." — the Rogue's Passage
@@ -4928,6 +5121,8 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -4944,6 +5139,7 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -5373,6 +5569,8 @@ const GROWTH: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -5389,6 +5587,7 @@ const GROWTH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -5407,6 +5606,8 @@ fn a_counter_effect_permanently_grows_the_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -5457,6 +5658,8 @@ const INKLING: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -5473,6 +5676,7 @@ const INKLING: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only sorcery "Create two 1/1 Inkling tokens with flying."
@@ -5524,6 +5728,8 @@ const MAKE_INKLINGS: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -5540,6 +5746,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -5557,6 +5764,8 @@ fn a_token_effect_puts_tokens_onto_the_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -5600,6 +5809,8 @@ fn make_inklings_and_count(game: &mut Game, player: PlayerId) -> usize {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6241,6 +6452,130 @@ fn chaos_warp_tucked_token_ceases_to_exist() {
     );
 }
 
+/// Temporal Spring: "Put target permanent on top of its owner's library." The standalone tuck
+/// primitive split out of Chaos Warp's fused effect above — no shuffle, no reveal, just a fixed
+/// top-of-library placement.
+#[test]
+fn temporal_spring_puts_permanent_on_top_of_owners_library() {
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    let opponents_permanent = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let temporal_spring = game.spawn_in_hand(PlayerId(0), card("Temporal Spring"));
+
+    game.cast(temporal_spring)
+        .at(Target::Object(opponents_permanent))
+        .resolve();
+
+    assert_eq!(
+        game.zone_of(opponents_permanent),
+        Zone::Library,
+        "the targeted permanent left the battlefield for its owner's library"
+    );
+
+    // Drawing once proves it landed on top, ahead of the pre-seeded filler card.
+    game.draw_card(PlayerId(1));
+    assert_eq!(
+        game.zone_of(opponents_permanent),
+        Zone::Hand,
+        "put on top of its OWNER's library (P1), not the caster's (P0)"
+    );
+}
+
+/// Condemn: "Put target attacking creature on the bottom of its owner's library."
+#[test]
+fn condemn_tucks_attacking_creature_to_bottom() {
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let condemn = game.spawn_in_hand(PlayerId(0), card("Condemn"));
+
+    attack_with(&mut game, vec![attacker]);
+
+    game.cast(condemn).at(Target::Object(attacker)).resolve();
+
+    assert_eq!(
+        game.zone_of(attacker),
+        Zone::Library,
+        "the attacking creature left the battlefield for its owner's library"
+    );
+
+    // The pre-seeded filler is drawn first — proving the tuck landed on the bottom, not the top.
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(attacker),
+        Zone::Library,
+        "still in the library after drawing the card stacked above it"
+    );
+}
+
+/// Condemn: "Its controller gains life equal to its toughness" — read the *toughness*, not the
+/// power, and read it before the tuck removes the creature from the battlefield (CR 613.6
+/// last-known information, same shape as Swords to Plowshares' power rider).
+#[test]
+fn condemn_controller_gains_life_equal_to_creature_toughness() {
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), creature("Big (test)", 5, 3, &[]));
+    let condemn = game.spawn_in_hand(PlayerId(0), card("Condemn"));
+    let before_life = game.life(PlayerId(0));
+
+    attack_with(&mut game, vec![attacker]);
+
+    game.cast(condemn).at(Target::Object(attacker)).resolve();
+
+    assert_eq!(
+        game.zone_of(attacker),
+        Zone::Library,
+        "tucked to the library"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before_life + 3,
+        "the attacker's controller gained life equal to its toughness (3), not its power (5)",
+    );
+}
+
+/// Condemn only targets an *attacking* creature (CR "target attacking creature") — a creature
+/// that hasn't been declared as an attacker this combat is not a legal target.
+#[test]
+fn condemn_only_targets_attacking_creatures() {
+    let mut game = TestGame::new();
+    let non_attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let condemn = game.spawn_in_hand(PlayerId(0), card("Condemn"));
+
+    let legal = game.legal_targets(condemn, None);
+
+    assert!(
+        !legal.contains(&Target::Object(non_attacker)),
+        "a creature that isn't attacking is not a legal target for Condemn"
+    );
+}
+
+/// A token tucked by this primitive ceases to exist instead of entering a library (CR 111.7) —
+/// same rule Chaos Warp's fused sibling above already covers, exercised here through the
+/// standalone [`Effect::TuckPermanentIntoLibrary`].
+#[test]
+fn tuck_permanent_token_ceases_to_exist() {
+    let mut game = TestGame::new();
+    let token = game.spawn_token_on_battlefield(PlayerId(1), VANILLA);
+    let temporal_spring = game.spawn_in_hand(PlayerId(0), card("Temporal Spring"));
+    let library_before = game.library_size(PlayerId(1));
+
+    game.cast(temporal_spring)
+        .at(Target::Object(token))
+        .resolve();
+
+    assert!(
+        !game.live_object_ids().contains(&token),
+        "the token ceased to exist rather than entering a library"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(1)),
+        library_before,
+        "no card was added to the library — a token was never shuffled in"
+    );
+}
+
 /// A test-only sorcery "For each opponent, create a 1/1 Squirrel token." — Eccentric
 /// Pestfinder's "for each opponent, you create a..." shape, isolated (`controller =
 /// "each_opponent"`).
@@ -6274,6 +6609,8 @@ fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6345,6 +6682,8 @@ fn eccentric_pestfinder_mints_one_pest_per_opponent_under_you() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6390,6 +6729,8 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6412,6 +6753,8 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6443,6 +6786,8 @@ fn a_token_ceases_to_exist_when_it_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6469,6 +6814,8 @@ fn a_token_ceases_to_exist_when_it_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6531,6 +6878,8 @@ const PEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -6547,6 +6896,7 @@ const PEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only sorcery "Create a Pest token with 'When this token dies, you gain 1 life.'"
@@ -6598,6 +6948,8 @@ const MAKE_PEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -6614,6 +6966,7 @@ const MAKE_PEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -6632,6 +6985,8 @@ fn a_token_with_a_death_trigger_fires_it_when_it_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6650,6 +7005,8 @@ fn a_token_with_a_death_trigger_fires_it_when_it_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6742,6 +7099,8 @@ fn cast_twinflame_and_resolve(game: &mut Game, twinflame: ObjectId, strive_count
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count,
         replicate_count: 0,
     })
@@ -6827,6 +7186,8 @@ fn a_token_copy_fires_the_originals_etb_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -6904,6 +7265,8 @@ const HERALD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -6920,6 +7283,7 @@ const HERALD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -7438,6 +7802,8 @@ fn fire_muddle_magecraft(game: &mut Game, dummy: ObjectId, yes: bool, bear: Opti
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -7775,6 +8141,8 @@ fn effective_toughness_governs_lethal_damage() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -7858,6 +8226,8 @@ fn a_nonbasic_dual_sharing_a_basic_land_type_does_not_count_as_basic() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -7903,6 +8273,8 @@ fn natures_lore_fetches_any_forest_typed_card_not_just_the_basic() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -7948,6 +8320,8 @@ fn three_visits_fetches_a_nonbasic_forest_typed_land_not_just_the_basic() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -8150,6 +8524,8 @@ fn a_summoning_sick_creature_cannot_use_a_tap_ability() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -8188,6 +8564,8 @@ fn the_untap_step_clears_summoning_sickness() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -8315,6 +8693,8 @@ fn cast_intent(player: PlayerId, object: ObjectId, target: Option<Target>) -> In
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     }
@@ -8632,6 +9012,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         functions_in_graveyard: false,
         back: None,
         adventure: None,
@@ -8643,6 +9024,8 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enchant_graveyard: false,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
     };
     let rock = CardDef {
         name: "Bare Rock (test)",
@@ -8677,6 +9060,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
         functions_in_graveyard: false,
         back: None,
         adventure: None,
@@ -8688,6 +9072,8 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enchant_graveyard: false,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
     };
 
     let mut game = Game::new();
@@ -8880,6 +9266,8 @@ fn conceding_while_you_owe_the_game_a_choice_drops_that_choice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -9378,6 +9766,8 @@ fn an_etb_trigger_goes_on_the_stack_and_resolves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -9414,6 +9804,8 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -9431,6 +9823,8 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -9612,6 +10006,8 @@ fn nonbasic_filter_matches_nonbasic_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -9659,6 +10055,8 @@ fn white_orchid_phantom_cannot_target_basic_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -9716,6 +10114,8 @@ fn damage_events_carry_their_source_for_the_log() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -9772,6 +10172,8 @@ fn fund_cast_resolve(game: &mut Game, player: PlayerId, object: ObjectId, target
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -9875,6 +10277,8 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -9891,6 +10295,7 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -9954,6 +10359,8 @@ fn a_creature_only_spell_rejects_a_player_target() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -9978,6 +10385,8 @@ fn a_targeted_etb_trigger_pauses_for_a_target_then_deals_damage() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10035,6 +10444,8 @@ fn an_optional_trigger_fires_only_when_accepted() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10079,6 +10490,8 @@ fn a_declined_optional_trigger_is_skipped() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10120,6 +10533,8 @@ fn a_pay_cost_trigger_fires_only_after_paying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10188,6 +10603,8 @@ fn trudge_gardens_pay_2_trigger_creates_a_fungus_beast_only_after_paying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10264,6 +10681,8 @@ fn simultaneous_triggers_from_one_permanent_are_ordered_by_their_controller() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10308,6 +10727,105 @@ fn simultaneous_triggers_from_one_permanent_are_ordered_by_their_controller() {
 }
 
 #[test]
+fn stonecloaker_both_ordered_etbs_choose_targets() {
+    // Stonecloaker: "When this creature enters, return a creature you control to its owner's
+    // hand." / "When this creature enters, exile target card from a graveyard." Both ETBs
+    // trigger simultaneously and must be ordered (CR 603.3b); CR 603.3d then chooses each one's
+    // target as *it* goes on the stack, in the chosen order — neither may silently fizzle.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let graveyard_card = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let stonecloaker = game.spawn_in_hand(PlayerId(0), card("Stonecloaker"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: stonecloaker,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Stonecloaker resolves; two ETB triggers demand an order.
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::OrderTriggers {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the controller must order two simultaneous ETBs; got {:?}",
+        game.pending_choice(),
+    );
+    // Order: the bounce first, the graveyard exile second (CR 603.3b, the printed order).
+    game.submit(Intent::ChooseOrder {
+        player: PlayerId(0),
+        order: vec![0, 1],
+    })
+    .unwrap();
+
+    // The bounce is placed first — its own target choice pauses immediately (CR 603.3d),
+    // rather than silently going on the stack with no target.
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ordered bounce trigger must pause for its own target; got {:?}",
+            game.pending_choice(),
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(bear)),
+        "the controller's own creature is a legal choice; got {legal:?}",
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .unwrap();
+
+    // The graveyard exile is placed next — it must pause for its own target too, not fizzle.
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ordered graveyard-exile trigger must pause for its own target; got {:?}",
+            game.pending_choice(),
+        );
+    };
+    assert_eq!(
+        legal,
+        vec![Target::Object(graveyard_card)],
+        "only the graveyard card"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(graveyard_card)],
+    })
+    .unwrap();
+
+    resolve_top_of_stack(&mut game); // One ability resolves.
+    resolve_top_of_stack(&mut game); // The other ability resolves.
+
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the bounce actually resolved"
+    );
+    assert_eq!(
+        game.zone_of(graveyard_card),
+        Zone::Exile,
+        "the graveyard exile actually resolved"
+    );
+}
+
+#[test]
 fn a_creature_cannot_be_cast_at_instant_speed() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
@@ -10325,6 +10843,8 @@ fn a_creature_cannot_be_cast_at_instant_speed() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -10353,6 +10873,8 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -10383,6 +10905,8 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -10427,6 +10951,8 @@ fn alchemists_refuge_flash_permission_expires_at_the_next_untap() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -10455,6 +10981,8 @@ fn an_instant_can_be_cast_outside_the_main_phase() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -10481,6 +11009,8 @@ fn a_targeted_spell_requires_a_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -10506,6 +11036,8 @@ fn a_creature_targeting_spell_rejects_a_non_creature_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -10528,6 +11060,8 @@ fn casting_without_enough_mana_is_rejected() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -10557,6 +11091,8 @@ fn casting_a_creature_moves_it_to_the_stack() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -10586,6 +11122,8 @@ fn passing_priority_in_succession_resolves_a_creature_onto_the_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10624,6 +11162,8 @@ fn creature_on_battlefield(game: &mut Game, controller: PlayerId) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10657,6 +11197,8 @@ fn lethal_damage_kills_the_creature_via_a_state_based_action() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10827,6 +11369,8 @@ fn state_based_actions_spare_undamaged_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -10899,6 +11443,7 @@ const ANTHEM_LORD: CardDef = CardDef {
             has_counters: false,
             condition: None,
             from_graveyard: false,
+            all_players: false,
         },
         optional: false,
         min_level: 0,
@@ -10910,6 +11455,8 @@ const ANTHEM_LORD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -10926,6 +11473,7 @@ const ANTHEM_LORD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -11228,6 +11776,8 @@ fn feral_appetite_pest_dies_gains_life() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -11529,6 +12079,8 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -11545,6 +12097,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         },
     );
     cast_and_resolve(&mut game, mover, None);
@@ -11708,6 +12261,8 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -11724,6 +12279,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only artifact token with the Food subtype — a minimal fixture for testing a
@@ -11756,6 +12312,8 @@ const TEST_FOOD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -11772,6 +12330,7 @@ const TEST_FOOD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature with a free "Sacrifice a Food: gain 1 life" activated ability — a
@@ -11838,6 +12397,8 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -11854,6 +12415,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only creature with a free "Sacrifice a creature: gain 1 life" activated ability — the
@@ -12045,6 +12607,8 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12061,6 +12625,8 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12077,6 +12643,8 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12121,6 +12689,8 @@ fn nontoken_creatures_entered_this_turn_resets_at_the_next_untap() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12188,6 +12758,8 @@ fn nev_trample_grant_drops_once_the_last_counter_is_removed() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12248,6 +12820,27 @@ fn brudiclad_token_haste_anthem_gives_tokens_haste() {
 }
 
 #[test]
+fn concordant_crossroads_grants_haste_to_all_creatures() {
+    // Concordant Crossroads: "All creatures have haste." An `all_players` anthem drops the
+    // usual "controller controls candidate" gate — unlike a `you`-scoped anthem (see
+    // `brudiclad_token_haste_anthem_gives_tokens_haste` above), this reaches every creature on
+    // the battlefield, not just its controller's.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Concordant Crossroads"));
+    let yours = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let theirs = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    assert!(
+        game.has_keyword(yours, Keyword::Haste),
+        "the controller's own creature has haste"
+    );
+    assert!(
+        game.has_keyword(theirs, Keyword::Haste),
+        "an opponent's creature has haste too — the anthem is not controller-scoped"
+    );
+}
+
+#[test]
 fn ohran_frostfang_deathtouch_gone_once_ohran_leaves_the_battlefield() {
     // The anthem is read live off the battlefield, not cached at declare-attackers: once Ohran
     // is destroyed before combat, its deathtouch grant stops applying to the attacker it used
@@ -12269,6 +12862,8 @@ fn ohran_frostfang_deathtouch_gone_once_ohran_leaves_the_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12316,6 +12911,141 @@ fn quintorius_spirit_anthem_buffs_only_spirits() {
     );
 }
 
+/// A test-only creature carrying Yavimaya Enchantress's shape: "This creature gets +1/+1 for
+/// [`TEST_ENCHANTMENT`] with Flash (CR 702.8a), so a non-active player can cast it the moment
+/// they hold priority — the cross-owner anthem regression test's "player B casts a real
+/// enchantment with no A-side event" needs the caster to hold priority without owning the turn.
+const FLASH_ENCHANTMENT_TEST: CardDef = CardDef {
+    name: "Flash Enchantment (test)",
+    keywords: &[Keyword::Flash],
+    ..TEST_ENCHANTMENT
+};
+
+/// A test-only enchantment spell, free to cast, for a controller other than the count anthem's
+/// controller — Destroy Enchantment (test)'s payload for putting it back in the graveyard.
+const DESTROY_ENCHANTMENT_TEST: CardDef = CardDef {
+    name: "Destroy Enchantment (test)",
+    cost: Cost::FREE,
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    abilities: &[Ability {
+        timing: Timing::Spell,
+        effect: Effect::DestroyTarget {
+            target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ENCHANTMENT)),
+            count: TargetCount {
+                min: 1,
+                max: 1,
+                x_scaled: false,
+                sacrifice_scaled: false,
+                strive_scaled: false,
+            },
+            cant_be_regenerated: false,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..TEST_ENCHANTMENT
+};
+
+#[test]
+fn yavimaya_enchantress_counts_opponents_enchantments() {
+    // Yavimaya Enchantress (soc): "This creature gets +1/+1 for each enchantment on the
+    // battlefield" — a cross-owner count anthem. The characteristics cache invalidates
+    // owner-scoped on `PermanentEntered`/`MovedToGraveyard`, so an opponent's enchantment
+    // entering or leaving must still recompute this creature's cached P/T with no A-side event.
+    let mut game = Game::new();
+    let enchantress = game.spawn_on_battlefield(PlayerId(0), card("Yavimaya Enchantress"));
+    assert_eq!(
+        game.power(enchantress),
+        2,
+        "no enchantments on the battlefield yet — base 2/2"
+    );
+    assert_eq!(game.toughness(enchantress), 2);
+
+    // Player B (an opponent) casts and resolves an enchantment — no A-side event at all. Player A
+    // passes priority (still their own turn) so B can act; B's card carries Flash so a
+    // non-active player holding priority can legally cast it (CR 602.8a).
+    let opponents_enchantment = game.spawn_in_hand(PlayerId(1), FLASH_ENCHANTMENT_TEST);
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: opponents_enchantment,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    let events = resolve_top_of_stack_events(&mut game);
+    let opponents_enchantment = events
+        .iter()
+        .find_map(|e| match e {
+            Event::PermanentEntered { permanent, .. } => Some(*permanent),
+            _ => None,
+        })
+        .expect("the opponent's enchantment entered the battlefield");
+    assert_eq!(
+        game.zone_of(opponents_enchantment),
+        Zone::Battlefield,
+        "the opponent's enchantment resolved onto the battlefield"
+    );
+
+    assert_eq!(
+        game.power(enchantress),
+        3,
+        "an opponent's enchantment entering the battlefield still moves the cross-owner count"
+    );
+    assert_eq!(game.toughness(enchantress), 3);
+
+    // Player A destroys the opponent's enchantment — the buff must drop back.
+    let destroy_spell = game.spawn_in_hand(PlayerId(0), DESTROY_ENCHANTMENT_TEST);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: destroy_spell,
+        target: Some(Target::Object(opponents_enchantment)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(opponents_enchantment),
+        Zone::Graveyard,
+        "the opponent's enchantment was destroyed"
+    );
+
+    assert_eq!(
+        game.power(enchantress),
+        2,
+        "the opponent's enchantment leaving the battlefield drops the buff back"
+    );
+    assert_eq!(game.toughness(enchantress), 2);
+}
+
 /// A test-only creature carrying Balefire Liege's color-split anthem shape: "Other red creatures
 /// you control get +1/+1. Other white creatures you control get +1/+1." — two `AnthemStatic`
 /// effects, one per color, both `exclude_source`.
@@ -12339,6 +13069,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
                 has_counters: false,
                 condition: None,
                 from_graveyard: false,
+                all_players: false,
             },
             optional: false,
             min_level: 0,
@@ -12363,6 +13094,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
                 has_counters: false,
                 condition: None,
                 from_graveyard: false,
+                all_players: false,
             },
             optional: false,
             min_level: 0,
@@ -12454,6 +13186,8 @@ fn cast_red_spell_triggers_balefire_damage() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12496,6 +13230,8 @@ fn cast_red_spell_triggers_balefire_damage() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12548,6 +13284,8 @@ fn patchwork_banner_buffs_only_chosen_type() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12711,6 +13449,8 @@ fn eidolon_cast_normally_is_a_0_0_creature_pumped_by_its_own_buff() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12801,6 +13541,8 @@ fn bestowed_eidolon_becomes_a_creature_when_its_host_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12885,6 +13627,8 @@ fn vanguard_spirit_anthem_scales_with_commander_casts_from_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -12963,6 +13707,8 @@ fn study_hall_scries_when_its_mana_casts_your_commander() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13004,6 +13750,8 @@ fn study_hall_does_not_scry_from_untagged_mana() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13054,6 +13802,8 @@ fn study_hall_does_not_scry_when_its_mana_casts_a_noncommander_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13106,6 +13856,8 @@ fn study_hall_provenance_is_cleared_when_the_pool_empties() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13172,6 +13924,8 @@ fn path_of_ancestry_scries_on_a_typal_creature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13227,6 +13981,8 @@ fn path_of_ancestry_does_not_scry_on_an_unshared_or_noncreature_spell() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -13292,6 +14048,8 @@ fn cast_commander_with_opal_mana(game: &mut Game, cmd: ObjectId) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13332,6 +14090,8 @@ fn opal_palace_commander_enters_with_command_zone_counters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13367,6 +14127,8 @@ fn opal_palace_no_bonus_counters_from_untagged_mana() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13482,6 +14244,8 @@ fn an_instant_stops_auto_pass_while_the_stack_is_not_empty() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13513,6 +14277,8 @@ fn a_sorcery_speed_spell_is_never_a_reaction() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13545,6 +14311,8 @@ fn casting_requires_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13561,6 +14329,8 @@ fn casting_requires_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -13586,6 +14356,8 @@ fn casting_requires_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13614,6 +14386,8 @@ fn next_pass_resolves_stack_flags_only_the_final_pass() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -13965,6 +14739,8 @@ fn cast_altered_ego(game: &mut Game, x: u32) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -14073,6 +14849,8 @@ fn cursed_mirror_becomes_a_copy_until_end_of_turn_with_haste() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -14133,6 +14911,8 @@ fn cursed_mirror_declined_stays_a_mana_rock() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -14170,6 +14950,8 @@ fn enter_as_copy_no_battlefield_creature_no_pause() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -14180,6 +14962,146 @@ fn enter_as_copy_no_battlefield_creature_no_pause() {
     let mirror = game.current_id(mirror);
     assert_eq!(game.def_of(mirror).name, "Cursed Mirror");
     assert!(!game.effective_types(mirror).intersects(TypeSet::CREATURE));
+}
+
+// ── enter-as-copy of an enchantment (#158: Copy Enchantment) ─────────────────────────
+
+/// Cast Copy Enchantment, resolving until it pauses on the enter-as-copy choice. Returns the
+/// entered permanent's id. Panics if it never pauses.
+fn cast_copy_enchantment(game: &mut Game) -> ObjectId {
+    game.fund_mana(PlayerId(0));
+    let copier = game.spawn_in_hand(PlayerId(0), card("Copy Enchantment"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: copier,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // Copy Enchantment resolves and enters; pauses on the copy choice.
+    game.current_id(copier)
+}
+
+#[test]
+fn copy_enchantment_enters_as_copy_of_enchantment() {
+    // Copy Enchantment: "You may have this enchantment enter as a copy of any enchantment on the
+    // battlefield." Copying Glorious Anthem ("Creatures you control get +1/+1") makes the copy a
+    // static anthem for its own controller (not the original Anthem's) — the copier's own Bear
+    // gets +1/+1 (CR 707.2, the copy's abilities function as the copy's own).
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Glorious Anthem"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    let copier = cast_copy_enchantment(&mut game);
+    let anthem = battlefield_permanent_named(&game, PlayerId(1), "Glorious Anthem");
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseCopyTarget {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "Copy Enchantment pauses on a copy choice for its controller, got {:?}",
+        game.pending_choice()
+    );
+
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(anthem),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.def_of(copier).name,
+        "Glorious Anthem",
+        "copies the Anthem's def"
+    );
+    assert_eq!(
+        game.power(bear),
+        3,
+        "the copy's own anthem static boosts its controller's Bear"
+    );
+    assert_eq!(game.toughness(bear), 3);
+}
+
+#[test]
+fn copy_enchantment_declines_stays_itself() {
+    // "You may" — declining leaves Copy Enchantment its printed self, which does nothing on its
+    // own; the Bear stays a vanilla 2/2.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Glorious Anthem"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    let copier = cast_copy_enchantment(&mut game);
+
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: None,
+    })
+    .unwrap();
+
+    assert_eq!(game.def_of(copier).name, "Copy Enchantment", "declined");
+    assert_eq!(game.power(bear), 2, "declined — no anthem effect");
+    assert_eq!(game.toughness(bear), 2);
+}
+
+#[test]
+fn copy_enchantment_copies_an_aura_and_enters_attached_after_a_host_pick() {
+    // A copied Aura must enter attached (CR 707.2 read with CR 303.4f — an Aura not attached to
+    // anything is illegal, CR 704.5m): Copy Enchantment becoming a copy of Empyrial Armor pauses
+    // to choose a host among legal enchant targets (reusing the deployed-Aura attach path), then
+    // attaches to the chosen creature — its `grant_to_attached` static then applies there.
+    let mut game = Game::new();
+    let original_host = game.spawn_on_battlefield(PlayerId(0), creature("Bear", 2, 2, &[]));
+    let armor = game.spawn_in_hand(PlayerId(0), card("Empyrial Armor"));
+    cast_and_resolve(&mut game, armor, Some(Target::Object(original_host)));
+    let armor = game.current_id(armor);
+    let new_host = game.spawn_on_battlefield(PlayerId(1), creature("Ox", 2, 2, &[]));
+
+    let copier = cast_copy_enchantment(&mut game);
+    game.submit(Intent::ChooseCopyTarget {
+        player: PlayerId(0),
+        copy: Some(armor),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.def_of(copier).name,
+        "Empyrial Armor",
+        "copies the Aura's def"
+    );
+    let Some(PendingChoice::ChooseAttachHost {
+        player: PlayerId(0),
+        candidates,
+        optional,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "a copied Aura pauses to choose a host, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(!optional, "an Aura's host choice is mandatory");
+    assert!(candidates.contains(&new_host));
+
+    game.submit(Intent::ChooseAttachHost {
+        player: PlayerId(0),
+        host: Some(new_host),
+    })
+    .unwrap();
+
+    assert_eq!(game.attached_to(copier), Some(new_host));
+    assert_eq!(game.zone_of(copier), Zone::Battlefield);
 }
 
 /// Brudiclad's begin-combat ability: mint a 2/1 Myr, then "you may choose a token you control;
@@ -14618,6 +15540,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -14646,6 +15569,8 @@ const COLORLESS_ROCK: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -14662,6 +15587,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -14713,6 +15639,8 @@ fn colorless_mana_pays_a_colorless_cost_pip() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -14753,6 +15681,8 @@ fn colorless_mana_cannot_pay_a_colored_pip() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -14793,6 +15723,8 @@ fn any_color_mana_pays_a_colored_and_a_generic_pip() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -15208,6 +16140,8 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -15224,6 +16158,7 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -15246,6 +16181,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
                 pay_life: 0,
                 sacrifice: None,
                 kicker: None,
+                buyback: None,
                 strive: None,
                 replicate: None,
             },
@@ -15278,6 +16214,8 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -15294,6 +16232,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -15309,6 +16248,8 @@ fn cast_plain(game: &mut Game, player: PlayerId, object: ObjectId) -> Result<Vec
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -15509,6 +16450,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
                     pay_life: 0,
                     sacrifice: None,
                     kicker: None,
+                    buyback: None,
                     strive: None,
                     replicate: None,
                 },
@@ -15576,6 +16518,8 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -15592,6 +16536,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -15759,6 +16704,8 @@ fn biomass_mutation_hybrid_cost_payable_by_either_color() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -15823,6 +16770,8 @@ const DIES_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -15839,6 +16788,7 @@ const DIES_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -15859,6 +16809,8 @@ fn a_dies_trigger_fires_when_the_creature_is_destroyed() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -15891,6 +16843,8 @@ fn shock_to_death(game: &mut Game, victim: ObjectId, drain_target: PlayerId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -16009,6 +16963,8 @@ fn shock_and_settle(game: &mut Game, victim: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -16101,6 +17057,8 @@ fn fracture_to_death(game: &mut Game, victim: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -16279,6 +17237,8 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -16295,6 +17255,7 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -16315,6 +17276,8 @@ fn plain_creature_dies_still_excludes_self() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -16379,6 +17342,8 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -16395,6 +17360,7 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -16509,6 +17475,8 @@ const CREATURE_MV3: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -16525,6 +17493,7 @@ const CREATURE_MV3: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only mana-value-4 creature — one over `CREATURE_MV3`, for exercising a `mv_max`
@@ -16639,6 +17608,8 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -16655,6 +17626,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -16996,6 +17968,8 @@ fn dina_drains_each_opponent_on_lifegain_without_looping() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -17191,6 +18165,8 @@ const UPKEEP_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17207,6 +18183,7 @@ const UPKEEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -17275,6 +18252,8 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17291,6 +18270,7 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Same upkeep self-return ability, but *not* graveyard-functional — an ordinary card that only
@@ -17309,6 +18289,7 @@ const BATTLEFIELD_UPKEEP_RETURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
     ..GRAVEYARD_UPKEEP_RETURN
 };
 
@@ -17431,6 +18412,8 @@ fn nether_traitor_returns_itself_from_graveyard_when_your_creature_dies() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -17486,6 +18469,8 @@ fn nether_traitor_declining_the_cost_leaves_it_in_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -17676,6 +18661,8 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17692,6 +18679,7 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -17781,6 +18769,8 @@ const END_STEP_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17797,6 +18787,7 @@ const END_STEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -17858,6 +18849,8 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17874,6 +18867,7 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -17967,6 +18961,8 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -17983,6 +18979,7 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A permanent that draws whenever its controller gains life. Modeled after Well of Lost
@@ -18025,6 +19022,8 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18041,6 +19040,7 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18061,6 +19061,8 @@ fn a_you_gain_life_trigger_fires_when_the_controller_gains_life() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18122,6 +19124,8 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18138,6 +19142,7 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18159,6 +19164,8 @@ fn a_magecraft_trigger_fires_when_the_controller_casts_an_instant_or_sorcery() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18196,6 +19203,8 @@ fn prowess_pumps_on_noncreature_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18234,6 +19243,8 @@ fn prowess_does_not_pump_on_creature_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18271,6 +19282,8 @@ fn prowess_only_fires_for_its_own_controllers_casts() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18307,6 +19320,8 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18322,6 +19337,8 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18350,6 +19367,8 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18377,6 +19396,8 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18386,6 +19407,156 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         treasure_count(&game),
         1,
         "an opponent's second spell this turn makes exactly one Treasure"
+    );
+}
+
+/// Cast a free instant for `caster` (fetched from hand), leaving Rhystic Study's own trigger
+/// resolved down to its `MayYesNo` pause for `controller` (do they want to draw at all — the
+/// card's own ruling: declining is quiet, no pay window is ever offered).
+fn cast_and_reach_rhystic_may_draw_pause(game: &mut Game, controller: PlayerId, caster: PlayerId) {
+    if game.priority_holder() != caster {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
+    let spell = game.spawn_in_hand(caster, INSTANT_FILLER);
+    game.submit(Intent::Cast {
+        player: caster,
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // Rhystic Study's trigger resolves: pauses on MayYesNo.
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo { player, .. }) if player == controller
+        ),
+        "expected Rhystic Study's may-draw pause for the controller, got {:?}",
+        game.pending_choice()
+    );
+}
+
+#[test]
+fn rhystic_study_draws_when_opponent_declines_to_pay() {
+    // Rhystic Study: "Whenever an opponent casts a spell, you may draw a card unless that
+    // player pays {1}." P0 accepts the draw offer; P1 (the caster) declines to pay.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(1));
+    game.spawn_on_battlefield(PlayerId(0), card("Rhystic Study"));
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+
+    cast_and_reach_rhystic_may_draw_pause(&mut game, PlayerId(0), PlayerId(1));
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+
+    // P0 wants to draw — P1 now gets a chance to pay {1} and stop it.
+    assert!(matches!(
+        game.pending_choice(),
+        Some(PendingChoice::PayOrControllerDraws {
+            player: PlayerId(1),
+            controller: PlayerId(0),
+            ..
+        })
+    ));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(1),
+        pay: false,
+    })
+    .unwrap();
+
+    let hand = hand_ids(&game, PlayerId(0));
+    assert_eq!(hand.len(), 1, "P0 drew the card Rhystic Study offered");
+    assert!(hand.contains(&game.current_id(lib[0])));
+}
+
+#[test]
+fn rhystic_study_no_draw_when_opponent_pays() {
+    // Same setup, but P1 pays {1} to stop the draw — P0's hand stays empty and P1's mana drops.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(1));
+    game.spawn_on_battlefield(PlayerId(0), card("Rhystic Study"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+
+    cast_and_reach_rhystic_may_draw_pause(&mut game, PlayerId(0), PlayerId(1));
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+
+    let p1_mana_before = Color::ALL
+        .iter()
+        .map(|&c| game.mana_in_pool(PlayerId(1), c) as u32)
+        .sum::<u32>();
+    let events = game
+        .submit(Intent::PayOptionalCost {
+            player: PlayerId(1),
+            pay: true,
+        })
+        .unwrap();
+
+    assert!(
+        events.iter().any(|e| matches!(e, Event::ManaSpent { .. })),
+        "paying {{1}} spends mana"
+    );
+    let p1_mana_after = Color::ALL
+        .iter()
+        .map(|&c| game.mana_in_pool(PlayerId(1), c) as u32)
+        .sum::<u32>();
+    assert_eq!(p1_mana_after, p1_mana_before - 1, "P1 paid exactly {{1}}");
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "paying {{1}} stops the draw — P0's hand stays empty"
+    );
+}
+
+#[test]
+fn rhystic_study_ignores_your_own_casts() {
+    // The Study's own controller casting a spell never triggers it (caster = "opponent").
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Rhystic Study"));
+    let own_spell = game.spawn_in_hand(PlayerId(0), FILLER);
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: own_spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // The spell resolves; no Rhystic Study trigger was queued.
+
+    assert!(
+        game.pending_choice().is_none(),
+        "the controller's own cast never offers a may-draw pause"
+    );
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "no trigger fired, so no draw happened"
     );
 }
 
@@ -18432,6 +19603,8 @@ const INSTANT_FILLER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18448,6 +19621,7 @@ const INSTANT_FILLER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 // ── Becomes-the-target-of-a-spell trigger (Goldspan Dragon) ────────────────────────────
@@ -18498,6 +19672,8 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18514,6 +19690,7 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18598,6 +19775,8 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18614,6 +19793,7 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18645,6 +19825,8 @@ fn cast_spell_trigger_respects_spell_filter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -18699,6 +19881,8 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18715,6 +19899,7 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only free artifact spell — a minimal `SpellFilter::Historic` probe (CR 702.135:
@@ -18747,6 +19932,8 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -18763,6 +19950,7 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -18967,6 +20155,8 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19006,6 +20196,8 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -19025,6 +20217,8 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -19060,6 +20254,8 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19086,6 +20282,8 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19142,6 +20340,8 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -19158,6 +20358,7 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -19293,6 +20494,8 @@ fn a_copied_burn_spell_deals_its_damage_twice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19308,6 +20511,8 @@ fn a_copied_burn_spell_deals_its_damage_twice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19352,6 +20557,8 @@ fn a_copied_spell_may_be_retargeted() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19367,6 +20574,8 @@ fn a_copied_spell_may_be_retargeted() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19427,6 +20636,8 @@ fn a_copied_draw_spell_draws_twice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19442,6 +20653,8 @@ fn a_copied_draw_spell_draws_twice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19484,6 +20697,8 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19504,6 +20719,8 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19565,6 +20782,8 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19580,6 +20799,8 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19640,6 +20861,7 @@ const COUNTER: CardDef = CardDef {
         effect: Effect::CounterTargetSpell {
             unless_pays: None,
             filter: SpellFilter::AllSpells,
+            countered_dest: None,
         },
         optional: false,
         min_level: 0,
@@ -19651,6 +20873,8 @@ const COUNTER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -19667,6 +20891,7 @@ const COUNTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -19688,6 +20913,8 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19707,6 +20934,8 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19750,6 +20979,8 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19770,6 +21001,8 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19784,6 +21017,8 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19827,6 +21062,8 @@ fn a_spell_that_cant_be_countered_stays_on_the_stack_against_a_hard_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19846,6 +21083,8 @@ fn a_spell_that_cant_be_countered_stays_on_the_stack_against_a_hard_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19897,6 +21136,8 @@ fn counter_unless_pays_none_is_hard_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19916,6 +21157,8 @@ fn counter_unless_pays_none_is_hard_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19952,6 +21195,8 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -19971,6 +21216,8 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20074,6 +21321,195 @@ fn counter_unless_pays_paid_saves_spell() {
     assert!(
         !battlefield_named(&game, PlayerId(0), "Grizzly Bear").is_empty(),
         "the saved spell resolves into a creature as normal"
+    );
+}
+
+// ── Hinder's countered-spell destination rider (CR 701.5b) ──────────────────────────
+
+/// Cast Grizzly Bear for P0 and Hinder for P1 targeting the bear, resolving Hinder — leaving the
+/// game paused on the resulting [`PendingChoice::ChooseCounteredSpellDestination`]. Returns the
+/// bear's stack id. `filler` is stacked atop P0's library so a subsequent draw can prove which
+/// end of the library the countered bear landed on.
+fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[filler]);
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let hinder = game.spawn_in_hand(PlayerId(1), card("Hinder"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bear,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Grizzly Bear is castable");
+    let bear_on_stack = top_spell(game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: hinder,
+        target: Some(Target::Object(bear_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Hinder can target the bear on the stack");
+
+    resolve_top_of_stack(game); // Hinder resolves: pauses on the top/bottom choice.
+    bear_on_stack
+}
+
+#[test]
+fn hinder_counters_spell_and_tucks_to_top_of_library() {
+    // Hinder: "Counter target spell. If that spell is countered this way, put that card on your
+    // choice of the top or bottom of its owner's library instead of into that player's
+    // graveyard." P1 (Hinder's controller) chooses the top.
+    let mut game = Game::new();
+    let bear_on_stack = cast_hinder_countering_bear(&mut game, card("Forest"));
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseCounteredSpellDestination {
+                player: PlayerId(1),
+                spell,
+            }) if spell == bear_on_stack
+        ),
+        "Hinder's controller (P1) pauses on the top/bottom choice for the countered bear"
+    );
+
+    game.submit(Intent::ChooseTopOrBottom {
+        player: PlayerId(1),
+        top: true,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Library,
+        "the countered bear went to its owner's library, not the graveyard"
+    );
+    // The pre-seeded Forest is drawn second — proving the tuck landed on top, not the bottom.
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Hand,
+        "the countered card was put on top of its owner's library"
+    );
+}
+
+#[test]
+fn hinder_tucks_to_bottom() {
+    // Same setup, but P1 chooses the bottom instead.
+    let mut game = Game::new();
+    let bear_on_stack = cast_hinder_countering_bear(&mut game, card("Forest"));
+
+    game.submit(Intent::ChooseTopOrBottom {
+        player: PlayerId(1),
+        top: false,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Library,
+        "the countered bear went to its owner's library, not the graveyard"
+    );
+    // The pre-seeded Forest is drawn first — proving the tuck landed on the bottom, not the top.
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Library,
+        "still in the library after drawing the card stacked above it"
+    );
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Hand,
+        "the countered card was put on the bottom of its owner's library"
+    );
+}
+
+#[test]
+fn hinder_countering_flashback_spell_exiles_it() {
+    // CR 702.34e/702.19d: a flashback (or escape) spell exiles as it leaves the stack even when
+    // countered — CR 701.5b's tuck rider then has nothing to move (no tuck, no graveyard).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let looting = game.spawn_in_graveyard(PlayerId(0), FLASHBACK_DRAW);
+    tap_forests(&mut game, 2); // flashback {2} (CR 702.34)
+    let hinder = game.spawn_in_hand(PlayerId(1), card("Hinder"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: looting,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("a flashback card is castable from its owner's graveyard");
+    let looting_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: hinder,
+        target: Some(Target::Object(looting_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Hinder can target the flashback spell on the stack");
+
+    resolve_top_of_stack(&mut game); // Hinder resolves.
+
+    assert!(
+        game.pending_choice().is_none(),
+        "a flashback/escape spell exiles outright — no top/bottom pause, nothing to tuck"
+    );
+    assert_eq!(
+        game.zone_of(looting_on_stack),
+        Zone::Exile,
+        "the countered flashback spell was exiled, not tucked or put into the graveyard"
     );
 }
 
@@ -20197,6 +21633,322 @@ fn echo_declined_sacrifices_the_creature() {
     );
 }
 
+// ── ETB sacrifice-unless (CR 603.3b, rupture_spire / trevas_ruins) ───────────────────
+// "When this land enters, sacrifice it unless you [pay {1} | return a non-Lair land you
+// control to its owner's hand]." — echo's pay-or-sacrifice choice shape, fired at the
+// permanent's own ETB instead of upkeep.
+
+#[test]
+fn rupture_spire_kept_when_paid() {
+    let mut game = Game::new();
+    let spire = game.spawn_in_hand(PlayerId(0), card("Rupture Spire"));
+    game.fund_mana(PlayerId(0));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: spire,
+        })
+        .unwrap();
+    let spire_permanent = land_permanent(&events);
+    resolve_top_of_stack(&mut game); // the ETB "sacrifice it unless you pay {1}" trigger resolves
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::SacrificeUnlessPay {
+                player: PlayerId(0),
+                source,
+                ..
+            }) if source == spire_permanent
+        ),
+        "the ETB trigger pauses on a pay-or-sacrifice choice, not echo's upkeep-scoped one"
+    );
+
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .expect("paying {1} is legal");
+
+    assert_eq!(
+        game.zone_of(spire_permanent),
+        Zone::Battlefield,
+        "paying the {{1}} keeps Rupture Spire"
+    );
+}
+
+#[test]
+fn rupture_spire_sacrificed_when_pay_declined() {
+    let mut game = Game::new();
+    let spire = game.spawn_in_hand(PlayerId(0), card("Rupture Spire"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: spire,
+        })
+        .unwrap();
+    let spire_permanent = land_permanent(&events);
+    resolve_top_of_stack(&mut game);
+
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+    })
+    .expect("declining is legal");
+
+    assert_eq!(
+        game.zone_of(spire_permanent),
+        Zone::Graveyard,
+        "declining to pay sacrifices Rupture Spire"
+    );
+}
+
+#[test]
+fn trevas_ruins_returns_a_non_lair_land_or_is_sacrificed() {
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let ruins = game.spawn_in_hand(PlayerId(0), card("Treva's Ruins"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: ruins,
+        })
+        .unwrap();
+    let ruins_permanent = land_permanent(&events);
+    resolve_top_of_stack(&mut game); // the ETB "sacrifice it unless you return a land" trigger
+
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::SacrificeUnlessReturnLand {
+            player: PlayerId(0),
+            source: ruins_permanent,
+            candidates: vec![forest],
+        }),
+        "only the Forest is offered — Treva's Ruins itself is a Lair, excluded by the filter"
+    );
+
+    game.submit(Intent::ReturnLandOrSacrifice {
+        player: PlayerId(0),
+        land: Some(forest),
+    })
+    .expect("returning the offered Forest is legal");
+
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Hand,
+        "the returned land goes back to its owner's hand"
+    );
+    assert_eq!(
+        game.zone_of(ruins_permanent),
+        Zone::Battlefield,
+        "returning a land keeps Treva's Ruins"
+    );
+}
+
+#[test]
+fn trevas_ruins_cannot_return_a_lair_to_keep_itself() {
+    let mut game = Game::new();
+    // A second Lair — not a legal return, so Treva's Ruins has no candidates and is sacrificed.
+    let other_lair = game.spawn_on_battlefield(PlayerId(0), card("Treva's Ruins"));
+    let ruins = game.spawn_in_hand(PlayerId(0), card("Treva's Ruins"));
+
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: ruins,
+        })
+        .unwrap();
+    let ruins_permanent = land_permanent(&events);
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "no non-Lair land to return — nothing to choose, straight to sacrifice"
+    );
+    assert_eq!(
+        game.zone_of(ruins_permanent),
+        Zone::Graveyard,
+        "with no legal land to return, Treva's Ruins sacrifices itself"
+    );
+    assert_eq!(
+        game.zone_of(other_lair),
+        Zone::Battlefield,
+        "the other Lair is never a legal return target and stays untouched"
+    );
+}
+
+#[test]
+fn trevas_ruins_taps_for_one_mana_of_a_chosen_color_not_all_three() {
+    // "{T}: Add {G}, {W}, or {U}." — one `Mana::OfColors` credit choosing among the three, NOT
+    // three separate mana. A single tap pays any one of the three pips, but never two at once.
+    for pip in [Color::Green, Color::White, Color::Blue] {
+        let mut game = Game::new();
+        let ruins = game.spawn_on_battlefield(PlayerId(0), card("Treva's Ruins"));
+        let mut colored = [0; 5];
+        colored[pip.index()] = 1;
+        let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test One-Pip", 0, colored));
+
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: ruins,
+        })
+        .unwrap();
+        cast_plain(&mut game, PlayerId(0), spell).unwrap();
+
+        assert_eq!(
+            game.zone_of(spell),
+            Zone::Stack,
+            "one tap of Treva's Ruins pays a single {pip:?} pip"
+        );
+    }
+
+    // The single credit can only pay one pip: a two-color spell can't be cast off one tap.
+    let mut game = Game::new();
+    let ruins = game.spawn_on_battlefield(PlayerId(0), card("Treva's Ruins"));
+    let mut colored = [0; 5];
+    colored[Color::Green.index()] = 1;
+    colored[Color::White.index()] = 1;
+    let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test Two-Pip", 0, colored));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: ruins,
+    })
+    .unwrap();
+
+    assert_eq!(
+        cast_plain(&mut game, PlayerId(0), spell),
+        Err(Reject::CannotPayCost),
+        "one tap yields one credit — it can't pay {{G}}{{W}} at once (it isn't {{G}}{{W}}{{U}})"
+    );
+}
+
+// ── Evoke (CR 702.74, mulldrifter) ───────────────────────────────────────────────────
+// "You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters."
+
+#[test]
+fn mulldrifter_normal_cast_stays() {
+    let mut game = TestGame::new();
+    let mulldrifter = game.spawn_in_hand(PlayerId(0), card("Mulldrifter"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.cast(mulldrifter).resolve();
+    resolve_top_of_stack(&mut game); // the ETB draw-two trigger resolves
+
+    assert_eq!(
+        game.zone_of(mulldrifter),
+        Zone::Battlefield,
+        "a normal cast stays on the battlefield"
+    );
+    let permanent = game.current_id(mulldrifter);
+    assert_eq!(game.power(permanent), 2);
+    assert_eq!(game.toughness(permanent), 2);
+    assert!(
+        game.effective_keywords(permanent)
+            .contains(&Keyword::Flying),
+        "Mulldrifter is a flyer"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before + 1,
+        "Mulldrifter left the hand for the stack; the ETB then drew two, net +1"
+    );
+}
+
+#[test]
+fn mulldrifter_evoked_draws_two_then_is_sacrificed() {
+    let mut game = TestGame::new();
+    let mulldrifter = game.spawn_in_hand(PlayerId(0), card("Mulldrifter"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.cast(mulldrifter).evoked(true).resolve();
+    resolve_top_of_stack(&mut game); // the ETB draw-two trigger resolves first
+
+    assert_eq!(
+        game.zone_of(mulldrifter),
+        Zone::Battlefield,
+        "still on the battlefield — the ETB resolved, the self-sacrifice hasn't yet"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before + 1,
+        "the ETB draws two before evoke's sacrifice, same as a normal cast"
+    );
+
+    resolve_top_of_stack(&mut game); // the evoke self-sacrifice (CR 702.74a) resolves second
+
+    assert_eq!(
+        game.zone_of(mulldrifter),
+        Zone::Graveyard,
+        "evoke sacrifices the permanent the instant it enters, after its ETB draw"
+    );
+}
+
+#[test]
+fn mulldrifter_evoke_charges_the_evoke_cost() {
+    // Fund exactly {2}{U} (evoke's own cost) via three Islands — enough to evoke, not enough
+    // for the printed {4}{U}.
+    let mut game = Game::new();
+    let mulldrifter = game.spawn_in_hand(PlayerId(0), card("Mulldrifter"));
+    for _ in 0..3 {
+        let island = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: island,
+        })
+        .unwrap();
+    }
+
+    assert_eq!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: mulldrifter,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+        }),
+        Err(Reject::CannotPayCost),
+        "{{2}}{{U}} isn't enough to pay the printed {{4}}{{U}} cost"
+    );
+
+    let events = game
+        .submit(Intent::Cast {
+            player: PlayerId(0),
+            object: mulldrifter,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: true,
+            strive_count: 0,
+            replicate_count: 0,
+        })
+        .expect("the same {{2}}{{U}} in the pool fully funds the evoke cost");
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::SpellCast { evoked: true, .. })),
+        "the cast is recorded as evoked"
+    );
+}
+
 // ── Delayed triggered abilities (#27, CR 603.7) ──────────────────────────────────────
 // `Effect::ScheduleAtNextUpkeep` defers an effect to the very next upkeep, regardless of whose
 // turn it is — the mechanism behind Arcane Denial's delayed draws.
@@ -20277,6 +22029,8 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20296,6 +22050,8 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20475,6 +22231,8 @@ fn next_cast_trigger_ignores_opponents_and_non_x_spells() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20560,6 +22318,8 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20578,6 +22338,8 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20597,6 +22359,8 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20680,6 +22444,8 @@ fn thunderclap_drake_only_copies_instant_or_sorcery() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20731,6 +22497,8 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -20770,6 +22538,8 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -21113,6 +22883,9 @@ const FLIGHT: CardDef = CardDef {
             goad: false,
             protection_from_chosen_color: false,
             granted_ability: None,
+            cant_attack: false,
+            cant_block: false,
+            activated_abilities: None,
         },
         optional: false,
         min_level: 0,
@@ -21124,6 +22897,8 @@ const FLIGHT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -21140,6 +22915,7 @@ const FLIGHT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// The activated ability Fallen Ideal grants its enchanted host: "Sacrifice a creature: This
@@ -21167,6 +22943,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
     effects: &[Effect::PumpSelfUntilEndOfTurn {
         power: Amount::Fixed(2),
         toughness: Amount::Fixed(1),
+        keywords: &[],
     }],
 };
 
@@ -21183,6 +22960,9 @@ const FALLEN_IDEAL_TEST: CardDef = CardDef {
             goad: false,
             protection_from_chosen_color: false,
             granted_ability: Some(&FALLEN_IDEAL_GRANT),
+            cant_attack: false,
+            cant_block: false,
+            activated_abilities: None,
         },
         optional: false,
         min_level: 0,
@@ -21233,6 +23013,8 @@ const MUTATION: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -21249,6 +23031,7 @@ const MUTATION: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only 3/3 vanilla creature — a printed base distinct from the set-base value.
@@ -21341,6 +23124,7 @@ const ANGEL_ANTHEM: CardDef = CardDef {
             has_counters: false,
             condition: None,
             from_graveyard: false,
+            all_players: false,
         },
         optional: false,
         min_level: 0,
@@ -21518,6 +23302,8 @@ const MUTABLE_FLYER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -21534,6 +23320,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -21720,6 +23507,8 @@ fn modifier_sources_attributes_a_pump_to_the_spell_card_def() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -21803,6 +23592,8 @@ fn modifier_sources_clears_eot_pump_at_cleanup() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22092,6 +23883,8 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
         graveyard_exile: Vec::new(),
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22110,6 +23903,8 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
         graveyard_exile: Vec::new(),
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22378,6 +24173,8 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22393,6 +24190,8 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22468,6 +24267,8 @@ fn coercive_impetus_fires_under_its_own_controller_on_an_opponents_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22526,6 +24327,8 @@ fn parasitic_impetus_drains_its_hosts_controller_when_it_attacks() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22614,6 +24417,8 @@ fn martial_impetus_does_not_pump_attackers_of_its_controller_or_non_attackers() 
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22660,6 +24465,8 @@ fn cast_scriv_targeting(game: &mut Game, caster: PlayerId, scriv: ObjectId, vict
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22862,6 +24669,8 @@ fn scriv_with_no_opponent_creature_leaves_no_phantom_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -22935,6 +24744,8 @@ fn angelic_destiny_returns_to_hand_when_its_host_dies_in_a_board_wipe() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -23007,6 +24818,8 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -23023,6 +24836,7 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -23082,6 +24896,8 @@ const PLAIN_AURA: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -23098,6 +24914,7 @@ const PLAIN_AURA: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// [`PLAIN_AURA`] with the printed "Aura" subtype — needed to feed a `per_permanent` "Auras you
@@ -23202,6 +25019,8 @@ fn hateful_eidolon_survives_own_death_in_batch() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -23292,6 +25111,34 @@ fn sages_reverie_draws_and_pumps_per_aura_you_control() {
         game.power(host),
         2 + 3,
         "the static grows live as a third Aura attaches"
+    );
+    assert_eq!(game.toughness(host), 2 + 3);
+}
+
+#[test]
+fn empyrial_armor_tracks_hand_size() {
+    // Empyrial Armor (soc): "Enchant creature. Enchanted creature gets +1/+1 for each card in
+    // your hand."
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(0), VANILLA); // 2/2
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let armor = game.spawn_in_hand(PlayerId(0), card("Empyrial Armor"));
+    cast_and_resolve(&mut game, armor, Some(Target::Object(host))); // Empyrial Armor leaves hand
+
+    assert_eq!(
+        game.power(host),
+        2 + 2,
+        "+1/+1 for each of the two cards left in hand once Empyrial Armor itself was cast"
+    );
+    assert_eq!(game.toughness(host), 2 + 2);
+
+    // Live tracking: a card entering hand grows the buff without touching the attachment.
+    game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    assert_eq!(
+        game.power(host),
+        2 + 3,
+        "the static reads hand size live as it grows, no re-attach needed"
     );
     assert_eq!(game.toughness(host), 2 + 3);
 }
@@ -24263,6 +26110,8 @@ fn skyclave_apparition_leaves_mints_owner_illusion() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -24370,6 +26219,8 @@ fn skyclave_apparition_leaves_with_nothing_exiled_mints_no_illusion() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -24442,6 +26293,8 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -24458,6 +26311,7 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 // ── Control-changing Auras (CR 720) ──────────────────────────────────────────────────
@@ -24536,6 +26390,81 @@ fn destroying_the_control_aura_returns_control_to_the_owner() {
         game.controller_of(bear),
         PlayerId(1),
         "control returns to the owner when the Aura leaves"
+    );
+}
+
+#[test]
+fn confiscate_stays_on_noncreature_host_across_sba() {
+    // Confiscate: "Enchant permanent. You control enchanted permanent." An unrestricted `enchant`
+    // filter (CR 303.4a) legally attaches to a noncreature host — the CR 704.5m/n legality SBA
+    // must re-check the Aura's own filter against its live host, not hardcode "host is a
+    // creature".
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let confiscate = game.spawn_in_hand(PlayerId(0), card("Confiscate"));
+    assert_eq!(
+        game.controller_of(forest),
+        PlayerId(1),
+        "P1 controls it to start"
+    );
+
+    cast_and_resolve(&mut game, confiscate, Some(Target::Object(forest)));
+
+    let aura_perm = game.attachments(forest)[0];
+    assert_eq!(
+        game.zone_of(aura_perm),
+        Zone::Battlefield,
+        "an Aura enchanting a permanent it's legally allowed to enchant stays attached (CR 704.5n)"
+    );
+    assert_eq!(
+        game.controller_of(forest),
+        PlayerId(0),
+        "P0 now controls the enchanted land"
+    );
+}
+
+#[test]
+fn enchant_creature_aura_falls_off_when_host_stops_being_creature() {
+    // The default "enchant creature" case (no explicit `enchant` filter) must still fall off a
+    // host that stops being a creature — proving the noncreature-host fix above isn't over-broad.
+    let mut game = Game::new();
+    let spire = game.spawn_on_battlefield(PlayerId(0), card("Restless Spire")); // a land
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: spire,
+        ability_index: 0, // {U}{R}: becomes a 2/1 creature until end of turn.
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.effective_types(spire).intersects(TypeSet::CREATURE),
+        "animated into a creature"
+    );
+
+    let aura = game.spawn_in_hand(PlayerId(0), CONTROL_ATTACHED_AURA);
+    cast_and_resolve(&mut game, aura, Some(Target::Object(spire)));
+    let aura_perm = game.attachments(spire)[0];
+    assert_eq!(
+        game.zone_of(aura_perm),
+        Zone::Battlefield,
+        "attached while animated"
+    );
+
+    // The animation reverts at cleanup; the land is no longer a creature.
+    pass_until_next_turn(&mut game);
+    assert!(
+        !game.effective_types(spire).intersects(TypeSet::CREATURE),
+        "reverted to a noncreature land"
+    );
+    assert_eq!(
+        game.zone_of(aura_perm),
+        Zone::Graveyard,
+        "a default enchant-creature Aura still falls off a host that stops being a creature \
+         (CR 704.5m)"
     );
 }
 
@@ -24868,6 +26797,8 @@ fn cast_tragic_arrogance(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -25143,6 +27074,8 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -25159,6 +27092,7 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// The player a pending `ExileFromGraveyard` is waiting on, or `None` if that's not the choice.
@@ -25191,6 +27125,8 @@ fn each_player_exiles_from_graveyard_in_apnap_order() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -25383,6 +27319,8 @@ fn cast_fateful_tempest_to_vote(game: &mut Game) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -25861,6 +27799,8 @@ fn rootha_return_self_cost_bounces_source() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -25978,6 +27918,152 @@ fn millikin_ability_illegal_with_an_empty_library() {
     );
 }
 
+// ── Target-player graveyard exile (Relic of Progenitus's "{T}: Target player exiles a card from
+// their graveyard.") ──────────────────────────────────────────────────────────────────────────
+
+/// A test-only artifact whose one ability is Relic of Progenitus's "{T}: Target player exiles a
+/// card from their graveyard." — isolates the single-target exile step from Relic's second
+/// (exile-self) ability.
+const RELIC_SHAPED_TARGET_EXILE: CardDef = CardDef {
+    abilities: &[Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            return_self: false,
+            mill_self: 0,
+            exile_self: false,
+        }),
+        effect: Effect::TargetPlayerExilesFromGraveyard {
+            target: TargetSpec::Player,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        cost: Cost::FREE,
+        condition: None,
+    }],
+    ..artifact("Relic-Shaped Target Exile (test)", 1)
+};
+
+#[test]
+fn relic_of_progenitus_target_player_exiles_from_graveyard() {
+    // "{T}: Target player exiles a card from their graveyard." The TARGETED player, not the
+    // activator, picks which card leaves their own graveyard — mandatory when it's non-empty.
+    let mut game = Game::new();
+    let relic = game.spawn_on_battlefield(PlayerId(0), RELIC_SHAPED_TARGET_EXILE);
+    let keep = game.spawn_in_graveyard(PlayerId(1), VANILLA);
+    let exile = game.spawn_in_graveyard(PlayerId(1), card("Forest"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: relic,
+        ability_index: 0,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("P0 can activate targeting P1");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        graveyard_exile_chooser(&game),
+        Some(PlayerId(1)),
+        "the targeted player picks, not the activator"
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![exile],
+    })
+    .expect("a legal graveyard-exile answer");
+
+    assert_eq!(
+        game.zone_of(exile),
+        Zone::Exile,
+        "the chosen card is exiled"
+    );
+    assert_eq!(game.zone_of(keep), Zone::Graveyard, "the other card stays");
+    assert!(
+        game.pending_choice().is_none(),
+        "no payoff — the single-player fan-out completes"
+    );
+}
+
+#[test]
+fn relic_of_progenitus_target_player_exiles_from_graveyard_is_a_no_op_on_an_empty_graveyard() {
+    let mut game = Game::new();
+    let relic = game.spawn_on_battlefield(PlayerId(0), RELIC_SHAPED_TARGET_EXILE);
+    // P1's graveyard is empty.
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: relic,
+        ability_index: 0,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("P0 can activate targeting P1");
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "an empty graveyard is a no-op — no pause"
+    );
+}
+
+#[test]
+fn relic_of_progenitus_exile_self_exiles_all_graveyards_and_draws_a_card() {
+    // The real card's second ability: "{1}, Exile this artifact: Exile all graveyards. Draw a
+    // card." — proves the printed card's cost/effect wiring, not just the isolated fan-out step.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[VANILLA]); // a card to draw — a fresh test game's library is empty
+    let relic = game.spawn_on_battlefield(PlayerId(0), card("Relic of Progenitus"));
+    let own_gy = game.spawn_in_graveyard(PlayerId(0), card("Mountain"));
+    let their_gy = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: relic,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("{1}, Exile this artifact is payable");
+    assert_eq!(
+        game.zone_of(relic),
+        Zone::Exile,
+        "Relic of Progenitus exiles itself to pay the cost"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(own_gy),
+        Zone::Exile,
+        "every graveyard is exiled"
+    );
+    assert_eq!(
+        game.zone_of(their_gy),
+        Zone::Exile,
+        "every graveyard is exiled"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before + 1,
+        "the activator draws a card"
+    );
+}
+
 // ── Zone-change spells: exile removal, bounce, and mill ──────────────────────────────
 
 /// Count the cards a player owns in a given zone (graveyard/exile/hand are public queries here).
@@ -26005,6 +28091,8 @@ fn exile_removes_a_creature_to_the_exile_zone_not_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26037,6 +28125,8 @@ fn exiling_a_commander_diverts_it_to_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26065,6 +28155,8 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26082,6 +28174,8 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26099,6 +28193,8 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26134,6 +28230,8 @@ fn bounce_returns_a_creature_to_its_owners_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26173,6 +28271,8 @@ fn bouncing_a_token_makes_it_cease_to_exist() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26199,6 +28299,8 @@ fn bouncing_a_token_makes_it_cease_to_exist() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26232,6 +28334,8 @@ fn mill_moves_the_top_cards_from_library_to_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26268,6 +28372,8 @@ fn milling_more_than_the_library_holds_is_safe_and_causes_no_loss() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26315,6 +28421,8 @@ fn blaze_deals_x_damage_to_a_creature_then_to_a_player() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26339,6 +28447,8 @@ fn blaze_deals_x_damage_to_a_creature_then_to_a_player() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26377,6 +28487,8 @@ fn blaze_with_insufficient_mana_for_the_chosen_x_is_rejected() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -26393,6 +28505,8 @@ fn blaze_with_insufficient_mana_for_the_chosen_x_is_rejected() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -26419,6 +28533,8 @@ fn tyvars_stand_pumps_by_x_and_grants_hexproof_and_indestructible_until_end_of_t
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26461,6 +28577,8 @@ fn primal_might_pumps_the_chosen_creature_by_x_until_end_of_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26491,6 +28609,8 @@ fn primal_might_pumped_creature_fights_chosen_enemy() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26545,6 +28665,8 @@ fn primal_might_fight_declined_leaves_creature_pumped() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -26587,6 +28709,8 @@ fn primal_might_no_enemy_no_pause() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27004,6 +29128,8 @@ fn stroke_of_genius_makes_the_target_player_draw_x() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27040,6 +29166,8 @@ fn the_mana_paid_scales_with_the_chosen_x() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -27074,6 +29202,8 @@ fn raise_dead_returns_a_creature_from_your_graveyard_to_your_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27109,6 +29239,8 @@ fn reanimate_puts_a_creature_onto_the_battlefield_and_fires_its_etb() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27158,6 +29290,8 @@ fn animate_dead_targets_graveyard_creature_at_cast() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -27213,6 +29347,8 @@ fn animate_dead_fizzles_if_target_exiled_in_response() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27364,6 +29500,8 @@ fn reanimate_can_target_an_opponents_graveyard_under_your_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27397,6 +29535,8 @@ fn a_declined_sun_titan_trigger_reanimates_nothing() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27447,6 +29587,8 @@ fn an_accepted_sun_titan_trigger_pauses_to_choose_its_reanimation_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27509,6 +29651,8 @@ fn finality_counter_exiles_instead_of_dying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27537,6 +29681,8 @@ fn finality_counter_exiles_instead_of_dying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27562,6 +29708,8 @@ fn finality_counter_exiles_instead_of_dying() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27645,6 +29793,8 @@ fn excava_reanimates_with_finality_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27774,6 +29924,8 @@ fn plain_reanimate_does_not_set_type() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -27813,6 +29965,8 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -27833,6 +29987,8 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -27853,6 +30009,8 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -27880,6 +30038,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -27908,6 +30067,8 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -27924,6 +30085,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// The same shape at mana value 4 — over Sevinne's "mana value 3 or less" gate.
@@ -27944,6 +30106,7 @@ const NONCREATURE_PERMANENT_MV4: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -27989,6 +30152,8 @@ fn reanimate_noncreature_permanent_under_mv_sevinnes() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28185,6 +30350,8 @@ fn primary_research_reanimates_a_nonland_permanent_gated_by_mana_value() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28239,6 +30406,7 @@ const NONCREATURE_PERMANENT_MV5: CardDef = CardDef {
             pay_life: 0,
             sacrifice: None,
             kicker: None,
+            buyback: None,
             strive: None,
             replicate: None,
         },
@@ -28268,6 +30436,8 @@ fn angel_of_indemnity_reanimates_permanent_card_mv_four() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28320,6 +30490,8 @@ fn angel_of_indemnity_permanent_card_target_includes_lands_but_not_mv_five() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28361,6 +30533,8 @@ fn sun_titan_can_reanimate_a_land_card() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28402,6 +30576,8 @@ fn karmic_guide_reanimates_only_from_your_own_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28514,6 +30690,8 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -28530,6 +30708,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -28559,6 +30738,8 @@ fn return_land_from_graveyard_to_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28688,6 +30869,8 @@ const REPLENISH: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -28704,6 +30887,7 @@ const REPLENISH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -28725,6 +30909,8 @@ fn mass_return_enchantments_from_graveyard_replenish() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28849,6 +31035,8 @@ fn scry_pauses_on_an_arrange_top_choice_and_reorders_the_library() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28928,6 +31116,8 @@ fn surveil_puts_the_bottom_pile_into_the_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -28992,6 +31182,8 @@ fn resolve_look_dig(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -29191,6 +31383,8 @@ fn resolve_look_dig_to_battlefield(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -29620,6 +31814,8 @@ fn expressive_iteration_routes_top_three() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -29707,6 +31903,8 @@ fn resolve_look_dig_mandatory(game: &mut Game) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -29809,6 +32007,8 @@ fn scry_for_more_than_the_library_holds_is_safe() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -29897,6 +32097,8 @@ fn an_arrange_top_answer_must_partition_the_shown_cards() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -29947,6 +32149,8 @@ fn a_creature_cost_reducer_shaves_generic_from_a_creature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -29982,6 +32186,8 @@ fn a_creature_cost_reducer_leaves_noncreature_spells_alone() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -30007,6 +32213,8 @@ fn cost_reduction_never_removes_a_colored_pip() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -30027,6 +32235,8 @@ fn cost_reduction_never_removes_a_colored_pip() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30058,6 +32268,8 @@ fn cost_reducers_stack() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30187,6 +32399,8 @@ fn killian_reduces_only_spells_that_target_a_creature() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -30205,6 +32419,8 @@ fn killian_reduces_only_spells_that_target_a_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30238,6 +32454,8 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30259,6 +32477,8 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -30288,6 +32508,8 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30315,6 +32537,8 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30341,6 +32565,8 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -30379,6 +32605,8 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30409,6 +32637,8 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30440,6 +32670,8 @@ fn self_reduction_absent_leaves_cost_unchanged() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -30471,6 +32703,8 @@ fn tomik_has_affinity_for_planeswalkers_they_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30495,6 +32729,8 @@ fn tomik_has_affinity_for_planeswalkers_they_control() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -30534,6 +32770,8 @@ fn volcanic_salvo_costs_one_less_per_total_power_you_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30582,6 +32820,8 @@ fn furygale_flocking_costs_one_less_per_graveyard_instant_or_sorcery() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30611,6 +32851,8 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30634,6 +32876,8 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30659,6 +32903,8 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -30852,6 +33098,8 @@ fn a_summoning_sick_goaded_creature_is_not_required_to_attack() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30893,6 +33141,8 @@ fn furygale_flocking_tokens_must_attack_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -30945,6 +33195,8 @@ fn furygale_must_attack_requirement_expires_at_the_turn_boundary() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31011,6 +33263,8 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31071,6 +33325,8 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31183,6 +33439,8 @@ fn cast_promise_keeping_one_each(game: &mut Game) -> [ObjectId; 3] {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31270,6 +33528,8 @@ fn an_ordinary_keep_one_edict_places_no_vow_counters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31314,6 +33574,8 @@ fn casting_besmirch_goads_the_target_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31354,6 +33616,8 @@ fn goad_on_attached_forces_attack_and_avoids_the_goader_martial_impetus() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31417,6 +33681,8 @@ fn goad_on_attached_ends_when_the_aura_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31441,6 +33707,8 @@ fn goad_on_attached_ends_when_the_aura_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31470,6 +33738,401 @@ fn an_unenchanted_creature_is_not_goaded_by_attachment() {
     let creature = game.spawn_on_battlefield(PlayerId(0), VANILLA);
     assert!(!game.is_goaded(creature));
     assert!(game.goaders_of(creature).is_empty());
+}
+
+// ── Pacifism-family host restrictions on attached Auras (#155) ──────────────────────
+
+#[test]
+fn faiths_fetters_host_cant_attack_or_block() {
+    // Faith's Fetters: "Enchanted permanent can't attack or block, and its activated abilities
+    // can't be activated unless they're mana abilities."
+    let mut game = Game::new();
+    game.stack_library(PlayerId(1), &[card("Forest")]);
+    let attacker0 = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let host = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let mut test = TestGame { game };
+    let fetters = test.spawn_in_hand(PlayerId(0), card("Faith's Fetters"));
+    test.cast(fetters).at(Target::Object(host)).submit();
+    resolve_top_of_stack(&mut test); // Faith's Fetters resolves, attaches, queues its ETB trigger.
+    resolve_top_of_stack(&mut test); // the ETB trigger resolves: gain 4 life.
+    let mut game = test.game;
+
+    // The host can't block (P0 attacks with attacker0; P1's enchanted creature can't block it).
+    attack_with(&mut game, vec![attacker0]);
+    assert!(
+        block_with(&mut game, vec![(host, attacker0)]).is_err(),
+        "Faith's Fetters' host can't block"
+    );
+    block_with(&mut game, vec![]).expect("declining to block is legal");
+
+    // The host can't attack (advance to P1's own combat and try to declare it).
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::DeclareAttackers
+    });
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(1),
+            attackers: vec![(host, PlayerId(0))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "Faith's Fetters' host can't attack"
+    );
+}
+
+#[test]
+fn faiths_fetters_etb_gains_four_life() {
+    // Faith's Fetters: "When this Aura enters, you gain 4 life."
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let starting_life = game.life(PlayerId(0));
+    let mut test = TestGame { game };
+    let fetters = test.spawn_in_hand(PlayerId(0), card("Faith's Fetters"));
+    test.cast(fetters).at(Target::Object(host)).submit();
+    resolve_top_of_stack(&mut test); // Faith's Fetters resolves, attaches, queues its ETB trigger.
+    resolve_top_of_stack(&mut test); // the ETB trigger resolves: gain 4 life.
+
+    assert_eq!(
+        test.life(PlayerId(0)),
+        starting_life + 4,
+        "casting Faith's Fetters gains its controller 4 life"
+    );
+}
+
+#[test]
+fn faiths_fetters_host_activated_abilities_banned_except_mana() {
+    // Faith's Fetters: "… its activated abilities can't be activated unless they're mana
+    // abilities." (CR 605.)
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(0), card("Troyan, Gutsy Explorer"));
+    let mut test = TestGame { game };
+    let fetters = test.spawn_in_hand(PlayerId(0), card("Faith's Fetters"));
+    test.cast(fetters).at(Target::Object(host)).resolve();
+    resolve_top_of_stack(&mut test); // the ETB trigger resolves: gain 4 life.
+    test.fund_mana(PlayerId(0));
+
+    assert_eq!(
+        test.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: host,
+            ability_index: 1, // {U}, {T}: Draw a card, then discard a card. (non-mana)
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "a non-mana activated ability of the host's can't be activated"
+    );
+    assert!(
+        test.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: host,
+            ability_index: 0, // {T}: Add {G}{U}. (a mana ability)
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        })
+        .is_ok(),
+        "the host's mana ability is exempt from Faith's Fetters' restriction"
+    );
+}
+
+#[test]
+fn prison_term_bans_all_activated_abilities() {
+    // Prison Term: "Enchanted creature can't attack or block, and its activated abilities can't
+    // be activated." (No mana-ability carve-out, unlike Faith's Fetters.)
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(0), card("Troyan, Gutsy Explorer"));
+    let mut test = TestGame { game };
+    let prison_term = test.spawn_in_hand(PlayerId(0), card("Prison Term"));
+    test.cast(prison_term).at(Target::Object(host)).resolve();
+
+    assert_eq!(
+        test.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: host,
+            ability_index: 0, // {T}: Add {G}{U}. (a mana ability — still banned under Prison Term)
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "Prison Term bans even the host's mana ability"
+    );
+}
+
+#[test]
+fn prison_term_reattaches_to_entering_opponent_creature() {
+    // Prison Term: "Whenever a creature an opponent controls enters, you may attach this Aura
+    // to that creature." Accepting moves the Aura — and its "activated abilities can't be
+    // activated" restriction — off its original host and onto the newly entering one.
+    let mut game = Game::new();
+    let host_a = game.spawn_on_battlefield(PlayerId(1), card("Troyan, Gutsy Explorer"));
+    let mut test = TestGame { game };
+    let prison_term = test.spawn_in_hand(PlayerId(0), card("Prison Term"));
+    test.cast(prison_term).at(Target::Object(host_a)).resolve();
+    let aura = test.attachments(host_a)[0];
+    let mut game = test.game;
+
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(1),
+            object: host_a,
+            ability_index: 0, // {T}: Add {G}{U}. (a mana ability — still banned under Prison Term)
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "host A starts banned under Prison Term"
+    );
+
+    // P1 — an opponent of Prison Term's controller P0 — casts a second Troyan on their own
+    // turn (creature spells are sorcery-speed).
+    game.stack_library(PlayerId(1), &[card("Forest")]); // so P1's draw step doesn't deck out.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    let host_b_card = game.spawn_in_hand(PlayerId(1), card("Troyan, Gutsy Explorer"));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: host_b_card,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // host_b enters, pausing the "may attach" trigger for P0.
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "P0 (Prison Term's controller) is offered the re-attach, got {:?}",
+        game.pending_choice()
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the accepted re-attach resolves.
+
+    let host_b = battlefield_named(&game, PlayerId(1), "Troyan, Gutsy Explorer")
+        .into_iter()
+        .find(|&id| id != host_a)
+        .expect("the second Troyan entered the battlefield");
+    assert_eq!(
+        game.attached_to(aura),
+        Some(host_b),
+        "Prison Term moved to the newly entering opponent creature"
+    );
+    assert!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(1),
+            object: host_a,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        })
+        .is_ok(),
+        "host A regained its activated ability once Prison Term left"
+    );
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(1),
+            object: host_b,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "host B is now banned under the moved Prison Term"
+    );
+}
+
+/// A test-only Aura shaped like Prison Term's re-attach trigger, but with an `enchant` filter
+/// narrower than its own entering-trigger's watch filter — isolates the re-attach legality
+/// re-check from the trigger filter, which every real pool Aura happens to share.
+const NARROW_REATTACH: CardDef = CardDef {
+    name: "Narrow Reattach (test)",
+    enchant: Some(PermanentFilter {
+        power_max: Some(2),
+        ..PermanentFilter::of(TypeSet::CREATURE)
+    }),
+    abilities: &[Ability {
+        timing: Timing::Triggered(Trigger::PermanentEnters {
+            filter: PermanentFilter::of(TypeSet::CREATURE),
+            controller: EnterController::Opponent,
+        }),
+        effect: Effect::AttachSelfToEntering { entering: None },
+        optional: true,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..FLIGHT
+};
+
+#[test]
+fn reattach_effect_rechecks_the_auras_enchant_filter_at_the_move() {
+    // The widened `attach_self_to_entering` re-checks the Aura's own `enchant` filter against
+    // the newly entering permanent before moving it (CR 303.4f-style legality), not just the
+    // trigger's own watch filter — Prison Term itself can't exercise this (its `enchant` and
+    // trigger filter are both a plain "creature"), so this is a control case against a
+    // deliberately mismatched test Aura.
+    let mut game = Game::new();
+    let small_host = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear")); // 2/2
+    let mut test = TestGame { game };
+    let aura_card = test.spawn_in_hand(PlayerId(0), NARROW_REATTACH);
+    test.cast(aura_card)
+        .at(Target::Object(small_host))
+        .resolve();
+    let aura = test.attachments(small_host)[0];
+    let mut game = test.game;
+
+    // A power-4 opponent creature enters: it matches the trigger's broad "creature" filter but
+    // fails the Aura's own "power 2 or less" enchant filter.
+    game.stack_library(PlayerId(1), &[card("Forest")]); // so P1's draw step doesn't deck out.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    let big = game.spawn_in_hand(PlayerId(1), card("Serra Angel")); // 4/4
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: big,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the Angel enters, pausing the "may attach" trigger for P0.
+
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.attached_to(aura),
+        Some(small_host),
+        "an illegal enchant host doesn't move the Aura, even though the \"may\" was accepted"
+    );
+}
+
+#[test]
+fn pacifism_restriction_lifts_when_aura_leaves() {
+    // Destroying Faith's Fetters restores the host's ability to attack, block, and activate.
+    let mut game = Game::new();
+    // Two library cards: one drawn by the host's own "draw a card" ability below, one for P1's
+    // ordinary draw step when play advances to their turn (so P1 doesn't deck out).
+    game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+    let host = game.spawn_on_battlefield(PlayerId(1), card("Troyan, Gutsy Explorer"));
+    let mut test = TestGame { game };
+    let fetters = test.spawn_in_hand(PlayerId(0), card("Faith's Fetters"));
+    test.cast(fetters).at(Target::Object(host)).submit();
+    resolve_top_of_stack(&mut test);
+    resolve_top_of_stack(&mut test); // ETB lifegain
+    let mut game = test.game;
+
+    let aura = game.attachments(host)[0];
+    game.fund_mana(PlayerId(0));
+    let fracture = game.spawn_in_hand(PlayerId(0), card("Fracture"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: fracture,
+        target: Some(Target::Object(aura)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Fracture is castable");
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(aura),
+        Zone::Graveyard,
+        "Faith's Fetters was destroyed"
+    );
+
+    // The host can activate its abilities again (index 1, banned under Faith's Fetters'
+    // `mana_only` restriction, resolves once the Aura is gone).
+    game.fund_mana(PlayerId(1));
+    assert!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(1),
+            object: host,
+            ability_index: 1, // {U}, {T}: Draw a card, then discard a card.
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        })
+        .is_ok(),
+        "removing Faith's Fetters lifts the activated-ability restriction"
+    );
+    resolve_top_of_stack(&mut game);
+    let Some(PendingChoice::DiscardCards {
+        player: PlayerId(1),
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the draw/discard ability to pause on P1's discard choice, got {:?}",
+            game.pending_choice()
+        );
+    };
+    let drawn = *hand_ids(&game, PlayerId(1)).last().unwrap();
+    game.submit(Intent::Discard {
+        player: PlayerId(1),
+        cards: vec![drawn],
+    })
+    .expect("P1 discards the drawn card");
+
+    // The host can attack and block again.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::DeclareAttackers
+    });
+    game.untap(host); // the draw/discard activation above tapped it
+    assert!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(1),
+            attackers: vec![(host, PlayerId(0))],
+        })
+        .is_ok(),
+        "removing Faith's Fetters lifts the can't-attack restriction"
+    );
 }
 
 // ── One-shot until-end-of-turn control change (CR 720) ──────────────────────────────
@@ -31516,6 +34179,8 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -31532,6 +34197,7 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -31582,6 +34248,172 @@ fn stolen_creature_reverts_control_at_cleanup() {
     );
 }
 
+// ── Condition-scoped control duration (CR 611.2b — Rubinia Soulsinger) ──────────────
+
+/// A test proxy for Rubinia Soulsinger: a legendary flyer with "You may choose not to untap this
+/// during your untap step" and "{T}: Gain control of target creature for as long as you control
+/// this and this remains tapped."
+const RUBINIA: CardDef = CardDef {
+    legendary: true,
+    may_choose_not_to_untap: true,
+    abilities: &[Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            return_self: false,
+            mill_self: 0,
+            exile_self: false,
+        }),
+        effect: Effect::GainControlWhile {
+            target: TargetSpec::Creature,
+            while_source_tapped: true,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("Rubinia Soulsinger (test)", 2, 4, &[Keyword::Flying])
+};
+
+/// Set up P0's Rubinia and P1's creature, then activate Rubinia's `{T}` steal targeting it.
+fn steal_with_rubinia(game: &mut Game) -> (ObjectId, ObjectId) {
+    // Libraries so neither player decks out while turns roll forward to the next untap step.
+    game.stack_library(PlayerId(0), &[VANILLA; 4]);
+    game.stack_library(PlayerId(1), &[VANILLA; 4]);
+    let rubinia = game.spawn_on_battlefield(PlayerId(0), RUBINIA);
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let index = only_activated_ability_index(game, rubinia);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: rubinia,
+        ability_index: index,
+        target: Some(Target::Object(creature)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("Rubinia's {T} steal is activatable");
+    resolve_top_of_stack(game);
+    (rubinia, creature)
+}
+
+#[test]
+fn rubinia_steals_creature_while_tapped() {
+    let mut game = Game::new();
+    let (rubinia, creature) = steal_with_rubinia(&mut game);
+
+    assert!(game.is_tapped(rubinia), "the {{T}} cost taps Rubinia");
+    assert_eq!(
+        game.owner_of(creature),
+        PlayerId(1),
+        "ownership never changes (CR 720)"
+    );
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "Rubinia's controller now controls the creature (CR 611.2b)"
+    );
+}
+
+#[test]
+fn rubinia_untapping_reverts_the_steal() {
+    let mut game = Game::new();
+    let (rubinia, creature) = steal_with_rubinia(&mut game);
+
+    // Reach P0's next untap; `advance_until` answers the optional-untap pause by untapping Rubinia
+    // (empty keep-tapped), which breaks the "remains tapped" condition.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Draw
+    });
+
+    assert!(!game.is_tapped(rubinia), "Rubinia untapped this turn");
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(1),
+        "the steal reverts the instant Rubinia untaps (CR 611.2b)"
+    );
+}
+
+#[test]
+fn rubinia_declines_untap_keeps_control() {
+    let mut game = Game::new();
+    let (rubinia, creature) = steal_with_rubinia(&mut game);
+
+    // Advance to P0's untap step and stop on the optional-untap pause.
+    advance_until(&mut game, |g| {
+        matches!(g.pending_choice(), Some(PendingChoice::DeclineUntap { .. }))
+    });
+    game.submit(Intent::DeclineUntap {
+        player: PlayerId(0),
+        keep_tapped: vec![rubinia],
+    })
+    .expect("P0 may choose not to untap Rubinia");
+
+    assert!(
+        game.is_tapped(rubinia),
+        "declining to untap leaves Rubinia tapped (CR 502.2)"
+    );
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "the steal persists while Rubinia stays tapped and controlled (CR 611.2b)"
+    );
+}
+
+#[test]
+fn rubinia_soulsinger_card_steals_while_tapped() {
+    // The authored TOML wires `gain_control_while` + `may_choose_not_to_untap` end to end.
+    let mut game = Game::new();
+    let rubinia = game.spawn_on_battlefield(PlayerId(0), card("Rubinia Soulsinger"));
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    assert!(
+        game.def_of(rubinia).may_choose_not_to_untap,
+        "the TOML flag parsed onto the card"
+    );
+    let index = only_activated_ability_index(&game, rubinia);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: rubinia,
+        ability_index: index,
+        target: Some(Target::Object(creature)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("Rubinia's {T} steal is activatable");
+    resolve_top_of_stack(&mut game);
+
+    assert!(game.is_tapped(rubinia), "the {{T}} cost taps Rubinia");
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "the loaded card gains control of the target creature (CR 611.2b)"
+    );
+}
+
+#[test]
+fn rubinia_leaving_battlefield_reverts_control() {
+    let mut game = Game::new();
+    let (rubinia, creature) = steal_with_rubinia(&mut game);
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(rubinia)));
+
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(1),
+        "the steal reverts the instant Rubinia leaves the battlefield (CR 611.2b)"
+    );
+}
+
 #[test]
 fn besmirch_untaps_steals_hastes_and_goads() {
     let mut game = Game::with_players(3, 0);
@@ -31599,6 +34431,8 @@ fn besmirch_untaps_steals_hastes_and_goads() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -31693,6 +34527,8 @@ const MELODY: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -31709,6 +34545,7 @@ const MELODY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -32364,6 +35201,8 @@ const CHOOSE_TWO: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -32380,6 +35219,7 @@ const CHOOSE_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -32681,6 +35521,8 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -32697,6 +35539,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -33039,6 +35882,8 @@ const FIGHT_SPELL: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -33055,6 +35900,7 @@ const FIGHT_SPELL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -33187,6 +36033,8 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33205,6 +36053,8 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33241,6 +36091,8 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33271,6 +36123,8 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33306,6 +36160,8 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33328,6 +36184,8 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33349,6 +36207,8 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -33384,6 +36244,8 @@ fn pearl_ear_affinity_for_auras_grants_no_reduction_with_zero_auras() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -33417,6 +36279,8 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33438,6 +36302,8 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33465,6 +36331,8 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33494,6 +36362,8 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33516,6 +36386,8 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -33550,6 +36422,8 @@ fn zimone_reduces_first_x_spell_each_turn_per_counter() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -33570,6 +36444,8 @@ fn zimone_reduces_first_x_spell_each_turn_per_counter() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33600,6 +36476,8 @@ fn zimone_reduces_only_the_first_x_spell_each_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33618,6 +36496,8 @@ fn zimone_reduces_only_the_first_x_spell_each_turn() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -33650,6 +36530,8 @@ fn zimone_x_spell_reduction_resets_next_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33679,6 +36561,8 @@ fn zimone_x_spell_reduction_resets_next_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -33708,6 +36592,8 @@ fn zimone_does_not_reduce_non_x_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -33746,6 +36632,8 @@ fn sram_senior_edificer_draws_on_casting_an_aura_but_not_a_plain_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -34007,6 +36895,8 @@ fn witch_of_the_moors_single_trigger_edict_then_optional_return() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -34080,6 +36970,8 @@ fn relic_retriever_makes_a_treasure_only_after_a_card_left_your_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -34134,6 +37026,8 @@ fn relic_retriever_fires_on_each_players_end_step() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -34254,6 +37148,8 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34270,6 +37166,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -34291,6 +37188,8 @@ fn cards_leaving_graveyard_fires_the_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -34355,6 +37254,8 @@ fn only_your_graveyard_counts() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -34384,6 +37285,8 @@ fn spirit_reanimate_and_resolve_trigger(game: &mut Game, corpse: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -34591,6 +37494,8 @@ static PACK_A_PUNCH: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34607,6 +37512,7 @@ static PACK_A_PUNCH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Kirol, History Buff's front face: a 2/3 legendary Vampire Cleric that becomes prepared
@@ -34655,6 +37561,8 @@ static KIROL: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34665,6 +37573,7 @@ static KIROL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
     functions_in_graveyard: false,
     enchant: None,
     enchant_graveyard: false,
@@ -34688,6 +37597,8 @@ fn prepare_kirol_via_graveyard_exit(game: &mut Game, kirol: ObjectId) -> ObjectI
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -34919,6 +37830,8 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34935,6 +37848,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Brazen Borrower's front face — a 3/1 flash/flying Faerie Rogue that can block only flyers,
@@ -34975,6 +37889,8 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -34991,6 +37907,7 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Elusive Otter's adventure half — Grove's Bounty ({X}{G} sorcery), simplified to a single
@@ -35054,6 +37971,8 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -35070,6 +37989,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Elusive Otter's front face — a 1/1 Otter with prowess that lesser-power creatures can't block,
@@ -35109,6 +38029,8 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -35125,6 +38047,7 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
@@ -35138,6 +38061,8 @@ fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -35206,6 +38131,8 @@ fn adventure_creature_cast_directly_from_hand_still_works() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -35567,6 +38494,8 @@ fn inspired_skypainter_becomes_prepared_on_etb() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -35624,6 +38553,8 @@ fn inspired_skypainter_maestros_gift_copies_target_creature_with_haste() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -35715,6 +38646,8 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -35731,6 +38664,7 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Dirgur Focusmage's front face: a 1/4 that becomes prepared whenever its controller casts an
@@ -35781,6 +38715,8 @@ static DIRGUR_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -35791,6 +38727,7 @@ static DIRGUR_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
     functions_in_graveyard: false,
     enchant: None,
     enchant_graveyard: false,
@@ -35817,6 +38754,8 @@ fn dirgur_becomes_prepared_on_mv5_instant_cast_from_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -35846,6 +38785,8 @@ fn dirgur_does_not_prepare_on_small_instant() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -35880,6 +38821,8 @@ fn dirgur_does_not_prepare_on_flashback_instant() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -35906,6 +38849,8 @@ fn prepare_dirgur(game: &mut Game, dirgur: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -35974,6 +38919,8 @@ fn real_dirgur_focusmage_from_the_pool_prepares_and_casts_braingeyser() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -36178,6 +39125,8 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -36194,6 +39143,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     };
 
     let mut game = Game::new();
@@ -36216,6 +39166,8 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -36431,6 +39383,8 @@ fn pest_rescuer_pest_token_dies_gain_life() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -36472,6 +39426,8 @@ fn pest_rescuer_makes_pest_on_each_players_upkeep() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -37038,6 +39994,8 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -37054,6 +40012,7 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -37089,6 +40048,8 @@ fn a_planeswalker_cast_onto_the_battlefield_has_its_starting_loyalty() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -37325,6 +40286,8 @@ fn cast_red_spell_triggers_balefire_damage_at_a_planeswalker() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -37385,6 +40348,8 @@ fn rip_apart_mode_0_damages_a_creature_or_a_planeswalker() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -37421,6 +40386,8 @@ fn magma_opus_divides_damage_onto_a_planeswalker_and_a_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -37467,6 +40434,8 @@ fn put_two_counters(game: &mut Game, caster: PlayerId, creature: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -38302,6 +41271,8 @@ const CREATURE_TUTOR: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -38318,6 +41289,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -38347,6 +41319,8 @@ fn a_tutor_finds_a_card_puts_it_in_hand_and_shuffles() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -38556,6 +41530,8 @@ fn search_up_to_two_declining_the_first_pick_still_shuffles_and_finds_nothing() 
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -38833,6 +41809,8 @@ fn cultivate_finds_two_lands_one_to_battlefield_tapped_one_to_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -38981,6 +41959,8 @@ fn ramp_puts_a_basic_land_onto_the_battlefield_tapped() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -39410,6 +42390,8 @@ fn cycling_discards_the_card_and_draws_glittering_massif() {
         Zone::Graveyard,
         "the cycled card was discarded to the graveyard, not cast",
     );
+    // CR 702.29a: cycling is an activated ability — its draw resolves off the stack, not inline.
+    resolve_top_of_stack(&mut game);
     assert_eq!(
         hand_ids(&game, PlayerId(0)).len(),
         hand_before,
@@ -39470,6 +42452,201 @@ fn cycling_rejected_for_a_card_without_cycling() {
 }
 
 #[test]
+fn krosan_tusker_cycle_triggers_land_search_above_the_draw() {
+    // Krosan Tusker: "Cycling {2}{G} ... When you cycle this card, you may search your library
+    // for a basic land card, reveal that card, put it into your hand, then shuffle. (Do this
+    // before you draw.)" — CR 702.29e: the cycled trigger stacks above cycling's own draw.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let tusker = game.spawn_in_hand(PlayerId(0), card("Krosan Tusker"));
+    let lib = game.stack_library(PlayerId(0), &[card("Island"), card("Forest")]);
+    let island = lib[0];
+    let forest = lib[1];
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: tusker,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(tusker),
+        Zone::Graveyard,
+        "the cycled card is discarded immediately, paying cycling's cost",
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before - 1,
+        "discarded, but the draw hasn't resolved yet — it's queued beneath the cycled trigger",
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the cycled trigger's optional search pauses before the draw resolves, got {:?}",
+        game.pending_choice(),
+    );
+
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the search ability resolves off the top of the stack
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "accepting the cycled trigger pauses on the library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand);
+    assert!(
+        matches.contains(&island) && matches.contains(&forest),
+        "both basics match"
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(forest),
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Hand,
+        "the found land went to hand"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "discard (-1) + search find (+1) — the draw still hasn't resolved",
+    );
+
+    resolve_top_of_stack(&mut game); // the draw, queued underneath the cycled trigger, resolves last
+    assert_eq!(
+        game.zone_of(island),
+        Zone::Hand,
+        "the queued draw resolves only after the cycled trigger clears",
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before + 1,
+        "discard (-1) + search find (+1) + draw (+1)",
+    );
+}
+
+#[test]
+fn krosan_tusker_cycle_declining_the_search_still_draws() {
+    // Declining the optional search still lets cycling's own draw resolve — the "may" only
+    // gates the rider, never the fixed draw itself.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let tusker = game.spawn_in_hand(PlayerId(0), card("Krosan Tusker"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: tusker,
+    })
+    .unwrap();
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the queued draw resolves
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "discard (-1) + draw (+1), net zero — the search rider was declined",
+    );
+}
+
+#[test]
+fn decree_of_justice_cycle_pays_x_for_soldiers() {
+    // Decree of Justice: "Cycling {2}{W} ... When you cycle this card, you may pay {X}. If you
+    // do, create X 1/1 white Soldier creature tokens." — the paid X is chosen when accepting
+    // the cycled trigger, independent of the spell's own {X}{X} casting cost.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let decree = game.spawn_in_hand(PlayerId(0), card("Decree of Justice"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: decree,
+    })
+    .unwrap();
+
+    let Some(PendingChoice::PayCost { cost, .. }) = game.pending_choice() else {
+        panic!(
+            "the cycled trigger's pay-{{X}} rider pauses on a pay-or-decline, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(cost.x, 1, "a single {{X}} symbol in the rider's own cost");
+
+    game.submit(Intent::PayOptionalCostX {
+        player: PlayerId(0),
+        pay: true,
+        x: 3,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the paid trigger creates the Soldiers
+    resolve_top_of_stack(&mut game); // the queued draw, underneath, resolves last
+
+    let soldiers: Vec<ObjectId> = game
+        .live_object_ids()
+        .into_iter()
+        .filter(|&id| {
+            game.zone_of(id) == Zone::Battlefield
+                && game.controller_of(id) == PlayerId(0)
+                && game.def_of(id).name == "Soldier"
+        })
+        .collect();
+    assert_eq!(soldiers.len(), 3, "paid X=3 creates three Soldier tokens");
+    for soldier in soldiers {
+        assert_eq!(game.power(soldier), 1);
+        assert_eq!(game.toughness(soldier), 1);
+    }
+}
+
+#[test]
+fn decree_of_justice_cycle_declining_the_pay_creates_no_soldiers() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let decree = game.spawn_in_hand(PlayerId(0), card("Decree of Justice"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: decree,
+    })
+    .unwrap();
+    game.submit(Intent::PayOptionalCostX {
+        player: PlayerId(0),
+        pay: false,
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the queued draw resolves
+
+    assert!(
+        game.live_object_ids()
+            .into_iter()
+            .all(|id| game.zone_of(id) != Zone::Battlefield || game.def_of(id).name != "Soldier"),
+        "declining the pay creates nothing",
+    );
+}
+
+#[test]
 fn magma_opus_hand_ability_makes_treasure() {
     // CR 113.6/602.5e — "{U/R}{U/R}, Discard this card: Create a Treasure token." functions
     // only from the hand, like Cycling, but with an authored payload instead of a fixed draw.
@@ -39488,6 +42665,8 @@ fn magma_opus_hand_ability_makes_treasure() {
         Zone::Graveyard,
         "the card was discarded as part of the ability's cost, not cast",
     );
+    // CR 113.6/602: a hand-activated ability resolves off the stack, not inline.
+    resolve_top_of_stack(&mut game);
     assert_eq!(
         battlefield_named(&game, PlayerId(0), "Treasure").len(),
         1,
@@ -39536,6 +42715,194 @@ fn magma_opus_hand_ability_rejected_from_wrong_zone() {
 }
 
 #[test]
+fn azorius_guildmage_counters_an_activated_ability_on_the_stack() {
+    // Azorius Guildmage: "{2}{U}: Counter target activated ability." P0 activates a creature's
+    // "{0}: Draw a card" — a non-mana activated ability (CR 602), so it uses the stack — and P1
+    // counters it. The draw never resolves.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[VANILLA]);
+    let drawer = game.spawn_on_battlefield(PlayerId(0), FIXED_DRAW_PERMANENT);
+    let guildmage = game.spawn_on_battlefield(PlayerId(1), card("Azorius Guildmage"));
+    let draw_index = only_activated_ability_index(&game, drawer);
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: drawer,
+        ability_index: draw_index,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("the {0} draw ability is activatable");
+
+    // The activated ability is now a stack object — the counter's one legal target.
+    const COUNTER_ABILITY: usize = 1; // {2}{U}: Counter target activated ability.
+    assert_eq!(
+        game.legal_targets(guildmage, Some(COUNTER_ABILITY)),
+        vec![Target::Object(drawer)],
+        "the draw ability on the stack is the counter's one legal target",
+    );
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: guildmage,
+        ability_index: COUNTER_ABILITY,
+        target: Some(Target::Object(drawer)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("Azorius Guildmage counters the activated ability");
+
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "the countered draw never resolved — P0 drew nothing",
+    );
+}
+
+#[test]
+fn azorius_guildmage_cannot_counter_a_mana_ability() {
+    // "(Mana abilities can't be targeted.)" — CR 605.3b: a mana ability never uses the stack, so
+    // it is never a legal target for "counter target activated ability".
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let guildmage = game.spawn_on_battlefield(PlayerId(1), card("Azorius Guildmage"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .expect("a basic land taps for mana");
+
+    assert!(
+        game.stack().is_empty(),
+        "tapping a land for mana never puts an ability on the stack (CR 605.3b)",
+    );
+    assert!(
+        game.legal_targets(guildmage, Some(1)).is_empty(),
+        "a mana ability is not a legal target for 'counter target activated ability'",
+    );
+}
+
+#[test]
+fn azorius_guildmage_counters_a_cycling_activation() {
+    // Cycling is an activated ability (CR 702.29a): P0 cycles a card, putting its draw on the
+    // stack; P1 counters it. The card stays discarded (the cost was already paid), but the draw
+    // never resolves.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[VANILLA]);
+    let massif = game.spawn_in_hand(PlayerId(0), card("Glittering Massif"));
+    let guildmage = game.spawn_on_battlefield(PlayerId(1), card("Azorius Guildmage"));
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: massif,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(massif),
+        Zone::Graveyard,
+        "cycling's discard cost was paid immediately",
+    );
+
+    // The cycling draw is a stack object, targetable by the counter.
+    let target = match game.legal_targets(guildmage, Some(1)).as_slice() {
+        [only] => *only,
+        other => panic!("expected the cycling ability as the sole counter target, got {other:?}"),
+    };
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: guildmage,
+        ability_index: 1,
+        target: Some(target),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("Azorius Guildmage counters the cycling activation");
+
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before - 1,
+        "the card was discarded but the countered draw never resolved — net minus one",
+    );
+}
+
+#[test]
+fn cycling_still_draws_when_uncountered() {
+    // Regression for the stack-routing change: with no response, cycling's draw is a real stack
+    // ability that resolves to a normal draw (net zero).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let massif = game.spawn_in_hand(PlayerId(0), card("Glittering Massif"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::Cycle {
+        player: PlayerId(0),
+        card: massif,
+    })
+    .unwrap();
+    // The draw is on the stack (not yet resolved), so the discard nets minus one for now.
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before - 1,
+        "the draw is queued on the stack, not resolved inline",
+    );
+    assert!(
+        !game.stack().is_empty(),
+        "cycling's draw is a real stack ability",
+    );
+
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "the draw resolved — discard (-1) + draw (+1), net zero",
+    );
+}
+
+#[test]
+fn azorius_guildmage_taps_target_creature() {
+    // The {2}{W} half: "Tap target creature."
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let guildmage = game.spawn_on_battlefield(PlayerId(0), card("Azorius Guildmage"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: guildmage,
+        ability_index: 0, // {2}{W}: Tap target creature.
+        target: Some(Target::Object(bear)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("the tap ability is activatable");
+    resolve_top_of_stack(&mut game);
+
+    assert!(game.is_tapped(bear), "the target creature is tapped");
+}
+
+#[test]
 fn failing_to_find_is_legal_and_still_shuffles() {
     // A fixed seed makes the shuffle deterministic; with distinct cards we can see it reorder.
     let mut game = Game::with_seed(7);
@@ -39561,6 +42928,8 @@ fn failing_to_find_is_legal_and_still_shuffles() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -39610,6 +42979,8 @@ fn a_creature_search_cannot_find_a_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -39803,6 +43174,8 @@ const MASS_SHOCK: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -39819,6 +43192,7 @@ const MASS_SHOCK: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A mass-bounce sorcery: "Return all creatures to their owners' hands." Exercises
@@ -39863,6 +43237,8 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -39879,6 +43255,7 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -40017,6 +43394,8 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -40033,6 +43412,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -40051,6 +43431,8 @@ fn populate_creates_a_copy_of_a_creature_token_you_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40099,6 +43481,8 @@ fn delayed_sacrifice_next_end_step_determined_iteration() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40169,6 +43553,8 @@ fn determined_iteration_populated_token_gains_haste() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40228,6 +43614,8 @@ fn create_token_copy_without_haste_rider_grants_no_haste() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40289,6 +43677,8 @@ fn impulse_play_until_end_of_next_turn_atsushi() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40475,6 +43865,8 @@ fn mass_weaken_kills_low_toughness_and_survivors_recover_next_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40559,6 +43951,8 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -40576,6 +43970,8 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40635,6 +44031,8 @@ const MAKE_TREASURES: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -40651,6 +44049,7 @@ const MAKE_TREASURES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -40667,6 +44066,8 @@ fn a_create_treasure_effect_puts_artifact_tokens_onto_the_battlefield() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40704,6 +44105,8 @@ fn a_treasure_sacrifices_for_mana_of_any_color_and_ceases_to_exist() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40748,6 +44151,8 @@ fn a_treasure_sacrifices_for_mana_of_any_color_and_ceases_to_exist() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40774,6 +44179,8 @@ fn magecraft_makes_a_treasure_with_storm_kiln_artist_out() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40829,6 +44236,8 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -40845,6 +44254,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -40887,6 +44297,8 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -40903,6 +44315,7 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -40926,6 +44339,8 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -40948,6 +44363,8 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41014,6 +44431,8 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41030,6 +44449,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -41049,6 +44469,8 @@ fn magecraft_fractal_enters_with_counters_equal_to_spell_mana_value() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41091,6 +44513,8 @@ fn hardened_scales_grows_a_magecraft_tokens_entry_counters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41124,6 +44548,8 @@ fn renegade_bull_gets_plus_x_until_end_of_turn_where_x_is_the_cast_spells_mana_v
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41178,6 +44604,8 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41194,6 +44622,7 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only permanent isolating Manaform Hellkite's cast-noncreature trigger: "Whenever you
@@ -41255,6 +44684,8 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41271,6 +44702,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -41293,6 +44725,8 @@ fn manaform_hellkite_token_pt_equals_mana_spent_printed_cost() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41344,6 +44778,8 @@ fn manaform_hellkite_token_pt_reflects_actual_mana_spent() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41382,6 +44818,8 @@ fn manaform_dragon_token_exiled_at_next_end_step() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41428,6 +44866,8 @@ fn create_token_without_set_base_pt_uses_printed_pt() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41465,6 +44905,8 @@ fn manaform_hellkite_pool_card_creates_the_dragon_illusion() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41513,6 +44955,8 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41529,6 +44973,7 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only permanent isolating Rootha, Mastering the Moment's begin-combat trigger: "At the
@@ -41585,6 +45030,8 @@ const ROOTHA_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41601,6 +45048,7 @@ const ROOTHA_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -41622,6 +45070,8 @@ fn rootha_makes_x_x_elemental_where_x_is_the_greatest_instant_or_sorcery_mana_va
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41639,6 +45089,8 @@ fn rootha_makes_x_x_elemental_where_x_is_the_greatest_instant_or_sorcery_mana_va
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41692,6 +45144,8 @@ fn rootha_mastering_the_moment_pool_card_creates_the_elemental() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41768,6 +45222,8 @@ const RIONYA_TEST: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -41784,6 +45240,7 @@ const RIONYA_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -41805,6 +45262,8 @@ fn rionya_count_is_one_plus_instants_and_sorceries_cast_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41822,6 +45281,8 @@ fn rionya_count_is_one_plus_instants_and_sorceries_cast_this_turn() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -41999,6 +45460,8 @@ const IMPULSE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -42015,6 +45478,7 @@ const IMPULSE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Impulse-exile the top card of P0's library, returning the exiled card's id.
@@ -42190,6 +45654,8 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -42206,6 +45672,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -42375,6 +45842,8 @@ fn laelia_grows_when_cards_exiled_from_your_library_or_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -42443,6 +45912,8 @@ const MODAL_DRAGON: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -42459,6 +45930,7 @@ const MODAL_DRAGON: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Put `MODAL_DRAGON` onto the battlefield, kill it with Shock, and resolve until its dies
@@ -42477,6 +45949,8 @@ fn kill_modal_dragon(game: &mut Game) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -42569,6 +46043,8 @@ fn atsushi_dies_trigger_offers_a_two_mode_choose_one() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -42589,6 +46065,7 @@ const DISCARD_ONE: CardDef = sorcery(
     &[spell_ability(Effect::Discard {
         count: 1,
         target_player: false,
+        or_one_matching: None,
     })],
 );
 
@@ -42605,6 +46082,8 @@ fn discard_one(game: &mut Game, target_card: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -42821,6 +46300,8 @@ fn conspiracy_theorist_discard_lets_you_impulse_the_card() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -43182,6 +46663,8 @@ fn free_cast_from_exile_pays_no_mana_quintorius_loremaster() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -43240,6 +46723,8 @@ fn free_cast_permission_expires_at_cleanup_quintorius_loremaster() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -43283,6 +46768,8 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_on_resolve() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -43352,6 +46839,8 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_when_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -43371,6 +46860,8 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_when_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -43408,6 +46899,8 @@ fn normal_spell_still_goes_to_graveyard_quintorius_loremaster() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -43612,6 +47105,8 @@ fn an_equip_ability_fizzles_when_its_creature_dies_in_response() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -43819,6 +47314,8 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -43835,6 +47332,7 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -43909,6 +47407,8 @@ macro_rules! amount_spell {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -43925,6 +47425,7 @@ macro_rules! amount_spell {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     };
 }
@@ -44009,6 +47510,7 @@ const PER_CREATURE_TREASURES: CardDef = amount_spell!(
                 nonbasic: false,
                 name: None,
                 nonlegendary: false,
+                nonlair: false,
             },
             zone: AmountZone::Battlefield,
         },
@@ -44094,6 +47596,8 @@ macro_rules! hydra_with_etb {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -44110,6 +47614,7 @@ macro_rules! hydra_with_etb {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     };
 }
@@ -44251,6 +47756,8 @@ fn cast_and_collect(game: &mut Game, spell: ObjectId, target: Option<Target>) ->
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -44503,6 +48010,8 @@ fn enter_counters_static_ignores_opponents() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -44603,6 +48112,49 @@ fn dina_essence_brewer_sac_index(game: &Game, dina: ObjectId) -> usize {
         .iter()
         .position(|a| matches!(a.timing, Timing::Activated(_)))
         .expect("Dina, Essence Brewer has an activated sacrifice ability")
+}
+
+#[test]
+fn miren_gain_life_equals_sacrificed_creature_toughness() {
+    // Miren, the Moaning Well: "{2}, {T}, Sacrifice a creature: You gain life equal to the
+    // sacrificed creature's toughness."
+    let mut game = TestGame::new();
+    game.fund_mana(PlayerId(0));
+    let miren = game.spawn_on_battlefield(PlayerId(0), card("Miren, the Moaning Well"));
+    let sac = game.spawn_on_battlefield(PlayerId(0), creature("Big (test)", 5, 3, &[]));
+    let before_life = game.life(PlayerId(0));
+
+    let index = miren_sac_index(&game, miren);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: miren,
+        ability_index: index,
+        target: None,
+        sacrifice: vec![sac],
+        x: 0,
+    })
+    .unwrap();
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(sac),
+        Zone::Graveyard,
+        "the creature paid the cost"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before_life + 3,
+        "gained life equal to the sacrificed creature's toughness (3), not its power (5)",
+    );
+}
+
+/// Miren, the Moaning Well's sacrifice ability's index (its only ability).
+fn miren_sac_index(game: &Game, miren: ObjectId) -> usize {
+    game.def_of(miren)
+        .abilities
+        .iter()
+        .position(|a| matches!(a.timing, Timing::Activated(_)))
+        .expect("Miren, the Moaning Well has an activated sacrifice ability")
 }
 
 #[test]
@@ -44920,6 +48472,8 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -44936,6 +48490,7 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -44971,6 +48526,7 @@ const LOOT: CardDef = sorcery(
             Effect::Discard {
                 count: 2,
                 target_player: false,
+                or_one_matching: None,
             },
         ],
     })],
@@ -45071,6 +48627,124 @@ fn pull_from_tomorrow_draws_x_for_caster() {
         "drew two, discarded one, net one card in hand"
     );
     assert_eq!(game.zone_of(drawn_top), Zone::Graveyard);
+}
+
+// Compulsive Research: "Target player draws three cards. Then that player discards two cards
+// unless they discard a land card." — the discard's land escape valve (CR 608.2b resolution-time
+// choice): a hand holding a land may satisfy the whole discard with that single land instead of
+// the plain two-card count.
+
+#[test]
+fn compulsive_research_discard_two_or_one_land() {
+    let mut game = TestGame::new();
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    game.stack_library(
+        PlayerId(0),
+        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+    );
+    let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
+
+    game.cast(research)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        4,
+        "drew three cards on top of the Forest already in hand"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::DiscardCards {
+                player: PlayerId(0),
+                count: 2,
+                ..
+            })
+        ),
+        "pauses on a two-card discard choice, got {:?}",
+        game.pending_choice(),
+    );
+
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![forest],
+    })
+    .expect("a single land card satisfies the discard in place of the full two-card count");
+
+    let hand = hand_ids(&game, PlayerId(0));
+    assert_eq!(hand.len(), 3, "only the one land card left the hand");
+    assert!(!hand.contains(&forest));
+    assert_eq!(game.zone_of(forest), Zone::Graveyard);
+}
+
+#[test]
+fn compulsive_research_discard_two_nonland() {
+    let mut game = TestGame::new();
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+    );
+    let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
+
+    game.cast(research)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+
+    let drawn = vec![game.current_id(lib[0]), game.current_id(lib[1])];
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: drawn,
+    })
+    .expect("discarding two of the drawn nonland cards satisfies the plain count");
+
+    let hand = hand_ids(&game, PlayerId(0));
+    assert_eq!(
+        hand.len(),
+        2,
+        "discarded two cards; the Forest and one draw remain"
+    );
+    assert!(
+        hand.contains(&forest),
+        "the land wasn't forced out by the plain two-card discard"
+    );
+}
+
+#[test]
+fn compulsive_research_no_land_collapses() {
+    let mut game = TestGame::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Shock"), card("Grizzly Bear"), card("Shock")],
+    );
+    let research = game.spawn_in_hand(PlayerId(0), card("Compulsive Research"));
+
+    game.cast(research)
+        .at(Target::Player(PlayerId(0)))
+        .resolve();
+
+    let drawn_top = game.current_id(lib[0]);
+    assert_eq!(
+        game.submit(Intent::Discard {
+            player: PlayerId(0),
+            cards: vec![drawn_top],
+        }),
+        Err(Reject::IllegalChoice),
+        "no land in hand — a lone nonland card can't stand in for the two-card discard"
+    );
+
+    let drawn = vec![drawn_top, game.current_id(lib[1])];
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: drawn,
+    })
+    .expect("the full two-card discard is still legal");
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        1,
+        "discarded two, one draw remains"
+    );
 }
 
 // Prismari Charm mode 0's shape: "surveil 2, then draw a card" — the draw is deferred past
@@ -45230,6 +48904,8 @@ fn take_action_casts_exactly_like_the_equivalent_cast_intent() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -45430,6 +49106,8 @@ fn take_action_cycles_a_hand_card() {
         .id;
     game.submit(take(PlayerId(0), id, None)).unwrap();
     assert_eq!(game.zone_of(massif), Zone::Graveyard);
+    // CR 702.29a: cycling's draw resolves off the stack.
+    resolve_top_of_stack(&mut game);
     assert_eq!(
         hand_ids(&game, PlayerId(0)).len(),
         1,
@@ -45457,6 +49135,8 @@ fn cycling_requires_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -45504,6 +49184,8 @@ fn cycling_with_a_spell_on_the_stack_resets_passes_and_keeps_priority() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -45676,6 +49358,8 @@ fn legal_actions_is_empty_while_a_choice_is_pending() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -45720,6 +49404,8 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -45741,6 +49427,8 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -45789,6 +49477,8 @@ fn killian_decisive_mentor_tap_and_goad_target_is_declinable() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -45830,6 +49520,8 @@ fn killian_own_entry_does_not_fire_his_enchantment_watch() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -45928,6 +49620,8 @@ fn beledros_pest_token_dies_gain_life() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -46767,6 +50461,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                         pay_life: 0,
                         sacrifice: None,
                         kicker: None,
+                        buyback: None,
                         strive: None,
                         replicate: None,
                     },
@@ -46807,6 +50502,8 @@ const TEST_STEELBANE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -46823,6 +50520,7 @@ const TEST_STEELBANE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -46839,6 +50537,8 @@ fn remove_counter_cost_destroys_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -46937,6 +50637,8 @@ fn remove_counter_cost_lethal_shrink_dies_to_state_based_actions() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -47094,6 +50796,8 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -47110,6 +50814,7 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only enchantment with a constellation-shaped watch trigger: "whenever an
@@ -47177,6 +50882,8 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 flashback: None,
                 echo: None,
                 bestow: None,
+                morph: None,
+                evoke: None,
                 delve: false,
                 escape: None,
                 retrace: false,
@@ -47193,6 +50900,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                may_choose_not_to_untap: false,
             },
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -47213,6 +50921,8 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -47229,6 +50939,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only permanent with a landfall-shaped watch trigger scoped to opponents only:
@@ -47280,6 +50991,8 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -47296,6 +51009,7 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -47803,6 +51517,8 @@ fn moldervine_reclamation_gains_life_and_draws_from_a_single_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -47867,6 +51583,8 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -47883,6 +51601,7 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     }
 }
 
@@ -48225,6 +51944,8 @@ fn goldspan_grant_disappears_when_goldspan_leaves() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -48289,6 +52010,8 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -48305,6 +52028,7 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only sorcery "Draw a card." costing `{4}` — mana value 4, no `{X}`: below Troyan's
@@ -48380,6 +52104,8 @@ fn troyan_mana_only_pays_expensive_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -48399,6 +52125,8 @@ fn troyan_mana_only_pays_expensive_spells() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -48438,6 +52166,8 @@ fn troyan_mana_pays_x_spell() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -48485,6 +52215,8 @@ fn galazeth_grants_restricted_treasure_mana() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         }),
@@ -48504,6 +52236,8 @@ fn galazeth_grants_restricted_treasure_mana() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -48536,6 +52270,8 @@ fn cast_aether_gale(game: &mut Game) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -48685,6 +52421,8 @@ fn aether_gale_skips_a_target_that_became_illegal_before_resolution() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -48741,6 +52479,8 @@ fn aether_gale_is_a_no_op_when_all_targets_became_illegal() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -49003,6 +52743,8 @@ fn quandrix_command_three_mode_combination_is_unperturbed_by_the_fourth_mode() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -49187,6 +52929,8 @@ fn replication_technique_copies_a_noncreature_permanent_you_control() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -49238,6 +52982,8 @@ fn white_orchid_phantom_etb_destroys_a_target_land() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -49295,6 +53041,8 @@ fn white_orchid_phantom_lets_destroyed_lands_controller_ramp() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -49375,6 +53123,8 @@ fn white_orchid_phantom_ramp_search_can_be_declined() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -49611,6 +53361,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
             has_counters: false,
             condition: None,
             from_graveyard: false,
+            all_players: false,
         },
         optional: false,
         min_level: 0,
@@ -49622,6 +53373,8 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -49638,6 +53391,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -49721,6 +53475,8 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -49737,6 +53493,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only "put a +1/+1 counter on each of up to two target creatures" instant (Silkguard's
@@ -49792,6 +53549,8 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -49808,6 +53567,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// CR 601.2d — Magma Opus's "4 damage divided as you choose among any number of targets": the
@@ -49834,6 +53594,8 @@ fn magma_opus_divides_damage_among_two_chosen_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -49885,6 +53647,8 @@ fn magma_opus_division_must_cover_each_target_and_sum_to_the_total() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -49950,6 +53714,8 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_chosen_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50000,6 +53766,8 @@ fn magma_opus_divides_damage_across_a_creature_and_a_player() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50048,6 +53816,8 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_player_target() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50101,6 +53871,8 @@ fn magma_opus_divides_damage_and_taps_two_permanents() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50171,6 +53943,8 @@ fn volcanic_salvo_deals_full_damage_to_each_of_two_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50217,6 +53991,8 @@ fn prismari_charm_mode_1_damages_one_or_two_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50256,6 +54032,8 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50282,6 +54060,8 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50317,6 +54097,8 @@ fn tap_two_target_permanents() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50356,6 +54138,8 @@ fn put_a_counter_on_each_of_up_to_two_target_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50409,6 +54193,8 @@ fn silkguard_puts_a_counter_on_each_of_up_to_x_target_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50457,6 +54243,8 @@ fn silkguard_at_x_zero_chooses_no_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50533,6 +54321,8 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -50549,6 +54339,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -50572,6 +54363,8 @@ fn silkguard_grants_hexproof_to_modified_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50624,6 +54417,8 @@ fn modified_includes_equipped_and_aura_enchanted_creatures() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50663,6 +54458,8 @@ fn silkguard_grants_hexproof_to_the_creatures_it_just_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50729,6 +54526,8 @@ fn silkguard_grants_hexproof_to_your_auras_and_equipment() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50789,6 +54588,8 @@ fn silkguard_hexproof_on_equipment_wears_off_at_cleanup() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50902,6 +54703,8 @@ fn pearl_ear_does_not_draw_when_an_opponent_casts_the_aura() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -50935,6 +54738,8 @@ fn curse_of_the_swine_exiles_x_target_creatures_and_makes_a_boar_per_exile() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -51025,6 +54830,8 @@ fn pest_infestation_destroys_up_to_x_targets_and_creates_twice_x_pests() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -51300,6 +55107,8 @@ fn twinflame_strive_scales_cost_by_targets() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 3,
         replicate_count: 0,
     });
@@ -51322,6 +55131,8 @@ fn twinflame_strive_scales_cost_by_targets() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 3,
             replicate_count: 0,
         })
@@ -51597,6 +55408,8 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -51621,6 +55434,8 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -51675,6 +55490,8 @@ fn astral_cornucopia_x3_cost_pays_x_thrice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -51706,6 +55523,8 @@ fn astral_cornucopia_x3_cost_pays_x_thrice() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -51739,6 +55558,8 @@ fn single_x_spell_still_pays_x_once() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -51998,6 +55819,8 @@ fn staff_of_the_storyteller_does_not_accrue_when_an_opponent_creates_a_token() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -52054,6 +55877,8 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -52070,6 +55895,7 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 #[test]
@@ -52736,6 +56562,8 @@ fn grow_ancient_by_two(g: &mut TestGame, ancient: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -52855,6 +56683,8 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -52898,6 +56728,8 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -52937,6 +56769,8 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -53293,6 +57127,8 @@ fn open_the_way_reveals_until_x_lands() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -53346,6 +57182,8 @@ fn open_the_way_short_library_puts_every_land_found() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -53394,6 +57232,8 @@ fn songbirds_blessing_attaches_deployed_aura_to_chosen_creature() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -53528,6 +57368,8 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         flashback: None,
         echo: None,
         bestow: None,
+        morph: None,
+        evoke: None,
         delve: false,
         escape: None,
         retrace: false,
@@ -53544,6 +57386,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        may_choose_not_to_untap: false,
     };
 
     let mut game = Game::new();
@@ -53561,6 +57404,8 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -53622,6 +57467,8 @@ fn songbirds_blessing_declining_goes_to_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -53679,6 +57526,8 @@ fn songbirds_blessing_no_aura_in_library_is_a_noop() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -53725,6 +57574,8 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -53794,6 +57645,8 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -53892,6 +57745,8 @@ fn creative_technique_reveals_until_nonland_exiles_and_casts_free() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -54060,6 +57915,8 @@ fn animists_awakening_reveals_top_x_and_deploys_all_lands() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -54118,6 +57975,8 @@ fn animists_awakening_reveals_exactly_x() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -54162,6 +58021,8 @@ fn animists_awakening_reveals_as_many_as_possible() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -54194,6 +58055,8 @@ fn animists_awakening_spell_mastery_untaps_deployed_lands() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -54227,6 +58090,8 @@ fn animists_awakening_no_spell_mastery_leaves_lands_tapped() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -54239,6 +58104,45 @@ fn animists_awakening_no_spell_mastery_leaves_lands_tapped() {
         game.is_tapped(forest),
         "spell mastery doesn't hold with only one graveyard spell"
     );
+}
+
+// ── Reveal-top-route (#141): coiling_oracle ────────────────────────────────────────────────
+
+#[test]
+fn coiling_oracle_reveals_land_to_battlefield_else_hand() {
+    // Coiling Oracle: "When this creature enters, reveal the top card of your library. If it's
+    // a land card, put it onto the battlefield. Otherwise, put that card into your hand." A land
+    // on top deploys to the battlefield; a nonland goes to hand instead of the library bottom.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let oracle = game.spawn_in_hand(PlayerId(0), card("Coiling Oracle"));
+    game.cast(oracle).resolve(); // the creature enters
+    resolve_top_of_stack(&mut game); // the ETB trigger resolves
+
+    let forest = game.current_id(lib[0]);
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Battlefield,
+        "a revealed land card goes onto the battlefield"
+    );
+    assert_eq!(game.library_size(PlayerId(0)), 0);
+}
+
+#[test]
+fn coiling_oracle_reveals_nonland_to_hand() {
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    let oracle = game.spawn_in_hand(PlayerId(0), card("Coiling Oracle"));
+    game.cast(oracle).resolve(); // the creature enters
+    resolve_top_of_stack(&mut game); // the ETB trigger resolves
+
+    let bear = game.current_id(lib[0]);
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "a revealed nonland card goes into hand instead of the library bottom"
+    );
+    assert_eq!(game.library_size(PlayerId(0)), 0);
 }
 
 // ── Kicker (#?): optional additional cost, was-kicked flag readable at resolution ──────────
@@ -54369,6 +58273,8 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -54385,6 +58291,7 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 fn activate_lighthouse_strip(game: &mut Game, lighthouse: ObjectId) {
@@ -54436,6 +58343,8 @@ fn arcane_lighthouse_strips_hexproof_and_shroud_and_blocks_a_fresh_grant_this_tu
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -54738,6 +58647,8 @@ fn wheel_of_fortune_each_player_discards_then_draws() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -54888,6 +58799,8 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -54904,6 +58817,7 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// Cast `def` from player 0's hand with chosen `x`, resolve it (passing priority until the
@@ -54923,6 +58837,8 @@ fn cast_x_and_resolve(game: &mut Game, def: CardDef, x: u32, name: &str) -> Obje
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -55177,6 +59093,8 @@ fn gyome_master_chef_end_step_creates_food_equal_to_nontoken_creatures_entered()
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -55193,6 +59111,8 @@ fn gyome_master_chef_end_step_creates_food_equal_to_nontoken_creatures_entered()
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -55293,6 +59213,8 @@ fn gilded_goose_sac_a_food_adds_one_mana_of_any_color() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -55413,6 +59335,8 @@ fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -55592,6 +59516,8 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -56113,6 +60039,8 @@ fn renegade_bull_free_cast_fires_own_cast_trigger() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -56173,6 +60101,8 @@ fn renegade_bull_free_cast_fires_other_cast_watchers() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -56555,6 +60485,8 @@ fn cast_devour_creature(game: &mut Game, card_name: &str) -> ObjectId {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -56736,6 +60668,8 @@ fn ribtruss_roaster_end_step_makes_pests_with_dies_lifegain() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -56870,6 +60804,8 @@ fn abstract_performance_opponent_picks_pile_controller_casts_one_free_rest_to_ha
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -57050,6 +60986,8 @@ fn plargg_and_nassari_upkeep_opponent_picks_a_nonland_controller_casts_up_to_two
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -57118,6 +61056,8 @@ fn plargg_and_nassari_casts_only_what_is_available_when_fewer_than_two_others() 
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -57152,14 +61092,15 @@ fn opponent_chooses_pile_answer_from_the_controller_is_rejected() {
 }
 
 #[test]
-fn abstract_performance_next_opponent_in_turn_order_chooses() {
+fn abstract_performance_controller_chooses_which_opponent_splits() {
+    // With 3+ players, "an opponent" is the controller's own pick (a settled ruling, not a
+    // hardcoded next-in-turn-order default) — P2 (controller) can name P0 even though P0 is the
+    // *active* player and would have been the accidental pick under the old APNAP-tie-break
+    // approximation this test used to lock in.
+    //
     // A flash-granted cast can put a *non-active* player in the controller seat: Alchemist's
     // Refuge ("You may cast spells this turn as though they had flash") lets P2 cast Abstract
-    // Performance during P0's turn. With controller = P2 and active_player = P0, the old
-    // `an_opponent` (the first non-controller player in APNAP order, which starts from the
-    // *active* player) picked P0 — an accident of whoever's turn it happened to be, not a
-    // turn-order rule. CR 101.4's tie-break makes a multiplayer "an opponent" the next opponent
-    // in turn order after the controller: P3, not P0.
+    // Performance during P0's turn.
     let mut game = Game::with_players(4, 0);
     let refuge = game.spawn_on_battlefield(PlayerId(2), card("Alchemist's Refuge"));
     let ap = game.spawn_in_hand(PlayerId(2), card("Abstract Performance"));
@@ -57205,6 +61146,8 @@ fn abstract_performance_next_opponent_in_turn_order_chooses() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -57213,6 +61156,35 @@ fn abstract_performance_next_opponent_in_turn_order_chooses() {
         let p = game.priority_holder();
         game.submit(Intent::PassPriority { player: p }).unwrap();
     }
+
+    let Some(PendingChoice::ChooseSplittingOpponent {
+        player: chooser,
+        legal,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-splitting-opponent pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        chooser,
+        PlayerId(2),
+        "P2 cast (and controls) Abstract Performance"
+    );
+    assert_eq!(
+        legal,
+        vec![PlayerId(0), PlayerId(1), PlayerId(3)],
+        "every living opponent is a legal pick, including the active player P0"
+    );
+
+    // P2 names P0 — the pick the old hardcoded APNAP-next default could never reach.
+    game.submit(Intent::ChooseTargets {
+        player: chooser,
+        targets: vec![Target::Player(PlayerId(0))],
+    })
+    .unwrap();
 
     let Some(PendingChoice::OpponentChoosesPile {
         player, controller, ..
@@ -57223,17 +61195,210 @@ fn abstract_performance_next_opponent_in_turn_order_chooses() {
             game.pending_choice()
         );
     };
-    assert_eq!(
-        controller,
-        PlayerId(2),
-        "P2 cast (and controls) Abstract Performance"
-    );
+    assert_eq!(controller, PlayerId(2));
     assert_eq!(
         player,
-        PlayerId(3),
-        "the next opponent in turn order after P2 chooses — not the active player P0, which the \
-         old APNAP-order-based an_opponent would have picked"
+        PlayerId(0),
+        "the controller's chosen opponent (P0) makes the pile pick, not a hardcoded default"
     );
+}
+
+#[test]
+fn fact_or_fiction_opponent_splits_controller_takes_pile() {
+    // Fact or Fiction (inv): "Reveal the top five cards of your library. An opponent separates
+    // those cards into two piles. Put one pile into your hand and the other into your
+    // graveyard."
+    let mut game = TestGame::new();
+    let revealed = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Forest"),
+            card("Grizzly Bear"),
+            card("Forest"),
+            card("Forest"),
+        ],
+    );
+    let ff = game.spawn_in_hand(PlayerId(0), card("Fact or Fiction"));
+    game.cast(ff).resolve(); // the instant resolves, revealing the top five
+
+    // Only one opponent (P1) — the splitting-opponent chooser collapses, going straight to the
+    // partition pause.
+    let Some(PendingChoice::PartitionRevealed {
+        player,
+        controller,
+        revealed: paused_revealed,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the partition-revealed pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        player,
+        PlayerId(1),
+        "the opponent, not the caster, partitions"
+    );
+    assert_eq!(controller, PlayerId(0));
+    assert_eq!(
+        paused_revealed, revealed,
+        "all five revealed cards are offered"
+    );
+
+    // The opponent splits 3/2: the two Grizzly Bears plus one Forest into pile A.
+    let pile_a_choice = vec![revealed[0], revealed[2], revealed[1]];
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: pile_a_choice.clone(),
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChoosePileForHand {
+        player,
+        pile_a,
+        pile_b,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-pile-for-hand pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        player,
+        PlayerId(0),
+        "the controller, not the opponent, picks the pile to keep"
+    );
+    assert_eq!(pile_a.len(), 3);
+    assert_eq!(pile_b.len(), 2);
+
+    // The controller takes pile A (three cards) to hand; pile B (two) is milled.
+    game.submit(Intent::ChooseOpponentPile {
+        player: PlayerId(0),
+        pile: 0,
+    })
+    .unwrap();
+    for &id in &pile_a {
+        assert_eq!(game.zone_of(id), Zone::Hand, "the chosen pile goes to hand");
+        assert_eq!(game.owner_of(id), PlayerId(0));
+    }
+    for &id in &pile_b {
+        assert_eq!(
+            game.zone_of(id),
+            Zone::Graveyard,
+            "the other pile is milled into the graveyard"
+        );
+        assert_eq!(game.owner_of(id), PlayerId(0));
+    }
+}
+
+#[test]
+fn fact_or_fiction_controller_chooses_which_opponent_splits() {
+    // 3+ players: "an opponent" is the controller's own pick, not a hardcoded next-in-turn-order
+    // default (the same fix Abstract Performance's chooser shares).
+    let mut game = Game::with_players(3, 0);
+    game.fund_mana(PlayerId(0));
+    let revealed = game.stack_library(PlayerId(0), &[card("Forest"); 5]);
+    let ff = game.spawn_in_hand(PlayerId(0), card("Fact or Fiction"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: ff,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    while game.pending_choice().is_none() && !game.stack_is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+
+    let Some(PendingChoice::ChooseSplittingOpponent {
+        player: chooser,
+        legal,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-splitting-opponent pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(chooser, PlayerId(0));
+    assert_eq!(legal, vec![PlayerId(1), PlayerId(2)]);
+
+    // P0 names P2 — not P1, the next-in-turn-order opponent the old hardcoded default picked.
+    game.submit(Intent::ChooseTargets {
+        player: chooser,
+        targets: vec![Target::Player(PlayerId(2))],
+    })
+    .unwrap();
+
+    let Some(PendingChoice::PartitionRevealed {
+        player,
+        revealed: paused_revealed,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the partition-revealed pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        player,
+        PlayerId(2),
+        "the controller's chosen opponent partitions, not a hardcoded default"
+    );
+    assert_eq!(paused_revealed, revealed);
+}
+
+#[test]
+fn fact_or_fiction_empty_pile() {
+    // CR "separates those cards into two piles" allows a 0/5 split; the controller may still
+    // take the empty pile (nothing to hand, everything milled).
+    let mut game = TestGame::new();
+    let revealed = game.stack_library(PlayerId(0), &[card("Forest"); 5]);
+    let ff = game.spawn_in_hand(PlayerId(0), card("Fact or Fiction"));
+    game.cast(ff).resolve();
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![], // every card goes into pile B
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChoosePileForHand { pile_a, pile_b, .. }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the choose-pile-for-hand pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(pile_a.is_empty());
+    assert_eq!(pile_b, revealed);
+
+    // The controller takes the empty pile A: nothing to hand, all five milled.
+    game.submit(Intent::ChooseOpponentPile {
+        player: PlayerId(0),
+        pile: 0,
+    })
+    .unwrap();
+    for &id in &revealed {
+        assert_eq!(game.zone_of(id), Zone::Graveyard);
+    }
 }
 
 #[test]
@@ -57344,6 +61509,8 @@ fn plargg_and_nassari_offers_up_to_two_free_casts_from_the_other_exiled_nonlands
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: false,
+            bought_back: false,
+            evoked: false,
             strive_count: 0,
             replicate_count: 0,
         })
@@ -58001,6 +62168,8 @@ fn dance_with_calamity_casts_exiled_free_when_total_mv_at_most_13() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -58065,6 +62234,8 @@ fn dance_with_calamity_bust_over_13_grants_no_free_cast() {
                 graveyard_exile: vec![],
                 sacrifice_cost: vec![],
                 kicked: false,
+                bought_back: false,
+                evoked: false,
                 strive_count: 0,
                 replicate_count: 0,
             }),
@@ -58353,6 +62524,8 @@ const TEST_CLASS: CardDef = CardDef {
     flashback: None,
     echo: None,
     bestow: None,
+    morph: None,
+    evoke: None,
     delve: false,
     escape: None,
     retrace: false,
@@ -58369,6 +62542,7 @@ const TEST_CLASS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    may_choose_not_to_untap: false,
 };
 
 /// A test-only permanent with a free activated ability that makes its controller lose 1 life —
@@ -58540,6 +62714,8 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -58577,6 +62753,8 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -58626,6 +62804,8 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -58654,6 +62834,8 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -58701,6 +62883,8 @@ fn intermediate_chirography_level_two_counters_on_first_life_loss() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -58979,6 +63163,8 @@ fn cast_chirography(game: &mut Game) -> (ObjectId, ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -59229,6 +63415,8 @@ fn rousing_refrain_adds_red_per_card_in_target_opponent_hand() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -59285,6 +63473,8 @@ fn rousing_refrain_suspend_cast_exiles_with_time_counters() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -59341,6 +63531,8 @@ fn rousing_refrain_suspend_ticks_and_casts_free_at_zero() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     });
@@ -59380,6 +63572,8 @@ fn rousing_refrain_mana_persists_across_step() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -59447,6 +63641,8 @@ fn ordinary_mana_empties_at_step_boundary() {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -59768,6 +63964,905 @@ fn manifest_noncreature_cannot_be_turned_face_up() {
     );
 }
 
+// --- Morph (CR 702.37 — cast a card face down as a 2/2 for {3}, turn up for its morph cost) ---
+
+/// A "when this is turned face up, draw a card" ability (CR 702.37f — a morph turned-face-up
+/// trigger), for the synthetic morph creature below.
+const TURNED_FACE_UP_DRAW: Ability = Ability {
+    timing: Timing::Triggered(Trigger::TurnedFaceUp),
+    effect: Effect::DrawCards {
+        count: Amount::Fixed(1),
+    },
+    optional: false,
+    min_level: 0,
+    once_each_turn: false,
+    condition: None,
+    cost: Cost::FREE,
+};
+
+/// A synthetic morph creature: printed a 4/4 for {5}, with `Morph {1}{U}` and a "when turned face
+/// up, draw a card" trigger — distinct printed cost ({5}), morph cost ({1}{U}), and face-down
+/// cost ({3}) so each is observably different.
+const MORPH_CREATURE: CardDef = CardDef {
+    cost: flash_cost(5, [0, 0, 0, 0, 0], NO_ADD),
+    morph: Some(flash_cost(1, [0, 1, 0, 0, 0], NO_ADD)),
+    abilities: &[TURNED_FACE_UP_DRAW],
+    ..creature("Morph Test Creature", 4, 4, &[])
+};
+
+/// Casting a morph card face down (CR 702.37b) pays the generic {3} face-down cost — not the
+/// card's printed cost — and lands a face-down 2/2 colorless creature (CR 708.2), its real name,
+/// types, and subtypes hidden.
+#[test]
+fn morph_cast_face_down_is_a_2_2() {
+    let mut game = TestGame::new();
+    let card = game.spawn_in_hand(PlayerId(0), MORPH_CREATURE);
+    game.fund_mana(PlayerId(0));
+    let before = total_mana(&game, PlayerId(0));
+
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card,
+    })
+    .unwrap();
+    assert_eq!(
+        before - total_mana(&game, PlayerId(0)),
+        3,
+        "casting face down pays the flat {{3}} morph cast cost, not the printed {{5}}"
+    );
+    resolve_top_of_stack(&mut game);
+
+    let perm = game.current_id(card);
+    assert_eq!(
+        game.zone_of(perm),
+        Zone::Battlefield,
+        "the face-down spell resolves onto the battlefield"
+    );
+    assert!(game.is_face_down(perm), "a morph cast enters face down");
+    assert_eq!(
+        (game.power(perm), game.toughness(perm)),
+        (2, 2),
+        "a face-down permanent is a 2/2 (CR 708.2), not its printed 4/4"
+    );
+    assert!(
+        game.effective_types(perm).intersects(TypeSet::CREATURE),
+        "a face-down permanent is a creature"
+    );
+    assert!(
+        game.effective_subtypes(perm).is_empty(),
+        "a face-down permanent exposes no printed subtypes"
+    );
+}
+
+/// A morph-cast face-down permanent turns face up for its **morph** cost (CR 702.37c — {1}{U},
+/// not the printed {5}), revealing its real characteristics and firing its turned-face-up trigger
+/// (CR 702.37f).
+#[test]
+fn morph_turned_face_up_pays_morph_cost_and_triggers() {
+    let mut game = TestGame::new();
+    let card = game.spawn_in_hand(PlayerId(0), MORPH_CREATURE);
+    // A library to draw from when the turned-face-up trigger fires.
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA]);
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let perm = game.current_id(card);
+    assert!(game.is_face_down(perm));
+
+    let lib_before = game.library_size(PlayerId(0));
+    let mana_before = total_mana(&game, PlayerId(0));
+    assert!(
+        game.meaningful_actions(PlayerId(0))
+            .contains(&MeaningfulAction::TurnFaceUp { permanent: perm }),
+        "the controller may turn the face-down permanent up"
+    );
+    game.submit(Intent::TurnFaceUp {
+        player: PlayerId(0),
+        permanent: perm,
+    })
+    .unwrap();
+    assert_eq!(
+        mana_before - total_mana(&game, PlayerId(0)),
+        2,
+        "turning up pays the {{1}}{{U}} morph cost (2 mana), not the printed {{5}}"
+    );
+
+    assert!(!game.is_face_down(perm), "the permanent is now face up");
+    assert_eq!(
+        (game.power(perm), game.toughness(perm)),
+        (4, 4),
+        "the real 4/4 characteristics are revealed"
+    );
+    // Resolve the turned-face-up draw trigger.
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        lib_before - 1,
+        "the turned-face-up trigger drew a card"
+    );
+}
+
+// --- Willbender (CR 114.6 / 702.37f — turned face up, change the target of a single-target spell) ---
+
+/// A single-target burn spell (CR 601.2c — "deal 3 damage to target creature"), the spell
+/// Willbender bends onto a new creature.
+const CREATURE_BOLT: CardDef = CardDef {
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    abilities: &[spell_ability(Effect::DealDamage {
+        amount: Amount::Fixed(3),
+        target: TargetSpec::Creature,
+        count: TargetCount {
+            min: 1,
+            max: 1,
+            x_scaled: false,
+            sacrifice_scaled: false,
+            strive_scaled: false,
+        },
+        divided: false,
+    })],
+    ..creature("Test Creature Bolt", 0, 0, &[])
+};
+
+/// A hard counter (CR 701.5 — "counter target spell"), used to send Willbender's chosen spell to
+/// the graveyard before its turned-face-up trigger resolves.
+const HARD_COUNTER: CardDef = CardDef {
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    abilities: &[spell_ability(Effect::CounterTargetSpell {
+        unless_pays: None,
+        filter: SpellFilter::AllSpells,
+        countered_dest: None,
+    })],
+    ..creature("Test Hard Counter", 0, 0, &[])
+};
+
+/// Willbender's turned-face-up trigger (CR 702.37f): "When this creature is turned face up, change
+/// the target of target spell or ability with a single target."
+const WILLBENDER_RETARGET: Ability = Ability {
+    timing: Timing::Triggered(Trigger::TurnedFaceUp),
+    effect: Effect::ChangeTargetOfTargetSpellOrAbility {
+        target: TargetSpec::SingleTargetSpellOnStack,
+    },
+    optional: false,
+    min_level: 0,
+    once_each_turn: false,
+    condition: None,
+    cost: Cost::FREE,
+};
+
+/// A synthetic Willbender: a {1}{U} 1/2 Human Wizard with `Morph {1}{U}` and the retarget trigger.
+const WILLBENDER: CardDef = CardDef {
+    cost: flash_cost(1, [0, 1, 0, 0, 0], NO_ADD),
+    morph: Some(flash_cost(1, [0, 1, 0, 0, 0], NO_ADD)),
+    subtypes: &["Human", "Wizard"],
+    abilities: &[WILLBENDER_RETARGET],
+    ..creature("Test Willbender", 1, 2, &[])
+};
+
+/// Turn a face-down Willbender up and point its trigger at `spell` (the single-target spell to
+/// bend). Leaves the trigger on the stack above `spell`, ready to resolve.
+fn turn_willbender_up_targeting(game: &mut TestGame, willbender: ObjectId, spell: ObjectId) {
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::TurnFaceUp {
+        player: PlayerId(0),
+        permanent: willbender,
+    })
+    .unwrap();
+    advance_until(game, |g| g.pending_choice().is_some());
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the turned-face-up trigger pauses to choose the single-target spell to bend; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(spell)),
+        "a single-target spell on the stack is a legal trigger target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(spell)],
+    })
+    .unwrap();
+}
+
+/// Willbender's core: turned face up in response to a single-target spell, it moves that spell's
+/// target to a different legal creature, and the spell resolves onto the new creature.
+#[test]
+fn willbender_changes_target_of_single_target_spell() {
+    let mut game = TestGame::new();
+    let wb_card = game.spawn_in_hand(PlayerId(0), WILLBENDER);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: wb_card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let willbender = game.current_id(wb_card);
+    assert!(game.is_face_down(willbender));
+
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA); // the bolt's original target
+    let bystander = game.spawn_on_battlefield(PlayerId(1), VANILLA); // the redirect destination
+
+    let bolt = game.spawn_in_hand(PlayerId(0), CREATURE_BOLT);
+    game.cast(bolt).at(Target::Object(victim)).submit();
+    let bolt = game.current_id(bolt);
+    assert_eq!(game.spell_target(bolt), Some(Target::Object(victim)));
+
+    turn_willbender_up_targeting(&mut game, willbender, bolt);
+
+    // Resolving the trigger pauses for the bolt's new target.
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    let Some(PendingChoice::ChooseSpellTargets { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the retarget trigger pauses to choose the bolt's new target; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(bystander)),
+        "another creature is a legal new target"
+    );
+    assert!(
+        !legal.contains(&Target::Object(victim)),
+        "CR 114.6b: the current target isn't offered — the target must change"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bystander)],
+    })
+    .unwrap();
+    assert_eq!(
+        game.spell_target(bolt),
+        Some(Target::Object(bystander)),
+        "the bolt now targets the redirected creature"
+    );
+
+    advance_until(&mut game, |g| g.stack().is_empty());
+    assert_eq!(
+        game.zone_of(bystander),
+        Zone::Graveyard,
+        "the bolt resolved onto its new target, killing it"
+    );
+    assert_eq!(
+        game.zone_of(victim),
+        Zone::Battlefield,
+        "the original target was spared"
+    );
+}
+
+/// CR 114.6b: if the only legal target is the one the spell already has, the target is left
+/// unchanged — the retarget is a no-op (no pause, no change).
+#[test]
+fn willbender_leaves_target_unchanged_when_no_other_legal_target() {
+    let mut game = TestGame::new();
+    let wb_card = game.spawn_in_hand(PlayerId(0), WILLBENDER);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: wb_card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let willbender = game.current_id(wb_card);
+
+    // Willbender is the ONLY creature, so a creature bolt aimed at it has no other legal target.
+    let bolt = game.spawn_in_hand(PlayerId(0), CREATURE_BOLT);
+    game.cast(bolt).at(Target::Object(willbender)).submit();
+    let bolt = game.current_id(bolt);
+
+    turn_willbender_up_targeting(&mut game, willbender, bolt);
+
+    // Resolve only the trigger (top of the stack, above the bolt): with no alternate target it
+    // raises no ChooseSpellTargets pause and leaves the bolt's target intact.
+    resolve_top_of_stack(&mut game);
+    assert!(
+        game.pending_choice().is_none(),
+        "no legal alternate — the retarget raises no choice; got {:?}",
+        game.pending_choice()
+    );
+    assert_eq!(
+        game.spell_target(bolt),
+        Some(Target::Object(willbender)),
+        "the target is left unchanged (CR 114.6b)"
+    );
+}
+
+/// CR 608.2b: if Willbender's chosen spell has left the stack (here, countered) before the trigger
+/// resolves, the trigger does nothing — no retarget, no panic.
+#[test]
+fn willbender_retarget_noop_when_spell_gone() {
+    let mut game = TestGame::new();
+    let wb_card = game.spawn_in_hand(PlayerId(0), WILLBENDER);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: wb_card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let willbender = game.current_id(wb_card);
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    let bolt = game.spawn_in_hand(PlayerId(0), CREATURE_BOLT);
+    game.cast(bolt).at(Target::Object(victim)).submit();
+    let bolt = game.current_id(bolt);
+
+    turn_willbender_up_targeting(&mut game, willbender, bolt);
+
+    // Counter the bolt — it leaves the stack below the still-waiting retarget trigger.
+    let counter = game.spawn_in_hand(PlayerId(0), HARD_COUNTER);
+    game.cast(counter).at(Target::Object(bolt)).submit();
+    resolve_top_of_stack(&mut game); // the counter resolves, sending the bolt to the graveyard
+    assert_eq!(
+        game.zone_of(bolt),
+        Zone::Graveyard,
+        "the bolt was countered"
+    );
+
+    // The retarget trigger now resolves against a spell that's gone — a clean no-op.
+    advance_until(&mut game, |g| g.stack().is_empty());
+    assert!(
+        game.pending_choice().is_none(),
+        "a gone spell raises no retarget choice; got {:?}",
+        game.pending_choice()
+    );
+    assert_eq!(
+        game.zone_of(victim),
+        Zone::Battlefield,
+        "the countered bolt never dealt its damage"
+    );
+}
+
+/// The authored `willbender.toml` composes morph (slice 1) with the retarget payload (slice 2):
+/// cast face down, turn up for its morph cost, and bend a single-target spell.
+#[test]
+fn willbender_card_is_faithful() {
+    let mut game = TestGame::new();
+    let wb_card = game.spawn_in_hand(PlayerId(0), card("Willbender"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: wb_card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let willbender = game.current_id(wb_card);
+    assert!(game.is_face_down(willbender), "cast face down as a 2/2");
+
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let bystander = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let bolt = game.spawn_in_hand(PlayerId(0), CREATURE_BOLT);
+    game.cast(bolt).at(Target::Object(victim)).submit();
+    let bolt = game.current_id(bolt);
+
+    turn_willbender_up_targeting(&mut game, willbender, bolt);
+    assert!(!game.is_face_down(willbender), "now face up");
+    assert_eq!(
+        (game.power(willbender), game.toughness(willbender)),
+        (1, 2),
+        "revealed as the printed 1/2"
+    );
+
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bystander)],
+    })
+    .unwrap();
+    assert_eq!(game.spell_target(bolt), Some(Target::Object(bystander)));
+}
+
+// --- Illusionary Mask (lea, CR 708.2 — {X}: cast a hand creature whose mana cost the mana spent
+// on {X} could pay, face down as a 2/2) ---
+
+/// A {1}{G} 2/2 (mana value 2) — the creature Illusionary Mask casts face down. Payable from two
+/// spent green ({G} for the pip, the spare {G} for the generic {1}).
+const MASK_CREATURE: CardDef = CardDef {
+    cost: flash_cost(1, [0, 0, 0, 0, 1], NO_ADD),
+    ..creature("Mask Test Creature", 2, 2, &[])
+};
+
+/// Illusionary Mask's `{X}` ability (clause 1): when the mana spent on `{X}` could pay the
+/// creature's mana cost, the controller may cast it from hand face down as a 2/2 creature spell
+/// (CR 708.2) without paying its mana cost.
+#[test]
+fn illusionary_mask_casts_hand_creature_face_down() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    float_green(&mut game, PlayerId(0), 2);
+    let before = total_mana(&game, PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    assert_eq!(
+        before - total_mana(&game, PlayerId(0)),
+        2,
+        "activation pays the chosen {{X}} = 2"
+    );
+    // The ability resolves, pausing on the hand-creature pick.
+    resolve_top_of_stack(&mut game);
+    let Some(PendingChoice::CastCreatureFaceDown { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected a cast-creature-face-down pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+
+    let mana_before_cast = total_mana(&game, PlayerId(0));
+    game.submit(Intent::CastCreatureFaceDown {
+        player,
+        choice: Some(creature),
+    })
+    .unwrap();
+    assert_eq!(
+        mana_before_cast,
+        total_mana(&game, PlayerId(0)),
+        "the face-down cast pays no mana cost"
+    );
+    // The face-down creature spell resolves onto the battlefield.
+    resolve_top_of_stack(&mut game);
+
+    let perm = game.current_id(creature);
+    assert_eq!(game.zone_of(perm), Zone::Battlefield);
+    assert!(
+        game.is_face_down(perm),
+        "the chosen creature entered face down"
+    );
+    assert_eq!(
+        (game.power(perm), game.toughness(perm)),
+        (2, 2),
+        "a face-down permanent is a 2/2 (CR 708.2), not its printed 2/2 by coincidence — MV-2 body"
+    );
+}
+
+/// Declining Illusionary Mask's "you may" pick is a legal no-op: the creature stays in hand and
+/// nothing is cast.
+#[test]
+fn illusionary_mask_decline_is_a_no_op() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    float_green(&mut game, PlayerId(0), 2);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let Some(PendingChoice::CastCreatureFaceDown { player, .. }) = game.pending_choice() else {
+        panic!("expected the cast-creature-face-down pick");
+    };
+    game.submit(Intent::CastCreatureFaceDown {
+        player,
+        choice: None,
+    })
+    .unwrap();
+
+    assert!(
+        game.pending_choice().is_none(),
+        "the decline clears the pick"
+    );
+    assert_eq!(
+        game.zone_of(creature),
+        Zone::Hand,
+        "declining leaves the creature in hand"
+    );
+    assert!(game.stack_is_empty(), "nothing was cast");
+}
+
+/// "The mana you spent on {X} could pay its cost": a creature whose mana value exceeds the paid
+/// `{X}` is not offered (one spent unit can never pay two pips), so the ability is a no-op.
+#[test]
+fn illusionary_mask_does_not_offer_a_creature_costing_more_than_x() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE); // mana value 2
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 1, // less than the creature's mana value
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "no creature is payable at X = 1, so the ability raises no pick"
+    );
+    assert_eq!(
+        game.zone_of(creature),
+        Zone::Hand,
+        "the too-expensive creature stays in hand"
+    );
+}
+
+/// A {W}{W} 2/2 — the same mana value as `MASK_CREATURE`, but pips two spent green mana can't pay.
+const WHITE_MASK_CREATURE: CardDef = CardDef {
+    cost: flash_cost(0, [2, 0, 0, 0, 0], NO_ADD),
+    ..creature("White Mask Test Creature", 2, 2, &[])
+};
+
+/// The printed test (CR 107.3): "a creature card in your hand whose mana cost could be paid by
+/// some amount of, or all of, the mana you spent on {X}." Paying `{X}` = 2 with two green offers
+/// the `{1}{G}` creature (the {G} pip plus one generic from the spare green) but not a mono-white
+/// creature of the same mana value — no white mana was spent.
+#[test]
+fn illusionary_mask_offers_only_creatures_the_mana_spent_on_x_could_pay() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let green = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    let white = game.spawn_in_hand(PlayerId(0), WHITE_MASK_CREATURE);
+    float_green(&mut game, PlayerId(0), 2);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::CastCreatureFaceDown { candidates, .. }) = game.pending_choice() else {
+        panic!(
+            "expected a cast-creature-face-down pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        candidates.contains(&green),
+        "{{1}}{{G}} is payable from the two spent green"
+    );
+    assert!(
+        !candidates.contains(&white),
+        "{{W}}{{W}} is not payable from two spent green"
+    );
+}
+
+/// The spent total still bounds the pick: a `{2}{G}` (mana value 3) creature is not offered when
+/// only two mana were spent on `{X}`, even though green was among them.
+#[test]
+fn illusionary_mask_does_not_offer_a_creature_needing_more_mana_than_was_spent() {
+    const BIG_GREEN_MASK_CREATURE: CardDef = CardDef {
+        cost: flash_cost(2, [0, 0, 0, 0, 1], NO_ADD),
+        ..creature("Big Green Mask Test Creature", 3, 3, &[])
+    };
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), BIG_GREEN_MASK_CREATURE);
+    float_green(&mut game, PlayerId(0), 2);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "two spent mana can't pay a three-pip cost, so the ability raises no pick"
+    );
+    assert_eq!(game.zone_of(creature), Zone::Hand);
+}
+
+/// A hybrid pip ({W/U}, CR 107.4e) is payable by spent mana of either of its colors: Azorius
+/// Guildmage ({W/U}{W/U}) is offered when `{X}` = 2 was paid with one white and one blue.
+#[test]
+fn illusionary_mask_offers_hybrid_cost_creature_paid_with_either_color() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let guildmage = game.spawn_in_hand(PlayerId(0), card("Azorius Guildmage"));
+    for land in ["Plains", "Island"] {
+        let source = game.spawn_on_battlefield(PlayerId(0), card(land));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: source,
+        })
+        .unwrap();
+    }
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::CastCreatureFaceDown { candidates, .. }) = game.pending_choice() else {
+        panic!(
+            "expected a cast-creature-face-down pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        candidates.contains(&guildmage),
+        "{{W/U}}{{W/U}} is payable from one spent white and one spent blue"
+    );
+}
+
+/// A hybrid pip is not payable by spent mana of neither of its colors: Azorius Guildmage
+/// ({W/U}{W/U}) is not offered when `{X}` = 2 was paid with two green.
+#[test]
+fn illusionary_mask_does_not_offer_hybrid_cost_creature_on_off_color_mana() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let guildmage = game.spawn_in_hand(PlayerId(0), card("Azorius Guildmage"));
+    float_green(&mut game, PlayerId(0), 2);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "green spent mana can't pay a {{W/U}} pip, so the ability raises no pick"
+    );
+    assert_eq!(game.zone_of(guildmage), Zone::Hand);
+}
+
+/// [`Cost::payable_from_multiset`] directly (CR 107.3's "could be paid by some amount of, or all
+/// of" — Illusionary Mask), over `[u8; 6]` spent-mana multisets (WUBRG counts plus a sixth
+/// no-one-color bucket).
+#[test]
+fn mana_cost_payability_from_spent_mana_multiset() {
+    // The empty cost is payable from anything, including nothing.
+    assert!(Cost::FREE.payable_from_multiset(&[0; 6]));
+    // {W/U}{W} from spent {W}{U}: the mono W pip claims the white unit, so the hybrid pip must
+    // take the blue one.
+    let hybrid_and_mono = Cost {
+        colored: [1, 0, 0, 0, 0],
+        hybrid: &[(Color::White, Color::Blue)],
+        ..Cost::FREE
+    };
+    assert!(hybrid_and_mono.payable_from_multiset(&[1, 1, 0, 0, 0, 0]));
+    assert!(!hybrid_and_mono.payable_from_multiset(&[0, 2, 0, 0, 0, 0]));
+    // {W/U}{W/B} from spent {W}{U}: a greedy first-listed-color pick gives the first pip the
+    // white and strands the second (no black) — backtracking must reassign it to the blue.
+    let two_hybrids = Cost {
+        hybrid: &[(Color::White, Color::Blue), (Color::White, Color::Black)],
+        ..Cost::FREE
+    };
+    assert!(two_hybrids.payable_from_multiset(&[1, 1, 0, 0, 0, 0]));
+    assert!(!two_hybrids.payable_from_multiset(&[0, 1, 0, 0, 0, 1]));
+    // Generic pips take any spent unit, colored or not; colored pips never take the sixth bucket.
+    let two_generic = Cost {
+        generic: 2,
+        ..Cost::FREE
+    };
+    assert!(two_generic.payable_from_multiset(&[0, 0, 0, 0, 1, 1]));
+    assert!(!two_generic.payable_from_multiset(&[1, 0, 0, 0, 0, 0]));
+    assert!(!flash_cost(0, [0, 0, 0, 0, 2], NO_ADD).payable_from_multiset(&[0, 0, 0, 0, 1, 1]));
+    // The candidate's own {X} counts 0 (CR 107.3b), so its pips need nothing.
+    let x_and_green = Cost {
+        x: 1,
+        ..flash_cost(0, [0, 0, 0, 0, 1], NO_ADD)
+    };
+    assert!(x_and_green.payable_from_multiset(&[0, 0, 0, 0, 1, 0]));
+}
+
+/// "Activate only as a sorcery" (CR 602.5b): the `{X}` ability is not activatable outside a legal
+/// sorcery-speed moment (here, during the declare-attackers step).
+#[test]
+fn illusionary_mask_is_sorcery_speed_only() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    game.fund_mana(PlayerId(0));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    let rejected = game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    });
+    assert!(
+        rejected.is_err(),
+        "the sorcery-speed ability can't be activated during combat"
+    );
+}
+
+// --- Illusionary Mask CR 615 turn-face-up-on-interaction replacement (slice 3, clause 2) ---
+
+/// Cast `MASK_CREATURE` face down via Illusionary Mask's `{X}` ability (clause 1), resolve it onto
+/// the battlefield, and return the resulting face-down (masked) permanent's id. The reveal
+/// replacement (this clause) applies only because it entered this way, not via morph/manifest.
+fn illusionary_mask_a_face_down_creature(game: &mut TestGame) -> ObjectId {
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    float_green(game, PlayerId(0), 2);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+    game.submit(Intent::CastCreatureFaceDown {
+        player: PlayerId(0),
+        choice: Some(creature),
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+    let perm = game.current_id(creature);
+    assert!(game.is_face_down(perm), "it entered face down (clause 1)");
+    perm
+}
+
+/// CR 615: a face-down creature Illusionary Mask put onto the battlefield that would be dealt
+/// damage is turned face up first (the printed "instead it's turned face up and ... is dealt
+/// damage"). It fights an opponent's creature — the damage lands on the revealed creature.
+#[test]
+fn illusionary_mask_creature_flips_when_dealt_damage() {
+    let mut game = TestGame::new();
+    let masked = illusionary_mask_a_face_down_creature(&mut game);
+    let enemy = game.spawn_on_battlefield(PlayerId(1), creature("Enemy 3/3", 3, 3, &[]));
+    let fight = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL);
+
+    // Fight: the opponent's creature is the cast target, then the masked creature is chosen.
+    game.cast(fight).at(Target::Object(enemy)).resolve();
+    let events = game
+        .submit(Intent::ChooseTargets {
+            player: PlayerId(0),
+            targets: vec![Target::Object(masked)],
+        })
+        .unwrap();
+
+    // The reveal (TurnedFaceUp) must precede the masked creature being dealt damage (DamageMarked).
+    let flip = events
+        .iter()
+        .position(|e| matches!(e, Event::TurnedFaceUp { permanent } if *permanent == masked));
+    let hit = events
+        .iter()
+        .position(|e| matches!(e, Event::DamageMarked { object, .. } if *object == masked));
+    assert!(
+        flip.is_some(),
+        "the masked creature is turned face up when it would be dealt damage; got {events:?}"
+    );
+    assert!(
+        matches!((flip, hit), (Some(f), Some(h)) if f < h),
+        "the reveal comes before the damage lands; got {events:?}"
+    );
+}
+
+/// CR 615: a masked face-down creature that would become tapped is turned face up first.
+#[test]
+fn illusionary_mask_creature_flips_when_tapped() {
+    let mut game = TestGame::new();
+    let masked = illusionary_mask_a_face_down_creature(&mut game);
+
+    game.tap(masked);
+
+    assert!(
+        !game.is_face_down(masked),
+        "tapping the masked creature turned it face up first"
+    );
+}
+
+/// CR 615: a masked face-down creature that would assign or deal combat damage is turned face up
+/// first (and deals its real power). It blocks — a blocker taps for nothing, so the reveal is
+/// driven by the combat-damage assignment, not by a tap.
+#[test]
+fn illusionary_mask_creature_flips_when_assigning_combat_damage() {
+    let mut game = TestGame::new();
+    let masked = illusionary_mask_a_face_down_creature(&mut game);
+    // A weak attacker so the revealed 2/2 survives being blocked (marks 1) but kills the 1/1 with
+    // its real 2 power — proving the reveal preceded the combat-damage assignment. A blocker never
+    // taps, so the reveal here is driven by the combat damage, not by a tap.
+    let attacker = game.spawn_on_battlefield(PlayerId(1), creature("Enemy 1/1", 1, 1, &[]));
+    // Stack P1's library so drawing into its turn doesn't deck it out (and take its board with it).
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA]);
+
+    advance_until(&mut game, |g| {
+        g.current_step() == Step::DeclareAttackers && g.active_player() == PlayerId(1)
+    });
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(attacker, PlayerId(0))],
+    })
+    .unwrap();
+    // The defending player (P0) declares the block with its masked creature.
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(0),
+        blocks: vec![(masked, attacker)],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert!(
+        !game.is_face_down(game.current_id(masked)),
+        "the blocking masked creature turned face up to deal combat damage"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(attacker)),
+        Zone::Graveyard,
+        "the revealed 2/2 dealt its real 2 power, killing the 1/1 attacker"
+    );
+}
+
+/// The reveal replacement is scoped to Illusionary Mask by the `masked` flag: a plain morph-cast
+/// face-down creature (not masked) is dealt damage and stays face down.
+#[test]
+fn plain_morph_creature_does_not_flip_on_damage() {
+    let mut game = TestGame::new();
+    let card = game.spawn_in_hand(PlayerId(0), MORPH_CREATURE);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let morphed = game.current_id(card);
+    assert!(game.is_face_down(morphed));
+
+    let enemy = game.spawn_on_battlefield(PlayerId(1), creature("Enemy 1/1", 1, 1, &[]));
+    let fight = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL);
+    game.cast(fight).at(Target::Object(enemy)).resolve();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(morphed)],
+    })
+    .unwrap();
+
+    assert!(
+        game.is_face_down(game.current_id(morphed)),
+        "a plain morph creature is not masked, so it stays face down when dealt damage"
+    );
+}
+
 // --- Trigger doubling (CR 603.3c — Harmonic Prodigy, Veyran, Voice of Duality) ---
 
 /// A plain enter-the-battlefield draw, reused by the trigger-doubling test creatures.
@@ -59879,6 +64974,8 @@ fn cast_free(game: &mut Game, player: PlayerId, object: ObjectId) {
         graveyard_exile: vec![],
         sacrifice_cost: vec![],
         kicked: false,
+        bought_back: false,
+        evoked: false,
         strive_count: 0,
         replicate_count: 0,
     })
@@ -60205,6 +65302,170 @@ fn inkshield_prevents_each_attacker_and_tallies_tokens() {
     );
 }
 
+// ── Moment's Peace (soc): table-wide fog, no token payoff (#150, scope generalization of #130) ──
+
+/// Moment's Peace: "Prevent all combat damage that would be dealt this turn." A 3/3 attacker and
+/// a 3/3 blocker would normally trade lethal damage; after Moment's Peace resolves neither is
+/// dealt any (the `deal_creature_damage` choke).
+#[test]
+fn moments_peace_prevents_combat_damage_to_creatures() {
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), RAIDER_3_3);
+    let blocker = game.spawn_on_battlefield(PlayerId(1), RAIDER_3_3);
+    let moments_peace = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, PlayerId(1))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(1),
+        blocks: vec![(blocker, attacker)],
+    })
+    .unwrap();
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.marked_damage(attacker),
+        0,
+        "the attacker is dealt no combat damage"
+    );
+    assert_eq!(
+        game.marked_damage(blocker),
+        0,
+        "the blocker is dealt no combat damage"
+    );
+    assert_eq!(
+        game.zone_of(attacker),
+        Zone::Battlefield,
+        "the attacker survives the prevented trade"
+    );
+    assert_eq!(
+        game.zone_of(blocker),
+        Zone::Battlefield,
+        "the blocker survives the prevented trade"
+    );
+}
+
+/// An unblocked attacker's combat damage to the defending player is also prevented (the
+/// `damage_player` choke).
+#[test]
+fn moments_peace_prevents_combat_damage_to_a_player() {
+    let mut game = Game::with_players(2, 0);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), RAIDER_3_3);
+    let moments_peace = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, PlayerId(1))],
+    })
+    .unwrap();
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
+
+    let life_before = game.life(PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before,
+        "the unblocked attacker's combat damage to the defending player is prevented"
+    );
+}
+
+/// The shield is combat-only (the `combat` gate): a direct-damage spell to a player still
+/// connects with the shield up.
+#[test]
+fn moments_peace_does_not_prevent_noncombat_damage() {
+    let mut game = Game::new();
+    let moments_peace = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
+    fund_cast_resolve(
+        &mut game,
+        PlayerId(0),
+        bolt,
+        Some(Target::Player(PlayerId(0))),
+    );
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        17,
+        "noncombat damage is unaffected by the table-wide combat-damage shield"
+    );
+}
+
+/// "this turn": the shield expires at the next untap, so combat on the following turn deals
+/// damage normally.
+#[test]
+fn moments_peace_shield_expires_next_turn() {
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA, VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA, VANILLA]);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), RAIDER_3_3);
+    let moments_peace = game.spawn_in_hand(PlayerId(0), card("Moment's Peace"));
+
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None); // shield placed on P0's turn 1
+    pass_until_next_turn(&mut game); // → P1's turn, past its untap (which clears the shield)
+    pass_until_next_turn(&mut game); // → P0's turn again, so `attacker` can attack
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, PlayerId(1))],
+    })
+    .unwrap();
+
+    let life_before = game.life(PlayerId(1));
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before - 3,
+        "the expired shield does not prevent next turn's combat damage"
+    );
+}
+
+/// Flashback {2}{G} (CR 702.34): cast from the graveyard, it still prevents that turn's combat
+/// damage, then exiles instead of returning to the graveyard.
+#[test]
+fn moments_peace_flashback_from_graveyard() {
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA, VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA, VANILLA]);
+    let attacker = game.spawn_on_battlefield(PlayerId(1), RAIDER_3_3);
+    let moments_peace = game.spawn_in_graveyard(PlayerId(0), card("Moment's Peace"));
+
+    pass_until_next_turn(&mut game); // → P1's turn
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(attacker, PlayerId(0))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.priority_holder() == PlayerId(0));
+    fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
+
+    let life_before = game.life(PlayerId(0));
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before,
+        "the flashback cast prevents this turn's combat damage same as casting from hand"
+    );
+    assert_eq!(
+        game.zone_of(moments_peace),
+        Zone::Exile,
+        "CR 702.34e: a resolved flashback spell is exiled, not put into the graveyard"
+    );
+}
+
 // ── Tajic, Legion's Edge — noncombat-damage prevention static (CR 615) ──────────────────
 // "Prevent all noncombat damage that would be dealt to other creatures you control." A
 // durationless permanent static: effect damage and fight damage (CR 701.12) to the
@@ -60344,5 +65605,2581 @@ fn tajic_prevents_fight_damage_to_your_creature() {
         g.zone_of(g.current_id(enemy)),
         Zone::Graveyard,
         "the opponent's creature still took the 3 back and died",
+    );
+}
+
+// Phantom Centaur (CR 615): "Protection from black / Phantom Centaur enters with two +1/+1
+// counters on it. / If damage would be dealt to Phantom Centaur, prevent that damage. Remove a
+// +1/+1 counter from Phantom Centaur." A self-only shield, disjoint from Tajic's "other
+// creatures" static: it prevents ALL damage (combat and noncombat) to ITSELF, and each prevented
+// damage-dealing event removes one +1/+1 counter (still applies, removing nothing, at zero).
+
+#[test]
+fn phantom_centaur_prevents_combat_damage_and_removes_a_counter() {
+    let mut g = TestGame::new();
+    let centaur = g.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur"));
+    g.add_plus_counter(centaur); // entered with two +1/+1 counters (2/2)
+    g.add_plus_counter(centaur);
+    let blocker = g.spawn_on_battlefield(PlayerId(1), creature("Blocker 3/3", 3, 3, &[]));
+
+    attack_with(&mut g, vec![centaur]);
+    block_with(&mut g, vec![(blocker, centaur)]).unwrap();
+    advance_until(&mut g, |g| g.current_step() == Step::EndCombat);
+
+    let centaur = g.current_id(centaur);
+    assert_eq!(
+        g.marked_damage(centaur),
+        0,
+        "the combat damage is prevented"
+    );
+    assert_eq!(
+        g.zone_of(centaur),
+        Zone::Battlefield,
+        "Phantom Centaur survives the prevented hit"
+    );
+    assert_eq!(
+        g.plus_counters(centaur),
+        1,
+        "one +1/+1 counter is removed for the prevented damage event"
+    );
+}
+
+#[test]
+fn phantom_centaur_prevents_combat_damage_as_a_blocker() {
+    // CR 615's shield is symmetric across combat roles: it prevents the damage an attacker
+    // assigns to a *blocking* Phantom Centaur too, removing one +1/+1 counter. The
+    // attacker-to-blocker damage path is separate from the blocker-to-attacker one.
+    let mut g = TestGame::new();
+    let attacker = g.spawn_on_battlefield(PlayerId(0), creature("Attacker 3/3", 3, 3, &[]));
+    let centaur = g.spawn_on_battlefield(PlayerId(1), card("Phantom Centaur"));
+    g.add_plus_counter(centaur); // entered with two +1/+1 counters (2/2)
+    g.add_plus_counter(centaur);
+
+    attack_with(&mut g, vec![attacker]);
+    block_with(&mut g, vec![(centaur, attacker)]).unwrap();
+    advance_until(&mut g, |g| g.current_step() == Step::EndCombat);
+
+    let centaur = g.current_id(centaur);
+    assert_eq!(
+        g.marked_damage(centaur),
+        0,
+        "the attacker's combat damage is prevented while Phantom Centaur blocks"
+    );
+    assert_eq!(
+        g.zone_of(centaur),
+        Zone::Battlefield,
+        "Phantom Centaur survives blocking the attacker"
+    );
+    assert_eq!(
+        g.plus_counters(centaur),
+        1,
+        "one +1/+1 counter is removed while blocking for the prevented damage event"
+    );
+}
+
+#[test]
+fn phantom_centaur_prevents_noncombat_damage_and_removes_a_counter() {
+    let mut g = TestGame::new();
+    let centaur = g.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur"));
+    g.add_plus_counter(centaur);
+    g.add_plus_counter(centaur);
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_2);
+
+    g.cast(burn).at(Target::Object(centaur)).resolve();
+
+    let centaur = g.current_id(centaur);
+    assert_eq!(g.marked_damage(centaur), 0, "the burn damage is prevented");
+    assert_eq!(
+        g.plus_counters(centaur),
+        1,
+        "one +1/+1 counter is removed for the prevented damage event"
+    );
+}
+
+#[test]
+fn phantom_centaur_prevents_at_zero_counters_removing_nothing() {
+    // At zero +1/+1 counters Phantom Centaur is a 0/0, but CR 615 says the shield still
+    // applies — prevention doesn't stop, it just has nothing left to remove. Assert the
+    // prevention itself (no `DamageMarked`, no `CountersPlaced`), not survival — a 0/0 dies
+    // to the toughness SBA regardless of whether damage ever landed.
+    let mut game = Game::new();
+    let centaur = game.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur")); // 0/0, no counters
+    let burn = game.spawn_in_hand(PlayerId(0), BURN_FIXED_2);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: burn,
+        target: Some(Target::Object(centaur)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    let events = resolve_top_of_stack_events(&mut game);
+
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::DamageMarked { object, .. } if *object == centaur)),
+        "damage to Phantom Centaur is still prevented at zero counters: {events:?}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::CountersPlaced { object, .. } if *object == centaur)),
+        "there is no counter left to remove, so no counter event fires: {events:?}"
+    );
+}
+
+#[test]
+fn phantom_centaur_shield_does_not_protect_other_creatures() {
+    // The shield is self-only (CR 615 reads "Phantom Centaur", not "other creatures you
+    // control" like Tajic) — a second creature under the same controller is unprotected.
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(0), card("Phantom Centaur"));
+    let ally = g.spawn_on_battlefield(PlayerId(0), creature("Ally 3/3", 3, 3, &[]));
+    let burn = g.spawn_in_hand(PlayerId(0), BURN_FIXED_2);
+
+    g.cast(burn).at(Target::Object(ally)).resolve();
+
+    assert_eq!(
+        g.marked_damage(g.current_id(ally)),
+        2,
+        "Phantom Centaur's shield doesn't extend to other creatures you control"
+    );
+}
+
+// ── Guild/shard mana lands: taplands, Signets, a Panorama fetch, and the karoos ────────
+
+#[test]
+fn coastal_tower_enters_tapped_and_its_dual_credit_pays_white_or_blue() {
+    // Coastal Tower: "This land enters tapped. / {T}: Add {W} or {U}."
+    let mut game = Game::new();
+    let tower = game.spawn_in_hand(PlayerId(0), card("Coastal Tower"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: tower,
+        })
+        .unwrap();
+    assert!(
+        game.is_tapped(land_permanent(&events)),
+        "Coastal Tower enters the battlefield tapped (CR 614.13)"
+    );
+
+    // The dual credit picks its color at payment time: it pays a {W} pip and a {U} pip alike.
+    for pip in [Color::White, Color::Blue] {
+        let mut game = Game::new();
+        // Pre-stack both libraries so the intervening draws don't cause a draw-from-empty loss.
+        game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+        game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+        let tower = game.spawn_on_battlefield(PlayerId(0), card("Coastal Tower"));
+        // Spawn honors enters_tapped; P0's next untap clears it.
+        advance_to_p0_second_main(&mut game);
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: tower,
+        })
+        .unwrap();
+        let mut colored = [0; 5];
+        colored[pip.index()] = 1;
+        let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test One-Pip", 0, colored));
+        cast_plain(&mut game, PlayerId(0), spell).unwrap();
+        assert_eq!(
+            game.zone_of(spell),
+            Zone::Stack,
+            "Coastal Tower's dual credit paid the {pip:?} pip"
+        );
+    }
+}
+
+#[test]
+fn elfhame_palace_enters_tapped_and_its_dual_credit_pays_green_or_white() {
+    // Elfhame Palace: "This land enters tapped. / {T}: Add {G} or {W}."
+    let mut game = Game::new();
+    let palace = game.spawn_in_hand(PlayerId(0), card("Elfhame Palace"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: palace,
+        })
+        .unwrap();
+    assert!(
+        game.is_tapped(land_permanent(&events)),
+        "Elfhame Palace enters the battlefield tapped (CR 614.13)"
+    );
+
+    for pip in [Color::Green, Color::White] {
+        let mut game = Game::new();
+        // Pre-stack both libraries so the intervening draws don't cause a draw-from-empty loss.
+        game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+        game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+        let palace = game.spawn_on_battlefield(PlayerId(0), card("Elfhame Palace"));
+        // Spawn honors enters_tapped; P0's next untap clears it.
+        advance_to_p0_second_main(&mut game);
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: palace,
+        })
+        .unwrap();
+        let mut colored = [0; 5];
+        colored[pip.index()] = 1;
+        let spell = game.spawn_in_hand(PlayerId(0), vanilla("Test One-Pip", 0, colored));
+        cast_plain(&mut game, PlayerId(0), spell).unwrap();
+        assert_eq!(
+            game.zone_of(spell),
+            Zone::Stack,
+            "Elfhame Palace's dual credit paid the {pip:?} pip"
+        );
+    }
+}
+
+#[test]
+fn seaside_citadel_enters_tapped_and_taps_for_any_one_of_its_three_colors() {
+    // Seaside Citadel: "This land enters tapped. / {T}: Add {G}, {W}, or {U}." — three
+    // activated modes, one per color; tapping is the cost, so only one fires per untap.
+    let mut game = Game::new();
+    let citadel = game.spawn_in_hand(PlayerId(0), card("Seaside Citadel"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: citadel,
+        })
+        .unwrap();
+    assert!(
+        game.is_tapped(land_permanent(&events)),
+        "Seaside Citadel enters the battlefield tapped (CR 614.13)"
+    );
+
+    for (index, color) in [(0, Color::Green), (1, Color::White), (2, Color::Blue)] {
+        let mut game = Game::new();
+        let citadel = game.spawn_on_battlefield(PlayerId(0), card("Seaside Citadel"));
+        pass_until_next_turn(&mut game);
+        pass_until_next_turn(&mut game); // spawn honors enters_tapped; untap at P0's own turn
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: citadel,
+            ability_index: index,
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        })
+        .unwrap();
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), color),
+            1,
+            "mode {index} adds one {color:?}"
+        );
+        assert!(game.is_tapped(citadel), "tapping itself is the cost");
+        assert_eq!(
+            game.submit(Intent::ActivateAbility {
+                player: PlayerId(0),
+                object: citadel,
+                ability_index: (index + 1) % 3,
+                target: None,
+                sacrifice: vec![],
+                x: 0,
+            }),
+            Err(Reject::CannotActivate),
+            "a tapped Citadel can't add a second color the same turn"
+        );
+    }
+}
+
+#[test]
+fn selesnya_and_simic_signets_pay_one_and_add_their_guild_colors() {
+    // Selesnya Signet "{1}, {T}: Add {G}{W}." / Simic Signet "{1}, {T}: Add {G}{U}." —
+    // a Forest funds the {1}; the output is one mana of each guild color.
+    for (name, a, b) in [
+        ("Selesnya Signet", Color::Green, Color::White),
+        ("Simic Signet", Color::Green, Color::Blue),
+    ] {
+        let mut game = Game::new();
+        let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+        let signet = game.spawn_on_battlefield(PlayerId(0), card(name));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: forest,
+        })
+        .unwrap();
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: signet,
+            ability_index: 0,
+            target: None,
+            sacrifice: vec![],
+            x: 0,
+        })
+        .unwrap();
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), a),
+            1,
+            "{name} adds one {a:?}"
+        );
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), b),
+            1,
+            "{name} adds one {b:?}"
+        );
+        assert_eq!(
+            game.floating_mana(PlayerId(0)),
+            2,
+            "{name}: the Forest's green paid the {{1}} activation cost"
+        );
+        assert!(game.is_tapped(signet));
+    }
+}
+
+#[test]
+fn bant_panorama_taps_for_colorless() {
+    let mut game = Game::new();
+    let panorama = game.spawn_on_battlefield(PlayerId(0), card("Bant Panorama"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: panorama,
+    })
+    .unwrap();
+    assert_eq!(game.colorless_in_pool(PlayerId(0)), 1);
+}
+
+#[test]
+fn bant_panorama_fetches_a_tapped_basic_forest_plains_or_island() {
+    // Bant Panorama: "{1}, {T}, Sacrifice this land: Search your library for a basic Forest,
+    // Plains, or Island card, put it onto the battlefield tapped, then shuffle." A Mountain is
+    // basic but the wrong type; a Forest-typed nonbasic dual is the right type but not basic.
+    let mut game = Game::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Mountain"),
+            card("Tangled Islet"),
+            card("Plains"),
+            card("Island"),
+            card("Forest"),
+        ],
+    );
+    let forest_src = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let panorama = game.spawn_on_battlefield(PlayerId(0), card("Bant Panorama"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest_src,
+    })
+    .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: panorama,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(panorama),
+        Zone::Graveyard,
+        "the Panorama is sacrificed as a cost"
+    );
+
+    resolve_top_of_stack(&mut game); // the search ability resolves → pause on the search
+    let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
+        panic!(
+            "Bant Panorama pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        matches.contains(&lib[2]) && matches.contains(&lib[3]) && matches.contains(&lib[4]),
+        "the basic Plains, Island, and Forest all match"
+    );
+    assert!(
+        !matches.contains(&lib[0]),
+        "a basic Mountain is not a Forest, Plains, or Island"
+    );
+    assert!(
+        !matches.contains(&lib[1]),
+        "a nonbasic Forest-typed dual is not basic (CR 205.4a)"
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[2]), Zone::Battlefield);
+    assert!(
+        game.is_tapped(game.current_id(lib[2])),
+        "the fetched basic enters tapped"
+    );
+}
+
+#[test]
+fn azorius_chancery_bounce_may_return_itself_even_with_another_land() {
+    // Azorius Chancery: "When this land enters, return a land you control to its owner's
+    // hand." — no "another", so the Chancery itself is a legal choice alongside other lands.
+    let mut game = Game::new();
+    let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let chancery = game.spawn_in_hand(PlayerId(0), card("Azorius Chancery"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: chancery,
+        })
+        .unwrap();
+    let chancery_perm = land_permanent(&events);
+    assert!(game.is_tapped(chancery_perm), "enters tapped");
+
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the enters trigger pauses on the mandatory bounce, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(player, PlayerId(0));
+    assert!(
+        legal.contains(&Target::Object(plains)),
+        "another land is a legal bounce"
+    );
+    assert!(
+        legal.contains(&Target::Object(chancery_perm)),
+        "the Chancery itself is a legal bounce"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(chancery_perm)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(chancery_perm),
+        Zone::Hand,
+        "the Chancery bounced itself"
+    );
+    assert_eq!(game.zone_of(plains), Zone::Battlefield, "the Plains stayed");
+}
+
+#[test]
+fn a_karoo_with_no_other_land_is_forced_to_bounce_itself() {
+    // Selesnya Sanctuary alone on the battlefield: the mandatory enters trigger's only legal
+    // target is the Sanctuary itself — like the real card, it must return itself.
+    let mut game = Game::new();
+    let sanctuary = game.spawn_in_hand(PlayerId(0), card("Selesnya Sanctuary"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: sanctuary,
+        })
+        .unwrap();
+    let perm = land_permanent(&events);
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the enters trigger pauses on the mandatory bounce, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        legal,
+        vec![Target::Object(perm)],
+        "the Sanctuary itself is the only legal bounce"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(perm)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(perm),
+        Zone::Hand,
+        "the Sanctuary returned itself"
+    );
+}
+
+#[test]
+fn a_karoo_taps_for_one_of_each_of_its_two_colors() {
+    // "{T}: Add {W}{U}." (and guild-mates) is two mana — one of each color — not a dual choice.
+    for (name, a, b) in [
+        ("Azorius Chancery", Color::White, Color::Blue),
+        ("Selesnya Sanctuary", Color::Green, Color::White),
+        ("Simic Growth Chamber", Color::Green, Color::Blue),
+    ] {
+        let mut game = Game::new();
+        let karoo = game.spawn_on_battlefield(PlayerId(0), card(name));
+        pass_until_next_turn(&mut game);
+        pass_until_next_turn(&mut game); // spawn honors enters_tapped; untap at P0's own turn
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: karoo,
+        })
+        .unwrap();
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), a),
+            1,
+            "{name} adds one {a:?}"
+        );
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), b),
+            1,
+            "{name} adds one {b:?}"
+        );
+        assert_eq!(
+            game.floating_mana(PlayerId(0)),
+            2,
+            "{name} adds exactly two mana"
+        );
+        assert!(game.is_tapped(karoo));
+    }
+}
+
+#[test]
+fn borderland_ranger_etb_may_search_a_basic_land_to_hand() {
+    // Borderland Ranger: "When this creature enters, you may search your library for a basic
+    // land card, reveal it, put it into your hand, then shuffle." The "may" pauses first; a
+    // nonbasic Forest-typed dual is not a basic land, so only the basic matches.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Tangled Islet"), card("Forest")]);
+    let islet = lib[0];
+    let forest = lib[1];
+    let ranger = game.spawn_in_hand(PlayerId(0), card("Borderland Ranger"));
+    game.cast(ranger).resolve();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the optional ETB search pauses on a yes/no, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!("accepting pauses on the library search");
+    };
+    assert_eq!(dest, SearchDest::Hand, "the found card goes to hand");
+    assert!(matches.contains(&forest), "the basic Forest matches");
+    assert!(
+        !matches.contains(&islet),
+        "a nonbasic Forest-typed dual is not a basic land"
+    );
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(forest),
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Hand,
+        "the found basic land went to hand"
+    );
+}
+
+#[test]
+fn wood_elves_fetches_a_forest_typed_land_onto_the_battlefield_untapped() {
+    // Wood Elves: "When this creature enters, search your library for a Forest card, put that
+    // card onto the battlefield, then shuffle." — a mandatory search for "a Forest card"
+    // (CardFilter::LandWithSubtype): the nonbasic Forest-typed dual matches too (unlike a
+    // basic-land search), and the fetched land enters UNTAPPED.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Island"), card("Tangled Islet"), card("Forest")],
+    );
+    let island = lib[0];
+    let islet = lib[1];
+    let forest = lib[2];
+    let elves = game.spawn_in_hand(PlayerId(0), card("Wood Elves"));
+    game.cast(elves).resolve();
+    resolve_top_of_stack(&mut game); // the mandatory ETB trigger resolves → search pause
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "Wood Elves pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Battlefield);
+    assert!(matches.contains(&forest), "the basic Forest matches");
+    assert!(
+        matches.contains(&islet),
+        "the Forest-typed nonbasic dual matches"
+    );
+    assert!(
+        !matches.contains(&island),
+        "an Island has no Forest subtype"
+    );
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(islet),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(islet), Zone::Battlefield);
+    let perm = game.current_id(islet);
+    assert!(
+        !game.is_tapped(perm),
+        "Wood Elves' fetched Forest enters untapped"
+    );
+}
+
+#[test]
+fn jungle_barrier_etb_draws_a_card() {
+    // Jungle Barrier: "Defender / When this creature enters, draw a card."
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let barrier = game.spawn_in_hand(PlayerId(0), card("Jungle Barrier"));
+    game.cast(barrier).resolve();
+    resolve_top_of_stack(&mut game); // the ETB trigger resolves
+
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Hand,
+        "Jungle Barrier's ETB drew a card"
+    );
+    let perm = game.current_id(barrier);
+    assert!(
+        game.has_keyword(perm, Keyword::Defender),
+        "Jungle Barrier has defender"
+    );
+}
+
+#[test]
+fn jungle_lion_cant_block() {
+    // Jungle Lion: "This creature can't block." (CR 509.1a — never a legal blocker.)
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let lion = game.spawn_on_battlefield(PlayerId(1), card("Jungle Lion"));
+
+    attack_with(&mut game, vec![attacker]);
+    assert!(
+        block_with(&mut game, vec![(lion, attacker)]).is_err(),
+        "Jungle Lion can't block"
+    );
+}
+
+#[test]
+fn man_o_war_etb_bounces_target_creature() {
+    // Man-o'-War: "When this creature enters, return target creature to its owner's hand."
+    // The mandatory trigger targets at placement; the bounced creature goes to its OWNER's hand.
+    let mut game = TestGame::new();
+    let theirs = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let jellyfish = game.spawn_in_hand(PlayerId(0), card("Man-o'-War"));
+    game.cast(jellyfish).resolve();
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ETB bounce pauses to choose its target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(theirs)),
+        "an opponent's creature is a legal bounce target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(theirs)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(theirs),
+        Zone::Hand,
+        "the targeted creature returned to its owner's hand"
+    );
+    assert_eq!(
+        game.zone_of(jellyfish),
+        Zone::Battlefield,
+        "Man-o'-War itself stays on the battlefield"
+    );
+}
+
+// ── Buyback (#149): optional additional cost, bought-back spell returns to hand ────────────
+
+#[test]
+fn capsize_bought_back_returns_to_hand() {
+    // Capsize: "Buyback {3} (You may pay an additional {3} as you cast this spell. If you do,
+    // put this card into your hand as it resolves.) Return target permanent to its owner's
+    // hand." Paying the buyback bounces the target AND returns Capsize to its caster's hand
+    // instead of the graveyard.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let capsize = game.spawn_in_hand(PlayerId(0), card("Capsize"));
+
+    game.cast(capsize)
+        .at(Target::Object(bear))
+        .bought_back(true)
+        .resolve();
+
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the targeted permanent returned to its owner's hand"
+    );
+    assert_eq!(
+        game.zone_of(capsize),
+        Zone::Hand,
+        "buyback puts Capsize into its owner's hand as it resolves, not the graveyard"
+    );
+}
+
+#[test]
+fn capsize_without_buyback_goes_to_graveyard() {
+    // Declining buyback (CR 702.27c) leaves Capsize an ordinary instant: it still bounces its
+    // target, but goes to the graveyard like any other resolved instant.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let capsize = game.spawn_in_hand(PlayerId(0), card("Capsize"));
+
+    game.cast(capsize).at(Target::Object(bear)).resolve();
+
+    assert_eq!(game.zone_of(bear), Zone::Hand, "the target still bounces");
+    assert_eq!(
+        game.zone_of(capsize),
+        Zone::Graveyard,
+        "declining buyback sends Capsize to the graveyard as normal"
+    );
+}
+
+#[test]
+fn capsize_buyback_requires_the_extra_mana() {
+    // Buyback {3} is an *additional* cost (CR 702.27c) on top of the printed {1}{U}{U}: a
+    // caster who can only afford the printed cost can't opt into paying it, mirroring kicker's
+    // own can't-pay gate.
+    let mut game = Game::new();
+    for _ in 0..3 {
+        let island = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: island,
+        })
+        .unwrap();
+    }
+    assert_eq!(game.mana_in_pool(PlayerId(0), Color::Blue), 3);
+
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let capsize = game.spawn_in_hand(PlayerId(0), card("Capsize"));
+    let rejected = game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: capsize,
+        target: Some(Target::Object(bear)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: true,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    });
+    assert_eq!(rejected, Err(Reject::CannotPayCost));
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Blue),
+        3,
+        "the rejected cast spent no mana"
+    );
+    assert_eq!(
+        game.zone_of(capsize),
+        Zone::Hand,
+        "the rejected cast left Capsize in hand"
+    );
+}
+
+#[test]
+fn merfolk_looter_taps_to_draw_then_discard() {
+    // Merfolk Looter: "{T}: Draw a card, then discard a card." — the draw lands first, then
+    // the discard pauses on a card pick from the (now larger) hand.
+    let mut game = Game::new();
+    let looter = game.spawn_on_battlefield(PlayerId(0), card("Merfolk Looter"));
+    let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let lib = game.stack_library(PlayerId(0), &[card("Plains")]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: looter,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(game.is_tapped(looter), "the loot tapped Merfolk Looter");
+    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the loot drew a card");
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::DiscardCards {
+                player: PlayerId(0),
+                count: 1,
+                ..
+            })
+        ),
+        "then the discard pauses on a card pick, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![fodder],
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(fodder),
+        Zone::Graveyard,
+        "the chosen card was discarded"
+    );
+}
+
+#[test]
+fn looter_il_kor_combat_damage_to_opponent_draws_then_discards() {
+    // Looter il-Kor: "Shadow / Whenever this creature deals damage to an opponent, draw a card,
+    // then discard a card." Its combat damage to the defending player (always an opponent)
+    // fires the loot — the combat half of the deals-damage-to-an-opponent trigger.
+    let mut game = Game::new();
+    let looter = game.spawn_on_battlefield(PlayerId(0), card("Looter il-Kor"));
+    let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    let lib = game.stack_library(PlayerId(0), &[card("Plains")]);
+
+    attack_with(&mut game, vec![looter]);
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+
+    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the hit drew a card");
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::DiscardCards {
+                player: PlayerId(0),
+                count: 1,
+                ..
+            })
+        ),
+        "then the discard pauses on a card pick, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::Discard {
+        player: PlayerId(0),
+        cards: vec![fodder],
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(fodder),
+        Zone::Graveyard,
+        "the chosen card was discarded"
+    );
+    assert!(
+        game.has_keyword(looter, Keyword::Shadow),
+        "Looter il-Kor has shadow"
+    );
+}
+
+/// A test-only creature with Looter il-Kor's trigger timing (a draw-1 payload) plus a free
+/// "deal 1 damage to target player" activation — isolates the "deals damage to an opponent"
+/// trigger's noncombat firing and its opponent gate from combat.
+const OPPONENT_DAMAGE_WATCHER: CardDef = CardDef {
+    abilities: &[
+        Ability {
+            timing: Timing::Triggered(Trigger::DealsDamageToOpponent),
+            effect: Effect::DrawCards {
+                count: Amount::Fixed(1),
+            },
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            cost: Cost::FREE,
+            condition: None,
+        },
+        Ability {
+            timing: Timing::Activated(ActivationCost {
+                taps_self: false,
+                mana: Cost::FREE,
+                sacrifice: SacrificeCost::None,
+                pay_life: Amount::Fixed(0),
+                self_damage: 0,
+                loyalty: None,
+                once_each_turn: false,
+                sorcery_speed: false,
+                remove_counters: 0,
+                remove_counters_kind: None,
+                return_self: false,
+                mill_self: 0,
+                exile_self: false,
+            }),
+            effect: Effect::DealDamage {
+                amount: Amount::Fixed(1),
+                target: TargetSpec::Player,
+                count: TargetCount {
+                    min: 1,
+                    max: 1,
+                    x_scaled: false,
+                    sacrifice_scaled: false,
+                    strive_scaled: false,
+                },
+                divided: false,
+            },
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            cost: Cost::FREE,
+            condition: None,
+        },
+    ],
+    ..creature("Opponent-Damage Watcher (test)", 1, 1, &[])
+};
+
+#[test]
+fn deals_damage_to_opponent_trigger_fires_on_noncombat_damage_to_an_opponent_only() {
+    // CR 603.3 — "whenever this creature deals damage to an opponent": noncombat damage the
+    // creature deals to an opponent of its controller fires it (the gap Looter il-Kor's old
+    // combat-only approximation missed); the same damage to its own controller does not (CR
+    // 102.3 — every *other* player is an opponent).
+    let mut game = Game::new();
+    let watcher = game.spawn_on_battlefield(PlayerId(0), OPPONENT_DAMAGE_WATCHER);
+    let lib = game.stack_library(PlayerId(0), &[card("Plains"), card("Forest")]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: watcher,
+        ability_index: 1,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("P0 can ping an opponent");
+    let opponent_life = game.life(PlayerId(1));
+    resolve_top_of_stack(&mut game); // the damage resolves; the trigger goes on the stack
+    assert_eq!(
+        game.life(PlayerId(1)),
+        opponent_life - 1,
+        "the ping dealt 1 damage to the opponent"
+    );
+    resolve_top_of_stack(&mut game); // the trigger resolves
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Hand,
+        "damage to an opponent fired the trigger — a card was drawn"
+    );
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: watcher,
+        ability_index: 1,
+        target: Some(Target::Player(PlayerId(0))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("P0 can ping themselves");
+    let own_life = game.life(PlayerId(0));
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        own_life - 1,
+        "the ping dealt 1 damage to its own controller"
+    );
+    assert_eq!(
+        game.zone_of(lib[1]),
+        Zone::Library,
+        "the controller is not their own opponent — no trigger, no draw"
+    );
+}
+
+// ── Typecycling (CR 702.29e — Noble Templar / Shoreline Ranger / Wirewood Guardian) ─────
+// "Plainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal
+// it, put it into your hand, then shuffle.)" — a typed-land search, not cycling's fixed draw,
+// so it rides the general hand-ability shape. A "Plains card" is any land with the subtype,
+// basic or not.
+
+#[test]
+fn noble_templar_plainscycling_fetches_any_plains_typed_land() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Island"), card("Eclipsed Steppe"), card("Plains")],
+    );
+    let templar = game.spawn_in_hand(PlayerId(0), card("Noble Templar"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: templar,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(templar),
+        Zone::Graveyard,
+        "the card was discarded as part of the ability's cost, not cast",
+    );
+    // CR 113.6/602: the landcycling ability resolves off the stack before it searches.
+    resolve_top_of_stack(&mut game);
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "plainscycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand, "the found card goes to hand");
+    assert!(
+        !matches.contains(&lib[0]),
+        "an Island has no Plains subtype"
+    );
+    assert!(
+        matches.contains(&lib[1]),
+        "the nonbasic Plains-typed dual matches — 'a Plains card', not 'a basic Plains'"
+    );
+    assert!(matches.contains(&lib[2]), "the basic Plains matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(lib[2]),
+        Zone::Hand,
+        "the fetched Plains is in hand"
+    );
+}
+
+#[test]
+fn shoreline_ranger_islandcycling_fetches_any_island_typed_land() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Plains"), card("Tangled Islet"), card("Island")],
+    );
+    let ranger = game.spawn_in_hand(PlayerId(0), card("Shoreline Ranger"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: ranger,
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(ranger), Zone::Graveyard);
+    // CR 113.6/602: the landcycling ability resolves off the stack before it searches.
+    resolve_top_of_stack(&mut game);
+    let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
+        panic!(
+            "islandcycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(!matches.contains(&lib[0]), "a Plains has no Island subtype");
+    assert!(
+        matches.contains(&lib[1]),
+        "the nonbasic Island-typed dual matches"
+    );
+    assert!(matches.contains(&lib[2]), "the basic Island matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[2]), Zone::Hand);
+}
+
+#[test]
+fn wirewood_guardian_forestcycling_fetches_any_forest_typed_land() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Plains"), card("Tangled Islet"), card("Forest")],
+    );
+    let guardian = game.spawn_in_hand(PlayerId(0), card("Wirewood Guardian"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: guardian,
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(guardian), Zone::Graveyard);
+    // CR 113.6/602: the landcycling ability resolves off the stack before it searches.
+    resolve_top_of_stack(&mut game);
+    let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
+        panic!(
+            "forestcycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(!matches.contains(&lib[0]), "a Plains has no Forest subtype");
+    assert!(
+        matches.contains(&lib[1]),
+        "the nonbasic Forest-typed dual matches"
+    );
+    assert!(matches.contains(&lib[2]), "the basic Forest matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[2]), Zone::Hand);
+}
+
+// ── Raven Familiar (echo + a mandatory look-at-top-3 ETB) ────────────────────────────────
+
+#[test]
+fn raven_familiar_etb_puts_one_of_top_three_in_hand_rest_on_bottom() {
+    // "When this creature enters, look at the top three cards of your library. Put one of them
+    // into your hand and the rest on the bottom of your library in any order." — "Put one", not
+    // "you may put one": exactly one pick is mandatory.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Plains"),
+            card("Island"),
+            card("Forest"),
+            card("Mountain"),
+        ],
+    );
+    let raven = game.spawn_in_hand(PlayerId(0), card("Raven Familiar"));
+    game.cast(raven).resolve(); // enters; the ETB trigger goes on the stack
+    resolve_top_of_stack(&mut game); // the trigger resolves → the look pauses
+
+    let Some(PendingChoice::SelectFromTop {
+        cards,
+        up_to: 1,
+        min: 1,
+        dest: TopDest::Hand,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "the ETB pauses on a mandatory pick-one-of-three, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        cards,
+        vec![lib[0], lib[1], lib[2]],
+        "the look shows exactly the top three cards"
+    );
+    assert_eq!(
+        game.submit(Intent::SelectFromTop {
+            player: PlayerId(0),
+            cards: vec![],
+        }),
+        Err(Reject::IllegalChoice),
+        "\"Put one of them into your hand\" is mandatory — zero picks is illegal",
+    );
+
+    game.submit(Intent::SelectFromTop {
+        player: PlayerId(0),
+        cards: vec![lib[1]],
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(lib[1]), Zone::Hand, "the pick is in hand");
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Library,
+        "an unpicked card went to the bottom of the library"
+    );
+    assert_eq!(game.zone_of(lib[2]), Zone::Library);
+    assert_eq!(game.library_size(PlayerId(0)), 3);
+}
+
+#[test]
+fn raven_familiar_echo_paid_keeps_it() {
+    let mut game = Game::new();
+    let raven = game.spawn_on_battlefield(PlayerId(0), card("Raven Familiar"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayEchoOrSacrifice {
+                player: PlayerId(0),
+                source,
+                ..
+            }) if source == raven
+        ),
+        "echo pauses on a pay-or-sacrifice choice at the controller's first upkeep"
+    );
+
+    game.fund_mana(PlayerId(0)); // mana empties each step — fund at the pause
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(raven),
+        Zone::Battlefield,
+        "paying {{2}}{{U}} keeps Raven Familiar"
+    );
+}
+
+#[test]
+fn raven_familiar_echo_declined_sacrifices_it() {
+    let mut game = Game::new();
+    let raven = game.spawn_on_battlefield(PlayerId(0), card("Raven Familiar"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(raven),
+        Zone::Graveyard,
+        "declining echo sacrifices Raven Familiar"
+    );
+}
+
+// ── Auramancer (optional targeted graveyard return, enchantment cards only) ─────────────
+
+#[test]
+fn auramancer_returns_an_enchantment_or_aura_card_but_not_a_creature_card() {
+    // "When this creature enters, you may return target enchantment card from your graveyard to
+    // your hand." — an Aura is an enchantment card; a creature card is not a legal target.
+    let mut game = TestGame::new();
+    let enchantment = game.spawn_in_graveyard(PlayerId(0), card("Feral Appetite"));
+    let aura = game.spawn_in_graveyard(PlayerId(0), card("Chains of Custody"));
+    let creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let mancer = game.spawn_in_hand(PlayerId(0), card("Auramancer"));
+    game.cast(mancer).resolve(); // enters; the optional ETB pauses for yes/no
+
+    assert!(matches!(
+        game.pending_choice(),
+        Some(PendingChoice::MayYesNo {
+            player: PlayerId(0),
+            ..
+        })
+    ));
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the accepted trigger pauses to target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(enchantment)),
+        "an enchantment card in your graveyard is a legal target"
+    );
+    assert!(
+        legal.contains(&Target::Object(aura)),
+        "an Aura card is an enchantment card"
+    );
+    assert!(
+        !legal.contains(&Target::Object(creature_card)),
+        "a creature card is not an enchantment card"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(enchantment)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(enchantment),
+        Zone::Hand,
+        "the enchantment card returned to hand"
+    );
+}
+
+#[test]
+fn auramancer_declining_the_return_is_legal() {
+    let mut game = TestGame::new();
+    let enchantment = game.spawn_in_graveyard(PlayerId(0), card("Feral Appetite"));
+    let mancer = game.spawn_in_hand(PlayerId(0), card("Auramancer"));
+    game.cast(mancer).resolve();
+
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: false,
+    })
+    .unwrap();
+    assert!(game.pending_choice().is_none());
+    assert!(
+        game.stack().is_empty(),
+        "a declined trigger never hits the stack"
+    );
+    assert_eq!(
+        game.zone_of(enchantment),
+        Zone::Graveyard,
+        "declining returns nothing"
+    );
+}
+
+// ── Enchantress/Rubinia wave: Dismantling Blow, Oblivion Ring, Overwhelming Intellect,
+// Resurrection, Seal of Cleansing ──────────────────────────────────────────────────────────
+
+#[test]
+fn dismantling_blow_unkicked_destroys_without_drawing() {
+    // Dismantling Blow, kicker declined: pays only the printed {2}{W} and destroys the
+    // artifact; "If this spell was kicked, draw two cards" does nothing (CR 702.33d).
+    let mut game = TestGame::new();
+    let stone = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let blow = game.spawn_in_hand(PlayerId(0), card("Dismantling Blow"));
+
+    let events = game.cast(blow).at(Target::Object(stone)).submit();
+    let spent = events
+        .iter()
+        .find_map(|e| match e {
+            Event::ManaSpent {
+                player: PlayerId(0),
+                mana,
+            } => Some(mana_pool_pips(mana)),
+            _ => None,
+        })
+        .expect("casting Dismantling Blow spends mana");
+    assert_eq!(
+        spent, 3,
+        "declining the kicker spends only the printed {{2}}{{W}}"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(stone),
+        Zone::Graveyard,
+        "the artifact was destroyed"
+    );
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "an unkicked Dismantling Blow draws nothing"
+    );
+}
+
+#[test]
+fn dismantling_blow_kicked_pays_the_kicker_and_draws_two() {
+    // Paying the {2}{U} kicker makes the total {4}{W}{U} (6 mana) and draws two cards.
+    let mut game = TestGame::new();
+    let stone = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let blow = game.spawn_in_hand(PlayerId(0), card("Dismantling Blow"));
+
+    let events = game
+        .cast(blow)
+        .at(Target::Object(stone))
+        .kicked(true)
+        .submit();
+    let spent = events
+        .iter()
+        .find_map(|e| match e {
+            Event::ManaSpent {
+                player: PlayerId(0),
+                mana,
+            } => Some(mana_pool_pips(mana)),
+            _ => None,
+        })
+        .expect("casting a kicked Dismantling Blow spends mana");
+    assert_eq!(
+        spent, 6,
+        "paying the kicker spends the printed {{2}}{{W}} plus the {{2}}{{U}} kicker"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(stone),
+        Zone::Graveyard,
+        "the artifact was destroyed"
+    );
+    assert!(
+        library.iter().all(|&id| game.zone_of(id) == Zone::Hand),
+        "a kicked Dismantling Blow draws two cards"
+    );
+}
+
+#[test]
+fn oblivion_ring_exiles_until_it_leaves_the_battlefield() {
+    // Oblivion Ring: the ETB exile is linked to the leave-return (CR 603.6e) — destroying the
+    // Ring returns the exiled card to the battlefield under its owner's control.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let ring_card = game.spawn_in_hand(PlayerId(0), card("Oblivion Ring"));
+
+    game.cast(ring_card).resolve();
+    let ring = battlefield_named(&game, PlayerId(0), "Oblivion Ring")[0];
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget { .. })
+        ),
+        "the ETB exile ability is waiting for its target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Exile,
+        "the targeted nonland permanent was exiled"
+    );
+
+    let fracture = game.spawn_in_hand(PlayerId(0), card("Fracture"));
+    game.cast(fracture).at(Target::Object(ring)).resolve();
+    assert_eq!(
+        game.zone_of(ring),
+        Zone::Graveyard,
+        "the Ring was destroyed"
+    );
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "the exiled card returned when the Ring left (CR 603.6e)"
+    );
+    assert_eq!(
+        game.controller_of(bear),
+        PlayerId(1),
+        "it returns under its owner's control"
+    );
+}
+
+#[test]
+fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
+    // Overwhelming Intellect: "Counter target creature spell. Draw cards equal to that spell's
+    // mana value." P1's Auramancer ({2}{W}, mana value 3) is countered; P0 draws three.
+    let mut game = Game::new();
+    let mancer = game.spawn_in_hand(PlayerId(1), card("Auramancer"));
+    let intellect = game.spawn_in_hand(PlayerId(0), card("Overwhelming Intellect"));
+    let library = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+        ],
+    );
+    // P1 draws at their draw step on the way to their main phase — an empty library would lose.
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+
+    // P1 can't cast a creature at instant speed on P0's turn — roll to P1's main phase.
+    // Mana is funded after the roll (pools empty as each step ends).
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: mancer,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Auramancer is castable");
+    let mancer_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: intellect,
+        target: Some(Target::Object(mancer_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Overwhelming Intellect can counter a creature spell");
+    resolve_top_of_stack(&mut game);
+
+    assert_ne!(
+        game.zone_of(mancer),
+        Zone::Battlefield,
+        "the creature spell was countered"
+    );
+    assert!(
+        library.iter().all(|&id| game.zone_of(id) == Zone::Hand),
+        "P0 drew cards equal to the countered spell's mana value (3)"
+    );
+}
+
+#[test]
+fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
+    // "Counter target creature spell" — an instant on the stack is not a legal target.
+    let mut game = Game::new();
+    let bolt = game.spawn_in_hand(PlayerId(1), card("Lightning Bolt"));
+    let intellect = game.spawn_in_hand(PlayerId(0), card("Overwhelming Intellect"));
+    // P1 draws at their draw step on the way to their main phase — an empty library would lose.
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: bolt,
+        target: Some(Target::Player(PlayerId(0))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Lightning Bolt is castable");
+    let bolt_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    assert_eq!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: intellect,
+            target: Some(Target::Object(bolt_on_stack)),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+        }),
+        Err(Reject::IllegalTarget),
+        "a noncreature spell is not a legal target for Overwhelming Intellect"
+    );
+}
+
+#[test]
+fn resurrection_returns_your_creature_card_to_the_battlefield() {
+    // Resurrection: "Return target creature card from your graveyard to the battlefield."
+    let mut game = TestGame::new();
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let resurrection = game.spawn_in_hand(PlayerId(0), card("Resurrection"));
+
+    game.cast(resurrection).at(Target::Object(corpse)).resolve();
+
+    assert_eq!(
+        game.zone_of(corpse),
+        Zone::Battlefield,
+        "the creature card returned to the battlefield"
+    );
+    assert_eq!(
+        game.controller_of(corpse),
+        PlayerId(0),
+        "under its owner's (and caster's) control"
+    );
+}
+
+#[test]
+fn resurrection_cannot_target_an_opponents_graveyard_card() {
+    // "your graveyard" — an opponent's graveyard card is not a legal target.
+    let mut game = TestGame::new();
+    let corpse = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let resurrection = game.spawn_in_hand(PlayerId(0), card("Resurrection"));
+
+    assert_eq!(
+        game.cast(resurrection)
+            .at(Target::Object(corpse))
+            .try_submit(),
+        Err(Reject::IllegalTarget),
+        "Resurrection only reaches its caster's own graveyard"
+    );
+}
+
+#[test]
+fn seal_of_cleansing_sacrifices_itself_to_destroy_an_artifact() {
+    // Seal of Cleansing: "Sacrifice this enchantment: Destroy target artifact or enchantment."
+    let mut game = Game::new();
+    let seal = game.spawn_on_battlefield(PlayerId(0), card("Seal of Cleansing"));
+    let stone = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: seal,
+        ability_index: 0,
+        target: Some(Target::Object(stone)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(seal),
+        Zone::Graveyard,
+        "the Seal is sacrificed as a cost, before the ability resolves"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(stone),
+        Zone::Graveyard,
+        "the targeted artifact was destroyed"
+    );
+}
+
+// ── Flicker (CR 400.7 — a new object): #147 ─────────────────────────────────────────────
+
+/// A test-only creature whose single ETB gains its controller 2 life — a fresh-object flicker
+/// (CR 400.7) re-fires it, without `TWO_ETB`'s incidental simultaneous-trigger-ordering pause
+/// (two ETB abilities on one source raise a `PendingChoice::OrderTriggers`, unrelated to what
+/// these tests exercise).
+const ETB_GAIN_LIFE: CardDef = CardDef {
+    abilities: &[Ability {
+        timing: Timing::Triggered(Trigger::Etb),
+        effect: Effect::GainLife {
+            amount: Amount::Fixed(2),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("Test ETB Gain Life", 1, 1, &[])
+};
+
+#[test]
+fn momentary_blink_flickers_creature_you_control_immediately() {
+    // Momentary Blink: "Exile target creature you control, then return it to the battlefield
+    // under its owner's control."
+    let mut game = Game::new();
+    let target = game.spawn_on_battlefield(PlayerId(0), ETB_GAIN_LIFE);
+    let blink = game.spawn_in_hand(PlayerId(0), card("Momentary Blink"));
+    game.fund_mana(PlayerId(0));
+    let life_before = game.life(PlayerId(0));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: blink,
+        target: Some(Target::Object(target)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_whole_stack(&mut game); // the spell, then its fresh object's own ETB trigger
+
+    let flickered = game.current_id(target);
+    assert_ne!(
+        flickered, target,
+        "the returned permanent is a new object (CR 400.7), not the same one that left"
+    );
+    assert_eq!(
+        game.zone_of(target),
+        Zone::Battlefield,
+        "back on the battlefield in the same resolution"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before + 2,
+        "the fresh object's own ETB trigger fired again"
+    );
+    assert!(
+        game.is_summoning_sick(flickered),
+        "a freshly entered permanent is summoning sick"
+    );
+}
+
+#[test]
+fn mistmeadow_witch_delayed_flicker_returns_at_end_step() {
+    // Mistmeadow Witch: "{2}{W}{U}: Exile target creature. Return that card to the battlefield
+    // under its owner's control at the beginning of the next end step."
+    let mut game = Game::new();
+    let witch = game.spawn_on_battlefield(PlayerId(0), card("Mistmeadow Witch"));
+    let target = game.spawn_on_battlefield(PlayerId(1), ETB_GAIN_LIFE); // "target creature" — any
+    game.fund_mana(PlayerId(0));
+    let life_before = game.life(PlayerId(1));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: witch,
+        ability_index: 0,
+        target: Some(Target::Object(target)),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(target),
+        Zone::Exile,
+        "exiled immediately on resolution"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::End);
+    resolve_whole_stack(&mut game); // the delayed trigger resolves
+
+    let flickered = game.current_id(target);
+    assert_ne!(flickered, target, "returns as a new object (CR 400.7)");
+    assert_eq!(
+        game.zone_of(target),
+        Zone::Battlefield,
+        "back on the battlefield at the beginning of the next end step"
+    );
+    assert_eq!(
+        game.controller_of(flickered),
+        PlayerId(1),
+        "returns under its owner's control, not the activator's"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before + 2,
+        "the fresh object's own ETB trigger fired again"
+    );
+}
+
+#[test]
+fn enlightened_tutor_reveals_and_puts_an_artifact_or_enchantment_card_on_top() {
+    // Enlightened Tutor: "Search your library for an artifact or enchantment card, reveal it,
+    // then shuffle and put that card on top." Exercises `CardFilter::ArtifactOrEnchantment` and
+    // `SearchDest::LibraryTop` (CR 701.19: reveal, then shuffle, then top — nothing leaves the
+    // library, nothing is drawn).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Forest"),          // land — no match
+            card("Grizzly Bear"),    // creature — no match
+            card("Sol Ring"),        // artifact — a match
+            card("Glorious Anthem"), // enchantment — a match
+        ],
+    );
+    let before = game.library_size(PlayerId(0));
+    let tutor = game.spawn_in_hand(PlayerId(0), card("Enlightened Tutor"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: tutor,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Enlightened Tutor resolves → pause on the search choice.
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "Enlightened Tutor pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        dest,
+        SearchDest::LibraryTop,
+        "the found card goes to the top"
+    );
+    assert!(
+        matches.contains(&lib[2]),
+        "Sol Ring is an artifact card — a legal find"
+    );
+    assert!(
+        matches.contains(&lib[3]),
+        "Glorious Anthem is an enchantment card — a legal find"
+    );
+    assert!(
+        !matches.contains(&lib[0]),
+        "a land card is not an artifact or enchantment"
+    );
+    assert!(
+        !matches.contains(&lib[1]),
+        "a plain creature card is not an artifact or enchantment"
+    );
+
+    let anthem = lib[3];
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(anthem),
+    })
+    .unwrap();
+    assert_eq!(game.pending_choice(), None, "the search is resolved");
+    assert_eq!(
+        game.zone_of(anthem),
+        Zone::Library,
+        "the found card stays in the library — revealed and re-topped, not moved to hand"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        before,
+        "search + shuffle + top — nothing left the library"
+    );
+
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(anthem),
+        Zone::Hand,
+        "the tutored card was drawn first — proving it landed on top"
+    );
+}
+
+#[test]
+fn sterling_grove_tutors_an_enchantment_to_the_top() {
+    // Sterling Grove: "{1}, Sacrifice this enchantment: Search your library for an enchantment
+    // card, reveal it, then shuffle and put that card on top." (The shroud anthem half is
+    // `sterling_grove_grants_shroud_to_other_enchantments`.)
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Forest"),          // land — no match
+            card("Grizzly Bear"),    // creature — no match
+            card("Glorious Anthem"), // enchantment — a match
+        ],
+    );
+    let anthem = lib[2];
+    let grove = game.spawn_on_battlefield(PlayerId(0), card("Sterling Grove"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: grove,
+        ability_index: 1, // index 0 is the static shroud grant; 1 is the sac-search activated ability
+        target: None,
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(grove),
+        Zone::Graveyard,
+        "Sterling Grove is sacrificed as a cost"
+    );
+
+    resolve_top_of_stack(&mut game); // the search ability resolves → pause on the search
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "Sterling Grove pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        dest,
+        SearchDest::LibraryTop,
+        "the found card goes to the top"
+    );
+    assert!(
+        matches.contains(&anthem),
+        "Glorious Anthem is an enchantment card"
+    );
+    assert!(
+        !matches.contains(&lib[0]),
+        "a land card is not an enchantment"
+    );
+    assert!(
+        !matches.contains(&lib[1]),
+        "a creature card is not an enchantment"
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(anthem),
+    })
+    .unwrap();
+    assert_eq!(game.pending_choice(), None, "the search is resolved");
+
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(anthem),
+        Zone::Hand,
+        "the tutored enchantment was drawn first — it was on top of the library"
+    );
+}
+
+#[test]
+fn sterling_grove_grants_shroud_to_other_enchantments() {
+    // Sterling Grove: "Other enchantments you control have shroud." (CR 702.18) — a static,
+    // continuously-read grant (#139), distinct from the until-end-of-turn one-shot.
+    let mut game = Game::new();
+    let grove = game.spawn_on_battlefield(PlayerId(0), card("Sterling Grove"));
+    let own_anthem = game.spawn_on_battlefield(PlayerId(0), card("Glorious Anthem"));
+    let opponents_anthem = game.spawn_on_battlefield(PlayerId(1), card("Glorious Anthem"));
+    let opponents_destroy = game.spawn_in_hand(PlayerId(1), DESTROY_ANY_PERMANENT);
+
+    let targets = game.legal_targets(opponents_destroy, None);
+    assert!(
+        !targets.contains(&Target::Object(own_anthem)),
+        "shroud reaches another enchantment you control",
+    );
+    assert!(
+        targets.contains(&Target::Object(grove)),
+        "\"other\" enchantments excludes Sterling Grove itself",
+    );
+    assert!(
+        targets.contains(&Target::Object(opponents_anthem)),
+        "the grant is scoped to enchantments Sterling Grove's controller controls",
+    );
+}
+
+// ── Court Hussar (CR 106.9 — mana-spent-to-cast tracking) #157 ─────────────────────────
+
+/// Cast Court Hussar (`{2}{U}`) with the generic `{2}` funded from `generic_source`'s color and
+/// the `{U}` pip from an Island, then order its two simultaneous ETB triggers so the look-top-3
+/// resolves first and the sacrifice-unless resolves second. Answers the mandatory
+/// look-top-3 pick with the first card shown.
+fn cast_court_hussar_funding_generic_with(game: &mut Game, generic_source: &str) -> ObjectId {
+    let hussar = game.spawn_in_hand(PlayerId(0), card("Court Hussar"));
+    game.stack_library(
+        PlayerId(0),
+        &[
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+            card("Grizzly Bear"),
+        ],
+    );
+    for _ in 0..2 {
+        let source = game.spawn_on_battlefield(PlayerId(0), card(generic_source));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: source,
+        })
+        .unwrap();
+    }
+    let island = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: island,
+    })
+    .unwrap();
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: hussar,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(game); // the spell resolves → the creature enters, two ETB triggers queue
+
+    // order [1, 0] pushes the sacrifice-unless (index 1) first (bottom), the look-top-3
+    // (index 0) last (top) — the look-top-3 resolves first.
+    game.submit(Intent::ChooseOrder {
+        player: PlayerId(0),
+        order: vec![1, 0],
+    })
+    .unwrap();
+
+    resolve_top_of_stack(game); // the look-top-3 ETB resolves, pausing on the mandatory pick
+    let Some(PendingChoice::SelectFromTop { cards, .. }) = game.pending_choice() else {
+        panic!(
+            "Court Hussar's look-top-3 ETB pauses on a pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+    let pick = cards[0];
+    game.submit(Intent::SelectFromTop {
+        player: PlayerId(0),
+        cards: vec![pick],
+    })
+    .unwrap();
+
+    resolve_top_of_stack(game); // the sacrifice-unless ETB resolves
+    hussar
+}
+
+#[test]
+fn court_hussar_kept_when_white_was_spent() {
+    // "sacrifice it unless {W} was spent to cast it" — funding the generic {2} with two Plains
+    // means {W} was spent (CR 106.9) alongside the {U} pip, so it survives.
+    let mut game = Game::new();
+    let hussar = cast_court_hussar_funding_generic_with(&mut game, "Plains");
+
+    assert_eq!(
+        game.zone_of(hussar),
+        Zone::Battlefield,
+        "white was spent to cast it, so the sacrifice-unless ETB doesn't fire"
+    );
+}
+
+#[test]
+fn court_hussar_sacrificed_when_no_white_spent() {
+    // Funding the generic {2} with two Islands means the whole `{2}{U}` was paid in blue — no
+    // white was ever spent, so the "unless" ETB sacrifices it.
+    let mut game = Game::new();
+    let hussar = cast_court_hussar_funding_generic_with(&mut game, "Island");
+
+    assert_eq!(
+        game.zone_of(hussar),
+        Zone::Graveyard,
+        "no white was spent to cast it, so the sacrifice-unless ETB fires"
+    );
+}
+
+#[test]
+fn court_hussar_looks_at_top_three_and_puts_one_in_hand() {
+    // "look at the top three cards of your library, then put one of them into your hand and the
+    // rest on the bottom of your library in any order" — locked in regardless of the
+    // sacrifice-unless outcome (funding with Plains here so it also survives).
+    let mut game = Game::new();
+    let hussar = cast_court_hussar_funding_generic_with(&mut game, "Plains");
+
+    assert_eq!(game.zone_of(hussar), Zone::Battlefield);
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        2,
+        "one of the top three went to hand, the other two stayed in the library (moved to the bottom)"
+    );
+}
+
+// ── Armadillo Cloak (fidelity backlog #151, attached-host damage watch) ───────────────
+
+/// [`cast_and_resolve`], but for a game seated with more than two players: passes priority once
+/// per seated player rather than [`resolve_top_of_stack`]'s hardcoded two, which only carries a
+/// cast all the way to resolution in a two-player game — with more players, a stack item only
+/// resolves once *every* seat has passed in succession (CR 405.5, CR 117.4).
+fn cast_and_resolve_seated(
+    game: &mut Game,
+    caster: PlayerId,
+    seats: u8,
+    object: ObjectId,
+    target: Option<Target>,
+) {
+    game.fund_mana(caster);
+    game.submit(Intent::Cast {
+        player: caster,
+        object,
+        target,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("the spell is castable");
+    for _ in 0..seats {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
+}
+
+#[test]
+fn armadillo_cloak_gains_life_on_combat_damage() {
+    // Impetus-style: the cloak (P0's Aura) enchants an OPPONENT's creature (P1's). "You" in
+    // "you gain that much life" is the cloak's own controller (P0) — distinct from both the
+    // enchanted creature's controller (P1) and the player it attacks (P2).
+    let mut game = Game::with_players(4, 0);
+    for seat in 0..4 {
+        game.stack_library(PlayerId(seat), &[card("Forest"); 20]); // enough to survive P1's draw
+    }
+    let host = game.spawn_on_battlefield(PlayerId(1), VANILLA); // 2/2, becomes 4/4 trample enchanted
+    let cloak = game.spawn_in_hand(PlayerId(0), card("Armadillo Cloak"));
+    cast_and_resolve_seated(&mut game, PlayerId(0), 4, cloak, Some(Target::Object(host)));
+    assert_eq!(
+        game.attachments(host).len(),
+        1,
+        "the cloak entered attached to host"
+    );
+
+    let p0_life_before = game.life(PlayerId(0));
+    pass_until_next_turn(&mut game); // now P1 (the host's controller) is active
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(host, PlayerId(2))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(2)),
+        20 - 4,
+        "P2 took 4 combat damage from the enchanted host"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        p0_life_before + 4,
+        "the cloak's controller (P0) gains 4 life, not the host's own controller (P1)"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "the enchanted creature's own controller (P1) gains nothing"
+    );
+}
+
+#[test]
+fn armadillo_cloak_gains_life_on_noncombat_damage() {
+    // "Whenever enchanted creature deals damage" fires on noncombat damage too (here, a fight) —
+    // not just combat damage. Two players are enough: no attribution ambiguity to isolate here
+    // (that's the combat test's job), just that the trigger fires at all off noncombat damage.
+    let mut game = Game::new();
+    let host = game.spawn_on_battlefield(PlayerId(1), creature("Host 3/3", 3, 3, &[]));
+    let mine = game.spawn_on_battlefield(PlayerId(0), creature("Mine 2/2", 2, 2, &[]));
+    let cloak = game.spawn_in_hand(PlayerId(0), card("Armadillo Cloak"));
+    cast_and_resolve(&mut game, cloak, Some(Target::Object(host)));
+    assert_eq!(
+        game.attachments(host).len(),
+        1,
+        "the cloak entered attached to host"
+    );
+
+    let p0_life_before = game.life(PlayerId(0));
+    let spell = game.spawn_in_hand(PlayerId(0), FIGHT_SPELL);
+    cast_and_resolve(&mut game, spell, Some(Target::Object(host)));
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(mine)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the cloak's EnchantedCreatureDealsDamage trigger resolves
+
+    // Host is 3+2=5 power (the cloak's +2/+2) — its noncombat fight damage still gains the
+    // cloak's controller (P0) that much life.
+    assert_eq!(
+        game.life(PlayerId(0)),
+        p0_life_before + 5,
+        "the cloak's controller gains life from the enchanted host's noncombat fight damage too"
+    );
+}
+
+/// Questing Phelddagrif (tsb): "{G}: This creature gets +1/+1 until end of turn. Target opponent
+/// creates a 1/1 green Hippo creature token." The self-pump and the opponent's compensation both
+/// land off one activation — `Effect::PumpSelfUntilEndOfTurn` (no target of its own) shares the
+/// ability's one chosen target with `create_token`'s opponent-restricted `TokenController::TargetOpponent`.
+#[test]
+fn questing_phelddagrif_green_gives_opponent_hippo() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let phelddagrif = game.spawn_on_battlefield(PlayerId(0), card("Questing Phelddagrif"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: phelddagrif,
+        ability_index: 0, // {G}: +1/+1; target opponent creates a 1/1 green Hippo.
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.power(phelddagrif),
+        5,
+        "+1/+1 until end of turn on the activator's own creature"
+    );
+    assert_eq!(game.toughness(phelddagrif), 5);
+
+    let hippo = game
+        .live_object_ids()
+        .into_iter()
+        .find(|&id| game.zone_of(id) == Zone::Battlefield && game.def_of(id).name == "Hippo")
+        .expect("the targeted opponent creates a Hippo token");
+    assert_eq!(
+        game.controller_of(hippo),
+        PlayerId(1),
+        "the Hippo belongs to the targeted opponent, not the activator"
+    );
+    assert_eq!(game.power(hippo), 1);
+    assert_eq!(game.toughness(hippo), 1);
+    assert!(
+        game.colors_of(hippo)[Color::Green.index()],
+        "the Hippo token is green"
+    );
+}
+
+/// Questing Phelddagrif's white rider: "{W}: This creature gains protection from black and from
+/// red until end of turn. Target opponent gains 2 life." The self-pump's `keywords` axis and a
+/// new `target_player_gains_life` effect, both sharing the one chosen opponent target.
+#[test]
+fn questing_phelddagrif_white_gives_opponent_two_life() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let phelddagrif = game.spawn_on_battlefield(PlayerId(0), card("Questing Phelddagrif"));
+    let opponent_life_before = game.life(PlayerId(1));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: phelddagrif,
+        ability_index: 1, // {W}: protection from black and red; target opponent gains 2 life.
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.has_keyword(
+            phelddagrif,
+            Keyword::ProtectionFrom(ProtectionScope::Color(Color::Black))
+        ),
+        "gains protection from black"
+    );
+    assert!(
+        game.has_keyword(
+            phelddagrif,
+            Keyword::ProtectionFrom(ProtectionScope::Color(Color::Red))
+        ),
+        "gains protection from red"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        opponent_life_before + 2,
+        "the targeted opponent gains 2 life"
+    );
+}
+
+/// Questing Phelddagrif's blue rider: "{U}: This creature gains flying until end of turn. Target
+/// opponent may draw a card." The new `target_player_may_draw` effect pauses the *targeted
+/// opponent* — not the activator — on a `MayYesNo`; declining draws nothing, accepting draws them
+/// a card.
+#[test]
+fn questing_phelddagrif_blue_lets_opponent_may_draw() {
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let phelddagrif = game.spawn_on_battlefield(PlayerId(0), card("Questing Phelddagrif"));
+    let lib = game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: phelddagrif,
+        ability_index: 2, // {U}: flying; target opponent may draw a card.
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.has_keyword(phelddagrif, Keyword::Flying),
+        "gains flying until end of turn"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(1),
+                ..
+            })
+        ),
+        "the *targeted opponent* (not the activator) is paused on whether to draw, got {:?}",
+        game.pending_choice()
+    );
+
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: false,
+    })
+    .unwrap();
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        0,
+        "declining draws nothing"
+    );
+
+    // A second activation: this time the opponent accepts.
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: phelddagrif,
+        ability_index: 2,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: true,
+    })
+    .unwrap();
+
+    let hand = hand_ids(&game, PlayerId(1));
+    assert_eq!(
+        hand.len(),
+        1,
+        "accepting draws the targeted opponent a card"
+    );
+    assert!(hand.contains(&game.current_id(lib[0])));
+}
+
+/// Cast an Aura from `player`'s hand at `host`, resolving it onto the battlefield attached.
+/// Assumes the mana is already in `player`'s pool.
+fn cast_aura_at(game: &mut Game, player: PlayerId, aura: ObjectId, host: ObjectId) {
+    game.submit(Intent::Cast {
+        player,
+        object: aura,
+        target: Some(Target::Object(host)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("the Aura is castable at its host");
+    resolve_top_of_stack(game);
+}
+
+// Fertile Ground: "Whenever enchanted land is tapped for mana, its controller adds an additional
+// one mana of any color." The bonus is "any color", so it pauses on ChooseManaColor riding the tap.
+#[test]
+fn fertile_ground_adds_bonus_mana_of_chosen_color_when_enchanted_land_taps() {
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Fertile Ground"));
+    tap_forests(&mut game, 2); // {1}{G}
+    cast_aura_at(&mut game, PlayerId(0), aura, forest);
+    assert_eq!(
+        game.attachments(forest).len(),
+        1,
+        "Fertile Ground resolves attached to the land it enchants"
+    );
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        1,
+        "the enchanted Forest's own tap still adds its {{G}} first"
+    );
+    let Some(PendingChoice::ChooseManaColor { player, .. }) = game.pending_choice() else {
+        panic!("the 'any color' bonus pauses on ChooseManaColor");
+    };
+    assert_eq!(player, PlayerId(0), "the land's controller names the color");
+
+    game.submit(Intent::ChooseManaColor {
+        player: PlayerId(0),
+        color: Color::Blue,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Blue),
+        1,
+        "the chosen color's bonus mana lands in the pool"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        1,
+        "the base {{G}} is untouched by the bonus"
+    );
+}
+
+// Fertile Ground only watches the land it enchants — tapping any other land you control adds no bonus.
+#[test]
+fn fertile_ground_bonus_only_on_enchanted_land() {
+    let mut game = Game::new();
+    let enchanted = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let other = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let aura = game.spawn_in_hand(PlayerId(0), card("Fertile Ground"));
+    tap_forests(&mut game, 2); // {1}{G}
+    cast_aura_at(&mut game, PlayerId(0), aura, enchanted);
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: other,
+    })
+    .unwrap();
+
+    assert!(
+        game.pending_choice().is_none(),
+        "tapping an unenchanted land raises no bonus choice"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        1,
+        "only the land's own {{G}} is added"
+    );
+}
+
+// Mirari's Wake: "Whenever you tap a land for mana, add one mana of any type that land produced."
+// A Forest produces {G}, so the bonus is {G} — no pause (the produced type is a single concrete color).
+#[test]
+fn miraris_wake_adds_matching_bonus_when_you_tap_a_land() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+
+    assert!(
+        game.pending_choice().is_none(),
+        "a single-color produced bonus needs no choice"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        2,
+        "the Forest's own {{G}} plus one matching {{G}} bonus"
+    );
+}
+
+// Mirari's Wake also fires off an `add_mana` land's tap (the second land-tap choke): Caves of
+// Koilos taps for {C} via its free ability, so the bonus copies {C}.
+#[test]
+fn miraris_wake_bonus_fires_on_an_add_mana_land_tap() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let caves = game.spawn_on_battlefield(PlayerId(0), card("Caves of Koilos"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: caves,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        2,
+        "the land's own {{C}} plus one matching {{C}} bonus"
+    );
+}
+
+// Mirari's Wake is controller-scoped ("whenever YOU tap a land") — an opponent tapping a land triggers nothing.
+#[test]
+fn miraris_wake_no_bonus_when_opponent_taps() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: forest,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.mana_in_pool(PlayerId(1), Color::Green),
+        1,
+        "an opponent's land tap gets no Mirari's Wake bonus"
+    );
+}
+
+// Mirari's Wake watches only LAND taps ("tap a land for mana") — a mana rock (Sol Ring) triggers nothing.
+#[test]
+fn miraris_wake_no_bonus_when_non_land_taps_for_mana() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let sol_ring = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: sol_ring,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        2,
+        "Sol Ring adds its own {{C}}{{C}}"
+    );
+    for color in Color::ALL {
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), color),
+            0,
+            "no colored bonus from a non-land mana source"
+        );
+    }
+}
+
+// Mirari's Wake's other half is a plain anthem: "Creatures you control get +1/+1."
+#[test]
+fn miraris_wake_anthem_gives_your_creatures_plus_one_plus_one() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Mirari's Wake"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // printed 2/2
+
+    assert_eq!(
+        (game.power(bear), game.toughness(bear)),
+        (3, 3),
+        "the anthem buffs your creatures +1/+1"
     );
 }

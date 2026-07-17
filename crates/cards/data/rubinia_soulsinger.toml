@@ -1,0 +1,37 @@
+# You may choose not to untap Rubinia Soulsinger during your untap step.
+# {T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains
+# tapped.
+name = "Rubinia Soulsinger"
+otags = ["activated-ability", "cycle-c13-reprint-commander", "deprecated-legend-type", "theft-creature", "unique-type-line"]
+set = "cma"
+subtypes = ["Faerie"]
+id = "bd3eeaba-964b-49ea-bb11-5875a78b8a4c"
+default_print = "ce216785-aa81-44b4-9562-9b7eca743a0c"
+oracle = "You may choose not to untap Rubinia Soulsinger during your untap step.\n{T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains tapped."
+legendary = true
+
+# You may choose not to untap Rubinia Soulsinger during your untap step.
+may_choose_not_to_untap = true
+
+[cost]
+generic = 2
+green = 1
+white = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# {T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains
+# tapped.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains tapped.
+[[abilities.effects]]
+type = "gain_control_while"
+target = "creature"
+while_source_tapped = true

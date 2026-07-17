@@ -166,7 +166,99 @@ impl Game {
             });
         }
         self.apply_all(&events);
+        // Fertile Ground / Mirari's Wake fire off the same tap (CR 605.3 — inline, no stack).
+        self.land_tapped_for_mana(object, player, &mut events);
         Ok(events)
+    }
+
+    /// The CR "whenever [a land] is tapped for mana" watch: each matching static
+    /// [`Effect::TappedForManaBonus`] on the battlefield adds a bonus credit into the tap's own
+    /// pool batch. Mana abilities don't stack (CR 605.3), so the bonus resolves inline — no stack,
+    /// no priority. Called at both land-tap-for-mana chokes ([`Self::tap_for_mana`]'s `produces`
+    /// sugar and an `add_mana` activation on a land). `land` is the just-tapped land, `player` its
+    /// controller, `events` the tap's already-applied events (its [`Event::ManaAdded`]s, from which
+    /// the produced type for a `Produced` bonus is read). Inline bonuses are `push_apply`ed onto
+    /// `events`; an `AnyColor` bonus instead raises a [`PendingChoice::ChooseManaColor`] the caller
+    /// returns on.
+    pub(crate) fn land_tapped_for_mana(
+        &mut self,
+        land: ObjectId,
+        player: PlayerId,
+        events: &mut Vec<Event>,
+    ) {
+        // Only a *land* tapped for mana is watched (Mirari's Wake: "tap a **land**"; Fertile
+        // Ground enchants a land) — a mana rock (Sol Ring) tapping fires nothing. Read the source
+        // as a live permanent: a mana ability that sacrifices its own source as a cost (a Treasure)
+        // has already removed it by now, and it's no land either way.
+        let Some(perm) = self.as_permanent(land) else {
+            return;
+        };
+        if !matches!(perm.def.kind, CardKind::Land { .. }) {
+            return;
+        }
+        // "Tapped for mana" means it produced mana (CR 106.11) — the type this tap made, read back
+        // from its own event. A tap that added nothing (empty commander identity) fires no watch.
+        let Some(produced) = events.iter().find_map(|e| match e {
+            Event::ManaAdded { mana, .. } => Some(*mana),
+            _ => None,
+        }) else {
+            return;
+        };
+
+        // Scan the battlefield for matching watchers. `scope` says which taps a watch reacts to
+        // (Mirari's Wake's controller — "whenever **you** tap a land", the tapper being the land's
+        // controller; Fertile Ground's enchanted host — an Aura on the tapped land); `bonus_color`
+        // says what mana it adds (a `Produced` credit inline, or an `AnyColor` credit the
+        // controller names via a pause).
+        let mut produced_bonuses = 0usize;
+        let mut any_color_source: Option<ObjectId> = None;
+        for id in self.battlefield() {
+            for ability in self.def_of(id).abilities {
+                let (Timing::Static, Effect::TappedForManaBonus { scope, bonus_color }) =
+                    (ability.timing, ability.effect)
+                else {
+                    continue;
+                };
+                let watches = match scope {
+                    LandTapScope::Controller => self.controller_of(id) == player,
+                    LandTapScope::EnchantedHost => self.attached_to(id) == Some(land),
+                };
+                if !watches {
+                    continue;
+                }
+                match bonus_color {
+                    LandTapBonusColor::Produced => produced_bonuses += 1,
+                    // ponytail: only the FIRST any-color watch raises its pause — a second on the
+                    // same tap is dropped (the `ChooseManaColor` answer path doesn't re-enter this
+                    // watch to queue another). No pool board stacks two. Queue them if one ever does.
+                    LandTapBonusColor::AnyColor => {
+                        any_color_source.get_or_insert(id);
+                    }
+                }
+            }
+        }
+
+        for _ in 0..produced_bonuses {
+            self.push_apply(
+                events,
+                Event::ManaAdded {
+                    player,
+                    mana: produced,
+                    amount: 1,
+                    persist: false,
+                },
+            );
+        }
+        if let Some(source) = any_color_source {
+            pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseManaColor {
+                    player,
+                    source,
+                    amount: 1,
+                },
+            );
+        }
     }
 
     /// Pay 1 life to add {C} under Yavimaya Bloomsage's Channel grant (a CR 605 mana ability —
@@ -282,6 +374,20 @@ impl Game {
         // CR 613.4 type layer, not the printed kind: a manland animated into a creature (Restless
         // Spire) counts, via `effective_types`.
         !p.phased_out && self.effective_types(object).intersects(TypeSet::CREATURE)
+    }
+
+    /// Whether `object` is an enchantment currently on the battlefield (CR 303 — includes an
+    /// Aura, CR 303.2). A phased-out permanent doesn't count, mirroring
+    /// [`Self::is_creature_on_battlefield`]. Used by Copy Enchantment's `enter_as_copy` (`of =
+    /// "enchantment"`, CR 706/707.2) to enumerate its copyable candidates.
+    pub(crate) fn is_enchantment_on_battlefield(&self, object: ObjectId) -> bool {
+        let Some(p) = self.as_permanent(object) else {
+            return false;
+        };
+        !p.phased_out
+            && self
+                .effective_types(object)
+                .intersects(TypeSet::ENCHANTMENT)
     }
 
     /// The mana `player` could produce right now: their pool plus free taps, then a fixed-point
@@ -1009,7 +1115,9 @@ impl Game {
                     0
                 };
                 for delve in (0..=max_delve).rev() {
-                    let cost = self.cast_cost(player, card, def, None, 0, zone, delve, false, 0, 0);
+                    let cost = self.cast_cost(
+                        player, card, def, None, 0, zone, delve, false, false, false, 0, 0,
+                    );
                     if let Some(plan) =
                         self.plan_auto_taps(player, cost, None, Some(def.spell_characteristics()))
                     {
@@ -1032,6 +1140,8 @@ impl Game {
                         0,
                         Zone::Battlefield,
                         0,
+                        false,
+                        false,
                         false,
                         0,
                         0,
@@ -1064,8 +1174,21 @@ impl Game {
                 };
                 (*cost, None, None)
             }
-            // Turning a manifest face up pays its hidden creature card's own mana cost (CR 701.34e).
-            MeaningfulAction::TurnFaceUp { permanent } => (self.def_of(permanent).cost, None, None),
+            // Turning face up pays a morph card's morph cost (CR 702.37c), else a manifest's
+            // hidden printed cost (CR 701.34e) — the same fork as `Game::turn_face_up`.
+            MeaningfulAction::TurnFaceUp { permanent } => {
+                let def = self.def_of(permanent);
+                (def.morph.unwrap_or(def.cost), None, None)
+            }
+            // A face-down morph cast pays a flat generic {3} (CR 702.37b).
+            MeaningfulAction::CastFaceDown { .. } => (
+                Cost {
+                    generic: 3,
+                    ..Cost::FREE
+                },
+                None,
+                None,
+            ),
             MeaningfulAction::Activate { source, ability } => {
                 let Ok((_, cost)) = self.ability_activation_gate(player, source, ability) else {
                     return Vec::new();
@@ -1256,9 +1379,17 @@ impl Game {
                 for id in to_phase_in {
                     self.push_apply(events, Event::PhasedIn { object: id });
                 }
+                // "You may choose not to untap this" (CR 502.2 — Rubinia Soulsinger): a tapped
+                // permanent carrying the flag isn't untapped here; instead it's offered below in a
+                // yes/no pause, and only untapped once the active player declines to keep it tapped.
+                let mut optional_untap: Vec<ObjectId> = Vec::new();
                 for id in self.controlled_battlefield(active) {
                     if self.permanent(id).tapped {
-                        self.push_apply(events, Event::Untapped { object: id });
+                        if self.def_of(id).may_choose_not_to_untap {
+                            optional_untap.push(id);
+                        } else {
+                            self.push_apply(events, Event::Untapped { object: id });
+                        }
                     }
                     if self.permanent(id).summoning_sick {
                         self.push_apply(events, Event::LostSummoningSickness { object: id });
@@ -1273,6 +1404,18 @@ impl Game {
                             },
                         );
                     }
+                }
+                // Pause on the optional-untap decision (CR 502.2). `advance_step` returns on this so
+                // the step loop doesn't skip past it; `answer_decline_untap` untaps the ones the
+                // player didn't keep tapped and resumes the loop.
+                if !optional_untap.is_empty() {
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::DeclineUntap {
+                            player: active,
+                            permanents: optional_untap,
+                        },
+                    );
                 }
             }
             Step::Upkeep => {
@@ -1482,6 +1625,8 @@ mod tests {
             flashback: None,
             echo: None,
             bestow: None,
+            morph: None,
+            evoke: None,
             delve: false,
             escape: None,
             retrace: false,
@@ -1496,6 +1641,7 @@ mod tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            may_choose_not_to_untap: false,
         }
     }
 

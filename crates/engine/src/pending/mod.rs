@@ -218,12 +218,28 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
                 game.pay_or_counter(player, pay)
             } else if matches!(
                 game.pending_choice,
+                Some(PendingChoice::PayOrControllerDraws { .. })
+            ) {
+                game.pay_or_controller_draws(player, pay)
+            } else if matches!(
+                game.pending_choice,
                 Some(PendingChoice::PayEchoOrSacrifice { .. })
             ) {
                 game.pay_echo(player, pay)
+            } else if matches!(
+                game.pending_choice,
+                Some(PendingChoice::SacrificeUnlessPay { .. })
+            ) {
+                game.pay_sacrifice_unless(player, pay)
             } else {
                 game.pay_optional_cost(player, pay)
             }
+        }
+        // Decree of Justice's cycling rider "you may pay {X}" — the only `PayCost` whose cost
+        // carries a chosen `{X}` (CR 107.3), so it gets its own wire shape rather than widening
+        // `PayOptionalCost`'s bare bool.
+        Intent::PayOptionalCostX { player, pay, x } => {
+            game.pay_optional_cost_with_x(player, pay, x)
         }
         Intent::AssignDamage { player, assignment } => {
             if matches!(
@@ -290,6 +306,11 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
                 game.choose_exiled_to_cast_free(player, sacrifices)
             } else if matches!(
                 game.pending_choice,
+                Some(PendingChoice::PartitionRevealed { .. })
+            ) {
+                game.partition_revealed(player, sacrifices)
+            } else if matches!(
+                game.pending_choice,
                 Some(PendingChoice::ExileFromGraveyard { .. })
             ) {
                 game.choose_graveyard_exile(player, sacrifices)
@@ -308,7 +329,17 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
         }
         Intent::Discard { player, cards } => game.answer_discard(player, cards),
+        Intent::DeclineUntap {
+            player,
+            keep_tapped,
+        } => game.answer_decline_untap(player, keep_tapped),
         Intent::PutLandFromHand { player, choice } => game.put_land_from_hand(player, choice),
+        Intent::CastCreatureFaceDown { player, choice } => {
+            game.cast_creature_face_down(player, choice)
+        }
+        Intent::ReturnLandOrSacrifice { player, land } => {
+            game.return_land_or_sacrifice(player, land)
+        }
         Intent::ChooseExiledWithCard { player, choice }
             if matches!(
                 game.pending_choice,
@@ -325,6 +356,14 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
         }
         Intent::ChooseExiledDigToCastFree { player, choice } => {
             game.choose_exiled_dig_to_cast_free(player, choice)
+        }
+        Intent::ChooseOpponentPile { player, pile }
+            if matches!(
+                game.pending_choice,
+                Some(PendingChoice::ChoosePileForHand { .. })
+            ) =>
+        {
+            game.choose_pile_for_hand(player, pile)
         }
         Intent::ChooseOpponentPile { player, pile } => game.choose_opponent_pile(player, pile),
         Intent::RevealedCardToBattlefieldOrHand { player, choice } => {
@@ -362,6 +401,9 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
         }
         Intent::ChooseCopyTarget { player, copy } => game.answer_enter_as_copy(player, copy),
         Intent::ChooseAttachHost { player, host } => game.choose_attach_host(player, host),
+        Intent::ChooseTopOrBottom { player, top } => {
+            game.choose_countered_spell_destination(player, top)
+        }
         _ => Err(Reject::IllegalChoice),
     }
 }
@@ -376,15 +418,26 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
             player,
             hand,
             count,
-        }
-        | PendingChoice::DiscardCards {
-            player,
-            hand,
-            count,
         } => (*count == hand.len()).then(|| Intent::Discard {
             player: *player,
             cards: hand.clone(),
         }),
+        PendingChoice::DiscardCards {
+            player,
+            hand,
+            count,
+            or_one_matching,
+        } => {
+            // A land-escape-valve filter with a matching card in hand is a genuine choice (discard
+            // the whole hand vs. the single land) even when `count` happens to equal the hand
+            // size — only force the whole-hand answer when that alternative isn't on the table.
+            let land_escape_available = or_one_matching
+                .is_some_and(|filter| hand.iter().any(|&id| filter.matches(game.def_of(id))));
+            (!land_escape_available && *count == hand.len()).then(|| Intent::Discard {
+                player: *player,
+                cards: hand.clone(),
+            })
+        }
         PendingChoice::ChooseTarget {
             player,
             legal,
