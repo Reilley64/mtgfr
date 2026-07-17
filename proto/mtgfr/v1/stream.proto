@@ -103,6 +103,8 @@ message ChoiceItem {
   uint32 id = 1;
   string label = 2;
   optional uint32 player = 3;
+  // Scryfall Printing UUID for card art. Empty for player seats and face-down / redacted items.
+  string print = 4;
 }
 
 // One printed mode of a modal spell.

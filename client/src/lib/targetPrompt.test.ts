@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  choiceItemPrint,
   mayYesNoTitle,
+  objectPrint,
   payCostTitle,
   payEchoTitle,
   payOrCounterTitle,
@@ -24,10 +26,11 @@ const state = (objects: ObjectView[]): VisibleState => ({
   stack: [],
 });
 
-const card = (id: number, name: string): ObjectView =>
+const card = (id: number, name: string, print = ""): ObjectView =>
   ({
     id,
     name,
+    print,
     controller: 0,
     owner: 0,
     zone: 0,
@@ -104,5 +107,16 @@ describe("targetPrompt", () => {
   it("titles pay-or-counter and echo prompts with the named permanent/spell", () => {
     expect(payOrCounterTitle("Lightning Bolt", "{2}")).toBe("Pay {2} or Lightning Bolt is countered?");
     expect(payEchoTitle("Avalanche Riders", "{3} R")).toBe("Avalanche Riders: pay echo {3} R or sacrifice it?");
+  });
+
+  it("prefers ChoiceItem.print for library picks missing from objects", () => {
+    const s = state([]);
+    expect(choiceItemPrint(s, { id: 99, print: "library-print" })).toBe("library-print");
+    expect(objectPrint(s, 99)).toBe("");
+  });
+
+  it("falls back to the visible object print when ChoiceItem.print is absent", () => {
+    const s = state([card(5, "Bear", "object-print")]);
+    expect(choiceItemPrint(s, { id: 5 })).toBe("object-print");
   });
 });
