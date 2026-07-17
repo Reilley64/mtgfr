@@ -144,7 +144,7 @@ mtgfr Terraform **fully owns** the Zero Trust tunnel, public hostname routes, DN
 | Tunnel token / credentials | K8s Secret consumed by `cloudflared` |
 | `cloudflare_dns_record` | `edh` → `<tunnel-id>.cfargotunnel.com`, **proxied** |
 
-`cloudflared` runs in-cluster (Deployment, 2 replicas for connector HA). It authenticates with the tunnel token and forwards Cloudflare edge traffic to ClusterIP Services. The cluster needs **egress** to Cloudflare; it does **not** need inbound public ports for edh.
+`cloudflared` runs in-cluster (Deployment, **1** replica by default — enough for a small cluster; set `cloudflared_replicas = 2` for connector HA). It authenticates with the tunnel token and forwards Cloudflare edge traffic to ClusterIP Services. The cluster needs **egress** to Cloudflare; it does **not** need inbound public ports for edh.
 
 ### Postgres — official image StatefulSet
 

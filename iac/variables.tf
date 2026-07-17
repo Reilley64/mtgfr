@@ -74,9 +74,9 @@ variable "tunnel_name" {
 }
 
 variable "cloudflared_replicas" {
-  description = "Number of cloudflared connector replicas (deploy PRD: 2, for connector HA)."
+  description = "cloudflared connector replicas. Default 1 (friend-group / small cluster); set 2 for connector HA."
   type        = number
-  default     = 2
+  default     = 1
 }
 
 # ── Images / API instances ───────────────────────────────────────────────────────────────────────
