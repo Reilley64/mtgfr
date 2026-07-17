@@ -140,7 +140,7 @@ describe("fromProtoWire / toProtoWire", () => {
       client_seq: 3,
       intent: { kind: "take_action", player: 0, id: 0, sacrifice: [] },
     };
-    const proto = intentEnvelopeToProto(envelope) as {
+    const proto = intentEnvelopeToProto(envelope) as unknown as {
       intent: { intent: { case: string; value: { id: unknown; player: number; attackers: unknown[] } } };
     };
     expect(proto.intent.intent.case).toBe("takeAction");
@@ -178,7 +178,7 @@ describe("fromProtoWire / toProtoWire", () => {
       client_seq: 5,
       intent: { kind: "cast", player: 0, object: 1 },
     };
-    const proto = intentEnvelopeToProto(envelope) as {
+    const proto = intentEnvelopeToProto(envelope) as unknown as {
       intent: { intent: { value: { x: number; kicked: boolean; modes: unknown[] } } };
     };
     expect(proto.intent.intent.value.x).toBe(0);
