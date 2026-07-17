@@ -1,6 +1,6 @@
 ---
 name: fidelity-grind
-description: Given an Archidekt deck link, make every card in that deck faithful — deck intake, fidelity report checklist, observability re-audit, pure-authoring pass, engine grind loop, client catch-up, full verify, ending in an open PR watched through CI and review to merge. Use when the user provides a deck URL and wants the pool to support it faithfully.
+description: Given an Archidekt deck link, make every card in that deck faithful — deck intake, fidelity report checklist, observability re-audit, pure-authoring pass, engine grind loop, client catch-up, full verify, an open PR watched through CI and review to merge, then a skill retrospective folding the grind's lessons back into this skill. Use when the user provides a deck URL and wants the pool to support it faithfully.
 ---
 
 # Fidelity Grind
@@ -158,6 +158,30 @@ Stay on the PR until it merges; don't end the run at "PR opened".
 - Ping the user only when CI is green and all threads are addressed, when a review asks
   for something out of scope (a design decision), or when the same check fails twice with
   no fix in sight. Remove the worktree after the PR merges.
+
+## Phase 8 — Skill retrospective (after the merge)
+
+The grind isn't done when the PR merges — it's done when this skill has absorbed what the
+grind taught. Review the whole run against the skill and fold every lesson back in, as its
+own small docs PR (the grind PR is already merged, so it can't carry them):
+
+- Walk the run phase by phase and ask, for each surprise, rework loop, red wave, planner
+  misread, or verification gap: *would the skill as written have prevented it?* If not, the
+  fix belongs here — a new mandate, a sharpened rule, a planner-prompt patch in
+  [`wave-workflow.js`](wave-workflow.js), or a convention in
+  [`shared-context-template.md`](shared-context-template.md). (This is how the frame audit,
+  the live smoke game, and the eligibility rule got here — each paid for itself the same
+  grind it was learned in.)
+- Also harvest the inverse: steps the skill mandates that contributed nothing this run.
+  Don't delete on one data point, but note it in the step ("unexercised in the <slug>
+  grind") so two dead runs justify removal.
+- Check the assets still match reality: file paths, recipe names, API/lobby flows, and the
+  project `verify` skill drift between grinds — fix stale handles now, while you know what
+  the fresh ones are.
+- Open the edits as a `docs(skills):` PR against the default branch and watch it to merge
+  (Phase 7 rules apply). Push skill edits BEFORE the user merges the grind PR when possible —
+  a lesson pushed seconds after the squash cut misses the train and needs exactly this
+  follow-up PR.
 
 ## Conventions (enforced in every brief and verify stage)
 
