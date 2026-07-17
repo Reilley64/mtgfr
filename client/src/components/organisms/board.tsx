@@ -19,6 +19,7 @@ import Hand, { type ActionDrop, HAND_BAR_H } from "~/components/molecules/hand";
 import ManaTray from "~/components/molecules/mana-tray";
 import { PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
 import { useActionSession } from "~/controllers/action-session";
+import type { StagedAction } from "~/controllers/actionExecution";
 import { planCastClickResolution } from "~/controllers/actionExecution";
 import { useCombatStaging } from "~/controllers/combatStaging";
 import { setStackDwellFn, setTurnYieldFn, setYieldFn, submitIntentFn } from "~/controllers/intentAtoms";
@@ -35,6 +36,7 @@ import {
   STACK_STRIP_MIN_PEEK,
   STACK_VERTICAL_RESERVED,
   shouldAutoCollapseStackExpand,
+  stackAimOrigin,
   stackCardH,
   stackExpandAvailable,
   stackFullPerRow,
@@ -52,13 +54,27 @@ import { type PrimaryAction, resolveClick } from "~/lib/interaction";
 import { projectManaTrays } from "~/lib/manaTrayProject";
 import { type Outcome, outcome } from "~/lib/outcome";
 import { playerLabel } from "~/lib/players";
+import { stackInFromDelta } from "~/lib/playOrigin";
 import { type RadialOption, radialOptions } from "~/lib/radial";
 import { imageUrlByPrint } from "~/lib/scryfall";
 import { stackChrome } from "~/lib/stackResponse";
 import { stagedTargetHint } from "~/lib/targetPrompt";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
 import { connectedAtom, gameStreamFamily, tableId } from "~/net";
-import { game, resetGame, resolvedFromStack, SPECTATOR_VIEWER, setReject, zoneMoves } from "~/store";
+import {
+  game,
+  landPlayFrom,
+  leftStackToPile,
+  priorStackObjectIds,
+  resetGame,
+  resolvedFromStack,
+  SPECTATOR_VIEWER,
+  setReject,
+  stackEntranceMap,
+  tokenCreatorMap,
+  zoneMoves,
+  zonePileEntranceMap,
+} from "~/store";
 import type { ActionView, ObjectView, PlayerView, VisibleState, WireTarget } from "~/wire/types";
 
 export { humanReason, rejectMessageFor } from "~/controllers/reject";
@@ -151,11 +167,52 @@ export default function Board() {
     handBarH: HAND_BAR_H,
     zoneMoves,
     fromStack: resolvedFromStack,
+    fromStackExit: leftStackToPile,
+    tokenCreators: tokenCreatorMap,
+    zonePileEntrances: zonePileEntranceMap,
+    stackObjectIds: priorStackObjectIds,
     stackLength: () => game.state?.stack.length ?? 0,
     selectedId,
   });
   const { camera, size, setSize, hitCard, hitSeat, dragging, drawnCards, inspectPin, clearInspect, tryPinInspect } =
     surface;
+
+  // Match land_played.from → permanent id into the surface play-entrance map.
+  createEffect(() => {
+    game.seq;
+    for (const [permanent, from] of landPlayFrom()) {
+      surface.takePlayEntrance(permanent, from);
+    }
+  });
+
+  /** Hand-card id → screen origin for stack DOM play-in; remapped to spell id on spell_cast. */
+  const stackScreenByCard = new Map<number, { x: number; y: number }>();
+  const [stackInDeltas, setStackInDeltas] = createSignal(new Map<number, { dx: number; dy: number }>());
+
+  createEffect(() => {
+    game.seq;
+    const cam = camera();
+    const sz = size();
+    const next = new Map(stackInDeltas());
+    const stackLen = game.state?.stack.length ?? 0;
+    const peek = stackPeekFor(stackLen, sz.y, STACK_VERTICAL_RESERVED);
+    for (const [spell, meta] of stackEntranceMap()) {
+      if (next.has(spell)) continue;
+      let fromScreen = stackScreenByCard.get(meta.from);
+      if (!fromScreen) {
+        const a = avatarPos(meta.controller, me(), playerCount());
+        fromScreen = worldToScreen(cam, a.x, a.y);
+      } else {
+        stackScreenByCard.delete(meta.from);
+      }
+      const idx = game.state?.stack.findIndex((s) => s.source === spell) ?? -1;
+      const n = idx >= 0 ? idx + 1 : stackLen;
+      const to = stackAimOrigin(sz.x, sz.y, Math.max(1, n), peek);
+      next.set(spell, stackInFromDelta(fromScreen, to));
+    }
+    setStackInDeltas(next);
+  });
+
   /** Prefer density/tween positions (fanned members) over collapsed layout faces. */
   const byId = (id: number) => drawnCards().find((c) => c.id === id) ?? cards().find((c) => c.id === id);
 
@@ -169,7 +226,14 @@ export default function Board() {
     size,
     handBarH: HAND_BAR_H,
     setReject,
-    seedDrop: (seed) => surface.noteDropSeed(seed),
+    seedDrop: (cardId, world, screen) => {
+      surface.notePlayOrigin(cardId, world);
+      stackScreenByCard.set(cardId, screen);
+    },
+    clearPlayOrigin: (cardId) => {
+      surface.clearPlayOrigin(cardId);
+      stackScreenByCard.delete(cardId);
+    },
     onHintUsed: () => setHintAutoHidden(true),
   });
   /** Arrow aiming (not pick-modal / not expanded stack): stack ghost + canvas target arrow. */
@@ -718,11 +782,33 @@ export default function Board() {
             <StackOverlay
               state={state()}
               staged={stackStagedCard()}
+              returningStaged={session.overlay().returningStaged}
+              stagedPlayIn={(() => {
+                const s = session.overlay().staged;
+                if (!s || !stackStagedCard()) return null;
+                const sz = size();
+                const peek = stackPeekFor(state().stack.length + 1, sz.y, STACK_VERTICAL_RESERVED);
+                const to = stackAimOrigin(sz.x, sz.y, state().stack.length + 1, peek);
+                return stackInFromDelta(s.playOriginScreen, to);
+              })()}
+              stagedReturn={(() => {
+                const s = session.overlay().returningStaged;
+                if (!s) return null;
+                const sz = size();
+                const peek = stackPeekFor(state().stack.length + 1, sz.y, STACK_VERTICAL_RESERVED);
+                const from = stackAimOrigin(sz.x, sz.y, state().stack.length + 1, peek);
+                const hand =
+                  document.querySelector(`[data-testid="hand-card-${s.card.id}"]`)?.getBoundingClientRect() ?? null;
+                const to = hand ? { x: hand.left + hand.width / 2, y: hand.top + hand.height / 2 } : s.playOriginScreen;
+                // Return keyframes end at translate(dx,dy) — delta from stack rest to hand.
+                return stackInFromDelta(to, from);
+              })()}
               showPileStaged={arrowAiming()}
               allowDwell={boardChrome().allowDwell}
               viewportW={size().x}
               viewportH={size().y}
               expanded={stackExpanded()}
+              entranceDeltas={stackInDeltas()}
               onExpand={() => setStackExpanded(true)}
               onCollapse={() => setStackExpanded(false)}
               onHoverCard={(c) => surface.setAuxHover("stack", c)}
@@ -736,7 +822,7 @@ export default function Board() {
       <Show when={!spectating() && !eliminated()}>
         <Hand
           viewer={me()}
-          hiddenId={stagedCard()?.id ?? null}
+          hiddenId={stagedCard()?.id ?? session.overlay().returningStaged?.card.id ?? null}
           onHoverCard={(c) => surface.setAuxHover("hand", c)}
           onHoverAction={setHoverAction}
           onDrop={onHandDrop}
@@ -1050,6 +1136,12 @@ function StackOverlay(props: {
   state: VisibleState;
   /** Local preview of a hand card awaiting a target — visual top when shown. */
   staged: ObjectView | null;
+  /** Staged card flying back to hand after cancel. */
+  returningStaged: StagedAction | null;
+  /** CSS translate delta for staged play-in from drop/hand. */
+  stagedPlayIn: { dx: number; dy: number } | null;
+  /** CSS translate delta for cancel fly-back (stack → hand). */
+  stagedReturn: { dx: number; dy: number } | null;
   /** Pile shows the staged ghost only while arrow aiming (suspended in expand/full). */
   showPileStaged: boolean;
   /** From shared boardChrome — do not recompute with a divergent staged/mana policy. */
@@ -1057,6 +1149,8 @@ function StackOverlay(props: {
   viewportW: number;
   viewportH: number;
   expanded: boolean;
+  /** Per stack-object id play-in deltas (ADR 0033). */
+  entranceDeltas: Map<number, { dx: number; dy: number }>;
   onExpand: () => void;
   onCollapse: () => void;
   onHoverCard: (card: { name: string; cardId?: string; print?: string } | null) => void;
@@ -1180,6 +1274,7 @@ function StackOverlay(props: {
     label: string;
     isTop: boolean;
     staged?: boolean;
+    returning?: boolean;
     style: Record<string, string>;
   }) => (
     // biome-ignore lint/a11y/noStaticElementInteractions: hover reveals art / dwell
@@ -1187,7 +1282,8 @@ function StackOverlay(props: {
       onMouseEnter={() => hoverEntry(opts.row, opts.imageName, { cardId: opts.cardId, print: opts.print })}
       style={opts.style}
       class={cn(
-        "absolute animate-stack-in rounded-game shadow-[0_4px_14px_rgb(0_0_0/0.55)]",
+        "absolute rounded-game shadow-[0_4px_14px_rgb(0_0_0/0.55)]",
+        opts.returning ? "animate-stack-return" : "animate-stack-in",
         opts.staged && "ring-(--target) ring-2",
         opts.isTop && holdMs() > 0 && stackHover() && "shadow-[0_0_16px_rgba(255,215,106,0.4)]",
       )}
@@ -1226,6 +1322,7 @@ function StackOverlay(props: {
             const imageName = () => (entry().kind === "spell" ? entry().label : (names().get(entry().source) ?? null));
             const meta = byId().get(entry().source) ?? { print: "", cardId: undefined };
             const isTop = () => row === props.state.stack.length - 1 && !(props.staged && props.showPileStaged);
+            const delta = props.entranceDeltas.get(entry().source);
             return stackFace({
               row,
               imageName: imageName(),
@@ -1239,6 +1336,12 @@ function StackOverlay(props: {
                 bottom: `${row * peek()}px`,
                 "z-index": String(row),
                 left: "0",
+                ...(delta
+                  ? {
+                      "--stack-from-dx": `${delta.dx}px`,
+                      "--stack-from-dy": `${delta.dy}px`,
+                    }
+                  : {}),
               },
             });
           }}
@@ -1260,6 +1363,38 @@ function StackOverlay(props: {
                 bottom: `${props.state.stack.length * peek()}px`,
                 "z-index": String(props.state.stack.length),
                 left: "0",
+                ...(props.stagedPlayIn
+                  ? {
+                      "--stack-from-dx": `${props.stagedPlayIn.dx}px`,
+                      "--stack-from-dy": `${props.stagedPlayIn.dy}px`,
+                    }
+                  : {}),
+              },
+            })
+          }
+        </Show>
+        <Show when={props.returningStaged}>
+          {(card) =>
+            stackFace({
+              row: props.state.stack.length,
+              imageName: card().card.name,
+              print: card().card.print ?? "",
+              cardId: card().card.card_id || undefined,
+              label: card().card.name,
+              isTop: true,
+              returning: true,
+              style: {
+                "--w": `${STACK_CARD_W}px`,
+                width: `${STACK_CARD_W}px`,
+                bottom: `${props.state.stack.length * peek()}px`,
+                "z-index": String(props.state.stack.length + 1),
+                left: "0",
+                ...(props.stagedReturn
+                  ? {
+                      "--stack-from-dx": `${props.stagedReturn.dx}px`,
+                      "--stack-from-dy": `${props.stagedReturn.dy}px`,
+                    }
+                  : {}),
               },
             })
           }

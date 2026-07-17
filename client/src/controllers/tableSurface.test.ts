@@ -486,22 +486,25 @@ describe("useTableSurface", () => {
     const baseOpts = {
       moves: new Map<number, number>(),
       fromStack: new Set<number>(),
+      fromStackExit: new Set<number>(),
+      tokenCreators: new Map<number, number>(),
+      playEntrances: new Map<number, { x: number; y: number }>(),
+      zonePileEntrances: new Map<number, { zone: "library" | "graveyard" | "exile"; seat: number }>(),
+      stackObjectIds: new Set<number>(),
       stackLength: 0,
       size: { x: 800, y: 600 },
       camera: cam,
       me: 0,
       playerCount: 2,
-      lastDrop: null as { x: number; y: number } | null,
     };
 
-    it("places the next viewer battlefield permanent at lastDrop", () => {
+    it("places a viewer permanent at its play entrance", () => {
       const anim = new Map([[1, { x: 100, y: 100 }]]);
-      const { lastDrop } = seedEntrances(anim, [logical(1, 100, 100), logical(2, 200, 200)], {
+      seedEntrances(anim, [logical(1, 100, 100), logical(2, 200, 200)], {
         ...baseOpts,
-        lastDrop: { x: 12, y: 34 },
+        playEntrances: new Map([[2, { x: 12, y: 34 }]]),
       });
       expect(anim.get(2)).toEqual({ x: 12, y: 34 });
-      expect(lastDrop).toBeNull();
     });
 
     it("seeds a new id at the zoneMoves predecessor position", () => {
@@ -524,6 +527,18 @@ describe("useTableSurface", () => {
       const w = screenToWorld(cam, scr.x, scr.y);
       expect(anim.get(2)?.x).toBeCloseTo(w.x - CARD_W / 2, 5);
       expect(anim.get(2)?.y).toBeCloseTo(w.y - CARD_H / 2, 5);
+    });
+
+    it("seeds fromStackExit like fromStack", () => {
+      const anim = new Map([[1, { x: 100, y: 100 }]]);
+      seedEntrances(anim, [logical(2, 400, 400, { zone: ZONE.Graveyard })], {
+        ...baseOpts,
+        fromStackExit: new Set([2]),
+        stackLength: 0,
+      });
+      const scr = stackAimOrigin(800, 600, 1, stackPeekFor(1, 600, STACK_VERTICAL_RESERVED));
+      const w = screenToWorld(cam, scr.x, scr.y);
+      expect(anim.get(2)?.x).toBeCloseTo(w.x - CARD_W / 2, 5);
     });
 
     it("seeds fromStack with compressed peek when the pile would overflow", () => {

@@ -2088,7 +2088,8 @@ impl Game {
                             token: minted,
                             controller: player,
                             def: token,
-                        },
+                    creator: source,
+                },
                     );
                     let power: i32 = self
                         .power_exiled_this_way
@@ -3456,7 +3457,8 @@ impl Game {
                         token,
                         controller,
                         def,
-                    },
+                    creator: source,
+                },
                 ]
             }
             // `kind = Some(k)` (Staff of the Storyteller's story counter) bypasses the +1/+1
@@ -3806,7 +3808,8 @@ impl Game {
                         token,
                         controller,
                         def,
-                    },
+                    creator: source,
+                },
                 ];
                 if !add_subtypes.is_empty() {
                     events.push(Event::AddedSubtypes {
@@ -4436,7 +4439,8 @@ impl Game {
                             token: next,
                             controller: recipient,
                             def,
-                        });
+                    creator: source,
+                });
                         // Attach the "attacks this turn if able" requirement to each minted token
                         // — bound to this batch's own defender (see `batches` above).
                         if let Some(defender) = batch_defender {
@@ -4499,7 +4503,8 @@ impl Game {
                         token: next,
                         controller: recipient,
                         def: treasure_token(),
-                    });
+                    creator: source,
+                });
                     // "create a number of tapped Treasure tokens" (Goldvein Hydra): each minted
                     // Treasure enters already tapped.
                     if tapped {
@@ -4530,7 +4535,8 @@ impl Game {
                         token,
                         controller,
                         def,
-                    });
+                    creator: source,
+                });
                     // Determined Iteration: "The token created this way gains haste."
                     if haste {
                         events.push(Event::TempBoost {
@@ -4619,7 +4625,8 @@ impl Game {
                             token,
                             controller: attacker,
                             def,
-                        });
+                    creator: source,
+                });
                         events.push(Event::Tapped { object: token });
                         events.push(Event::TokenEnteredAttacking {
                             token,
@@ -4662,7 +4669,8 @@ impl Game {
                         token: next,
                         controller: attacker,
                         def,
-                    });
+                    creator: source,
+                });
                     events.push(Event::Tapped { object: next });
                     events.push(Event::TokenEnteredAttacking {
                         token: next,

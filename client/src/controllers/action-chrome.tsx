@@ -14,7 +14,8 @@ type Vec = { x: number; y: number };
 /** Signals ActionChrome needs — private to the session module, not Board. */
 export type ActionChromeModel = {
   staged: Accessor<StagedAction | null>;
-  /** Unstage only — staged-pick cancel must not wipe X / cost / modal state. */
+  /** Unstage with fly-back — staged-pick cancel must not wipe X / cost / modal state. */
+  cancelStaged: () => void;
   setStaged: (v: StagedAction | null) => void;
   stagedMode: Accessor<TargetMode>;
   xPrompt: Accessor<{ name: string; submit: (x: number) => void } | null>;
@@ -25,6 +26,7 @@ export type ActionChromeModel = {
     action: ActionView;
     card: ObjectView | null;
     dropSeed: Vec;
+    screenOrigin: Vec;
     picks: CostPicks;
   } | null>;
   setSacrificePick: (
@@ -32,6 +34,7 @@ export type ActionChromeModel = {
       action: ActionView;
       card: ObjectView | null;
       dropSeed: Vec;
+      screenOrigin: Vec;
       picks: CostPicks;
     } | null,
   ) => void;
@@ -39,6 +42,7 @@ export type ActionChromeModel = {
     action: ActionView;
     card: ObjectView | null;
     dropSeed: Vec;
+    screenOrigin: Vec;
     picks: CostPicks;
   } | null>;
   setDiscardPick: (
@@ -46,6 +50,7 @@ export type ActionChromeModel = {
       action: ActionView;
       card: ObjectView | null;
       dropSeed: Vec;
+      screenOrigin: Vec;
       picks: CostPicks;
     } | null,
   ) => void;
@@ -53,6 +58,7 @@ export type ActionChromeModel = {
     action: ActionView;
     card: ObjectView | null;
     dropSeed: Vec;
+    screenOrigin: Vec;
     picks: CostPicks;
   } | null>;
   setGyExilePick: (
@@ -60,13 +66,20 @@ export type ActionChromeModel = {
       action: ActionView;
       card: ObjectView | null;
       dropSeed: Vec;
+      screenOrigin: Vec;
       picks: CostPicks;
     } | null,
   ) => void;
   pendingMode: () => ModeView | null;
   advanceModal: (mc: ModalCast & { chosen: number[] }) => void;
   answerMode: (target: WireTarget) => void;
-  continueAfterCostPick: (action: ActionView, card: ObjectView | null, picks: CostPicks, dropSeed: Vec) => void;
+  continueAfterCostPick: (
+    action: ActionView,
+    card: ObjectView | null,
+    picks: CostPicks,
+    dropSeed: Vec,
+    screenOrigin: Vec,
+  ) => void;
   objectName: (id: number) => string;
   objectPrint: (id: number) => string;
   /** Live visible state for card-art resolution (ADR 0031). */
@@ -118,7 +131,7 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
             state={ctx().state}
             playerName={props.playerName}
             onPick={props.model.aim}
-            onCancel={() => props.model.setStaged(null)}
+            onCancel={() => props.model.cancelStaged()}
           />
         )}
       </Show>
@@ -135,7 +148,13 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
               // Capture before clear — Solid's ctx() tracks sacrificePick() and goes falsy after null.
               const settled = settleSacrificePick(ctx().sp, t.id);
               props.model.setSacrificePick(null);
-              props.model.continueAfterCostPick(settled.action, settled.card, settled.picks, settled.dropSeed);
+              props.model.continueAfterCostPick(
+                settled.action,
+                settled.card,
+                settled.picks,
+                settled.dropSeed,
+                settled.screenOrigin,
+              );
             }}
             onCancel={() => props.model.setSacrificePick(null)}
           />
@@ -157,13 +176,14 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
             declineLabel="Cancel"
             onDecline={() => props.model.setDiscardPick(null)}
             onSubmit={(ids) => {
-              const { action, card, picks, dropSeed } = dp();
+              const { action, card, picks, dropSeed, screenOrigin } = dp();
               props.model.setDiscardPick(null);
               props.model.continueAfterCostPick(
                 action,
                 card,
                 { ...picks, discard_cost: ids, discard_settled: true },
                 dropSeed,
+                screenOrigin,
               );
             }}
           />
@@ -195,13 +215,14 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
               declineLabel="Cancel"
               onDecline={() => props.model.setGyExilePick(null)}
               onSubmit={(ids) => {
-                const { action, card, picks, dropSeed } = gp();
+                const { action, card, picks, dropSeed, screenOrigin } = gp();
                 props.model.setGyExilePick(null);
                 props.model.continueAfterCostPick(
                   action,
                   card,
                   { ...picks, graveyard_exile: ids, gy_exile_settled: true },
                   dropSeed,
+                  screenOrigin,
                 );
               }}
             />

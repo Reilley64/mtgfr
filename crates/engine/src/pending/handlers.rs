@@ -2055,6 +2055,7 @@ impl Game {
                 } else {
                     rogue_token_stub()
                 },
+                creator: source,
             };
             self.push_apply(&mut events, token_event);
         }

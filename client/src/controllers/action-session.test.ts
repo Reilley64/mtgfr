@@ -38,6 +38,7 @@ function sessionDeps(state: VisibleState | null = null, act = vi.fn(async () => 
     handBarH: 210,
     setReject: vi.fn(),
     seedDrop: vi.fn(),
+    clearPlayOrigin: vi.fn(),
     onHintUsed: vi.fn(),
   };
 }
@@ -67,10 +68,12 @@ describe("ActionSession / ActionChrome cancel contract", () => {
         action: mkAction(),
         picks: emptyCostPicks(),
         preferPick: true,
+        playOrigin: { x: 0, y: 0 },
+        playOriginScreen: { x: 100, y: 200 },
       });
       execution.setXPrompt({ name: "Fireball", submit: () => {} });
 
-      execution.setStaged(null); // ActionChrome staged-pick cancel path
+      execution.cancelStagedOnly(); // ActionChrome staged-pick cancel path
       expect(execution.staged()).toBeNull();
       expect(execution.xPrompt()?.name).toBe("Fireball");
 

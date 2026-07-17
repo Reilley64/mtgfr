@@ -38,6 +38,14 @@ export const [game, setGame] = createStore<GameStore>({
 
 /** Reset to a blank game: called on Board mount so a new table doesn't render the last one's state. */
 export function resetGame(): void {
+  moveMap = new Map();
+  stackResolved = new Set();
+  stackExits = new Set();
+  tokenCreators = new Map();
+  landPlays = new Map();
+  zonePileEntrances = new Map();
+  stackEntrances = new Map();
+  prevStackIds = new Set();
   setGame({ state: null, seq: 0, reject: null, log: [] });
 }
 
@@ -46,6 +54,12 @@ export function applySnapshot(seq: number, state: VisibleState): void {
   if (state && seq >= game.seq) {
     moveMap = new Map(); // a snapshot carries no events → no zone-move glides
     stackResolved = new Set();
+    stackExits = new Set();
+    tokenCreators = new Map();
+    landPlays = new Map();
+    zonePileEntrances = new Map();
+    stackEntrances = new Map();
+    prevStackIds = new Set(state.stack.map((s) => s.source));
     setGame({ state, seq });
   }
 }
@@ -87,7 +101,17 @@ export function applyDelta(delta: DeltaEnvelope): void {
   }));
   const lines = [...eventLines, ...autoLines];
   // Provenance for the canvas glide, rebuilt before the board re-lays out.
-  ({ moves: moveMap, fromStack: stackResolved } = extractProvenance(delta.events));
+  const prevStack = prevStackIds;
+  ({
+    moves: moveMap,
+    fromStack: stackResolved,
+    fromStackExit: stackExits,
+    tokenCreators,
+    landPlays,
+    zonePileEntrances,
+    stackEntrances,
+  } = extractProvenance(delta.events, prevStack, game.state?.viewer ?? 0));
+  prevStackIds = new Set(delta.state.stack.map((s) => s.source));
   setGame({ state: delta.state, seq: delta.seq });
   if (lines.length) setGame("log", (log) => [...log, ...lines].slice(-200));
 }
@@ -119,27 +143,98 @@ export function resolvedFromStack(): Set<number> {
   return stackResolved;
 }
 
-/** One pass over a delta's events building both glide-provenance structures, so the move map
- * and the from-stack set can't drift apart (one scan, one reset story). */
-function extractProvenance(events: VisibleEvent[]): {
+/** Cards that left the stack to GY/exile in the most recent delta. */
+let stackExits = new Set<number>();
+export function leftStackToPile(): Set<number> {
+  return stackExits;
+}
+
+/** Token id → creator object id from the most recent delta. */
+let tokenCreators = new Map<number, number>();
+export function tokenCreatorMap(): Map<number, number> {
+  return tokenCreators;
+}
+
+/** Land permanent id → hand card id (`from`) for play-origin matching. */
+let landPlays = new Map<number, number>();
+export function landPlayFrom(): Map<number, number> {
+  return landPlays;
+}
+
+export type ZonePileEntrance = { zone: "library" | "graveyard" | "exile"; seat: number };
+let zonePileEntrances = new Map<number, ZonePileEntrance>();
+export function zonePileEntranceMap(): Map<number, ZonePileEntrance> {
+  return zonePileEntrances;
+}
+
+/** Stack object id → { controller, from hand/command card id } for play-in. */
+let stackEntrances = new Map<number, { controller: number; from: number }>();
+export function stackEntranceMap(): Map<number, { controller: number; from: number }> {
+  return stackEntrances;
+}
+
+/** Stack object ids from the last applied state (for stack-exit / token-creator hybrid). */
+let prevStackIds = new Set<number>();
+export function priorStackObjectIds(): Set<number> {
+  return prevStackIds;
+}
+
+/** One pass over a delta's events building glide-provenance structures. */
+function extractProvenance(
+  events: VisibleEvent[],
+  priorStack: Set<number>,
+  _viewer: number,
+): {
   moves: Map<number, number>;
   fromStack: Set<number>;
+  fromStackExit: Set<number>;
+  tokenCreators: Map<number, number>;
+  landPlays: Map<number, number>;
+  zonePileEntrances: Map<number, ZonePileEntrance>;
+  stackEntrances: Map<number, { controller: number; from: number }>;
 } {
   const moves = new Map<number, number>();
   const fromStack = new Set<number>();
+  const fromStackExit = new Set<number>();
+  const tokenCreators = new Map<number, number>();
+  const landPlays = new Map<number, number>();
+  const zonePileEntrances = new Map<number, ZonePileEntrance>();
+  const stackEntrances = new Map<number, { controller: number; from: number }>();
   for (const e of events) {
     Match.value(e).pipe(
-      Match.discriminator("kind")("moved_to_graveyard", "moved_to_exile", "milled", "moved_to_command_zone", (e) =>
-        moves.set(e.card, e.from),
-      ),
+      Match.discriminator("kind")("moved_to_graveyard", "moved_to_exile", "milled", "moved_to_command_zone", (e) => {
+        moves.set(e.card, e.from);
+        if (priorStack.has(e.from)) fromStackExit.add(e.card);
+      }),
       Match.discriminator("kind")("exiled_on_adventure", (e) => moves.set(e.card, e.from)),
       Match.discriminator("kind")("permanent_entered", (e) => {
         moves.set(e.permanent, e.from);
         fromStack.add(e.permanent);
       }),
-      Match.discriminator("kind")("reanimated_to_battlefield", (e) => moves.set(e.permanent, e.from)),
-      // A flicker's return mints a fresh permanent id (CR 400.7) — glide it from the exiled card.
-      Match.discriminator("kind")("flickered_to_battlefield", (e) => moves.set(e.permanent, e.from)),
+      Match.discriminator("kind")("reanimated_to_battlefield", (e) => {
+        moves.set(e.permanent, e.from);
+        zonePileEntrances.set(e.permanent, { zone: "graveyard", seat: e.controller });
+      }),
+      Match.discriminator("kind")("flickered_to_battlefield", (e) => {
+        moves.set(e.permanent, e.from);
+        zonePileEntrances.set(e.permanent, { zone: "exile", seat: e.controller });
+      }),
+      Match.discriminator("kind")("searched_to_battlefield", (e) => {
+        moves.set(e.permanent, e.from);
+        zonePileEntrances.set(e.permanent, { zone: "library", seat: e.controller });
+      }),
+      Match.discriminator("kind")("put_onto_battlefield_from_hand", (e) => {
+        moves.set(e.permanent, e.from);
+      }),
+      Match.discriminator("kind")("land_played", (e) => {
+        landPlays.set(e.permanent, e.from);
+      }),
+      Match.discriminator("kind")("spell_cast", (e) => {
+        stackEntrances.set(e.spell, { controller: e.controller, from: e.from });
+      }),
+      Match.discriminator("kind")("token_created", (e) => {
+        if (e.creator != null) tokenCreators.set(e.token, e.creator);
+      }),
       // Every other kind is deliberately not a glide-provenance move. Listed (not orElse'd) so a
       // new engine event kind is a compile error here until someone decides whether it glides.
       Match.discriminator("kind")(
@@ -206,7 +301,6 @@ function extractProvenance(events: VisibleEvent[]): {
         "goaded",
         "keywords_stripped",
         "kind_counters_placed",
-        "land_played",
         "leaves_illusion_minted",
         "library_shuffled",
         "life_changed",
@@ -226,7 +320,6 @@ function extractProvenance(events: VisibleEvent[]): {
         "player_lost",
         "priority_passed",
         "put_on_bottom_of_library",
-        "put_onto_battlefield_from_hand",
         "regenerated",
         "regeneration_shield_created",
         "regeneration_shields_expired",
@@ -234,9 +327,7 @@ function extractProvenance(events: VisibleEvent[]): {
         "returned_to_hand",
         "revealed_top_of_library",
         "sacrificed",
-        "searched_to_battlefield",
         "searched_to_hand",
-        "spell_cast",
         "spell_ceased_to_exist",
         "spell_copied",
         "spell_damage_divided",
@@ -250,7 +341,6 @@ function extractProvenance(events: VisibleEvent[]): {
         "temp_boost",
         "temp_boosts_ended",
         "token_ceased_to_exist",
-        "token_created",
         "token_entered_attacking",
         "triggered_ability_on_stack",
         "triggered_ability_this_turn",
@@ -262,7 +352,7 @@ function extractProvenance(events: VisibleEvent[]): {
       Match.exhaustive,
     );
   }
-  return { moves, fromStack };
+  return { moves, fromStack, fromStackExit, tokenCreators, landPlays, zonePileEntrances, stackEntrances };
 }
 
 // A human-readable log line for an event, joining object ids → names against the delta's

@@ -1395,6 +1395,8 @@ message VisibleEventReanimatedToBattlefield {
 message VisibleEventTokenCreated {
   uint32 token = 1;
   uint32 controller = 2;
+  // Resolving stack object or ability source that produced the token (ADR 0033).
+  optional uint32 creator = 3;
 }
 
 message VisibleEventTokenCeasedToExist {

@@ -513,10 +513,14 @@ pub(crate) fn project_event(
             VisibleEvent::PermanentEntered { permanent, from }
         }
         Event::TokenCreated {
-            token, controller, ..
+            token,
+            controller,
+            creator,
+            ..
         } => VisibleEvent::TokenCreated {
             token,
             controller: controller.0,
+            creator: Some(creator),
         },
         Event::TokenCeasedToExist { token, .. } => VisibleEvent::TokenCeasedToExist { token },
         Event::SpellCopied {

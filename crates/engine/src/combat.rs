@@ -796,7 +796,7 @@ impl Game {
         // tally, and (CR 702.15e — no damage dealt) no lifelink. Instead each prevented point mints
         // one of the shield's tokens under `player`. Consulted before the life loss so the
         // prevention wholly replaces it.
-        if self.prevent_combat_damage_to_player(player, amount, events) {
+        if self.prevent_combat_damage_to_player(player, amount, source, events) {
             return;
         }
         // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like
@@ -845,6 +845,7 @@ impl Game {
         &mut self,
         player: PlayerId,
         amount: i32,
+        creator: ObjectId,
         events: &mut Vec<Event>,
     ) -> bool {
         let Some(&(_, token)) = self
@@ -866,6 +867,7 @@ impl Game {
                     token: next,
                     controller: player,
                     def: token,
+                    creator,
                 },
             );
         }

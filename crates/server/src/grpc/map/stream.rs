@@ -1127,12 +1127,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
             finality,
             tapped,
         }),
-        VisibleEvent::TokenCreated { token, controller } => {
-            Event::TokenCreated(pb::VisibleEventTokenCreated {
-                token,
-                controller: u32::from(controller),
-            })
-        }
+        VisibleEvent::TokenCreated {
+            token,
+            controller,
+            creator,
+        } => Event::TokenCreated(pb::VisibleEventTokenCreated {
+            token,
+            controller: u32::from(controller),
+            creator,
+        }),
         VisibleEvent::TokenCeasedToExist { token } => {
             Event::TokenCeasedToExist(pb::VisibleEventTokenCeasedToExist { token })
         }

@@ -173,6 +173,7 @@
 
   /* Motion is state-conveying, never required to use the interface. */
   --animate-stack-in: stack-in 0.25s ease-out;
+  --animate-stack-return: stack-return 0.22s ease-in;
   --animate-stack-resolve: stack-resolve 0.22s ease-out;
   --animate-breathe: breathe 1.8s ease-in-out infinite;
   --animate-skeleton: breathe 1.2s ease-in-out infinite;
@@ -180,11 +181,21 @@
   @keyframes stack-in {
     from {
       opacity: 0;
-      transform: translateX(-48px) scale(0.85);
+      transform: translate(var(--stack-from-dx, -48px), var(--stack-from-dy, 0px)) scale(0.85);
     }
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+  @keyframes stack-return {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translate(var(--stack-from-dx, 0px), var(--stack-from-dy, 48px)) scale(0.85);
     }
   }
   @keyframes stack-resolve {

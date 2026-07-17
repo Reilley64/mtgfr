@@ -8,8 +8,18 @@ import { type ActionExecutionDeps, type StagedAction, useActionExecution } from 
 import type { TargetMode } from "~/lib/targeting";
 import type { ActionView, ObjectView, WireTarget } from "~/wire/types";
 
+/** Screen center of a hand-bar card face, or null if not in the DOM. */
+export function handCardScreenOrigin(cardId: number): { x: number; y: number } | null {
+  if (typeof document === "undefined") return null;
+  const el = document.querySelector(`[data-testid="hand-card-${cardId}"]`);
+  if (!(el instanceof HTMLElement)) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
 export type SessionOverlay = {
   staged: StagedAction | null;
+  returningStaged: StagedAction | null;
   mode: TargetMode;
   objects: ReadonlySet<number>;
   players: ReadonlySet<number>;
@@ -37,6 +47,7 @@ export function useActionSession(deps: ActionExecutionDeps): ActionSession {
   const overlay = createMemo(
     (): SessionOverlay => ({
       staged: execution.staged(),
+      returningStaged: execution.returningStaged(),
       mode: execution.stagedMode(),
       objects: execution.stagedObjects(),
       players: execution.stagedPlayers(),
@@ -45,6 +56,7 @@ export function useActionSession(deps: ActionExecutionDeps): ActionSession {
 
   const chromeModel: ActionChromeModel = {
     staged: execution.staged,
+    cancelStaged: execution.cancelStagedOnly,
     setStaged: execution.setStaged,
     stagedMode: execution.stagedMode,
     xPrompt: execution.xPrompt,
@@ -74,9 +86,17 @@ export function useActionSession(deps: ActionExecutionDeps): ActionSession {
 
   return {
     play(action, screen) {
-      const x = screen?.x ?? 0;
-      const y = screen?.y ?? 0;
-      execution.onHandDrop(action, x, y);
+      let x = screen?.x;
+      let y = screen?.y;
+      // No drag drop — play-in from the hand slot (ADR 0033).
+      if ((x == null || y == null) && action.object != null) {
+        const slot = handCardScreenOrigin(action.object);
+        if (slot) {
+          x = slot.x;
+          y = slot.y;
+        }
+      }
+      execution.onHandDrop(action, x ?? deps.size().x / 2, y ?? deps.size().y / 2);
     },
     aim(target) {
       execution.completeTarget(target);

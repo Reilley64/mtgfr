@@ -309,6 +309,7 @@ impl Game {
                 token: next,
                 controller: card.owner,
                 def,
+                creator: source,
             });
             next += 1;
             events.push(Event::LeavesIllusionMinted {
@@ -1506,6 +1507,7 @@ impl Game {
                 token,
                 controller,
                 def,
+                creator: _,
             } => {
                 let id = self.create_object(None, Object::Permanent(fresh_token(def, controller)));
                 assert_eq!(id, token);
