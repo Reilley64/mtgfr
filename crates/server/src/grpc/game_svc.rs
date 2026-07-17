@@ -67,17 +67,20 @@ impl pb::game_server::Game for GameSvc {
                         if !stream::should_deliver(msg.broadcast_seq, snapshot_broadcast_seq) {
                             continue;
                         }
+                        let extras = stream::view_extras(
+                            &msg.yields,
+                            &msg.turn_yields,
+                            &seats,
+                            msg.stack_hold_remaining_ms,
+                            &prints,
+                        );
                         yield Ok(map::stream_frame_to_pb(stream::frame_for(
                             viewer,
                             msg.seq,
                             &msg.events,
                             &msg.game,
                             msg.auto_actions.clone(),
-                            &msg.yields,
-                            &msg.turn_yields,
-                            &seats,
-                            msg.stack_hold_remaining_ms,
-                            &prints,
+                            &extras,
                         )));
                     }
                     _ = heartbeat.tick() => {

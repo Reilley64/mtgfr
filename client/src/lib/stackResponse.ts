@@ -1,7 +1,8 @@
 // Instant-speed priority focus: which permanents stay bright while the rest dim.
 
 import { STEP } from "~/layout";
-import type { ActionView } from "~/wire/types";
+import { SPECTATOR_VIEWER } from "~/store";
+import type { ActionView, VisibleState } from "~/wire/types";
 
 /** Untapped mana-source facts the radial synthesizes (not present in wire `actions`). */
 export type ManaSourceCard = {
@@ -115,11 +116,13 @@ export function viewerIsHelpless(actions: readonly { id: number }[] | undefined)
   return (actions?.length ?? 0) === 0;
 }
 
-/** Seat facts for stack / instant-window chrome (ADR 0026 / 0027). */
+/** Seat facts for stack / instant-window / turn-yield chrome (ADR 0026 / 0027 / 0029). */
 export type StackChromeInput = {
   spectating: boolean;
   staged: boolean;
   yielded: boolean;
+  /** Seat's turn-yield flag from the wire (`turn_yielded`). */
+  turnYielded: boolean;
   stackLen: number;
   holdRemainingMs: number;
   canAct: boolean;
@@ -132,7 +135,7 @@ export type StackChromeInput = {
 };
 
 /**
- * One policy snapshot for Pass / stack yield / Space / dwell / Next / focus.
+ * One policy snapshot for Pass / stack yield / turn yield / Space / dwell / Next / focus.
  * Priority context bar, keyboard, and canvas all read this — they do not reassemble predicates.
  */
 export type StackChrome = {
@@ -152,9 +155,56 @@ export type StackChrome = {
   brightIds: ReadonlySet<number>;
   /** Hide priority-bar Next while the stack owns Pass. */
   hideControlsPass: boolean;
-  /** Space/Enter while stackLen > 0: pass_priority vs ignore. */
-  spaceOnStack: "pass_priority" | "ignore";
+  /**
+   * Space/Enter binding: pass on stack, fire primary Next on empty stack, or ignore.
+   * Board still gates prompt-open / inspect — not chrome policy.
+   */
+  space: "pass_priority" | "primary" | "ignore";
+  /**
+   * Show the turn-yield rocker (ADR 0029). Hidden for spectators and on your own turn —
+   * turn yield means "until I become active".
+   */
+  showTurnYield: boolean;
+  /** Current turn-yield armed state (wire mirror for the rocker). */
+  turnYielded: boolean;
+  /**
+   * Show the priority-bar primary (Next / Declare / …). Hidden when the stack owns Pass and
+   * the primary action is itself a bare pass (duplicate affordance).
+   */
+  showPrimary: (primaryKind: string) => boolean;
 };
+
+/** Whether the turn-yield rocker is offered (ADR 0029). */
+export function showTurnYieldControl(opts: {
+  spectating: boolean;
+  viewer: number;
+  active: number;
+}): boolean {
+  if (opts.spectating) return false;
+  return opts.active !== opts.viewer;
+}
+
+/**
+ * Space/Enter binding for priority chrome (ADR 0026 / 0027). Spectators never bind;
+ * empty-stack fires primary; stack uses one-shot pass when the seat can act.
+ */
+export function spaceBinding(opts: {
+  spectating: boolean;
+  staged: boolean;
+  stackLen: number;
+  canAct: boolean;
+  viewer: number;
+  priority: number;
+  actions: readonly { id: number }[] | undefined;
+}): "pass_priority" | "primary" | "ignore" {
+  if (opts.spectating) return "ignore";
+  if (opts.stackLen > 0) {
+    if (opts.staged) return "ignore";
+    return canActOnStack(opts) ? "pass_priority" : "ignore";
+  }
+  // Empty stack: Board still requires yours()/!promptOpen — chrome only says "primary is live".
+  return "primary";
+}
 
 /** Deep StackChrome module — pure policy; Board only binds UI / intents. */
 export function stackChrome(input: StackChromeInput): StackChrome {
@@ -164,6 +214,8 @@ export function stackChrome(input: StackChromeInput): StackChrome {
   const stackYieldArmed = showStackYieldArmed(input);
   const helpless = viewerIsHelpless(input.actions);
   const focus = instantPriorityFocus(input);
+  const hideControlsPass = input.stackLen > 0;
+  const space = spaceBinding(input);
   return {
     pass,
     stackYieldArm,
@@ -172,7 +224,66 @@ export function stackChrome(input: StackChromeInput): StackChrome {
     allowDwell: !input.spectating && helpless && input.holdRemainingMs > 0,
     focus,
     brightIds: activatableBattlefieldIds(input.actions, focus, input.manaSources, input.viewer),
-    hideControlsPass: input.stackLen > 0,
-    spaceOnStack: pass ? "pass_priority" : "ignore",
+    hideControlsPass,
+    space,
+    showTurnYield: showTurnYieldControl(input),
+    turnYielded: input.turnYielded,
+    showPrimary: (primaryKind) => !(hideControlsPass && primaryKind === "pass"),
   };
+}
+
+/**
+ * Local UI facts not on the wire. `staged` blocks Pass / Space / yield; `manaSources` come from
+ * layout cards (mana abilities are omitted from wire `actions`).
+ * promptOpen / yours() stay in the view — keyboard still gates those.
+ */
+export type BoardChromeLocal = {
+  staged: boolean;
+  manaSources: readonly ManaSourceCard[];
+};
+
+/** Map VisibleState + local staging into StackChromeInput (no Board field scattering). */
+export function stackChromeInputFromState(
+  state: VisibleState | null,
+  local: BoardChromeLocal,
+): StackChromeInput {
+  if (!state) {
+    return {
+      spectating: false,
+      staged: local.staged,
+      yielded: false,
+      turnYielded: false,
+      stackLen: 0,
+      holdRemainingMs: 0,
+      canAct: false,
+      viewer: 0,
+      priority: -1,
+      active: -1,
+      step: -1,
+      actions: undefined,
+      manaSources: local.manaSources,
+    };
+  }
+  const spectating = state.viewer === SPECTATOR_VIEWER;
+  return {
+    spectating,
+    staged: local.staged,
+    yielded: state.yielded ?? false,
+    turnYielded: state.turn_yielded ?? false,
+    stackLen: state.stack.length,
+    holdRemainingMs: state.stack_hold_remaining_ms ?? 0,
+    canAct: state.can_act,
+    // Layout seat: spectators fall back to 0 (same as Board's me()).
+    viewer: spectating ? 0 : state.viewer,
+    priority: state.priority,
+    active: state.active_player,
+    step: state.step,
+    actions: state.actions,
+    manaSources: local.manaSources,
+  };
+}
+
+/** Board chrome binder: VisibleState + locals → StackChrome. Pure; Effect wire stays upstream. */
+export function boardChromeFromState(state: VisibleState | null, local: BoardChromeLocal): StackChrome {
+  return stackChrome(stackChromeInputFromState(state, local));
 }

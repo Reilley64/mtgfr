@@ -660,7 +660,7 @@ pub struct CardDef {
     /// the riders in [`EnterAsCopy`] (Altered Ego's X extra +1/+1 counters; Cursed Mirror's
     /// until-end-of-turn duration + haste; Copy Enchantment's `of = "enchantment"`, which may copy
     /// an Aura and then pause to choose a host). The pause fires at the enter event, before ETB
-    /// triggers (see `Game::begin_enter_as_copy`). `None` for a card without the replacement.
+    /// triggers (see [`crate::pending::ChoiceRequest::EnterAsCopy`]). `None` for a card without the replacement.
     /// `enter_as_copy = { .. }` in TOML.
     pub enter_as_copy: Option<EnterAsCopy>,
     /// Encore [cost] (CR 702.140 — Angel of Indemnity): "[cost], Exile this card from your

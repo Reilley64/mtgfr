@@ -979,7 +979,7 @@ pub enum PendingChoice {
     /// `max` (`legal.len()`). Answered by [`Intent::ChooseTargetPlayers`]. The chosen set becomes
     /// the edict's affected players — `keep_one`/`filter`/`life_loss`/`then` are the edict's own
     /// fields, carried through so [`Game::choose_target_players`] can run the same per-player
-    /// sacrifice fan-out [`Game::begin_sacrifice_edict`] runs for `AllPlayers`/`EachOpponent`.
+    /// sacrifice fan-out [`Game::sacrifice_edict`] runs for `AllPlayers`/`EachOpponent`.
     ChooseTargetPlayers {
         player: PlayerId,
         source: ObjectId,
@@ -1182,7 +1182,7 @@ pub enum PendingChoice {
     /// ([`Effect::RevealTopSplitPiles`]): a settled ruling (not a numbered CR section) gives the
     /// ability's controller the pick of *which* opponent "an opponent" means, when more than one
     /// is alive. `legal` lists the living opponents; only raised when there are at least two
-    /// ([`Game::begin_choose_splitting_opponent`] resumes immediately with the sole opponent
+    /// ([`Game::choose_splitting_opponent`] resumes immediately with the sole opponent
     /// otherwise — the same collapse this choice's predecessor hardcoded). Answered by
     /// [`Intent::ChooseTargets`] (reusing its "single `Target::Player`" wire shape —
     /// [`Game::choose_targets`] special-cases this pause the same way it already does
@@ -1247,8 +1247,8 @@ pub enum PendingChoice {
     /// Smothering Abomination's upkeep "sacrifice a creature"). Unlike
     /// [`MaySacrifice`](Self::MaySacrifice), this is mandatory — declining isn't legal. Only
     /// raised when `options` outnumbers `count` (a real choice); with `count` or fewer legal
-    /// permanents, [`Game::begin_choose_own_sacrifices`] sacrifices all of them immediately
-    /// instead of pausing (CR 700.2's "as many as possible"). Answered by
+    /// permanents, raising [`crate::pending::ChoiceRequest::ChooseOwnSacrifices`] sacrifices all
+    /// of them immediately instead of pausing (CR 700.2's "as many as possible"). Answered by
     /// [`Intent::ChooseSacrifices`], reusing its "name the sacrificed set" wire shape.
     ChooseOwnSacrifices {
         player: PlayerId,
@@ -1304,7 +1304,7 @@ pub enum PendingChoice {
     /// `Some(object)` copies it (overwriting
     /// `source`'s `def` and applying the [`EnterAsCopy`] riders carried here), `None` declines
     /// ("you may" — `source` stays its printed self). Only raised when at least one candidate
-    /// exists ([`Game::begin_enter_as_copy`]). `until_eot`/`extra_counters`/`gains_haste` are the
+    /// exists ([`crate::pending::ChoiceRequest::EnterAsCopy`]). `until_eot`/`extra_counters`/`gains_haste` are the
     /// copied-from marker's riders, carried so the answer handler can apply them.
     ChooseCopyTarget {
         player: PlayerId,
@@ -1320,7 +1320,7 @@ pub enum PendingChoice {
     /// object"): `Some(token)` has every *other* token `player` controls become a copy of it (an
     /// indefinite [`Event::BecameCopy`] per other token, CR 706/707.2), `None` declines the "you
     /// may" and converts nothing. Only raised when `player` controls at least one token
-    /// ([`Game::begin_each_other_token_becomes_copy`]).
+    /// ([`crate::pending::ChoiceRequest::ChooseTokenToCopy`]).
     ChooseTokenToCopy {
         player: PlayerId,
         source: ObjectId,
@@ -1333,7 +1333,7 @@ pub enum PendingChoice {
     /// [`Intent::ChooseCopyTarget`] (reused — the answer is also "one optional chosen object"):
     /// `Some(card)` has `source` become a copy of it until end of turn (an [`Event::BecameCopy`]
     /// with `until_eot: true`, CR 706/707.2), `None` declines the "you may". Only raised when at
-    /// least one artifact/creature card left ([`Game::begin_put_counter_then_may_become_copy`]).
+    /// least one artifact/creature card left ([`crate::pending::ChoiceRequest::ChooseCopyCardFromList`]).
     ChooseCopyCardFromList {
         player: PlayerId,
         source: ObjectId,

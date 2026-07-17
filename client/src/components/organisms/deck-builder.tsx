@@ -36,7 +36,7 @@ import { commanderPrintForRow, formatReleasedAt, reconcileEntries } from "~/lib/
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { openModalWhenReady } from "~/lib/modalDialog";
 import { imageUrlByPrint, searchPrints } from "~/lib/scryfall";
-import type { CatalogCard, DeckCardEntry, DeckError, SaveDeckRequest } from "~/wire/types";
+import type { CatalogCard, DeckCardEntry, SaveDeckRequest } from "~/wire/types";
 
 const BASICS = new Set(["Plains", "Island", "Swamp", "Mountain", "Forest"]);
 const DECK_SIZE = 99;
@@ -99,21 +99,20 @@ const deckAtomFamily = Atom.family((id: number | null) =>
 const hydrateCardsFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 
 // Save a deck. Every branch resolves to a problem list or `null` ("saved") — a 422 arrives as a
-// generated `MtgfrError` tag (`{Create,Update}Deck422`) carrying the `DeckError` — so the promise
-// from `useAtomSet(..., { mode: "promise" })` never rejects.
+// Schema tagged `{Create,Update}Deck422` carrying `DeckError` — so the promise from
+// `useAtomSet(..., { mode: "promise" })` never rejects.
 const saveDeckFn = Atom.fn((req: { id: number | null; body: SaveDeckRequest }) => {
-  // Widen the create/update union (their 422 error tags differ) to one Effect type for `.pipe`.
-  const attempt: Effect.Effect<unknown, unknown> =
-    req.id !== null ? client.updateDeck(String(req.id), req.body) : client.createDeck(req.body);
-  return attempt.pipe(
+  if (req.id !== null) {
+    return client.updateDeck(String(req.id), req.body).pipe(
+      Effect.as(null as string[] | null),
+      Effect.catchTag("UpdateDeck422", (err) => Effect.succeed([...err.cause.problems])),
+      Effect.catch(() => Effect.succeed(["Could not save the deck."])),
+    );
+  }
+  return client.createDeck(req.body).pipe(
     Effect.as(null as string[] | null),
-    Effect.catch((err) => {
-      const tag = (err as { _tag?: string })._tag;
-      if (tag === "CreateDeck422" || tag === "UpdateDeck422") {
-        return Effect.succeed([...(err as { cause: DeckError }).cause.problems]);
-      }
-      return Effect.succeed(["Could not save the deck."]);
-    }),
+    Effect.catchTag("CreateDeck422", (err) => Effect.succeed([...err.cause.problems])),
+    Effect.catch(() => Effect.succeed(["Could not save the deck."])),
   );
 });
 
@@ -306,7 +305,7 @@ function DeckBuilderSignedIn() {
     if (id === null || !deck || prefilledDeckId() === id) return;
     setName("value", deck.name);
     setCommander({ id: deck.commander, print: deck.commander_print });
-    setEntries(reconcileEntries(deck.cards));
+    setEntries(reconcileEntries([...deck.cards]));
     setPreferredPrint(
       produce((p) => {
         if (deck.commander && deck.commander_print) p[deck.commander] = deck.commander_print;

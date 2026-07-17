@@ -5,9 +5,10 @@
 //! player may not legally see (a drawn card's identity is private to its owner).
 //! Redaction lives here, never in the engine — the engine stays audience-unaware.
 //!
-//! `.proto` is the sole wire contract (ADR 0032): these types are the serde-JSON shapes carried
-//! inside proto `Json.value` strings (see `crates/server/src/grpc`), and the client's TypeScript
-//! mirrors them by hand (`client/src/wire/types.ts`).
+//! `.proto` is the sole wire contract (ADR 0032 / `docs/WIRE_COMPAT.md`): these types are the
+//! projection / visibility model. The gRPC edge maps them field-by-field onto native protobuf
+//! messages (`crates/server/src/grpc`); the client's TypeScript mirrors the same shapes by hand
+//! (`client/src/wire/types.ts`). They are **not** serialized as JSON inside a proto string.
 
 mod answer_protocol;
 mod catalog;
@@ -34,7 +35,9 @@ pub use intent::{
     IntentEnvelope, WireAttack, WireBlock, WireDamage, WireIntent, WireModeChoice, WireSpellDamage,
     WireTarget, to_intent, to_intent_for_seat,
 };
-pub use snapshot::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
+pub use snapshot::{
+    DeltaCompose, SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible, compose_delta,
+};
 
 /// Mirror of [`engine::ObjectId`] for the wire.
 pub type ObjectId = u32;

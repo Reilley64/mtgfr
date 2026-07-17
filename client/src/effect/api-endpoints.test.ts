@@ -31,8 +31,8 @@ describe("client.createDeck", () => {
   it("fails with the CreateDeck422 tagged error carrying the DeckError on a 422", async () => {
     const err: DeckError = { problems: ["Commander must be a legendary creature."] };
     const r = await runEither(recordingFetch(json(err, 422)).fetch, (c) => c.createDeck(req));
-    expect(Result.isFailure(r) && (r.failure as { _tag: string })._tag).toBe("CreateDeck422");
-    expect(Result.isFailure(r) && (r.failure as { cause: DeckError }).cause).toEqual(err);
+    expect(Result.isFailure(r) && r.failure._tag).toBe("CreateDeck422");
+    expect(Result.isFailure(r) && r.failure._tag === "CreateDeck422" && r.failure.cause).toEqual(err);
   });
 
   it("fails with an HttpClientError (status 500) on a 500", async () => {

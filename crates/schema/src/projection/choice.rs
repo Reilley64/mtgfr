@@ -70,10 +70,7 @@ impl<'a> ChoiceCtx<'a> {
     /// players" — Priest of Forgotten Gods), same shape [`Self::label_targets`] gives a
     /// `Target::Player`.
     fn label_players(&self, players: Vec<engine::PlayerId>) -> Vec<ChoiceItem> {
-        players
-            .into_iter()
-            .map(|p| self.player_item(p))
-            .collect()
+        players.into_iter().map(|p| self.player_item(p)).collect()
     }
 
     /// Label a target list for a choose-target prompt — objects and players.
@@ -747,7 +744,6 @@ mod coverage_tests {
 
     /// One constructed instance per [`engine::Event`] variant — drives `project_event` coverage
     /// through the public `redact` / `spectator_redact` entry points.
-
     fn draw_effect() -> Effect {
         Effect::DrawCards {
             count: Amount::Fixed(1),
@@ -762,7 +758,8 @@ mod coverage_tests {
         let blocker = game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
         let hand_card = game.spawn_in_hand(PlayerId(0), def("Forest"));
 
-        let cases: Vec<(PendingChoice, fn(PendingChoiceView) -> bool)> = vec![
+        type Case = (PendingChoice, fn(PendingChoiceView) -> bool);
+        let cases: Vec<Case> = vec![
             (
                 PendingChoice::OrderTriggers {
                     player: PlayerId(0),
