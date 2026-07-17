@@ -57,6 +57,10 @@ jobs:
         with:
           tool: nextest
 
+      - name: Install protoc
+        if: steps.pass.outputs.cache-hit != 'true'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+
       - name: just server-check (fmt + clippy + migrate + nextest)
         if: steps.pass.outputs.cache-hit != 'true'
         run: just server-check
