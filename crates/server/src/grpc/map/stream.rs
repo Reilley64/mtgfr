@@ -622,6 +622,84 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             items: choice_items_to_pb(items),
             optional,
         }),
+        PendingChoiceView::DeclineUntap { player, items } => {
+            Choice::DeclineUntap(pb::PendingChoiceViewDeclineUntap {
+                player: u32::from(player),
+                items: choice_items_to_pb(items),
+            })
+        }
+        PendingChoiceView::PayOrControllerDraws {
+            player,
+            controller,
+            cost,
+        } => Choice::PayOrControllerDraws(pb::PendingChoiceViewPayOrControllerDraws {
+            player: u32::from(player),
+            controller: u32::from(controller),
+            cost: Some(wire_cost_to_pb(cost)),
+        }),
+        PendingChoiceView::ChooseCounteredSpellDestination { player, spell } => {
+            Choice::ChooseCounteredSpellDestination(
+                pb::PendingChoiceViewChooseCounteredSpellDestination {
+                    player: u32::from(player),
+                    spell,
+                },
+            )
+        }
+        PendingChoiceView::SacrificeUnlessPay {
+            player,
+            source,
+            cost,
+        } => Choice::SacrificeUnlessPay(pb::PendingChoiceViewSacrificeUnlessPay {
+            player: u32::from(player),
+            source,
+            cost: Some(wire_cost_to_pb(cost)),
+        }),
+        PendingChoiceView::SacrificeUnlessReturnLand {
+            player,
+            source,
+            items,
+        } => Choice::SacrificeUnlessReturnLand(pb::PendingChoiceViewSacrificeUnlessReturnLand {
+            player: u32::from(player),
+            source,
+            items: choice_items_to_pb(items),
+        }),
+        PendingChoiceView::CastCreatureFaceDown { player, items } => {
+            Choice::CastCreatureFaceDown(pb::PendingChoiceViewCastCreatureFaceDown {
+                player: u32::from(player),
+                items: choice_items_to_pb(items),
+            })
+        }
+        PendingChoiceView::ChooseSplittingOpponent {
+            player,
+            source,
+            label,
+            items,
+        } => Choice::ChooseSplittingOpponent(pb::PendingChoiceViewChooseSplittingOpponent {
+            player: u32::from(player),
+            source,
+            label,
+            items: choice_items_to_pb(items),
+        }),
+        PendingChoiceView::PartitionRevealed {
+            player,
+            source,
+            items,
+        } => Choice::PartitionRevealed(pb::PendingChoiceViewPartitionRevealed {
+            player: u32::from(player),
+            source,
+            items: choice_items_to_pb(items),
+        }),
+        PendingChoiceView::ChoosePileForHand {
+            player,
+            source,
+            pile_a,
+            pile_b,
+        } => Choice::ChoosePileForHand(pb::PendingChoiceViewChoosePileForHand {
+            player: u32::from(player),
+            source,
+            pile_a: choice_items_to_pb(pile_a),
+            pile_b: choice_items_to_pb(pile_b),
+        }),
     };
     pb::PendingChoiceView {
         choice: Some(choice),
@@ -1276,6 +1354,36 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
                 from,
             })
         }
+        VisibleEvent::AbilityCountered { source } => {
+            Event::AbilityCountered(pb::VisibleEventAbilityCountered { source })
+        }
+        VisibleEvent::ConditionedControlGained { object, controller } => {
+            Event::ConditionedControlGained(pb::VisibleEventConditionedControlGained {
+                object,
+                controller: u32::from(controller),
+            })
+        }
+        VisibleEvent::ConditionedControlEnded { object } => {
+            Event::ConditionedControlEnded(pb::VisibleEventConditionedControlEnded { object })
+        }
+        VisibleEvent::DamageDealtToPlayer {
+            source,
+            player,
+            amount,
+        } => Event::DamageDealtToPlayer(pb::VisibleEventDamageDealtToPlayer {
+            source,
+            player: u32::from(player),
+            amount,
+        }),
+        VisibleEvent::FlickeredToBattlefield {
+            permanent,
+            from,
+            controller,
+        } => Event::FlickeredToBattlefield(pb::VisibleEventFlickeredToBattlefield {
+            permanent,
+            from,
+            controller: u32::from(controller),
+        }),
     };
     pb::VisibleEvent { event: Some(event) }
 }
@@ -1327,7 +1435,117 @@ pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamFrame {
 
 #[cfg(test)]
 mod tests {
+    use schema::{
+        ActionView, ChoiceItem, CombatView, DeltaEnvelope, ObjectView, PendingChoiceView,
+        PlayerView, StackObjectView, StreamFrame, VisibleEvent, VisibleState, WireCost, WireKind,
+        WireManaPool,
+    };
+
     use super::*;
+    use crate::grpc::map::common::object_id_list_to_pb;
+
+    fn empty_player(player: u8) -> PlayerView {
+        PlayerView {
+            player,
+            username: format!("p{player}"),
+            life: 40,
+            commander_tax: 0,
+            lost: false,
+            hand_count: 0,
+            library_count: 99,
+            mana_pool: WireManaPool::default(),
+            commander_damage: vec![],
+        }
+    }
+
+    fn rich_snapshot_state() -> VisibleState {
+        VisibleState {
+            viewer: 0,
+            active_player: 0,
+            step: 3,
+            priority: 0,
+            players: vec![empty_player(0), empty_player(1)],
+            objects: vec![ObjectView {
+                id: 10,
+                zone: 1,
+                owner: 0,
+                controller: 0,
+                card_id: "card-1".into(),
+                name: "Bear".into(),
+                print: "print-1".into(),
+                kind: WireKind::Creature {
+                    power: 2,
+                    toughness: 2,
+                },
+                mana_cost: WireCost {
+                    generic: 1,
+                    colored: [0, 0, 0, 0, 1],
+                    has_x: false,
+                },
+                needs_target: false,
+                tapped: false,
+                summoning_sick: false,
+                has_haste: false,
+                keywords: vec!["trample".into()],
+                power: 2,
+                toughness: 2,
+                loyalty: 0,
+                plus_counters: 0,
+                marked_damage: 0,
+                is_commander: false,
+                goaded: false,
+                taps_for_mana: false,
+                prepared: false,
+                phased_out: false,
+                face_down: false,
+                attached_to: None,
+                modifiers: vec![],
+            }],
+            stack: vec![StackObjectView {
+                kind: "spell".into(),
+                source: 10,
+                controller: 0,
+                label: "Shock".into(),
+                target: Some(schema::WireTarget::Player { player: 1 }),
+            }],
+            combat: CombatView::default(),
+            can_act: true,
+            yielded: false,
+            turn_yielded: false,
+            stack_hold_remaining_ms: 0,
+            pending_choice: Some(PendingChoiceView::ChooseTarget {
+                player: 0,
+                source: 10,
+                label: "Deal 2".into(),
+                items: vec![ChoiceItem {
+                    id: 11,
+                    label: "Goblin".into(),
+                    player: None,
+                }],
+                optional: false,
+            }),
+            actions: vec![ActionView {
+                id: 42,
+                kind: "cast".into(),
+                object: Some(12),
+                ability_index: None,
+                section: "hand".into(),
+                label: "Lightning Bolt".into(),
+                needs_target: true,
+                targets: vec![schema::WireTarget::Player { player: 1 }],
+                modal: None,
+                sacrifice_choices: Some(vec![13, 14]),
+                discard_choices: None,
+                discard_count: 0,
+                graveyard_exile_choices: None,
+                graveyard_exile_min: 0,
+                graveyard_exile_max: 0,
+                has_x: false,
+                auto_tap: vec![],
+                required_attacks: vec![],
+            }],
+        }
+    }
 
     #[test]
     fn stream_frame_heartbeat_maps_to_the_heartbeat_variant() {
@@ -1336,5 +1554,85 @@ mod tests {
             pb.frame,
             Some(pb::stream_frame::Frame::Heartbeat(_))
         ));
+    }
+
+    #[test]
+    fn rich_snapshot_preserves_choice_actions_and_oneof_kinds() {
+        let state = rich_snapshot_state();
+        let pb = stream_frame_to_pb(StreamFrame::Snapshot {
+            seq: 9,
+            state: state.clone(),
+        });
+        let Some(pb::stream_frame::Frame::Snapshot(snap)) = pb.frame else {
+            panic!("expected Snapshot frame");
+        };
+        assert_eq!(snap.seq, 9);
+        let st = snap.state.expect("snapshot state");
+        assert_eq!(st.viewer, 0);
+        assert_eq!(st.objects.len(), 1);
+        assert_eq!(
+            st.objects[0].kind.as_ref().and_then(|k| k.kind.as_ref()),
+            Some(&pb::wire_kind::Kind::Creature(pb::wire_kind::Creature {
+                power: 2,
+                toughness: 2,
+            }))
+        );
+        assert!(matches!(
+            st.pending_choice.as_ref().and_then(|c| c.choice.as_ref()),
+            Some(pb::pending_choice_view::Choice::ChooseTarget(_))
+        ));
+        assert_eq!(st.actions.len(), 1);
+        assert_eq!(
+            st.actions[0].sacrifice_choices,
+            object_id_list_to_pb(Some(vec![13, 14]))
+        );
+        assert_eq!(
+            st.stack[0].target.as_ref().and_then(|t| t.kind.as_ref()),
+            Some(&pb::wire_target::Kind::Player(
+                pb::wire_target::PlayerTarget { player: 1 }
+            ))
+        );
+    }
+
+    #[test]
+    fn delta_collapses_divided_damage_into_object_amount_rows() {
+        let state = rich_snapshot_state();
+        let pb = stream_frame_to_pb(StreamFrame::Delta(DeltaEnvelope {
+            seq: 10,
+            events: vec![
+                VisibleEvent::CombatDamageDivided {
+                    attacker: 10,
+                    assignment: vec![(11, 2), (12, 1)],
+                },
+                VisibleEvent::SpellDamageDivided {
+                    spell: 20,
+                    assignment: vec![(11, 1)],
+                    players: vec![(1, 3)],
+                },
+            ],
+            state,
+            auto_actions: vec!["auto-pass".into()],
+        }));
+        let Some(pb::stream_frame::Frame::Delta(delta)) = pb.frame else {
+            panic!("expected Delta frame");
+        };
+        assert_eq!(delta.seq, 10);
+        assert_eq!(delta.auto_actions, vec!["auto-pass"]);
+        assert_eq!(delta.events.len(), 2);
+        match delta.events[0].event.as_ref() {
+            Some(pb::visible_event::Event::CombatDamageDivided(e)) => {
+                assert_eq!(e.assignment.len(), 2);
+                assert_eq!(e.assignment[0].id, 11);
+                assert_eq!(e.assignment[0].amount, 2);
+            }
+            other => panic!("expected CombatDamageDivided, got {other:?}"),
+        }
+        match delta.events[1].event.as_ref() {
+            Some(pb::visible_event::Event::SpellDamageDivided(e)) => {
+                assert_eq!(e.players[0].player, 1);
+                assert_eq!(e.players[0].amount, 3);
+            }
+            other => panic!("expected SpellDamageDivided, got {other:?}"),
+        }
     }
 }

@@ -66,6 +66,11 @@ message WireIntent {
     WireIntentPassPriority pass_priority = 42;
     WireIntentConcede concede = 43;
     WireIntentTakeAction take_action = 44;
+    WireIntentDeclineUntap decline_untap = 45;
+    WireIntentCastCreatureFaceDown cast_creature_face_down = 46;
+    WireIntentReturnLandOrSacrifice return_land_or_sacrifice = 47;
+    WireIntentChooseTopOrBottom choose_top_or_bottom = 48;
+    WireIntentCastFaceDown cast_face_down = 49;
   }
 }
 
@@ -96,6 +101,12 @@ message WireIntentCast {
   // How many times the caster paid the spell's Replicate cost (CR 702.108); 0 (default) for a
   // spell with no Replicate, or "pay it zero times."
   uint32 replicate_count = 11;
+  // Whether the caster paid the spell's buyback cost (CR 702.27c); `false` (decline) for a
+  // spell with no buyback.
+  bool bought_back = 12;
+  // Whether the caster is casting the spell for its evoke cost (CR 702.74a); `false` for a
+  // spell with no evoke, or to cast it normally.
+  bool evoked = 13;
 }
 
 message WireIntentPlayLand {
@@ -399,4 +410,39 @@ message WireIntentTakeAction {
   repeated uint32 graveyard_exile = 8;
   repeated WireAttack attackers = 9;
   repeated WireBlock blocks = 10;
+}
+
+// Answer an optional-untap choice (CR 502.2 — Rubinia Soulsinger): `keep_tapped` are the
+// offered permanents this player leaves tapped; every other offered permanent untaps.
+message WireIntentDeclineUntap {
+  uint32 player = 1;
+  repeated uint32 keep_tapped = 2;
+}
+
+// Answer a cast-a-hand-creature-face-down choice (Illusionary Mask): `choice` is the hand
+// creature cast face down as a 2/2, or absent to decline.
+message WireIntentCastCreatureFaceDown {
+  uint32 player = 1;
+  optional uint32 choice = 2;
+}
+
+// Answer a sacrifice-unless-return-a-land choice (Treva's Ruins): `land` is the offered
+// non-Lair land returned to its owner's hand, or absent to decline and sacrifice the source.
+message WireIntentReturnLandOrSacrifice {
+  uint32 player = 1;
+  optional uint32 land = 2;
+}
+
+// Answer a choose-countered-spell-destination choice (CR 701.5b — Hinder's rider): `top` puts
+// the countered spell on top of its owner's library, `false` on the bottom.
+message WireIntentChooseTopOrBottom {
+  uint32 player = 1;
+  bool top = 2;
+}
+
+// Cast a hand card face down as a 2/2 for {3} (CR 702.37b — morph): pay the flat {3} and put it
+// on the stack as a face-down creature spell.
+message WireIntentCastFaceDown {
+  uint32 player = 1;
+  uint32 card = 2;
 }

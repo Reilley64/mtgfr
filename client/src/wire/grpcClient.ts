@@ -8,6 +8,7 @@
 
 import { GrpcClientProtocol, type GrpcStatusCode, GrpcStatusError } from "@effect-grpc/effect-grpc";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Stream from "effect/Stream";
@@ -348,37 +349,78 @@ export function grpcClient(address: string): GrpcClient {
           }),
         ),
       stream(tableId, sessionToken) {
-        const streamEffect = Effect.gen(function* () {
-          const game = yield* GameClient;
-          const frames = game.stream({ tableId }, sessionOpts(sessionToken)).pipe(
-            Stream.map((msg) => streamFrameFromProto(msg)),
-            Stream.mapError(toCallError),
+        // Pump the Effect stream into a buffer on a forked fiber so `return()` (SSE cancel /
+        // reconnect) can `Fiber.interrupt` and tear down the upstream tonic subscription —
+        // `Stream.toAsyncIterableEffect` alone does not interrupt when the consumer stops.
+        const runtime = runtimeFor(key);
+        let fiber: Fiber.Fiber<void, never> | undefined;
+        const buffer: StreamFrame[] = [];
+        const waiters: Array<{
+          resolve: (result: IteratorResult<StreamFrame>) => void;
+          reject: (err: unknown) => void;
+        }> = [];
+        let ended = false;
+        let failure: unknown;
+
+        const deliver = (result: IteratorResult<StreamFrame>) => {
+          const waiter = waiters.shift();
+          if (waiter) {
+            waiter.resolve(result);
+            return;
+          }
+          if (!result.done && result.value !== undefined) buffer.push(result.value);
+        };
+
+        const fail = (err: unknown) => {
+          failure = err;
+          ended = true;
+          while (waiters.length > 0) {
+            waiters.shift()?.reject(err);
+          }
+        };
+
+        const finish = () => {
+          ended = true;
+          while (waiters.length > 0) {
+            waiters.shift()?.resolve({ done: true, value: undefined });
+          }
+        };
+
+        const startFiber = () => {
+          fiber = runtime.runFork(
+            Effect.gen(function* () {
+              const game = yield* GameClient;
+              yield* game.stream({ tableId }, sessionOpts(sessionToken)).pipe(
+                Stream.map((msg) => streamFrameFromProto(msg)),
+                Stream.mapError(toCallError),
+                Stream.runForEach((frame) => Effect.sync(() => deliver({ done: false, value: frame }))),
+              );
+            }).pipe(
+              Effect.catch((err) => Effect.sync(() => fail(toCallError(err)))),
+              Effect.ensuring(Effect.sync(finish)),
+            ) as Effect.Effect<void, never, Clients>,
           );
-          return yield* Stream.toAsyncIterableEffect(frames);
-        });
-        // Materialize the iterable synchronously enough for the route: runPromise then wrap.
-        // Callers `for await` immediately; we return a lazy iterable that starts the Effect on
-        // first iteration so cancel still tears down the Effect stream.
+        };
+
         return {
           [Symbol.asyncIterator]() {
-            let inner: AsyncIterator<StreamFrame> | undefined;
             return {
-              async next() {
-                if (!inner) {
-                  try {
-                    const iterable = await run(key, streamEffect);
-                    inner = iterable[Symbol.asyncIterator]();
-                  } catch (err) {
-                    throw toCallError(err);
-                  }
+              async next(): Promise<IteratorResult<StreamFrame>> {
+                if (!fiber) startFiber();
+                if (buffer.length > 0) return { done: false, value: buffer.shift()! };
+                if (failure) throw failure;
+                if (ended) return { done: true, value: undefined };
+                return new Promise<IteratorResult<StreamFrame>>((resolve, reject) => {
+                  waiters.push({ resolve, reject });
+                });
+              },
+              async return(): Promise<IteratorResult<StreamFrame>> {
+                if (fiber) {
+                  await runtime.runPromise(Fiber.interrupt(fiber));
+                  fiber = undefined;
                 }
-                return inner.next();
-              },
-              async return(value?: unknown) {
-                return inner?.return?.(value) ?? { done: true, value: undefined };
-              },
-              async throw(err?: unknown) {
-                return inner?.throw?.(err) ?? Promise.reject(err);
+                ended = true;
+                return { done: true, value: undefined };
               },
             };
           },

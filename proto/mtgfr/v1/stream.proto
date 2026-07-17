@@ -234,6 +234,15 @@ message PendingChoiceView {
     PendingChoiceViewChooseColor choose_color = 44;
     PendingChoiceViewChooseCopyTarget choose_copy_target = 45;
     PendingChoiceViewChooseAttachHost choose_attach_host = 46;
+    PendingChoiceViewDeclineUntap decline_untap = 47;
+    PendingChoiceViewPayOrControllerDraws pay_or_controller_draws = 48;
+    PendingChoiceViewChooseCounteredSpellDestination choose_countered_spell_destination = 49;
+    PendingChoiceViewSacrificeUnlessPay sacrifice_unless_pay = 50;
+    PendingChoiceViewSacrificeUnlessReturnLand sacrifice_unless_return_land = 51;
+    PendingChoiceViewCastCreatureFaceDown cast_creature_face_down = 52;
+    PendingChoiceViewChooseSplittingOpponent choose_splitting_opponent = 53;
+    PendingChoiceViewPartitionRevealed partition_revealed = 54;
+    PendingChoiceViewChoosePileForHand choose_pile_for_hand = 55;
   }
 }
 
@@ -646,6 +655,85 @@ message PendingChoiceViewChooseAttachHost {
   bool optional = 4;
 }
 
+// This player (the active player at their untap step) may choose not to untap any of `items` —
+// the permanents they control that "may choose not to untap" (CR 502.2 — Rubinia Soulsinger).
+// `items` are public battlefield permanents. Answering keeps the chosen subset tapped and
+// untaps the rest.
+message PendingChoiceViewDeclineUntap {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// The triggering opponent (`player`) may pay `cost` to stop `controller`'s optional draw —
+// Rhystic Study's "unless that player pays {1}". Only raised after `controller` accepts the
+// preceding `MayYesNo` pause. Paying leaves `controller`'s hand untouched; declining draws them
+// a card.
+message PendingChoiceViewPayOrControllerDraws {
+  uint32 player = 1;
+  uint32 controller = 2;
+  WireCost cost = 3;
+}
+
+// `spell` is already countered (CR 701.5b — Hinder's `countered_dest` rider) — choose the top
+// or bottom of its owner's library for it to go to instead of the graveyard.
+message PendingChoiceViewChooseCounteredSpellDestination {
+  uint32 player = 1;
+  uint32 spell = 2;
+}
+
+// Pay `cost` to keep `source`, or decline and sacrifice it — a real ETB triggered ability
+// (Rupture Spire, CR 603.3b), not Echo, though it shares `PayEchoOrSacrifice`'s shape.
+message PendingChoiceViewSacrificeUnlessPay {
+  uint32 player = 1;
+  uint32 source = 2;
+  WireCost cost = 3;
+}
+
+// Return one of `items` (a non-Lair land the player controls, public) to its owner's hand to
+// keep `source`, or decline and sacrifice it (Treva's Ruins).
+message PendingChoiceViewSacrificeUnlessReturnLand {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player may put one hand creature (`items`, private to them — mana value at most the
+// paid `{X}`) face down as a 2/2 without paying its mana cost (Illusionary Mask), or decline.
+message PendingChoiceViewCastCreatureFaceDown {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// This player (the ability's controller) must choose which opponent makes an "an opponent ..."
+// decision on their behalf (Abstract Performance's pile split, Fact or Fiction's partition) —
+// `items` are the living opponents (as player-only `ChoiceItem`s), `label` the ability source's
+// name. Only raised with two or more opponents alive.
+message PendingChoiceViewChooseSplittingOpponent {
+  uint32 player = 1;
+  uint32 source = 2;
+  string label = 3;
+  repeated ChoiceItem items = 4;
+}
+
+// This player (the opponent `ChooseSplittingOpponent` named) must assign each of `items` (Fact
+// or Fiction's five revealed cards, public) to one of two piles: the answer names pile A's
+// subset, the rest form pile B. Either pile may be empty.
+message PendingChoiceViewPartitionRevealed {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player (the controller of Fact or Fiction) picks one of the two piles
+// `PartitionRevealed` just made to put into their hand; the other is milled into their
+// graveyard.
+message PendingChoiceViewChoosePileForHand {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem pile_a = 3;
+  repeated ChoiceItem pile_b = 4;
+}
+
 // The complete view one player is allowed to see: turn state, per-player facts, and the
 // objects visible to them (all public zones + their own hand; opponents' hands and all
 // libraries are counts only).
@@ -798,6 +886,11 @@ message VisibleEvent {
     VisibleEventSacrificed sacrificed = 115;
     VisibleEventDiscarded discarded = 116;
     VisibleEventExiledFromGraveyardMayPlay exiled_from_graveyard_may_play = 117;
+    VisibleEventAbilityCountered ability_countered = 118;
+    VisibleEventConditionedControlGained conditioned_control_gained = 119;
+    VisibleEventConditionedControlEnded conditioned_control_ended = 120;
+    VisibleEventDamageDealtToPlayer damage_dealt_to_player = 121;
+    VisibleEventFlickeredToBattlefield flickered_to_battlefield = 122;
   }
 }
 
@@ -1560,6 +1653,42 @@ message VisibleEventExiledFromGraveyardMayPlay {
   uint32 player = 1;
   uint32 card = 2;
   uint32 from = 3;
+}
+
+// An activated ability on the stack was countered (CR 701.5c/112.7a — Azorius Guildmage). It
+// leaves the stack and ceases to exist; nothing is hidden (which ability was countered is
+// public), so this is a straight passthrough of the engine event's `source`.
+message VisibleEventAbilityCountered {
+  uint32 source = 1;
+}
+
+// A condition-scoped control change took effect (CR 611.2b — Rubinia Soulsinger): `object` is
+// now controlled by `controller` for as long as the condition holds.
+message VisibleEventConditionedControlGained {
+  uint32 object = 1;
+  uint32 controller = 2;
+}
+
+// A condition-scoped control override ended because its condition stopped holding (the source
+// untapped, left, or changed controller — CR 611.2b).
+message VisibleEventConditionedControlEnded {
+  uint32 object = 1;
+}
+
+// `source` dealt noncombat damage to `player` (public — damage to a player is announced, CR
+// 120.1) — the noncombat twin of `CombatDamageDealtToPlayer`.
+message VisibleEventDamageDealtToPlayer {
+  uint32 source = 1;
+  uint32 player = 2;
+  int32 amount = 3;
+}
+
+// A flicker's return (immediate or the delayed end-step twin): the exiled card `from` returned
+// to the battlefield as `permanent`, under `controller`'s control.
+message VisibleEventFlickeredToBattlefield {
+  uint32 permanent = 1;
+  uint32 from = 2;
+  uint32 controller = 3;
 }
 
 // A batch of already-redacted events for one viewer plus the viewer's full render state after

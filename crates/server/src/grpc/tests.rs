@@ -290,6 +290,66 @@ async fn tables_seed_and_game_submit_intent_round_trip() {
     assert!(ack.accepted, "the active player's pass is legal: {ack:?}");
 }
 
+#[tokio::test]
+async fn submit_intent_rejects_mismatched_envelope_table_id() {
+    use pb::game_server::Game;
+    use pb::tables_server::Tables;
+
+    let state = test_state().await;
+    let (host_id, host_token) = signed_up(&state, "mismatch-host@x.c", "host").await;
+    let (guest_id, _guest_token) = signed_up(&state, "mismatch-guest@x.c", "guest").await;
+
+    let host_deck_id = deck_row(&state, host_id).await;
+    let guest_deck_id = deck_row(&state, guest_id).await;
+
+    let tables_svc = tables_svc::TablesSvc::new(state.clone());
+    tables_svc
+        .seed(authed(
+            pb::SeedRequest {
+                table_id: "match-tbl".to_string(),
+                host_user_id: host_id,
+                seats: vec![
+                    pb::SeedSeat {
+                        user_id: host_id,
+                        username: "host".to_string(),
+                        deck_id: host_deck_id,
+                    },
+                    pb::SeedSeat {
+                        user_id: guest_id,
+                        username: "guest".to_string(),
+                        deck_id: guest_deck_id,
+                    },
+                ],
+            },
+            &host_token,
+        ))
+        .await
+        .expect("seed");
+
+    let game_svc = game_svc::GameSvc::new(state);
+    let envelope = map::intent_envelope_to_pb(schema::IntentEnvelope {
+        table_id: "other-tbl".to_string(),
+        client_seq: 0,
+        intent: schema::WireIntent::PassPriority { player: 0 },
+    });
+    let err = game_svc
+        .submit_intent(authed(
+            pb::IntentRequest {
+                table_id: "match-tbl".to_string(),
+                envelope: Some(envelope),
+            },
+            &host_token,
+        ))
+        .await
+        .expect_err("mismatched envelope.table_id must be rejected");
+    assert_eq!(err.code(), tonic::Code::InvalidArgument);
+    assert!(
+        err.message().contains("table_id"),
+        "error names the mismatch: {}",
+        err.message()
+    );
+}
+
 /// Seed a running two-player table under `table_id` with the given host/guest, returning the
 /// host's user id. Shared setup for the `Game.Stream` coverage below.
 async fn seed_two_player_table(state: &AppState, table_id: &str) -> (i64, String) {

@@ -118,7 +118,7 @@ async function handle(event: APIEvent): Promise<Response> {
     setCookie(event.nativeEvent, SESSION_COOKIE, outcome.setSessionToken, { ...cookieOptions(), maxAge: COOKIE_MAX_AGE_SECONDS });
   }
   if (outcome.kind !== "stream" && outcome.clearSession) {
-    deleteCookie(event.nativeEvent, SESSION_COOKIE, { path: "/" });
+    deleteCookie(event.nativeEvent, SESSION_COOKIE, cookieOptions());
   }
 
   return outcomeToResponse(outcome);

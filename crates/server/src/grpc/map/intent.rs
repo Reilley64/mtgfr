@@ -67,6 +67,8 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
         } => Intent::Cast(pb::WireIntentCast {
@@ -79,6 +81,8 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count: u32::from(strive_count),
             replicate_count: u32::from(replicate_count),
         }),
@@ -366,6 +370,37 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             attackers: attackers.into_iter().map(wire_attack_to_pb).collect(),
             blocks: blocks.into_iter().map(wire_block_to_pb).collect(),
         }),
+        WireIntent::DeclineUntap {
+            player,
+            keep_tapped,
+        } => Intent::DeclineUntap(pb::WireIntentDeclineUntap {
+            player: u32::from(player),
+            keep_tapped,
+        }),
+        WireIntent::CastCreatureFaceDown { player, choice } => {
+            Intent::CastCreatureFaceDown(pb::WireIntentCastCreatureFaceDown {
+                player: u32::from(player),
+                choice,
+            })
+        }
+        WireIntent::ReturnLandOrSacrifice { player, land } => {
+            Intent::ReturnLandOrSacrifice(pb::WireIntentReturnLandOrSacrifice {
+                player: u32::from(player),
+                land,
+            })
+        }
+        WireIntent::ChooseTopOrBottom { player, top } => {
+            Intent::ChooseTopOrBottom(pb::WireIntentChooseTopOrBottom {
+                player: u32::from(player),
+                top,
+            })
+        }
+        WireIntent::CastFaceDown { player, card } => {
+            Intent::CastFaceDown(pb::WireIntentCastFaceDown {
+                player: u32::from(player),
+                card,
+            })
+        }
     };
     pb::WireIntent {
         intent: Some(intent),
@@ -386,6 +421,8 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count,
             replicate_count,
         }) => WireIntent::Cast {
@@ -398,6 +435,8 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             graveyard_exile,
             sacrifice_cost,
             kicked,
+            bought_back,
+            evoked,
             strive_count: u8_trunc(strive_count),
             replicate_count: u8_trunc(replicate_count),
         },
@@ -687,6 +726,37 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             attackers: attackers.into_iter().map(wire_attack_from_pb).collect(),
             blocks: blocks.into_iter().map(wire_block_from_pb).collect(),
         },
+        Intent::DeclineUntap(pb::WireIntentDeclineUntap {
+            player,
+            keep_tapped,
+        }) => WireIntent::DeclineUntap {
+            player: u8_trunc(player),
+            keep_tapped,
+        },
+        Intent::CastCreatureFaceDown(pb::WireIntentCastCreatureFaceDown { player, choice }) => {
+            WireIntent::CastCreatureFaceDown {
+                player: u8_trunc(player),
+                choice,
+            }
+        }
+        Intent::ReturnLandOrSacrifice(pb::WireIntentReturnLandOrSacrifice { player, land }) => {
+            WireIntent::ReturnLandOrSacrifice {
+                player: u8_trunc(player),
+                land,
+            }
+        }
+        Intent::ChooseTopOrBottom(pb::WireIntentChooseTopOrBottom { player, top }) => {
+            WireIntent::ChooseTopOrBottom {
+                player: u8_trunc(player),
+                top,
+            }
+        }
+        Intent::CastFaceDown(pb::WireIntentCastFaceDown { player, card }) => {
+            WireIntent::CastFaceDown {
+                player: u8_trunc(player),
+                card,
+            }
+        }
     };
     Ok(wire)
 }
@@ -708,6 +778,8 @@ mod tests {
             graveyard_exile: vec![],
             sacrifice_cost: vec![],
             kicked: true,
+            bought_back: false,
+            evoked: false,
             strive_count: 2,
             replicate_count: 0,
         };

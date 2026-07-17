@@ -183,6 +183,7 @@ export type VisibleEvent =
   | { active_player: number; kind: "step_began"; step: number }
   | { controller: number; kind: "triggered_ability_on_stack"; source: U32; target?: null | WireTarget }
   | { kind: "ability_resolved"; source: U32 }
+  | { kind: "ability_countered"; source: U32 }
   | { from: U32; kind: "land_played"; permanent: U32; player: number }
   | { kind: "tapped"; object: U32 }
   | { kind: "untapped"; object: U32 }
@@ -210,6 +211,8 @@ export type VisibleEvent =
   | { kind: "abilities_granted"; source: U32; target: U32 }
   | { kind: "granted_abilities_ended" }
   | { controller: number; kind: "control_gained"; object: U32 }
+  | { controller: number; kind: "conditioned_control_gained"; object: U32 }
+  | { kind: "conditioned_control_ended"; object: U32 }
   | { defender: number; kind: "attacker_declared"; object: U32 }
   | { defender: number; kind: "token_entered_attacking"; token: U32 }
   | { by: number; kind: "goaded"; object: U32 }
@@ -245,6 +248,7 @@ export type VisibleEvent =
   | { kind: "channel_colorless_mana_granted"; player: number }
   | { amount: number; kind: "commander_damage_dealt"; player: number; source: U32 }
   | { amount: number; kind: "combat_damage_dealt_to_player"; player: number; source: U32 }
+  | { amount: number; kind: "damage_dealt_to_player"; player: number; source: U32 }
   | { amount: number; kind: "combat_damage_prevented"; player: number }
   | { card: U32; from: U32; kind: "moved_to_command_zone" }
   | { kind: "mana_emptied"; player: number }
@@ -280,6 +284,7 @@ export type VisibleEvent =
   | { card: U32; kind: "cast_from_exile_free_bottoms_library_on_leave" }
   | { kind: "cast_from_exile_free_ended" }
   | { controller: number; from: U32; kind: "returned_from_linked_exile"; permanent: U32; source: U32 }
+  | { controller: number; from: U32; kind: "flickered_to_battlefield"; permanent: U32 }
   | { card: U32; from: U32; kind: "returned_to_hand" }
   | { card: U32; from: U32; kind: "tucked_to_library"; to_top: boolean }
   | { kind: "library_shuffled"; player: number }
@@ -343,9 +348,14 @@ export type PendingChoiceView =
       source: U32;
     }
   | { kind: "may_yes_no"; label: string; player: number; source: U32 }
+  | { items: Array<ChoiceItem>; kind: "decline_untap"; player: number }
   | { cost: WireCost; kind: "pay_cost"; label: string; player: number; source: U32 }
   | { cost: WireCost; kind: "pay_or_counter"; player: number; spell: U32 }
+  | { controller: number; cost: WireCost; kind: "pay_or_controller_draws"; player: number }
+  | { kind: "choose_countered_spell_destination"; player: number; spell: U32 }
   | { cost: WireCost; kind: "pay_echo_or_sacrifice"; player: number; source: U32 }
+  | { cost: WireCost; kind: "sacrifice_unless_pay"; player: number; source: U32 }
+  | { items: Array<ChoiceItem>; kind: "sacrifice_unless_return_land"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "assign_combat_damage"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "divide_spell_damage"; player: number; spell: U32; total: number }
   | { items: Array<ChoiceItem>; kind: "divide_counters"; player: number; spell: U32; total: number }
@@ -397,6 +407,7 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "may_discard"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "discard"; player: number }
   | { items: Array<ChoiceItem>; kind: "put_land_from_hand"; player: number }
+  | { items: Array<ChoiceItem>; kind: "cast_creature_face_down"; player: number }
   | { items: Array<ChoiceItem>; kind: "choose_exiled_with_card"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "choose_exiled_with_card_to_cast"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "choose_exiled_dig_to_cast_free"; player: number; source: U32 }
@@ -410,6 +421,15 @@ export type PendingChoiceView =
     }
   | { kind: "opponent_chooses_pile"; pile_a: Array<ChoiceItem>; pile_b: Array<ChoiceItem>; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "opponent_chooses_exiled_nonland"; player: number; source: U32 }
+  | {
+      items: Array<ChoiceItem>;
+      kind: "choose_splitting_opponent";
+      label: string;
+      player: number;
+      source: U32;
+    }
+  | { items: Array<ChoiceItem>; kind: "partition_revealed"; player: number; source: U32 }
+  | { kind: "choose_pile_for_hand"; pile_a: Array<ChoiceItem>; pile_b: Array<ChoiceItem>; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_exiled_to_cast_free"; player: number; source: U32 }
   | { item: ChoiceItem; kind: "revealed_card_to_battlefield_or_hand"; player: number }
   | { kind: "choose_mode"; labels: Array<string>; player: number; source: U32 }
@@ -429,7 +449,9 @@ export type PendingChoiceView =
 
 export type WireIntent =
   | {
+      bought_back?: boolean;
       discard_cost?: Array<U32>;
+      evoked?: boolean;
       graveyard_exile?: Array<U32>;
       kicked?: boolean;
       kind: "cast";
@@ -459,6 +481,7 @@ export type WireIntent =
   | { kind: "choose_target_players"; player: number; players: Array<number> }
   | { kind: "answer_may"; player: number; yes: boolean }
   | { kind: "pay_optional_cost"; pay: boolean; player: number }
+  | { keep_tapped: Array<U32>; kind: "decline_untap"; player: number }
   | { assignment: Array<WireDamage>; kind: "assign_damage"; player: number }
   | { assignment: Array<WireSpellDamage>; kind: "divide_spell_damage"; player: number }
   | { bottom: Array<U32>; kind: "arrange_top"; player: number; top: Array<U32> }
@@ -475,6 +498,8 @@ export type WireIntent =
   | { kind: "choose_sacrifices"; player: number; sacrifices: Array<U32> }
   | { cards: Array<U32>; kind: "discard"; player: number }
   | { choice?: null | U32; kind: "put_land_from_hand"; player: number }
+  | { choice?: null | U32; kind: "cast_creature_face_down"; player: number }
+  | { kind: "return_land_or_sacrifice"; land?: null | U32; player: number }
   | { choice?: null | U32; kind: "choose_exiled_with_card"; player: number }
   | { choice?: null | U32; kind: "choose_exiled_with_card_to_cast"; player: number }
   | { choice?: null | U32; kind: "choose_exiled_dig_to_cast_free"; player: number }
@@ -487,11 +512,13 @@ export type WireIntent =
   | { color: number; kind: "choose_color"; player: number }
   | { host?: null | U32; kind: "choose_attach_host"; player: number }
   | { copy?: null | U32; kind: "choose_copy_target"; player: number }
+  | { kind: "choose_top_or_bottom"; player: number; top: boolean }
   | { card: U32; kind: "cycle"; player: number }
   | { card: U32; kind: "activate_hand_ability"; player: number }
   | { card: U32; kind: "suspend"; player: number }
   | { card: U32; kind: "encore"; player: number }
   | { kind: "turn_face_up"; permanent: U32; player: number }
+  | { card: U32; kind: "cast_face_down"; player: number }
   | { kind: "cast_prepared"; player: number; source: U32; target?: null | WireTarget; x?: number }
   | { kind: "cast_adventure"; player: number; source: U32; target?: null | WireTarget; x?: number }
   | { kind: "cast_bestow"; object: U32; player: number; target?: null | WireTarget }

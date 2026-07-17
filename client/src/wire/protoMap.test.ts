@@ -180,4 +180,189 @@ describe("fromProtoWire / toProtoWire", () => {
   it("drops an unset oneof instead of emitting a null case", () => {
     expect(fromProtoWire({ kind: { case: undefined, value: undefined } })).toBeUndefined();
   });
+
+  it("flattens a rich snapshot: pending choice, ObjectIdList actions, nested WireKind/WireTarget", () => {
+    const proto = {
+      frame: {
+        case: "snapshot",
+        value: {
+          seq: 9n,
+          state: {
+            viewer: 0,
+            activePlayer: 0,
+            step: 3,
+            priority: 0,
+            players: [
+              {
+                player: 0,
+                username: "p0",
+                life: 40,
+                commanderTax: 0,
+                lost: false,
+                handCount: 0,
+                libraryCount: 99,
+                manaPool: { colored: [0, 0, 0, 0, 0], colorless: 0, any: 0, either: [], ofColors: [] },
+                commanderDamage: [],
+              },
+            ],
+            objects: [
+              {
+                id: 10,
+                zone: 1,
+                owner: 0,
+                controller: 0,
+                cardId: "card-1",
+                name: "Bear",
+                print: "print-1",
+                kind: { kind: { case: "creature", value: { power: 2, toughness: 2 } } },
+                manaCost: { generic: 1, colored: [0, 0, 0, 0, 1], hasX: false },
+                needsTarget: false,
+                tapped: false,
+                summoningSick: false,
+                hasHaste: false,
+                keywords: ["trample"],
+                power: 2,
+                toughness: 2,
+                loyalty: 0,
+                plusCounters: 0,
+                markedDamage: 0,
+                isCommander: false,
+                goaded: false,
+                tapsForMana: false,
+                prepared: false,
+                phasedOut: false,
+                faceDown: false,
+                modifiers: [],
+              },
+            ],
+            stack: [
+              {
+                kind: "spell",
+                source: 10,
+                controller: 0,
+                label: "Shock",
+                target: { kind: { case: "player", value: { player: 1 } } },
+              },
+            ],
+            combat: { attackers: [], blocks: [], attackersDeclared: false, blockersDeclared: [] },
+            canAct: true,
+            yielded: false,
+            turnYielded: false,
+            stackHoldRemainingMs: 0,
+            pendingChoice: {
+              choice: {
+                case: "chooseTarget",
+                value: {
+                  player: 0,
+                  source: 10,
+                  label: "Deal 2",
+                  items: [{ id: 11, label: "Goblin" }],
+                  optional: false,
+                },
+              },
+            },
+            actions: [
+              {
+                id: 42n,
+                kind: "cast",
+                object: 12,
+                section: "hand",
+                label: "Lightning Bolt",
+                needsTarget: true,
+                targets: [{ kind: { case: "player", value: { player: 1 } } }],
+                sacrificeChoices: { ids: [13, 14] },
+                discardCount: 0,
+                graveyardExileMin: 0,
+                graveyardExileMax: 0,
+                hasX: false,
+                autoTap: [],
+                requiredAttacks: [],
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const frame = streamFrameFromProto(proto);
+    expect(frame).toMatchObject({
+      frame: "snapshot",
+      seq: 9,
+      state: {
+        viewer: 0,
+        objects: [{ id: 10, kind: { kind: "creature", power: 2, toughness: 2 }, keywords: ["trample"] }],
+        stack: [{ kind: "spell", target: { kind: "player", player: 1 } }],
+        pending_choice: {
+          kind: "choose_target",
+          player: 0,
+          source: 10,
+          label: "Deal 2",
+          items: [{ id: 11, label: "Goblin" }],
+          optional: false,
+        },
+        actions: [
+          {
+            id: 42,
+            kind: "cast",
+            sacrifice_choices: [13, 14],
+            targets: [{ kind: "player", player: 1 }],
+          },
+        ],
+      },
+    });
+  });
+
+  it("flattens a delta with divided-damage events and auto_actions", () => {
+    const proto = {
+      frame: {
+        case: "delta",
+        value: {
+          seq: 10n,
+          autoActions: ["auto-pass"],
+          events: [
+            {
+              event: {
+                case: "combatDamageDivided",
+                value: { attacker: 10, assignment: [{ id: 11, amount: 2 }] },
+              },
+            },
+            {
+              event: {
+                case: "spellDamageDivided",
+                value: {
+                  spell: 20,
+                  assignment: [{ id: 11, amount: 1 }],
+                  players: [{ player: 1, amount: 3 }],
+                },
+              },
+            },
+          ],
+          state: {
+            viewer: 0,
+            activePlayer: 0,
+            step: 0,
+            priority: 0,
+            players: [],
+            objects: [],
+            stack: [],
+            canAct: false,
+            yielded: false,
+            turnYielded: false,
+            stackHoldRemainingMs: 0,
+            actions: [],
+          },
+        },
+      },
+    };
+
+    expect(streamFrameFromProto(proto)).toMatchObject({
+      frame: "delta",
+      seq: 10,
+      auto_actions: ["auto-pass"],
+      events: [
+        { kind: "combat_damage_divided", attacker: 10, assignment: [[11, 2]] },
+        { kind: "spell_damage_divided", spell: 20, assignment: [[11, 1]], players: [[1, 3]] },
+      ],
+    });
+  });
 });

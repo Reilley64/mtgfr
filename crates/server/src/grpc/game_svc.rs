@@ -103,6 +103,11 @@ impl pb::game_server::Game for GameSvc {
                 .ok_or_else(|| Status::invalid_argument("missing envelope"))?,
         )
         .map_err(Status::invalid_argument)?;
+        if envelope.table_id != inner.table_id {
+            return Err(Status::invalid_argument(
+                "envelope.table_id does not match IntentRequest.table_id",
+            ));
+        }
         let ack = submit_intent_core(&self.state, user.id, &inner.table_id, envelope).await;
         Ok(Response::new(ack_msg(ack)))
     }

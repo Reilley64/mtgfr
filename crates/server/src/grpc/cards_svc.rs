@@ -43,7 +43,7 @@ impl pb::cards_server::Cards for CardsSvc {
         let mut db = self.state.db.clone();
         let cards = catalog_search::search(&mut db, &req.q, req.limit, req.offset)
             .await
-            .unwrap_or_default();
+            .map_err(|e| Status::internal(format!("catalog query failed: {e}")))?;
         Ok(Response::new(card_list(cards)))
     }
 
@@ -55,7 +55,7 @@ impl pb::cards_server::Cards for CardsSvc {
         let mut db = self.state.db.clone();
         let cards = catalog_search::lookup(&mut db, &req.ids)
             .await
-            .unwrap_or_default();
+            .map_err(|e| Status::internal(format!("catalog query failed: {e}")))?;
         Ok(Response::new(card_list(cards)))
     }
 }
