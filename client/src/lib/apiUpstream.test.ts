@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { grpcUpstreamFromPodDns, normalizePublicApiPath, tableIdFromGamePath, upstreamFromPodDns } from "~/lib/apiUpstream";
+import {
+  grpcUpstreamFromPodDns,
+  normalizePublicApiPath,
+  tableIdFromGamePath,
+  upstreamFromPodDns,
+} from "~/lib/apiUpstream";
 
 describe("normalizePublicApiPath", () => {
   it("rejects traversal, encoding tricks, admin/drain, and public seed", () => {

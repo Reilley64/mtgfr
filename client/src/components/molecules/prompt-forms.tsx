@@ -823,12 +823,7 @@ export function CardPickPrompt(props: {
           </div>
         </Show>
         <div class="flex gap-md">
-          <Button
-            type="button"
-            data-testid="pick-submit"
-            disabled={!ready()}
-            onClick={() => props.onSubmit(picked())}
-          >
+          <Button type="button" data-testid="pick-submit" disabled={!ready()} onClick={() => props.onSubmit(picked())}>
             {props.submitLabel}
           </Button>
           <Show when={props.declineLabel}>

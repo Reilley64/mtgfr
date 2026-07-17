@@ -110,8 +110,10 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
   return {
     httpClient: base,
 
-    signup: (payload: SignupCredentials) => json<Me>(HttpClientRequest.post("/auth/signup").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
-    login: (payload: Credentials) => json<Me>(HttpClientRequest.post("/auth/login").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
+    signup: (payload: SignupCredentials) =>
+      json<Me>(HttpClientRequest.post("/auth/signup").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
+    login: (payload: Credentials) =>
+      json<Me>(HttpClientRequest.post("/auth/login").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
     logout: () => empty(HttpClientRequest.post("/auth/logout")),
     me: () => json<Me>(HttpClientRequest.get("/auth/me")),
 
@@ -122,11 +124,16 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
         ),
       ),
     lookupCards: (ids: ReadonlyArray<string>) =>
-      json<ReadonlyArray<CatalogCard>>(HttpClientRequest.get("/cards/lookup").pipe(HttpClientRequest.setUrlParams({ ids }))),
+      json<ReadonlyArray<CatalogCard>>(
+        HttpClientRequest.get("/cards/lookup").pipe(HttpClientRequest.setUrlParams({ ids })),
+      ),
 
     listDecks: () => json<ReadonlyArray<DeckSummary>>(HttpClientRequest.get("/decks")),
     createDeck: (payload: SaveDeckRequest) =>
-      jsonOrDeckError<"CreateDeck422", DeckDetail>("CreateDeck422", HttpClientRequest.post("/decks").pipe(HttpClientRequest.bodyJsonUnsafe(payload))),
+      jsonOrDeckError<"CreateDeck422", DeckDetail>(
+        "CreateDeck422",
+        HttpClientRequest.post("/decks").pipe(HttpClientRequest.bodyJsonUnsafe(payload)),
+      ),
     getDeck: (id: string) => json<DeckDetail>(HttpClientRequest.get(`/decks/${id}`)),
     updateDeck: (id: string, payload: SaveDeckRequest) =>
       jsonOrDeckError<"UpdateDeck422", DeckDetail>(

@@ -96,7 +96,7 @@ async function handle(event: APIEvent): Promise<Response> {
   const segments = (event.params.path ?? "").split("/").filter(Boolean);
   const sessionToken = getCookie(event.nativeEvent, SESSION_COOKIE) ?? null;
 
-  let body: unknown ;
+  let body: unknown;
   if (event.request.method === "POST" || event.request.method === "PUT") {
     try {
       body = await event.request.json();
@@ -112,7 +112,10 @@ async function handle(event: APIEvent): Promise<Response> {
   });
 
   if (outcome.kind === "json" && outcome.setSessionToken) {
-    setCookie(event.nativeEvent, SESSION_COOKIE, outcome.setSessionToken, { ...cookieOptions(), maxAge: COOKIE_MAX_AGE_SECONDS });
+    setCookie(event.nativeEvent, SESSION_COOKIE, outcome.setSessionToken, {
+      ...cookieOptions(),
+      maxAge: COOKIE_MAX_AGE_SECONDS,
+    });
   }
   if (outcome.kind !== "stream" && outcome.clearSession) {
     deleteCookie(event.nativeEvent, SESSION_COOKIE, cookieOptions());

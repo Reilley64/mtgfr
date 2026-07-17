@@ -43,10 +43,7 @@ function Chip(props: { chip: ManaTrayChip; zoom: number }) {
         const numbered = isNumericPip(chip.ms);
         const countIn = amount() > 1 && !numbered;
         return wrap(
-          <i
-            class={cn("relative", "ms", "ms-cost", `ms-${chip.ms}`, countIn && "ms-tray-count")}
-            aria-hidden="true"
-          >
+          <i class={cn("relative", "ms", "ms-cost", `ms-${chip.ms}`, countIn && "ms-tray-count")} aria-hidden="true">
             <Show when={countIn}>
               <CountInside amount={amount()} />
             </Show>
@@ -65,10 +62,7 @@ function Chip(props: { chip: ManaTrayChip; zoom: number }) {
         ),
       ci: (chip) =>
         wrap(
-          <i
-            class={cn("relative", "ms", "ms-ci", `ms-ci-${chip.n}`, `ms-ci-${chip.suffix}`)}
-            aria-hidden="true"
-          >
+          <i class={cn("relative", "ms", "ms-ci", `ms-ci-${chip.n}`, `ms-ci-${chip.suffix}`)} aria-hidden="true">
             <Show when={amount() > 1}>
               <CountInside amount={amount()} light />
             </Show>

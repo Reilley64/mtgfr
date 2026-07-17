@@ -85,7 +85,12 @@ async function dispatchCards(method: string | undefined, query: URLSearchParams,
   }
 }
 
-async function dispatchDecks(id: string | undefined, httpMethod: string, body: unknown, env: RpcEnv): Promise<RpcOutcome> {
+async function dispatchDecks(
+  id: string | undefined,
+  httpMethod: string,
+  body: unknown,
+  env: RpcEnv,
+): Promise<RpcOutcome> {
   const client = grpcClient(env.defaultAddress);
   try {
     if (id === undefined) {
@@ -95,7 +100,8 @@ async function dispatchDecks(id: string | undefined, httpMethod: string, body: u
     }
     const deckId = Number(id);
     if (httpMethod === "GET") return jsonOk(await client.decks.get(deckId, env.sessionToken));
-    if (httpMethod === "PUT") return jsonOk(await client.decks.update(deckId, body as SaveDeckRequest, env.sessionToken));
+    if (httpMethod === "PUT")
+      return jsonOk(await client.decks.update(deckId, body as SaveDeckRequest, env.sessionToken));
     if (httpMethod === "DELETE") {
       await client.decks.delete(deckId, env.sessionToken);
       return { kind: "empty", status: 204 };

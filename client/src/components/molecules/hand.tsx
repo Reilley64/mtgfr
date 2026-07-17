@@ -178,12 +178,8 @@ export default function Hand(props: {
       data-action-kind={p.action?.kind ?? undefined}
       data-action-id={p.action != null ? String(p.action.id) : undefined}
       data-needs-target={p.action?.needs_target ? "1" : "0"}
-      data-has-player-target={
-        p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"
-      }
-      data-has-object-target={
-        p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"
-      }
+      data-has-player-target={p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"}
+      data-has-object-target={p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"}
       data-object-kind={p.objectKind}
       aria-label={p.action ? (p.caption ? `${p.name}: ${p.caption}` : p.name) : undefined}
       onKeyDown={(e) => {

@@ -611,9 +611,7 @@ export default function Board() {
               // hand bar / battlefield and steal drag-to-play and combat gestures.
               class={cn(
                 "absolute rounded-full border-0 bg-transparent",
-                lifeOrbInteractive() && stagedPlayers().has(orb.seat)
-                  ? "pointer-events-auto"
-                  : "pointer-events-none",
+                lifeOrbInteractive() && stagedPlayers().has(orb.seat) ? "pointer-events-auto" : "pointer-events-none",
               )}
               style={{
                 left: `${orb.x}px`,
@@ -806,10 +804,7 @@ function TurnBanner(props: { me: number; state: VisibleState }) {
       data-stack-len={String(s().stack.length)}
       class="fixed top-[10px] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-[5px] rounded-panel border border-hud-edge px-lg py-sm shadow-hud"
     >
-      <div
-        data-testid="board-turn-label"
-        class={cn("font-bold text-turn-ember", yourTurn() && "text-turn-mint")}
-      >
+      <div data-testid="board-turn-label" class={cn("font-bold text-turn-ember", yourTurn() && "text-turn-mint")}>
         {yourTurn() ? "Your turn" : `${playerLabel(s().players, s().active_player)}'s turn`}
       </div>
       <div class="flex gap-1">
@@ -956,7 +951,12 @@ function PriorityContextBar(props: {
           </button>
         </Show>
         <Show when={props.onCancelTarget}>
-          <Button type="button" data-testid="board-cancel-target" onClick={() => props.onCancelTarget?.()} variant="game-quiet">
+          <Button
+            type="button"
+            data-testid="board-cancel-target"
+            onClick={() => props.onCancelTarget?.()}
+            variant="game-quiet"
+          >
             Cancel
           </Button>
         </Show>

@@ -93,7 +93,13 @@ describe("dispatchRpc", () => {
   });
 
   it("routes auth/login and carries the minted session token back for the route to Set-Cookie", async () => {
-    const outcome = await dispatchRpc(["auth", "login"], "POST", { email: "a@b.c", password: "pw" }, new URLSearchParams(), env);
+    const outcome = await dispatchRpc(
+      ["auth", "login"],
+      "POST",
+      { email: "a@b.c", password: "pw" },
+      new URLSearchParams(),
+      env,
+    );
     expect(outcome.kind).toBe("json");
     expect(outcome).toMatchObject({ status: 200, setSessionToken: "tok" });
     expect(calls.login).toEqual({ email: "a@b.c", password: "pw" });
@@ -150,7 +156,13 @@ describe("dispatchRpc", () => {
   });
 
   it("resolves the table's pod address for game calls and 404s an unresolvable table", async () => {
-    const outcome = await dispatchRpc(["game", "ABC123", "intent"], "POST", { table_id: "ABC123" }, new URLSearchParams(), env);
+    const outcome = await dispatchRpc(
+      ["game", "ABC123", "intent"],
+      "POST",
+      { table_id: "ABC123" },
+      new URLSearchParams(),
+      env,
+    );
     expect(outcome).toMatchObject({ kind: "json", status: 200 });
 
     const unknown = await dispatchRpc(["game", "unknown", "intent"], "POST", {}, new URLSearchParams(), env);

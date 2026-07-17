@@ -148,7 +148,11 @@ function DecksSignedIn(props: { user: Me }) {
                     </span>
                   </div>
                   <div class="flex flex-wrap gap-sm">
-                    <Button type="button" data-testid={`deck-play-${d.id}`} onClick={() => navigate(`/play?deck=${d.id}`)}>
+                    <Button
+                      type="button"
+                      data-testid={`deck-play-${d.id}`}
+                      onClick={() => navigate(`/play?deck=${d.id}`)}
+                    >
                       Play
                     </Button>
                     <Show when={d.id >= 0}>

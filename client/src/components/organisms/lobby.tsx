@@ -48,7 +48,9 @@ const UNREACHABLE = "Unreachable";
 
 // A seat row's three columns: who (seat or username), deck, badges.
 // Username needs more than a seat-number column — 70px overflowed into the deck name.
-const SEAT_ROW = cn("grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)_auto] gap-sm rounded-control bg-glass-dim px-md py-xs");
+const SEAT_ROW = cn(
+  "grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)_auto] gap-sm rounded-control bg-glass-dim px-md py-xs",
+);
 
 export default function Lobby(props: { onStarted: () => void }) {
   const routeParams = useParams();
@@ -349,12 +351,7 @@ export default function Lobby(props: { onStarted: () => void }) {
                 <Show when={isHost()}>
                   {/* A disabled button can't be clicked, so it can never surface its own rejection —
                       the reason has to be shown next to it or the host is left guessing. */}
-                  <Button
-                    type="button"
-                    data-testid="lobby-start"
-                    disabled={startError() !== null}
-                    onClick={onStart}
-                  >
+                  <Button type="button" data-testid="lobby-start" disabled={startError() !== null} onClick={onStart}>
                     Start game
                   </Button>
                   <Show when={startError()}>

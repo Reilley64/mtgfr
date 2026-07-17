@@ -34,7 +34,9 @@ describe("client.login", () => {
 
 describe("client.signup", () => {
   it("surfaces a duplicate-email 409 as an HttpClientError", async () => {
-    const r = await runEither(respondStatus(409), (c) => c.signup({ ...creds, email: "taken@b.co", username: "taken" }));
+    const r = await runEither(respondStatus(409), (c) =>
+      c.signup({ ...creds, email: "taken@b.co", username: "taken" }),
+    );
     expect(Result.isFailure(r) && statusOf(r.failure)).toBe(409);
   });
 });

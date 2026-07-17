@@ -20,5 +20,7 @@ export function isCardsMethod(value: string | undefined): value is CardsMethod {
 /** `/api/rpc/game/:table/<method>` — every game call is scoped to a table. */
 export type GameMethod = "intent" | "yield" | "turn-yield" | "stack-dwell" | "stream";
 export function isGameMethod(value: string | undefined): value is GameMethod {
-  return value === "intent" || value === "yield" || value === "turn-yield" || value === "stack-dwell" || value === "stream";
+  return (
+    value === "intent" || value === "yield" || value === "turn-yield" || value === "stack-dwell" || value === "stream"
+  );
 }

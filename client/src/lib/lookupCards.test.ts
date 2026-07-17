@@ -19,7 +19,9 @@ describe("lookupCardsByIds", () => {
 
   it("chunks long id lists so each request stays under LOOKUP_CHUNK", async () => {
     const ids = Array.from({ length: LOOKUP_CHUNK + 3 }, (_, i) => `id-${i}`);
-    vi.mocked(client.lookupCards).mockImplementation((chunkIds) => Effect.succeed(chunkIds.map((id) => ({ id }) as never)));
+    vi.mocked(client.lookupCards).mockImplementation((chunkIds) =>
+      Effect.succeed(chunkIds.map((id) => ({ id }) as never)),
+    );
     const result = await Effect.runPromise(lookupCardsByIds(ids));
     expect(client.lookupCards).toHaveBeenCalledTimes(2);
     expect(vi.mocked(client.lookupCards).mock.calls[0]?.[0]).toHaveLength(LOOKUP_CHUNK);
