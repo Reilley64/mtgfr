@@ -1,11 +1,10 @@
-// Proto ↔ browser wire: camelCase/`bigint`/`{case,value}` oneofs ↔ snake_case tagged unions.
-// Structural walk with heuristics for oneofs, `ObjectIdList`, and amount tuples.
-
+import { create } from "@bufbuild/protobuf";
 import type {
   SaveDeckRequest as ProtoSaveDeckRequest,
   SeedRequest as ProtoSeedRequest,
 } from "~/wire/generated/mtgfr/v1/catalog_effect_grpc";
 import type { IntentEnvelope as ProtoIntentEnvelope } from "~/wire/generated/mtgfr/v1/intent_effect_grpc";
+import { IntentEnvelopeSchema as IntentEnvelopePbSchema } from "~/wire/generated/mtgfr/v1/intent_pb";
 import type {
   CatalogCard,
   DeckDetail,
@@ -16,6 +15,9 @@ import type {
   SeedResponse,
   StreamFrame,
 } from "~/wire/types";
+
+// Proto ↔ browser wire: camelCase/`bigint`/`{case,value}` oneofs ↔ snake_case tagged unions.
+// Structural walk with heuristics for oneofs, `ObjectIdList`, and amount tuples.
 
 const ONEOF_WRAPPER_KEYS = new Set(["kind", "intent", "event", "choice", "frame"]);
 
@@ -113,7 +115,8 @@ function convertToProto(value: unknown): unknown {
   const result: Record<string, unknown> = {};
   for (const key of Object.keys(value)) {
     const raw = value[key];
-    if (raw === undefined) continue;
+    // Wire JSON uses `null` for absent optionals; Effect Schema wants the field omitted.
+    if (raw === undefined || raw === null) continue;
     result[snakeToCamel(key)] = convertToProto(raw);
   }
   return result;
@@ -123,7 +126,7 @@ export function toProtoWire(value: unknown): unknown {
   return convertToProto(value);
 }
 
-const BIGINT_FIELDS = new Set(["clientSeq", "hostUserId", "userId", "deckId"]);
+const BIGINT_FIELDS = new Set(["clientSeq", "hostUserId", "userId", "deckId", "mode"]);
 
 function coerceBigints(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((item) => coerceBigints(item));
@@ -133,6 +136,14 @@ function coerceBigints(value: unknown): unknown {
     result[key] = BIGINT_FIELDS.has(key) && typeof raw === "number" ? BigInt(raw) : coerceBigints(raw);
   }
   return result;
+}
+
+/** `WireIntentTakeAction.id` is proto `uint64` (Effect `Schema.BigInt`); most other `id` fields are
+ * `uint32` ObjectIds and must stay numbers — so coerce only on this arm. */
+function takeActionValueToProto(rest: Record<string, unknown>): Record<string, unknown> {
+  const value = toProtoWire(rest) as Record<string, unknown>;
+  if (typeof value.id === "number") value.id = BigInt(value.id);
+  return value;
 }
 
 export function deckDetailFromProto(proto: unknown): DeckDetail {
@@ -159,19 +170,26 @@ export function seedResponseFromProto(proto: unknown): SeedResponse {
   return fromProtoWire<SeedResponse>(proto);
 }
 
-/** `WireIntent` wraps under proto field `intent`, not `kind` — hand-rewrapped here. */
+/** `WireIntent` wraps under proto field `intent`, not `kind`. `create` fills proto3 defaults
+ * (empty repeated fields, zero scalars) so Effect Schema — which treats those as required —
+ * accepts the same sparse payloads the browser sends. */
 export function intentEnvelopeToProto(envelope: IntentEnvelope): ProtoIntentEnvelope {
   const { kind, ...rest } = envelope.intent;
-  return coerceBigints({
-    tableId: envelope.table_id,
-    clientSeq: envelope.client_seq,
-    intent: {
+  const value =
+    kind === "take_action" ? takeActionValueToProto(rest) : (toProtoWire(rest) as Record<string, unknown>);
+  return create(
+    IntentEnvelopePbSchema,
+    coerceBigints({
+      tableId: envelope.table_id,
+      clientSeq: envelope.client_seq,
       intent: {
-        case: snakeToCamel(kind),
-        value: toProtoWire(rest),
+        intent: {
+          case: snakeToCamel(kind),
+          value,
+        },
       },
-    },
-  }) as ProtoIntentEnvelope;
+    }) as never,
+  ) as ProtoIntentEnvelope;
 }
 
 export function streamFrameFromProto(proto: unknown): StreamFrame {
