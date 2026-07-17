@@ -434,12 +434,12 @@ fn auto_advance(
             continue;
         }
         let holder = game.priority_holder();
-        // Attacked seats get a declare-attackers priority window even with nothing
-        // "meaningful" (ADR 0007 empty-stack instants) so they can respond before blockers.
-        let skip = (yields[holder.0 as usize]
+        // Attacked seats list empty-stack instants as meaningful (engine attack-response
+        // window) so has_meaningful_action already stops them when they can respond;
+        // helpless defenders auto-pass through to blockers.
+        let skip = yields[holder.0 as usize]
             || turn_yields[holder.0 as usize]
-            || !game.has_meaningful_action(holder))
-            && !owes_attack_response(game, holder);
+            || !game.has_meaningful_action(holder);
         if !skip {
             break;
         }
@@ -479,18 +479,6 @@ fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) 
             _ => {}
         }
     }
-}
-
-/// After attackers are declared, each defending seat must receive priority in Declare Attackers
-/// before auto-pass seals the step — otherwise empty-stack instants (ADR 0007) never get a window.
-fn owes_attack_response(game: &Game, player: PlayerId) -> bool {
-    use engine::Step;
-    game.current_step() == Step::DeclareAttackers
-        && game.attackers_declared()
-        && game
-            .attack_targets()
-            .iter()
-            .any(|(_, defender)| *defender == player)
 }
 
 fn reject(reason: &str) -> ApplyResult {
@@ -995,21 +983,23 @@ mod tests {
             "a bystander's turn yield must stay armed when someone else is attacked"
         );
         let game = table.game.as_ref().unwrap();
+        // Helpless at declare-attackers priority (no empty-stack instant to cast) — auto-pass
+        // through to blockers instead of forcing a dead priority stop.
         assert_eq!(
             game.current_step(),
-            Step::DeclareAttackers,
-            "attacked seat must get a declare-attackers response window before blockers"
+            Step::DeclareBlockers,
+            "attacked seat with nothing to cast must not stop on declare-attackers priority"
         );
         assert_eq!(
             game.priority_holder(),
             PlayerId(1),
-            "priority stops on the defender for responses"
+            "priority stops on the defender for blockers"
         );
     }
 
     #[test]
     fn attacked_seat_can_cast_an_instant_before_blockers() {
-        use engine::{Game, Intent, Step, Zone};
+        use engine::{Event, Game, Intent, Step, Zone};
 
         let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
         let mut table = Table::empty();
@@ -1032,6 +1022,10 @@ mod tests {
         let game = table.game.as_ref().unwrap();
         assert_eq!(game.current_step(), Step::DeclareAttackers);
         assert_eq!(game.priority_holder(), PlayerId(1));
+        assert!(
+            game.has_meaningful_action(PlayerId(1)),
+            "affordable Shock must count as meaningful in the attack-response window"
+        );
 
         let (result, disp) = TableSession::new(&mut table).submit(Intent::Cast {
             player: PlayerId(1),
@@ -1063,19 +1057,27 @@ mod tests {
             "Shock has not resolved yet"
         );
 
-        // Pass through the stack (and any hold) until Shock resolves.
+        // Pass through the stack (and any hold) until Shock resolves. After it resolves the
+        // defender is helpless again, so auto_advance may leave Declare Attackers — assert
+        // death from the resolving events, not from a later zone_of after that race.
+        let mut saw_attacker_die = false;
         for _ in 0..16 {
-            if table.game.as_ref().unwrap().stack_is_empty() {
+            if saw_attacker_die && table.game.as_ref().unwrap().stack_is_empty() {
                 break;
             }
             let holder = table.game.as_ref().unwrap().priority_holder();
             let (result, _) = TableSession::new(&mut table)
                 .submit_system(Intent::PassPriority { player: holder });
             assert!(result.accepted, "pass by {holder:?} should advance the stack");
+            saw_attacker_die |= result.events.iter().any(|e| {
+                matches!(
+                    e,
+                    Event::MovedToGraveyard { from, .. } if *from == attacker
+                )
+            });
         }
-        assert_eq!(
-            table.game.as_ref().unwrap().zone_of(attacker),
-            Zone::Graveyard,
+        assert!(
+            saw_attacker_die,
             "Shock resolved and killed the attacker"
         );
     }
@@ -1133,7 +1135,7 @@ mod tests {
     }
 
     #[test]
-    fn after_attack_response_pass_defender_still_stops_for_blockers() {
+    fn after_attack_helpless_defender_still_stops_for_blockers() {
         use engine::{Game, Intent, MeaningfulAction, Step};
 
         let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
@@ -1150,17 +1152,8 @@ mod tests {
             attackers: vec![(attacker, PlayerId(1))],
         });
         assert!(result.accepted);
-        assert_eq!(
-            table.game.as_ref().unwrap().priority_holder(),
-            PlayerId(1)
-        );
 
-        // Decline to respond — pass into blockers.
-        let (result, _) = TableSession::new(&mut table).submit(Intent::PassPriority {
-            player: PlayerId(1),
-        });
-        assert!(result.accepted);
-
+        // No empty-stack response — auto-advance lands on blockers.
         let game = table.game.as_ref().unwrap();
         assert_eq!(game.current_step(), Step::DeclareBlockers);
         assert!(
