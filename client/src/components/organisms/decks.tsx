@@ -30,7 +30,7 @@ function DecksSignedIn(props: { user: Me }) {
   const navigate = useNavigate();
   const [decks] = useAtomResource(() => decksAtom);
   // `useAtomResource`'s own `refetch` only re-wraps the atom's *current* value — the `listDecks`
-  // Effect lives in the atom, so refreshing the atom is what actually re-fetches (as in guard.ts).
+  // Effect lives in the atom, so refreshing the atom is what actually re-fetches (as in guard).
   const refreshDecks = useAtomRefresh(() => decksAtom);
   const deleteDeck = useAtomSet(() => deleteDeckFn, { mode: "promise" });
   const logout = useAtomSet(() => logoutFn, { mode: "promise" });

@@ -7,11 +7,10 @@ import type { DeckSummary, Me } from "~/api/generated";
 import { client } from "~/effect/client";
 
 /** The signed-in user, or `null` when not signed in. Any failure (401, decode, transport) is
- * folded to "not signed in" — mirrors guard.ts's `useAuthGuard` semantics. */
+ * folded to "not signed in" — mirrors guard's `useAuthGuard` semantics. */
 export const meAtom = Atom.make(client.me({}).pipe(Effect.catch(() => Effect.succeed(null as Me | null))));
 
-/** Skip `listDecks` until we know there's a session — the canonical defense against anonymous
- * first-visit racing a 401 into the error boundary (ADR 0019: fold in the Effect/atom layer). */
+/** `[]` when unsigned-in so anonymous first visit does not race a `listDecks` 401. */
 export function decksEffectForMe<E, R>(
   me: Me | null,
   listDecks: Effect.Effect<ReadonlyArray<DeckSummary>, E, R>,
@@ -20,9 +19,7 @@ export function decksEffectForMe<E, R>(
   return listDecks;
 }
 
-/** The saved-deck list. Depends on `meAtom` so unsigned-in resolves to `[]` without calling
- * `listDecks`. Side effect of that dependency: while this atom is observed, refreshing `meAtom`
- * (e.g. every `RequireAuth` mount) also re-runs `listDecks`. */
+/** The saved-deck list. Waits on `meAtom` (refreshing me while observed also re-lists). */
 export const decksAtom = Atom.make((get) =>
   get.result(meAtom).pipe(Effect.flatMap((me) => decksEffectForMe(me, client.listDecks({})))),
 );
