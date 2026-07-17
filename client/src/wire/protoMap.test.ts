@@ -134,6 +134,20 @@ describe("fromProtoWire / toProtoWire", () => {
     expect(proto.intent.intent.value.target).toEqual({ kind: { case: "object", value: { id: 9 } } });
   });
 
+  it("coerces take_action id to bigint (proto uint64 / Effect Schema.BigInt)", () => {
+    const envelope: IntentEnvelope = {
+      table_id: "ABC123",
+      client_seq: 3,
+      intent: { kind: "take_action", player: 0, id: 0, sacrifice: [] },
+    };
+    const proto = intentEnvelopeToProto(envelope) as {
+      intent: { intent: { case: string; value: { id: unknown; player: number } } };
+    };
+    expect(proto.intent.intent.case).toBe("takeAction");
+    expect(proto.intent.intent.value.id).toBe(0n);
+    expect(proto.intent.intent.value.player).toBe(0);
+  });
+
   it("collapses ObjectAmount assignment arrays into [id, amount] tuples", () => {
     const proto = {
       event: {
