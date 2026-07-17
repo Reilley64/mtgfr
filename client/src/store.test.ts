@@ -340,7 +340,7 @@ describe("applyDelta", () => {
     it("records land_played permanent → hand card for play-origin matching", () => {
       applyDelta(
         mkDelta(1, [{ kind: "land_played", from: 9, permanent: 3, player: 0 }], [
-          mkObject({ id: 3, name: "Forest", kind: { kind: "land" } }),
+          mkObject({ id: 3, name: "Forest", kind: { kind: "land", colors: [4] } }),
         ]),
       );
       expect(landPlayFrom().get(3)).toBe(9);
