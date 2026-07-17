@@ -101,7 +101,9 @@ pub fn complete_visible(
     // (libraries aren't itemized), so their art rides on ChoiceItem.print alone.
     if let Some(ref mut pc) = state.pending_choice {
         pc.for_each_item_mut(|item| {
-            if item.player.is_some() || item.print.is_empty() {
+            // Player seats have no art. Empty label = face-down / redacted (CR 701.9) — do not
+            // overlay a Printing UUID or we leak the card. Pool cards always carry default_print.
+            if item.player.is_some() || item.label.is_empty() {
                 return;
             }
             let owner = game.owner_of(item.id);
@@ -2160,7 +2162,16 @@ mod tests {
         };
 
         // The chooser (P1) sees pile_a's slots but not its identities; pile_b is fully visible.
-        match snapshot(&game, p1).pending_choice {
+        // Seat-print overlay must not stamp a Printing UUID onto redacted (empty-label) items.
+        let forest_id = def("Forest").id.to_string();
+        let preferred = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+        let mut prints: [std::collections::HashMap<String, String>; 4] = Default::default();
+        prints[0].insert(forest_id, preferred.into());
+        let extras = ViewExtras {
+            prints,
+            ..ViewExtras::default()
+        };
+        match complete_visible(&game, Some(p1), &extras).pending_choice {
             Some(PendingChoiceView::OpponentChoosesPile {
                 pile_a: a,
                 pile_b: b,
@@ -2170,6 +2181,10 @@ mod tests {
                 assert!(
                     a.iter().all(|item| item.label.is_empty()),
                     "the chooser can't see the face-down pile's identities"
+                );
+                assert!(
+                    a.iter().all(|item| item.print.is_empty()),
+                    "seat-print overlay must not leak art onto redacted pile cards"
                 );
                 assert!(
                     b.iter().all(|item| !item.label.is_empty()),
