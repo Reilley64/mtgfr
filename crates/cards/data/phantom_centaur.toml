@@ -1,13 +1,13 @@
 # Protection from black
-# Phantom Centaur enters with two +1/+1 counters on it.
-# If damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter from Phantom Centaur.
+# This creature enters with three +1/+1 counters on it.
+# If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter from this creature.
 name = "Phantom Centaur"
 otags = ["ablative-armor", "damage-prevention-self", "evasion", "gains-pp-counters", "hate-black", "unique-type-line"]
 set = "jud"
 subtypes = ["Centaur", "Spirit"]
 id = "9bb8c54b-1228-4b7c-8651-52cb5b0f6e72"
 default_print = "c421c2f1-2137-41bd-9a89-74d8a76fb5c5"
-oracle = "Protection from black\nPhantom Centaur enters with two +1/+1 counters on it.\nIf damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter from Phantom Centaur."
+oracle = "Protection from black\nThis creature enters with three +1/+1 counters on it.\nIf damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter from this creature."
 keywords = [{ protection = "black" }]
 
 [cost]
@@ -16,22 +16,22 @@ green = 2
 
 [kind]
 type = "creature"
-power = 0
+power = 2
 toughness = 0
 
-# Phantom Centaur enters with two +1/+1 counters on it.
+# This creature enters with three +1/+1 counters on it.
 [[abilities]]
 timing = "static"
 
 # Phantom Centaur enters with two +1/+1 counters on it
 [[abilities.effects]]
 type = "enters_with_counters"
-count = 2
+count = 3
 
-# If damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter from Phantom Centaur.
+# If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter from this creature.
 [[abilities]]
 timing = "static"
 
-# If damage would be dealt to Phantom Centaur, prevent that damage. Remove a +1/+1 counter from Phantom Centaur.
+# If damage would be dealt to this creature, prevent that damage. Remove a +1/+1 counter from this creature.
 [[abilities.effects]]
 type = "prevent_damage_to_self_removing_counter"

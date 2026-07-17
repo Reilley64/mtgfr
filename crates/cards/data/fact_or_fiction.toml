@@ -8,7 +8,7 @@ default_print = "04588d2f-9e90-4f83-b85e-67e4bc222a62"
 oracle = "Reveal the top five cards of your library. An opponent separates those cards into two piles. Put one pile into your hand and the other into your graveyard."
 
 [cost]
-generic = 2
+generic = 3
 blue = 1
 
 [kind]

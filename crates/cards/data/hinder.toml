@@ -9,7 +9,7 @@ oracle = "Counter target spell. If that spell is countered this way, put that ca
 
 [cost]
 generic = 1
-blue = 1
+blue = 2
 
 [kind]
 type = "instant"

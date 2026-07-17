@@ -12961,10 +12961,10 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
     let enchantress = game.spawn_on_battlefield(PlayerId(0), card("Yavimaya Enchantress"));
     assert_eq!(
         game.power(enchantress),
-        1,
-        "no enchantments on the battlefield yet — base 1/1"
+        2,
+        "no enchantments on the battlefield yet — base 2/2"
     );
-    assert_eq!(game.toughness(enchantress), 1);
+    assert_eq!(game.toughness(enchantress), 2);
 
     // Player B (an opponent) casts and resolves an enchantment — no A-side event at all. Player A
     // passes priority (still their own turn) so B can act; B's card carries Flash so a
@@ -13007,10 +13007,10 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
 
     assert_eq!(
         game.power(enchantress),
-        2,
+        3,
         "an opponent's enchantment entering the battlefield still moves the cross-owner count"
     );
-    assert_eq!(game.toughness(enchantress), 2);
+    assert_eq!(game.toughness(enchantress), 3);
 
     // Player A destroys the opponent's enchantment — the buff must drop back.
     let destroy_spell = game.spawn_in_hand(PlayerId(0), DESTROY_ENCHANTMENT_TEST);
@@ -13040,10 +13040,10 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
 
     assert_eq!(
         game.power(enchantress),
-        1,
+        2,
         "the opponent's enchantment leaving the battlefield drops the buff back"
     );
-    assert_eq!(game.toughness(enchantress), 1);
+    assert_eq!(game.toughness(enchantress), 2);
 }
 
 /// A test-only creature carrying Balefire Liege's color-split anthem shape: "Other red creatures
@@ -67544,10 +67544,10 @@ fn questing_phelddagrif_green_gives_opponent_hippo() {
 
     assert_eq!(
         game.power(phelddagrif),
-        4,
+        5,
         "+1/+1 until end of turn on the activator's own creature"
     );
-    assert_eq!(game.toughness(phelddagrif), 4);
+    assert_eq!(game.toughness(phelddagrif), 5);
 
     let hippo = game
         .live_object_ids()

@@ -356,6 +356,31 @@ keywords = ["flying"]
         assert!(token.abilities.is_empty());
     }
 
+    /// Regression: Rubinia shipped with a hallucinated frame — {2}{W}{U}{U}, 2/4, flying — which
+    /// no ability-level test caught but the deck-legality identity check rejected live (every green
+    /// card read as off-identity). Pin the printed frame (CR 903.4 identity flows from these pips).
+    #[test]
+    fn rubinia_soulsingers_printed_frame() {
+        let rubinia = get_by_name("Rubinia Soulsinger").expect("Rubinia Soulsinger is in the pool");
+        assert_eq!(
+            rubinia.kind,
+            CardKind::Creature {
+                power: 2,
+                toughness: 3,
+                also: TypeSet::NONE
+            }
+        );
+        assert_eq!(rubinia.cost.generic, 2);
+        assert_eq!(rubinia.cost.colored[Color::Green.index()], 1);
+        assert_eq!(rubinia.cost.colored[Color::White.index()], 1);
+        assert_eq!(rubinia.cost.colored[Color::Blue.index()], 1);
+        assert!(rubinia.legendary);
+        assert!(
+            rubinia.keywords.is_empty(),
+            "the printed card has no keywords (no flying)"
+        );
+    }
+
     #[test]
     fn the_pool_loads_with_expected_card_shapes() {
         let bear = get_by_name("Grizzly Bear").expect("Grizzly Bear is in the pool");

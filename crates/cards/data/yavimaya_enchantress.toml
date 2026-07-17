@@ -13,8 +13,8 @@ green = 1
 
 [kind]
 type = "creature"
-power = 1
-toughness = 1
+power = 2
+toughness = 2
 
 # This creature gets +1/+1 for each enchantment on the battlefield.
 [[abilities]]

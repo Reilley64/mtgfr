@@ -13,8 +13,7 @@ oracle = "All creatures have haste."
 # `legendary`/`basic` for the pattern) when a second World card lands.
 
 [cost]
-generic = 2
-red = 1
+green = 1
 
 [kind]
 type = "enchantment"

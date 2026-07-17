@@ -17,8 +17,8 @@ blue = 1
 
 [kind]
 type = "creature"
-power = 3
-toughness = 3
+power = 4
+toughness = 4
 
 # {G}: This creature gets +1/+1 until end of turn. Target opponent creates a 1/1 green Hippo
 # creature token.
