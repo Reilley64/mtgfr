@@ -430,6 +430,13 @@ pub enum VisibleEvent {
         player: u8,
         amount: i32,
     },
+    /// `source` dealt noncombat damage to `player` (public — damage to a player is announced,
+    /// CR 120.1) — the noncombat twin of `CombatDamageDealtToPlayer`.
+    DamageDealtToPlayer {
+        source: ObjectId,
+        player: u8,
+        amount: i32,
+    },
     /// `amount` combat damage that would have been dealt to `player` was prevented by a shield
     /// (Inkshield, CR 615) — public, like the combat damage it replaces. The Inkling mints it
     /// drives arrive as accompanying `TokenCreated` events.

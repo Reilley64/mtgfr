@@ -1818,7 +1818,7 @@ needs_tapped }`, consulted by `controller_of` and swept by `check_conditioned_co
 (new SBA). Fully faithful: rubinia_soulsinger. Still blocked: client catch-up (Phase 5) still owed
 for the `DeclineUntap` choice/intent and `ConditionedControl*` events.
 
-### 163. `morph-face-down` — 2 cards, XL — **note-only (deliberate illusionary_mask color-subset residual)**
+### 163. `morph-face-down` — 2 cards, XL — **LANDED (2026-07-17)**
 Depends on: #the landed manifest substrate (face-down 2/2 status, turn-face-up special action).
 Falsified claim: "no morph card is in the pool, so only plain manifest is built." Staged:
 **Slice 1 — morph:** `[morph]` cost on the card; cast face down from hand for {3} as a 2/2
@@ -1906,6 +1906,21 @@ effect-sourced damage/tap (`Effect` emitting `Event::DamageMarked`/`Event::Tappe
 burn or "tap target" spell) doesn't route through these combat chokes, so a masked creature so
 targeted wouldn't flip — no pool card exercises it (flag-don't-force); wire a shared flip guard at
 those `Event` emit sites when one lands.
+
+**Landed (2026-07-17) — the color-subset test, closing the last residual:** the printed "whose mana
+cost could be paid by some amount of, or all of, the mana you spent on {X}" (CR 107.3) replaced the
+`mana_value <= X` approximation. The activation payment's exact spend multiset is read off
+`settle_payment`'s trailing `Event::ManaSpent` (`ManaPool::spent_counts` — per-color counts plus a
+sixth no-one-color bucket for colorless/"any"/dual/restricted credits, the same modeling line as
+`colors_spent`) and rides the stack item (`Event::TriggeredAbilityOnStack`/`StackItem::Ability::spent_mana`,
+zeroes for triggered abilities and CR 707.10c copies — converge's copy-ruling shape) into the
+resolving ability's ctx. `Cost::payable_from_multiset` runs the test per candidate: each colored pip
+needs a spent unit of its color, each hybrid pip (CR 107.4e) a unit of either color (backtracking
+assignment), generic takes any remaining unit, and the candidate's own `{X}` counts 0 (CR 107.3b).
+**illusionary_mask.toml has no `approximates` — the card is fully faithful.** Remaining ponytails
+(engine-side, unobserved): a `{C}` pip is treated as unpayable (the sixth bucket can't tell true
+colorless from a wildcard; no pool creature prints `{C}`), and clause 2's effect-sourced damage/tap
+choke gap above.
 
 ### 164. `cross-owner-anthem-cache` — 1 card, S — **LANDED (2026-07-16)**
 Depends on: nothing.

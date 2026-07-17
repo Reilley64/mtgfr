@@ -685,7 +685,15 @@ impl Game {
         // into generic per CR 107.3); unaffordable leaves the choice pending with nothing tapped.
         self.settle_payment(player, cost.with_x(x), None, None, &mut events)?;
         self.finish_answer();
-        self.push_ability_group_with_x(player, source, &[(effect, None)], x, false, &mut events);
+        self.push_ability_group_with_x(
+            player,
+            source,
+            &[(effect, None)],
+            x,
+            [0; 6],
+            false,
+            &mut events,
+        );
         Ok(events)
     }
 
@@ -804,6 +812,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );
@@ -862,6 +871,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );
@@ -897,6 +907,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 events,
             );
@@ -940,6 +951,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             ),
@@ -1822,16 +1834,16 @@ impl Game {
 
     /// Begin an [`Effect::CastCreatureFaceDown`] (Illusionary Mask): pause on a
     /// [`PendingChoice::CastCreatureFaceDown`] over `player`'s hand creature cards whose mana
-    /// value is at most `x` (the `{X}` paid — CR 107.3). "You may," so no payable creature raises
-    /// no choice (a harmless no-op, same shape as [`Game::begin_put_land_from_hand`]).
-    /// ponytail: `mana_value <= x` approximates the printed "the mana you spent on {X} could pay
-    /// its cost" color-subset test — see [`Effect::CastCreatureFaceDown`]'s doc.
-    pub(crate) fn begin_cast_creature_face_down(&mut self, player: PlayerId, x: u32) {
+    /// cost "could be paid by some amount of, or all of" the mana spent on the activation's `{X}`
+    /// (`spent_mana`, [`Cost::payable_from_multiset`] — CR 107.3). "You may," so no payable
+    /// creature raises no choice (a harmless no-op, same shape as
+    /// [`Game::begin_put_land_from_hand`]).
+    pub(crate) fn begin_cast_creature_face_down(&mut self, player: PlayerId, spent_mana: [u8; 6]) {
         let candidates: Vec<ObjectId> = self
             .hand_of(player)
             .into_iter()
             .filter(|&id| matches!(self.def_of(id).kind, CardKind::Creature { .. }))
-            .filter(|&id| self.def_of(id).mana_value() <= x)
+            .filter(|&id| self.def_of(id).cost.payable_from_multiset(&spent_mana))
             .collect();
         if candidates.is_empty() {
             return; // nothing payable — don't pause.
@@ -1899,6 +1911,7 @@ impl Game {
                 target,
                 targets_second: TargetList::default(),
                 x,
+                spent_mana: [0; 6],
             },
             &mut events,
         );
@@ -3713,6 +3726,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );
@@ -3876,6 +3890,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 events,
             );
@@ -4341,6 +4356,7 @@ impl Game {
                     target: None,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );

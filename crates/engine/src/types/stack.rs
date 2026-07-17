@@ -1106,9 +1106,11 @@ pub enum PendingChoice {
         tapped: bool,
         candidates: Vec<ObjectId>,
     },
-    /// `player` may cast one of `candidates` — the creature cards in their hand whose mana value
-    /// is at most the `{X}` paid — face down as a 2/2 creature spell without paying its mana cost,
-    /// or decline ("you may" — [`Effect::CastCreatureFaceDown`], Illusionary Mask, resolving).
+    /// `player` may cast one of `candidates` — the creature cards in their hand whose mana cost
+    /// could be paid by some amount of, or all of, the mana spent on the `{X}` paid (CR 107.3,
+    /// [`Cost::payable_from_multiset`]) — face down as a 2/2 creature spell without paying its
+    /// mana cost, or decline ("you may" — [`Effect::CastCreatureFaceDown`], Illusionary Mask,
+    /// resolving).
     /// Answered by [`Intent::CastCreatureFaceDown`]. The candidates are hand cards, so private.
     CastCreatureFaceDown {
         player: PlayerId,
@@ -1584,6 +1586,12 @@ pub(crate) enum StackItem {
         /// The chosen `{X}` for an activated ability whose cost contains `{X}` (or a copy of one,
         /// CR 707.10c); `0` for every triggered ability. Read at resolution for `Amount::X`.
         x: u32,
+        /// The multiset of mana actually spent activating this ability
+        /// ([`ManaPool::spent_counts`]'s shape) — Illusionary Mask's CR 107.3 "the mana you spent
+        /// on {X}" test reads it at resolution. All zeroes for every triggered ability, and for a
+        /// CR 707.10c copy (a copy is created, not activated, so no mana was spent on it —
+        /// converge's own copy ruling shape).
+        spent_mana: [u8; 6],
     },
 }
 
@@ -1743,6 +1751,10 @@ pub enum Event {
         /// doubling rider); empty for a single-clause ability.
         targets_second: TargetList,
         x: u32,
+        /// The multiset of mana actually spent activating the ability, carried onto
+        /// [`StackItem::Ability::spent_mana`] (Illusionary Mask's CR 107.3 test). All zeroes for
+        /// every triggered ability and for a CR 707.10c copy.
+        spent_mana: [u8; 6],
         /// Whether this is an *activated* ability (CR 602) rather than a triggered one (CR 603) —
         /// carried onto [`StackItem::Ability::activated`] so "counter target activated ability"
         /// (Azorius Guildmage) can tell the two apart. `false` for every triggered ability.
@@ -2125,6 +2137,17 @@ pub enum Event {
     /// (drain, pay-life) also emits `LifeChanged` but must not fire a
     /// [`Trigger::DealsCombatDamageToPlayer`] watch. See [`Game::queue_combat_damage_triggers`].
     CombatDamageDealtToPlayer {
+        source: ObjectId,
+        player: PlayerId,
+        amount: i32,
+    },
+    /// `source` dealt `amount` *noncombat* damage to `player` (CR 120.1) — a marker distinct
+    /// from the `LifeChanged` it accompanies in [`Effect::DealDamage`]'s player arm, since
+    /// non-damage life loss (drain, pay-life) also emits `LifeChanged` with a `source` but must
+    /// not fire a [`Trigger::DealsDamageToOpponent`] watch. The noncombat twin of
+    /// [`Self::CombatDamageDealtToPlayer`], same [`Self::Sacrificed`]-vs-`MovedToGraveyard`
+    /// marker precedent. See [`Game::queue_deals_damage_to_opponent_triggers`].
+    DamageDealtToPlayer {
         source: ObjectId,
         player: PlayerId,
         amount: i32,

@@ -4,8 +4,8 @@ Source: https://archidekt.com/decks/2209180/enchantress_rubinia_magic_online_the
 (Archidekt deck 2209180, fetched 2026-07-16). 72 unique non-basic cards + basics.
 Commander: **Rubinia Soulsinger**. Backlog increments: #135–#166 (all landed 2026-07-16/17).
 
-**Final state (2026-07-17): 72/72 cards in the pool — 70 fully faithful, 2 with a precise
-named residual.** Intake counts were 8 faithful / 0 approximated / 29 expressible / 35 needing
+**Final state (2026-07-17): 72/72 cards in the pool, all fully faithful — 0 residuals.**
+Intake counts were 8 faithful / 0 approximated / 29 expressible / 35 needing
 engine work; three cards were reclassified C→D mid-grind when TDD exposed real engine gaps
 (#164 cache invalidation, #165 ordered-trigger targets, #166 noncreature-host Aura legality).
 
@@ -32,9 +32,8 @@ None.
   Resurrection · Seal of Cleansing · Seaside Citadel · Selesnya Sanctuary · Selesnya Signet ·
   Shoreline Ranger · Simic Growth Chamber · Simic Signet · Wirewood Guardian · Wood Elves —
   all fully faithful
-- [x] Looter il-Kor — **residual** (`approximates`): triggers on combat damage to a player
-  instead of any damage to an opponent; noncombat creature-to-player damage isn't a modeled
-  trigger source, and attack targets are always opponents
+- [x] Looter il-Kor — fully faithful (2026-07-17): triggers on any damage dealt to an opponent
+  via `timing = "deals_damage_to_opponent"`, closing its intake residual
 
 ## D. Landed via engine increments (38)
 
@@ -49,10 +48,10 @@ None.
   (#153) · Rubinia Soulsinger (#162) · Rupture Spire (#143) · Sterling Grove (#139+#140) ·
   Stonecloaker (#165) · Temporal Spring (#135) · Treva's Ruins (#143) · Willbender (#163) ·
   Yavimaya Enchantress (#164) — all fully faithful
-- [x] Illusionary Mask (#163 slices 1–3) — **residual** (`approximates`): the printed "mana you
-  spent on {X} could pay its cost" color-subset test is approximated as mana value ≤ X
-  (flag-don't-force; upgrade path on `begin_cast_creature_face_down`); the CR 615
-  flip-on-interaction replacement IS modeled
+- [x] Illusionary Mask (#163 slices 1–3) — fully faithful (2026-07-17): the printed "mana you
+  spent on {X} could pay its cost" test is modeled exactly (`Cost::payable_from_multiset` over
+  the activation payment's spent-mana multiset, CR 107.3), closing the last residual; the CR 615
+  flip-on-interaction replacement was already modeled
 
 ## Observability re-audit (falsified pool-absence claims — all closed)
 

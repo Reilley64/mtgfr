@@ -1512,6 +1512,7 @@ enum TriggerTag {
     AnyPlayerSacrifices,
     YouDiscard,
     DealsCombatDamageToPlayer,
+    DealsDamageToOpponent,
     CastSpell,
     PlayerDraws,
     ActivateAbility,
@@ -1759,6 +1760,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::DealsCombatDamageToPlayer => {
                     Trigger::DealsCombatDamageToPlayer { who: flat.who }
                 }
+                TriggerTag::DealsDamageToOpponent => Trigger::DealsDamageToOpponent,
                 TriggerTag::CastSpell => Trigger::CastSpell {
                     filter: flat.spell_filter,
                     caster: flat.caster,

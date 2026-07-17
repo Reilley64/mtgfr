@@ -1820,6 +1820,10 @@ impl Game {
         let exclude = cost.taps_self.then_some(object);
         self.settle_payment(player, cost.mana.with_x(x), exclude, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
+        // Read what the payment actually spent right off its trailing `ManaSpent`, before any
+        // later push dilutes the tail — Illusionary Mask's "the mana you spent on {X}" (CR 107.3)
+        // reads this multiset when the ability resolves.
+        let spent_mana = spent_counts_from(&events);
         if cost.once_each_turn {
             self.push_apply(
                 &mut events,
@@ -1973,6 +1977,7 @@ impl Game {
                     target,
                     targets_second: TargetList::default(),
                     x: 0,
+                    spent_mana: [0; 6],
                 },
                 &mut events,
             );
@@ -2013,8 +2018,17 @@ impl Game {
         }
 
         // Non-mana activated abilities go on the stack, reusing the trigger placement path,
-        // threading the chosen `{X}` so `Amount::X` resolves against it (CR 107.3).
-        self.push_ability_group_with_x(player, object, &[(effect, target)], x, true, &mut events);
+        // threading the chosen `{X}` so `Amount::X` resolves against it (CR 107.3) and the spent
+        // multiset for Illusionary Mask's payability test.
+        self.push_ability_group_with_x(
+            player,
+            object,
+            &[(effect, target)],
+            x,
+            spent_mana,
+            true,
+            &mut events,
+        );
         // CR 707.10: "Whenever you … activate an ability, if that ability's activation cost
         // contains {X}, copy that ability" (Unbound Flourishing). Fire the watch off the just-
         // placed ability — the copy trigger lands above it (CR 603.3b) and, on resolution, mints
@@ -2039,6 +2053,18 @@ fn spent_colors_from(events: &[Event]) -> [bool; Color::COUNT] {
         Some(Event::ManaSpent { mana, .. }) => mana.colors_spent(),
         // unreachable: see this fn's doc — `settle_payment` always ends with `ManaSpent`.
         _ => [false; Color::COUNT],
+    }
+}
+
+/// The per-kind counts of mana actually spent by the payment [`Game::settle_payment`] just
+/// appended to `events` ([`ManaPool::spent_counts`] — Illusionary Mask's CR 107.3 "the mana you
+/// spent on {X}" test), read off its trailing [`Event::ManaSpent`] exactly the way
+/// [`spent_colors_from`] reads the colors (and under the same always-last guarantee).
+fn spent_counts_from(events: &[Event]) -> [u8; 6] {
+    match events.last() {
+        Some(Event::ManaSpent { mana, .. }) => mana.spent_counts(),
+        // unreachable: see `spent_colors_from`'s doc — `settle_payment` always ends with `ManaSpent`.
+        _ => [0; 6],
     }
 }
 

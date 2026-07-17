@@ -188,6 +188,7 @@ function extractProvenance(events: VisibleEvent[]): {
         "counters_placed",
         "creature_type_chosen",
         "damage_cleared",
+        "damage_dealt_to_player",
         "damage_marked",
         "deathtouch_marked",
         "delayed_trigger_scheduled",
@@ -281,6 +282,7 @@ function describe(e: VisibleEvent, state: VisibleState): string | null {
       triggered_ability_on_stack: (e) =>
         `${name(e.source)}'s ability triggers${e.target != null ? ` → ${t(e.target)}` : ""}`,
       damage_marked: (e) => `${name(e.object)} takes ${e.amount}${e.source != null ? ` from ${name(e.source)}` : ""}`,
+      damage_dealt_to_player: (e) => `${name(e.source)} deals ${e.amount} damage to ${p(e.player)}`,
       life_changed: (e) => `${p(e.player)} ${e.amount < 0 ? "loses" : "gains"} ${Math.abs(e.amount)} life`,
       moved_to_graveyard: (e) => `${name(e.card)} dies`,
       moved_to_command_zone: (e) => `${name(e.card)} returns to the command zone`,

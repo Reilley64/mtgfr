@@ -16,6 +16,12 @@ pub(crate) struct ResolveCtx {
     /// [`Effect::DoubleCountersOnTargetCreatures`]. Empty for every other resolution.
     pub(crate) targets_second: TargetList,
     pub(crate) x: u32,
+    /// The multiset of mana actually spent activating the resolving ability
+    /// ([`StackItem::Ability::spent_mana`]), read by [`Effect::CastCreatureFaceDown`]'s CR 107.3
+    /// payability test. All zeroes except when [`Game::resolve_top`] resolves a real activation —
+    /// the pending-answer paths that reconstruct a ctx pass zeroes (none can reach
+    /// `CastCreatureFaceDown`, which pauses only on its own choice).
+    pub(crate) spent_mana: [u8; 6],
 }
 
 /// The deferred tail of an [`Effect::Sequence`]: the steps left to run, plus the resolution
@@ -159,6 +165,7 @@ mod tests {
             target: None,
             targets_second: TargetList::default(),
             x: 0,
+            spent_mana: [0; 6],
         }
     }
 

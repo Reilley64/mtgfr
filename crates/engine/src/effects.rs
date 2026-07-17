@@ -39,6 +39,7 @@ impl Game {
                 target,
                 targets_second,
                 x: activation_x,
+                spent_mana,
                 activated: _,
             } => {
                 // CR 608.2b: an ability whose stored target is no longer legal fizzles —
@@ -76,6 +77,7 @@ impl Game {
                         target,
                         targets_second,
                         x: activation_x,
+                        spent_mana,
                     },
                     events,
                 );
@@ -410,6 +412,7 @@ impl Game {
                                 target,
                                 targets_second: TargetList::default(),
                                 x: spell.x,
+                                spent_mana: [0; 6],
                             },
                             events,
                         );
@@ -661,6 +664,7 @@ impl Game {
             target,
             targets_second,
             x,
+            spent_mana,
         } = ctx;
         // A targeted step with no chosen target only reaches resolution via an "up to one"
         // ability placed with no target (declined, or none legal — CR 601.2c/603.3c, see
@@ -1543,12 +1547,15 @@ impl Game {
                     return;
                 };
                 // The copy is the same kind of ability as the original (CR 707.10c) — an activated
-                // copy stays activated, a triggered copy stays triggered.
+                // copy stays activated, a triggered copy stays triggered. Its spent-mana multiset
+                // is empty: a copy is created, not activated, so no mana was spent on it (the same
+                // line converge's copy ruling draws for spells).
                 self.push_ability_group_with_x(
                     controller,
                     original,
                     &[(copied_effect, copied_target)],
                     copied_x,
+                    [0; 6],
                     copied_activated,
                     events,
                 );
@@ -1660,9 +1667,11 @@ impl Game {
             // (up to one hand land, or decline).
             Effect::PutLandFromHand { tapped } => self.begin_put_land_from_hand(controller, tapped),
             // Illusionary Mask's "you may cast a creature card in hand … face down as a 2/2"
-            // pauses on a card-pick choice over the hand creatures with mana value at most the
-            // `{X}` this ability was activated for (`ctx.x`, CR 107.3).
-            Effect::CastCreatureFaceDown => self.begin_cast_creature_face_down(controller, x),
+            // pauses on a card-pick choice over the hand creatures whose mana cost the mana
+            // spent on this ability's `{X}` could pay (`ctx.spent_mana`, CR 107.3).
+            Effect::CastCreatureFaceDown => {
+                self.begin_cast_creature_face_down(controller, spent_mana)
+            }
             // Rupture Spire's own ETB trigger: "sacrifice it unless you pay {1}." Pauses on the
             // same pay-or-sacrifice shape Echo's `PayEchoOrSacrifice` uses, under its own variant
             // (this is a real triggered ability, not Echo — CR 603.3b, not CR 702.31).
@@ -2236,6 +2245,7 @@ impl Game {
                 target,
                 targets_second: TargetList::default(),
                 x,
+                spent_mana: [0; 6],
             },
             events,
         );
@@ -2338,11 +2348,22 @@ impl Game {
                     }
                     // Damage to a player is life loss. ponytail: the commander-damage tally is
                     // combat-only (CR 903.10a), so a burn spell never adds to it.
-                    Target::Player(player) => vec![Event::LifeChanged {
-                        player,
-                        amount: -amount,
-                        source: Some(source),
-                    }],
+                    Target::Player(player) => {
+                        let mut events = vec![Event::LifeChanged {
+                            player,
+                            amount: -amount,
+                            source: Some(source),
+                        }];
+                        // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                        if amount > 0 {
+                            events.push(Event::DamageDealtToPlayer {
+                                source,
+                                player,
+                                amount,
+                            });
+                        }
+                        events
+                    }
                 }
             }
             Effect::DrawCards { count } => self.draw_events(

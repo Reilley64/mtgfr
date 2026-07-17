@@ -414,11 +414,24 @@ impl Game {
                 // Combat damage to a player (CR 510.2) — never a non-combat life loss, which
                 // only emits `LifeChanged`, and never combat damage to a *creature*, which (CR 510, CR 120.3, CR 506)
                 // emits `DamageMarked` instead.
-                Event::CombatDamageDealtToPlayer { source, amount, .. } => {
+                Event::CombatDamageDealtToPlayer {
+                    source,
+                    player,
+                    amount,
+                } => {
                     self.queue_combat_damage_triggers(source, amount);
                     // Armadillo Cloak's attached-host damage watch: this creature dealt combat
                     // damage to a player. See `queue_enchanted_creature_deals_damage_triggers`.
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
+                    // Looter il-Kor's "deals damage to an opponent" — combat damage is the
+                    // combat half of that watch; the noncombat half is the arm below.
+                    self.queue_deals_damage_to_opponent_triggers(source, player);
+                }
+                // Noncombat damage dealt to a player (CR 120.1) — the marker
+                // `Effect::DealDamage`'s player arm pushes alongside its `LifeChanged`, never a
+                // non-damage life loss (drain, pay-life), which only emits `LifeChanged`.
+                Event::DamageDealtToPlayer { source, player, .. } => {
+                    self.queue_deals_damage_to_opponent_triggers(source, player);
                 }
                 // Damage marked on a creature (CR 120.3/506) — `Game::deal_creature_damage` is the
                 // shared choke behind both combat damage to a blocker/attacker and noncombat
@@ -1312,6 +1325,34 @@ impl Game {
                 Trigger::EnchantedCreatureDealsDamage,
             );
         }
+    }
+
+    /// Queue "deals damage to an opponent" triggers (CR 603.3, Looter il-Kor: "Whenever this
+    /// creature deals damage to an opponent, draw a card, then discard a card."): `source` just
+    /// dealt damage to `player`, combat ([`Event::CombatDamageDealtToPlayer`]) or noncombat
+    /// ([`Event::DamageDealtToPlayer`]) alike. Self-scoped — only `source`'s own
+    /// [`Trigger::DealsDamageToOpponent`] abilities fire, and only when `player` is an opponent
+    /// of `source`'s controller (every other player is, CR 102.3). A spell's own damage never
+    /// reaches the trigger scan: its `source` is a stack object, not a battlefield permanent.
+    /// A prevented or zero-amount hit never emits either underlying event, so no spurious fire.
+    pub(crate) fn queue_deals_damage_to_opponent_triggers(
+        &mut self,
+        source: ObjectId,
+        player: PlayerId,
+    ) {
+        if self.as_permanent(source).is_none() {
+            return;
+        }
+        let controller = self.controller_of(source);
+        if player == controller {
+            return;
+        }
+        self.queue_trigger_group(
+            TriggerContext::of(controller),
+            source,
+            self.def_of(source),
+            Trigger::DealsDamageToOpponent,
+        );
     }
 
     /// Queue Aura-attached death triggers (CR "When enchanted creature dies…"): the death twin of
@@ -3581,21 +3622,26 @@ impl Game {
         activated: bool,
         events: &mut Vec<Event>,
     ) {
-        // Triggered abilities carry no `{X}` — an activated (or copied) `{X}` ability goes on the
-        // stack via `push_activated_ability` instead, which threads its chosen X.
-        self.push_ability_group_with_x(controller, source, abilities, 0, activated, events);
+        // Triggered abilities carry no `{X}` (and spent no mana) — an activated (or copied) `{X}`
+        // ability goes on the stack via `push_ability_group_with_x` instead, which threads both.
+        self.push_ability_group_with_x(controller, source, abilities, 0, [0; 6], activated, events);
     }
 
     /// [`push_ability_group`](Self::push_ability_group) threading a chosen `{X}` (CR 107.3) onto
     /// each ability — for an activated ability whose cost contains `{X}`, or a CR 707.10c copy of
-    /// one, whose `Amount::X` reads that value at resolution. `activated` marks the placed item as
-    /// an activated (vs triggered) ability — see [`StackItem::Ability::activated`].
+    /// one, whose `Amount::X` reads that value at resolution — plus the multiset of mana actually
+    /// spent activating it (`spent_mana`, [`StackItem::Ability::spent_mana`] — Illusionary Mask's
+    /// CR 107.3 payability test; all zeroes except a real activation payment). `activated` marks
+    /// the placed item as an activated (vs triggered) ability — see
+    /// [`StackItem::Ability::activated`].
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn push_ability_group_with_x(
         &mut self,
         controller: PlayerId,
         source: ObjectId,
         abilities: &[(Effect, Option<Target>)],
         x: u32,
+        spent_mana: [u8; 6],
         activated: bool,
         events: &mut Vec<Event>,
     ) {
@@ -3609,6 +3655,7 @@ impl Game {
                     target,
                     targets_second: TargetList::default(),
                     x,
+                    spent_mana,
                     activated,
                 },
             );
@@ -3639,6 +3686,7 @@ impl Game {
                 target,
                 targets_second,
                 x: 0,
+                spent_mana: [0; 6],
                 // Only a triggered ability (CR 603.3d — Kinetic Ooze's second target clause) ever
                 // goes on the stack with a `targets_second`; never an activated one.
                 activated: false,

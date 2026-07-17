@@ -64362,23 +64362,25 @@ fn willbender_card_is_faithful() {
     assert_eq!(game.spell_target(bolt), Some(Target::Object(bystander)));
 }
 
-// --- Illusionary Mask (lea, CR 708.2 — {X}: cast a hand creature (MV <= X) face down as a 2/2) ---
+// --- Illusionary Mask (lea, CR 708.2 — {X}: cast a hand creature whose mana cost the mana spent
+// on {X} could pay, face down as a 2/2) ---
 
-/// A {1}{G} 2/2 (mana value 2) — the creature Illusionary Mask casts face down.
+/// A {1}{G} 2/2 (mana value 2) — the creature Illusionary Mask casts face down. Payable from two
+/// spent green ({G} for the pip, the spare {G} for the generic {1}).
 const MASK_CREATURE: CardDef = CardDef {
     cost: flash_cost(1, [0, 0, 0, 0, 1], NO_ADD),
     ..creature("Mask Test Creature", 2, 2, &[])
 };
 
-/// Illusionary Mask's `{X}` ability (clause 1): with X at least the creature's mana value, the
-/// controller may cast a creature card from hand face down as a 2/2 creature spell (CR 708.2)
-/// without paying its mana cost.
+/// Illusionary Mask's `{X}` ability (clause 1): when the mana spent on `{X}` could pay the
+/// creature's mana cost, the controller may cast it from hand face down as a 2/2 creature spell
+/// (CR 708.2) without paying its mana cost.
 #[test]
 fn illusionary_mask_casts_hand_creature_face_down() {
     let mut game = TestGame::new();
     let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
     let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
-    game.fund_mana(PlayerId(0));
+    float_green(&mut game, PlayerId(0), 2);
     let before = total_mana(&game, PlayerId(0));
 
     game.submit(Intent::ActivateAbility {
@@ -64438,7 +64440,7 @@ fn illusionary_mask_decline_is_a_no_op() {
     let mut game = TestGame::new();
     let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
     let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
-    game.fund_mana(PlayerId(0));
+    float_green(&mut game, PlayerId(0), 2);
 
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
@@ -64471,8 +64473,8 @@ fn illusionary_mask_decline_is_a_no_op() {
     assert!(game.stack_is_empty(), "nothing was cast");
 }
 
-/// The `mana value <= X` gate (approximating "the mana you spent on {X} could pay its cost"): a
-/// creature whose mana value exceeds the paid `{X}` is not offered, so the ability is a no-op.
+/// "The mana you spent on {X} could pay its cost": a creature whose mana value exceeds the paid
+/// `{X}` is not offered (one spent unit can never pay two pips), so the ability is a no-op.
 #[test]
 fn illusionary_mask_does_not_offer_a_creature_costing_more_than_x() {
     let mut game = TestGame::new();
@@ -64500,6 +64502,188 @@ fn illusionary_mask_does_not_offer_a_creature_costing_more_than_x() {
         Zone::Hand,
         "the too-expensive creature stays in hand"
     );
+}
+
+/// A {W}{W} 2/2 — the same mana value as `MASK_CREATURE`, but pips two spent green mana can't pay.
+const WHITE_MASK_CREATURE: CardDef = CardDef {
+    cost: flash_cost(0, [2, 0, 0, 0, 0], NO_ADD),
+    ..creature("White Mask Test Creature", 2, 2, &[])
+};
+
+/// The printed test (CR 107.3): "a creature card in your hand whose mana cost could be paid by
+/// some amount of, or all of, the mana you spent on {X}." Paying `{X}` = 2 with two green offers
+/// the `{1}{G}` creature (the {G} pip plus one generic from the spare green) but not a mono-white
+/// creature of the same mana value — no white mana was spent.
+#[test]
+fn illusionary_mask_offers_only_creatures_the_mana_spent_on_x_could_pay() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let green = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
+    let white = game.spawn_in_hand(PlayerId(0), WHITE_MASK_CREATURE);
+    float_green(&mut game, PlayerId(0), 2);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::CastCreatureFaceDown { candidates, .. }) = game.pending_choice() else {
+        panic!(
+            "expected a cast-creature-face-down pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        candidates.contains(&green),
+        "{{1}}{{G}} is payable from the two spent green"
+    );
+    assert!(
+        !candidates.contains(&white),
+        "{{W}}{{W}} is not payable from two spent green"
+    );
+}
+
+/// The spent total still bounds the pick: a `{2}{G}` (mana value 3) creature is not offered when
+/// only two mana were spent on `{X}`, even though green was among them.
+#[test]
+fn illusionary_mask_does_not_offer_a_creature_needing_more_mana_than_was_spent() {
+    const BIG_GREEN_MASK_CREATURE: CardDef = CardDef {
+        cost: flash_cost(2, [0, 0, 0, 0, 1], NO_ADD),
+        ..creature("Big Green Mask Test Creature", 3, 3, &[])
+    };
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let creature = game.spawn_in_hand(PlayerId(0), BIG_GREEN_MASK_CREATURE);
+    float_green(&mut game, PlayerId(0), 2);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "two spent mana can't pay a three-pip cost, so the ability raises no pick"
+    );
+    assert_eq!(game.zone_of(creature), Zone::Hand);
+}
+
+/// A hybrid pip ({W/U}, CR 107.4e) is payable by spent mana of either of its colors: Azorius
+/// Guildmage ({W/U}{W/U}) is offered when `{X}` = 2 was paid with one white and one blue.
+#[test]
+fn illusionary_mask_offers_hybrid_cost_creature_paid_with_either_color() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let guildmage = game.spawn_in_hand(PlayerId(0), card("Azorius Guildmage"));
+    for land in ["Plains", "Island"] {
+        let source = game.spawn_on_battlefield(PlayerId(0), card(land));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: source,
+        })
+        .unwrap();
+    }
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::CastCreatureFaceDown { candidates, .. }) = game.pending_choice() else {
+        panic!(
+            "expected a cast-creature-face-down pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        candidates.contains(&guildmage),
+        "{{W/U}}{{W/U}} is payable from one spent white and one spent blue"
+    );
+}
+
+/// A hybrid pip is not payable by spent mana of neither of its colors: Azorius Guildmage
+/// ({W/U}{W/U}) is not offered when `{X}` = 2 was paid with two green.
+#[test]
+fn illusionary_mask_does_not_offer_hybrid_cost_creature_on_off_color_mana() {
+    let mut game = TestGame::new();
+    let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
+    let guildmage = game.spawn_in_hand(PlayerId(0), card("Azorius Guildmage"));
+    float_green(&mut game, PlayerId(0), 2);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: mask,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.pending_choice().is_none(),
+        "green spent mana can't pay a {{W/U}} pip, so the ability raises no pick"
+    );
+    assert_eq!(game.zone_of(guildmage), Zone::Hand);
+}
+
+/// [`Cost::payable_from_multiset`] directly (CR 107.3's "could be paid by some amount of, or all
+/// of" — Illusionary Mask), over `[u8; 6]` spent-mana multisets (WUBRG counts plus a sixth
+/// no-one-color bucket).
+#[test]
+fn mana_cost_payability_from_spent_mana_multiset() {
+    // The empty cost is payable from anything, including nothing.
+    assert!(Cost::FREE.payable_from_multiset(&[0; 6]));
+    // {W/U}{W} from spent {W}{U}: the mono W pip claims the white unit, so the hybrid pip must
+    // take the blue one.
+    let hybrid_and_mono = Cost {
+        colored: [1, 0, 0, 0, 0],
+        hybrid: &[(Color::White, Color::Blue)],
+        ..Cost::FREE
+    };
+    assert!(hybrid_and_mono.payable_from_multiset(&[1, 1, 0, 0, 0, 0]));
+    assert!(!hybrid_and_mono.payable_from_multiset(&[0, 2, 0, 0, 0, 0]));
+    // {W/U}{W/B} from spent {W}{U}: a greedy first-listed-color pick gives the first pip the
+    // white and strands the second (no black) — backtracking must reassign it to the blue.
+    let two_hybrids = Cost {
+        hybrid: &[(Color::White, Color::Blue), (Color::White, Color::Black)],
+        ..Cost::FREE
+    };
+    assert!(two_hybrids.payable_from_multiset(&[1, 1, 0, 0, 0, 0]));
+    assert!(!two_hybrids.payable_from_multiset(&[0, 1, 0, 0, 0, 1]));
+    // Generic pips take any spent unit, colored or not; colored pips never take the sixth bucket.
+    let two_generic = Cost {
+        generic: 2,
+        ..Cost::FREE
+    };
+    assert!(two_generic.payable_from_multiset(&[0, 0, 0, 0, 1, 1]));
+    assert!(!two_generic.payable_from_multiset(&[1, 0, 0, 0, 0, 0]));
+    assert!(!flash_cost(0, [0, 0, 0, 0, 2], NO_ADD).payable_from_multiset(&[0, 0, 0, 0, 1, 1]));
+    // The candidate's own {X} counts 0 (CR 107.3b), so its pips need nothing.
+    let x_and_green = Cost {
+        x: 1,
+        ..flash_cost(0, [0, 0, 0, 0, 1], NO_ADD)
+    };
+    assert!(x_and_green.payable_from_multiset(&[0, 0, 0, 0, 1, 0]));
 }
 
 /// "Activate only as a sorcery" (CR 602.5b): the `{X}` ability is not activatable outside a legal
@@ -64534,7 +64718,7 @@ fn illusionary_mask_is_sorcery_speed_only() {
 fn illusionary_mask_a_face_down_creature(game: &mut TestGame) -> ObjectId {
     let mask = game.spawn_on_battlefield(PlayerId(0), card("Illusionary Mask"));
     let creature = game.spawn_in_hand(PlayerId(0), MASK_CREATURE);
-    game.fund_mana(PlayerId(0));
+    float_green(game, PlayerId(0), 2);
     game.submit(Intent::ActivateAbility {
         player: PlayerId(0),
         object: mask,
@@ -66268,9 +66452,10 @@ fn merfolk_looter_taps_to_draw_then_discard() {
 }
 
 #[test]
-fn looter_il_kor_combat_damage_to_player_draws_then_discards() {
+fn looter_il_kor_combat_damage_to_opponent_draws_then_discards() {
     // Looter il-Kor: "Shadow / Whenever this creature deals damage to an opponent, draw a card,
-    // then discard a card." Its combat damage to the defending player fires the loot.
+    // then discard a card." Its combat damage to the defending player (always an opponent)
+    // fires the loot — the combat half of the deals-damage-to-an-opponent trigger.
     let mut game = Game::new();
     let looter = game.spawn_on_battlefield(PlayerId(0), card("Looter il-Kor"));
     let fodder = game.spawn_in_hand(PlayerId(0), card("Forest"));
@@ -66305,6 +66490,116 @@ fn looter_il_kor_combat_damage_to_player_draws_then_discards() {
     assert!(
         game.has_keyword(looter, Keyword::Shadow),
         "Looter il-Kor has shadow"
+    );
+}
+
+/// A test-only creature with Looter il-Kor's trigger timing (a draw-1 payload) plus a free
+/// "deal 1 damage to target player" activation — isolates the "deals damage to an opponent"
+/// trigger's noncombat firing and its opponent gate from combat.
+const OPPONENT_DAMAGE_WATCHER: CardDef = CardDef {
+    abilities: &[
+        Ability {
+            timing: Timing::Triggered(Trigger::DealsDamageToOpponent),
+            effect: Effect::DrawCards {
+                count: Amount::Fixed(1),
+            },
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            cost: Cost::FREE,
+            condition: None,
+        },
+        Ability {
+            timing: Timing::Activated(ActivationCost {
+                taps_self: false,
+                mana: Cost::FREE,
+                sacrifice: SacrificeCost::None,
+                pay_life: Amount::Fixed(0),
+                self_damage: 0,
+                loyalty: None,
+                once_each_turn: false,
+                sorcery_speed: false,
+                remove_counters: 0,
+                remove_counters_kind: None,
+                return_self: false,
+                mill_self: 0,
+                exile_self: false,
+            }),
+            effect: Effect::DealDamage {
+                amount: Amount::Fixed(1),
+                target: TargetSpec::Player,
+                count: TargetCount {
+                    min: 1,
+                    max: 1,
+                    x_scaled: false,
+                    sacrifice_scaled: false,
+                    strive_scaled: false,
+                },
+                divided: false,
+            },
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            cost: Cost::FREE,
+            condition: None,
+        },
+    ],
+    ..creature("Opponent-Damage Watcher (test)", 1, 1, &[])
+};
+
+#[test]
+fn deals_damage_to_opponent_trigger_fires_on_noncombat_damage_to_an_opponent_only() {
+    // CR 603.3 — "whenever this creature deals damage to an opponent": noncombat damage the
+    // creature deals to an opponent of its controller fires it (the gap Looter il-Kor's old
+    // combat-only approximation missed); the same damage to its own controller does not (CR
+    // 102.3 — every *other* player is an opponent).
+    let mut game = Game::new();
+    let watcher = game.spawn_on_battlefield(PlayerId(0), OPPONENT_DAMAGE_WATCHER);
+    let lib = game.stack_library(PlayerId(0), &[card("Plains"), card("Forest")]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: watcher,
+        ability_index: 1,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("P0 can ping an opponent");
+    let opponent_life = game.life(PlayerId(1));
+    resolve_top_of_stack(&mut game); // the damage resolves; the trigger goes on the stack
+    assert_eq!(
+        game.life(PlayerId(1)),
+        opponent_life - 1,
+        "the ping dealt 1 damage to the opponent"
+    );
+    resolve_top_of_stack(&mut game); // the trigger resolves
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Hand,
+        "damage to an opponent fired the trigger — a card was drawn"
+    );
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: watcher,
+        ability_index: 1,
+        target: Some(Target::Player(PlayerId(0))),
+        sacrifice: vec![],
+        x: 0,
+    })
+    .expect("P0 can ping themselves");
+    let own_life = game.life(PlayerId(0));
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(0)),
+        own_life - 1,
+        "the ping dealt 1 damage to its own controller"
+    );
+    assert_eq!(
+        game.zone_of(lib[1]),
+        Zone::Library,
+        "the controller is not their own opponent — no trigger, no draw"
     );
 }
 

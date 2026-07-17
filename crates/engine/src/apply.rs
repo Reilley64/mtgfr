@@ -755,6 +755,7 @@ impl Game {
                 target,
                 targets_second,
                 x,
+                spent_mana,
                 activated,
             } => {
                 self.stack.push(StackItem::Ability {
@@ -765,6 +766,7 @@ impl Game {
                     target,
                     targets_second,
                     x,
+                    spent_mana,
                 });
             }
             Event::AbilityResolved { .. } => {
@@ -1328,6 +1330,9 @@ impl Game {
             // in `enqueue_triggers`, but it mutates no state of its own (the life loss it
             // accompanies already applied via `LifeChanged`).
             Event::CombatDamageDealtToPlayer { .. } => {}
+            // A marker only — the noncombat twin of the arm above, read by
+            // `Game::queue_deals_damage_to_opponent_triggers`.
+            Event::DamageDealtToPlayer { .. } => {}
             // A marker only — the prevented damage's absence (no `LifeChanged`) and the Inkling
             // mints (accompanying `TokenCreated` events) carry all the state; this event mutates
             // nothing itself.

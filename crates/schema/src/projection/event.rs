@@ -465,6 +465,15 @@ pub(crate) fn project_event(
             player: player.0,
             amount,
         },
+        Event::DamageDealtToPlayer {
+            source,
+            player,
+            amount,
+        } => VisibleEvent::DamageDealtToPlayer {
+            source,
+            player: player.0,
+            amount,
+        },
         Event::CombatDamagePrevented { player, amount } => VisibleEvent::CombatDamagePrevented {
             player: player.0,
             amount,

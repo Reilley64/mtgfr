@@ -230,6 +230,16 @@ pub enum Trigger {
     /// [`Event::CombatDamageDealtToPlayer`], not `LifeChanged` (non-combat life loss — drain,
     /// pay-life — must not fire it); see [`Game::queue_combat_damage_triggers`].
     DealsCombatDamageToPlayer { who: CombatDamageScope },
+    /// Whenever this permanent deals damage to an *opponent* of its controller, combat or
+    /// noncombat alike (CR 603.3, Looter il-Kor: "Whenever this creature deals damage to an
+    /// opponent, draw a card, then discard a card."). Self-scoped and fieldless — contrast
+    /// [`DealsCombatDamageToPlayer`](Self::DealsCombatDamageToPlayer), which is combat-only and
+    /// scope-carrying. Fires off [`Event::CombatDamageDealtToPlayer`] (the combat half) and
+    /// [`Event::DamageDealtToPlayer`] (the noncombat half — a marker distinct from the
+    /// `LifeChanged` it accompanies, since non-damage life loss also emits `LifeChanged` with a
+    /// `source`); every player other than the controller is an opponent (CR 102.3). See
+    /// [`Game::queue_deals_damage_to_opponent_triggers`].
+    DealsDamageToOpponent,
     /// Whenever a player casts a spell matching `filter` (CR: the general form behind
     /// [`Magecraft`](Self::Magecraft) and its kin) — a data-driven cast-watch. `caster` scopes
     /// whose cast counts, relative to the ability's own controller ([`CasterScope::You`] default,
