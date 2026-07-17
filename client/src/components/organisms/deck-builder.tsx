@@ -29,7 +29,7 @@ import { Button, Felt, Field } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client } from "~/effect/client";
-import { useAuthGuard } from "~/guard";
+import { RequireAuth } from "~/guard";
 import { cn } from "~/lib/cn";
 import { commanderPrintForRow, formatReleasedAt, reconcileEntries } from "~/lib/deckBuilderPrint";
 import { lookupCardsByIds } from "~/lib/lookupCards";
@@ -118,7 +118,10 @@ const saveDeckFn = Atom.fn((req: { id: number | null; body: SaveDeckRequest }) =
 });
 
 export default function DeckBuilder() {
-  useAuthGuard();
+  return <RequireAuth>{() => <DeckBuilderSignedIn />}</RequireAuth>;
+}
+
+function DeckBuilderSignedIn() {
   const params = useParams();
   const navigate = useNavigate();
   const editingId = () => (params.id ? Number(params.id) : null);

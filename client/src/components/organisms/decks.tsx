@@ -8,13 +8,13 @@ import { useAtomRefresh, useAtomResource, useAtomSet } from "@effect/atom-solid"
 import { useNavigate } from "@solidjs/router";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, Show } from "solid-js";
-import type { CatalogCard } from "~/api/generated";
+import type { CatalogCard, Me } from "~/api/generated";
 import { decksAtom } from "~/atoms";
 import { Button, Felt, ListRow } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client, succeeded } from "~/effect/client";
-import { useAuthGuard } from "~/guard";
+import { RequireAuth } from "~/guard";
 import { lookupCardsByIds } from "~/lib/lookupCards";
 
 const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id), {})));
@@ -23,11 +23,14 @@ const logoutFn = Atom.fn(() => succeeded(client.logout({})));
 const lookupCommandersFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 
 export default function Decks() {
-  const user = useAuthGuard();
+  return <RequireAuth>{(user) => <DecksSignedIn user={user()} />}</RequireAuth>;
+}
+
+function DecksSignedIn(props: { user: Me }) {
   const navigate = useNavigate();
   const [decks] = useAtomResource(() => decksAtom);
   // `useAtomResource`'s own `refetch` only re-wraps the atom's *current* value — the `listDecks`
-  // Effect lives in the atom, so refreshing the atom is what actually re-fetches (as in guard.ts).
+  // Effect lives in the atom, so refreshing the atom is what actually re-fetches (as in guard).
   const refreshDecks = useAtomRefresh(() => decksAtom);
   const deleteDeck = useAtomSet(() => deleteDeckFn, { mode: "promise" });
   const logout = useAtomSet(() => logoutFn, { mode: "promise" });
@@ -80,7 +83,7 @@ export default function Decks() {
       <div class="mx-auto mb-5 flex max-w-[720px] flex-wrap items-center justify-between gap-md">
         <h1 class="m-0 text-title">Your decks</h1>
         <div class="flex flex-wrap items-center gap-md">
-          <Show when={user()}>{(u) => <span class="text-label text-lichen">{u().email}</span>}</Show>
+          <span class="text-label text-lichen">{props.user.email}</span>
           <Button type="button" onClick={onLogout} variant="ghost">
             Sign out
           </Button>

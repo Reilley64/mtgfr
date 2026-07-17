@@ -2,7 +2,7 @@
 
 import { useAtomRefresh, useAtomResource } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
-import { createEffect, type Resource } from "solid-js";
+import { type Accessor, createEffect, type JSX, type Resource, Show } from "solid-js";
 import type { Me } from "~/api/generated";
 import { meAtom } from "~/atoms";
 
@@ -22,4 +22,10 @@ export function useAuthGuard(): Resource<Me | null> {
     }
   });
   return user;
+}
+
+/** Redirect if needed; render children only once signed in (non-null `Me`). */
+export function RequireAuth(props: { children: (user: Accessor<Me>) => JSX.Element }) {
+  const user = useAuthGuard();
+  return <Show when={user()}>{(u) => props.children(u)}</Show>;
 }

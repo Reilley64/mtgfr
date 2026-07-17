@@ -36,8 +36,8 @@ resource "helm_release" "edh_application" {
       applications = {
         edh = {
           namespace  = "argocd"
-          finalizers  = ["resources-finalizer.argocd.argoproj.io"]
-          project     = "default"
+          finalizers = ["resources-finalizer.argocd.argoproj.io"]
+          project    = "default"
           source = {
             repoURL        = var.argocd_repo_url
             targetRevision = var.argocd_target_revision
