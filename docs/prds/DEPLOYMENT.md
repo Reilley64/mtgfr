@@ -508,7 +508,7 @@ just migrate
 cargo run -p server
 ```
 
-CI: Postgres service → `just migrate` → `just check`.
+CI: parallel `verify-server` / `verify-client` jobs (see §GitHub Actions); server job applies Toasty migrations then `just server-check`.
 
 - Server may enable **CORS** for `cors_origin` when set; same-origin BFF leaves it empty (browser does not need CORS).
 - Auth **session** cookies are host-only on `edh.example.com` so `fetch(..., { credentials: "include" })` to `/api` sends them.
@@ -684,26 +684,43 @@ Follow the official [semantic-release GitHub Actions recipe](https://semantic-re
 #### Workflow overview
 
 ```
-pull_request ──► ci.yml                    (migrate + just check)
+pull_request ──► ci.yml
+                   ├─ verify → verify-jobs.yml
+                   │            ├─ verify-server  (just server-check; Postgres)
+                   │            └─ verify-client  (just client-check)
+                   └─ terraform (iac/)
 
 push to main/master ──► verify-and-release.yml
-                            ├─ job: verify   (migrate + just check)
-                            └─ job: release  (npx semantic-release — default config)
+                            ├─ verify → verify-jobs.yml  (same parallel jobs)
+                            └─ release  (npx semantic-release — default config)
 
 v* tag pushed ──────► docker.yml           (build + push GHCR images)
 
 workstation (apply machine) ──► terraform apply (iac/) → remote k3s API
 ```
 
-Three workflows: **`ci.yml`** (PRs), **`verify-and-release.yml`** (official recipe), **`docker.yml`** (images only — not part of semantic-release).
+Four workflows: **`ci.yml`** (PRs), **`verify-jobs.yml`** (reusable server/client verify), **`verify-and-release.yml`** (official recipe), **`docker.yml`** (images only — not part of semantic-release).
+
+**Content-hash skip:** each verify job caches a tiny pass marker keyed by `hashFiles` of that side’s inputs (`verify-server-v1-…` / `verify-client-v1-…`). On cache hit, setup and checks are skipped. PRs restore markers written on `main`, so a client-only PR can skip the server job (and vice versa). Same-branch re-runs no-op when the tree is unchanged. Post-merge `main` still re-runs (GHA cache from a PR branch is not visible on the default branch).
 
 #### `ci.yml` — pull requests
 
-Triggers: `pull_request` to `main` or `master`. Same verify steps as below; no release.
+Triggers: `pull_request` to `main` or `master`. Calls `verify-jobs.yml`; no release. Terraform job validates `iac/` in parallel.
+
+#### `verify-jobs.yml` — reusable verify
+
+`on: workflow_call`. Two parallel jobs:
+
+| Job | Recipe | Needs |
+|-----|--------|-------|
+| `verify-server` | `just server-check` (fmt + clippy + migrate + nextest) | Rust, nextest, Postgres |
+| `verify-client` | `just client-check` (codegen + format + lint + typecheck + vitest) | Bun + Rust (for `openapi` gen); no Postgres |
+
+Local `just check` stays sequential (codegen → format → lint → typecheck → test).
 
 #### `verify-and-release.yml` — official recipe (adapted for Rust)
 
-Triggers: `push` to `main` and `master`. Structure matches the [verify-and-release example](https://semantic-release.org/recipes/ci-configurations/github-actions/); only the **verify** job steps differ (Rust/Bun instead of `npm test`).
+Triggers: `push` to `main` and `master`. Structure matches the [verify-and-release example](https://semantic-release.org/recipes/ci-configurations/github-actions/); verify is the reusable workflow instead of `npm test`.
 
 ```yaml
 name: Verify and Release
@@ -720,16 +737,7 @@ permissions:
 jobs:
   verify:
     name: Verify
-    runs-on: ubuntu-latest
-    services:
-      postgres: # … image + env for migrate
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      # rust toolchain, bun, caches
-      - run: cargo run -p server -- migration apply
-      - run: just check
+    uses: ./.github/workflows/verify-jobs.yml
 
   release:
     name: Release
@@ -771,7 +779,7 @@ jobs:
 
 #### `docker.yml` — images on `v*` tag push
 
-Triggers: `push` of tags matching `v*`. semantic-release must push that tag with repo secret `RELEASE_TOKEN` (PAT: `contents` + `workflow`) — default `GITHUB_TOKEN` cannot cascade workflow runs. Verify already ran `just check` on the tagged commit — this workflow only builds and pushes images.
+Triggers: `push` of tags matching `v*`. semantic-release must push that tag with repo secret `RELEASE_TOKEN` (PAT: `contents` + `workflow`) — default `GITHUB_TOKEN` cannot cascade workflow runs. Verify already ran `just server-check` / `just client-check` on the tagged commit — this workflow only builds and pushes images.
 
 ```yaml
 on:
@@ -797,6 +805,7 @@ Do **not** push a moving `latest` tag — pin explicit versions in `terraform.tf
 
 ```
 .github/workflows/ci.yml
+.github/workflows/verify-jobs.yml
 .github/workflows/verify-and-release.yml
 .github/workflows/docker.yml
 package.json
@@ -822,9 +831,9 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 
 #### End-to-end release (steady state)
 
-1. Open PR with conventional commits; `ci.yml` runs migrate + `just check`.
+1. Open PR with conventional commits; `ci.yml` runs parallel `verify-server` / `verify-client` (content-hash skip when unchanged vs `main`).
 2. Merge to `main`.
-3. `verify-and-release.yml`: verify passes → `npx semantic-release` (default) → git tag + GitHub Release (if commits warrant a release).
+3. `verify-and-release.yml`: both verify jobs pass → `npx semantic-release` (default) → git tag + GitHub Release (if commits warrant a release).
 4. `docker.yml` builds and pushes GHCR images when that `v*` tag is pushed (requires `RELEASE_TOKEN` for semantic-release cascades).
 5. Set **`server_image`** / **`web_image`** in `iac/terraform.tfvars` and run **`terraform apply`** from the apply machine.
 6. Old API pods drain on SIGTERM; mid-game traffic stays on them via `table_routes` → headless pod DNS until tables clear or grace expires.
@@ -840,7 +849,7 @@ No `NPM_TOKEN` — we are not publishing to npm (`private: true`). No `id-token:
 | **0 — Bootstrap** | History squash, `v0.1.0` tag, conventional-commit note in AGENTS.md | Tag exists; CI green |
 | **1 — Migrations** | `toasty-cli`, `Toasty.toml`, initial `migration generate`, `server migration` subcommand, drop prod `push_schema` | `just migrate` + tests green against Postgres |
 | **2 — Containerize** | Distroless Dockerfiles (API `cc`, web `nodejs22` SolidStart), `config` crate + `Settings` | Local image smoke test (compose or kind) |
-| **3 — CI** | `.github/workflows/ci.yml` (migrate + `just check`) | PRs and `main` run migrate then `just check` |
+| **3 — CI** | `.github/workflows/ci.yml` + `verify-jobs.yml` (parallel server/client) | PRs and `main` run `just server-check` / `just client-check` |
 | **4 — Release automation** | `verify-and-release.yml` + `docker.yml`, root `package.json`, `RELEASE_TOKEN` | Merge to `main` → semantic-release (default) → `v*` tag push → GHCR images |
 | **5 — Cluster + tunnel** | `iac/` from apply machine → remote k3s: Postgres, BFF, Terraform-managed tunnel + DNS, SSE keepalives | Friends reach edh; SSE survives idle |
 | **6 — Drain + routing** | SIGTERM drain, `POD_DNS`, BFF lobby + `table_routes`, active + headless Services, [WIRE_COMPAT.md](../WIRE_COMPAT.md) | Deploy while a game runs on the prior binary without disconnect; mid-game hops stay on old pod DNS |
@@ -902,6 +911,6 @@ None blocking implementation. Refine which lobby events reset the 30 min TTL if 
 - ADR 0021 — live games in-memory (motivates drain deploy)
 - `docker-compose.yml` — dev Postgres defaults
 - [`config`](https://docs.rs/config) — layered server `Settings` (TOML + env)
-- `justfile` — `migrate`, `client-migrate`, `check`
+- `justfile` — `migrate`, `client-migrate`, `server-check`, `client-check`, `check`
 - [Google distroless](https://github.com/GoogleContainerTools/distroless) — production runtime base images
 - [semantic-release GitHub Actions recipe](https://semantic-release.org/recipes/ci-configurations/github-actions/) — `verify-and-release.yml` template

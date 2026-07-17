@@ -1,10 +1,15 @@
 // Card reading UI: docked inspect during play (Alt-pin), cursor-follow hover in the deck builder.
+//
+// Do not use `useAtomResource` here — it suspends under the app-root Suspense and blanks the whole
+// screen while catalog text loads. Hover and inspect must stay non-suspending (`useAtomValue`).
 
-import { useAtomResource } from "@effect/atom-solid";
+import { useAtomValue } from "@effect/atom-solid";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Atom from "effect/unstable/reactivity/Atom";
+import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
-import type { ModifierSourceView } from "~/api/generated";
+import type { CatalogCard, ModifierSourceView } from "~/api/generated";
 import { Button } from "~/components/atoms";
 import { cn } from "~/lib/cn";
 import {
@@ -25,6 +30,11 @@ import { imageUrlByPrint } from "~/lib/scryfall";
 const cardTextFamily = Atom.family((id: string) =>
   Atom.make(id === "" ? Effect.succeed(null) : lookupCardsByIds([id]).pipe(Effect.map((cards) => cards[0] ?? null))),
 );
+
+/** Success value (`CatalogCard | null`), or `undefined` while the lookup is still in flight. */
+function catalogCard(result: AsyncResult.AsyncResult<CatalogCard | null, unknown>): CatalogCard | null | undefined {
+  return Option.getOrUndefined(AsyncResult.value(result));
+}
 
 const W = 320;
 const H = Math.round(W / 0.716);
@@ -118,7 +128,8 @@ function ModifierLedger(props: {
  * `print` (a Printing UUID) picks the art when known, else falls back to the catalog's
  * `default_print` once the oracle-text fetch resolves it. */
 export function HoverPreview(props: { id: string | null; print?: string | null; x: number; y: number }) {
-  const [card] = useAtomResource(() => cardTextFamily(props.id ?? ""));
+  const result = useAtomValue(() => cardTextFamily(props.id ?? ""));
+  const card = () => catalogCard(result());
   const oracle = () => card()?.oracle;
   const approximates = () => card()?.approximates;
   const hasText = () => !!(oracle() || approximates());
@@ -164,7 +175,8 @@ export function InspectDock(props: {
     if (stack.length === 0) return null;
     return stack[stack.length - 1] ?? null;
   });
-  const [card] = useAtomResource(() => cardTextFamily(current()?.cardId ?? ""));
+  const result = useAtomValue(() => cardTextFamily(current()?.cardId ?? ""));
+  const card = () => catalogCard(result());
   const back = () => card()?.back ?? null;
   const hasBack = () => !!back()?.name;
   const [face, setFace] = createSignal<InspectFace>("front");

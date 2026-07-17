@@ -1,8 +1,8 @@
 name: Verify and Release
 
 # Deploy PRD §GitHub Actions — official semantic-release verify-and-release recipe, adapted for
-# Rust/Bun in the verify job. Release job runs `npx semantic-release` with default configuration
-# (no .releaserc, no extra plugins).
+# Rust/Bun via reusable verify-jobs.yml. Release job runs `npx semantic-release` with default
+# configuration (no .releaserc, no extra plugins).
 
 on:
   push:
@@ -18,71 +18,10 @@ concurrency:
 permissions:
   contents: read # verify job
 
-env:
-  DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
-
 jobs:
   verify:
     name: Verify
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: mtgfr
-          POSTGRES_PASSWORD: mtgfr
-          POSTGRES_DB: mtgfr
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U mtgfr -d mtgfr"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-
-      # Pin — `latest` resolves via GitHub API and fails when API is degraded.
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: .bun-version
-
-      - uses: extractions/setup-just@v3
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
-
-      - name: Install client dependencies
-        run: cd client && bun install --frozen-lockfile
-
-      - name: Apply Toasty migrations
-        run: cargo run -p server -- migration apply
-
-      - name: just check (codegen + format + lint + typecheck + test)
-        run: just check
-
-      - name: Upload Rust JUnit report
-        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: rust-junit
-          path: target/nextest/ci/junit.xml
-
-      - name: Rust test summary
-        if: ${{ !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
-        uses: test-summary/action@v2
-        with:
-          paths: target/nextest/ci/junit.xml
+    uses: ./.github/workflows/verify-jobs.yml
 
   release:
     name: Release

@@ -3,10 +3,12 @@
 // (`GET /tables/{table}/lobby`) until `started`, at which point `onStarted` hands off to the Board.
 // Identity is the session cookie; the claimed seat is reflected in the URL.
 
-import { RegistryContext, useAtomResource, useAtomSet } from "@effect/atom-solid";
+import { RegistryContext, useAtomSet, useAtomValue } from "@effect/atom-solid";
 import { useParams, useSearchParams } from "@solidjs/router";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Atom from "effect/unstable/reactivity/Atom";
+import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import { createEffect, createSignal, For, onCleanup, Show, useContext } from "solid-js";
 import { decksAtom } from "~/atoms";
 import { Button, Felt, Field, Panel } from "~/components/atoms";
@@ -52,7 +54,9 @@ export default function Lobby(props: { onStarted: () => void }) {
   // A table id in the path means we're joining an existing table; otherwise we're at the landing.
   const [table, setTable] = createSignal<string | null>(routeParams.table ?? null);
   const [lobby, setLobby] = createSignal<LobbyView | null>(null);
-  const [decks] = useAtomResource(() => decksAtom);
+  // Non-suspending — `useAtomResource` blanks the whole lobby under the app-root Suspense.
+  const decksResult = useAtomValue(() => decksAtom);
+  const decks = () => Option.getOrUndefined(AsyncResult.value(decksResult()));
   // Deck to bring: the one passed from the deck manager (?deck=ID). Read reactively from the router
   // (raw location.search can be stale right after an SPA navigation). null only when truly absent.
   const [params] = useSearchParams();
@@ -314,7 +318,12 @@ export default function Lobby(props: { onStarted: () => void }) {
                 <Show
                   when={(decks() ?? []).length > 0}
                   fallback={
-                    <div class="text-caution-amber text-label">Build a deck first (Your decks → New deck).</div>
+                    <Show
+                      when={decks() !== undefined}
+                      fallback={<div class="text-label text-lichen">Loading decks…</div>}
+                    >
+                      <div class="text-caution-amber text-label">Build a deck first (Your decks → New deck).</div>
+                    </Show>
                   }
                 >
                   <div class="flex flex-wrap items-center gap-sm">

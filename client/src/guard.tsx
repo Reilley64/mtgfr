@@ -9,7 +9,10 @@ import { meAtom } from "~/atoms";
 /** The signed-in user, or `null` when not signed in. Redirects to /login once loaded with no
  * user. `meAtom` is shared, cross-screen state, so a prior screen may have already cached a
  * `null` (fetched before sign-in); refresh it on mount so a guard mounted right after a
- * successful `/login` navigation sees the current session instead of the stale `null`. */
+ * successful `/login` navigation sees the current session instead of the stale `null`.
+ *
+ * Suspends under the app-root Suspense until `meAtom` resolves — intentional for the auth gate
+ * (protected routes should not paint unsigned content). Overlay UIs must not use `useAtomResource`. */
 export function useAuthGuard(): Resource<Me | null> {
   const navigate = useNavigate();
   const [user] = useAtomResource(() => meAtom);
