@@ -1,5 +1,7 @@
 # Create `mtgfr_web` on the shared Postgres instance for SolidStart/Drizzle.
 # Official postgres image only bootstraps POSTGRES_DB=mtgfr; this Job is idempotent.
+#
+# Pod must keep label `app=postgres-create-web-db` (network-policy.tf postgres ingress).
 
 resource "kubernetes_job_v1" "postgres_create_web_db" {
   wait_for_completion = true
@@ -10,9 +12,14 @@ resource "kubernetes_job_v1" "postgres_create_web_db" {
     labels    = merge(local.common_labels, { app = "postgres-create-web-db" })
   }
 
+  timeouts {
+    create = "10m"
+  }
+
   spec {
-    ttl_seconds_after_finished = 300
-    backoff_limit              = 6
+    # Keep failed pods around so `kubectl logs job/…` works after BackoffLimitExceeded.
+    ttl_seconds_after_finished = 3600
+    backoff_limit              = 3
 
     template {
       metadata {
@@ -20,18 +27,26 @@ resource "kubernetes_job_v1" "postgres_create_web_db" {
       }
 
       spec {
-        restart_policy = "OnFailure"
+        restart_policy = "Never"
 
         container {
           name    = "create-db"
           image   = var.postgres_image
           command = ["/bin/sh", "-ec"]
           args = [<<-EOT
-            until pg_isready -h ${local.postgres_service} -U mtgfr -d mtgfr; do sleep 2; done
-            exists=$(psql -h ${local.postgres_service} -U mtgfr -d mtgfr -Atc "SELECT 1 FROM pg_database WHERE datname = 'mtgfr_web'")
-            if [ "$exists" != "1" ]; then
-              psql -h ${local.postgres_service} -U mtgfr -d mtgfr -v ON_ERROR_STOP=1 -c "CREATE DATABASE mtgfr_web OWNER mtgfr"
+            export PGHOST=${local.postgres_service}
+            export PGUSER=mtgfr
+            export PGDATABASE=mtgfr
+            echo "waiting for postgres…"
+            until pg_isready; do sleep 2; done
+            echo "checking for mtgfr_web…"
+            if psql -v ON_ERROR_STOP=1 -Atc "SELECT 1 FROM pg_database WHERE datname = 'mtgfr_web'" | grep -qx 1; then
+              echo "mtgfr_web already exists"
+            else
+              echo "creating mtgfr_web…"
+              psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE mtgfr_web OWNER mtgfr"
             fi
+            echo "ok"
           EOT
           ]
 
@@ -49,10 +64,13 @@ resource "kubernetes_job_v1" "postgres_create_web_db" {
     }
   }
 
-  depends_on = [kubernetes_stateful_set_v1.postgres]
+  depends_on = [
+    kubernetes_stateful_set_v1.postgres,
+    kubernetes_network_policy_v1.postgres_ingress,
+  ]
 
-  # Job object is immutable after completion; keep first successful create.
+  # Job spec is mostly immutable; ignore controller-owned selector churn.
   lifecycle {
-    ignore_changes = all
+    ignore_changes = [spec[0].selector]
   }
 }
