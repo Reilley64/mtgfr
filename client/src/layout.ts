@@ -9,7 +9,7 @@
 // down across the table; the two bottom seats are upright. One camera pans/zooms the whole table.
 // The hand is a DOM overlay (components/molecules/hand.tsx); the mana tray is a world-anchored DOM overlay (ManaTray.tsx).
 
-import type { ObjectView, VisibleState, WireKind } from "~/api/generated";
+import type { ObjectView, VisibleState, WireKind } from "~/wire/types";
 
 /** Zone discriminants — must match `engine::Zone`'s declaration order. */
 export const ZONE = {

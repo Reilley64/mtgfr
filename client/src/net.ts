@@ -4,9 +4,9 @@
 // its subscription — mounting it (Board) runs the stream, unmounting interrupts it.
 
 import * as Atom from "effect/unstable/reactivity/Atom";
-import type { IntentEnvelope, WireIntent } from "~/api/generated";
 import { streamDeltas } from "~/effect/stream";
 import { applyDelta, applySnapshot, setReject } from "~/store";
+import type { IntentEnvelope, WireIntent } from "~/wire/types";
 
 /** The table this browser is at, from `/play/:table` (default "t" when absent). */
 export function tableId(): string {

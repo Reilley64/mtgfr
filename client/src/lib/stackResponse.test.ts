@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ActionView } from "~/api/generated";
 import { STEP } from "~/layout";
 import {
   activatableBattlefieldIds,
@@ -12,6 +11,7 @@ import {
   stackChrome,
   viewerIsHelpless,
 } from "~/lib/stackResponse";
+import type { ActionView } from "~/wire/types";
 
 const activate = (object: number, over: Partial<ActionView> = {}): ActionView =>
   ({

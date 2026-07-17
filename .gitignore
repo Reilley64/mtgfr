@@ -3,6 +3,7 @@
 /crates/server/data
 /node_modules
 openapi.json
+client/src/wire/generated/
 
 mutants*.out
 

@@ -9,12 +9,12 @@
 // drag-to-avatar UI.
 
 import { createMemo, createSignal, For, type JSX, onCleanup, Show } from "solid-js";
-import type { ActionView, ObjectView } from "~/api/generated";
 import { ZONE } from "~/layout";
 import { byObject, bySection, handExtras } from "~/lib/actions";
 import { cn } from "~/lib/cn";
 import { imageUrlByPrint } from "~/lib/scryfall";
 import { game } from "~/store";
+import type { ActionView, ObjectView } from "~/wire/types";
 
 export interface ActionDrop {
   action: ActionView;
@@ -51,9 +51,13 @@ export default function Hand(props: {
     game.state ? game.state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === props.viewer) : [],
   );
   const handActionByObject = createMemo(() => byObject(grouped().hand));
-  const objectMeta = (id: number | undefined | null): { print: string; cardId?: string } => {
+  const objectMeta = (id: number | undefined | null): { print: string; cardId?: string; kind?: string } => {
     const obj = id != null ? game.state?.objects.find((o) => o.id === id) : undefined;
-    return { print: obj?.print ?? "", cardId: obj?.card_id || undefined };
+    return {
+      print: obj?.print ?? "",
+      cardId: obj?.card_id || undefined,
+      kind: obj?.kind?.kind,
+    };
   };
   // Hand cards plus overshadowed alternative-action tiles (cycle / suspend / discard-ability) share
   // one fan so extras sit in the same arc.
@@ -154,6 +158,8 @@ export default function Hand(props: {
     name: string;
     print: string;
     cardId?: string;
+    objectId?: number;
+    objectKind?: string;
     action: ActionView | null;
     dimmed?: boolean;
     caption?: string;
@@ -168,6 +174,13 @@ export default function Hand(props: {
     <div
       tabIndex={p.action ? 0 : undefined}
       role={p.action ? "button" : undefined}
+      data-testid={p.objectId != null ? `hand-card-${p.objectId}` : undefined}
+      data-action-kind={p.action?.kind ?? undefined}
+      data-action-id={p.action != null ? String(p.action.id) : undefined}
+      data-needs-target={p.action?.needs_target ? "1" : "0"}
+      data-has-player-target={p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"}
+      data-has-object-target={p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"}
+      data-object-kind={p.objectKind}
       aria-label={p.action ? (p.caption ? `${p.name}: ${p.caption}` : p.name) : undefined}
       onKeyDown={(e) => {
         if (!p.action || (e.key !== "Enter" && e.key !== " ")) return;
@@ -209,6 +222,7 @@ export default function Hand(props: {
   return (
     <>
       <div
+        data-testid="hand-bar"
         style={{ "--bar-h": `${HAND_BAR_H}px` }}
         class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-lg px-3 pb-2"
       >
@@ -225,6 +239,8 @@ export default function Hand(props: {
                     name={slot.action.label.replace(/^[^:]+:\s*/, "")}
                     print={meta.print}
                     cardId={meta.cardId}
+                    objectId={slot.action.object ?? undefined}
+                    objectKind={meta.kind}
                     action={slot.action}
                     caption={actionCaption(slot.action.kind)}
                     fan={fanTransform(i(), count())}
@@ -239,6 +255,8 @@ export default function Hand(props: {
                   name={slot.card.name}
                   print={slot.card.print ?? ""}
                   cardId={slot.card.card_id || undefined}
+                  objectId={slot.card.id}
+                  objectKind={slot.card.kind.kind}
                   action={action()}
                   dimmed={dimmed()}
                   caption={caption()}
@@ -258,6 +276,8 @@ export default function Hand(props: {
                     name={card.name}
                     print={card.print ?? ""}
                     cardId={card.card_id || undefined}
+                    objectId={card.id}
+                    objectKind={card.kind.kind}
                     action={action()}
                     dimmed={!action()}
                     caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}

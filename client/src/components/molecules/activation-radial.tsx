@@ -1,9 +1,9 @@
 // Activation radial around a selected permanent: pie of legal options.
 
 import { For } from "solid-js";
-import type { ActionView } from "~/api/generated";
 import { cn } from "~/lib/cn";
 import { activationRadialRadius, type RadialOption } from "~/lib/radial";
+import type { ActionView } from "~/wire/types";
 
 export default function ActivationRadial(props: {
   x: number;

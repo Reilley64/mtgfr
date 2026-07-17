@@ -3,8 +3,8 @@
 import { useAtomRefresh, useAtomResource } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
 import { type Accessor, createEffect, type JSX, type Resource, Show } from "solid-js";
-import type { Me } from "~/api/generated";
 import { meAtom } from "~/atoms";
+import type { Me } from "~/wire/types";
 
 /** The signed-in user, or `null` when not signed in. Redirects to /login once loaded with no
  * user. `meAtom` is shared, cross-screen state, so a prior screen may have already cached a

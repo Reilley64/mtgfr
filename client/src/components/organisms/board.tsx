@@ -11,7 +11,6 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Match from "effect/Match";
 import { createEffect, createMemo, createSignal, For, Index, onCleanup, onMount, Show } from "solid-js";
-import type { ActionView, ObjectView, PlayerView, VisibleState, WireTarget } from "~/api/generated";
 import { Button, Hud, Modal } from "~/components/atoms";
 import ActivationRadial from "~/components/molecules/activation-radial";
 import { InspectDock } from "~/components/molecules/card-preview";
@@ -60,6 +59,7 @@ import { stagedTargetHint } from "~/lib/targetPrompt";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
 import { connectedAtom, gameStreamFamily, tableId } from "~/net";
 import { game, resetGame, resolvedFromStack, SPECTATOR_VIEWER, setReject, zoneMoves } from "~/store";
+import type { ActionView, ObjectView, PlayerView, VisibleState, WireTarget } from "~/wire/types";
 
 export { humanReason, rejectMessageFor } from "~/controllers/reject";
 
@@ -481,6 +481,58 @@ export default function Board() {
     return s;
   });
   const manaTrays = createMemo(() => projectManaTrays(game.state?.players ?? [], me(), playerCount(), camera()));
+  // DOM hit targets over canvas life orbs — for AT and for Playwright targeting/combat aims.
+  const lifeOrbs = createMemo(() => {
+    const players = game.state?.players ?? [];
+    const count = playerCount();
+    const cam = camera();
+    const zoom = Math.max(0.5, cam.zoom);
+    const size = Math.round(56 * zoom);
+    return players.map((p) => {
+      const a = avatarPos(p.player, me(), count);
+      const s = worldToScreen(cam, a.x, a.y);
+      return {
+        seat: p.player,
+        life: p.life,
+        lost: p.lost,
+        name: playerLabel(players, p.player),
+        x: s.x,
+        y: s.y,
+        size,
+      };
+    });
+  });
+  // Screen-space markers over battlefield permanents — pointer-events none so canvas keeps
+  // hit-testing; Playwright reads boxes to aim combat/targeting gestures at real cards.
+  const bfMarkers = createMemo(() => {
+    const cam = camera();
+    return drawnCards()
+      .filter((c) => c.zone === ZONE.Battlefield && c.pile === 0)
+      .map((c) => {
+        const tl = worldToScreen(cam, c.x, c.y);
+        const br = worldToScreen(cam, c.x + c.w, c.y + c.h);
+        return {
+          id: c.id,
+          kind: c.kind,
+          controller: c.controller,
+          tapped: c.tapped,
+          summoningSick: c.summoningSick,
+          hasHaste: c.hasHaste,
+          x: (tl.x + br.x) / 2,
+          y: (tl.y + br.y) / 2,
+          w: Math.max(8, Math.abs(br.x - tl.x)),
+          h: Math.max(8, Math.abs(br.y - tl.y)),
+        };
+      });
+  });
+  const onLifeOrbClick = (seat: number) => {
+    if (spectating() || eliminated()) return;
+    // Complete a staged player-target aim (same path as a canvas seat hit).
+    if (arrowAiming() && stagedPlayers().has(seat)) {
+      session.aim({ kind: "player", player: seat });
+    }
+  };
+  const lifeOrbInteractive = () => arrowAiming() && stagedPlayers().size > 0;
   const onRadialPick = (opt: RadialOption) => {
     const id = selectedId();
     const aimFrom = selectedScreen() ?? undefined;
@@ -513,6 +565,7 @@ export default function Board() {
       </div>
       <canvas
         ref={canvas}
+        data-testid="board-canvas"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -521,8 +574,61 @@ export default function Board() {
         class="block cursor-grab touch-none bg-forest-floor"
       />
       <ManaTray trays={manaTrays()} />
+      <div class="pointer-events-none fixed inset-0 z-[15]">
+        <For each={bfMarkers()}>
+          {(m) => (
+            <div
+              data-testid={`bf-card-${m.id}`}
+              data-card-kind={m.kind}
+              data-controller={m.controller}
+              data-tapped={m.tapped ? "1" : "0"}
+              data-summoning-sick={m.summoningSick ? "1" : "0"}
+              data-has-haste={m.hasHaste ? "1" : "0"}
+              style={{
+                left: `${m.x}px`,
+                top: `${m.y}px`,
+                width: `${m.w}px`,
+                height: `${m.h}px`,
+                transform: "translate(-50%, -50%)",
+              }}
+              class="absolute"
+            />
+          )}
+        </For>
+      </div>
+      <div class="pointer-events-none fixed inset-0 z-[16]">
+        <For each={lifeOrbs()}>
+          {(orb) => (
+            <button
+              type="button"
+              data-testid={`life-orb-${orb.seat}`}
+              data-life={orb.life}
+              data-lost={orb.lost ? "1" : "0"}
+              aria-label={`${orb.name}, ${orb.life} life`}
+              disabled={orb.lost || !lifeOrbInteractive() || !stagedPlayers().has(orb.seat)}
+              onClick={() => onLifeOrbClick(orb.seat)}
+              // Only capture pointers while aiming at players — otherwise these orbs sit over the
+              // hand bar / battlefield and steal drag-to-play and combat gestures.
+              class={cn(
+                "absolute rounded-full border-0 bg-transparent",
+                lifeOrbInteractive() && stagedPlayers().has(orb.seat) ? "pointer-events-auto" : "pointer-events-none",
+              )}
+              style={{
+                left: `${orb.x}px`,
+                top: `${orb.y}px`,
+                width: `${orb.size}px`,
+                height: `${orb.size}px`,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          )}
+        </For>
+      </div>
       <Show when={!connected()}>
-        <div class="fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-1.5 text-center font-semibold text-label text-white">
+        <div
+          data-testid="board-reconnecting"
+          class="fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-1.5 text-center font-semibold text-label text-white"
+        >
           Reconnecting…
         </div>
       </Show>
@@ -582,6 +688,7 @@ export default function Board() {
                   comes up afterwards and offers the way back to the deck manager. */}
               <Button
                 type="button"
+                data-testid="board-concede"
                 onClick={() => setConfirmConcede(true)}
                 variant="ghost"
                 class="fixed top-3 right-3 z-20"
@@ -689,8 +796,15 @@ function TurnBanner(props: { me: number; state: VisibleState }) {
     return band && band.steps.length > 1 && band.name !== name ? name : null;
   };
   return (
-    <Hud class="fixed top-[10px] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-[5px] rounded-panel border border-hud-edge px-lg py-sm shadow-hud">
-      <div class={cn("font-bold text-turn-ember", yourTurn() && "text-turn-mint")}>
+    <Hud
+      data-testid="board-turn-banner"
+      data-step={String(s().step)}
+      data-active-player={String(s().active_player)}
+      data-priority={String(s().priority)}
+      data-stack-len={String(s().stack.length)}
+      class="fixed top-[10px] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-[5px] rounded-panel border border-hud-edge px-lg py-sm shadow-hud"
+    >
+      <div data-testid="board-turn-label" class={cn("font-bold text-turn-ember", yourTurn() && "text-turn-mint")}>
         {yourTurn() ? "Your turn" : `${playerLabel(s().players, s().active_player)}'s turn`}
       </div>
       <div class="flex gap-1">
@@ -777,6 +891,7 @@ function PriorityContextBar(props: {
         <Show when={showNext()}>
           <Button
             type="button"
+            data-testid="board-primary"
             disabled={!props.yours}
             onClick={props.onRun}
             variant="game"
@@ -786,17 +901,17 @@ function PriorityContextBar(props: {
           </Button>
         </Show>
         <Show when={props.chrome.pass}>
-          <Button type="button" onClick={props.onPass} variant="game">
+          <Button type="button" data-testid="board-pass" onClick={props.onPass} variant="game">
             Pass
           </Button>
         </Show>
         <Show when={props.chrome.stackYieldArm}>
-          <Button type="button" onClick={props.onArmStackYield} variant="game-quiet">
+          <Button type="button" data-testid="board-stack-yield" onClick={props.onArmStackYield} variant="game-quiet">
             Auto-pass stack
           </Button>
         </Show>
         <Show when={props.chrome.stackYieldArmed}>
-          <Button type="button" disabled variant="game-yielded">
+          <Button type="button" data-testid="board-stack-yield-armed" disabled variant="game-yielded">
             Auto-pass stack
           </Button>
         </Show>
@@ -805,6 +920,7 @@ function PriorityContextBar(props: {
           <button
             type="button"
             role="switch"
+            data-testid="board-turn-yield"
             aria-checked={props.turnYielded}
             aria-label="Auto-pass until my turn"
             title="Auto-pass until my turn"
@@ -835,18 +951,25 @@ function PriorityContextBar(props: {
           </button>
         </Show>
         <Show when={props.onCancelTarget}>
-          <Button type="button" onClick={() => props.onCancelTarget?.()} variant="game-quiet">
+          <Button
+            type="button"
+            data-testid="board-cancel-target"
+            onClick={() => props.onCancelTarget?.()}
+            variant="game-quiet"
+          >
             Cancel
           </Button>
         </Show>
       </div>
       <Show when={props.staged}>
-        <div class="max-w-[280px] text-right text-caption text-caution-amber">
+        <div data-testid="board-staged-hint" class="max-w-[280px] text-right text-caption text-caution-amber">
           {props.staged}: click a highlighted {props.stagedPlayers ? "card or life orb" : "card"}
         </div>
       </Show>
       <Show when={props.reject}>
-        <div class="text-burn-red text-caption">{props.reject}</div>
+        <div data-testid="board-reject" class="text-burn-red text-caption">
+          {props.reject}
+        </div>
       </Show>
     </div>
   );

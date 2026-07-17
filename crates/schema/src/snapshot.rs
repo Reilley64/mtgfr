@@ -8,7 +8,6 @@
 //! assembles the rest of the snapshot around it.
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::catalog::{wire_cost, wire_kind};
 use crate::dto::{
@@ -654,7 +653,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
 }
 
 /// One event of the SSE stream: the opening snapshot, then a delta per change.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "frame", rename_all = "snake_case")]
 pub enum StreamFrame {
     Snapshot {

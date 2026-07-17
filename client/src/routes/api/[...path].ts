@@ -1,8 +1,10 @@
+// BFF lobby + meta surface. Auth/decks/cards/game go through `/api/rpc/**`.
+
 import type { APIEvent } from "@solidjs/start/server";
-import { getRequestHeader, getRequestURL, proxyRequest } from "vinxi/http";
+import { getCookie } from "vinxi/http";
 import { createWebDb } from "~/db/client";
-import { normalizePublicApiPath, tableIdFromGamePath, upstreamFromPodDns } from "~/lib/apiUpstream";
-import { apiUpstream, fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "~/lib/apiUpstreamAuth";
+import { normalizePublicApiPath } from "~/lib/apiUpstream";
+import { fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "~/lib/apiUpstreamAuth";
 import {
   commitStart,
   createLobby,
@@ -10,12 +12,14 @@ import {
   joinLobby,
   type LobbySnapshot,
   loadLobby,
-  lookupTableRoute,
   setReady,
   startError,
   sweepWebDb,
   toLobbyView,
 } from "~/lib/lobbyStore";
+
+/** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */
+const SESSION_COOKIE = "session";
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -34,7 +38,7 @@ function unknownLobby(tableId: string): LobbySnapshot {
 
 async function handleLobby(event: APIEvent, path: string): Promise<Response | null> {
   const method = event.request.method;
-  const cookie = getRequestHeader(event.nativeEvent, "cookie") ?? null;
+  const sessionToken = getCookie(event.nativeEvent, SESSION_COOKIE) ?? null;
 
   if (method === "GET" && path === "meta/health/v1") {
     return json({ ok: true });
@@ -58,7 +62,7 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
     return json({ error: "WebDbNotConfigured" }, 503);
   }
 
-  const me = await fetchMe(cookie);
+  const me = await fetchMe(sessionToken);
   if (!me) return new Response("Unauthorized", { status: 401 });
 
   const db = webDb();
@@ -98,7 +102,7 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
   if (isJoin) {
     const tableId = String(body.table_id ?? "");
     const deckId = Number(body.deck_id);
-    const deckName = await fetchDeckName(cookie, deckId);
+    const deckName = await fetchDeckName(sessionToken, deckId);
     if (!deckName) {
       const snap = await loadLobby(db, tableId);
       if (!snap) {
@@ -138,7 +142,7 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
     const err = startError(snap, me.id);
     if (err) return json(toLobbyView(snap, me.id, err));
 
-    const seeded = await seedGame(cookie, {
+    const seeded = await seedGame(sessionToken, {
       table_id: tableId,
       host_user_id: snap.hostUserId,
       seats: snap.seats
@@ -165,16 +169,6 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
   return null;
 }
 
-async function resolveGameUpstream(path: string): Promise<string | null> {
-  const tableId = tableIdFromGamePath(path);
-  if (!tableId) return null;
-  if (!process.env.WEB_DATABASE_URL) return apiUpstream();
-  const db = webDb();
-  const pod = await lookupTableRoute(db, tableId);
-  if (!pod) return null;
-  return upstreamFromPodDns(pod);
-}
-
 async function forward(event: APIEvent) {
   const path = normalizePublicApiPath(event.params.path ?? "");
   if (path === null) {
@@ -184,14 +178,7 @@ async function forward(event: APIEvent) {
   const lobby = await handleLobby(event, path);
   if (lobby) return lobby;
 
-  const search = getRequestURL(event.nativeEvent).search;
-  if (tableIdFromGamePath(path)) {
-    const gameBase = await resolveGameUpstream(path);
-    if (!gameBase) return new Response("UnknownTable", { status: 404 });
-    return proxyRequest(event.nativeEvent, `${gameBase}/${path}${search}`);
-  }
-
-  return proxyRequest(event.nativeEvent, `${apiUpstream()}/${path}${search}`);
+  return new Response("Not Found", { status: 404 });
 }
 
 export const GET = forward;

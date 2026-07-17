@@ -34,6 +34,7 @@ export default function ConfirmDialog(props: {
     // biome-ignore lint/a11y/useKeyWithClickEvents: this backdrop click's keyboard equivalent is Escape, which showModal() wires up natively and delivers to onClose below.
     <dialog
       ref={dialog}
+      data-testid="confirm-dialog"
       // Escape and backdrop dismissal both land here. The effect's own `close()` does too, but by
       // then `props.open` is already false, so the guard keeps that from re-firing onCancel.
       onClose={() => props.open && props.onCancel()}
@@ -46,15 +47,22 @@ export default function ConfirmDialog(props: {
       )}
     >
       <div class="flex max-w-[380px] flex-col gap-md">
-        <div class="font-semibold text-body">{props.title}</div>
+        <div class="font-semibold text-body" data-testid="confirm-title">
+          {props.title}
+        </div>
         <Show when={props.body}>
           <div class="text-label text-lichen">{props.body}</div>
         </Show>
         <div class="flex justify-end gap-sm">
-          <Button type="button" autofocus onClick={props.onCancel} variant="ghost">
+          <Button type="button" data-testid="confirm-cancel" autofocus onClick={props.onCancel} variant="ghost">
             Cancel
           </Button>
-          <Button type="button" onClick={props.onConfirm} variant={props.danger ? "danger" : "primary"}>
+          <Button
+            type="button"
+            data-testid="confirm-ok"
+            onClick={props.onConfirm}
+            variant={props.danger ? "danger" : "primary"}
+          >
             {props.confirmLabel}
           </Button>
         </div>

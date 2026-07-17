@@ -2,12 +2,11 @@
 //! derivation (CR 903.4).
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::dto::{WireCost, WireKind};
 
 /// One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CatalogCard {
     /// Card id (Scryfall oracle id).
     pub id: String,
@@ -45,7 +44,7 @@ pub struct CatalogCard {
 }
 
 /// The back face of a prepare DFC, for card inspect flip (name + rules text).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CatalogBackFace {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]

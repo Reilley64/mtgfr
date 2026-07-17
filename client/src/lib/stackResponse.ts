@@ -1,7 +1,7 @@
 // Instant-speed priority focus: which permanents stay bright while the rest dim.
 
-import type { ActionView } from "~/api/generated";
 import { STEP } from "~/layout";
+import type { ActionView } from "~/wire/types";
 
 /** Untapped mana-source facts the radial synthesizes (not present in wire `actions`). */
 export type ManaSourceCard = {

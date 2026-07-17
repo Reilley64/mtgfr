@@ -11,8 +11,8 @@
 // A spell whose legal targets are all on the board keeps the arrow; anything else falls back to the
 // picker, which can show a target from any zone — and a player.
 
-import type { ActionView, VisibleState, WireTarget } from "~/api/generated";
 import { ZONE } from "~/layout";
+import type { ActionView, VisibleState, WireTarget } from "~/wire/types";
 
 export type TargetMode =
   /** Takes no target — submit the action as-is. */

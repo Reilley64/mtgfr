@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ActionView } from "~/api/generated";
 import { autoTapPreviewIds, byObject, bySection, handExtras } from "~/lib/actions";
+import type { ActionView } from "~/wire/types";
 
 function mkAction(overrides: Partial<ActionView> = {}): ActionView {
   return { id: 0, kind: "cast", label: "Card", needs_target: false, section: "hand", ...overrides };

@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package mtgfr.v1;
+
+import "mtgfr/v1/common.proto";
+
+option java_multiple_files = true;
+
+// Decks, card catalog, and lobby seed request/response.
+
+// One line of a decklist: a Card id, how many copies, and the chosen Printing UUID.
+message DeckCardEntry {
+  // Card id (Scryfall oracle id).
+  string id = 1;
+  uint32 count = 2;
+  // Scryfall card UUID for art (required).
+  string print = 3;
+}
+
+// A deck in a list view (no card contents).
+message DeckSummary {
+  int64 id = 1;
+  string name = 2;
+  string commander = 3;
+  // Printing UUID for the commander's art (list hover preview).
+  string commander_print = 4;
+}
+
+// A deck with its full contents (the builder's edit view).
+message DeckDetail {
+  int64 id = 1;
+  string name = 2;
+  // Commander Card id (Scryfall oracle id).
+  string commander = 3;
+  // Printing UUID for the commander's art.
+  string commander_print = 4;
+  repeated DeckCardEntry cards = 5;
+}
+
+// Body for creating or updating a deck.
+message SaveDeckRequest {
+  string name = 1;
+  // Commander Card id (Scryfall oracle id).
+  string commander = 2;
+  // Printing UUID for the commander's art.
+  string commander_print = 3;
+  repeated DeckCardEntry cards = 4;
+}
+
+// The back face of a prepare DFC, for card inspect flip (name + rules text).
+message CatalogBackFace {
+  string name = 1;
+  optional string oracle = 2;
+  optional string approximates = 3;
+}
+
+// One pool card, for the deck builder to browse. Stats/keywords/summary are engine truth.
+message CatalogCard {
+  // Card id (Scryfall oracle id).
+  string id = 1;
+  // Default Printing UUID (Scryfall card id) for art when a deck line hasn't chosen otherwise.
+  string default_print = 2;
+  string name = 3;
+  WireCost cost = 4;
+  WireKind kind = 5;
+  repeated string keywords = 6;
+  // Plain-English summary of the card's keywords + abilities (the engine's simplified behavior).
+  string summary = 7;
+  bool legendary = 8;
+  // Color identity as WUBRG indices (see `engine::Color::index`).
+  repeated uint32 color_identity = 9;
+  // A one-line note on how this card's modeled behavior diverges from its printed rules text,
+  // when it does. Absent for a faithful card.
+  optional string approximates = 10;
+  // The card's printed (oracle) rules text, for the deck builder's read-the-text hover. Absent
+  // for a card whose text isn't recorded, or a vanilla.
+  optional string oracle = 11;
+  // Set/edition code (Scryfall's lowercase code, e.g. "soc"); empty when unrecorded.
+  string set = 12;
+  // Printed subtypes for search (creature types, plus a land's printed types).
+  repeated string subtypes = 13;
+  // Scryfall Tagger oracle-tag slugs for thematic deck-builder search.
+  repeated string otags = 14;
+  // Other face of a prepare DFC. Absent for ordinary single-faced cards.
+  optional CatalogBackFace back = 15;
+}
+
+// One seat to seed, in seat-index order.
+message SeedSeat {
+  int64 user_id = 1;
+  string username = 2;
+  int64 deck_id = 3;
+}
+
+// Seed a running game from a lobby the BFF already resolved. `seats` is ordered by seat index
+// (2..=4 players — a Commander table, minimum two to start).
+message SeedRequest {
+  string table_id = 1;
+  int64 host_user_id = 2;
+  repeated SeedSeat seats = 3;
+}
+
+// The seeded game's location: which pod owns it (`pod_dns`) and the API version running there,
+// so the BFF can route later hops and detect a rolling deploy crossing versions mid-game.
+message SeedResponse {
+  string table_id = 1;
+  string pod_dns = 2;
+  string version = 3;
+}

@@ -5,9 +5,9 @@
 // hit-tests and executes the intents it returns. Payment (which lands to tap, commander tax,
 // pain modes) is the engine's, settled inside the cast — the client plans no taps.
 
-import type { ObjectView, VisibleState, WireAttack, WireBlock, WireIntent, WireTarget } from "~/api/generated";
 import { boardBounds, type RenderCard, STEP, ZONE } from "~/layout";
 import type { Camera } from "~/lib/camera";
+import type { ObjectView, VisibleState, WireAttack, WireBlock, WireIntent, WireTarget } from "~/wire/types";
 
 // ── Camera fitting ─────────────────────────────────────────────────────────────────
 // Frame the whole table in the space between the turn banner and the hand bar, centered.

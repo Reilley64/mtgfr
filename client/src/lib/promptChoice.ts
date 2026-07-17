@@ -1,6 +1,6 @@
 // Pure pending-choice helpers (no Solid / DOM) so unit tests never pull CardPreview.
 
-import type { PendingChoiceView, VisibleState } from "~/api/generated";
+import type { PendingChoiceView, VisibleState } from "~/wire/types";
 
 /** The viewer's pending choice, if any. */
 export function myChoice(state: VisibleState, me: number): PendingChoiceView | null {

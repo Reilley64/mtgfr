@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ModeView } from "~/api/generated";
 import { advance, modeAvailable } from "~/lib/modal";
+import type { ModeView } from "~/wire/types";
 
 const damage: ModeView = {
   label: "Deal 2 damage to any target",

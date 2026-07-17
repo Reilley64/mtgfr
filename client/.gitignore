@@ -3,4 +3,4 @@
 .solid
 .output
 .vinxi
-src/api/generated.ts
+src/wire/generated/

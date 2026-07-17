@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ChoiceItem, PendingChoiceView } from "~/api/generated";
 import {
   cardPickIsSearchable,
   dedupeChoiceItems,
@@ -8,6 +7,7 @@ import {
   promptChrome,
   searchableChoiceItems,
 } from "~/lib/promptForm";
+import type { ChoiceItem, PendingChoiceView } from "~/wire/types";
 
 const item = (id: number, label: string): ChoiceItem => ({ id, label });
 

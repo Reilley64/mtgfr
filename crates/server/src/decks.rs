@@ -2,7 +2,7 @@
 //!
 //! The pre-game lobby (claiming seats, picking decks, readying up) lives entirely in the
 //! SolidStart BFF's own store now (`mtgfr_web` Postgres, Drizzle) — see `docs/prds` for the split.
-//! A `Table` here is born already seeded: the BFF calls `POST /tables/seed/v1` once, handing over
+//! A `Table` here is born already seeded: the BFF calls `Tables.Seed` once, handing over
 //! the host, the ordered seats (each with its resolved deck), and this module builds the running
 //! `Game` right away. There is no more claim/ready/start dance on this side.
 

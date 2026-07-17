@@ -1,6 +1,5 @@
 import * as Match from "effect/Match";
 import { type Accessor, createEffect, createMemo, createSignal } from "solid-js";
-import type { WireAttack, WireBlock, WireIntent } from "~/api/generated";
 import type { RenderCard } from "~/layout";
 import {
   attackDrop,
@@ -11,6 +10,7 @@ import {
   type PrimaryAction,
   primaryActionFor,
 } from "~/lib/interaction";
+import type { WireAttack, WireBlock, WireIntent } from "~/wire/types";
 
 export type CombatDropResult =
   | { kind: "attackers"; value: WireAttack[] }

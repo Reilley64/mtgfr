@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { PlayerView } from "~/api/generated";
 import { emptyManaPool } from "~/lib/manaPips";
 import { outcome, worstCommanderDamage } from "~/lib/outcome";
 import { SPECTATOR_VIEWER } from "~/store";
+import type { PlayerView } from "~/wire/types";
 
 function seat(player: number, lost = false): PlayerView {
   return { player, life: 40, commander_tax: 0, lost, hand_count: 7, library_count: 92, mana_pool: emptyManaPool() };

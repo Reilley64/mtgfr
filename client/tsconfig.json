@@ -10,11 +10,8 @@
     "types": ["vinxi/types/client", "node"],
     "strict": true,
     "noEmit": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true,
     "paths": {
       "~/*": ["./src/*"]
     }

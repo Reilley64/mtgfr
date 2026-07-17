@@ -6,10 +6,10 @@
  */
 import { createRoot } from "solid-js";
 import { describe, expect, it, vi } from "vitest";
-import type { ActionView, ObjectView, VisibleState } from "~/api/generated";
 import { useActionSession } from "~/controllers/action-session";
 import { emptyCostPicks, useActionExecution } from "~/controllers/actionExecution";
 import { fitCamera } from "~/lib/interaction";
+import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 
 const mkAction = (over: Partial<ActionView> = {}): ActionView => ({
   id: 1,

@@ -1,8 +1,8 @@
 // Chunked `/cards/lookup/v1` — repeated `ids` query params blow past URL limits on long decklists.
 
 import * as Effect from "effect/Effect";
-import type { CatalogCard } from "~/api/generated";
 import { client } from "~/effect/client";
+import type { CatalogCard } from "~/wire/types";
 
 export const LOOKUP_CHUNK = 40;
 
@@ -12,7 +12,7 @@ export function lookupCardsByIds(ids: readonly string[]): Effect.Effect<CatalogC
   return Effect.gen(function* () {
     const out: CatalogCard[] = [];
     for (let i = 0; i < unique.length; i += LOOKUP_CHUNK) {
-      const page = yield* client.lookupCards({ params: { ids: unique.slice(i, i + LOOKUP_CHUNK) } });
+      const page = yield* client.lookupCards(unique.slice(i, i + LOOKUP_CHUNK));
       out.push(...page);
     }
     return out;

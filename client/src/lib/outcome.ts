@@ -6,7 +6,7 @@
 // faded avatars, and an eliminated player kept a live hand and an enabled pass button that the
 // server silently rejected.
 
-import type { CommanderDamageView, PlayerView } from "~/api/generated";
+import type { CommanderDamageView, PlayerView } from "~/wire/types";
 
 /** Commander damage from a *single* commander that eliminates a player (CR 903.10a). The engine
  * owns the rule; this is the client's copy of the number it draws on the life orb. */

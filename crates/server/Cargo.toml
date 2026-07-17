@@ -9,13 +9,11 @@ engine.workspace = true
 schema.workspace = true
 cards.workspace = true
 axum = "0.8"
-# `query` for axum_extra::extract::Query, which supports repeated query params (?names=a&names=b).
-axum-extra = { version = "0.10", features = ["cookie", "query"] }
+axum-extra = { version = "0.10", features = ["cookie"] }
 async-stream = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
-utoipa = "5"
 toasty = { version = "0.8", features = ["postgresql", "sqlite"] }
 toasty-cli = "0.8"
 anyhow = "1"
@@ -23,10 +21,16 @@ config = "0.14"
 tower-http = { version = "0.6", features = ["cors", "compression-gzip", "fs", "set-header"] }
 argon2 = "0.5"
 rand = "0.8"
+# gRPC transport for the .proto-owned wire (ADR 0032): tonic 0.12+ runs on hyper 1 / axum 0.8.
+tonic = "0.12"
+prost = "0.13"
+tokio-stream = "0.1"
+
+[build-dependencies]
+tonic-build = "0.12"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
-http-body-util = "0.1"
 # `test-util` unlocks `#[tokio::test(start_paused = true)]` so the heartbeat test advances virtual
 # time to the interval instead of sleeping for real.
 tokio = { version = "1", features = ["test-util"] }

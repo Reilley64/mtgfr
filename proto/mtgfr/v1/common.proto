@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package mtgfr.v1;
+
+option java_multiple_files = true;
+
+// Shared wire vocabulary: targets, combat/damage, mode choices, mana, amount pairs.
+
+// Wire form of `engine::Target`: a chosen target is either a permanent (`object`) or a player.
+message WireTarget {
+  oneof kind {
+    ObjectTarget object = 1;
+    PlayerTarget player = 2;
+  }
+
+  message ObjectTarget {
+    uint32 id = 1;
+  }
+
+  message PlayerTarget {
+    uint32 player = 1;
+  }
+}
+
+// One declared block: `blocker` blocks `attacker`.
+message WireBlock {
+  uint32 blocker = 1;
+  uint32 attacker = 2;
+}
+
+// One declared attack: `attacker` attacks player `defender`.
+message WireAttack {
+  uint32 attacker = 1;
+  uint32 defender = 2;
+}
+
+// One combat-damage assignment: `amount` of an attacker's damage dealt to `blocker`.
+message WireDamage {
+  uint32 blocker = 1;
+  int32 amount = 2;
+}
+
+// One share of a divided-damage spell's total: `amount` dealt to `target` (CR 601.2d).
+message WireSpellDamage {
+  WireTarget target = 1;
+  int32 amount = 2;
+}
+
+// One chosen mode of a modal spell (CR 700.2): the printed-mode `index` and that mode's
+// `target` (absent if the mode needs none).
+message WireModeChoice {
+  uint32 index = 1;
+  optional WireTarget target = 2;
+}
+
+// A mana cost for the client: generic plus per-color pips (WUBRG).
+message WireCost {
+  uint32 generic = 1;
+  // Colored pips indexed WUBRG (see `engine::Color::index`); length 5.
+  repeated uint32 colored = 2;
+  // Whether the cost includes a variable `{X}` (CR 601.2b) — the chosen value rides the cast
+  // intent's `x` field; this is only the marker.
+  bool has_x = 3;
+}
+
+// What a card fundamentally is, for the client (mirror of `engine::CardKind`).
+message WireKind {
+  oneof kind {
+    Creature creature = 1;
+    Instant instant = 2;
+    Sorcery sorcery = 3;
+    Enchantment enchantment = 4;
+    Artifact artifact = 5;
+    Planeswalker planeswalker = 6;
+    Land land = 7;
+  }
+
+  message Creature {
+    int32 power = 1;
+    int32 toughness = 2;
+  }
+
+  message Instant {}
+
+  message Sorcery {}
+
+  message Enchantment {}
+
+  message Artifact {}
+
+  // A planeswalker with its starting loyalty (the printed number it enters with).
+  message Planeswalker {
+    int32 loyalty = 1;
+  }
+
+  // A land and the colors it can tap for (WUBRG indices; see `engine::Color::index`): one
+  // entry for a mono producer, two for a dual, all five for "any color", empty for a pure
+  // colorless producer.
+  message Land {
+    repeated uint32 colors = 1;
+  }
+}
+
+// Wire form of `engine::ManaPool`: WUBRG counts, `{C}`, any, dual either-credits, and
+// restricted of-colors credits. Zero either/of_colors rows are omitted.
+message WireManaPool {
+  // WUBRG amounts (length 5).
+  repeated uint32 colored = 1;
+  uint32 colorless = 2;
+  uint32 any = 3;
+  repeated WireEitherMana either = 4;
+  repeated WireOfColorsMana of_colors = 5;
+}
+
+message WireEitherMana {
+  // First color index (WUBRG).
+  uint32 a = 1;
+  // Second color index (WUBRG).
+  uint32 b = 2;
+  uint32 amount = 3;
+}
+
+message WireOfColorsMana {
+  // WUBRG bitmask of the restricted credit.
+  uint32 mask = 1;
+  uint32 amount = 2;
+}
+
+// Commander damage dealt to one player by one commander, keyed by that commander's owner.
+message CommanderDamageView {
+  // The seat whose commander dealt it.
+  uint32 from = 1;
+  int32 amount = 2;
+}
+
+// A wrapper so a `repeated` field can carry proto3 field presence (`None` vs `Some([])`) —
+// used where the schema type is `Option<Vec<ObjectId>>` (a cost that may not apply at all,
+// vs. one that applies but nothing can currently pay it).
+message ObjectIdList {
+  repeated uint32 ids = 1;
+}
+
+// One (object, amount) pair — a divided-damage/counters share, or a commander-damage entry
+// keyed by object rather than by player.
+message ObjectAmount {
+  uint32 id = 1;
+  int32 amount = 2;
+}
+
+// One (player, amount) pair — a divided-damage share dealt to a player target.
+message PlayerAmount {
+  uint32 player = 1;
+  int32 amount = 2;
+}

@@ -1,4 +1,4 @@
-import type { ActionView, ObjectView, VisibleState } from "~/api/generated";
+import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 
 /** Name an object id from the viewer's visible state. */
 export function objectName(state: VisibleState, id: number): string {

@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect";
 import * as Atom from "effect/unstable/reactivity/Atom";
-import type { WireIntent } from "~/api/generated";
 import { humanReason, rejectMessageFor } from "~/controllers/reject";
 import { client } from "~/effect/client";
 import { buildIntentEnvelope, tableId } from "~/net";
 import { setReject } from "~/store";
+import type { WireIntent } from "~/wire/types";
 
 // The one ack/failure fold shared by every server call: surface the reason in the reject
 // banner, and resolve to whether the server accepted (so callers can undo optimistic UI).
@@ -21,7 +21,7 @@ const failureToReject = (failure: unknown): boolean => {
  * fail, so `useAtomSet(..., { mode: "promise" })` always resolves — callers `await` or fire-and-forget. */
 export const submitIntentFn = Atom.fn((intent: WireIntent) =>
   client
-    .submitIntent(tableId(), { payload: buildIntentEnvelope(intent) })
+    .submitIntent(tableId(), buildIntentEnvelope(intent))
     .pipe(Effect.match({ onSuccess: ackToReject, onFailure: failureToReject })),
 );
 
@@ -29,20 +29,20 @@ export const submitIntentFn = Atom.fn((intent: WireIntent) =>
  * stack resolves (and clears the flag once it empties). Resolves to whether it was accepted. */
 export const setYieldFn = Atom.fn((p: { enabled: boolean }) =>
   client
-    .setYield(tableId(), { payload: { enabled: p.enabled } })
+    .setYield(tableId(), { enabled: p.enabled })
     .pipe(Effect.match({ onSuccess: ackToReject, onFailure: failureToReject })),
 );
 
 /** Toggle turn yield (ADR 0029): auto-pass until this seat's turn / until they act. */
 export const setTurnYieldFn = Atom.fn((p: { enabled: boolean }) =>
   client
-    .setTurnYield(tableId(), { payload: { enabled: p.enabled } })
+    .setTurnYield(tableId(), { enabled: p.enabled })
     .pipe(Effect.match({ onSuccess: ackToReject, onFailure: failureToReject })),
 );
 
 /** Helpless stack dwell: pause the stack-hold while hovering, if the seat has no meaningful action. */
 export const setStackDwellFn = Atom.fn((p: { dwelling: boolean }) =>
-  client.setStackDwell(tableId(), { payload: { dwelling: p.dwelling } }).pipe(
+  client.setStackDwell(tableId(), { dwelling: p.dwelling }).pipe(
     Effect.match({
       onSuccess: (ack) => ack.accepted,
       onFailure: () => false,
