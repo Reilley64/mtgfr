@@ -1,0 +1,123 @@
+name: Verify jobs
+
+# Reusable server/client verify jobs. Called from ci.yml and verify-and-release.yml.
+# Each job skips setup + checks when a content-hash pass marker is already cached.
+
+on:
+  workflow_call:
+
+env:
+  DATABASE_URL: postgresql://mtgfr:mtgfr@localhost:5432/mtgfr
+
+jobs:
+  verify-server:
+    name: Verify (server)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mtgfr
+          POSTGRES_PASSWORD: mtgfr
+          POSTGRES_DB: mtgfr
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mtgfr -d mtgfr"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        id: pass
+        with:
+          path: .ci-pass
+          key: verify-server-v1-${{ hashFiles('crates/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml') }}
+
+      - name: Skip — server hash already verified
+        if: steps.pass.outputs.cache-hit == 'true'
+        run: echo "Pass marker hit for server content hash; skipping setup and checks."
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.pass.outputs.cache-hit != 'true'
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.pass.outputs.cache-hit != 'true'
+
+      - uses: extractions/setup-just@v3
+        if: steps.pass.outputs.cache-hit != 'true'
+
+      - uses: taiki-e/install-action@v2
+        if: steps.pass.outputs.cache-hit != 'true'
+        with:
+          tool: nextest
+
+      - name: just server-check (fmt + clippy + migrate + nextest)
+        if: steps.pass.outputs.cache-hit != 'true'
+        run: just server-check
+
+      - name: Upload Rust JUnit report
+        if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-junit
+          path: target/nextest/ci/junit.xml
+
+      - name: Rust test summary
+        if: ${{ steps.pass.outputs.cache-hit != 'true' && !cancelled() && hashFiles('target/nextest/ci/junit.xml') != '' }}
+        uses: test-summary/action@v2
+        with:
+          paths: target/nextest/ci/junit.xml
+
+      - name: Write pass marker
+        if: steps.pass.outputs.cache-hit != 'true'
+        run: mkdir -p .ci-pass && echo ok > .ci-pass/marker
+
+  verify-client:
+    name: Verify (client)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        id: pass
+        with:
+          path: .ci-pass
+          key: verify-client-v1-${{ hashFiles('client/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.bun-version', 'justfile', '.github/workflows/verify-jobs.yml') }}
+
+      - name: Skip — client hash already verified
+        if: steps.pass.outputs.cache-hit == 'true'
+        run: echo "Pass marker hit for client content hash; skipping setup and checks."
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.pass.outputs.cache-hit != 'true'
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.pass.outputs.cache-hit != 'true'
+
+      # Pin — `latest` resolves via GitHub API and fails when API is degraded.
+      - uses: oven-sh/setup-bun@v2
+        if: steps.pass.outputs.cache-hit != 'true'
+        with:
+          bun-version-file: .bun-version
+
+      - uses: extractions/setup-just@v3
+        if: steps.pass.outputs.cache-hit != 'true'
+
+      - name: Install client dependencies
+        if: steps.pass.outputs.cache-hit != 'true'
+        run: cd client && bun install --frozen-lockfile
+
+      - name: just client-check (codegen + format + lint + typecheck + vitest)
+        if: steps.pass.outputs.cache-hit != 'true'
+        run: just client-check
+
+      - name: Write pass marker
+        if: steps.pass.outputs.cache-hit != 'true'
+        run: mkdir -p .ci-pass && echo ok > .ci-pass/marker
