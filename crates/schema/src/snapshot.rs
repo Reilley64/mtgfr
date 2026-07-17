@@ -1998,7 +1998,14 @@ mod tests {
 
         match snapshot(&game, p0).pending_choice {
             Some(PendingChoiceView::Scry { items, .. }) => {
-                assert_eq!(items.len(), 3, "the scryer sees the three looked-at cards")
+                assert_eq!(items.len(), 3, "the scryer sees the three looked-at cards");
+                for item in &items {
+                    assert!(
+                        !item.print.is_empty(),
+                        "scry items must carry a Printing UUID for art (got empty for {})",
+                        item.label
+                    );
+                }
             }
             other => panic!("expected a Scry choice for the scryer, got {other:?}"),
         }

@@ -19,6 +19,7 @@ import {
   choiceItemPrint,
   mayYesNoTitle,
   objectName,
+  objectPrint,
   payCostTitle,
   payEchoTitle,
   payOrCounterTitle,
@@ -520,14 +521,14 @@ const PICK_COLUMN = cn("m-auto flex flex-col items-center gap-xl py-xxl");
 /** Pick one target — a card in any zone, or a *player*. Distinct from `CardPickPrompt` because a
  * seat has no card image: it renders as its own life-orb-coloured tile. The board uses this wherever
  * the targeting arrow can't reach (a graveyard pile, the stack overlay) and for every mode of a
- * modal spell, whose targets travel per mode (CR 700.2). */
+ * modal spell, whose targets travel per mode (CR 700.2).
+ *
+ * Object art resolves via `objectPrint(state, id)` — targets are always in `state.objects`
+ * (battlefield / hand / GY / exile / stack), never library-private ids. */
 export function TargetPickPrompt(props: {
   title: string;
   targets: WireTarget[];
-  /** Name an object target; the board joins against `state.objects`. */
-  name: (id: number) => string;
-  /** Printing UUID for an object target; empty renders a broken image (ADR 0031). */
-  print: (id: number) => string;
+  state: VisibleState;
   /** Name a player target; defaults to P{n}. */
   playerName?: (seat: number) => string;
   onPick: (target: WireTarget) => void;
@@ -546,7 +547,7 @@ export function TargetPickPrompt(props: {
                 aria-label={
                   t.kind === "player"
                     ? `Player ${seatLabel((t as Extract<WireTarget, { kind: "player" }>).player)}`
-                    : props.name(t.id)
+                    : objectName(props.state, t.id)
                 }
                 onClick={() => props.onPick(t)}
                 class="relative cursor-pointer rounded-[9px] p-0 shadow-hand transition-transform duration-150 ease-out hover:-translate-y-2"
@@ -565,7 +566,7 @@ export function TargetPickPrompt(props: {
                 >
                   {(obj) => (
                     <img
-                      src={imageUrlByPrint(props.print(obj().id))}
+                      src={imageUrlByPrint(objectPrint(props.state, obj().id))}
                       alt=""
                       draggable={false}
                       class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"

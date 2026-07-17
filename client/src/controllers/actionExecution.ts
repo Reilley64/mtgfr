@@ -458,5 +458,6 @@ export function useActionExecution(deps: ActionExecutionDeps) {
     continueAfterCostPick,
     onHandDrop,
     cancelActionState,
+    getState: deps.getState,
   };
 }
