@@ -7,17 +7,17 @@ use super::ChoiceRequest;
 /// Generate [`map_identical`] for isomorphic request → pending variants.
 macro_rules! define_map_identical {
     ($($variant:ident { $($field:ident),+ $(,)? }),+ $(,)?) => {
-        /// Map isomorphic request variants, or return the request unchanged for family handlers.
-        pub(super) fn map_identical(
-            request: ChoiceRequest,
-        ) -> Result<PendingChoice, ChoiceRequest> {
+        /// Map isomorphic request variants; `None` means a family handler must build the choice.
+        pub(super) fn map_identical(request: &ChoiceRequest) -> Option<PendingChoice> {
             match request {
                 $(
                     ChoiceRequest::$variant { $($field),+ } => {
-                        Ok(PendingChoice::$variant { $($field),+ })
+                        Some(PendingChoice::$variant {
+                            $($field: $field.clone()),+
+                        })
                     }
                 )+
-                other => Err(other),
+                _ => None,
             }
         }
     };

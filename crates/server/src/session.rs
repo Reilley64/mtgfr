@@ -957,13 +957,23 @@ mod tests {
         table.game = Some(game);
 
         // Both non-active seats are turn-yielding; only the one swung at should clear.
-        assert!(TableSession::new(&mut table).set_turn_yield(PlayerId(1), true).0.accepted);
-        assert!(TableSession::new(&mut table).set_turn_yield(PlayerId(2), true).0.accepted);
-        assert!(table.turn_yields[1] && table.turn_yields[2]);
+        assert!(
+            TableSession::new(&mut table)
+                .set_turn_yield(PlayerId(1), true)
+                .0
+                .accepted
+        );
+        assert!(
+            TableSession::new(&mut table)
+                .set_turn_yield(PlayerId(2), true)
+                .0
+                .accepted
+        );
+        assert!(table.chrome.turn_yields()[1] && table.chrome.turn_yields()[2]);
 
         advance_table_to_step(&mut table, Step::DeclareAttackers);
         assert!(
-            table.turn_yields[1] && table.turn_yields[2],
+            table.chrome.turn_yields()[1] && table.chrome.turn_yields()[2],
             "turn yield stays armed until an attacker is declared at that seat"
         );
 
@@ -974,11 +984,11 @@ mod tests {
         assert!(result.accepted);
 
         assert!(
-            !table.turn_yields[1],
+            !table.chrome.turn_yields()[1],
             "the seat being attacked must clear turn yield"
         );
         assert!(
-            table.turn_yields[2],
+            table.chrome.turn_yields()[2],
             "a bystander's turn yield must stay armed when someone else is attacked"
         );
         let game = table.game.as_ref().unwrap();
@@ -1008,7 +1018,12 @@ mod tests {
         let shock = game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
         table.game = Some(game);
 
-        assert!(TableSession::new(&mut table).set_turn_yield(PlayerId(1), true).0.accepted);
+        assert!(
+            TableSession::new(&mut table)
+                .set_turn_yield(PlayerId(1), true)
+                .0
+                .accepted
+        );
         advance_table_to_step(&mut table, Step::DeclareAttackers);
 
         let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
@@ -1016,7 +1031,7 @@ mod tests {
             attackers: vec![(attacker, PlayerId(1))],
         });
         assert!(result.accepted);
-        assert!(!table.turn_yields[1]);
+        assert!(!table.chrome.turn_yields()[1]);
 
         let game = table.game.as_ref().unwrap();
         assert_eq!(game.current_step(), Step::DeclareAttackers);
@@ -1041,7 +1056,10 @@ mod tests {
             strive_count: 0,
             replicate_count: 0,
         });
-        assert!(result.accepted, "defender can Shock in the attack response window");
+        assert!(
+            result.accepted,
+            "defender can Shock in the attack response window"
+        );
         assert!(
             matches!(disp, Disposition::Live { .. }),
             "game stays live after the response cast"
@@ -1067,7 +1085,10 @@ mod tests {
             let holder = table.game.as_ref().unwrap().priority_holder();
             let (result, _) = TableSession::new(&mut table)
                 .submit_system(Intent::PassPriority { player: holder });
-            assert!(result.accepted, "pass by {holder:?} should advance the stack");
+            assert!(
+                result.accepted,
+                "pass by {holder:?} should advance the stack"
+            );
             saw_attacker_die |= result.events.iter().any(|e| {
                 matches!(
                     e,
@@ -1075,10 +1096,7 @@ mod tests {
                 )
             });
         }
-        assert!(
-            saw_attacker_die,
-            "Shock resolved and killed the attacker"
-        );
+        assert!(saw_attacker_die, "Shock resolved and killed the attacker");
     }
 
     #[test]
@@ -1093,7 +1111,7 @@ mod tests {
         table.game = Some(game);
 
         // No turn yield — auto-pass must still skip a dead declare-attackers stop.
-        assert!(!table.turn_yields[1]);
+        assert!(!table.chrome.turn_yields()[1]);
         advance_table_to_step(&mut table, Step::DeclareAttackers);
         let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
             player: PlayerId(0),
@@ -1208,7 +1226,12 @@ mod tests {
         let _blocker = game.spawn_on_battlefield(PlayerId(1), bear());
         table.game = Some(game);
 
-        assert!(TableSession::new(&mut table).set_turn_yield(PlayerId(1), true).0.accepted);
+        assert!(
+            TableSession::new(&mut table)
+                .set_turn_yield(PlayerId(1), true)
+                .0
+                .accepted
+        );
         advance_table_to_step(&mut table, Step::DeclareAttackers);
         let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
             player: PlayerId(0),

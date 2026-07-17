@@ -333,10 +333,9 @@ pub(crate) enum ChoiceRequest {
 
 /// Build a [`PendingChoice`] for `request`, or `None` when the raise is a no-op skip.
 pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option<PendingChoice> {
-    let request = match common::map_identical(request) {
-        Ok(choice) => return Some(choice),
-        Err(request) => request,
-    };
+    if let Some(choice) = common::map_identical(&request) {
+        return Some(choice);
+    }
     match request {
         ChoiceRequest::Proliferate {
             player,

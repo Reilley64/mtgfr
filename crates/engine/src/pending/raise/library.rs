@@ -20,6 +20,7 @@ pub(super) fn arrange_top(
     })
 }
 
+#[allow(clippy::too_many_arguments)] // mirrors PendingChoice::SelectFromTop fields
 pub(super) fn select_from_top(
     game: &Game,
     player: PlayerId,
