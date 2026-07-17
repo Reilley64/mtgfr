@@ -7,7 +7,7 @@ import { type CostPicks, type ModalCast, type StagedAction, settleSacrificePick 
 import { XPromptModal } from "~/controllers/prompt-host";
 import type { TargetMode } from "~/lib/targeting";
 import { stagedTargetTitle } from "~/lib/targetPrompt";
-import type { ActionView, ModeView, ObjectView, WireTarget } from "~/wire/types";
+import type { ActionView, ModeView, ObjectView, VisibleState, WireTarget } from "~/wire/types";
 
 type Vec = { x: number; y: number };
 
@@ -69,6 +69,8 @@ export type ActionChromeModel = {
   continueAfterCostPick: (action: ActionView, card: ObjectView | null, picks: CostPicks, dropSeed: Vec) => void;
   objectName: (id: number) => string;
   objectPrint: (id: number) => string;
+  /** Live visible state for card-art resolution (ADR 0031). */
+  getState: () => VisibleState | null;
   aim: (target: WireTarget) => void;
 };
 
@@ -86,6 +88,17 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
     }
     return null;
   });
+  const visible = createMemo(() => props.model.getState());
+  const stagedPick = createMemo(() => {
+    const targets = stagedPickTargets();
+    const state = visible();
+    return targets && state ? { targets, state } : null;
+  });
+  const sacrificeCtx = createMemo(() => {
+    const sp = props.model.sacrificePick();
+    const state = visible();
+    return sp && state ? { sp, state } : null;
+  });
 
   return (
     <>
@@ -97,13 +110,12 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
           delve / discard — the arrow is easy to miss when a modal just closed. Sacrifice costs do
           not force this: the ability stages onto the stack and you aim a creature like any other
           targeted activate. Cancel un-stages it — nothing has been paid yet. */}
-      <Show when={stagedPickTargets()}>
-        {(targets) => (
+      <Show when={stagedPick()}>
+        {(ctx) => (
           <TargetPickPrompt
             title={stagedTargetTitle(props.model.staged())}
-            targets={targets()}
-            name={props.model.objectName}
-            print={props.model.objectPrint}
+            targets={ctx().targets}
+            state={ctx().state}
             playerName={props.playerName}
             onPick={props.model.aim}
             onCancel={() => props.model.setStaged(null)}
@@ -111,18 +123,17 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
         )}
       </Show>
       {/* "Sacrifice a creature: …" — name the creature that pays before the ability is taken. */}
-      <Show when={props.model.sacrificePick()}>
-        {(sp) => (
+      <Show when={sacrificeCtx()}>
+        {(ctx) => (
           <TargetPickPrompt
-            title={`Sacrifice a creature: ${sp().action.label}`}
-            targets={(sp().action.sacrifice_choices ?? []).map((id) => ({ kind: "object" as const, id }))}
-            name={props.model.objectName}
-            print={props.model.objectPrint}
+            title={`Sacrifice a creature: ${ctx().sp.action.label}`}
+            targets={(ctx().sp.action.sacrifice_choices ?? []).map((id) => ({ kind: "object" as const, id }))}
+            state={ctx().state}
             playerName={props.playerName}
             onPick={(t) => {
               if (t.kind !== "object") return;
-              // Capture before clear — Solid's sp() tracks sacrificePick() and goes falsy after null.
-              const settled = settleSacrificePick(sp(), t.id);
+              // Capture before clear — Solid's ctx() tracks sacrificePick() and goes falsy after null.
+              const settled = settleSacrificePick(ctx().sp, t.id);
               props.model.setSacrificePick(null);
               props.model.continueAfterCostPick(settled.action, settled.card, settled.picks, settled.dropSeed);
             }}
@@ -136,11 +147,12 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
           <CardPickPrompt
             title={`Discard ${dp().action.discard_count ?? 1}: ${dp().action.label}`}
             submitLabel="Discard"
+            state={visible() ?? undefined}
             items={(dp().action.discard_choices ?? []).map((id) => ({
               id,
               label: props.model.objectName(id),
+              print: props.model.objectPrint(id),
             }))}
-            print={props.model.objectPrint}
             count={dp().action.discard_count ?? 1}
             declineLabel="Cancel"
             onDecline={() => props.model.setDiscardPick(null)}
@@ -171,11 +183,12 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
                   : `Exile any number for delve: ${gp().action.label}`
               }
               submitLabel="Exile"
+              state={visible() ?? undefined}
               items={(gp().action.graveyard_exile_choices ?? []).map((id) => ({
                 id,
                 label: props.model.objectName(id),
+                print: props.model.objectPrint(id),
               }))}
-              print={props.model.objectPrint}
               count={exact() ? min() : null}
               minCount={exact() ? undefined : min()}
               maxCount={exact() ? undefined : max()}
@@ -216,15 +229,18 @@ export function ActionChrome(props: { model: ActionChromeModel; playerName: (sea
             }
           >
             {(mode) => (
-              <TargetPickPrompt
-                title={`${mc().action.label} — ${mode().label}`}
-                targets={mode().targets}
-                name={props.model.objectName}
-                print={props.model.objectPrint}
-                playerName={props.playerName}
-                onPick={props.model.answerMode}
-                onCancel={() => props.model.setModalCast(null)}
-              />
+              <Show when={visible()}>
+                {(state) => (
+                  <TargetPickPrompt
+                    title={`${mc().action.label} — ${mode().label}`}
+                    targets={mode().targets}
+                    state={state()}
+                    playerName={props.playerName}
+                    onPick={props.model.answerMode}
+                    onCancel={() => props.model.setModalCast(null)}
+                  />
+                )}
+              </Show>
             )}
           </Show>
         )}

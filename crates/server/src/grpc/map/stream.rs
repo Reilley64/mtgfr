@@ -17,6 +17,7 @@ pub fn choice_item_to_pb(item: ChoiceItem) -> pb::ChoiceItem {
         id: item.id,
         label: item.label,
         player: item.player.map(u32::from),
+        print: item.print,
     }
 }
 
@@ -1519,6 +1520,7 @@ mod tests {
                 items: vec![ChoiceItem {
                     id: 11,
                     label: "Goblin".into(),
+                    print: String::new(),
                     player: None,
                 }],
                 optional: false,

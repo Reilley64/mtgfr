@@ -247,13 +247,17 @@ pub struct StackObjectView {
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign
 /// damage to). The `label` is the object's name, so the prompt UI needn't join against the
-/// object list.
+/// object list. `print` is the Printing UUID for art (ADR 0031) — required for hidden-zone
+/// picks (library search, scry) that never appear in [`VisibleState::objects`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChoiceItem {
     /// The object being chosen. Ignored when `player` is set — player-target choices (Bojuka Bog,
     /// Remorseful Cleric) name a seat instead of a battlefield object.
     pub id: ObjectId,
     pub label: String,
+    /// Scryfall Printing UUID for card art. Empty for player seats and face-down / redacted items.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub print: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub player: Option<u8>,
 }
@@ -798,6 +802,77 @@ pub enum PendingChoiceView {
     },
 }
 
+impl PendingChoiceView {
+    /// Visit every [`ChoiceItem`] this choice offers (including pile pairs and a single `item`).
+    pub fn for_each_item_mut(&mut self, mut f: impl FnMut(&mut ChoiceItem)) {
+        match self {
+            Self::ChooseTarget { items, .. }
+            | Self::ChooseSpellTargets { items, .. }
+            | Self::ChooseTargetPlayers { items, .. }
+            | Self::DeclineUntap { items, .. }
+            | Self::SacrificeUnlessReturnLand { items, .. }
+            | Self::AssignCombatDamage { items, .. }
+            | Self::DivideSpellDamage { items, .. }
+            | Self::DivideCounters { items, .. }
+            | Self::Scry { items, .. }
+            | Self::Surveil { items, .. }
+            | Self::SearchLibrary { items, .. }
+            | Self::SelectFromTop { items, .. }
+            | Self::DistributeTop { items, .. }
+            | Self::ShuffleFromGraveyard { items, .. }
+            | Self::SacrificeEdict { items, .. }
+            | Self::Proliferate { items, .. }
+            | Self::PhaseOut { items, .. }
+            | Self::ChooseAbilityTargets { items, .. }
+            | Self::MaySacrifice { items, .. }
+            | Self::ChooseOwnSacrifices { items, .. }
+            | Self::Devour { items, .. }
+            | Self::ExileFromGraveyard { items, .. }
+            | Self::CasterKeepPermanents { items, .. }
+            | Self::ChooseCounterTargetForPlayer { items, .. }
+            | Self::MayReturnFromGraveyard { items, .. }
+            | Self::MayDiscard { items, .. }
+            | Self::Discard { items, .. }
+            | Self::PutLandFromHand { items, .. }
+            | Self::CastCreatureFaceDown { items, .. }
+            | Self::ChooseExiledWithCard { items, .. }
+            | Self::ChooseExiledWithCardToCast { items, .. }
+            | Self::ChooseExiledDigToCastFree { items, .. }
+            | Self::DanceExileMore { items, .. }
+            | Self::OpponentChoosesExiledNonland { items, .. }
+            | Self::ChooseSplittingOpponent { items, .. }
+            | Self::PartitionRevealed { items, .. }
+            | Self::ChooseExiledToCastFree { items, .. }
+            | Self::ChooseCopyTarget { items, .. }
+            | Self::ChooseAttachHost { items, .. } => {
+                for item in items {
+                    f(item);
+                }
+            }
+            Self::OpponentChoosesPile { pile_a, pile_b, .. }
+            | Self::ChoosePileForHand { pile_a, pile_b, .. } => {
+                for item in pile_a.iter_mut().chain(pile_b.iter_mut()) {
+                    f(item);
+                }
+            }
+            Self::RevealedCardToBattlefieldOrHand { item, .. } => f(item),
+            Self::OrderTriggers { .. }
+            | Self::MayYesNo { .. }
+            | Self::PayCost { .. }
+            | Self::PayOrCounter { .. }
+            | Self::PayOrControllerDraws { .. }
+            | Self::ChooseCounteredSpellDestination { .. }
+            | Self::PayEchoOrSacrifice { .. }
+            | Self::SacrificeUnlessPay { .. }
+            | Self::ChooseMode { .. }
+            | Self::ChooseTriggerModes { .. }
+            | Self::ChooseManaColor { .. }
+            | Self::ChooseCreatureType { .. }
+            | Self::ChooseColor { .. } => {}
+        }
+    }
+}
+
 /// The complete view one player is allowed to see: turn state, per-player facts, and the
 /// objects visible to them (all public zones + their own hand; opponents' hands and all
 /// libraries are counts only).
@@ -1049,6 +1124,7 @@ mod tests {
                 items: vec![ChoiceItem {
                     id: 4,
                     label: "Bear".to_string(),
+                    print: String::new(),
                     player: None,
                 }],
                 optional: false,
@@ -1068,6 +1144,7 @@ mod tests {
                 items: vec![ChoiceItem {
                     id: 0,
                     label: "Player 2".to_string(),
+                    print: String::new(),
                     player: Some(1),
                 }],
                 optional: false,
@@ -1089,6 +1166,7 @@ mod tests {
                 items: vec![ChoiceItem {
                     id: 4,
                     label: "Bear".to_string(),
+                    print: String::new(),
                     player: None,
                 }],
             })
@@ -1136,6 +1214,7 @@ mod tests {
                 items: vec![ChoiceItem {
                     id: 6,
                     label: "Bear".to_string(),
+                    print: String::new(),
                     player: None,
                 }],
             })
@@ -1186,6 +1265,7 @@ mod tests {
                 items: vec![ChoiceItem {
                     id: 7,
                     label: "Grizzly Bears".into(),
+                    print: String::new(),
                     player: None,
                 }],
             })
