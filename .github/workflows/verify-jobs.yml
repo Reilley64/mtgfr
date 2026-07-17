@@ -35,7 +35,7 @@ jobs:
         id: pass
         with:
           path: .ci-pass
-          key: verify-server-v1-${{ hashFiles('crates/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml') }}
+          key: verify-server-v1-${{ hashFiles('crates/**', 'proto/**', 'Cargo.toml', 'Cargo.lock', 'Toasty.toml', 'toasty/**', '.config/nextest.toml', 'justfile', '.github/workflows/verify-jobs.yml') }}
 
       - name: Skip — server hash already verified
         if: steps.pass.outputs.cache-hit == 'true'
