@@ -2,7 +2,7 @@
 
 import { useAtomRefresh, useAtomResource } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
-import { createEffect, type Resource } from "solid-js";
+import { type Accessor, createEffect, type JSX, type Resource, Show } from "solid-js";
 import type { Me } from "~/api/generated";
 import { meAtom } from "~/atoms";
 
@@ -22,4 +22,11 @@ export function useAuthGuard(): Resource<Me | null> {
     }
   });
   return user;
+}
+
+/** Mount children only once a session is known, with a non-null `Me`. Owns redirect + gate so
+ * protected screens don't each hand-roll `useAuthGuard` + `<Show>`. */
+export function RequireAuth(props: { children: (user: Accessor<Me>) => JSX.Element }) {
+  const user = useAuthGuard();
+  return <Show when={user()}>{(u) => props.children(u)}</Show>;
 }

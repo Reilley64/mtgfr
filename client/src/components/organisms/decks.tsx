@@ -14,7 +14,7 @@ import { Button, Felt, ListRow } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client, succeeded } from "~/effect/client";
-import { useAuthGuard } from "~/guard";
+import { RequireAuth } from "~/guard";
 import { lookupCardsByIds } from "~/lib/lookupCards";
 
 const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id), {})));
@@ -22,11 +22,8 @@ const logoutFn = Atom.fn(() => succeeded(client.logout({})));
 // Commander catalog lookup by Card id; hover art uses `commander_print` on the summary.
 const lookupCommandersFn = Atom.fn((ids: string[]) => lookupCardsByIds(ids));
 
-/** Wait for a session before mounting `decksAtom` — otherwise anonymous first visit races
- * `listDecks` (401) into the error boundary while the guard is still redirecting to /login. */
 export default function Decks() {
-  const user = useAuthGuard();
-  return <Show when={user()}>{(u) => <DecksSignedIn user={u()} />}</Show>;
+  return <RequireAuth>{(user) => <DecksSignedIn user={user()} />}</RequireAuth>;
 }
 
 function DecksSignedIn(props: { user: Me }) {

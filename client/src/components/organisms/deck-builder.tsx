@@ -29,7 +29,7 @@ import { Button, Felt, Field } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client } from "~/effect/client";
-import { useAuthGuard } from "~/guard";
+import { RequireAuth } from "~/guard";
 import { cn } from "~/lib/cn";
 import { commanderPrintForRow, formatReleasedAt, reconcileEntries } from "~/lib/deckBuilderPrint";
 import { lookupCardsByIds } from "~/lib/lookupCards";
@@ -118,11 +118,7 @@ const saveDeckFn = Atom.fn((req: { id: number | null; body: SaveDeckRequest }) =
 });
 
 export default function DeckBuilder() {
-  const user = useAuthGuard();
-  // Wait for a session before mounting atoms that hit auth'd endpoints (getDeck / search).
-  return <Show when={user()}>
-    <DeckBuilderSignedIn />
-  </Show>;
+  return <RequireAuth>{() => <DeckBuilderSignedIn />}</RequireAuth>;
 }
 
 function DeckBuilderSignedIn() {
@@ -565,7 +561,11 @@ function DeckBuilderSignedIn() {
             }}
             onPointerDown={(e) => {
               const title = known[commander.id]?.name ?? commander.id;
-              startMenuPress(title, [{ label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) }], e);
+              startMenuPress(
+                title,
+                [{ label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) }],
+                e,
+              );
             }}
             onPointerMove={moveMenuPress}
             onPointerUp={clearMenuPress}
@@ -574,9 +574,12 @@ function DeckBuilderSignedIn() {
             onContextMenu={(e) => {
               e.preventDefault();
               clearMenuPress();
-              openMenuAt(known[commander.id]?.name ?? commander.id, [
-                { label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) },
-              ], e.clientX, e.clientY);
+              openMenuAt(
+                known[commander.id]?.name ?? commander.id,
+                [{ label: "Choose print", run: () => openPrintPicker(commander.id, setCommanderPrint) }],
+                e.clientX,
+                e.clientY,
+              );
             }}
             onMouseMove={(e) => setHover({ id: commander.id, print: commander.print, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHover(null)}
