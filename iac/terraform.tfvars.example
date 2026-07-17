@@ -34,3 +34,4 @@ auth_secret = ""
 # Pin cloudflared to an explicit release — never "latest". Check
 # https://github.com/cloudflare/cloudflared/releases for the current stable tag.
 cloudflared_image = "cloudflare/cloudflared:2026.6.0"
+# cloudflared_replicas = 1  # default; use 2 only if you want connector HA
