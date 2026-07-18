@@ -1,6 +1,6 @@
 // BFF helpers for the lobby route: me/deck/seed over gRPC; version stays HTTP `/health/live`.
 
-import { GrpcCallError, grpcClientFor, httpStatusOf, type GrpcRequestEnv } from "~/wire/grpcClient";
+import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "~/wire/grpcClient";
 import type { SaveDeckRequest, SeedRequest, SeedResponse } from "~/wire/types";
 
 export function apiUpstream(): string {

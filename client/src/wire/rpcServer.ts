@@ -1,7 +1,7 @@
 // `/api/rpc` dispatcher: request shape in, outcome out — unit-testable without a Vinxi route.
 
 import * as Match from "effect/Match";
-import { GrpcCallError, grpcClientFor, httpStatusOf, type GrpcRequestEnv } from "~/wire/grpcClient";
+import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "~/wire/grpcClient";
 import { isAuthMethod, isCardsMethod, isGameMethod, isRpcGroup } from "~/wire/rpcs";
 import type { DeckError, IntentEnvelope, SaveDeckRequest, StreamFrame } from "~/wire/types";
 
