@@ -1,0 +1,43 @@
+# {R}: This creature gets +1/+0 until end of turn.
+# Mountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your
+# hand, then shuffle.)
+name = "Chartooth Cougar"
+otags = ["activate-from-hand", "alliteration", "bottomless-mana-sink", "cheaper-than-mv", "cycle-scg-5m-landcycler", "firebreathing", "tutor-land-mountain", "tutor-to-hand"]
+oracle = "{R}: This creature gets +1/+0 until end of turn.\nMountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)"
+set = "a25"
+subtypes = ["Cat", "Beast"]
+id = "717152c3-2082-49aa-9274-a1a6abe54b65"
+default_print = "03a32ab2-cc55-43fb-82d8-c51a3849b344"
+
+[cost]
+generic = 5
+red = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# {R}: This creature gets +1/+0 until end of turn.
+[[abilities]]
+timing = "activated"
+activation_cost = { red = 1 }
+
+# This creature gets +1/+0 until end of turn.
+[[abilities.effects]]
+type = "pump_self_until_end_of_turn"
+power = 1
+toughness = 0
+
+# Mountaincycling {2} ({2}, Discard this card: Search your library for a Mountain card, reveal it,
+# put it into your hand, then shuffle.)
+[hand_ability]
+
+[hand_ability.cost]
+generic = 2
+
+# Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.
+[[hand_ability.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Mountain"] }
+to_zone = "hand"

@@ -1,0 +1,34 @@
+# Fear (This creature can't be blocked except by artifact creatures and/or black creatures.)
+# When this creature enters, destroy target nonartifact, nonblack creature.
+# Evoke {1}{B} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)
+name = "Shriekmaw"
+id = "717bbb9d-0a5b-4979-a24b-9d54aac7657a"
+default_print = "ed2d62c2-85c9-4fd4-8a7e-0017640606be"
+otags = ["evoke", "removal-creature", "removal-destroy", "spot-removal"]
+oracle = "Fear (This creature can't be blocked except by artifact creatures and/or black creatures.)\nWhen this creature enters, destroy target nonartifact, nonblack creature.\nEvoke {1}{B} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)"
+set = "ecc"
+subtypes = ["Elemental"]
+keywords = ["fear"]
+
+[cost]
+generic = 4
+black = 1
+
+# Evoke {1}{B}
+[evoke]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 2
+
+# When this creature enters, destroy target nonartifact, nonblack creature.
+[[abilities]]
+timing = "etb"
+
+# destroy target nonartifact, nonblack creature.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "creature", exclude = "artifact", not_color = "black" } }

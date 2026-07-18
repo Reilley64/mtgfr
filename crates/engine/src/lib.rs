@@ -70,6 +70,14 @@ pub struct Game {
     /// (each becomes a [`PendingChoice::PayEchoOrSacrifice`]) after the ordinary trigger queue
     /// empties in [`Game::place_pending_triggers`].
     pub(crate) pending_echo: Vec<ObjectId>,
+    /// Graveyard cards whose Recover (CR 702.59) pay-or-exile choice is due but not yet placed —
+    /// queued once per qualifying creature death ([`Game::enqueue_triggers`]'s `MovedToGraveyard`
+    /// arm), drained one at a time (each becomes a [`PendingChoice::PayRecoverOrExile`]) after
+    /// [`pending_echo`](Self::pending_echo) empties in [`Game::place_pending_triggers`]. A card
+    /// popped after it already left the graveyard (an earlier trigger from the same simultaneous
+    /// batch of deaths already recovered or exiled it — CR 702.59a's ruling that only the first of
+    /// several simultaneous triggers has any effect) is silently skipped, not re-offered.
+    pub(crate) pending_recover: Vec<ObjectId>,
     /// A decision the engine is blocked on until the active chooser answers.
     pub(crate) pending_choice: Option<PendingChoice>,
     /// The steps of an [`Effect::Sequence`] still to run after the current pausing step
@@ -130,14 +138,17 @@ pub struct Game {
     /// Untap step alongside the per-player tallies. Feeds `Amount::PermanentsDiedThisTurn`
     /// (Ominous Harvest's Gravestorm).
     pub(crate) permanents_died_this_turn: u32,
+    /// `(source, victim)` pairs recorded at every creature-damage choke this turn — combat or
+    /// noncombat alike (CR 510.2 / 120.3/506) — feeding
+    /// [`Trigger::CreatureDealtDamageByThisDies`] (Vampiric Dragon: "a creature dealt damage by
+    /// this creature this turn dies"). `victim` is the object id it held *at damage time*; a
+    /// creature that left and re-entered the battlefield between the damage and its death is a
+    /// new object (CR 400.7) and rightly won't match. Reset alongside
+    /// [`permanents_died_this_turn`](Self::permanents_died_this_turn) at every Untap step.
+    pub(crate) damaged_this_turn: Vec<(ObjectId, ObjectId)>,
     /// Resolution-local "this way" scratch (DestroyAll / ExileAll / mill / council / edict riders).
     /// Not turn-scoped — see [`resolution::ResolutionFrame`].
     pub(crate) resolution_frame: resolution::ResolutionFrame,
-    /// Controllers owed 2 life by Serra Paragon's granted rider (CR 118.9) for a permanent just
-    /// exiled on death this event batch — captured at the [`Event::MovedToExile`] choke (the
-    /// permanent's `serra_recursion` tag is gone once it's moved) and drained into
-    /// [`Event::LifeChanged`] by the SBA fixpoint sweep ([`Game::sweep_state_based_actions`]).
-    pub(crate) pending_serra_lifegain: Vec<PlayerId>,
     /// Memoized effective P/T and keywords per object; invalidated on relevant [`Event`]s.
     pub(crate) characteristics_cache: characteristics_cache::CharacteristicsCacheCell,
     /// `(target, source)` pairs where `target` has gained `source`'s other abilities until end of
@@ -242,7 +253,11 @@ impl Game {
                     replicate_count,
                 )?,
                 Intent::PlayLand { player, object } => self.play_land(player, object)?,
-                Intent::Cycle { player, card } => self.cycle(player, card)?,
+                Intent::Cycle {
+                    player,
+                    card,
+                    sacrifice,
+                } => self.cycle(player, card, sacrifice)?,
                 Intent::ActivateHandAbility { player, card } => {
                     self.activate_hand_ability(player, card)?
                 }
@@ -276,8 +291,17 @@ impl Game {
                     ability_index,
                     target,
                     sacrifice,
+                    discard_cost,
                     x,
-                } => self.activate_ability(player, object, ability_index, target, sacrifice, x)?,
+                } => self.activate_ability(
+                    player,
+                    object,
+                    ability_index,
+                    target,
+                    sacrifice,
+                    discard_cost,
+                    x,
+                )?,
                 Intent::DeclareAttackers { player, attackers } => {
                     self.declare_attackers(player, &attackers)?
                 }
@@ -392,9 +416,19 @@ impl Game {
                 // ponytail: a one-click/take-action activation picks no `{X}` (x = 0) — no pool
                 // card has an `{X}`-cost activated ability, so the action list never offers one.
                 // Thread a chosen X through here when a card first needs it.
-                self.activate_ability(player, source, ability, target, sacrifice, 0)
+                self.activate_ability(
+                    player,
+                    source,
+                    ability,
+                    target,
+                    sacrifice,
+                    discard_cost.to_vec(),
+                    0,
+                )
             }
-            MeaningfulAction::Cycle { card } => self.cycle(player, card),
+            MeaningfulAction::Cycle { card } => {
+                self.cycle(player, card, sacrifice.first().copied())
+            }
             MeaningfulAction::ActivateHandAbility { card } => {
                 self.activate_hand_ability(player, card)
             }
@@ -694,16 +728,21 @@ mod refresh_actions_tests {
             abilities: &[],
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -722,6 +761,7 @@ mod refresh_actions_tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 
@@ -795,16 +835,21 @@ mod refresh_actions_tests {
                 abilities: &[],
                 identity_pips: &[],
                 colors: &[],
+                devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                free_cast_if: None,
+                cast_only_during_combat: false,
                 approximates: None,
                 oracle: None,
                 set: "",
                 subtypes: &[],
                 otags: &[],
                 cycling: None,
+                cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                recover: None,
                 bestow: None,
                 morph: None,
                 evoke: None,
@@ -823,6 +868,7 @@ mod refresh_actions_tests {
                 encore: None,
                 hand_ability: None,
                 may_choose_not_to_untap: false,
+                dredge: None,
             },
         );
         game.refresh_actions();

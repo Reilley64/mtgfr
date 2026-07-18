@@ -1,0 +1,25 @@
+# Search your library for up to three creature cards, put them into your graveyard, then shuffle.
+name = "Buried Alive"
+id = "8203c621-a1a0-4865-8c9a-0d4064c86107"
+default_print = "76878b19-2916-4f3f-bee5-20846bc9e2db"
+otags = ["tutor-creature", "tutor-to-graveyard"]
+oracle = "Search your library for up to three creature cards, put them into your graveyard, then shuffle."
+set = "mh3"
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "sorcery"
+
+# Search your library for up to three creature cards, put them into your graveyard, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# Search your library for up to three creature cards, put them into your graveyard, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "creature"
+to_zone = "graveyard"
+count = 3

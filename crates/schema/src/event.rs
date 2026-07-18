@@ -60,6 +60,12 @@ pub enum VisibleEvent {
         object: ObjectId,
         level: u8,
     },
+    /// A permanent flipped (CR 712 — a Kamigawa flip card): it now uses its back face's
+    /// characteristics. Public battlefield status, like `PreparedChanged`; the client swaps to the
+    /// back face from its own card data.
+    Flipped {
+        object: ObjectId,
+    },
     /// A permanent phased out (CR 702.26 — Guardian of Faith). Public battlefield status, like
     /// `PreparedChanged`; anything attached to it phased out with it (the client mirrors the
     /// attachment cascade from its own board state).
@@ -80,6 +86,13 @@ pub enum VisibleEvent {
     /// An as-enters "choose a color" choice was answered (CR 614.12/700.9-style — Flickering
     /// Ward). Public battlefield status, like `CreatureTypeChosen`. `color` is the WUBRG index.
     ColorChosen {
+        object: ObjectId,
+        color: u8,
+    },
+    /// A "becomes the color of your choice until end of turn" choice was answered (CR 613.3c
+    /// layer 5 — Wild Mongrel). Public battlefield status, like `ColorChosen`; `color` is the
+    /// WUBRG index. Cleared alongside the other until-end-of-turn boosts (`TempBoostsEnded`).
+    ColorSetUntilEndOfTurn {
         object: ObjectId,
         color: u8,
     },
@@ -427,6 +440,13 @@ pub enum VisibleEvent {
     CombatDamageDealtToPlayer {
         source: ObjectId,
         player: u8,
+        amount: i32,
+    },
+    /// A creature dealt combat damage to another creature (public — combat damage is announced to
+    /// the table, CR 510.1c/510.4) — the creature-target twin of `CombatDamageDealtToPlayer`.
+    CombatDamageDealtToCreature {
+        source: ObjectId,
+        target: ObjectId,
         amount: i32,
     },
     /// `source` dealt noncombat damage to `player` (public — damage to a player is announced,

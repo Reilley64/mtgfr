@@ -94,12 +94,14 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             ability_index,
             target,
             sacrifice,
+            discard_cost,
         } => Intent::ActivateAbility(pb::WireIntentActivateAbility {
             player: u32::from(player),
             object,
             ability_index,
             target: target.map(wire_target_to_pb),
             sacrifice,
+            discard_cost,
         }),
         WireIntent::DeclareAttackers { player, attackers } => {
             Intent::DeclareAttackers(pb::WireIntentDeclareAttackers {
@@ -210,6 +212,18 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 choice,
             })
         }
+        WireIntent::PutCreatureFromHand { player, choice } => {
+            Intent::PutCreatureFromHand(pb::WireIntentPutCreatureFromHand {
+                player: u32::from(player),
+                choice,
+            })
+        }
+        WireIntent::ChooseDredge { player, dredger } => {
+            Intent::ChooseDredge(pb::WireIntentChooseDredge {
+                player: u32::from(player),
+                dredger,
+            })
+        }
         WireIntent::ChooseExiledWithCard { player, choice } => {
             Intent::ChooseExiledWithCard(pb::WireIntentChooseExiledWithCard {
                 player: u32::from(player),
@@ -280,9 +294,14 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 copy,
             })
         }
-        WireIntent::Cycle { player, card } => Intent::Cycle(pb::WireIntentCycle {
+        WireIntent::Cycle {
+            player,
+            card,
+            sacrifice,
+        } => Intent::Cycle(pb::WireIntentCycle {
             player: u32::from(player),
             card,
+            sacrifice,
         }),
         WireIntent::ActivateHandAbility { player, card } => {
             Intent::ActivateHandAbility(pb::WireIntentActivateHandAbility {
@@ -448,12 +467,14 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             ability_index,
             target,
             sacrifice,
+            discard_cost,
         }) => WireIntent::ActivateAbility {
             player: u8_trunc(player),
             object,
             ability_index,
             target: opt_wire_target_from_pb(target)?,
             sacrifice,
+            discard_cost,
         },
         Intent::DeclareAttackers(pb::WireIntentDeclareAttackers { player, attackers }) => {
             WireIntent::DeclareAttackers {
@@ -564,6 +585,18 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
                 choice,
             }
         }
+        Intent::PutCreatureFromHand(pb::WireIntentPutCreatureFromHand { player, choice }) => {
+            WireIntent::PutCreatureFromHand {
+                player: u8_trunc(player),
+                choice,
+            }
+        }
+        Intent::ChooseDredge(pb::WireIntentChooseDredge { player, dredger }) => {
+            WireIntent::ChooseDredge {
+                player: u8_trunc(player),
+                dredger,
+            }
+        }
         Intent::ChooseExiledWithCard(pb::WireIntentChooseExiledWithCard { player, choice }) => {
             WireIntent::ChooseExiledWithCard {
                 player: u8_trunc(player),
@@ -636,9 +669,14 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
                 copy,
             }
         }
-        Intent::Cycle(pb::WireIntentCycle { player, card }) => WireIntent::Cycle {
+        Intent::Cycle(pb::WireIntentCycle {
+            player,
+            card,
+            sacrifice,
+        }) => WireIntent::Cycle {
             player: u8_trunc(player),
             card,
+            sacrifice,
         },
         Intent::ActivateHandAbility(pb::WireIntentActivateHandAbility { player, card }) => {
             WireIntent::ActivateHandAbility {

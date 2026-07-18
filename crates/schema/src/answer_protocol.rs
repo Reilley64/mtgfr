@@ -45,7 +45,14 @@ pub enum Answer {
     DeclineUntap {
         keep_tapped: Vec<ObjectId>,
     },
+    Dredge {
+        /// `Some(dredger)` dredges that graveyard card; `None` declines and draws (CR 702.52).
+        dredger: Option<ObjectId>,
+    },
     PutLand {
+        choice: Option<ObjectId>,
+    },
+    PutCreature {
         choice: Option<ObjectId>,
     },
     ReturnLand {
@@ -145,7 +152,9 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
             player,
             keep_tapped,
         },
+        Answer::Dredge { dredger } => WireIntent::ChooseDredge { player, dredger },
         Answer::PutLand { choice } => WireIntent::PutLandFromHand { player, choice },
+        Answer::PutCreature { choice } => WireIntent::PutCreatureFromHand { player, choice },
         Answer::ReturnLand { choice } => WireIntent::ReturnLandOrSacrifice {
             player,
             land: choice,
@@ -193,11 +202,13 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::ChooseTargetPlayers { player, .. }
         | PendingChoiceView::MayYesNo { player, .. }
         | PendingChoiceView::DeclineUntap { player, .. }
+        | PendingChoiceView::ChooseDredge { player, .. }
         | PendingChoiceView::PayCost { player, .. }
         | PendingChoiceView::PayOrCounter { player, .. }
         | PendingChoiceView::PayOrControllerDraws { player, .. }
         | PendingChoiceView::ChooseCounteredSpellDestination { player, .. }
         | PendingChoiceView::PayEchoOrSacrifice { player, .. }
+        | PendingChoiceView::PayRecoverOrExile { player, .. }
         | PendingChoiceView::SacrificeUnlessPay { player, .. }
         | PendingChoiceView::SacrificeUnlessReturnLand { player, .. }
         | PendingChoiceView::AssignCombatDamage { player, .. }
@@ -223,6 +234,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::MayDiscard { player, .. }
         | PendingChoiceView::Discard { player, .. }
         | PendingChoiceView::PutLandFromHand { player, .. }
+        | PendingChoiceView::PutCreatureFromHand { player, .. }
         | PendingChoiceView::CastCreatureFaceDown { player, .. }
         | PendingChoiceView::ChooseExiledWithCard { player, .. }
         | PendingChoiceView::ChooseExiledWithCardToCast { player, .. }

@@ -1,0 +1,34 @@
+# Sacrifice this creature: Put a +1/+1 counter on target creature.
+# Dredge 3 (If you would draw a card, you may mill three cards instead. If you do, return this card from your
+# graveyard to your hand.)
+name = "Shambling Shell"
+id = "9c50f6b1-8850-4b08-a994-3ccc17f25b83"
+default_print = "807557f3-5265-448f-9dbe-3f6688657284"
+oracle = "Sacrifice this creature: Put a +1/+1 counter on target creature.\nDredge 3 (If you would draw a card, you may mill three cards instead. If you do, return this card from your graveyard to your hand.)"
+set = "rvr"
+subtypes = ["Plant", "Zombie"]
+
+# Dredge 3 (If you would draw a card, you may mill three cards instead. If you do, return this
+# card from your graveyard to your hand.)
+dredge = 3
+
+[cost]
+generic = 1
+black = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 1
+
+# Sacrifice this creature: Put a +1/+1 counter on target creature.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Put a +1/+1 counter on target creature.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "creature"

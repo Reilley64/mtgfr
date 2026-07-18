@@ -8,9 +8,9 @@ mod decks_svc;
 mod game_svc;
 pub(crate) mod map;
 mod tables_svc;
-mod trace;
 #[cfg(test)]
 mod tests;
+mod trace;
 
 /// Generated types and service traits from `proto/mtgfr/v1/*.proto`.
 pub mod pb {

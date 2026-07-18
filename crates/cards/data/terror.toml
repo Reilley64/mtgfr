@@ -1,0 +1,23 @@
+# Destroy target nonartifact, nonblack creature. It can't be regenerated.
+name = "Terror"
+id = "b81f041d-98db-4408-9472-c483e4a502bc"
+default_print = "a3870eba-4e8f-414d-817c-14ec97f6a93c"
+set = "dmr"
+oracle = "Destroy target nonartifact, nonblack creature. It can't be regenerated."
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "instant"
+
+# Destroy target nonartifact, nonblack creature. It can't be regenerated.
+[[abilities]]
+timing = "spell"
+
+# Destroy target nonartifact, nonblack creature. It can't be regenerated.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "creature", exclude = "artifact", not_color = "black" } }
+cant_be_regenerated = true

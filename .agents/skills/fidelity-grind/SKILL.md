@@ -118,6 +118,24 @@ form when the answer shape matches; the engine dispatches by pending-choice kind
 `MeaningfulAction`s surface via the existing generic tiles/radial. Gate:
 `npx tsc --noEmit` clean + client tests green.
 
+## Phase 5.5 — Ship the deck as a precon
+
+Every grind deck ends as a read-only in-app precon, so players get the deck, not just the
+pool that supports it. After client catch-up (the wire is settled by then):
+
+- Write `decklists/<snake_slug>.md` — the frozen target list (commander + grouped tables,
+  totals summing to 99), sourced from the Archidekt fetch.
+- Generate `crates/server/fixtures/decks/<snake_slug>.json` from that list: `commander` /
+  `commander_print` (the commander card's `id` / `default_print` from its TOML) and one
+  `{id, count, print}` entry per non-commander card (basics carry their count), mapped
+  through the pool TOMLs. Do not use `tooling/rewrite-precon-fixtures.mjs` for non-soc
+  decks — it prefers `soc` prints; the TOMLs' `default_print` is already right.
+- Register it in `crates/server/src/precons.rs`: one `Source` entry with the **next
+  negative id** (grow the `SOURCES` array length), name it after the deck.
+- Add the fixture to `FIXTURES` and an `<slug>_is_a_legal_commander_deck` acceptance test
+  in `crates/server/src/decks.rs` — deck legality is itself a frame gate.
+- The client needs nothing: precons flow through the same deck-list wire.
+
 ## Phase 6 — Final verify + PR
 
 1. Re-run the deck checklist: every card checked, or carrying a precise residual note the

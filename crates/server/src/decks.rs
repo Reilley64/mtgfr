@@ -208,7 +208,8 @@ mod tests {
 
 #[cfg(test)]
 mod soc_deck_tests {
-    //! Acceptance tests for the five `soc` precon decks (fixtures in `fixtures/decks/`).
+    //! Acceptance tests for the precon decks (fixtures in `fixtures/decks/`): the five `soc`
+    //! decks plus one per fidelity-grind deck.
 
     use super::{SeatDeck, seed_game};
     use engine::{Game, Intent, PendingChoice, PlayerId};
@@ -222,12 +223,14 @@ mod soc_deck_tests {
         cards: Vec<DeckCardEntry>,
     }
 
-    const FIXTURES: [&str; 5] = [
+    const FIXTURES: [&str; 7] = [
         "silverquill_influence",
         "prismari_artistry",
         "witherbloom_pestilence",
         "lorehold_spirit",
         "quandrix_unlimited",
+        "enchantress_rubinia",
+        "deathdancer_xira",
     ];
 
     fn load(fixture: &str) -> DeckFixture {
@@ -298,6 +301,16 @@ mod soc_deck_tests {
     #[test]
     fn quandrix_unlimited_is_a_legal_commander_deck() {
         assert_legal("quandrix_unlimited");
+    }
+
+    #[test]
+    fn enchantress_rubinia_is_a_legal_commander_deck() {
+        assert_legal("enchantress_rubinia");
+    }
+
+    #[test]
+    fn deathdancer_xira_is_a_legal_commander_deck() {
+        assert_legal("deathdancer_xira");
     }
 
     fn seed_four(first: &str) -> Game {

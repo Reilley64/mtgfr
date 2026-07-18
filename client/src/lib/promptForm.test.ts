@@ -59,6 +59,7 @@ const ALL_KINDS: PendingChoiceView["kind"][] = [
   "choose_counter_target_for_player",
   "choose_ability_targets",
   "divide_counters",
+  "choose_dredge",
 ];
 
 describe("promptChrome", () => {
@@ -74,6 +75,7 @@ describe("promptChrome", () => {
     expect(isFullscreenPrompt("may_yes_no")).toBe(false);
     expect(promptChrome("choose_mode")).toBe("panel");
     expect(promptChrome("dance_exile_more")).toBe("panel");
+    expect(promptChrome("choose_dredge")).toBe("fullscreen");
   });
 });
 

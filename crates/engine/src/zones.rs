@@ -114,6 +114,57 @@ impl Game {
         events
     }
 
+    /// The dredgers `player` may use to replace a single draw (CR 702.52): each card in their own
+    /// graveyard carrying `dredge = Some(n)` whose N does not exceed the library size (CR 702.52a
+    /// makes dredge illegal when the library is too small). Returns `(graveyard object id, N)` per
+    /// eligible dredger; empty when none qualify, so the single-draw choke draws normally.
+    pub(crate) fn dredge_options(&self, player: PlayerId) -> Vec<(ObjectId, u8)> {
+        let library = self.players[player.0 as usize].library.len();
+        self.graveyard_of(player)
+            .into_iter()
+            .filter_map(|id| {
+                let n = self.def_of(id).dredge?;
+                (library >= n as usize).then_some((id, n))
+            })
+            .collect()
+    }
+
+    /// Draw `remaining` cards for `player` one at a time, each individually replaceable by dredge
+    /// (CR 702.52 — every draw is its own event, CR 121.2). Pauses on the first draw for which
+    /// `player` has an eligible dredger, raising [`PendingChoice::ChooseDredge`] carrying `remaining`;
+    /// [`Game::answer_choose_dredge`] resolves that one draw and re-enters here for `remaining - 1`,
+    /// re-checking eligibility against the now-live graveyard/library. When no dredger qualifies the
+    /// rest draw in one batch — no un-milled draw can newly create a dredger, so batching there is
+    /// equivalent to drawing them singly. `from_draw_step` is threaded onto the pause to pick the
+    /// answer handler's resume path.
+    pub(crate) fn draw_with_dredge(
+        &mut self,
+        player: PlayerId,
+        remaining: u32,
+        from_draw_step: bool,
+        events: &mut Vec<Event>,
+    ) {
+        if remaining == 0 {
+            return;
+        }
+        let eligible = self.dredge_options(player);
+        if eligible.is_empty() {
+            let evs = self.draw_events(player, remaining);
+            self.apply_all(&evs);
+            events.extend(evs);
+            return;
+        }
+        crate::pending::raise_choice(
+            self,
+            PendingChoice::ChooseDredge {
+                player,
+                eligible,
+                remaining: remaining as u8,
+                from_draw_step,
+            },
+        );
+    }
+
     /// The events for `player` drawing `count` cards — pure (the caller applies them).
     /// Each successful draw mints a new hand-object id (`next + i`), matching the arena
     /// slots `apply` will push into.

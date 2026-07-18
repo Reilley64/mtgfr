@@ -170,6 +170,25 @@ impl Game {
                 }]
             }
 
+            // Real damage to the ability's own controller — mirrors `DealDamage`'s
+            // `Target::Player` arm, substituting `controller` for the chosen target.
+            Effect::DealDamageToSelf { amount } => {
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                let mut events = vec![Event::LifeChanged {
+                    player: controller,
+                    amount: -amount,
+                    source: Some(source),
+                }];
+                // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                if amount > 0 {
+                    events.push(Event::DamageDealtToPlayer {
+                        source,
+                        player: controller,
+                        amount,
+                    });
+                }
+                events
+            }
             _ => unreachable!("damage family mint received a non-family effect"),
         }
     }

@@ -1,0 +1,34 @@
+# When this land enters, sacrifice it unless you return a non-Lair land you control to its
+# owner's hand.
+# {T}: Add {B}, {R}, or {G}.
+name = "Darigaaz's Caldera"
+otags = ["activated-ability", "cycle-pls-lair", "namesake-spell", "triggered-ability"]
+oracle = "When this land enters, sacrifice it unless you return a non-Lair land you control to its owner's hand.\n{T}: Add {B}, {R}, or {G}."
+set = "dmr"
+id = "19b58ec9-bb88-4193-8ea8-c8f09ceec1ed"
+default_print = "27b1ad2d-f02e-4e6b-a49a-f65d174bb0fc"
+identity = ["black", "red", "green"]
+
+[kind]
+type = "land"
+subtypes = ["Lair"]
+
+# When this land enters, sacrifice it unless you return a non-Lair land you control to its
+# owner's hand.
+[[abilities]]
+timing = "etb"
+
+# sacrifice it unless you return a non-Lair land you control to its owner's hand.
+[[abilities.effects]]
+type = "sacrifice_self_unless_return_land"
+filter = { types = "land", controller = "you", nonlair = true }
+
+# {T}: Add {B}, {R}, or {G}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {B}, {R}, or {G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["black", "red", "green"]]

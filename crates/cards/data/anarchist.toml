@@ -1,0 +1,26 @@
+# When this creature enters, you may return target sorcery card from your graveyard to your hand.
+name = "Anarchist"
+subtypes = ["Human", "Rebel"]
+id = "6a439132-fc31-4a70-9043-462383458b2c"
+default_print = "11b167f0-a881-40ab-847e-c3f51528c414"
+set = "p02"
+oracle = "When this creature enters, you may return target sorcery card from your graveyard to your hand."
+
+[cost]
+generic = 4
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, you may return target sorcery card from your graveyard to your hand.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# you may return target sorcery card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "sorcery" } }

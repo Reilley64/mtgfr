@@ -1,0 +1,25 @@
+# Destroy target artifact or creature. It can't be regenerated.
+name = "Putrefy"
+otags = ["cycle-mm3-draft-signpost", "cycle-rvr-u-two-color", "hate-regenerate", "removal-artifact", "removal-creature", "removal-destroy", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Destroy target artifact or creature. It can't be regenerated."
+set = "ecc"
+id = "9b271430-f53d-42d6-a547-2f286dd9bcb6"
+default_print = "ad6ed9f1-2014-49e2-91c6-2b55c8d60cdc"
+
+[cost]
+generic = 1
+black = 1
+green = 1
+
+[kind]
+type = "instant"
+
+# Destroy target artifact or creature. It can't be regenerated.
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact or creature. It can't be regenerated.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact_or_creature" } }
+cant_be_regenerated = true

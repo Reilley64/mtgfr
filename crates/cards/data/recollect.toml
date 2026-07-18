@@ -1,0 +1,23 @@
+# Return target card from your graveyard to your hand.
+name = "Recollect"
+otags = ["hand-neutral", "regrowth-any", "single-english-word-name", "single-target-instant-sorcery"]
+oracle = "Return target card from your graveyard to your hand."
+set = "m19"
+id = "5b38fafb-3999-46dc-928b-1677625c1943"
+default_print = "f127214f-3e91-4988-b593-1568d0ae1718"
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Return target card from your graveyard to your hand.
+[[abilities]]
+timing = "spell"
+
+# Return target card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "any_card" } }

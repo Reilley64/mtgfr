@@ -109,8 +109,17 @@ impl Game {
         // choice pending with nothing tapped.
         self.settle_payment(player, cost, None, None, &mut events)?;
         self.finish_answer();
-        // A targeted paid trigger pauses to choose its target; a targetless one goes on the stack.
-        self.place_targeted_ability(player, source, effect, &mut events);
+        if let Effect::CopyThisSpell { count, .. } = effect {
+            // Chain Lightning's reflexive rider (`Effect::MayPayToCopyThis`): mint inline as part
+            // of the still-resolving spell, matching `Game::answer_may`'s optional-copy shape,
+            // rather than placing a fresh ability — `source` is that still-resolving spell, and
+            // the copy mints under `player`, the PAYER (this pause's reflexively-targeted damaged
+            // player/controller), not the ability's own controller.
+            self.mint_spell_copies(count, player, source, None, 0, &mut events);
+        } else {
+            // A targeted paid trigger pauses to choose its target; a targetless one goes on the stack.
+            self.place_targeted_ability(player, source, effect, &mut events);
+        }
         Ok(events)
     }
 
@@ -289,6 +298,45 @@ impl Game {
         // CR 702.31e: this upkeep is now "since your last upkeep" — echo won't ask again.
         self.permanent_mut(source).echo_unpaid = false;
         self.finish_answer();
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::PayRecoverOrExile`]: pay Recover's cost to return `source` from
+    /// the graveyard to hand, or decline and exile it (CR 702.59a). The graveyard-scoped twin of
+    /// [`Game::pay_echo`] — same [`Intent::PayOptionalCost`] shape and "declining does something"
+    /// polarity (there, sacrificing a battlefield permanent; here, exiling a graveyard card, so
+    /// the events are pushed directly rather than routed through `Effect::SacrificeObject`, which
+    /// only knows battlefield objects). An unaffordable "pay" leaves the choice pending so the
+    /// player can still decline.
+    pub(crate) fn pay_recover(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PayRecoverOrExile { source, cost, .. }) =
+            self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+
+        let mut events = Vec::new();
+        if !pay {
+            self.finish_answer();
+            let event = self.exile_or_command(source, self.next_object_id());
+            self.push_apply(&mut events, event);
+            return Ok(events);
+        }
+        // Settle the mana (auto-tapping lands for a pool shortfall); unaffordable leaves the
+        // choice pending with nothing tapped.
+        self.settle_payment(player, cost, None, None, &mut events)?;
+        self.finish_answer();
+        self.push_apply(
+            &mut events,
+            Event::ReturnedToHand {
+                card: self.next_object_id(),
+                from: source,
+            },
+        );
         Ok(events)
     }
 

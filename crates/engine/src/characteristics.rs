@@ -354,7 +354,17 @@ impl Game {
     /// [`Permanent::added_colors_eot`]). Used to test a spell/creature against a protected
     /// permanent (a "red" source has a red pip) and by color-scoped anthems ([`Game::colors_of`]
     /// callers).
+    ///
+    /// A CR 613.3c layer-5 color-SET ([`Permanent::set_color_eot`] — Wild Mongrel's "becomes the
+    /// color of your choice until end of turn") wins ahead of the derived/added colors below: it
+    /// *replaces* them rather than unioning, so a green Mongrel that becomes black reads as black
+    /// only, never green-and-black.
     pub fn colors_of(&self, object: ObjectId) -> [bool; Color::COUNT] {
+        if let Some(color) = self.as_permanent(object).and_then(|p| p.set_color_eot) {
+            let mut colors = [false; Color::COUNT];
+            colors[color.index()] = true;
+            return colors;
+        }
         let mut colors = color_identity(self.def_of(object));
         if let Some(p) = self.as_permanent(object) {
             for color in p.added_colors_eot {
@@ -987,7 +997,9 @@ impl Game {
         if !self.effective_types(object).intersects(TypeSet::CREATURE) {
             return None;
         }
-        match p.def.kind {
+        // CR 712: a flipped permanent's base P/T comes from its back face — read through `def_of`
+        // (not `p.def`) so the flipped numbers feed the CR 613 layers.
+        match self.def_of(object).kind {
             CardKind::Creature {
                 power, toughness, ..
             } => Some((power, toughness)),
@@ -1027,6 +1039,17 @@ impl Game {
             layers.push(stamp(PtLayerKind::PtDelta {
                 power: p.plus_counters,
                 toughness: p.plus_counters,
+            }));
+            // CR 121.4/122.1: a -1/-1 counter subtracts 1/1, the mirror of a +1/+1 counter's
+            // addition above.
+            // ponytail: skips CR 704.5r's +1/+1 ↔ -1/-1 annihilation SBA — both kinds are tracked
+            // independently rather than one signed pool, so a permanent could in principle carry
+            // both at once without them canceling. Unobservable today (no pool card puts both
+            // kinds on one creature); add the SBA sweep when one does.
+            let minus_counters = p.kind_counters[CounterKind::MinusOneMinusOne as usize] as i32;
+            layers.push(stamp(PtLayerKind::PtDelta {
+                power: -minus_counters,
+                toughness: -minus_counters,
             }));
             layers.push(stamp(PtLayerKind::PtDelta {
                 power: p.temp_power,
@@ -1939,16 +1962,21 @@ mod cache_tests {
             abilities: &[],
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -1969,6 +1997,7 @@ mod cache_tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 
@@ -2015,16 +2044,21 @@ mod cache_tests {
             abilities: ABILITIES,
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -2045,6 +2079,7 @@ mod cache_tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 
@@ -2177,16 +2212,21 @@ mod cache_tests {
             abilities: &[],
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -2205,6 +2245,7 @@ mod cache_tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 
@@ -2311,16 +2352,21 @@ mod characteristic_query_tests {
             abilities: &[],
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -2339,6 +2385,7 @@ mod characteristic_query_tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 
@@ -2366,16 +2413,21 @@ mod characteristic_query_tests {
             abilities: &[],
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -2394,6 +2446,7 @@ mod characteristic_query_tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 
@@ -2452,16 +2505,21 @@ mod characteristic_query_tests {
                 abilities: &[],
                 identity_pips: &[],
                 colors: &[],
+                devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                free_cast_if: None,
+                cast_only_during_combat: false,
                 approximates: None,
                 oracle: None,
                 set: "",
                 subtypes: &[],
                 otags: &[],
                 cycling: None,
+                cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                recover: None,
                 bestow: None,
                 morph: None,
                 evoke: None,
@@ -2480,6 +2538,7 @@ mod characteristic_query_tests {
                 encore: None,
                 hand_ability: None,
                 may_choose_not_to_untap: false,
+                dredge: None,
             },
         );
         let colorless = game.spawn_on_battlefield(P0, creature_with(&[]));
@@ -2526,16 +2585,21 @@ mod characteristic_query_tests {
                 abilities: &[],
                 identity_pips: &[],
                 colors: &[],
+                devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                free_cast_if: None,
+                cast_only_during_combat: false,
                 approximates: None,
                 oracle: None,
                 set: "",
                 subtypes: &[],
                 otags: &[],
                 cycling: None,
+                cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                recover: None,
                 bestow: None,
                 morph: None,
                 evoke: None,
@@ -2554,6 +2618,7 @@ mod characteristic_query_tests {
                 encore: None,
                 hand_ability: None,
                 may_choose_not_to_untap: false,
+                dredge: None,
             },
         );
         assert!(game.damage_prevented_by_protection(knight, Some(black_source)));
@@ -2598,16 +2663,21 @@ mod characteristic_query_tests {
                 abilities: &[],
                 identity_pips: &[],
                 colors: &[],
+                devoid: false,
                 enters_tapped: false,
                 enters_tapped_unless: None,
+                free_cast_if: None,
+                cast_only_during_combat: false,
                 approximates: None,
                 oracle: None,
                 set: "",
                 subtypes: &[],
                 otags: &[],
                 cycling: None,
+                cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                recover: None,
                 bestow: None,
                 morph: None,
                 evoke: None,
@@ -2626,6 +2696,7 @@ mod characteristic_query_tests {
                 encore: None,
                 hand_ability: None,
                 may_choose_not_to_untap: false,
+                dredge: None,
             },
         );
         assert_eq!(

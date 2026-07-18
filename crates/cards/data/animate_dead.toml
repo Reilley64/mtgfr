@@ -3,11 +3,6 @@
 # creature put onto the battlefield with this Aura." Return enchanted creature card to the battlefield under your
 # control and attach this Aura to it. When this Aura leaves the battlefield, that creature's controller sacrifices it.
 # Enchanted creature gets -1/-0.
-# ponytail: typed as an enchantment, not an aura kind — the aura resolution path expects a
-# battlefield host to already exist to attach to, which a graveyard card isn't yet. The printed
-# "loses/gains enchant ability" self-rewrite is modeled implicitly: this Aura just attaches to
-# the creature it reanimates and stays (CR 303.4 — nothing ever detaches it, so the rewrite has
-# no observable effect).
 name = "Animate Dead"
 id = "c0d8fef4-65f4-4769-982d-b397d2b7e977"
 default_print = "cc0c2bab-4392-4e7b-9d14-2901f4ffbae8"
@@ -16,14 +11,14 @@ oracle = "Enchant creature card in a graveyard\nWhen this Aura enters, if it's o
 set = "soc"
 subtypes = ["Aura"]
 enchant_graveyard = true
-approximates = "typed as an enchantment, not an aura kind, since the aura resolution path needs an existing battlefield host to attach to; the printed \"loses/gains enchant ability\" self-rewrite is modeled implicitly as staying attached rather than as a literal ability rewrite"
+approximates = "the printed \"loses/gains enchant ability\" self-rewrite is modeled implicitly: this Aura just attaches to the creature it reanimates and stays (CR 303.4 — nothing ever detaches it, so the rewrite has no observable effect)"
 
 [cost]
 generic = 1
 black = 1
 
 [kind]
-type = "enchantment"
+type = "aura"
 
 # When this Aura enters, if it's on the battlefield, it loses "enchant creature card in a
 # graveyard" and gains "enchant creature put onto the battlefield with this Aura." Return

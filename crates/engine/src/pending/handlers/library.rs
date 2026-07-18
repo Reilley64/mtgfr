@@ -303,29 +303,40 @@ impl Game {
         Ok(events)
     }
 
-    /// Answer a [`PendingChoice::ChooseColor`] (CR 614.12/700.9-style "as ~ enters, choose a
-    /// color" — Flickering Ward): store the chosen `color` on `source`
-    /// ([`Permanent::chosen_color`]). Any of the five colors is a legal answer (no game-state
-    /// legality to violate), so `color` is taken as given. `_player` isn't needed beyond `submit`'s
-    /// choice-gate actor check.
+    /// Answer a [`PendingChoice::ChooseColor`] — either an as-enters choice (CR 614.12/700.9-style
+    /// — Flickering Ward: stores `color` on `source`'s indefinite [`Permanent::chosen_color`]) or
+    /// a resolution-time color-SET (CR 613.3c — Wild Mongrel: stores it on `source`'s
+    /// until-end-of-turn [`Permanent::set_color_eot`] instead, per the pause's `until_end_of_turn`
+    /// flag). Any of the five colors is a legal answer (no game-state legality to violate), so
+    /// `color` is taken as given. `_player` isn't needed beyond `submit`'s choice-gate actor check.
     pub(crate) fn choose_color(
         &mut self,
         _player: PlayerId,
         color: Color,
     ) -> Result<Vec<Event>, Reject> {
-        let Some(PendingChoice::ChooseColor { source, .. }) = self.pending_choice.clone() else {
+        let Some(PendingChoice::ChooseColor {
+            source,
+            until_end_of_turn,
+            ..
+        }) = self.pending_choice.clone()
+        else {
             return Err(Reject::IllegalChoice);
         };
         self.finish_answer();
 
         let mut events = Vec::new();
-        self.push_apply(
-            &mut events,
+        let event = if until_end_of_turn {
+            Event::ColorSetUntilEndOfTurn {
+                object: source,
+                color,
+            }
+        } else {
             Event::ColorChosen {
                 object: source,
                 color,
-            },
-        );
+            }
+        };
+        self.push_apply(&mut events, event);
         Ok(events)
     }
 
@@ -431,6 +442,14 @@ impl Game {
                 card: from,
                 def: self.def_of(from),
             },
+            // Buried Alive: "put them into your graveyard" — the same library-to-graveyard
+            // choke `mill_events` uses, so this arrival never counts as "from the battlefield"
+            // (CR 700.4) and can't fire Dies (see `#183`'s from-battlefield gate).
+            SearchDest::Graveyard => Event::Milled {
+                player,
+                card: self.next_object_id(),
+                from,
+            },
         };
         self.push_apply(&mut events, event);
 
@@ -491,6 +510,129 @@ impl Game {
                     tapped,
                 },
             );
+        }
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::PutCreatureFromHand`]: put the chosen creature (one of the
+    /// offered candidates) onto the battlefield, grant it haste, and schedule its sacrifice at
+    /// the next end step (CR 603.7) — or decline (`choice = None`).
+    pub(crate) fn put_creature_from_hand(
+        &mut self,
+        player: PlayerId,
+        choice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PutCreatureFromHand {
+            candidates, source, ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if choice.is_some_and(|c| !candidates.contains(&c)) {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        if let Some(from) = choice {
+            let permanent = self.next_object_id();
+            self.push_apply(
+                &mut events,
+                Event::PutOntoBattlefieldFromHand {
+                    permanent,
+                    from,
+                    controller: player,
+                    tapped: false,
+                },
+            );
+            const HASTE: &[Keyword] = &[Keyword::Haste];
+            self.push_apply(
+                &mut events,
+                Event::TempBoost {
+                    object: permanent,
+                    power: 0,
+                    toughness: 0,
+                    keywords: HASTE,
+                    source_name: self.source_name_of(source),
+                },
+            );
+            self.push_apply(
+                &mut events,
+                Event::DelayedTriggerScheduled {
+                    controller: player,
+                    source,
+                    fire_at: Step::End,
+                    effect: Effect::SacrificeObject {
+                        object: Some(permanent),
+                    },
+                },
+            );
+        }
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::ChooseDredge`] (CR 702.52). `dredger == Some(id)` replaces the draw:
+    /// mill exactly that dredger's N off the top of `player`'s library (CR 702.52 — milled cards were
+    /// never on the battlefield, so a milled creature does not die, #183) and return the dredger
+    /// graveyard→hand. `dredger == None` declines and performs the normal single draw. A draw-step
+    /// pause then resumes the interrupted step loop (like a cleanup discard); a resolution pause's
+    /// deferred sequence is resumed by [`Game::resume_deferred_sequence`] after this returns.
+    pub(crate) fn answer_choose_dredge(
+        &mut self,
+        player: PlayerId,
+        dredger: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseDredge {
+            player: chooser,
+            eligible,
+            remaining,
+            from_draw_step,
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        // The answer must come from the asked player; a named dredger must be one that was offered.
+        if player != chooser {
+            return Err(Reject::IllegalChoice); // invalid — the choice stays pending
+        }
+        let milled = match dredger {
+            Some(id) => match eligible.iter().find(|(gy, _)| *gy == id) {
+                Some(&(_, n)) => Some((id, n)),
+                None => return Err(Reject::IllegalChoice),
+            },
+            None => None,
+        };
+
+        self.finish_answer();
+        let mut events = Vec::new();
+        match milled {
+            // Dredge: mill exactly N, then return the dredger to hand instead of drawing.
+            Some((id, n)) => {
+                let mill = self.mill_events(player, n as u32);
+                self.apply_all(&mill);
+                events.extend(mill);
+                let returned = Event::ReturnedToHand {
+                    card: self.next_object_id(),
+                    from: id,
+                };
+                self.push_apply(&mut events, returned);
+            }
+            // Declined: the normal single draw happens.
+            None => {
+                let drawn = self.draw_events(player, 1);
+                self.apply_all(&drawn);
+                events.extend(drawn);
+            }
+        }
+        // A draw-step pause draws exactly one card (`remaining == 1`) and resumes the step-transition
+        // loop it interrupted. A mid-resolution "draw N" re-enters the draw loop for the remaining
+        // draws — each re-checks dredge eligibility against the now-live graveyard/library (CR 702.52),
+        // pausing again or drawing the rest; its sequence tail is resumed by `resume_deferred_sequence`
+        // after this returns (once the batch stops pausing).
+        if from_draw_step {
+            events.extend(self.advance_step());
+        } else {
+            self.draw_with_dredge(player, remaining as u32 - 1, false, &mut events);
         }
         Ok(events)
     }

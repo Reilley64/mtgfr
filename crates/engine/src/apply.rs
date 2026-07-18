@@ -63,22 +63,36 @@ impl Game {
                 CardKind::Planeswalker { .. } => p.loyalty <= 0,
                 _ => false,
             };
-            if dies {
-                leaving.push(id);
-                // A dying token ceases to exist rather than becoming a graveyard card (CR 111.7).
-                // ponytail: it skips the graveyard entirely — revisit if a "when a token dies"
-                // trigger that reads the graveyard is scripted (Lorehold/Witherbloom).
-                if p.token {
-                    events.push(Event::TokenCeasedToExist {
-                        token: id,
-                        controller: p.owner,
-                        def: p.def,
-                    });
-                    continue;
-                }
-                events.push(self.graveyard_or_command(id, next));
-                next += 1;
+            if !dies {
+                continue;
             }
+            // A regeneration shield replaces this "destroyed" state-based action with a
+            // regeneration instead (CR 701.15b) — the same substitution `DestroyTarget` already
+            // honors, since CR 704.5g's lethal-damage/deathtouch destroy is a "destroy" too. CR
+            // 704.5f's 0-toughness death is not a "destroy" and isn't replaceable this way, so the
+            // shield only applies when toughness is still positive (i.e. lethal damage or
+            // deathtouch is the reason, not 0-or-less toughness).
+            if p.regeneration_shields > 0
+                && matches!(p.def.kind, CardKind::Creature { .. })
+                && self.toughness(id) > 0
+            {
+                events.push(Event::Regenerated { object: id });
+                continue;
+            }
+            leaving.push(id);
+            // A dying token ceases to exist rather than becoming a graveyard card (CR 111.7).
+            // ponytail: it skips the graveyard entirely — revisit if a "when a token dies"
+            // trigger that reads the graveyard is scripted (Lorehold/Witherbloom).
+            if p.token {
+                events.push(Event::TokenCeasedToExist {
+                    token: id,
+                    controller: p.owner,
+                    def: p.def,
+                });
+                continue;
+            }
+            events.push(self.graveyard_or_command(id, next));
+            next += 1;
         }
 
         // CR 704.5m/n: an Aura attached to nothing/an illegal object is put into the graveyard;
@@ -94,8 +108,24 @@ impl Game {
                 continue;
             };
             let host_illegal = match p.attached_to {
-                // unattached Aura is illegal, unless it's this Aura awaiting its host choice
-                None => matches!(p.def.kind, CardKind::Aura) && awaiting_host != Some(id),
+                // unattached Aura is illegal, unless it's this Aura awaiting its host choice, or
+                // Animate Dead's own reanimator Aura freshly entered and still waiting on its own
+                // ETB ability (CR 303.4a/608.2b) to reanimate and attach it. This SBA sweep runs
+                // before that ETB ability is even placed on the stack (`TriggerEnqueue` is the
+                // next pipeline phase, see `pipeline.rs`), so without this exemption the Aura
+                // would destroy itself here before ever getting the chance to reanimate anything.
+                // Its cast-time graveyard target still sitting untouched in the graveyard is what
+                // marks that window; once the ETB ability reanimates (or drops for want of a
+                // legal target), the target's card object has left the graveyard and this
+                // exemption naturally lapses — the ordinary CR 704.5m sweep then applies to it,
+                // both while it's still unattached and later, once its reanimated host dies.
+                None => {
+                    matches!(p.def.kind, CardKind::Aura)
+                        && awaiting_host != Some(id)
+                        && !(p.def.enchant_graveyard
+                            && p.cast_time_enchant_target
+                                .is_some_and(|card| self.zone_of(card) == Zone::Graveyard))
+                }
                 Some(host) => !self.attachment_host_legal(id, host) || leaving.contains(&host),
             };
             if !host_illegal {
@@ -181,7 +211,6 @@ impl Game {
             sba.extend(self.check_conditioned_control_reversions());
             sba.extend(self.check_linked_exile_returns());
             sba.extend(self.check_leaves_battlefield_illusions());
-            sba.extend(self.take_serra_lifegain_events());
             if sba.is_empty() {
                 return;
             }
@@ -192,23 +221,6 @@ impl Game {
         // something to limp past silently in release. Fail loudly; the server's catch_unwind
         // quarantines the one bad table rather than taking the process down (C3).
         panic!("state-based actions did not reach a fixpoint within {bound} sweeps");
-    }
-
-    /// Drain the Serra Paragon rider's queued life gains (CR 118.9): each controller whose tagged
-    /// permanent was exiled on death this batch gains 2 life. Emitted as an [`Event::LifeChanged`]
-    /// (so "whenever you gain life" watchers fire) from the SBA fixpoint sweep, mirroring how
-    /// [`Game::check_leaves_battlefield_illusions`] emits its own rules-driven follow-ups — the
-    /// draining is `&mut` so the queue self-clears and can't re-fire (each dead permanent enqueues
-    /// exactly once). `source: None` — the granting Serra Paragon may itself already be gone.
-    fn take_serra_lifegain_events(&mut self) -> Vec<Event> {
-        std::mem::take(&mut self.pending_serra_lifegain)
-            .into_iter()
-            .map(|player| Event::LifeChanged {
-                player,
-                amount: self.life_gain_after_replacements(player, 2),
-                source: None,
-            })
-            .collect()
     }
 
     /// CR 611.2b: for each condition-scoped control override whose [`ControlCondition`] no longer
@@ -671,6 +683,12 @@ impl Game {
             Event::LeveledUp { source, level } => {
                 self.permanent_mut(source).level = level;
             }
+            // CR 712: the permanent flips to its back face (one-way, permanent). Its live
+            // characteristics now come from `def.back` (via `def_of`); the object is otherwise
+            // unchanged (CR 712.5 — counters, attachments, tapped state persist).
+            Event::Flipped { object } => {
+                self.permanent_mut(object).flipped = true;
+            }
             // Phase out `object` and everything attached to it (CR 702.26g — indirect phasing);
             // phasing in clears the same set. `attachments` is unfiltered, so it still finds an
             // already-phased attachment to phase back in.
@@ -686,6 +704,9 @@ impl Game {
             }
             Event::ColorChosen { object, color } => {
                 self.permanent_mut(object).chosen_color = Some(color);
+            }
+            Event::ColorSetUntilEndOfTurn { object, color } => {
+                self.permanent_mut(object).set_color_eot = Some(color);
             }
             Event::PreparedSpellCast {
                 spell,
@@ -796,6 +817,7 @@ impl Game {
                 if step == Step::Untap {
                     self.players[active_player.0 as usize].lands_played = 0;
                     self.permanents_died_this_turn = 0;
+                    self.damaged_this_turn.clear();
                     for player in &mut self.players {
                         player.life_gained_this_turn = 0;
                         player.spells_cast_this_turn = 0;
@@ -1061,6 +1083,7 @@ impl Game {
                 p.added_types_eot = TypeSet::NONE;
                 p.added_subtypes_eot = &[];
                 p.added_colors_eot = &[];
+                p.set_color_eot = None;
                 // Revert an until-EOT enter-as-copy to the printed permanent (CR 514.2 — Cursed
                 // Mirror's "become a copy … until end of turn").
                 if let Some(printed) = p.reverts_to_def_eot.take() {
@@ -1331,6 +1354,10 @@ impl Game {
             // in `enqueue_triggers`, but it mutates no state of its own (the life loss it
             // accompanies already applied via `LifeChanged`).
             Event::CombatDamageDealtToPlayer { .. } => {}
+            // A marker only — `Game::enqueue_triggers`'s `Event::CombatDamageDealtToCreature` arm
+            // reads it, but it mutates no state of its own (the marked damage it accompanies
+            // already applied via `DamageMarked`).
+            Event::CombatDamageDealtToCreature { .. } => {}
             // A marker only — the noncombat twin of the arm above, read by
             // `Game::queue_deals_damage_to_opponent_triggers`.
             Event::DamageDealtToPlayer { .. } => {}
@@ -1585,6 +1612,12 @@ impl Game {
                     self.batch_trigger_scratch
                         .permanents_left_battlefield
                         .push((from, self.attached_to(from)));
+                    // Serra Paragon's granted rider (CR 118.9): last-known information for the
+                    // real placed trigger `Game::enqueue_triggers` fabricates once this permanent
+                    // is gone — see `serra_recursion_deaths`'s doc comment.
+                    if self.as_permanent(from).is_some_and(|p| p.serra_recursion) {
+                        self.batch_trigger_scratch.serra_recursion_deaths.push(from);
+                    }
                 }
                 let def = self.def_of(from);
                 let owner = self.owner_of(from);
@@ -1612,6 +1645,12 @@ impl Game {
                         self.power(from),
                         self.plus_counters(from),
                     ));
+                    // CR 800.4a last-known information: def/owner for a death-watch scan that
+                    // must still run if `PlayerLost` (later in this same batch) tombstones `from`
+                    // out from under it — see `Game::dying_creature_lki`.
+                    self.batch_trigger_scratch
+                        .dying_creature_lki
+                        .push((from, def, owner));
                     // CR 700.4/701.29 last-known information: read `is_modified` before
                     // `clear_modifier_provenance`/`create_object` below tear down its
                     // attachments/counters. Feeds `Condition::ModifiedCreatureDiedThisTurn`
@@ -1650,13 +1689,6 @@ impl Game {
                         .permanents_left_battlefield
                         .push((from, self.attached_to(from)));
                     self.clear_modifier_provenance(from);
-                }
-                // Serra Paragon's rider (CR 118.9): a tagged permanent redirected to exile on death
-                // (see `graveyard_or_command`) owes its controller 2 life. Captured here, off the
-                // still-live `Object::Permanent`, before `create_object` below tombstones it; the
-                // SBA sweep drains it into an `Event::LifeChanged`. (CR 704)
-                if self.as_permanent(from).is_some_and(|p| p.serra_recursion) {
-                    self.pending_serra_lifegain.push(owner);
                 }
                 let id = self.create_object(
                     Some(from),
@@ -1985,8 +2017,7 @@ impl Game {
                 self.players[player.0 as usize].lost = true;
                 // CR 800.4a: everything the departing player owns leaves the game. This pool
                 // has no control-changing effects, so nothing they merely control-but-not-own
-                // needs handing back. ponytail: their pending triggers/choices aren't purged —
-                // no pool card lets a player die with those outstanding.
+                // needs handing back.
                 for slot in self.objects.iter_mut() {
                     let owned = match slot {
                         Object::Card(c) => c.owner == player,
@@ -2013,6 +2044,57 @@ impl Game {
                 self.combat
                     .blocks
                     .retain(|&(b, a)| !removed(b) && !removed(a));
+                // CR 800.4a also purges the departing player's own outstanding pending trigger/
+                // choice work — nobody is left to answer it. Phyrexian Arena's own upkeep drain
+                // can eliminate its controller mid-upkeep while another upkeep trigger for that
+                // same player is still queued (not yet placed on the stack); that queued entry
+                // must be dropped here, not placed once tombstoned.
+                self.pending_trigger_groups
+                    .retain(|g| g.controller != player);
+                self.pending_echo.retain(|&source| !removed(source));
+                self.pending_recover.retain(|&source| !removed(source));
+                if self
+                    .pending_choice
+                    .as_ref()
+                    .is_some_and(|c| c.player() == player)
+                {
+                    self.pending_choice = None;
+                }
+                if self
+                    .pending_sequence
+                    .as_ref()
+                    .is_some_and(|cont| cont.ctx.controller == player)
+                {
+                    self.pending_sequence = None;
+                }
+                if self.pending_spell_finish.is_some_and(removed) {
+                    self.pending_spell_finish = None;
+                }
+                if self
+                    .pending_demonstrate_opponent_copy
+                    .is_some_and(|(opponent, spell)| opponent == player || removed(spell))
+                {
+                    self.pending_demonstrate_opponent_copy = None;
+                }
+                self.pending_enter_bonus_counters
+                    .retain(|&(object, _)| !removed(object));
+                self.exile_time_counters.retain(|&(card, _)| !removed(card));
+                // ponytail: `self_exile_time_counters` is read back synchronously in the same
+                // resolution that sets it (`Game::finish_instant_sorcery_resolution`, right after
+                // the spell's own effects run) — it never survives past one `PlayerLost` batch to
+                // go stale, so it carries no cross-player state to purge here.
+                self.delayed_triggers
+                    .scheduled
+                    .retain(|&(controller, ..)| controller != player);
+                self.delayed_triggers
+                    .pending_next_cast
+                    .retain(|&(controller, ..)| controller != player);
+                self.delayed_triggers
+                    .pending_combat_damage_watch
+                    .retain(|&(controller, ..)| controller != player);
+                self.delayed_triggers
+                    .pending_combat_damage_copy
+                    .retain(|&(controller, ..)| controller != player);
             }
             Event::CardDrawn {
                 player,

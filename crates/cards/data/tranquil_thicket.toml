@@ -1,0 +1,15 @@
+# This land enters tapped.
+# {T}: Add {G}.
+# Cycling {G} ({G}, Discard this card: Draw a card.)
+name = "Tranquil Thicket"
+otags = ["activate-from-hand", "alliteration", "cycle-ons-m-cycling-land", "hand-neutral", "pure-draw", "utility-land"]
+oracle = "This land enters tapped.\n{T}: Add {G}.\nCycling {G} ({G}, Discard this card: Draw a card.)"
+set = "dsc"
+id = "9f8fe514-77ed-41b4-a6f3-c6f095bb97be"
+default_print = "7aed7d9d-d796-493e-98fd-c5b1a26621ed"
+enters_tapped = true
+cycling = { green = 1 }
+
+[kind]
+type = "land"
+produces = "green"

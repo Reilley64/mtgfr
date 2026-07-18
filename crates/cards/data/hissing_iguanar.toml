@@ -1,0 +1,29 @@
+# Whenever another creature dies, you may have this creature deal 1 damage to target player or planeswalker.
+name = "Hissing Iguanar"
+otags = ["burn-planeswalker", "burn-player", "death-trigger", "pinger", "repeatable-crime", "repeatable-removal"]
+oracle = "Whenever another creature dies, you may have this creature deal 1 damage to target player or planeswalker."
+set = "2x2"
+subtypes = ["Lizard"]
+id = "7c4fc524-4734-4fb8-a5ca-ac2617242c3f"
+default_print = "2268cf4b-de6d-4447-86e8-f8298728a3bd"
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 1
+
+# Whenever another creature dies, you may have this creature deal 1 damage to target player or
+# planeswalker.
+[[abilities]]
+timing = "creature_dies"
+optional = true
+
+# deal 1 damage to target player or planeswalker.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 1
+target = "player_or_planeswalker"

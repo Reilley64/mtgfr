@@ -194,6 +194,15 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 cost: wire_cost(cost),
             },
+            engine::PendingChoice::PayRecoverOrExile {
+                player,
+                source,
+                cost,
+            } => PendingChoiceView::PayRecoverOrExile {
+                player: player.0,
+                source,
+                cost: wire_cost(cost),
+            },
             engine::PendingChoice::SacrificeUnlessPay {
                 player,
                 source,
@@ -486,9 +495,21 @@ impl<'a> ChoiceCtx<'a> {
                     items: self.label_items(permanents),
                 }
             }
+            engine::PendingChoice::ChooseDredge {
+                player, eligible, ..
+            } => PendingChoiceView::ChooseDredge {
+                player: player.0,
+                items: self.label_items(eligible.iter().map(|(id, _)| *id).collect()),
+            },
             engine::PendingChoice::PutLandFromHand {
                 player, candidates, ..
             } => PendingChoiceView::PutLandFromHand {
+                player: player.0,
+                items: private_items(player, self.viewer, candidates, |ids| self.label_items(ids)),
+            },
+            engine::PendingChoice::PutCreatureFromHand {
+                player, candidates, ..
+            } => PendingChoiceView::PutCreatureFromHand {
                 player: player.0,
                 items: private_items(player, self.viewer, candidates, |ids| self.label_items(ids)),
             },
@@ -672,7 +693,10 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 options: options.iter().map(|s| s.to_string()).collect(),
             },
-            engine::PendingChoice::ChooseColor { player, source } => {
+            // Same wire prompt regardless of `until_end_of_turn` — an as-enters choice
+            // (Flickering Ward) and a resolution-time color-SET (Wild Mongrel) both just ask the
+            // player to pick one of the five colors; the engine-internal purpose isn't surfaced.
+            engine::PendingChoice::ChooseColor { player, source, .. } => {
                 PendingChoiceView::ChooseColor {
                     player: player.0,
                     source,
@@ -742,8 +766,6 @@ mod coverage_tests {
         },
     ];
 
-    /// One constructed instance per [`engine::Event`] variant — drives `project_event` coverage
-    /// through the public `redact` / `spectator_redact` entry points.
     fn draw_effect() -> Effect {
         Effect::DrawCards {
             count: Amount::Fixed(1),
@@ -922,6 +944,14 @@ mod coverage_tests {
                     tapped: false,
                 },
                 |view| matches!(view, PendingChoiceView::PutLandFromHand { .. }),
+            ),
+            (
+                PendingChoice::PutCreatureFromHand {
+                    player: PlayerId(0),
+                    source,
+                    candidates: vec![hand_card],
+                },
+                |view| matches!(view, PendingChoiceView::PutCreatureFromHand { .. }),
             ),
             (
                 PendingChoice::CastCreatureFaceDown {

@@ -1,0 +1,40 @@
+# Resounding Thunder deals 3 damage to any target.
+# Cycling {5}{B}{R}{G} ({5}{B}{R}{G}, Discard this card: Draw a card.)
+# When you cycle this card, it deals 6 damage to any target.
+name = "Resounding Thunder"
+otags = ["activate-from-hand", "burn-any", "cycle-ala-resounding-spell", "hand-neutral", "more-expensive-than-mv", "pure-draw", "single-target-instant-sorcery", "spot-removal", "triggered-ability"]
+oracle = "Resounding Thunder deals 3 damage to any target.\nCycling {5}{B}{R}{G} ({5}{B}{R}{G}, Discard this card: Draw a card.)\nWhen you cycle this card, it deals 6 damage to any target."
+set = "ala"
+id = "b0e1d26e-2fa1-4826-bfe9-01b0bd2c138b"
+default_print = "680b7955-d939-4195-aba8-b46a8c925616"
+identity = ["black", "green"]
+
+# Cycling {5}{B}{R}{G} ({5}{B}{R}{G}, Discard this card: Draw a card.)
+cycling = { generic = 5, black = 1, red = 1, green = 1 }
+
+[cost]
+generic = 2
+red = 1
+
+[kind]
+type = "instant"
+
+# Resounding Thunder deals 3 damage to any target.
+[[abilities]]
+timing = "spell"
+
+# Resounding Thunder deals 3 damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 3
+target = "any"
+
+# When you cycle this card, it deals 6 damage to any target.
+[[abilities]]
+timing = "cycled"
+
+# it deals 6 damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 6
+target = "any"

@@ -1,0 +1,35 @@
+# When this creature dies, create a 2/1 black Cat creature token.
+name = "Penumbra Bobcat"
+otags = ["cycle-apc-penumbra-vertical", "leaves-body-behind", "out-of-color-token"]
+oracle = "When this creature dies, create a 2/1 black Cat creature token."
+set = "dmr"
+subtypes = ["Cat"]
+id = "f0787397-8edb-4794-8ee1-22f97a057be8"
+default_print = "359fbd40-0f61-4ec7-872c-228a476c7ad5"
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# When this creature dies, create a 2/1 black Cat creature token.
+[[abilities]]
+timing = "dies"
+
+# create a 2/1 black Cat creature token.
+[[abilities.effects]]
+type = "create_token"
+
+[abilities.effects.token]
+name = "Cat"
+colors = ["black"]
+subtypes = ["Cat"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 2
+toughness = 1

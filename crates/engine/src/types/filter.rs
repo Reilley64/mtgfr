@@ -14,6 +14,10 @@ pub enum GraveyardScope {
     Yours,
     /// Any player's graveyard (Reanimate's "a graveyard").
     Any,
+    /// A living opponent's graveyard, never the controller's own (CR "target card in an
+    /// opponent's graveyard" — Nezumi Graverobber's "Exile target card from an opponent's
+    /// graveyard").
+    Opponents,
 }
 
 /// What an ability targets, checked when the spell/ability is put on the stack.
@@ -298,6 +302,9 @@ pub enum CardFilter {
     /// An instant or sorcery card (Mystic Sanctuary: "target instant or sorcery card from your
     /// graveyard").
     InstantOrSorcery,
+    /// A sorcery card, no instants (Anarchist: "target sorcery card from your graveyard").
+    /// [`InstantOrSorcery`](Self::InstantOrSorcery) minus the instant half.
+    Sorcery,
     /// An enchantment card, no mana-value bound (Replenish: "return all enchantment cards from
     /// your graveyard to the battlefield" — Eiganjo Dynastorian's back face). Counts an Aura, like
     /// [`CardKind::types`] does.
@@ -394,6 +401,14 @@ impl CardFilter {
                 ) && def.mana_value() <= max as u32
             }
             CardFilter::InstantOrSorcery => matches!(def.kind, CardKind::Spell { .. }),
+            CardFilter::Sorcery => {
+                matches!(
+                    def.kind,
+                    CardKind::Spell {
+                        speed: SpellSpeed::Sorcery
+                    }
+                )
+            }
             CardFilter::Enchantment => def.kind.types().intersects(TypeSet::ENCHANTMENT),
             CardFilter::Permanent => !def.kind.types().is_empty(),
             CardFilter::NoncreatureNonland => {
@@ -438,6 +453,11 @@ pub enum SearchDest {
     /// same-zone reorder, not a zone change (CR 400.7) — the card never leaves the library, so it
     /// keeps its object id, the same way [`Event::PutOnBottomOfLibrary`] does for the bottom.
     LibraryTop,
+    /// Into the searcher's own graveyard (Buried Alive: "put them into your graveyard" — CR
+    /// 701.19), routed through the same [`Event::Milled`] library-to-graveyard choke mill effects
+    /// use — the arrival is never "put into a graveyard from the battlefield" (CR 700.4), so it
+    /// can't fire Dies.
+    Graveyard,
 }
 
 /// Where a card selected by [`Effect::LookAtTop`] goes (the "put that card into …" destination).
@@ -547,10 +567,10 @@ pub enum Parity {
 }
 
 /// A permanent's color restriction for a [`PermanentFilter`] (CR 105.2).
-/// ponytail: only "exactly one color" and "is this one specific color" have pool consumers
-/// (Vanishing Verse's "monocolored permanent"; Oran-Rief's "green creature"); add
-/// `Multicolored` when a real card needs it (stonecoil's "multicolored") rather than
-/// pre-building it.
+/// ponytail: only "exactly one color", "is this one specific color", and "is NOT this one
+/// specific color" have pool consumers (Vanishing Verse's "monocolored permanent"; Oran-Rief's
+/// "green creature"; Terror's "nonblack creature"); add `Multicolored` when a real card needs
+/// it (stonecoil's "multicolored") rather than pre-building it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -572,6 +592,10 @@ pub enum ColorFilter {
     Red,
     /// Is green (CR 105.2a) — Oran-Rief, the Vastwood's "each green creature".
     Green,
+    /// Does NOT have the named color (CR 105.2a's negation — Terror/Shriekmaw's "nonblack
+    /// creature"). Read off `Game::colors_of`; a colorless permanent has no colors, so it always
+    /// satisfies a `NotColor` gate.
+    NotColor(Color),
 }
 
 /// A composable predicate over a battlefield permanent — the one filter behind targeted
@@ -638,14 +662,17 @@ pub struct PermanentFilter {
     /// Power parity gate (Zimone's Hypothesis's "return each creature with power of the chosen
     /// quality"); `None` doesn't gate on parity.
     pub power_parity: Option<Parity>,
-    /// Excludes creature-typed permanents (CR: "noncreature artifact"/"noncreature enchantment"
-    /// — Haywire Mite). `false` (default) imposes no restriction.
-    /// ponytail: a single bool covers the pool's one "not creature" need; generalize to an
-    /// `exclude: TypeSet` if a future card needs to exclude a different type.
-    pub noncreature: bool,
+    /// Excluded card types (CR: "noncreature artifact"/"noncreature enchantment" — Haywire
+    /// Mite; "nonartifact creature" — Terror/Shriekmaw/Ashes to Ashes). Empty (default) imposes
+    /// no restriction; a permanent with *any* type in this set fails, so an Artifact Creature
+    /// (a creature with `also = "artifact"`) fails an `exclude` containing artifact even though
+    /// it also carries the creature type. `noncreature = true` in TOML is sugar that unions
+    /// `TypeSet::CREATURE` into this same field (see `de.rs`).
+    pub exclude: TypeSet,
     /// Color-count restriction (Vanishing Verse's "monocolored permanent"); `Any` (default)
-    /// doesn't gate on color. Reads [`Game::colors_of`] — color identity derived from cost
-    /// pips, exact for every pool card (no color-indicator cards yet).
+    /// doesn't gate on color. Reads [`Game::colors_of`] — color identity derived from cost pips,
+    /// overridden live by a runtime color-change layer (an until-end-of-turn SET or ADD) where
+    /// one is active.
     pub color: ColorFilter,
     /// "Modified" (CR 701.29 / Silkguard's reminder text "Equipment, Auras you control, and
     /// counters are modifications") — has any counter, is enchanted by an Aura, or is equipped.
@@ -708,7 +735,7 @@ impl PermanentFilter {
             tapped: None,
             power_max: None,
             power_parity: None,
-            noncreature: false,
+            exclude: TypeSet::NONE,
             color: ColorFilter::Any,
             modified: false,
             attacking: false,

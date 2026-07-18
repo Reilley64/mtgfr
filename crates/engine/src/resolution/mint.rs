@@ -46,12 +46,14 @@ impl Game {
             // Damage family
             Effect::DamageEachCreature { .. }
             | Effect::DealDamage { .. }
+            | Effect::DealDamageToSelf { .. }
             | Effect::DealDamageToEnteringPermanent { .. } => {
                 self.mint_damage_family(effect, controller, source, target, x)
             }
             // Destroy family
             Effect::DestroyAll { .. }
             | Effect::DestroyTarget { .. }
+            | Effect::DestroyTriggeringDamagedCreature { .. }
             | Effect::ExileAll { .. }
             | Effect::ExileAllGraveyards
             | Effect::ExileGraveyard
@@ -101,6 +103,7 @@ impl Game {
             // Misc family
             Effect::ArmCombatDamageWatch
             | Effect::BecomePrepared
+            | Effect::FlipSource
             | Effect::CounterTargetActivatedAbility
             | Effect::CounterTargetSpell { .. }
             | Effect::GrantChannelColorlessManaThisTurn
@@ -155,6 +158,8 @@ impl Game {
             | Effect::ReturnThisFromGraveyardToBattlefield { .. }
             | Effect::ReturnThisToHand
             | Effect::ReturnToHand { .. }
+            | Effect::ReturnObjectToHand { .. }
+            | Effect::ExileGraveyardObjectGainLife { .. }
             | Effect::TuckFromGraveyard { .. }
             | Effect::TuckPermanentIntoLibrary { .. } => {
                 self.mint_zones_family(effect, controller, source, target, x)
@@ -224,6 +229,7 @@ impl Game {
             | Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. }
             | Effect::Discard { .. }
             | Effect::PutLandFromHand { .. }
+            | Effect::PutCreatureFromHand
             | Effect::CastCreatureFaceDown
             | Effect::CashOutExiledWithThis
             | Effect::CastExiledWithThisFree
@@ -231,9 +237,13 @@ impl Game {
             | Effect::ChooseOne { .. }
             | Effect::ChooseCreatureType
             | Effect::ChooseColor
+            | Effect::SetOwnColorUntilEndOfTurn
             | Effect::CopyTargetSpell
             | Effect::CopyThisSpell { .. }
             | Effect::RetargetSpellCopy { .. }
+            // Needs `&mut self` to pause the payer on a `PayCost` — only resolves via
+            // `Game::run`, never this pure path.
+            | Effect::MayPayToCopyThis { .. }
             // Pauses on `ChooseSpellTargets` to bend the chosen spell — only resolves via
             // `Game::run`, never this pure path.
             | Effect::ChangeTargetOfTargetSpellOrAbility { .. }
@@ -261,6 +271,9 @@ impl Game {
             | Effect::AttachMintedAuraToTarget { .. }
             | Effect::DoubleCountersOnAttachedCreature
             | Effect::ScheduleReturnThisAuraAttachedToReanimated
+            // Needs `&mut self` to read back the resolution's own events — only resolves via
+            // `Game::run`, never this pure path.
+            | Effect::ScheduleReturnReanimatedToHand
             // Needs `&mut self` to pause on `ChooseAttachHost` — only resolves via
             // `Game::run`, never this pure path.
             | Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost

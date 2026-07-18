@@ -1,0 +1,24 @@
+# Destroy target creature. It can't be regenerated.
+name = "Terminate"
+otags = ["cycle-2x2-draft-signpost", "cycle-mm3-draft-signpost", "cycle-pls-c-two-color", "hate-regenerate", "removal-creature", "removal-destroy", "single-english-word-name", "single-target-instant-sorcery", "spot-removal"]
+oracle = "Destroy target creature. It can't be regenerated."
+set = "msc"
+id = "6257c2fd-005f-41e3-8a72-af76df1eb134"
+default_print = "379ffc67-4142-4ead-a871-0f851523745e"
+
+[cost]
+black = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Destroy target creature. It can't be regenerated.
+[[abilities]]
+timing = "spell"
+
+# Destroy target creature. It can't be regenerated.
+[[abilities.effects]]
+type = "destroy_target"
+target = "creature"
+cant_be_regenerated = true

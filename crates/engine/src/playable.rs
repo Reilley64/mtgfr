@@ -245,6 +245,13 @@ impl Game {
         def: CardDef,
         kind: CastPlayKind,
     ) -> bool {
+        // "Cast this spell only during combat" (CR 601.3e — Cauldron Dance) is a restriction
+        // layered on top of, not a substitute for, the ordinary instant/sorcery-speed gate below
+        // — an instant with this flag is still open only during combat's steps, not any time it
+        // would otherwise hold priority.
+        if def.cast_only_during_combat && !self.step.is_combat() {
+            return false;
+        }
         let sorcery_ok = self.can_take_sorcery_speed_action(player);
         // Alchemist's Refuge's "you may cast spells this turn as though they had flash" (CR 601.3a)
         // is an unfiltered per-player permission — every spell the granted player casts
@@ -376,19 +383,28 @@ impl Game {
             return Err(Reject::IllegalChoice);
         }
 
-        // An optional additional sacrifice cost (CR 601.2f — Plumb the Forbidden): 0 up to
-        // however many of the caster's own permanents match the filter, all legal ("you may").
-        // No such cost on this spell rejects any nonempty pick outright. Control is enforced
-        // here directly (CR 701.16d — you can only sacrifice what you control), not via the
-        // filter's own `controller` axis, mirroring `Game::activate_ability`'s sacrifice cost.
+        // An additional sacrifice cost (CR 601.2f), either optional (Plumb the Forbidden: 0 up to
+        // however many of the caster's own permanents match the filter, all legal — "you may") or
+        // mandatory and fixed (Dread Return's Flashback—Sacrifice three creatures: exactly N
+        // distinct matches or the cast is rejected, CR 602.2b). No such cost on this spell rejects
+        // any nonempty pick outright. Control is enforced here directly (CR 701.16d — you can only
+        // sacrifice what you control), not via the filter's own `controller` axis, mirroring
+        // `Game::activate_ability`'s sacrifice cost.
         let distinct_sacrifices = inputs
             .sacrifice_cost
             .iter()
             .collect::<std::collections::HashSet<_>>()
             .len();
         let sacrifice_valid = match cost.additional.sacrifice {
-            Some(filter) => {
-                distinct_sacrifices == inputs.sacrifice_cost.len()
+            Some(SacrificeAdditionalCost { filter, count }) => {
+                let count_valid = match count {
+                    SacrificeAdditionalCostCount::OneOrMore => true,
+                    SacrificeAdditionalCostCount::Exactly(n) => {
+                        inputs.sacrifice_cost.len() == n as usize
+                    }
+                };
+                count_valid
+                    && distinct_sacrifices == inputs.sacrifice_cost.len()
                     && inputs.sacrifice_cost.iter().all(|&id| {
                         self.controller_of(id) == player
                             && self.permanent_matches(&filter, id, player, None)
@@ -518,16 +534,21 @@ mod tests {
             },
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -548,6 +569,7 @@ mod tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 
@@ -569,6 +591,7 @@ mod tests {
         let def = CardDef {
             flashback: Some(flash_cost(2)),
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,

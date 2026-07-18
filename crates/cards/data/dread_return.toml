@@ -1,0 +1,32 @@
+# Return target creature card from your graveyard to the battlefield.
+# Flashback—Sacrifice three creatures. (You may cast this card from your graveyard for its flashback cost. Then
+# exile it.)
+name = "Dread Return"
+id = "352b64d2-2ae5-44ee-a64f-94932ef545d3"
+default_print = "34a87901-98bb-41dd-b566-bcb510c20022"
+otags = ["reanimate-creature", "single-target-instant-sorcery"]
+oracle = "Return target creature card from your graveyard to the battlefield.\nFlashback—Sacrifice three creatures. (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+set = "cmm"
+
+[cost]
+generic = 2
+black = 2
+
+# Flashback—Sacrifice three creatures. (CR 702.34) — cast from the graveyard by sacrificing three creatures,
+# instead of paying mana.
+[flashback]
+
+[flashback.additional]
+sacrifice = { count = 3, filter = "creature" }
+
+[kind]
+type = "sorcery"
+
+# Return target creature card from your graveyard to the battlefield.
+[[abilities]]
+timing = "spell"
+
+# Return target creature card from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = "your_graveyard"

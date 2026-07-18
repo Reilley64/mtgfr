@@ -1,0 +1,43 @@
+# When this creature dies, you may search your library for up to two basic land cards, reveal them, put them into
+# your hand, then shuffle.
+# {2}, Sacrifice this creature: Draw a card.
+name = "Yavimaya Elder"
+otags = ["activated-ability", "death-trigger-self", "martyr", "pure-draw", "tutor-land-basic", "tutor-to-hand", "type-addition-human"]
+oracle = "When this creature dies, you may search your library for up to two basic land cards, reveal them, put them into your hand, then shuffle.\n{2}, Sacrifice this creature: Draw a card."
+set = "dsc"
+subtypes = ["Human", "Druid"]
+id = "7fd4c452-07f2-492c-9c78-d1c6362d9eec"
+default_print = "27dacbde-a646-418c-b569-4a4f11c9faae"
+
+[cost]
+generic = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# When this creature dies, you may search your library for up to two basic land cards, reveal
+# them, put them into your hand, then shuffle.
+[[abilities]]
+timing = "dies"
+optional = true
+
+# search your library for up to two basic land cards, reveal them, put them into your hand, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "hand"
+count = 2
+
+# {2}, Sacrifice this creature: Draw a card.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 2 }
+sacrifice = "this"
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

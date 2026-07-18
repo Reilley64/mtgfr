@@ -132,8 +132,11 @@ mod tests {
         modal_choose_max_if_commander: false,
         identity_pips: &[],
         colors: &[],
+        devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        free_cast_if: None,
+        cast_only_during_combat: false,
         approximates: None,
         oracle: None,
         set: "",
@@ -143,8 +146,10 @@ mod tests {
         conditional_keywords: &[],
         abilities: &[],
         cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        recover: None,
         bestow: None,
         morph: None,
         evoke: None,
@@ -165,6 +170,7 @@ mod tests {
         encore: None,
         hand_ability: None,
         may_choose_not_to_untap: false,
+        dredge: None,
     };
 
     const SURVEIL_THEN_DRAW: &[Effect] = &[

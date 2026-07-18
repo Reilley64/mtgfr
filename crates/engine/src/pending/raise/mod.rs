@@ -39,6 +39,7 @@ pub(crate) enum ChoiceRequest {
     ChooseColor {
         player: crate::PlayerId,
         source: crate::ObjectId,
+        until_end_of_turn: bool,
     },
     ChooseMode {
         player: crate::PlayerId,
@@ -170,6 +171,11 @@ pub(crate) enum ChoiceRequest {
     PutLandFromHand {
         player: crate::PlayerId,
         tapped: bool,
+    },
+    /// [`Effect::PutCreatureFromHand`] — no hand creature skips.
+    PutCreatureFromHand {
+        player: crate::PlayerId,
+        source: crate::ObjectId,
     },
     /// [`Effect::CastCreatureFaceDown`] — no payable creature skips.
     CastCreatureFaceDown {
@@ -424,6 +430,9 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         } => library::search_library(game, player, filter, dest, tapped, count, overflow),
         ChoiceRequest::PutLandFromHand { player, tapped } => {
             library::put_land_from_hand(game, player, tapped)
+        }
+        ChoiceRequest::PutCreatureFromHand { player, source } => {
+            library::put_creature_from_hand(game, player, source)
         }
         ChoiceRequest::CastCreatureFaceDown { player, spent_mana } => {
             library::cast_creature_face_down(game, player, spent_mana)

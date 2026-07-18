@@ -269,6 +269,28 @@ impl Game {
                 vec![self.exile_or_command(id, self.next_object_id())]
             }
 
+            // A `DealsCombatDamageToCreature` payoff (Stinkweed Imp): "destroy that creature" (CR
+            // 603.10a last-known information). Guard-return if the triggering context never
+            // filled a target, or if that creature no longer sits on the battlefield (it died
+            // first, or was bounced/exiled in response — the "that creature" reference fizzles).
+            // An ordinary destroy otherwise, same shield-honoring shape as `DestroyTarget`:
+            // indestructible ignores it (CR 702.12b), and a regeneration shield replaces it (CR
+            // 701.15b).
+            Effect::DestroyTriggeringDamagedCreature { creature } => {
+                let Some(id) = creature else {
+                    return Vec::new();
+                };
+                if self.zone_of(id) != Zone::Battlefield {
+                    return Vec::new();
+                }
+                if self.has_keyword(id, Keyword::Indestructible) {
+                    return Vec::new();
+                }
+                if self.permanent(id).regeneration_shields > 0 {
+                    return vec![Event::Regenerated { object: id }];
+                }
+                vec![self.graveyard_or_command(id, self.next_object_id())]
+            }
             _ => unreachable!("destroy family mint received a non-family effect"),
         }
     }

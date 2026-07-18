@@ -1,4 +1,5 @@
-//! The five Secrets of Strixhaven precon decks, offered to every player as read-only decks.
+//! The precon decks (the five Secrets of Strixhaven decks plus one per fidelity-grind deck),
+//! offered to every player as read-only decks.
 //!
 //! These are *virtual* decks: static data baked into the server, not per-user DB rows. That keeps
 //! them free — no signup seeding, no migration, no guards against a user editing their copy — at
@@ -28,9 +29,9 @@ struct Source {
     json: &'static str,
 }
 
-/// The five soc precons with their fixed ids. Ids are negative so they can never collide with a
-/// DB deck's autoincrement id.
-static SOURCES: [Source; 5] = [
+/// The precons with their fixed ids. Ids are negative so they can never collide with a DB deck's
+/// autoincrement id; each new precon takes the next id down.
+static SOURCES: [Source; 7] = [
     Source {
         id: -1,
         name: "Silverquill Influence",
@@ -55,6 +56,16 @@ static SOURCES: [Source; 5] = [
         id: -5,
         name: "Quandrix Unlimited",
         json: include_str!("../fixtures/decks/quandrix_unlimited.json"),
+    },
+    Source {
+        id: -6,
+        name: "Enchantress Rubinia",
+        json: include_str!("../fixtures/decks/enchantress_rubinia.json"),
+    },
+    Source {
+        id: -7,
+        name: "Deathdancer Xira",
+        json: include_str!("../fixtures/decks/deathdancer_xira.json"),
     },
 ];
 
@@ -104,8 +115,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn all_five_parse_with_negative_ids_and_a_commander() {
-        assert_eq!(PRECONS.len(), 5);
+    fn all_precons_parse_with_negative_ids_and_a_commander() {
+        assert_eq!(PRECONS.len(), SOURCES.len());
         for d in PRECONS.iter() {
             assert!(is_precon(d.id), "{} should have a precon id", d.name);
             assert!(!d.commander.is_empty(), "{} needs a commander", d.name);

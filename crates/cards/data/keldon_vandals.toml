@@ -1,0 +1,33 @@
+# Echo {2}{R} (At the beginning of your upkeep, if this came under your control since the beginning of your last
+# upkeep, sacrifice it unless you pay its echo cost.)
+# When this creature enters, destroy target artifact.
+name = "Keldon Vandals"
+otags = ["creature-type-townsfolk", "drawback", "intervening-if-clause", "removal-artifact", "removal-destroy", "spot-removal", "type-errata", "virtual-french-vanilla"]
+oracle = "Echo {2}{R} (At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay its echo cost.)\nWhen this creature enters, destroy target artifact."
+set = "uds"
+subtypes = ["Human", "Rogue"]
+id = "0aa7bd6a-0a8d-4413-a9e8-b7a459300841"
+default_print = "f18cdf4d-42ce-4f2d-8b8f-8cf52a1b8db4"
+
+[cost]
+generic = 2
+red = 1
+
+# Echo {2}{R}
+[echo]
+generic = 2
+red = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 1
+
+# When this creature enters, destroy target artifact.
+[[abilities]]
+timing = "etb"
+
+# destroy target artifact.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = "artifact" }

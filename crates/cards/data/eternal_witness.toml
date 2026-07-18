@@ -1,0 +1,27 @@
+# When this creature enters, you may return target card from your graveyard to your hand.
+name = "Eternal Witness"
+otags = ["hand-neutral", "regrowth-any", "triggered-ability", "virtual-vanilla"]
+oracle = "When this creature enters, you may return target card from your graveyard to your hand."
+set = "cmm"
+subtypes = ["Human", "Shaman"]
+id = "30b24e8e-3b0e-4d8e-90f3-f66eb7c1858c"
+default_print = "39704000-65d3-4d39-849e-a3b617376bbc"
+
+[cost]
+generic = 1
+green = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# When this creature enters, you may return target card from your graveyard to your hand.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# return target card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "any_card" } }

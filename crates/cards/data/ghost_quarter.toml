@@ -1,0 +1,33 @@
+# {T}: Add {C}.
+# {T}, Sacrifice this land: Destroy target land. Its controller may search their library for a basic land card, put it
+# onto the battlefield, then shuffle.
+name = "Ghost Quarter"
+otags = ["activated-ability", "removal-destroy", "removal-land", "sacrifice-self", "spot-removal", "swap-removal", "tutor-land-basic", "tutor-land-to-battlefield", "utility-land"]
+oracle = "{T}: Add {C}.\n{T}, Sacrifice this land: Destroy target land. Its controller may search their library for a basic land card, put it onto the battlefield, then shuffle."
+set = "cm2"
+id = "2ec4288e-34c6-4831-a2c0-ba1ca1d9d1dc"
+default_print = "12f8071c-8955-4aa2-889c-6043df047223"
+
+[kind]
+type = "land"
+produces = "colorless"
+
+# {T}, Sacrifice this land: Destroy target land. Its controller may search their library for a
+# basic land card, put it onto the battlefield, then shuffle.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+# Destroy target land.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "land" } }
+
+# Its controller may search their library for a basic land card, put it onto the battlefield,
+# then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+searcher = "target_controller"

@@ -1,0 +1,32 @@
+# Trample
+# As long as this card is in your graveyard and you control a Forest, creatures you control have trample.
+name = "Brawn"
+otags = ["cycle-jud-incarnation", "gives-trample", "keyword-anthem", "single-english-word-name", "synergy-forest"]
+oracle = "Trample\nAs long as this card is in your graveyard and you control a Forest, creatures you control have trample."
+set = "moc"
+subtypes = ["Incarnation"]
+id = "00876e98-d062-4a12-85e6-86a2b20cf867"
+default_print = "8c05568e-fa50-46e9-aec4-1ba5e814029e"
+keywords = ["trample"]
+functions_in_graveyard = true
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+
+# As long as this card is in your graveyard and you control a Forest, creatures you control
+# have trample.
+[[abilities]]
+timing = "static"
+
+# creatures you control have trample
+[[abilities.effects]]
+type = "anthem_static"
+keywords = ["trample"]
+from_graveyard = true
+condition = { type = "controls_lands_with_subtype", subtypes = ["Forest"], count = 1 }

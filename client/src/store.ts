@@ -319,6 +319,7 @@ function extractProvenance(
         "cast_from_exile_free_permission_granted",
         "citys_blessing_gained",
         "combat_cleared",
+        "combat_damage_dealt_to_creature",
         "combat_damage_dealt_to_player",
         "combat_damage_divided",
         "combat_damage_watch_armed",
@@ -347,6 +348,7 @@ function extractProvenance(
         "exiled_until_source_leaves_minting_illusion",
         "exiled_with_source",
         "flash_permission_granted",
+        "flipped",
         "goad_cleared",
         "goaded",
         "keywords_stripped",
@@ -386,6 +388,7 @@ function extractProvenance(
         "prepared_spell_cast",
         "adventure_spell_cast",
         "color_chosen",
+        "color_set_until_end_of_turn",
         "step_began",
         "tapped",
         "temp_boost",
@@ -409,6 +412,9 @@ function extractProvenance(
 // (post-apply) state. Returns null for events with no narrative value (priority, mana).
 // Wire event kinds are projected in crates/schema/src/projection/event.rs — new kinds land
 // there first; the exhaustive lists below are the client-side follow-up for log/provenance.
+const colorName = (color: number): string =>
+  ["white", "blue", "black", "red", "green"][color] ?? `color ${color}`;
+
 function describe(e: VisibleEvent, state: VisibleState): string | null {
   const name = (id: number) => state.objects.find((o) => o.id === id)?.name ?? `#${id}`;
   const p = (n: number) => playerLabel(state.players, n);
@@ -436,10 +442,10 @@ function describe(e: VisibleEvent, state: VisibleState): string | null {
       drew_from_empty_library: (e) => `${p(e.player)} tries to draw from an empty library`,
       player_lost: (e) => `${p(e.player)} loses the game`,
       creature_type_chosen: (e) => `${name(e.object)} is chosen as ${e.subtype}`,
-      color_chosen: (e) => {
-        const colors = ["white", "blue", "black", "red", "green"];
-        return `${name(e.object)} is chosen as ${colors[e.color] ?? `color ${e.color}`}`;
-      },
+      color_chosen: (e) => `${name(e.object)} is chosen as ${colorName(e.color)}`,
+      color_set_until_end_of_turn: (e) => `${name(e.object)} becomes ${colorName(e.color)} until end of turn`,
+      // A flip card flipped (CR 709.4) — post-apply state already names the flipped half.
+      flipped: (e) => `${name(e.object)} flips`,
       // counter_kind is a numeric engine index with no client name table, so the kind stays unnamed.
       kind_counters_placed: (e) => `${name(e.object)} gets ${e.count} counter${e.count === 1 ? "" : "s"}`,
       control_gained: (e) => `${p(e.controller)} gains control of ${name(e.object)}`,
@@ -489,6 +495,9 @@ function describe(e: VisibleEvent, state: VisibleState): string | null {
       "cast_from_exile_free_ended",
       "cast_from_exile_free_permission_granted",
       "combat_cleared",
+      // Always paired with a damage_marked that already narrates the hit — logging both would
+      // double up ("X takes N from Y" twice).
+      "combat_damage_dealt_to_creature",
       "combat_damage_dealt_to_player",
       "combat_damage_divided",
       "combat_damage_watch_armed",

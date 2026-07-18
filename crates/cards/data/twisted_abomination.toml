@@ -1,0 +1,42 @@
+# {B}: Regenerate this creature. (The next time this creature would be destroyed this turn, instead tap it, remove
+# it from combat, and heal all damage on it.)
+# Swampcycling {2} ({2}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand,
+# then shuffle.)
+name = "Twisted Abomination"
+id = "139af10d-a3e5-4ade-b876-87324e6c8017"
+default_print = "7bcaee2c-fad7-4ee2-8fe7-20b2c1eee5c5"
+oracle = "{B}: Regenerate this creature. (The next time this creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)\nSwampcycling {2} ({2}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand, then shuffle.)"
+set = "cmm"
+subtypes = ["Zombie", "Mutant"]
+
+[cost]
+generic = 5
+black = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 3
+
+# {B}: Regenerate this creature.
+[[abilities]]
+timing = "activated"
+activation_cost = { black = 1 }
+
+# Regenerate this creature.
+[[abilities.effects]]
+type = "regenerate_shield"
+target = "this"
+
+# Swampcycling {2} ({2}, Discard this card: Search your library for a Swamp card, reveal it, put it into your hand,
+# then shuffle.)
+[hand_ability]
+
+[hand_ability.cost]
+generic = 2
+
+# Search your library for a Swamp card, reveal it, put it into your hand, then shuffle.
+[[hand_ability.effects]]
+type = "search_library"
+filter = { land_with_subtype = ["Swamp"] }
+to_zone = "hand"

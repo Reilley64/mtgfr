@@ -1,0 +1,24 @@
+# {1}, {T}: Add {B}{R}.
+name = "Rakdos Signet"
+otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
+oracle = "{1}, {T}: Add {B}{R}."
+set = "dsc"
+id = "3adb7681-977f-4a32-9ec8-51481b958268"
+default_print = "01cc9536-f710-4c47-9e3f-d7e83cc888f2"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {1}, {T}: Add {B}{R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {B}{R}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["black", "red"]

@@ -1,0 +1,32 @@
+# If there are ten or more creature cards total in all graveyards, this spell costs {6} less to cast.
+# Fear (This creature can't be blocked except by artifact creatures and/or black creatures.)
+# {T}: Destroy target creature. It can't be regenerated.
+name = "Avatar of Woe"
+id = "2da5aa33-3794-4f83-936c-9d8640833d86"
+default_print = "7e8e34de-4b0a-48fe-bb13-c7e181d37e6c"
+otags = ["removal-creature", "removal-destroy", "spot-removal", "tap-ability"]
+oracle = "If there are ten or more creature cards total in all graveyards, this spell costs {6} less to cast.\nFear (This creature can't be blocked except by artifact creatures and/or black creatures.)\n{T}: Destroy target creature. It can't be regenerated."
+set = "cm2"
+subtypes = ["Avatar"]
+keywords = ["fear"]
+
+[cost]
+generic = 6
+black = 2
+reduce_own_generic = { condition = { type = "creature_cards_in_all_graveyards_at_least", count = 10 }, then = 6 }
+
+[kind]
+type = "creature"
+power = 6
+toughness = 5
+
+# {T}: Destroy target creature. It can't be regenerated.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Destroy target creature. It can't be regenerated.
+[[abilities.effects]]
+type = "destroy_target"
+target = "creature"
+cant_be_regenerated = true

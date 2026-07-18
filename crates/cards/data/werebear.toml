@@ -1,0 +1,39 @@
+# {T}: Add {G}.
+# Threshold — This creature gets +3/+3 as long as there are seven or more cards in your graveyard.
+name = "Werebear"
+id = "96cf3320-c730-4618-8768-28a179f4d9c0"
+default_print = "973310bb-ab32-46dc-8f59-8a5d3e1c58cc"
+oracle = "{T}: Add {G}.\nThreshold — This creature gets +3/+3 as long as there are seven or more cards in your graveyard."
+set = "dmr"
+subtypes = ["Human", "Bear", "Druid"]
+
+[cost]
+green = 1
+generic = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {T}: Add {G}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["green"]
+
+# Threshold — This creature gets +3/+3 as long as there are seven or more cards in your graveyard.
+[[abilities]]
+timing = "static"
+
+# This creature gets +3/+3 as long as there are seven or more cards in your graveyard.
+[[abilities.effects]]
+type = "anthem_static"
+power = 3
+toughness = 3
+self_only = true
+condition = { type = "cards_in_your_graveyard_at_least", count = 7 }

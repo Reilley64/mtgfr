@@ -230,6 +230,33 @@ pub enum Trigger {
     /// [`Event::CombatDamageDealtToPlayer`], not `LifeChanged` (non-combat life loss — drain,
     /// pay-life — must not fire it); see [`Game::queue_combat_damage_triggers`].
     DealsCombatDamageToPlayer { who: CombatDamageScope },
+    /// Whenever this permanent deals combat damage to a *creature* (CR 510.2, Stinkweed Imp:
+    /// "Whenever this creature deals combat damage to a creature, destroy that creature").
+    /// Self-scoped and fieldless, like [`DealsDamageToOpponent`](Self::DealsDamageToOpponent) —
+    /// the pool's only consumer needs no `who`-style scope (flag-don't-force; widen to a sibling
+    /// scope field if a second card needs "your creatures"/"your tokens" the way
+    /// [`DealsCombatDamageToPlayer`](Self::DealsCombatDamageToPlayer) does). Fires off
+    /// [`Event::CombatDamageDealtToCreature`], never plain [`Event::DamageMarked`] alone — a fight
+    /// (CR 701.12) or other noncombat creature damage only emits that, not this marker. The
+    /// damaged creature's id rides in [`TriggerContext::damaged_creature`] (CR 603.10a
+    /// last-known information) so
+    /// [`Effect::DestroyTriggeringDamagedCreature`](crate::Effect::DestroyTriggeringDamagedCreature)
+    /// can act on "that creature". See the `Event::CombatDamageDealtToCreature` arm of
+    /// [`Game::enqueue_triggers`].
+    DealsCombatDamageToCreature,
+    /// Whenever a creature dealt damage by this permanent *this turn* dies (CR 603.10a
+    /// last-known information, Vampiric Dragon: "Whenever a creature dealt damage by this
+    /// creature this turn dies, put a +1/+1 counter on this creature."). Self-scoped and
+    /// fieldless, like [`DealsCombatDamageToCreature`](Self::DealsCombatDamageToCreature) — the
+    /// pool's only consumer needs no `who`-style scope (flag-don't-force). Unlike
+    /// `DealsCombatDamageToCreature`'s single-fire `damaged_creature` context slot, this reads
+    /// the persistent turn-scoped tally in [`Game::damaged_this_turn`], populated at *every*
+    /// creature-damage choke — combat or noncombat alike (CR 510.2 / 120.3/506) — not just
+    /// combat damage, and cleared at the same turn boundary as
+    /// [`Game::permanents_died_this_turn`]. See the `Event::DamageMarked` arm of
+    /// [`Game::enqueue_triggers`] for where the tally is recorded and the creature-death arms for
+    /// where this fires.
+    CreatureDealtDamageByThisDies,
     /// Whenever this permanent deals damage to an *opponent* of its controller, combat or
     /// noncombat alike (CR 603.3, Looter il-Kor: "Whenever this creature deals damage to an
     /// opponent, draw a card, then discard a card."). Self-scoped and fieldless — contrast
@@ -588,6 +615,16 @@ pub(crate) struct TriggerContext {
     /// follow the object's `Moved` lineage into its new graveyard card, and on into wherever it
     /// moves next).
     pub(crate) dying_enchanted_creature: Option<ObjectId>,
+    /// CR 510.2/603.10a last-known information: the creature a [`Trigger::DealsCombatDamageToCreature`]
+    /// watch's source just dealt combat damage to (Stinkweed Imp's "destroy that creature"),
+    /// named separately from `dying_enchanted_creature`/`dead_creature` above since the damaged
+    /// creature need not be dead or even still on the battlefield. `None` for every other
+    /// trigger. Feeds [`Effect::DestroyTriggeringDamagedCreature`] via `contextualize_effect`;
+    /// `def_of`/`owner_of`/`zone_of` all still resolve it whether it's still a live permanent or
+    /// has since left. See the `Event::CombatDamageDealtToCreature` arm of
+    /// [`Game::enqueue_triggers`] for where this is captured. Named so a future "all damage this
+    /// source dealt this turn" generalization (fidelity backlog #194) can extend it.
+    pub(crate) damaged_creature: Option<ObjectId>,
     /// The triggering spell's stack object id, for a delayed [`Trigger::CastSpell`] one-shot
     /// armed by [`Effect::ScheduleNextCastTrigger`] whose `then` copies that spell (Thunderclap
     /// Drake's "when you next cast an instant or sorcery spell this turn, copy it") — CR 603.4
@@ -595,6 +632,14 @@ pub(crate) struct TriggerContext {
     /// than its `{X}`. `None` for every other trigger. See
     /// [`Game::fire_next_cast_triggers`] for where this is captured.
     pub(crate) triggering_spell: Option<ObjectId>,
+    /// CR 702.40a's storm count: the game-wide tally of spells cast before this one this turn
+    /// (every player, not just the caster), for a [`Trigger::YouCastThis`] Storm ability's
+    /// `Amount::SpellsCastBeforeThisThisTurn` reads (Reaping the Graves). Locked in when the
+    /// trigger goes on the stack — same CR 603.4 last-known-information shape as `cast_x` above,
+    /// so a response cast in front of the storm trigger (or the storm spell's own later-minted
+    /// copies) can't inflate it. `None` for every other trigger. See `Game::enqueue_triggers`'s
+    /// `Event::SpellCast` arm for where this is captured.
+    pub(crate) spells_cast_before_this: Option<u32>,
     /// CR 510.2/603.10a last-known information: the trigger's own source permanent's power at the
     /// instant the trigger goes on the stack, for an [`Trigger::Attacks`] ability's reanimation
     /// target bound (Guardian Scalelord: "return target nonland permanent card with mana value X
@@ -658,7 +703,9 @@ impl TriggerContext {
             combat_damage: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
+            damaged_creature: None,
             triggering_spell: None,
+            spells_cast_before_this: None,
             source_power: None,
             dead_creature: None,
             cards_left_graveyard: &[],

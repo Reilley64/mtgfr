@@ -73,6 +73,21 @@ impl Step {
     pub(crate) fn has_priority_window(self) -> bool {
         !matches!(self, Step::Untap | Step::Cleanup)
     }
+
+    /// Whether this step is one of combat's five (CR 500.4/601.3e — begin combat through end of
+    /// combat inclusive), the "cast this spell only during combat" timing window (Cauldron
+    /// Dance's [`CardDef::cast_only_during_combat`]).
+    pub(crate) fn is_combat(self) -> bool {
+        matches!(
+            self,
+            Step::BeginCombat
+                | Step::DeclareAttackers
+                | Step::DeclareBlockers
+                | Step::FirstStrikeCombatDamage
+                | Step::CombatDamage
+                | Step::EndCombat
+        )
+    }
 }
 
 /// The five colors of mana (WUBRG order). Colorless `{C}` is *not* a color (it never
@@ -112,6 +127,18 @@ impl Color {
             Color::Black => 2,
             Color::Red => 3,
             Color::Green => 4,
+        }
+    }
+
+    /// This color's mana-symbol letter (CR 107.4 — `{W}{U}{B}{R}{G}`), for rendering a
+    /// [`Cost`](super::Cost) back as pip text.
+    pub fn letter(self) -> char {
+        match self {
+            Color::White => 'W',
+            Color::Blue => 'U',
+            Color::Black => 'B',
+            Color::Red => 'R',
+            Color::Green => 'G',
         }
     }
 }
@@ -198,6 +225,9 @@ pub enum Keyword {
     /// restriction — it also stops a Shadow creature from blocking a non-Shadow attacker. See
     /// [`Game::can_block`].
     Shadow,
+    /// Can be blocked only by artifact creatures and/or black creatures (CR 702.36b). See
+    /// [`Game::can_block`].
+    Fear,
     /// Elusive Otter's printed evasion static ("Creatures with power less than this creature's
     /// power can't block it") — MTG names no keyword for it.
     /// ponytail: modeled as a card-specific keyword-bag arm on the shared block-legality check
@@ -412,13 +442,20 @@ pub struct CardDef {
     /// graveyard"): unlike every other Aura, whose enchant subject is a battlefield permanent
     /// ([`Self::enchant`] above), this card's is a creature *card in a graveyard*, chosen when
     /// it's cast — [`Game::required_target`] reports [`TargetSpec::CreatureCardInAnyGraveyard`]
-    /// for it instead of the `CardKind::Aura` battlefield-permanent spec. `false` for every
-    /// other card.
+    /// for it instead of the ordinary `CardKind::Aura` battlefield-permanent spec, checked ahead
+    /// of it. `Kind` stays `Aura` (CR 704.5m's Aura-orphan state-based action applies to it like
+    /// any other Aura), but [`Game::resolve_spell`] routes it through the same generic
+    /// permanent-enter path a Creature/Enchantment uses instead of the ordinary `CardKind::Aura`
+    /// immediate-attach arm, since there's no battlefield host yet to attach to at cast — its own
+    /// ETB ability's `reanimate_to_battlefield` + `attach_self_to_reanimated` effects do the
+    /// reanimate-then-attach instead. That leaves it unattached for the brief window between
+    /// entering and its own ETB ability resolving; [`Game::check_state_based_actions`]'s Aura-
+    /// orphan sweep (which runs *before* that ETB ability is even placed on the stack, per
+    /// `pipeline.rs`'s phase order) exempts it for exactly that window — see its own doc. `false`
+    /// for every other card.
     /// ponytail: a bare bool, not a filter — the pool has exactly one such card and its enchant
     /// subject is unrestricted ("a graveyard", not "your graveyard"); promote to a filter/scope
-    /// type mirroring `enchant` if a second graveyard-enchanting Aura needs a narrower one. Kind
-    /// stays `Enchantment`, not `Aura`: the `CardKind::Aura` resolution path expects a
-    /// battlefield host to already exist to attach to, which a graveyard card isn't yet.
+    /// type mirroring `enchant` if a second graveyard-enchanting Aura needs a narrower one.
     pub enchant_graveyard: bool,
     /// Whether the card is legendary — the only cards that may be a deck's commander.
     /// ponytail: a bare bool, not a supertype set; the pool has no other supertypes yet.
@@ -475,6 +512,11 @@ pub struct CardDef {
     /// `Copy`); empty (every ordinary card) falls back to deriving color from cost pips as usual.
     /// `colors = ["green"]` / `["white", "black"]` in TOML.
     pub colors: &'static [Color],
+    /// Devoid (CR 702.114a): the card is colorless despite any colored mana-cost pips —
+    /// overrides the cost-pip derivation in [`color_identity`] to all-false, taking priority
+    /// over `colors` (a devoid card is never also given an explicit color list). `devoid = true`
+    /// in TOML; `false` (every ordinary card) leaves color derivation to pips/`colors` as usual.
+    pub devoid: bool,
     /// Whether this permanent enters the battlefield tapped, *unconditionally* (CR 614.13 — a
     /// replacement effect: it never enters untapped). `enters_tapped = true` in TOML; almost
     /// always a land ("This land enters tapped"). Honored by [`fresh_permanent`] so every entry
@@ -486,6 +528,22 @@ pub struct CardDef {
     /// the unconditional `enters_tapped` flag. Mutually meaningful: a card that needs both
     /// (none currently do) would need a third state; not worth it until one does.
     pub enters_tapped_unless: Option<Condition>,
+    /// A printed "you may cast this spell without paying its mana cost" permission, gated on a
+    /// board-state [`Condition`] checked fresh at cast time (CR 118.5 — Massacre: "If an
+    /// opponent controls a Plains and you control a Swamp, you may cast this spell without
+    /// paying its mana cost"). `None` (the common case) leaves the printed cost untouched. When
+    /// the condition holds, [`Game::cast_cost`] returns [`Cost::FREE`] outright rather than
+    /// pausing for a decline — the same "always take the strictly-better option" modeling
+    /// [`Condition::HandHasLandWithSubtype`]'s reveal-lands already use, since nothing in this
+    /// pool wants to voluntarily pay a cost it could skip.
+    pub free_cast_if: Option<Condition>,
+    /// "Cast this spell only during combat" (CR 601.3e's named-window restriction — Cauldron
+    /// Dance): legal only from begin-combat through end-of-combat inclusive ([`Step::is_combat`]),
+    /// on top of (not instead of) the ordinary instant/sorcery-speed gate — an instant with this
+    /// flag is still open only during those steps, not any time it holds priority. Checked in
+    /// [`Game::cast_timing_ok`]. `cast_only_during_combat = true` in TOML; `false` (every ordinary
+    /// card) leaves timing to `kind`'s instant/sorcery speed alone.
+    pub cast_only_during_combat: bool,
     /// A one-line plain-English note on how this card's modeled behavior diverges from its
     /// printed rules text (a dropped clause, a coarsened trigger, a folded-together mechanic) —
     /// the same fact a `# ponytail:` TOML comment records, but as a datum the catalog/deck
@@ -517,6 +575,14 @@ pub struct CardDef {
     /// hand. `None` for a card with no cycling. `cycling = { generic = N }` in TOML (the same
     /// `[cost]`-table shape as a spell's cost).
     pub cycling: Option<Cost>,
+    /// A sacrifice folded into the cycling cost (CR 702.29b — Edge of Autumn's "Cycling—Sacrifice
+    /// a land"), on top of `cycling`'s mana. Cycling is an activated ability (CR 702.29), so the
+    /// named sacrifice is validated and paid through the same choke an ordinary activation's
+    /// [`ActivationCost::sacrifice`] uses (CR 602.2b — an uncompletable/unnamed cost makes the
+    /// activation illegal). `SacrificeCost::None` (the default) for ordinary cycling.
+    /// `cycling_sacrifice = { permanent = { types = "land" } }` in TOML, the same [`SacrificeCost`]
+    /// table/shorthand shape as an activation's `sacrifice`.
+    pub cycling_sacrifice: SacrificeCost,
     /// A hand-activated, discard-this-card ability (CR 113.6/602.5e — an activated ability that
     /// functions only from the hand, whose cost is "Discard this card" plus a mana cost; Magma
     /// Opus's "{U/R}{U/R}, Discard this card: Create a Treasure token."). The general sibling of
@@ -539,6 +605,14 @@ pub struct CardDef {
     /// permanent enters, gated by [`Permanent::echo_unpaid`]. `[echo]` in TOML, the same
     /// `[cost]`-table shape as a spell's cost.
     pub echo: Option<Cost>,
+    /// Recover (CR 702.59 — Grim Harvest): "When a creature is put into your graveyard from the
+    /// battlefield, you may pay {cost}. If you do, return this card from your graveyard to your
+    /// hand. Otherwise, exile this card." `None` for a card without recover. `Some(cost)` queues a
+    /// pay-or-exile choice ([`PendingChoice::PayRecoverOrExile`]) once per creature death, from the
+    /// battlefield, for every recover card already sitting in that creature's owner's graveyard —
+    /// including the dying creature itself if it has recover (CR 702.59b). `[recover]` in TOML,
+    /// the same `[cost]`-table shape as [`Self::echo`].
+    pub recover: Option<Cost>,
     /// Bestow (CR 702.103 — Eidolon of Countless Battles): a permanent (enchantment) creature card
     /// with an alternative cast mode. `Some(cost)` lets its owner cast it as an *Aura spell with
     /// enchant creature* for `cost` (via [`Game::cast_bestow`]) instead of as a creature spell;
@@ -677,6 +751,12 @@ pub struct CardDef {
     /// permanent they control, letting them leave it tapped ([`PendingChoice::DeclineUntap`]).
     /// `false` for every ordinary permanent. `may_choose_not_to_untap = true` in TOML.
     pub may_choose_not_to_untap: bool,
+    /// Dredge N (CR 702.52): a keyword ability that works from this card's graveyard. "If you would
+    /// draw a card, you may instead mill exactly N and return this card from your graveyard to your
+    /// hand" — a replacement for a draw, not a triggered ability (no stack item). `Some(n)` for a
+    /// dredger; `None` for every other card. `dredge = N` in TOML. Read by the single-draw choke,
+    /// which offers [`PendingChoice::ChooseDredge`] when the library holds at least N (CR 702.52a).
+    pub dredge: Option<u8>,
 }
 
 /// The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars,
@@ -796,6 +876,9 @@ impl CardDef {
 /// checks against the pool; `def.colors` never affects deck legality (no pool token is
 /// deck-legal, and no real card sets it).
 pub fn color_identity(def: CardDef) -> [bool; Color::COUNT] {
+    if def.devoid {
+        return [false; Color::COUNT];
+    }
     if !def.colors.is_empty() {
         let mut identity = [false; Color::COUNT];
         for &color in def.colors {
@@ -853,6 +936,7 @@ pub(crate) fn fresh_permanent(
         added_types_eot: TypeSet::NONE,
         added_subtypes_eot: &[],
         added_colors_eot: &[],
+        set_color_eot: None,
         temp_keywords: &[],
         temp_lost_keywords: &[],
         set_base_pt: None,
@@ -879,6 +963,7 @@ pub(crate) fn fresh_permanent(
         serra_recursion: false,
         bestowed: false,
         face_down: false,
+        flipped: false,
         masked: false,
         evoked: false,
         reverts_to_def_eot: None,
@@ -925,6 +1010,7 @@ pub fn treasure_token() -> CardDef {
             remove_counters_kind: None,
             return_self: false,
             mill_self: 0,
+            discard_cost: 0,
             exile_self: false,
         }),
         effect: Effect::AddMana {
@@ -971,16 +1057,21 @@ pub fn treasure_token() -> CardDef {
         abilities: ABILITIES,
         identity_pips: &[],
         colors: &[],
+        devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        free_cast_if: None,
+        cast_only_during_combat: false,
         approximates: None,
         oracle: None,
         set: "",
         subtypes: &["Treasure"],
         otags: &[],
         cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        recover: None,
         bestow: None,
         morph: None,
         evoke: None,
@@ -1001,6 +1092,7 @@ pub fn treasure_token() -> CardDef {
         encore: None,
         hand_ability: None,
         may_choose_not_to_untap: false,
+        dredge: None,
     }
 }
 
@@ -1028,16 +1120,21 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         abilities: &[],
         identity_pips: &[],
         colors: &[Color::Black],
+        devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        free_cast_if: None,
+        cast_only_during_combat: false,
         approximates: None,
         oracle: None,
         set: "",
         subtypes: &["Rogue"],
         otags: &[],
         cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        recover: None,
         bestow: None,
         morph: None,
         evoke: None,
@@ -1058,6 +1155,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         encore: None,
         hand_ability: None,
         may_choose_not_to_untap: false,
+        dredge: None,
     }
 }
 
@@ -1087,16 +1185,21 @@ pub(crate) fn illusion_token() -> CardDef {
         abilities: &[],
         identity_pips: &[],
         colors: &[Color::Blue],
+        devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        free_cast_if: None,
+        cast_only_during_combat: false,
         approximates: None,
         oracle: None,
         set: "",
         subtypes: &["Illusion"],
         otags: &[],
         cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        recover: None,
         bestow: None,
         morph: None,
         evoke: None,
@@ -1117,6 +1220,7 @@ pub(crate) fn illusion_token() -> CardDef {
         encore: None,
         hand_ability: None,
         may_choose_not_to_untap: false,
+        dredge: None,
     }
 }
 
@@ -1329,6 +1433,13 @@ pub(crate) struct Permanent {
     /// `added_types_eot`/`added_subtypes_eot` at cleanup (see [`Event::TempBoostsEnded`]'s
     /// handler). Not a `CardDef`/TOML surface — runtime bookkeeping like its type-layer siblings.
     pub(crate) added_colors_eot: &'static [Color],
+    /// A CR 613.3c layer-5 color-SET until end of turn (Wild Mongrel's "becomes the color of
+    /// your choice until end of turn" — [`Effect::SetOwnColorUntilEndOfTurn`]): while `Some`,
+    /// [`Game::colors_of`] returns exactly this one color, *replacing* the derived/`added_colors_eot`
+    /// colors rather than unioning with them (unlike `added_colors_eot`'s CR 613.3c layer-5 ADD).
+    /// Cleared alongside `added_colors_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler).
+    /// Not a `CardDef`/TOML surface — the color is a runtime player choice, not printed data.
+    pub(crate) set_color_eot: Option<Color>,
     /// Keywords granted until end of turn (a [`Effect::PumpUntilEndOfTurn`]/
     /// [`Effect::PumpCreaturesYouControlUntilEndOfTurn`] grant), cleared at cleanup alongside
     /// the temp P/T. `&'static` because it's usually copied straight from the granting
@@ -1458,9 +1569,10 @@ pub(crate) struct Permanent {
     /// Whether this permanent was played/cast from a graveyard under Serra Paragon's permission
     /// (CR 118.9) and so carries the granted rider "when this permanent is put into a graveyard
     /// from the battlefield, exile it and you gain 2 life." Set as it enters (from the casting
-    /// [`Spell::serra_recursion`], or directly for a land-play); read at the death choke
-    /// ([`Game::graveyard_or_command`]) to exile it instead and by
-    /// [`Event::MovedToExile`]'s handler to queue the +2 life. Runtime state, not TOML-authored,
+    /// [`Spell::serra_recursion`], or directly for a land-play); read at the [`Event::MovedToGraveyard`]
+    /// apply choke ([`Game::apply`]) into `Game`'s batch scratch — the permanent is genuinely
+    /// dying, so `Game::enqueue_triggers` fabricates the real placed trigger off that scratch
+    /// (see [`crate::Effect::ExileGraveyardObjectGainLife`]). Runtime state, not TOML-authored,
     /// defaulted `false` like `finality_counter`.
     pub(crate) serra_recursion: bool,
     /// Whether this permanent was cast via bestow (CR 702.103 — Eidolon of Countless Battles) and
@@ -1481,6 +1593,15 @@ pub(crate) struct Permanent {
     /// morph / megamorph / disguise) — no morph card is in the pool, so only plain manifest is
     /// built; a morph card would add its face-down cost + the morph keyword on top of this status.
     pub(crate) face_down: bool,
+    /// Whether this permanent has *flipped* (CR 712 — a Kamigawa flip card, Nezumi Graverobber →
+    /// Nighteyes the Devourer): while set, its live characteristics come from its [`CardDef::back`]
+    /// face (name, P/T, types, subtypes, abilities) instead of its front `def` — read through
+    /// [`Game::def_of`], which every characteristic accessor funnels through. Unlike morph's
+    /// `face_down`, flipping is one-way and permanent: nothing clears it. The object itself is
+    /// unchanged (CR 712.5), so counters, attachments, and tapped state ride across untouched.
+    /// Set by [`Effect::FlipSource`](crate::Effect::FlipSource) via [`Event::Flipped`]; runtime
+    /// state, not TOML-authored, defaulted `false` like `face_down`.
+    pub(crate) flipped: bool,
     /// Whether this face-down permanent was put onto the battlefield by Illusionary Mask (CR 615):
     /// while `masked && face_down`, it turns face up for free (no morph/manifest cost) the instant
     /// it would assign or deal damage, be dealt damage, or become tapped (the printed "instead it's

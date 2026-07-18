@@ -302,7 +302,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             needs_target: false,
             targets: Vec::new(),
             modal: None,
-            sacrifice_choices: None,
+            // A cycling sacrifice cost (CR 702.29b) rides `take_action.sacrifice`, so the
+            // client's generic sacrifice-pick pipeline needs the candidate list here.
+            sacrifice_choices: game.cycling_sacrifice_candidates(card),
             discard_choices: None,
             discard_count: 0,
             graveyard_exile_choices: None,
@@ -543,6 +545,18 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         })
         .map(|id| {
             let def = game.def_of(id);
+            // CR 712: a flipped Kamigawa permanent displays its back face (name/type/P-T via
+            // `def_of`), but the back inline def carries no `id`/`default_print` — both faces share
+            // one physical Scryfall print (one image). Keep the front's printing identity for
+            // `card_id`/`print` (the client's art + oracle lookup) whenever the live face lacks its
+            // own; unflipped permanents read `front == def`, so this is a no-op there.
+            let front = game.front_def_of(id);
+            let card_id_src = if def.id.is_empty() { front } else { def };
+            let print_src = if def.default_print.is_empty() {
+                front
+            } else {
+                def
+            };
             // CR 708.2: a face-down permanent (a manifest) is anonymized — its real name, card
             // kind, and mana cost are hidden from every viewer (the engine already reports its
             // 2/2 P/T, creature type, and empty keywords). The client renders it as a card back.
@@ -564,7 +578,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 card_id: if face_down {
                     String::new()
                 } else {
-                    def.id.to_string()
+                    card_id_src.id.to_string()
                 },
                 name: if face_down {
                     String::new()
@@ -574,7 +588,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 print: if face_down {
                     String::new()
                 } else {
-                    def.default_print.to_string()
+                    print_src.default_print.to_string()
                 },
                 kind: if face_down {
                     WireKind::Creature {
@@ -1426,6 +1440,27 @@ mod tests {
         assert_eq!(cycle.section, "hand");
         assert!(cycle.label.starts_with("Cycle:"));
         assert!(!cycle.needs_target);
+        // Plain cycling has no sacrifice cost — the client must not open a sacrifice pick.
+        assert_eq!(cycle.sacrifice_choices, None);
+    }
+
+    #[test]
+    fn a_cycling_sacrifice_cost_lists_its_candidates() {
+        // Edge of Autumn: "Cycling—Sacrifice a land." (CR 702.29b). The pick rides
+        // `take_action.sacrifice`, so the action must carry the candidate lands.
+        let mut game = Game::new();
+        let edge = game.spawn_in_hand(PlayerId(0), def("Edge of Autumn"));
+        let forest = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
+        // A submit recomputes the action list (spawns alone don't).
+        refresh_via_mana_tap(&mut game, forest);
+
+        let snap = snapshot(&game, PlayerId(0));
+        let cycle = snap
+            .actions
+            .iter()
+            .find(|a| a.kind == "cycle" && a.object == Some(edge))
+            .expect("Edge of Autumn lists a cycle action");
+        assert_eq!(cycle.sacrifice_choices, Some(vec![forest]));
     }
 
     #[test]
@@ -1583,8 +1618,11 @@ mod tests {
             modal_choose_max_if_commander: false,
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
@@ -1594,8 +1632,10 @@ mod tests {
             conditional_keywords: &[],
             abilities: &ABILITIES,
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -1616,6 +1656,7 @@ mod tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 
@@ -1709,6 +1750,7 @@ mod tests {
             ability_index: 1,
             target: Some(engine::Target::Object(bear)),
             sacrifice: vec![],
+            discard_cost: vec![],
             x: 0,
         })
         .expect("Equip {0}");
@@ -1851,6 +1893,7 @@ mod tests {
             ability_index: 0, // +1: draw two
             target: None,
             sacrifice: vec![],
+            discard_cost: vec![],
             x: 0,
         })
         .expect("+1 loyalty ability");
@@ -1881,6 +1924,7 @@ mod tests {
             ability_index: 1, // static grant is 0; Equip is 1
             target: Some(engine::Target::Object(bear)),
             sacrifice: vec![],
+            discard_cost: vec![],
             x: 0,
         })
         .expect("Equip {0}");
@@ -1911,6 +1955,7 @@ mod tests {
             ability_index: 1,
             target: Some(engine::Target::Object(bear)),
             sacrifice: vec![],
+            discard_cost: vec![],
             x: 0,
         })
         .expect("Equip {0}");
@@ -2358,5 +2403,64 @@ mod tests {
                 "the owner sees their own face-down pile plainly"
             );
         }
+    }
+
+    /// CR 712: a Kamigawa flip card is one physical Scryfall printing (one image) showing both
+    /// faces. When it flips, its display characteristics (name/type/P/T) come from the back face,
+    /// but its physical printing identity — `card_id` and `print`, which drive the client's art
+    /// and oracle lookup — must stay the front's, because the back-face inline def carries no
+    /// `id`/`default_print` of its own. Nezumi Graverobber flips to Nighteyes the Desecrator.
+    #[test]
+    fn a_flipped_kamigawa_permanent_keeps_the_front_printing_identity() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let p1 = PlayerId(1);
+        let nezumi = game.spawn_on_battlefield(p0, def("Nezumi Graverobber"));
+        let only_card = game.spawn_in_graveyard(p1, def("Grizzly Bear"));
+        game.fund_mana(p0);
+
+        let before = snapshot(&game, p0);
+        let front = before.objects.iter().find(|o| o.id == nezumi).unwrap();
+        assert_eq!(front.name, "Nezumi Graverobber");
+        let front_card_id = front.card_id.clone();
+        let front_print = front.print.clone();
+        assert!(!front_card_id.is_empty(), "front has a card_id");
+        assert!(!front_print.is_empty(), "front has a print");
+
+        // Exiling the opponent's only graveyard card empties it, flipping Nezumi to Nighteyes.
+        game.submit(engine::Intent::ActivateAbility {
+            player: p0,
+            object: nezumi,
+            ability_index: 0,
+            target: Some(engine::Target::Object(only_card)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .unwrap();
+        resolve_top_of_stack(&mut game);
+
+        let after = snapshot(&game, p0);
+        let flipped = after.objects.iter().find(|o| o.id == nezumi).unwrap();
+        assert_eq!(
+            flipped.name, "Nighteyes the Desecrator",
+            "name flips to the back face"
+        );
+        assert_eq!(
+            flipped.kind,
+            WireKind::Creature {
+                power: 4,
+                toughness: 2,
+            },
+            "type/P-T flip to the back face",
+        );
+        assert_eq!(
+            flipped.card_id, front_card_id,
+            "card_id stays the front's — same physical printing"
+        );
+        assert_eq!(
+            flipped.print, front_print,
+            "print (art) stays the front's — the back face has no image of its own"
+        );
     }
 }

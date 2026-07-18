@@ -120,15 +120,17 @@ impl Game {
                     from: object,
                 }]
             }
-            // The ability's own source, wherever it now lives (Angelic Destiny: by the time an
-            // `EnchantedCreatureDies` trigger resolves, the Aura is already a graveyard card, not
-            // a permanent) — a no-target self-return. Guard-return if the source has left the game
-            // entirely (CR 603.6c last-known-info edge; no pool card leaves it any other way).
+            // The ability's own source — a no-target self-return. Its pool fires from a graveyard
+            // death trigger (Angelic Destiny: by the time an `EnchantedCreatureDies` trigger
+            // resolves, the Aura is already a graveyard card) or a battlefield activated ability
+            // (Flickering Ward). Guard-return if the source has left both zones by resolution —
+            // exiled by Nezumi Graverobber mid-trigger, say — per CR 603.6e / 400.7.
             Effect::ReturnThisToHand => {
-                let current = self.current_id(source);
-                if matches!(self.objects[current as usize], Object::Removed) {
+                let Some(current) =
+                    self.return_this_source(source, &[Zone::Graveyard, Zone::Battlefield])
+                else {
                     return Vec::new();
-                }
+                };
                 vec![Event::ReturnedToHand {
                     card: self.next_object_id(),
                     from: current,
@@ -136,14 +138,13 @@ impl Game {
             }
             // Nether Traitor: the ability's own source (a graveyard card by now) returns to the
             // battlefield under its owner's control (CR 603.6e). The self-return twin of
-            // `ReanimateToBattlefield` — enters via the same ETB path. No-op if it has already left.
-            // Teacher's Pest activates this from the graveyard directly (CR 112.6) with
-            // `tapped = true`.
+            // `ReanimateToBattlefield` — enters via the same ETB path. No-op if it has left the
+            // graveyard by resolution (exiled mid-trigger, say). Teacher's Pest activates this
+            // from the graveyard directly (CR 112.6) with `tapped = true`.
             Effect::ReturnThisFromGraveyardToBattlefield { tapped } => {
-                let current = self.current_id(source);
-                if matches!(self.objects[current as usize], Object::Removed) {
+                let Some(current) = self.return_this_source(source, &[Zone::Graveyard]) else {
                     return Vec::new();
-                }
+                };
                 vec![Event::ReanimatedToBattlefield {
                     permanent: self.next_object_id(),
                     from: current,
@@ -367,28 +368,92 @@ impl Game {
             // controller's own graveyard returns to the battlefield under their control, with no
             // finality counter. Ids are minted sequentially, matching the order `apply` will push
             // them (same pattern as `ReturnAllToHand`'s mass bounce).
-            Effect::MassReturnFromGraveyard { filter } => {
+            Effect::MassReturnFromGraveyard {
+                filter,
+                all_players,
+            } => {
+                // `all_players = false` (Replenish) scans only the ability controller's own
+                // graveyard; `all_players = true` (All Hallow's Eve — "each player returns all
+                // creature cards from their graveyard") scans EVERY player's graveyard in APNAP
+                // order so id assignment is deterministic. Each player's cards return under that
+                // player's own control (`owner`), which for the controller-only scan is just the
+                // controller.
+                let scan: Vec<PlayerId> = if all_players {
+                    self.apnap_order()
+                } else {
+                    vec![controller]
+                };
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
-                for id in self.live_object_ids() {
-                    if self.zone_of(id) != Zone::Graveyard || self.owner_of(id) != controller {
-                        continue;
+                for owner in scan {
+                    for id in self.live_object_ids() {
+                        if self.zone_of(id) != Zone::Graveyard || self.owner_of(id) != owner {
+                            continue;
+                        }
+                        if !filter.matches(self.def_of(id)) {
+                            continue;
+                        }
+                        events.push(Event::ReanimatedToBattlefield {
+                            permanent: next,
+                            from: id,
+                            controller: owner,
+                            finality: false,
+                            tapped: false,
+                        });
+                        next += 1;
                     }
-                    if !filter.matches(self.def_of(id)) {
-                        continue;
-                    }
-                    events.push(Event::ReanimatedToBattlefield {
-                        permanent: next,
-                        from: id,
-                        controller,
-                        finality: false,
-                        tapped: false,
-                    });
-                    next += 1;
                 }
                 events
             }
 
+            // Cauldron Dance's delayed payloads (never authored directly — see the variant's
+            // doc). Return one already-resolved object to its owner's hand, no re-scan — the
+            // return-flavored sibling of `SacrificeObject`/`ExileObject`. Guard-return if
+            // it's already left the battlefield some other way before the delayed trigger
+            // fired: nothing left to return. A token ceases to exist instead of actually
+            // changing zones (CR 111.7), mirroring `ReturnToHand`'s own token branch — no pool
+            // consumer can hit this (a token never sits in a graveyard to be reanimated, nor
+            // does `PutCreatureFromHand` ever deploy one), but the guard costs nothing and keeps
+            // the effect faithful if one ever does.
+            Effect::ReturnObjectToHand { object } => {
+                let id = object.expect("filled in when the delayed return was scheduled");
+                if self.zone_of(id) != Zone::Battlefield {
+                    return Vec::new();
+                }
+                let permanent = self.permanent(id);
+                if permanent.token {
+                    return vec![Event::TokenCeasedToExist {
+                        token: id,
+                        controller: permanent.owner,
+                        def: permanent.def,
+                    }];
+                }
+                vec![Event::ReturnedToHand {
+                    card: self.next_object_id(),
+                    from: id,
+                }]
+            }
+            // Serra Paragon's rider (CR 118.9) — see the variant's doc. Guard-return no-op if
+            // the card already left the graveyard before this placed trigger resolved (a
+            // response returned/reanimated/re-exiled it in the meantime).
+            // ponytail: skips the whole effect (exile + life) when the card is gone. The strict
+            // CR 608.2 "do as much as possible" reading gains 2 life even then (the two clauses are
+            // independent), but Serra Paragon is a documented rules-corner with no official ruling;
+            // split the guard to still gain life if a card ever depends on that line.
+            Effect::ExileGraveyardObjectGainLife { object, amount } => {
+                let id = object.expect("filled in when the placed trigger was queued");
+                if self.zone_of(id) != Zone::Graveyard {
+                    return Vec::new();
+                }
+                vec![
+                    self.exile_or_command(id, self.next_object_id()),
+                    Event::LifeChanged {
+                        player: controller,
+                        amount: self.life_gain_after_replacements(controller, amount),
+                        source: Some(source),
+                    },
+                ]
+            }
             _ => unreachable!("zones family mint received a non-family effect"),
         }
     }

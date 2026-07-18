@@ -1,0 +1,31 @@
+# Exile All Hallow's Eve with two scream counters on it.
+# At the beginning of your upkeep, if this card is exiled with a scream counter on it, remove a scream counter from it. If
+# there are no more scream counters on it, put it into your graveyard and each player returns all creature cards from their
+# graveyard to the battlefield.
+name = "All Hallow's Eve"
+id = "ebed900f-6de3-4ae7-9795-fae34882298d"
+default_print = "af266eec-e61b-4bda-be7f-3a5a59eee864"
+oracle = "Exile All Hallow's Eve with two scream counters on it.\nAt the beginning of your upkeep, if this card is exiled with a scream counter on it, remove a scream counter from it. If there are no more scream counters on it, put it into your graveyard and each player returns all creature cards from their graveyard to the battlefield."
+set = "me3"
+
+[cost]
+generic = 2
+black = 2
+
+[kind]
+type = "sorcery"
+
+# Exile All Hallow's Eve with two scream counters on it.
+# At the beginning of your upkeep, if this card is exiled with a scream counter on it, remove a scream counter from it. If
+# there are no more scream counters on it, put it into your graveyard and each player returns all creature cards from their
+# graveyard to the battlefield.
+[[abilities]]
+timing = "spell"
+
+# Exile All Hallow's Eve with two scream counters on it. [The upkeep countdown and the last-counter expiry — "put it into
+# your graveyard and each player returns all creature cards from their graveyard to the battlefield" — resolve from
+# on_expiry when the final scream counter comes off.]
+[[abilities.effects]]
+type = "exile_self_with_time_counters"
+counters = 2
+on_expiry = [{ type = "mass_return_from_graveyard", filter = "creature", all_players = true }]

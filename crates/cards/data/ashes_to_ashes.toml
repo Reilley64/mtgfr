@@ -1,0 +1,32 @@
+# Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you.
+name = "Ashes to Ashes"
+id = "944a52d9-bb14-43c5-8d05-2afaf023dc9f"
+default_print = "9e61209b-0f56-4bab-9ada-700f91b18dec"
+set = "me3"
+oracle = "Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to you."
+
+[cost]
+generic = 1
+black = 2
+
+[kind]
+type = "sorcery"
+
+# Exile two target nonartifact creatures.
+[[abilities]]
+timing = "spell"
+
+# Exile two target nonartifact creatures.
+[[abilities.effects]]
+type = "exile_target"
+target = { permanent = { types = "creature", exclude = "artifact" } }
+count = { min = 2, max = 2 }
+
+# Ashes to Ashes deals 5 damage to you.
+[[abilities]]
+timing = "spell"
+
+# Ashes to Ashes deals 5 damage to you.
+[[abilities.effects]]
+type = "deal_damage_to_self"
+amount = 5

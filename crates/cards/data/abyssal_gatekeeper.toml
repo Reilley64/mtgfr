@@ -1,0 +1,27 @@
+# When this creature dies, each player sacrifices a creature of their choice.
+name = "Abyssal Gatekeeper"
+otags = ["death-trigger-self", "multi-removal", "mutual-sacrifice", "removal-creature", "sacrifice-outlet-creature", "spot-removal", "symmetrical", "type-errata", "wth-storyline-in-cards"]
+oracle = "When this creature dies, each player sacrifices a creature of their choice."
+set = "dvd"
+subtypes = ["Horror"]
+id = "4954181c-cb46-4cac-adc3-2c8b7693a211"
+default_print = "6d2a66f0-1afe-41e6-a597-ec2e95685191"
+
+[cost]
+generic = 1
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature dies, each player sacrifices a creature of their choice.
+[[abilities]]
+timing = "dies"
+
+# each player sacrifices a creature of their choice.
+[[abilities.effects]]
+type = "each_player_sacrifices"
+scope = "all_players"
+filter = "creature"

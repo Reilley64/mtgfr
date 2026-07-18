@@ -702,7 +702,8 @@ keywords = ["flying"]
         assert!(matches!(
             raise_dead.abilities[0].effect,
             Effect::ReturnFromGraveyardToHand {
-                target: TargetSpec::CreatureCardInYourGraveyard
+                target: TargetSpec::CreatureCardInYourGraveyard,
+                ..
             }
         ));
 
@@ -977,7 +978,7 @@ keywords = ["flying"]
             Effect::DestroyTarget {
                 target: TargetSpec::Permanent(PermanentFilter {
                     types: TypeSet::NONLAND,
-                    noncreature: true,
+                    exclude: TypeSet::CREATURE,
                     mv_max: Some(2),
                     ..
                 }),
