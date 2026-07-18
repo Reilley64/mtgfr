@@ -1,8 +1,10 @@
 // BFF lobby + meta surface. Auth/decks/cards/game go through `/api/rpc/**`.
 
 import type { APIEvent } from "@solidjs/start/server";
+import * as Effect from "effect/Effect";
 import { getCookie } from "vinxi/http";
 import { createWebDb } from "~/db/client";
+import { continueIncomingTrace, runTraced } from "~/effect/otel";
 import { normalizePublicApiPath } from "~/lib/apiUpstream";
 import { fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "~/lib/apiUpstreamAuth";
 import {
@@ -17,6 +19,7 @@ import {
   sweepWebDb,
   toLobbyView,
 } from "~/lib/lobbyStore";
+import { formatTraceparent } from "~/lib/traceContext";
 import { runWithTraceparent } from "~/wire/grpcClient";
 
 /** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */
@@ -177,9 +180,30 @@ async function forward(event: APIEvent) {
   }
 
   const traceparent = event.request.headers.get("traceparent");
-  return runWithTraceparent(traceparent, () => handleLobby(event, path)).then(
-    (lobby) => lobby ?? new Response("Not Found", { status: 404 }),
-  );
+  return runTraced(
+    continueIncomingTrace(
+      Effect.gen(function* () {
+        const span = yield* Effect.currentSpan;
+        const outboundTraceparent = formatTraceparent({
+          traceId: span.traceId,
+          spanId: span.spanId,
+          sampled: span.sampled,
+        });
+        return yield* Effect.tryPromise({
+          try: () => runWithTraceparent(outboundTraceparent, () => handleLobby(event, path)),
+          catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+        });
+      }).pipe(
+        Effect.withSpan(`api ${path}`, {
+          attributes: {
+            "http.method": event.request.method,
+            "http.route": path,
+          },
+        }),
+      ),
+      traceparent,
+    ),
+  ).then((lobby) => lobby ?? new Response("Not Found", { status: 404 }));
 }
 
 export const GET = forward;

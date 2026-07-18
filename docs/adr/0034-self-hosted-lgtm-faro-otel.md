@@ -10,8 +10,8 @@ The cluster had health probes and an unused `RUST_LOG` env, but no metrics, logs
 
 - **Self-hosted LGTM** in namespace `observability` via Terraform Helm: Grafana, Loki, Tempo, Prometheus, plus **Grafana Alloy** as the sole ingest path.
 - **Grafana UI** is operator-only via `kubectl port-forward` (no Cloudflare Tunnel hostname).
-- **Browser:** Grafana Faro (`@grafana/faro-web-sdk` + `@grafana/faro-web-tracing`) via `src/plugins/otel.client.ts` (imported from `entry-client`); posts to same-origin `/api/faro/collect`; the BFF proxies to Alloy `faro.receiver`.
-- **BFF:** Nitro plugin `src/plugins/otel.server.ts` installs a process-scoped `@effect/opentelemetry` `ManagedRuntime` once; exports OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; propagates W3C `traceparent` to gRPC metadata.
+- **Browser:** Grafana Faro (`@grafana/faro-web-sdk` + `@grafana/faro-web-tracing`) via `src/plugins/otel.client.ts` (imported from `entry-client`); posts to same-origin `/api/faro/collect`; the BFF proxies to Alloy `faro.receiver`. Faro app name is `edh-browser` (distinct from BFF `edh-web`).
+- **BFF:** Nitro plugin `src/plugins/otel.server.ts` installs a process-scoped `@effect/opentelemetry` `ManagedRuntime` once; exports OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; continues inbound W3C `traceparent` as the BFF span parent and injects the *BFF* span into gRPC metadata (so Tempo shows browser → web → api).
 - **API:** `tracing` + `opentelemetry-otlp` (HTTP) in `crates/server`; `tracing` spans in `crates/engine` (no exporters in engine).
 - **Metrics:** app OTEL only (no kube/node scrapes). **Logs:** OTLP from apps → Alloy → Loki (not stdout scrape).
 - **Sampling:** 100%. **Retention:** 7d traces/logs, 15d metrics.

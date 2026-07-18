@@ -2,7 +2,7 @@
 // Init once from the Nitro `otel.server` plugin; exporters only when
 // OTEL_EXPORTER_OTLP_ENDPOINT is set (cluster). Local/dev uses an empty layer.
 
-import { NodeSdk } from "@effect/opentelemetry";
+import { NodeSdk, OtelTracer } from "@effect/opentelemetry";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
@@ -12,6 +12,7 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import type * as Effect from "effect/Effect";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import { appVersion, gitCommit } from "~/lib/buildMeta";
+import { parseTraceparent } from "~/lib/traceContext";
 
 function otlpEndpoint(): string | null {
   const raw = process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();
@@ -71,6 +72,24 @@ async function ensureRuntime(): Promise<OtelRuntime> {
 export async function runTraced<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
   const rt = await ensureRuntime();
   return rt.runPromise(effect as Effect.Effect<A, E, never>);
+}
+
+/**
+ * Parent this effect's spans under an incoming W3C `traceparent` (Faro / upstream).
+ * No-op when the header is missing or invalid — the effect stays a local root.
+ */
+export function continueIncomingTrace<A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  traceparent: string | null,
+): Effect.Effect<A, E, R> {
+  const parsed = parseTraceparent(traceparent);
+  if (!parsed) return effect;
+  return OtelTracer.withSpanContext(effect, {
+    traceId: parsed.traceId,
+    spanId: parsed.spanId,
+    traceFlags: parsed.traceFlags,
+    isRemote: true,
+  }) as Effect.Effect<A, E, R>;
 }
 
 /** Flush/dispose exporters on Nitro `close`. */
