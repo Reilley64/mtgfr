@@ -76,7 +76,7 @@ export default function Auth() {
           <form onSubmit={submit} class="contents" data-testid="auth-form">
             <div class="flex flex-col gap-xs">
               <div class="m-0 text-display tracking-[-0.02em]">mtgfr</div>
-              <h1 class="m-0 text-title text-lichen">{isLogin() ? "Sign in" : "Create account"}</h1>
+              <h1 class="m-0 text-lichen text-title">{isLogin() ? "Sign in" : "Create account"}</h1>
             </div>
             <label for="email" class="text-label text-lichen">
               Email

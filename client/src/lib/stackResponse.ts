@@ -175,11 +175,7 @@ export type StackChrome = {
 };
 
 /** Whether the turn-yield rocker is offered (ADR 0029). */
-export function showTurnYieldControl(opts: {
-  spectating: boolean;
-  viewer: number;
-  active: number;
-}): boolean {
+export function showTurnYieldControl(opts: { spectating: boolean; viewer: number; active: number }): boolean {
   if (opts.spectating) return false;
   return opts.active !== opts.viewer;
 }
@@ -243,10 +239,7 @@ export type BoardChromeLocal = {
 };
 
 /** Map VisibleState + local staging into StackChromeInput (no Board field scattering). */
-export function stackChromeInputFromState(
-  state: VisibleState | null,
-  local: BoardChromeLocal,
-): StackChromeInput {
+export function stackChromeInputFromState(state: VisibleState | null, local: BoardChromeLocal): StackChromeInput {
   if (!state) {
     return {
       spectating: false,

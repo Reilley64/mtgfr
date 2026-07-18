@@ -10,8 +10,8 @@ import {
 } from "~/controllers/tableSurface";
 import type { RenderCard } from "~/layout";
 import { CARD_H, CARD_W, ZONE } from "~/layout";
-import { STACK_PEEK, STACK_VERTICAL_RESERVED, stackAimOrigin, stackPeekFor } from "~/lib/boardDraw";
-import { screenToWorld, worldToScreen } from "~/lib/camera";
+import { STACK_PEEK, STACK_VERTICAL_RESERVED, stackPeekFor } from "~/lib/boardDraw";
+import { worldToScreen } from "~/lib/camera";
 import { fitCamera } from "~/lib/interaction";
 
 const logical = (id: number, x: number, y: number, extra: Partial<RenderCard> = {}): RenderCard =>
@@ -484,7 +484,10 @@ describe("useTableSurface", () => {
   it("seeds playEntrances from deps on newly appearing cards", () => {
     const existing = logical(1, 100, 100);
     const land = logical(3, 400, 400);
-    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn(() => 1),
+    );
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
     let dispose!: () => void;
     let setCards!: (cs: RenderCard[]) => void;
@@ -506,9 +509,7 @@ describe("useTableSurface", () => {
       });
       setCards([existing, land]);
       // ADR 0035: play entrance parks at layout; canvas flight owns drop→slot motion.
-      expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(
-        expect.objectContaining({ id: 3, x: 400, y: 400 }),
-      );
+      expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(expect.objectContaining({ id: 3, x: 400, y: 400 }));
       dispose();
     } finally {
       vi.unstubAllGlobals();
@@ -518,7 +519,10 @@ describe("useTableSurface", () => {
   it("binds landPlays to pending play origins before seeding entrances", () => {
     const existing = logical(1, 100, 100);
     const land = logical(3, 400, 400);
-    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn(() => 1),
+    );
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
     let dispose!: () => void;
     let setCards!: (cs: RenderCard[]) => void;
@@ -550,9 +554,7 @@ describe("useTableSurface", () => {
       setCards([existing, land]);
 
       // ADR 0035: parks at layout; flight layer uses the noted origin for the visual path.
-      expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(
-        expect.objectContaining({ id: 3, x: 400, y: 400 }),
-      );
+      expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(expect.objectContaining({ id: 3, x: 400, y: 400 }));
       dispose();
     } finally {
       vi.unstubAllGlobals();

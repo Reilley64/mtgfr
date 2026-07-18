@@ -22,6 +22,9 @@ config/mtgfr.local.toml
 jar.txt
 **/jar.txt
 
+# Local agent/dogfood artifacts (videos, screenshots, seed jars)
+/tmp/
+
 # Ephemeral CR-index hook state + atomic write scratch
 .cursor/hooks/state/
 docs/CR_INDEX.md.tmp

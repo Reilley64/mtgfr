@@ -1566,10 +1566,7 @@ const ChooseTriggerModesForm: Component<FormProps> = (props) => {
                                 aria-pressed={picks()[i()] === seat()}
                                 onClick={() => setSeat(i(), seat())}
                                 variant="ghost"
-                                class={cn(
-                                  "text-caption",
-                                  picks()[i()] === seat() && "border-llanowar bg-llanowar/25",
-                                )}
+                                class={cn("text-caption", picks()[i()] === seat() && "border-llanowar bg-llanowar/25")}
                               >
                                 {seatLabel(seat())}
                               </Button>

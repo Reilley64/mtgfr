@@ -263,7 +263,7 @@ export default function Lobby(props: { onStarted: () => void }) {
         <Panel as="main" data-testid="lobby" class="max-w-[min(100%-2rem,560px)]">
           <div class="flex flex-col gap-xs">
             <div class="m-0 text-display tracking-[-0.02em]">mtgfr</div>
-            <h1 class="m-0 text-title text-lichen">Lobby</h1>
+            <h1 class="m-0 text-lichen text-title">Lobby</h1>
           </div>
 
           <Show when={table()} fallback={<Entry />}>

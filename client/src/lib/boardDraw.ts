@@ -2,8 +2,8 @@
 
 import { AVATAR_R, CARD_H, CARD_W, type RenderCard, STEP, seatBand, seatColor, ZONE } from "~/layout";
 import { type Camera, worldToScreen } from "~/lib/camera";
-import type { CardFlight } from "~/lib/cardFlight";
 import { abilityGlyph, hiddenKeywordCount, keywordBadges, showsSummoningSick, TAP_GLYPH } from "~/lib/cardBadges";
+import type { CardFlight } from "~/lib/cardFlight";
 import type { ImageCache } from "~/lib/imageCache";
 import { LETHAL_COMMANDER_DAMAGE, worstCommanderDamage } from "~/lib/outcome";
 import { cardBackUrl, imageUrlByPrint } from "~/lib/scryfall";

@@ -9,10 +9,7 @@ import { XPromptModal } from "~/controllers/prompt-host";
 import { stagedTargetTitle } from "~/lib/targetPrompt";
 
 /** Pre-submit chrome bound to the session's ActionExecution (opaque to Board). */
-export function ActionChrome(props: {
-  execution: ActionExecution;
-  playerName: (seat: number) => string;
-}): JSX.Element {
+export function ActionChrome(props: { execution: ActionExecution; playerName: (seat: number) => string }): JSX.Element {
   const ex = () => props.execution;
   const stagedPickTargets = createMemo(() => {
     const s = ex().staged();

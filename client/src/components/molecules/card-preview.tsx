@@ -254,7 +254,7 @@ export function InspectDock(props: {
                     type="button"
                     onClick={goBack}
                     variant="link"
-                    class="flex items-center gap-1 text-label text-fog no-underline hover:text-mist hover:underline"
+                    class="flex items-center gap-1 text-fog text-label no-underline hover:text-mist hover:underline"
                   >
                     <svg
                       aria-hidden="true"
