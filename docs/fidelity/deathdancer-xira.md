@@ -6,12 +6,12 @@ Commander: **Xira Arien**. Backlog increments: #167–#202.
 
 Intake counts: 9 faithful / 1 approximated / 39 expressible / 26 needing engine work.
 
-**Final state (2026-07-18): 75/75 cards in the pool — 74 fully faithful, 1 precise residual.**
-Animate Dead is a real Aura reanimator (#199); its only remaining note covers the printed
-"loses/gains enchant ability" self-rewrite, modeled implicitly as staying attached (CR 303.4
-makes the rewrite observationally identical — a deliberate trim, not a blocked prereq). All
-36 increments #167–#202 landed across ten green waves; the deck ships as the in-app precon
-**Deathdancer Xira (id -7)**.
+**Final state (2026-07-18): 75/75 cards in the pool, all fully faithful — 0 residuals.**
+Animate Dead is a real Aura reanimator (#199) whose printed enchant self-rewrite is modeled
+literally: attaching records the reanimated object as the Aura's only legal host, and the
+CR 704.5m sweep holds it to exactly that object (its intervening "if it's on the battlefield"
+is regression-tested too). All 36 increments #167–#202 landed across ten green waves; the
+deck ships as the in-app precon **Deathdancer Xira (id -7)**.
 
 ## A. In pool, faithful at intake (9)
 
@@ -27,10 +27,12 @@ makes the rewrite observationally identical — a deliberate trim, not a blocked
 
 ## B. In pool, approximated at intake (1)
 
-- [x] Animate Dead — current note verbatim: "typed as an enchantment, not an aura kind,
-  since the aura resolution path needs an existing battlefield host to attach to; the
+- [x] Animate Dead — intake note (now fully closed): "typed as an enchantment, not an aura
+  kind, since the aura resolution path needs an existing battlefield host to attach to; the
   printed \"loses/gains enchant ability\" self-rewrite is modeled implicitly as staying
-  attached rather than as a literal ability rewrite" → #199
+  attached rather than as a literal ability rewrite" → #199, then the rewrite modeled
+  literally (`enchant_rewrite_host` consulted by the CR 704.5m sweep) — no `approximates`
+  remains
 
 ## C. New, expressible today (39)
 

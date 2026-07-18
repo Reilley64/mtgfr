@@ -11,7 +11,6 @@ oracle = "Enchant creature card in a graveyard\nWhen this Aura enters, if it's o
 set = "soc"
 subtypes = ["Aura"]
 enchant_graveyard = true
-approximates = "the printed \"loses/gains enchant ability\" self-rewrite is modeled implicitly: this Aura just attaches to the creature it reanimates and stays (CR 303.4 — nothing ever detaches it, so the rewrite has no observable effect)"
 
 [cost]
 generic = 1

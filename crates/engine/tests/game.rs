@@ -76726,3 +76726,72 @@ fn two_controllers_death_watch_orders_apnap() {
         "both watches resolved (declined)"
     );
 }
+
+#[test]
+fn animate_dead_trigger_does_nothing_if_the_aura_leaves_first() {
+    // "When this Aura enters, IF IT'S ON THE BATTLEFIELD, it ... returns enchanted creature
+    // card to the battlefield..." — destroying the Aura in response to its own ETB trigger
+    // makes the intervening-if (CR 603.4) fail at resolution: nothing is returned.
+    let mut game = Game::new();
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let animate = game.spawn_in_hand(PlayerId(0), card("Animate Dead"));
+    cast_and_resolve(&mut game, animate, Some(Target::Object(corpse)));
+    // The Aura is on the battlefield; its ETB trigger is on the stack. Respond by
+    // destroying the Aura (Seal of Cleansing's sacrifice-to-destroy, pool card).
+    let aura = game.current_id(animate);
+    let seal = game.spawn_on_battlefield(PlayerId(1), card("Seal of Cleansing"));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: seal,
+        ability_index: 0,
+        target: Some(Target::Object(aura)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Seal destroys Animate Dead.
+    assert_eq!(
+        game.zone_of(aura),
+        Zone::Graveyard,
+        "the Aura left before its trigger resolved"
+    );
+    resolve_top_of_stack(&mut game); // Animate Dead's ETB resolves with its source gone.
+    assert_eq!(
+        game.zone_of(corpse),
+        Zone::Graveyard,
+        "intervening-if (CR 603.4): the Aura is not on the battlefield, so nothing is returned"
+    );
+}
+
+#[test]
+fn animate_dead_rewritten_enchant_holds_it_to_the_reanimated_creature() {
+    // "it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto
+    // the battlefield with this Aura.\"" — after the ETB attaches, the CR 704.5m sweep holds the
+    // Aura to exactly the object it reanimated (not the default enchant-creature filter): it
+    // stays attached across sweeps, and falls off in the same sweep that object dies.
+    let mut game = Game::new();
+    let corpse = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let (bear, aura) = reanimate_with_animate_dead(&mut game, corpse);
+    // A resolution (and its CR 704.5 sweep) with another creature on the battlefield: the
+    // rewritten enchant holds the Aura to its reanimated creature — it stays attached.
+    let other = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+    cast_and_resolve(&mut game, destroy, Some(Target::Object(other)));
+
+    assert_eq!(
+        game.zone_of(other),
+        Zone::Graveyard,
+        "the unrelated creature died"
+    );
+    assert_eq!(
+        game.zone_of(aura),
+        Zone::Battlefield,
+        "the rewritten enchant makes its reanimated creature a legal host — the Aura stays"
+    );
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "the host is untouched"
+    );
+}

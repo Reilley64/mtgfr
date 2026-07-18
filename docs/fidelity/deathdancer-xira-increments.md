@@ -639,6 +639,13 @@ blocked: the literal "loses enchant creature card in a graveyard / gains enchant
 battlefield" text-rewrite is still modeled implicitly as staying-attached (CR 303.4 makes it observationally
 identical — note retained).
 
+**Follow-up (2026-07-18):** the trimmed residual is closed — the ETB self-rewrite is modeled
+literally: `Permanent::enchant_rewrite_host` records the reanimated object at attach, and
+`Game::attachment_host_legal` holds an `enchant_graveyard` Aura to exactly that object (CR 704.5m).
+`approximates` deleted; Animate Dead is fully faithful. Tests:
+`animate_dead_rewritten_enchant_holds_it_to_the_reanimated_creature`,
+`animate_dead_trigger_does_nothing_if_the_aura_leaves_first` (intervening-if, CR 603.4).
+
 ### 200. `dredge` — 5 cards, L (takes the wave XL slot)
 Depends on: #183 (milled dies-trigger creatures must not fire Dies); functions_in_graveyard
 idiom (landed); replacement pipeline precedent (#128, landed).

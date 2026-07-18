@@ -958,6 +958,7 @@ pub(crate) fn fresh_permanent(
         chosen_color: None,
         entered_with_x: 0,
         cast_time_enchant_target: None,
+        enchant_rewrite_host: None,
         vow_protected: None,
         phased_out: false,
         serra_recursion: false,
@@ -1549,6 +1550,15 @@ pub(crate) struct Permanent {
     /// dropped, rather than reanimating whatever moved in). `None` for every permanent whose
     /// spell had no chosen target, or wasn't cast with `enchant_graveyard` set.
     pub(crate) cast_time_enchant_target: Option<ObjectId>,
+    /// The creature this [`CardDef::enchant_graveyard`] Aura reanimated and attached itself to —
+    /// the object its rewritten enchant ability names (CR 613.3/702: "it loses 'enchant creature
+    /// card in a graveyard' and gains 'enchant creature put onto the battlefield with this
+    /// Aura'"). Set when the Aura's own ETB attaches it; consulted by
+    /// [`Game::attachment_host_legal`], so the CR 704.5m sweep holds the Aura to exactly that
+    /// object rather than the default enchant-creature filter. `None` until the rewrite happens
+    /// (the pre-attach window keeps its printed graveyard-card enchant, which no battlefield
+    /// host can satisfy).
+    pub(crate) enchant_rewrite_host: Option<ObjectId>,
     /// The player this creature "can't attack … for as long as it has a vow counter on it" (CR
     /// 122.1 — Promise of Loyalty): set alongside a [`CounterKind::Vow`] counter by
     /// [`Event::VowCountersPlaced`], read in [`Game::declare_attackers`]. `None` for any creature

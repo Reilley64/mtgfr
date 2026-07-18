@@ -15,6 +15,15 @@ impl Game {
     /// below, so an Aura like Confiscate ("Enchant permanent") isn't held to the default
     /// enchant-creature restriction its `enchant` filter doesn't actually impose.
     pub(crate) fn attachment_host_legal(&self, attachment: ObjectId, host: ObjectId) -> bool {
+        // An enchant-graveyard Aura's printed enchant names a graveyard card, which no
+        // battlefield host satisfies; only its own ETB rewrite ("enchant creature put onto the
+        // battlefield with this Aura") makes a host legal — exactly the one it reanimated.
+        if self.def_of(attachment).enchant_graveyard {
+            // Like the filter path below, a host that is no longer a live permanent is never
+            // legal — the rewrite names an object, and that object has left the battlefield.
+            return self.permanent(attachment).enchant_rewrite_host == Some(host)
+                && matches!(self.objects[host as usize], Object::Permanent(_));
+        }
         let filter = self
             .def_of(attachment)
             .enchant
@@ -977,6 +986,12 @@ impl Game {
             Event::TriggeredAbilityThisTurn { source } => self.once_per_turn.triggered.push(source),
             Event::AttachedTo { object, host } => {
                 self.permanent_mut(object).attached_to = host;
+                // An enchant-graveyard Aura attaching is its own ETB's rewrite taking hold: it
+                // now reads "enchant creature put onto the battlefield with this Aura" — record
+                // the object that ability names (see `Permanent::enchant_rewrite_host`).
+                if host.is_some() && self.def_of(object).enchant_graveyard {
+                    self.permanent_mut(object).enchant_rewrite_host = host;
+                }
                 // CR 302.6/720.3: gaining control of a permanent (here via a control-changing
                 // Aura becoming attached) makes it summoning-sick for its new controller until
                 // that controller's next untap — it hasn't been under their control since their
