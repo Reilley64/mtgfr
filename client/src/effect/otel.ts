@@ -80,7 +80,10 @@ export async function runTraced<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
 /**
  * Parent this effect's spans under an incoming W3C `traceparent` (Faro / upstream).
  * Integration boundary only — keep business ops oblivious to propagation.
- * No-op when the header is missing or invalid — the effect stays a local root.
+ * No-op when the header is missing, invalid, or **unsampled** — the effect stays a
+ * local root. Faro's tracing sampler often marks sessions NOT_RECORD while fetch
+ * instrumentation still injects a traceparent for the non-recording span; parenting
+ * under that span leaves Tempo `<root span not yet received>` orphans.
  */
 export function continueIncomingTrace<A, E, R>(
   effect: Effect.Effect<A, E, R>,
@@ -88,6 +91,8 @@ export function continueIncomingTrace<A, E, R>(
 ): Effect.Effect<A, E, R> {
   const parsed = parseTraceparent(traceparent);
   if (!parsed) return effect;
+  // W3C: bit 0 = sampled. Unsamped contexts are never exported by Faro/OTEL web.
+  if ((parsed.traceFlags & 0x01) === 0) return effect;
   return OtelTracer.withSpanContext(effect, {
     traceId: parsed.traceId,
     spanId: parsed.spanId,
