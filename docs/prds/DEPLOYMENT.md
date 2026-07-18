@@ -607,15 +607,32 @@ mtgfr/
     postgres.tf          # StatefulSet + Service: official postgres image
     migrate.tf           # Job: toasty migration apply (gates Application image bumps)
     argocd.tf            # Argo CD Helm + Application (owns API/web Deployments + edh-api)
+    observability.tf     # LGTM (Grafana/Loki/Tempo/Prometheus) + Alloy (ADR 0034)
     charts/edh/          # API/web Deployments + edh-api Service (sync waves + PruneLast)
     tunnel.tf            # Cloudflare Tunnel + cloudflared + DNS records
-    network-policy.tf    # cluster-internal only for /health/drain
+    network-policy.tf    # cluster-internal only for /health/drain (+ Alloy ingress in observability.tf)
     secrets.tf           # DATABASE_URL, etc.
     terraform.tfvars     # gitignored secrets + image tags
   docker/
     server/Dockerfile
     web/Dockerfile
 ```
+
+### Observability (ADR 0034)
+
+Self-hosted LGTM in namespace `observability` (Terraform Helm): Alloy ingest, Loki/Tempo/Prometheus storage, Grafana UI.
+
+**Grafana (operator only — no tunnel hostname):**
+
+```bash
+kubectl -n observability port-forward svc/grafana 3000:80
+# admin user/password: terraform output -raw grafana_admin_password
+# or: kubectl -n observability get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+```
+
+Datasources (Prometheus, Loki, Tempo) are provisioned with trace↔log links. Retention: 7d traces/logs, 15d metrics.
+
+**App wiring:** `OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy.observability.svc:4318` and `FARO_COLLECT_UPSTREAM=http://alloy.observability.svc:12347/collect` on edh Deployments. Browser Faro → same-origin `/api/faro/collect` → Alloy. Empty OTLP endpoint disables export (local `just dev`).
 
 **State:** kubernetes backend in namespace `terraform` (see above). Do not commit local state files.
 
@@ -638,6 +655,23 @@ env = [
   { name = "CORS_ORIGIN", value = "" },
   { name = "VERSION", value = var.server_image },
   { name = "RUST_LOG", value = "info" },
+  { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = "http://alloy.observability.svc:4318" },
+  { name = "OTEL_SERVICE_NAME", value = "edh-api" },
+]
+```
+
+**Web Deployment env (illustrative):**
+
+```hcl
+env = [
+  { name = "HOST", value = "0.0.0.0" },
+  { name = "PORT", value = "8080" },
+  { name = "WEB_DATABASE_URL", value_from = secret_key_ref … },
+  { name = "API_UPSTREAM", value = "http://edh-api.edh.svc:8080" },
+  { name = "GRPC_UPSTREAM", value = "edh-api.edh.svc:50051" },
+  { name = "OTEL_EXPORTER_OTLP_ENDPOINT", value = "http://alloy.observability.svc:4318" },
+  { name = "OTEL_SERVICE_NAME", value = "edh-web" },
+  { name = "FARO_COLLECT_UPSTREAM", value = "http://alloy.observability.svc:12347/collect" },
 ]
 ```
 

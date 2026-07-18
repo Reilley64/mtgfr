@@ -52,6 +52,10 @@ spec:
               value: {{ .Values.corsOrigin | quote }}
             - name: RUST_LOG
               value: {{ .Values.logLevel | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otelExporterOtlpEndpoint | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: "edh-api"
             - name: INSTANCE_ID
               value: {{ .Values.apiActiveInstanceId | quote }}
             - name: DRAIN

@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 
 [features]
 # Deserialize card definitions from the TOML card DSL (used by the `cards` crate).

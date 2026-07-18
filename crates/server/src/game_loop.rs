@@ -85,7 +85,15 @@ pub(crate) async fn submit_intent_core(
     table_id: &str,
     env: IntentEnvelope,
 ) -> Ack {
-    with_seated_drive(state, user_id, table_id, |table, seat| {
+    let span = tracing::info_span!(
+        "submit_intent_core",
+        table_id = %table_id,
+        user_id = user_id,
+        accepted = tracing::field::Empty,
+    );
+    let _enter = span.enter();
+
+    let ack = with_seated_drive(state, user_id, table_id, |table, seat| {
         let intent = to_intent_for_seat(env.intent.clone(), PlayerId(seat));
         let (result, disposition) = TableSession::new(table).submit(intent);
         let log_row = crate::action_log::format_row(
@@ -101,7 +109,9 @@ pub(crate) async fn submit_intent_core(
             disposition,
             log_row,
         }
-    })
+    });
+    span.record("accepted", ack.accepted);
+    ack
 }
 
 /// Resolve `user_id`'s seat at a started table, or the `Ack` rejection to return. The one

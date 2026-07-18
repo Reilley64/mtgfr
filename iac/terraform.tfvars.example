@@ -35,3 +35,8 @@ auth_secret = ""
 # https://github.com/cloudflare/cloudflared/releases for the current stable tag.
 cloudflared_image = "cloudflare/cloudflared:2026.6.0"
 # cloudflared_replicas = 1  # default; use 2 only if you want connector HA
+
+# Observability (ADR 0034) — defaults point at Alloy in the observability namespace.
+# otel_exporter_otlp_endpoint = "http://alloy.observability.svc:4318"
+# faro_collect_upstream       = "http://alloy.observability.svc:12347/collect"
+# observability_storage_size  = "10Gi"

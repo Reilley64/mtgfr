@@ -22,5 +22,5 @@
       }
     ]
   },
-  "include": ["src", "app.config.ts"]
+  "include": ["src", "app.config.ts", "vite"]
 }

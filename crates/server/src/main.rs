@@ -46,6 +46,8 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn run_serve() {
+    server::telemetry::init();
+
     let settings =
         server::settings::Settings::load().expect("load settings (config/mtgfr.toml or env)");
     let addr = settings.listen_addr();
@@ -62,7 +64,7 @@ async fn run_serve() {
     // Project the card pool into the searchable `catalog_cards` table for the deck builder. Best
     // effort: a failure (e.g. a dev DB the app can't DDL) leaves search empty but the server up.
     if let Err(e) = server::catalog_search::project(&mut db).await {
-        eprintln!("catalog projection skipped: {e}");
+        tracing::warn!(error = %e, "catalog projection skipped");
     }
 
     let version = settings.version.clone();
@@ -70,9 +72,9 @@ async fn run_serve() {
     // the registry starts empty. Action traces land at data/actions.<table_id>.toon (gitignored)
     // for post-hoc debugging.
     let state = server::AppState::new(db, Arc::new(settings));
-    println!("mtgfr server v{version} health checks on http://{addr}");
-    println!("mtgfr gRPC listening on {grpc_addr}");
-    println!("action traces: ./data/actions.<table>.toon");
+    tracing::info!(%version, %addr, "mtgfr health checks listening");
+    tracing::info!(%grpc_addr, "mtgfr gRPC listening");
+    tracing::info!("action traces: ./data/actions.<table>.toon");
 
     // Both transports share one drain signal: SIGTERM/Ctrl-C flips `draining`, then blocks on
     // this instance's in-memory tables draining to zero before either server stops accepting.
