@@ -9,13 +9,14 @@ const COLLECT_URL = "/api/faro/collect";
 
 let started = false;
 
-export default defineClientPlugin(() => {
+const plugin = defineClientPlugin(() => {
   if (started || typeof window === "undefined") return;
   started = true;
 
   initializeFaro({
     url: COLLECT_URL,
     app: {
+      // Same service.name as the BFF; distinguish via telemetry.sdk.name in Grafana.
       name: "edh-web",
       version: appVersion(),
       gitHash: gitCommit(),
@@ -35,3 +36,9 @@ export default defineClientPlugin(() => {
     ignoreUrls: [COLLECT_URL],
   });
 });
+
+export default plugin;
+
+// Eager boot when this module is imported as a side effect (entry-client).
+// `started` keeps virtual:app-plugins-client from double-initializing.
+void plugin.setup({});

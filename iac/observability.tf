@@ -283,6 +283,9 @@ resource "helm_release" "grafana" {
         enabled = true
         size    = "2Gi"
       }
+      # Faro RUM UI (sessions / errors / web vitals). Traces still live in Tempo;
+      # Faro events/logs land in Loki via Alloy faro.receiver.
+      plugins = ["grafana-faro-app"]
       datasources = {
         "datasources.yaml" = {
           apiVersion = 1

@@ -1,0 +1,20 @@
+import { describe, expect, it } from "vitest";
+import { continueIncomingTrace } from "~/effect/otel";
+import { parseTraceparent } from "~/lib/traceContext";
+
+describe("continueIncomingTrace", () => {
+  it("is a no-op for missing or invalid headers", () => {
+    const sentinel = { _tag: "effect-stub" } as never;
+    expect(continueIncomingTrace(sentinel, null)).toBe(sentinel);
+    expect(continueIncomingTrace(sentinel, "bad")).toBe(sentinel);
+  });
+
+  it("accepts a parseable Faro-style traceparent", () => {
+    const header = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+    expect(parseTraceparent(header)).not.toBeNull();
+    // Wiring smoke: with a valid header the helper must return a different Effect
+    // (parent span attached) rather than the identical reference.
+    const sentinel = { _tag: "effect-stub" } as never;
+    expect(continueIncomingTrace(sentinel, header)).not.toBe(sentinel);
+  });
+});

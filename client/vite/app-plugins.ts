@@ -54,19 +54,24 @@ export function discoverAppPlugins(
   return { client, server };
 }
 
-function generateClientModule(clientPaths: string[], root: string): string {
+/** @internal exported for tests */
+export function generateClientModule(clientPaths: string[], root: string): string {
   if (clientPaths.length === 0) {
     return "export {};\n";
   }
 
+  // Relative imports + no top-level await: absolute paths and `await setup()` were
+  // getting dropped from Vinxi's production client graph (Faro never shipped).
   const lines: string[] = [];
   clientPaths.forEach((rel, i) => {
-    const abs = path.resolve(root, rel).split(path.sep).join("/");
-    lines.push(`import p${i} from ${JSON.stringify(abs)};`);
+    const abs = path.resolve(root, rel);
+    let relImport = path.relative(root, abs).split(path.sep).join("/");
+    if (!relImport.startsWith(".")) relImport = `./${relImport}`;
+    lines.push(`import p${i} from ${JSON.stringify(relImport)};`);
   });
   lines.push("");
   clientPaths.forEach((_, i) => {
-    lines.push(`await p${i}.setup({});`);
+    lines.push(`void Promise.resolve(p${i}.setup({})).catch((err) => console.error("[app-plugin]", err));`);
   });
   lines.push("");
   return lines.join("\n");

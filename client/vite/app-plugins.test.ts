@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { discoverAppPlugins } from "./app-plugins";
+import { discoverAppPlugins, generateClientModule } from "./app-plugins";
 
 const tempDirs: string[] = [];
 
@@ -46,5 +46,17 @@ describe("discoverAppPlugins", () => {
       client: [],
       server: [],
     });
+  });
+});
+
+
+describe("generateClientModule", () => {
+  it("emits relative imports and does not use top-level await", () => {
+    const root = "/app";
+    const mod = generateClientModule(["./src/plugins/otel.client.ts"], root);
+    expect(mod).toContain('import p0 from "./src/plugins/otel.client.ts"');
+    expect(mod).not.toMatch(/from "\//);
+    expect(mod).not.toMatch(/^\s*await /m);
+    expect(mod).toContain("void Promise.resolve(p0.setup({}))");
   });
 });
