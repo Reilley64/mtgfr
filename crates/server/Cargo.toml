@@ -30,7 +30,17 @@ tokio-stream = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 opentelemetry = { version = "0.31", features = ["trace", "metrics", "logs"] }
-opentelemetry_sdk = { version = "0.31", features = ["rt-tokio", "trace", "metrics", "logs"] }
+# `rt-tokio` + experimental *with_async_runtime processors = LogRocket's
+# `install_batch(Tokio)` for SDK 0.31 (default thread batch + async HTTP panics).
+opentelemetry_sdk = { version = "0.31", features = [
+    "rt-tokio",
+    "trace",
+    "metrics",
+    "logs",
+    "experimental_trace_batch_span_processor_with_async_runtime",
+    "experimental_logs_batch_log_processor_with_async_runtime",
+    "experimental_metrics_periodicreader_with_async_runtime",
+] }
 opentelemetry-otlp = { version = "0.31", default-features = false, features = ["http-proto", "reqwest-client", "trace", "metrics", "logs"] }
 opentelemetry-appender-tracing = "0.31"
 tracing-opentelemetry = "0.32"

@@ -3,6 +3,10 @@
 //! When `OTEL_EXPORTER_OTLP_ENDPOINT` is set, exports traces/metrics/logs over OTLP/HTTP.
 //! Otherwise installs a fmt subscriber only (honors `RUST_LOG`). Local/dev never fails on export.
 //! Exporter build failures soft-fall back to fmt-only so a down Alloy does not crash the API.
+//!
+//! Batch export runs on the Tokio runtime (`install_batch(Tokio)` pattern — see LogRocket's
+//! "Composing the underpinnings of an observable Rust application"), so the async HTTP client
+//! has a reactor. Call [`init`] from inside a Tokio runtime (e.g. `#[tokio::main]`).
 
 use std::sync::OnceLock;
 
@@ -10,10 +14,14 @@ use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter, WithExportConfig};
+use opentelemetry_sdk::logs::log_processor_with_async_runtime::BatchLogProcessor;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
+use opentelemetry_sdk::metrics::periodic_reader_with_async_runtime::PeriodicReader;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::resource::Resource;
+use opentelemetry_sdk::runtime;
+use opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -97,16 +105,20 @@ struct OtlpStack {
     logger_provider: SdkLoggerProvider,
 }
 
+/// Build OTLP providers with Tokio-backed batch processors (LogRocket `install_batch(Tokio)`).
+///
+/// Must run on a Tokio runtime so the processors can spawn export tasks.
 fn try_build_otlp(endpoint: &str) -> Result<OtlpStack, String> {
     let resource = resource();
 
+    // Programmatic `with_endpoint` is used as-is (no path append) — include signal paths.
     let span_exporter = SpanExporter::builder()
         .with_http()
         .with_endpoint(format!("{endpoint}/v1/traces"))
         .build()
         .map_err(|e| format!("span exporter: {e}"))?;
     let tracer_provider = SdkTracerProvider::builder()
-        .with_batch_exporter(span_exporter)
+        .with_span_processor(BatchSpanProcessor::builder(span_exporter, runtime::Tokio).build())
         .with_resource(resource.clone())
         .build();
 
@@ -116,7 +128,7 @@ fn try_build_otlp(endpoint: &str) -> Result<OtlpStack, String> {
         .build()
         .map_err(|e| format!("metric exporter: {e}"))?;
     let meter_provider = SdkMeterProvider::builder()
-        .with_periodic_exporter(metric_exporter)
+        .with_reader(PeriodicReader::builder(metric_exporter, runtime::Tokio).build())
         .with_resource(resource.clone())
         .build();
 
@@ -126,7 +138,7 @@ fn try_build_otlp(endpoint: &str) -> Result<OtlpStack, String> {
         .build()
         .map_err(|e| format!("log exporter: {e}"))?;
     let logger_provider = SdkLoggerProvider::builder()
-        .with_batch_exporter(log_exporter)
+        .with_log_processor(BatchLogProcessor::builder(log_exporter, runtime::Tokio).build())
         .with_resource(resource)
         .build();
 
@@ -138,6 +150,8 @@ fn try_build_otlp(endpoint: &str) -> Result<OtlpStack, String> {
 }
 
 /// Install the global tracing subscriber. Safe to call once; later calls are no-ops.
+///
+/// When OTLP is enabled, must be called from a Tokio runtime context.
 pub fn init() {
     INIT.get_or_init(|| {
         opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
@@ -220,10 +234,10 @@ mod tests {
         assert_eq!(image_tag("2.3.0"), "2.3.0");
     }
 
-    /// Regression: default otlp features enable both reqwest clients, which
-    /// skips auto-wiring and yields `no http client specified` (empty Tempo).
-    #[test]
-    fn try_build_otlp_builds_http_exporters() {
+    /// Regression: Tokio batch processors + async HTTP client must build on a runtime
+    /// (thread-based batch + async reqwest panics with "no reactor running").
+    #[tokio::test(flavor = "multi_thread")]
+    async fn try_build_otlp_builds_http_exporters() {
         let stack = try_build_otlp("http://127.0.0.1:4318")
             .unwrap_or_else(|e| panic!("expected OTLP HTTP exporters to build, got {e}"));
         // Batch exporters spawn workers; shut down so the test process exits.
