@@ -34,9 +34,46 @@ fn otlp_endpoint() -> Option<String> {
     Some(trimmed.trim_end_matches('/').to_string())
 }
 
+fn env_nonempty(key: &str) -> Option<String> {
+    let raw = std::env::var(key).ok()?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(trimmed.to_string())
+}
+
+/// Tag from a GHCR image ref (`ghcr.io/o/mtgfr-server:2.3.0` → `2.3.0`), else the raw value.
+fn image_tag(version_or_image: &str) -> String {
+    version_or_image
+        .rsplit_once(':')
+        .map(|(_, tag)| tag.to_string())
+        .unwrap_or_else(|| version_or_image.to_string())
+}
+
+/// Prefer bake-time `APP_VERSION`; fall back to the image tag in `VERSION`.
+fn service_version() -> Option<String> {
+    env_nonempty("APP_VERSION").or_else(|| env_nonempty("VERSION").map(|v| image_tag(&v)))
+}
+
+fn resource_attributes() -> Vec<KeyValue> {
+    let mut attrs = vec![KeyValue::new("service.name", service_name())];
+    if let Some(version) = service_version() {
+        attrs.push(KeyValue::new("service.version", version));
+    }
+    if let Some(commit) = env_nonempty("GIT_COMMIT") {
+        // OTEL VCS semconv — full git SHA from the image build.
+        attrs.push(KeyValue::new("vcs.ref.head.revision", commit));
+    }
+    if let Some(instance_id) = env_nonempty("INSTANCE_ID") {
+        attrs.push(KeyValue::new("service.instance.id", instance_id));
+    }
+    attrs
+}
+
 fn resource() -> Resource {
     Resource::builder_empty()
-        .with_attributes([KeyValue::new("service.name", service_name())])
+        .with_attributes(resource_attributes())
         .build()
 }
 
@@ -172,6 +209,15 @@ mod tests {
             },
             None
         );
+    }
+
+    #[test]
+    fn image_tag_strips_registry_ref() {
+        assert_eq!(
+            image_tag("ghcr.io/reilley64/mtgfr-server:2.3.0"),
+            "2.3.0"
+        );
+        assert_eq!(image_tag("2.3.0"), "2.3.0");
     }
 
     /// Regression: default otlp features enable both reqwest clients, which

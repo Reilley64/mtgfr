@@ -30,8 +30,12 @@ COPY --from=build /src/toasty /toasty
 # cards::load_from_data_dir bakes CARGO_MANIFEST_DIR (/src/crates/cards) into the binary —
 # the TOML pool must live at that path in the runtime image too.
 COPY --from=build /src/crates/cards/data /src/crates/cards/data
+ARG APP_VERSION=dev
+ARG GIT_COMMIT=unknown
 ENV HOST=0.0.0.0
 ENV PORT=8080
+ENV APP_VERSION=$APP_VERSION
+ENV GIT_COMMIT=$GIT_COMMIT
 EXPOSE 8080
 USER nonroot:nonroot
 CMD ["/server", "serve"]

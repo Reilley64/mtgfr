@@ -11,6 +11,7 @@ import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import type * as Effect from "effect/Effect";
 import * as ManagedRuntime from "effect/ManagedRuntime";
+import { appVersion, gitCommit } from "~/lib/buildMeta";
 
 function otlpEndpoint(): string | null {
   const raw = process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();
@@ -32,7 +33,13 @@ function buildLayer() {
   const metricsUrl = `${endpoint}/v1/metrics`;
 
   return NodeSdk.layer(() => ({
-    resource: { serviceName: serviceName() },
+    resource: {
+      serviceName: serviceName(),
+      serviceVersion: appVersion(),
+      attributes: {
+        "vcs.ref.head.revision": gitCommit(),
+      },
+    },
     spanProcessor: new BatchSpanProcessor(new OTLPTraceExporter({ url: tracesUrl })),
     logRecordProcessor: new BatchLogRecordProcessor({
       exporter: new OTLPLogExporter({ url: logsUrl }),

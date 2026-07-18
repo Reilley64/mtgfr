@@ -2,6 +2,7 @@
 
 import { getWebInstrumentations, initializeFaro } from "@grafana/faro-web-sdk";
 import { TracingInstrumentation } from "@grafana/faro-web-tracing";
+import { appVersion, gitCommit } from "~/lib/buildMeta";
 import { defineClientPlugin } from "~/plugins/runtime";
 
 const COLLECT_URL = "/api/faro/collect";
@@ -16,7 +17,8 @@ export default defineClientPlugin(() => {
     url: COLLECT_URL,
     app: {
       name: "edh-web",
-      version: import.meta.env.VITE_APP_VERSION ?? "dev",
+      version: appVersion(),
+      gitHash: gitCommit(),
     },
     instrumentations: [
       ...getWebInstrumentations({
