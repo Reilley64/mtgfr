@@ -62,16 +62,22 @@ pub fn subscribe(
     table_id: &str,
     user_id: i64,
 ) -> Result<TableSubscription, StatusCode> {
-    let reg = crate::lock(&state.reg);
-    let Some(table) = reg.tables.get(table_id) else {
+    let mut reg = crate::lock(&state.reg);
+    let Some(table) = reg.tables.get_mut(table_id) else {
         return Err(StatusCode::NOT_FOUND);
     };
-    let Some(game) = table.game.as_ref() else {
+    if table.game.is_none() {
         return Err(StatusCode::NOT_FOUND);
-    };
+    }
+    // Clear the seed/quiet mark so a later drain sweep arms grace from disconnect, not seed.
+    table.quiet_since = None;
     let viewer = table.seat_of(user_id).map(PlayerId);
     let extras = table_view_extras(table);
-    let snapshot = complete_visible(game, viewer, &extras);
+    let snapshot = complete_visible(
+        table.game.as_ref().expect("game checked above"),
+        viewer,
+        &extras,
+    );
     Ok(TableSubscription {
         rx: table.tx.subscribe(),
         snapshot_seq: table.seq,

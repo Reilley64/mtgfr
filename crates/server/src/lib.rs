@@ -57,6 +57,10 @@ impl Registry {
 
     /// Drop started tables that have had no stream subscribers for at least `grace`.
     /// Returns how many were removed. Call from the SIGTERM drain loop.
+    ///
+    /// `quiet_since = None` means the table had listeners (or just lost them without a sweep
+    /// yet) — the first no-listener observation *arms* grace from `now` instead of treating a
+    /// stale seed timestamp as the start of quiet.
     pub fn evict_abandoned(&mut self, now: Instant, grace: Duration) -> usize {
         let before = self.tables.len();
         self.tables.retain(|_, table| {
@@ -64,10 +68,16 @@ impl Registry {
                 return true;
             }
             if table.tx.receiver_count() > 0 {
-                table.quiet_since = now;
+                table.quiet_since = None;
                 return true;
             }
-            now.saturating_duration_since(table.quiet_since) < grace
+            match table.quiet_since {
+                None => {
+                    table.quiet_since = Some(now);
+                    true
+                }
+                Some(since) => now.saturating_duration_since(since) < grace,
+            }
         });
         before - self.tables.len()
     }
@@ -239,7 +249,7 @@ mod tests {
             0,
         ));
         // Quiet since long before grace — stands in for a table abandoned hours ago.
-        table.quiet_since = Instant::now() - Duration::from_secs(120);
+        table.quiet_since = Some(Instant::now() - Duration::from_secs(120));
         registry.tables.insert("ghost".to_string(), table);
         assert_eq!(registry.active_table_count(), 1);
 
@@ -265,7 +275,7 @@ mod tests {
             ],
             0,
         ));
-        table.quiet_since = Instant::now() - Duration::from_secs(120);
+        table.quiet_since = Some(Instant::now() - Duration::from_secs(120));
         let _rx = table.tx.subscribe();
         registry.tables.insert("watched".to_string(), table);
 
@@ -287,11 +297,52 @@ mod tests {
             ],
             0,
         ));
-        table.quiet_since = Instant::now() - Duration::from_secs(30);
+        table.quiet_since = Some(Instant::now() - Duration::from_secs(30));
         registry.tables.insert("blip".to_string(), table);
 
         let removed = registry.evict_abandoned(Instant::now(), Duration::from_secs(60));
         assert_eq!(removed, 0, "brief disconnects stay within grace");
         assert_eq!(registry.active_table_count(), 1);
+    }
+
+    /// Bugbot: a long-lived game whose streams drop before the first drain sweep still has
+    /// seed-era `quiet_since` unless subscribe cleared it — the first quiet sweep must *arm*
+    /// grace from `now`, not instant-evict off the seed timestamp.
+    #[test]
+    fn previously_watched_table_gets_grace_from_first_quiet_sweep() {
+        use std::time::{Duration, Instant};
+
+        let mut registry = Registry::default();
+        let mut table = Table::empty();
+        table.game = Some(crate::decks::seed_game(
+            &[
+                (PlayerId(0), crate::test_support::seat_deck()),
+                (PlayerId(1), crate::test_support::seat_deck()),
+            ],
+            0,
+        ));
+        // Subscribe cleared the seed quiet mark; streams then dropped with no further sweep.
+        table.quiet_since = None;
+        registry.tables.insert("played".to_string(), table);
+
+        let grace = Duration::from_secs(60);
+        let t0 = Instant::now();
+        assert_eq!(
+            registry.evict_abandoned(t0, grace),
+            0,
+            "first quiet sweep arms grace instead of evicting"
+        );
+        assert_eq!(registry.active_table_count(), 1);
+        assert_eq!(
+            registry.evict_abandoned(t0 + Duration::from_secs(30), grace),
+            0,
+            "still inside grace"
+        );
+        assert_eq!(
+            registry.evict_abandoned(t0 + grace, grace),
+            1,
+            "evicted once grace elapses from the arming sweep"
+        );
+        assert_eq!(registry.active_table_count(), 0);
     }
 }

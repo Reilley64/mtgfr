@@ -49,9 +49,10 @@ pub struct Table {
     pub chrome: ChromeState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
-    /// Last time a drain sweep saw a live `Game.Stream` subscriber (or seed time). Used to
-    /// drop abandoned tables so SIGTERM can reach `active_tables=0` after seats vacate.
-    pub(crate) quiet_since: Instant,
+    /// When `Game.Stream` last went quiet (`None` = has/had listeners, grace not armed).
+    /// Seed starts `Some(now)`; subscribe clears to `None`; drain arms `Some(now)` on the
+    /// first no-listener sweep so reconnect grace is not skipped off a stale seed timestamp.
+    pub(crate) quiet_since: Option<Instant>,
 }
 
 impl Table {
@@ -74,7 +75,7 @@ impl Table {
             tx,
             chrome: ChromeState::default(),
             prints: Default::default(),
-            quiet_since: Instant::now(),
+            quiet_since: Some(Instant::now()),
         }
     }
 
