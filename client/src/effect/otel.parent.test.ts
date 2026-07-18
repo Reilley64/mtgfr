@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { continueIncomingTrace, currentTraceparent } from "~/effect/otel";
+import { continueIncomingTrace, currentTraceparent, grpcRequestEnv } from "~/effect/otel";
 import { parseTraceparent } from "~/lib/traceContext";
 
 describe("continueIncomingTrace", () => {
@@ -30,6 +30,15 @@ describe("currentTraceparent", () => {
   it("is an Effect.fn (callable that returns an Effect)", () => {
     expect(typeof currentTraceparent).toBe("function");
     const effect = currentTraceparent();
+    expect(effect).toBeDefined();
+    expect(typeof (effect as { pipe?: unknown }).pipe).toBe("function");
+  });
+});
+
+describe("grpcRequestEnv", () => {
+  it("is an Effect.fn that closes over sessionToken", () => {
+    expect(typeof grpcRequestEnv).toBe("function");
+    const effect = grpcRequestEnv("tok");
     expect(effect).toBeDefined();
     expect(typeof (effect as { pipe?: unknown }).pipe).toBe("function");
   });

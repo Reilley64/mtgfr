@@ -131,6 +131,17 @@ export const currentTraceparent = Effect.fn(function* () {
   });
 });
 
+/**
+ * Build the shared `{ sessionToken, traceparent }` bag once per request edge.
+ * Both `/api/rpc` and `/api` lobby use this — same design, no per-route variants.
+ */
+export const grpcRequestEnv = Effect.fn(function* (sessionToken: string | null) {
+  return {
+    sessionToken,
+    traceparent: yield* currentTraceparent(),
+  } as const;
+});
+
 /** Flush/dispose exporters on Nitro `close`. */
 export async function shutdownOtel(): Promise<void> {
   if (!runtime) return;

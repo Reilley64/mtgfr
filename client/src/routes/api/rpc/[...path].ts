@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import { deleteCookie, getCookie, setCookie } from "vinxi/http";
 import { createWebDb } from "~/db/client";
-import { currentTraceparent, runTracedRequest } from "~/effect/otel";
+import { grpcRequestEnv, runTracedRequest } from "~/effect/otel";
 import { grpcUpstreamFromPodDns } from "~/lib/apiUpstream";
 import { grpcUpstream } from "~/lib/apiUpstreamAuth";
 import { lookupTableRoute } from "~/lib/lobbyStore";
@@ -118,12 +118,11 @@ const dispatchRpcTraced = Effect.fn(function* (args: RpcDispatchArgs) {
     "http.method": args.method,
     "rpc.path": path,
   });
-  const outboundTraceparent = yield* currentTraceparent();
+  const env = yield* grpcRequestEnv(args.sessionToken);
   return yield* Effect.tryPromise({
     try: () =>
       dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
-        sessionToken: args.sessionToken,
-        traceparent: outboundTraceparent,
+        ...env,
         defaultAddress: grpcUpstream(),
         resolveTableAddress,
       }),

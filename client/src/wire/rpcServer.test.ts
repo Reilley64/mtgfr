@@ -60,6 +60,7 @@ class MockGrpcCallError extends Error {
 
 vi.mock("~/wire/grpcClient", () => ({
   grpcClient: () => mockClient,
+  grpcClientFor: () => mockClient,
   GrpcCallError: MockGrpcCallError,
   httpStatusOf: (code: string) => {
     if (code === "invalid_argument") return 422;

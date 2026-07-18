@@ -4,7 +4,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import * as Effect from "effect/Effect";
 import { getCookie } from "vinxi/http";
 import { createWebDb } from "~/db/client";
-import { currentTraceparent, runTracedRequest } from "~/effect/otel";
+import { grpcRequestEnv, runTracedRequest } from "~/effect/otel";
 import { normalizePublicApiPath } from "~/lib/apiUpstream";
 import { fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "~/lib/apiUpstreamAuth";
 import {
@@ -19,6 +19,8 @@ import {
   sweepWebDb,
   toLobbyView,
 } from "~/lib/lobbyStore";
+import type { GrpcRequestEnv } from "~/wire/grpcClient";
+
 /** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */
 const SESSION_COOKIE = "session";
 
@@ -40,10 +42,9 @@ function unknownLobby(tableId: string): LobbySnapshot {
 async function handleLobby(
   event: APIEvent,
   path: string,
-  traceparent: string | null,
+  env: GrpcRequestEnv,
 ): Promise<Response | null> {
   const method = event.request.method;
-  const sessionToken = getCookie(event.nativeEvent, SESSION_COOKIE) ?? null;
 
   if (method === "GET" && path === "meta/health/v1") {
     return json({ ok: true });
@@ -67,7 +68,7 @@ async function handleLobby(
     return json({ error: "WebDbNotConfigured" }, 503);
   }
 
-  const me = await fetchMe(sessionToken, traceparent);
+  const me = await fetchMe(env);
   if (!me) return new Response("Unauthorized", { status: 401 });
 
   const db = webDb();
@@ -107,7 +108,7 @@ async function handleLobby(
   if (isJoin) {
     const tableId = String(body.table_id ?? "");
     const deckId = Number(body.deck_id);
-    const deckName = await fetchDeckName(sessionToken, deckId, traceparent);
+    const deckName = await fetchDeckName(env, deckId);
     if (!deckName) {
       const snap = await loadLobby(db, tableId);
       if (!snap) {
@@ -147,22 +148,18 @@ async function handleLobby(
     const err = startError(snap, me.id);
     if (err) return json(toLobbyView(snap, me.id, err));
 
-    const seeded = await seedGame(
-      sessionToken,
-      {
-        table_id: tableId,
-        host_user_id: snap.hostUserId,
-        seats: snap.seats
-          .slice()
-          .sort((a, b) => a.seat - b.seat)
-          .map((s) => ({
-            user_id: s.userId,
-            username: s.username,
-            deck_id: s.deckId,
-          })),
-      },
-      traceparent,
-    );
+    const seeded = await seedGame(env, {
+      table_id: tableId,
+      host_user_id: snap.hostUserId,
+      seats: snap.seats
+        .slice()
+        .sort((a, b) => a.seat - b.seat)
+        .map((s) => ({
+          user_id: s.userId,
+          username: s.username,
+          deck_id: s.deckId,
+        })),
+    });
     if (!seeded.ok) {
       return json(toLobbyView(snap, me.id, seeded.status === 503 ? "Draining" : "SeedFailed"));
     }
@@ -187,10 +184,10 @@ const handleLobbyTraced = Effect.fn(function* (event: APIEvent, path: string) {
     "http.method": event.request.method,
     "http.route": path,
   });
-  // Capture on the OTEL fiber — gRPC runs on a separate ManagedRuntime (ADR 0034).
-  const outboundTraceparent = yield* currentTraceparent();
+  const sessionToken = getCookie(event.nativeEvent, SESSION_COOKIE) ?? null;
+  const env = yield* grpcRequestEnv(sessionToken);
   return yield* Effect.tryPromise({
-    try: () => handleLobby(event, path, outboundTraceparent),
+    try: () => handleLobby(event, path, env),
     catch: (err) => (err instanceof Error ? err : new Error(String(err))),
   });
 });

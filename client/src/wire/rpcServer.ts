@@ -1,15 +1,11 @@
 // `/api/rpc` dispatcher: request shape in, outcome out — unit-testable without a Vinxi route.
 
 import * as Match from "effect/Match";
-import { GrpcCallError, grpcClient, httpStatusOf } from "~/wire/grpcClient";
+import { GrpcCallError, grpcClientFor, httpStatusOf, type GrpcRequestEnv } from "~/wire/grpcClient";
 import { isAuthMethod, isCardsMethod, isGameMethod, isRpcGroup } from "~/wire/rpcs";
 import type { DeckError, IntentEnvelope, SaveDeckRequest, StreamFrame } from "~/wire/types";
 
-export interface RpcEnv {
-  readonly sessionToken: string | null;
-  /** BFF span `traceparent` for outbound gRPC — explicit; Effect fiber context does not
-   *  cross into the gRPC ManagedRuntime (ADR 0034). */
-  readonly traceparent: string | null;
+export interface RpcEnv extends GrpcRequestEnv {
   readonly defaultAddress: string;
   /** Resolve a table id to its owning pod's gRPC address, or `null` for an unknown table. */
   readonly resolveTableAddress: (tableId: string) => Promise<string | null>;
@@ -43,7 +39,7 @@ function fromGrpcError(err: unknown): RpcOutcome {
 
 async function dispatchAuth(method: string | undefined, body: unknown, env: RpcEnv): Promise<RpcOutcome> {
   if (!isAuthMethod(method)) return { kind: "empty", status: 404 };
-  const client = grpcClient(env.defaultAddress, env.traceparent);
+  const client = grpcClientFor(env.defaultAddress, env);
   try {
     return await Match.value(method).pipe(
       Match.when("signup", async () => {
@@ -70,7 +66,7 @@ async function dispatchAuth(method: string | undefined, body: unknown, env: RpcE
 
 async function dispatchCards(method: string | undefined, query: URLSearchParams, env: RpcEnv): Promise<RpcOutcome> {
   if (!isCardsMethod(method)) return { kind: "empty", status: 404 };
-  const client = grpcClient(env.defaultAddress, env.traceparent);
+  const client = grpcClientFor(env.defaultAddress, env);
   try {
     return await Match.value(method).pipe(
       Match.when("catalog", async () => jsonOk(await client.cards.catalog())),
@@ -94,7 +90,7 @@ async function dispatchDecks(
   body: unknown,
   env: RpcEnv,
 ): Promise<RpcOutcome> {
-  const client = grpcClient(env.defaultAddress, env.traceparent);
+  const client = grpcClientFor(env.defaultAddress, env);
   try {
     if (id === undefined) {
       if (httpMethod === "GET") return jsonOk(await client.decks.list(env.sessionToken));
@@ -124,7 +120,7 @@ async function dispatchGame(
   if (!tableId || !isGameMethod(method)) return { kind: "empty", status: 404 };
   const address = await env.resolveTableAddress(tableId);
   if (!address) return { kind: "empty", status: 404 };
-  const client = grpcClient(address, env.traceparent);
+  const client = grpcClientFor(address, env);
   try {
     return await Match.value(method).pipe(
       Match.when("intent", async () =>

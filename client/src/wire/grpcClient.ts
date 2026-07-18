@@ -55,6 +55,16 @@ import type {
 export const SESSION_METADATA_KEY = "x-session-token";
 export const TRACEPARENT_METADATA_KEY = "traceparent";
 
+/**
+ * Per-request bag for every BFF → API gRPC call.
+ * Capture once at the HTTP edge (`currentTraceparent` under `runTracedRequest`);
+ * pass the same object into lobby helpers and `dispatchRpc`.
+ */
+export type GrpcRequestEnv = {
+  readonly sessionToken: string | null;
+  readonly traceparent: string | null;
+};
+
 const AllGrpcRegistry = new Map([
   ...AuthGrpcRegistry,
   ...DecksGrpcRegistry,
@@ -182,9 +192,16 @@ export interface GrpcClient {
 const clientCache = new Map<string, GrpcClient>();
 
 /**
+ * gRPC client for one request. Parenting comes from `env.traceparent` (BFF span),
+ * never from ambient context — the gRPC ManagedRuntime is separate from OTEL (ADR 0034).
+ */
+export function grpcClientFor(address: string, env: GrpcRequestEnv): GrpcClient {
+  return grpcClient(address, env.traceparent);
+}
+
+/**
  * @param outboundTraceparent BFF span `traceparent` for every call on this client.
- *   Required for Tempo parenting across the gRPC ManagedRuntime boundary; pass `null`
- *   only when the caller intentionally starts a new trace (tests / untraced health).
+ *   Prefer `grpcClientFor(address, env)` at call sites.
  */
 export function grpcClient(address: string, outboundTraceparent: string | null = null): GrpcClient {
   const key = grpcBaseUrl(address);
