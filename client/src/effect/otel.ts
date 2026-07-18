@@ -1,6 +1,9 @@
-// BFF OpenTelemetry — shared process lifetime via @effect/opentelemetry.
-// Init once from the Nitro `otel.server` plugin; exporters only when
-// OTEL_EXPORTER_OTLP_ENDPOINT is set (cluster). Local/dev uses an empty layer.
+// BFF OpenTelemetry — process-scoped `@effect/opentelemetry` (ADR 0034).
+//
+// Architecture (effect-ts observability guide):
+// - Business/request code uses Effect APIs (`Effect.fn`, `Effect.withSpan`, annotations).
+// - OTEL JS exporters live once in `NodeSdk.layer` — not inside handlers.
+// - W3C `traceparent` bridging (`withSpanContext`) stays at the HTTP/RPC edge only.
 
 import { NodeSdk, OtelTracer } from "@effect/opentelemetry";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
@@ -9,10 +12,10 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { BatchLogRecordProcessor } from "@opentelemetry/sdk-logs";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
-import type * as Effect from "effect/Effect";
+import * as Effect from "effect/Effect";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import { appVersion, gitCommit } from "~/lib/buildMeta";
-import { parseTraceparent } from "~/lib/traceContext";
+import { formatTraceparent, parseTraceparent } from "~/lib/traceContext";
 
 function otlpEndpoint(): string | null {
   const raw = process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();
@@ -76,6 +79,7 @@ export async function runTraced<A, E>(effect: Effect.Effect<A, E>): Promise<A> {
 
 /**
  * Parent this effect's spans under an incoming W3C `traceparent` (Faro / upstream).
+ * Integration boundary only — keep business ops oblivious to propagation.
  * No-op when the header is missing or invalid — the effect stays a local root.
  */
 export function continueIncomingTrace<A, E, R>(
@@ -91,6 +95,31 @@ export function continueIncomingTrace<A, E, R>(
     isRemote: true,
   }) as Effect.Effect<A, E, R>;
 }
+
+/**
+ * HTTP/RPC edge: continue inbound W3C context, open `spanName`, run on the OTEL runtime.
+ * Prefer this over hand-rolling `runTraced` + `continueIncomingTrace` + `withSpan` at each route.
+ */
+export async function runTracedRequest<A, E>(
+  traceparent: string | null,
+  spanName: string,
+  body: Effect.Effect<A, E>,
+): Promise<A> {
+  return runTraced(continueIncomingTrace(body.pipe(Effect.withSpan(spanName)), traceparent));
+}
+
+/**
+ * W3C `traceparent` for the current Effect span (outbound gRPC parenting).
+ * Unnamed `Effect.fn` — stack traces without an extra named span (guide default).
+ */
+export const currentTraceparent = Effect.fn(function* () {
+  const span = yield* Effect.currentSpan;
+  return formatTraceparent({
+    traceId: span.traceId,
+    spanId: span.spanId,
+    sampled: span.sampled,
+  });
+});
 
 /** Flush/dispose exporters on Nitro `close`. */
 export async function shutdownOtel(): Promise<void> {

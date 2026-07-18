@@ -4,7 +4,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import * as Effect from "effect/Effect";
 import { getCookie } from "vinxi/http";
 import { createWebDb } from "~/db/client";
-import { continueIncomingTrace, runTraced } from "~/effect/otel";
+import { currentTraceparent, runTracedRequest } from "~/effect/otel";
 import { normalizePublicApiPath } from "~/lib/apiUpstream";
 import { fetchApiVersion, fetchDeckName, fetchMe, seedGame } from "~/lib/apiUpstreamAuth";
 import {
@@ -19,7 +19,6 @@ import {
   sweepWebDb,
   toLobbyView,
 } from "~/lib/lobbyStore";
-import { formatTraceparent } from "~/lib/traceContext";
 import { runWithTraceparent } from "~/wire/grpcClient";
 
 /** BFF session cookie — cookies terminate here; downstream calls use gRPC metadata. */
@@ -173,37 +172,34 @@ async function handleLobby(event: APIEvent, path: string): Promise<Response | nu
   return null;
 }
 
+/**
+ * Lobby/meta under the request span. Unnamed `Effect.fn` — stack traces without a
+ * second named span; the edge opens `api <path>` via `runTracedRequest` / `withSpan`.
+ */
+const handleLobbyTraced = Effect.fn(function* (event: APIEvent, path: string) {
+  yield* Effect.annotateCurrentSpan({
+    "http.method": event.request.method,
+    "http.route": path,
+  });
+  const outboundTraceparent = yield* currentTraceparent();
+  return yield* Effect.tryPromise({
+    try: () => runWithTraceparent(outboundTraceparent, () => handleLobby(event, path)),
+    catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+  });
+});
+
 async function forward(event: APIEvent) {
   const path = normalizePublicApiPath(event.params.path ?? "");
   if (path === null) {
     return new Response("Not Found", { status: 404 });
   }
 
-  const traceparent = event.request.headers.get("traceparent");
-  return runTraced(
-    continueIncomingTrace(
-      Effect.gen(function* () {
-        const span = yield* Effect.currentSpan;
-        const outboundTraceparent = formatTraceparent({
-          traceId: span.traceId,
-          spanId: span.spanId,
-          sampled: span.sampled,
-        });
-        return yield* Effect.tryPromise({
-          try: () => runWithTraceparent(outboundTraceparent, () => handleLobby(event, path)),
-          catch: (err) => (err instanceof Error ? err : new Error(String(err))),
-        });
-      }).pipe(
-        Effect.withSpan(`api ${path}`, {
-          attributes: {
-            "http.method": event.request.method,
-            "http.route": path,
-          },
-        }),
-      ),
-      traceparent,
-    ),
-  ).then((lobby) => lobby ?? new Response("Not Found", { status: 404 }));
+  const lobby = await runTracedRequest(
+    event.request.headers.get("traceparent"),
+    `api ${path}`,
+    handleLobbyTraced(event, path),
+  );
+  return lobby ?? new Response("Not Found", { status: 404 });
 }
 
 export const GET = forward;
