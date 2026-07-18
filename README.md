@@ -6,7 +6,9 @@ Authoritative rules engine on the server, MTGA-style board in the client, plus a
 
 ## Status
 
-Early and incomplete on purpose. The north star is to support *any* card **faithfully** — grown from real cards, with gaps flagged rather than faked. Today that means a few hundred scripted cards and an engine that is not rules-complete. The five Secrets of Strixhaven (`soc`) Commander decks are the first proving ground, not the end of the roadmap.
+Early and incomplete on purpose. The north star is to support *any* card **faithfully** — grown from real cards, with gaps flagged rather than faked. Today that means ~493 scripted cards (`crates/cards/data/`) and an engine that is not rules-complete. The five Secrets of Strixhaven (`soc`) Commander decks (~389 unique cards) are the first proving ground, not the end of the roadmap.
+
+The public origin ships `robots.txt` that disallows crawlers; this is a friends table, not a content site.
 
 ## Stack
 
@@ -14,18 +16,25 @@ Early and incomplete on purpose. The north star is to support *any* card **faith
 |-------|------|
 | Engine | Pure Rust, deterministic stack/priority state machine |
 | Cards | Data-driven TOML scripts (`crates/cards/data/`) |
-| Server | Axum, SSE for game state, Postgres for users/sessions/decks |
-| Client | SolidJS, canvas/WebGL board + thin DOM overlay |
+| Wire | `.proto` → tonic gRPC (API) + Effect RPC (browser → SolidStart BFF) |
+| API | tonic gRPC (game / auth / decks / catalog / seed) + Axum `/health/*` only |
+| BFF / client | SolidStart 1.3 (Vinxi, `ssr: false`); lobby + `table_routes` on Postgres `mtgfr_web` (Drizzle); canvas/WebGL board + thin DOM overlay |
+| Durable data | Postgres `mtgfr` (users, sessions, decks); `mtgfr_web` (lobbies, table→pod routes) |
+| Deploy | k3s + Cloudflare Tunnel; Argo-owned API/web rolls with SIGTERM drain (ADR 0030) |
 
-Live games stay in memory on a single server instance. Hands and libraries are filtered server-side — private info never leaves for the wrong seat.
+Live games stay **in memory per API process**. Concurrent pods pin each table via BFF `table_routes` → pod DNS. Hands and libraries are filtered server-side — private info never leaves for the wrong seat.
 
 ## Local development
 
 ```bash
-# Postgres (see docker-compose.yml), then:
-just migrate
-just dev          # bacon server (:8080) + Vite client (:5173)
+docker compose up -d          # Postgres on :5432 (mtgfr)
+# create mtgfr_web if you need lobby persistence locally, then:
+just migrate                  # Toasty → mtgfr
+just client-migrate           # Drizzle → mtgfr_web (needs WEB_DATABASE_URL)
+just dev                      # tmux: bacon server (:8080) + Vinxi client (default :3000)
 ```
+
+Without `WEB_DATABASE_URL`, the BFF falls back to localhost for game paths (lobby DB features need the web DB).
 
 Useful checks:
 
@@ -38,9 +47,11 @@ just --list
 ## Docs
 
 - [`CONTEXT.md`](CONTEXT.md) — Magic / domain glossary used in the code
+- [`PRODUCT.md`](PRODUCT.md) / [`DESIGN.md`](DESIGN.md) — product intent and design system
 - [`docs/FIDELITY_BACKLOG.md`](docs/FIDELITY_BACKLOG.md) — engine work still needed for faithful cards
 - [`docs/adr/`](docs/adr/) — architectural decisions
-- [`docs/prds/DEPLOYMENT.md`](docs/prds/DEPLOYMENT.md) — production deploy (k3s + Cloudflare Tunnel)
+- [`docs/prds/DEPLOYMENT.md`](docs/prds/DEPLOYMENT.md) — production deploy (k3s + Cloudflare Tunnel + releases)
+- [`docs/WIRE_COMPAT.md`](docs/WIRE_COMPAT.md) — expand-only proto rules across drain rolls
 - [`docs/README.md`](docs/README.md) — full docs index
 
-Agent-oriented working notes live in [`AGENTS.md`](AGENTS.md).
+Agent-oriented working notes live in [`AGENTS.md`](AGENTS.md). Releases are cut by [semantic-release](https://semantic-release.org/) on `main` (PRs are squash-merged — the **PR title** is the release signal).
