@@ -128,20 +128,24 @@ export interface RenderCard {
 
 export const CARD_W = 96;
 export const CARD_H = 134;
-const GAP = 16;
-const CARD_HSTEP = CARD_W + GAP; // horizontal distance between card centers
-const VSTEP = CARD_H + GAP;
-const ROW_H = VSTEP; // one battlefield row (card + gap)
 
 /** Radius of a player's life-orb avatar, in world units (so it pans/zooms with the board). */
-export const AVATAR_R = 60;
+export const AVATAR_R = 40;
 
 // Each seat: a battlefield of three rows (Noncreature → Creatures → Lands, centerward → outer)
 // with a compact zone column on the left (deck / graveyard / exile / commander), a life orb on
 // its outer edge, and a mana tray under the zone column outside the seat band. Empty rows still
 // reserve height (stable seat silhouette).
+// Sized for the 4-seat Commander footprint: every world unit of height/gutter costs zoom on every
+// card, so gaps stay tight and avatars hang outside the inter-seat gutter (not inside it).
+const GAP = 8;
+const CARD_HSTEP = CARD_W + GAP; // horizontal distance between card centers
+const VSTEP = CARD_H + GAP;
+const ROW_H = VSTEP; // one battlefield row (card + gap)
 const BATTLE_H = 3 * ROW_H;
-const BAND_GAP = 2 * AVATAR_R + 2 * GAP; // room for the avatar above/below each band
+// Avatars hang off the *outer* edge of each band (above the top row / below the bottom), not in
+// the gutter between seats — so the inter-row gutter only needs a hair of separation.
+const BAND_GAP = GAP;
 const BAND_STRIDE = BATTLE_H + BAND_GAP; // vertical distance between the two table rows
 
 // The left column's cards are rendered at half size so four stack alongside the three-row
@@ -155,9 +159,10 @@ const COL_X = -(COL_W + 2 * GAP); // just left of the battlefield's first card (
 // nominal SEAT_COLS battlefield slots; the second column starts a COLUMN_GAP past that so boards
 // don't touch. BAND_W is the seat outline/footprint width used for the highlight and bounds.
 // Rows that exceed SEAT_COLS pack (compress step) inside the seat — see ADR 0028.
-const SEAT_COLS = 9;
+// 7 slots + 1×CARD_HSTEP column gap: packs on wide boards, keeps the 2×2 table dense.
+const SEAT_COLS = 7;
 const SEAT_RIGHT = SEAT_COLS * CARD_HSTEP;
-const COLUMN_GAP = 2 * CARD_HSTEP;
+const COLUMN_GAP = CARD_HSTEP;
 const SEAT_STRIDE_X = SEAT_RIGHT - COL_X + COLUMN_GAP; // x distance between column 0 and column 1
 const BAND_W = SEAT_RIGHT - COL_X + GAP; // seat footprint width (zone column + nominal battlefield)
 

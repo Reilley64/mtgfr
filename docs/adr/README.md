@@ -36,5 +36,6 @@ Point-in-time decisions. Follow status + related links; ignore superseded parts.
 | [0030](0030-table-instance-affinity-for-drain-rolls.md) | BFF lobby + `table_routes` → pod DNS; Argo-owned rolls + SIGTERM drain | Current (extends 0005) |
 | [0031](0031-card-id-and-printing-art-preference.md) | Card id + printing art preference | Current |
 | [0032](0032-effect-rpc-and-grpc-proto-wire.md) | Effect RPC JSON + gRPC/tonic; proto wire | Current |
-| [0033](0033-segmented-card-play-motion.md) | Segmented play-in / leave-stack motion; per-card play origins | Current |
+| [0033](0033-segmented-card-play-motion.md) | Segmented play-in / leave-stack motion; per-card play origins | Superseded by 0035 |
 | [0034](0034-self-hosted-lgtm-faro-otel.md) | Self-hosted LGTM + Faro + OTEL (Alloy) | Current |
+| [0035](0035-canvas-flight-layer.md) | Canvas flight layer (pos+scale) for continuous play motion | Current |

@@ -31,21 +31,25 @@ function fanTransform(index: number, count: number): string {
   return `rotate(${angle}deg) translateY(${drop}px)`;
 }
 
-/** Height of the bottom action bar; the Board uses it to place the play threshold. */
-export const HAND_BAR_H = 210;
+/** Height of the bottom action bar; the Board uses it to place the play threshold.
+ * Kept lean so fitCamera can spend more of the viewport on the battlefield. */
+export const HAND_BAR_H = 128;
 
 // A card face, in the bar and as the drag ghost. The bar card overlaps its left neighbour.
-const CARD_FACE = cn("block w-[150px] rounded-[9px]");
+const CARD_FACE = cn("block w-[112px] rounded-[9px]");
 
 export default function Hand(props: {
   viewer: number;
   hiddenId: number | null; // the staged card, dimmed in place while it awaits a target
+  /** Hand/command ids owned by the canvas flight layer — dim the resting slot (ADR 0035). */
+  flyingIds?: ReadonlySet<number>;
   /** Current face-up bar card under the cursor (for Alt-pin inspect owned by Board). */
   onHoverCard?: (card: { name: string; cardId?: string; print?: string } | null) => void;
   /** Action under the cursor (or being dragged) — Board paints its `auto_tap` preview. */
   onHoverAction?: (action: ActionView | null) => void;
   onDrop: (d: ActionDrop) => void;
 }) {
+  const slotDimmed = (id: number) => id === props.hiddenId || (props.flyingIds?.has(id) ?? false);
   const grouped = createMemo(() => bySection(game.state?.actions));
   const handCards = createMemo<ObjectView[]>(() =>
     game.state ? game.state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === props.viewer) : [],
@@ -212,7 +216,7 @@ export default function Hand(props: {
         )}
       />
       <Show when={p.caption}>
-        <div class="pointer-events-none absolute right-0 bottom-2 -left-6 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-[5px] bg-[#0a100edb] px-1 py-0.5 text-center font-semibold text-micro text-snow">
+        <div class="pointer-events-none absolute right-0 bottom-2 -left-6 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
           {p.caption}
         </div>
       </Show>
@@ -248,7 +252,7 @@ export default function Hand(props: {
                 );
               }
               const action = () => handActionByObject().get(slot.card.id) ?? null;
-              const dimmed = () => !action() || slot.card.id === props.hiddenId;
+              const dimmed = () => !action() || slotDimmed(slot.card.id);
               const caption = () => actionCaption(action()?.kind ?? "");
               return (
                 <BarCard
@@ -279,7 +283,7 @@ export default function Hand(props: {
                     objectId={card.id}
                     objectKind={card.kind.kind}
                     action={action()}
-                    dimmed={!action()}
+                    dimmed={!action() || slotDimmed(card.id)}
                     caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
                     fan={fanTransform(i(), commandCards().length)}
                   />

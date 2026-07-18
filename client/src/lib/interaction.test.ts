@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AVATAR_R, avatarPos, boardBounds, type RenderCard, ZONE } from "~/layout";
+import { AVATAR_R, avatarPos, boardBounds, CARD_H, type RenderCard, ZONE } from "~/layout";
 import { worldToScreen } from "~/lib/camera";
 import {
   attackDrop,
@@ -185,9 +185,9 @@ describe("combat staging", () => {
 });
 
 describe("fitCamera", () => {
-  it("frames the board and never over-zooms past 1.1", () => {
+  it("frames the board and never over-zooms past 1.35", () => {
     const cam = fitCamera({ x: 5000, y: 5000 }, 4, 210);
-    expect(cam.zoom).toBeLessThanOrEqual(1.1);
+    expect(cam.zoom).toBeLessThanOrEqual(1.35);
     expect(cam.zoom).toBeGreaterThan(0);
   });
 
@@ -221,6 +221,13 @@ describe("fitCamera", () => {
         expect(screenTop).toBeGreaterThanOrEqual(TOP_MARGIN - 0.01); // float slack
       }
     }
+  });
+
+  // Commander is 4 seats — this is the viewport we dogfood. Cards must stay readable vs the hand.
+  it("keeps 4-player battlefield cards readable at 1440×900 with the live hand bar", () => {
+    const cam = fitCamera({ x: 1440, y: 900 }, 4, 128);
+    // Commander is the format — 4 seats must stay readable (~hand-card scale, not postage stamps).
+    expect(CARD_H * cam.zoom).toBeGreaterThanOrEqual(86);
   });
 });
 

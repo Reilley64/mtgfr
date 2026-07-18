@@ -230,8 +230,8 @@
   button,
   [role="button"] {
     transition:
-      filter 0.15s ease-out,
-      transform 0.06s ease-out;
+      filter 0.15s var(--ease-state),
+      transform 0.06s var(--ease-state);
   }
   button:hover:not(:disabled),
   [role="button"]:hover:not(:disabled) {

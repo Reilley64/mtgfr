@@ -23,11 +23,11 @@ function cdnUrl(printId: string, face: ImageFace): string {
 }
 
 /** Art URL for a Printing UUID. Empty print → empty URL (broken `<img>`). `face` selects DFC side. */
-export function imageUrlByPrint(printId: string, _size: ImageSize = "large", face: ImageFace = "front"): string {
+export function imageUrlByPrint(printId: string, size: ImageSize = "large", face: ImageFace = "front"): string {
   if (!printId) return "";
   if (CDN) return cdnUrl(printId, face);
   const faceParam = face === "back" ? "&face=back" : "";
-  return `https://api.scryfall.com/cards/${printId}?format=image&version=large${faceParam}`;
+  return `https://api.scryfall.com/cards/${printId}?format=image&version=${size}${faceParam}`;
 }
 
 export type ScryfallPrint = {

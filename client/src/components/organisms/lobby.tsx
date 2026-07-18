@@ -49,8 +49,10 @@ const UNREACHABLE = "Unreachable";
 // A seat row's three columns: who (seat or username), deck, badges.
 // Username needs more than a seat-number column — 70px overflowed into the deck name.
 const SEAT_ROW = cn(
-  "grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)_auto] gap-sm rounded-control bg-glass-dim px-md py-xs",
+  "grid grid-cols-[auto_minmax(7rem,11rem)_minmax(0,1fr)_auto] items-center gap-sm rounded-hud bg-glass-dim px-md py-sm",
 );
+
+const SEAT_DOT = ["bg-seat-forest", "bg-seat-island", "bg-seat-mountain", "bg-seat-arcane"] as const;
 
 export default function Lobby(props: { onStarted: () => void }) {
   const routeParams = useParams();
@@ -258,8 +260,11 @@ export default function Lobby(props: { onStarted: () => void }) {
   return (
     <Felt class="fixed inset-0 overflow-y-auto">
       <div class="flex min-h-full items-center justify-center p-xxl">
-        <Panel as="main" data-testid="lobby">
-          <h1 class="m-0 text-title">mtgfr — Lobby</h1>
+        <Panel as="main" data-testid="lobby" class="max-w-[min(100%-2rem,560px)]">
+          <div class="flex flex-col gap-xs">
+            <div class="m-0 text-display tracking-[-0.02em]">mtgfr</div>
+            <h1 class="m-0 text-title text-lichen">Lobby</h1>
+          </div>
 
           <Show when={table()} fallback={<Entry />}>
             <div class="flex flex-wrap items-center gap-md">
@@ -285,16 +290,20 @@ export default function Lobby(props: { onStarted: () => void }) {
               />
             </Show>
 
-            <div class="flex flex-col gap-xs" data-testid="lobby-seats">
+            <div class="flex flex-col gap-sm" data-testid="lobby-seats">
               <For each={lobby()?.seats ?? []}>
                 {(s) => (
                   <div class={SEAT_ROW} data-testid={`lobby-seat-${s.player}`} data-claimed={s.claimed ? "1" : "0"}>
+                    <span
+                      class={cn("size-2.5 shrink-0 rounded-full", SEAT_DOT[s.player] ?? "bg-fog")}
+                      aria-hidden="true"
+                    />
                     {/* Open-seat ink: dimmer than the claimed-row text but still ≥4.5:1 against the
                         row background (glass-dim over Forest Floor ≈ #171f1c) — measured ~9.4:1. */}
-                    <span class={cn("min-w-0 truncate", !s.claimed && "text-lichen")}>
+                    <span class={cn("min-w-0 font-semibold", !s.claimed && "font-normal text-lichen")}>
                       {s.claimed ? (s.username ?? `Seat ${s.player + 1}`) : `Seat ${s.player + 1}`}
                     </span>
-                    <span class={cn("min-w-0 truncate text-lichen", s.claimed && "text-mist")}>
+                    <span class={cn("min-w-0 text-lichen", s.claimed && "text-mist")}>
                       {s.claimed ? (s.deck_name ?? "—") : "open"}
                     </span>
                     <span class="flex items-center justify-end gap-xs">

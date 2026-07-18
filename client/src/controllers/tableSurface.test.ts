@@ -505,8 +505,9 @@ describe("useTableSurface", () => {
         });
       });
       setCards([existing, land]);
+      // ADR 0035: play entrance parks at layout; canvas flight owns drop→slot motion.
       expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(
-        expect.objectContaining({ id: 3, x: 12, y: 34 }),
+        expect.objectContaining({ id: 3, x: 400, y: 400 }),
       );
       dispose();
     } finally {
@@ -548,8 +549,9 @@ describe("useTableSurface", () => {
       setLands(new Map([[3, 9]]));
       setCards([existing, land]);
 
+      // ADR 0035: parks at layout; flight layer uses the noted origin for the visual path.
       expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(
-        expect.objectContaining({ id: 3, x: 12, y: 34 }),
+        expect.objectContaining({ id: 3, x: 400, y: 400 }),
       );
       dispose();
     } finally {
@@ -574,13 +576,13 @@ describe("useTableSurface", () => {
       playerCount: 2,
     };
 
-    it("places a viewer permanent at its play entrance", () => {
+    it("parks a viewer permanent with a play entrance at its layout slot (flight owns motion)", () => {
       const anim = new Map([[1, { x: 100, y: 100 }]]);
       seedEntrances(anim, [logical(1, 100, 100), logical(2, 200, 200)], {
         ...baseOpts,
         playEntrances: new Map([[2, { x: 12, y: 34 }]]),
       });
-      expect(anim.get(2)).toEqual({ x: 12, y: 34 });
+      expect(anim.get(2)).toEqual({ x: 200, y: 200 });
     });
 
     it("seeds a new id at the zoneMoves predecessor position", () => {
@@ -592,32 +594,27 @@ describe("useTableSurface", () => {
       expect(anim.get(2)).toEqual({ x: 80, y: 90 });
     });
 
-    it("seeds fromStack ids at the stack overlay world origin", () => {
+    it("parks fromStack ids at layout (flight owns stack→BF motion)", () => {
       const anim = new Map([[1, { x: 100, y: 100 }]]);
       seedEntrances(anim, [logical(1, 100, 100), logical(2, 400, 400)], {
         ...baseOpts,
         fromStack: new Set([2]),
         stackLength: 0,
       });
-      const scr = stackAimOrigin(800, 600, 1, stackPeekFor(1, 600, STACK_VERTICAL_RESERVED));
-      const w = screenToWorld(cam, scr.x, scr.y);
-      expect(anim.get(2)?.x).toBeCloseTo(w.x - CARD_W / 2, 5);
-      expect(anim.get(2)?.y).toBeCloseTo(w.y - CARD_H / 2, 5);
+      expect(anim.get(2)).toEqual({ x: 400, y: 400 });
     });
 
-    it("seeds fromStackExit like fromStack", () => {
+    it("parks fromStackExit ids at layout like fromStack", () => {
       const anim = new Map([[1, { x: 100, y: 100 }]]);
       seedEntrances(anim, [logical(2, 400, 400, { zone: ZONE.Graveyard })], {
         ...baseOpts,
         fromStackExit: new Set([2]),
         stackLength: 0,
       });
-      const scr = stackAimOrigin(800, 600, 1, stackPeekFor(1, 600, STACK_VERTICAL_RESERVED));
-      const w = screenToWorld(cam, scr.x, scr.y);
-      expect(anim.get(2)?.x).toBeCloseTo(w.x - CARD_W / 2, 5);
+      expect(anim.get(2)).toEqual({ x: 400, y: 400 });
     });
 
-    it("seeds fromStack with compressed peek when the pile would overflow", () => {
+    it("parks fromStack even when peek would compress (flight still owns motion)", () => {
       const tall = { x: 800, y: 280 };
       const shortCam = fitCamera(tall, 2, 210);
       const anim = new Map([[1, { x: 100, y: 100 }]]);
@@ -629,15 +626,8 @@ describe("useTableSurface", () => {
         fromStack: new Set([2]),
         stackLength,
       });
-      const count = stackLength + 1;
-      const peek = stackPeekFor(count, tall.y, STACK_VERTICAL_RESERVED);
-      expect(peek).toBeLessThan(STACK_PEEK);
-      const scr = stackAimOrigin(tall.x, tall.y, count, peek);
-      const defaultScr = stackAimOrigin(tall.x, tall.y, count, STACK_PEEK);
-      expect(scr.y).not.toBeCloseTo(defaultScr.y, 1);
-      const w = screenToWorld(shortCam, scr.x, scr.y);
-      expect(anim.get(2)?.x).toBeCloseTo(w.x - CARD_W / 2, 5);
-      expect(anim.get(2)?.y).toBeCloseTo(w.y - CARD_H / 2, 5);
+      expect(anim.get(2)).toEqual({ x: 400, y: 400 });
+      expect(stackPeekFor(stackLength + 1, tall.y, STACK_VERTICAL_RESERVED)).toBeLessThan(STACK_PEEK);
     });
   });
 });

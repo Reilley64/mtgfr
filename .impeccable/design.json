@@ -52,7 +52,7 @@
       { "name": "priority-glow", "value": "0 0 24px rgba(255,215,106,0.6)", "purpose": "Gold glow on the priority holder's life orb (canvas shadowColor)." }
     ],
     "motion": [
-      { "name": "ease-state", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Prescribed (not yet shipped): 150-250ms ease-out-quint for state transitions only; honor prefers-reduced-motion." }
+      { "name": "ease-state", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "150ms ease-out-quint on Button variants and turn-yield chrome; honor prefers-reduced-motion via global.css." }
     ],
     "breakpoints": [
       { "name": "portrait-gate", "value": "orientation: portrait and max-width 900px", "purpose": "Full-screen rotate-to-landscape gate; never reflow the builder/board to a vertical stack." },

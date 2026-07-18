@@ -17,6 +17,7 @@ import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client, succeeded } from "~/effect/client";
 import { RequireAuth } from "~/guard";
 import { lookupCardsByIds } from "~/lib/lookupCards";
+import { imageUrlByPrint } from "~/lib/scryfall";
 import type { CatalogCard, Me } from "~/wire/types";
 
 const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id))));
@@ -91,7 +92,7 @@ function DecksSignedIn(props: { user: Me }) {
       <div class="mx-auto mb-5 flex max-w-[720px] flex-wrap items-center justify-between gap-md">
         <h1 class="m-0 text-title">Your decks</h1>
         <div class="flex flex-wrap items-center gap-md">
-          <span class="text-label text-lichen">{props.user.email}</span>
+          <span class="text-label text-lichen">{props.user.username}</span>
           <Button type="button" onClick={onLogout} variant="ghost">
             Sign out
           </Button>
@@ -117,8 +118,21 @@ function DecksSignedIn(props: { user: Me }) {
           >
             <For each={decks()}>
               {(d) => (
-                <ListRow class="flex flex-wrap items-center justify-between gap-md rounded-hud px-xl py-3">
-                  <div class="flex min-w-0 flex-col">
+                <ListRow class="flex flex-wrap items-center gap-md rounded-hud px-md py-md">
+                  <Show
+                    when={d.commander_print || commanders()[d.commander]?.default_print}
+                    fallback={<div class="size-[56px] shrink-0 rounded-control bg-glass" aria-hidden="true" />}
+                  >
+                    {(print) => (
+                      <img
+                        src={imageUrlByPrint(print(), "art_crop")}
+                        alt=""
+                        class="size-[56px] shrink-0 rounded-control object-cover"
+                        loading="lazy"
+                      />
+                    )}
+                  </Show>
+                  <div class="flex min-w-0 flex-1 flex-col">
                     <span class="font-semibold">
                       {d.name}
                       {/* Precons (negative id) are read-only — everyone has them, nobody edits them.

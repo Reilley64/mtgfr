@@ -59,10 +59,10 @@ const POOL_CARD = cn(
 );
 const DECK_ROW = cn(
   LIST_ROW,
-  "flex w-full cursor-pointer items-center gap-xs rounded-[5px] px-sm py-1 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
+  "flex w-full cursor-pointer items-center gap-xs rounded-control px-sm py-1 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine",
 );
 const MENU_ITEM =
-  "cursor-pointer rounded-[5px] border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
+  "cursor-pointer rounded-control border-none bg-transparent px-md py-xs text-left text-label text-snow hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-vine";
 const PRINT_PICKER_COL = "w-[min(38vw,200px)]";
 const PRINT_TILE = cn(
   PRINT_PICKER_COL,
@@ -71,7 +71,7 @@ const PRINT_TILE = cn(
 const PRINT_PICKER_GRID = "grid w-fit grid-cols-2 gap-md";
 const PRINT_BADGE =
   "rounded-full border border-vine-dim bg-glass-dim px-[7px] py-px font-semibold text-chip text-lichen";
-const CARD_ART = cn("aspect-[0.72] w-full rounded-[5px] object-cover");
+const CARD_ART = cn("aspect-[0.72] w-full rounded-control object-cover");
 
 // Search: the box writes `queryAtom`; a 200ms debounce feeds the derived query atom so the pool
 // grid fetches only after typing settles. An empty query is a real value here (fetches the first
@@ -695,16 +695,16 @@ function DeckBuilderSignedIn() {
                 e.preventDefault();
                 setMenu(null);
               }}
-              class="fixed inset-0 z-[2500]"
+              class="fixed inset-0 z-40"
             />
             <div
               style={{
                 "--x": `${Math.min(m().x, window.innerWidth - 180)}px`,
                 "--y": `${Math.min(m().y, window.innerHeight - 140)}px`,
               }}
-              class="fixed top-(--y) left-(--x) z-[2501] flex min-w-[160px] flex-col rounded-hud border border-vine bg-forest-surface p-xs shadow-table"
+              class="fixed top-(--y) left-(--x) z-41 flex min-w-[160px] flex-col rounded-hud border border-vine bg-forest-surface p-xs shadow-table"
             >
-              <div class="border-[#223344] border-b px-md pt-0.5 pb-1.5 text-label text-lichen">{m().title}</div>
+              <div class="border-hud-edge border-b px-md pt-0.5 pb-1.5 text-label text-lichen">{m().title}</div>
               <For each={m().items}>
                 {(item) => (
                   <button

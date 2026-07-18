@@ -21,6 +21,7 @@ import { PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
 import { useActionSession } from "~/controllers/action-session";
 import type { StagedAction } from "~/controllers/actionExecution";
 import { planCastClickResolution } from "~/controllers/actionExecution";
+import { useCardFlights } from "~/controllers/cardFlights";
 import { useCombatStaging } from "~/controllers/combatStaging";
 import { setStackDwellFn, setTurnYieldFn, setYieldFn, submitIntentFn } from "~/controllers/intentAtoms";
 import { isInteractiveControl, myChoice, PromptHost } from "~/controllers/prompt-host";
@@ -59,15 +60,10 @@ import { type RadialOption, radialOptions } from "~/lib/radial";
 import { imageUrlByPrint } from "~/lib/scryfall";
 import { boardChromeFromState, type StackChrome } from "~/lib/stackResponse";
 import { stagedTargetHint } from "~/lib/targetPrompt";
+import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "~/lib/turnYieldChrome";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
 import { connectedAtom, gameStreamFamily, tableId } from "~/net";
-import {
-  foldProvenance,
-  game,
-  resetGame,
-  SPECTATOR_VIEWER,
-  setReject,
-} from "~/store";
+import { foldProvenance, game, resetGame, SPECTATOR_VIEWER, setReject } from "~/store";
 import type { ActionView, ObjectView, PlayerView, VisibleState, WireTarget } from "~/wire/types";
 
 export { humanReason, rejectMessageFor } from "~/controllers/reject";
@@ -148,11 +144,18 @@ export default function Board() {
     localStorage.setItem(HINT_DISMISSED_KEY, "1");
     setHintDismissed(true);
   };
+  // Fade the coaching strip after a beat so it doesn't sit on the life orb forever.
+  createEffect(() => {
+    if (!hintVisible()) return;
+    const t = window.setTimeout(() => setHintAutoHidden(true), 12_000);
+    onCleanup(() => window.clearTimeout(t));
+  });
   const [legendOpen, setLegendOpen] = createSignal(false);
 
   // Logical layout → TableSurface density overlay for hits; draw uses surface.drawnCards (tween + density).
   const cards = createMemo<RenderCard[]>(() => (game.state ? layout(game.state, me()) : []));
   const provenance = () => foldProvenance();
+  const [flightOwnedBridge, setFlightOwnedBridge] = createSignal(new Set<number>());
   const surface = useTableSurface({
     me,
     playerCount,
@@ -167,9 +170,24 @@ export default function Board() {
     stackObjectIds: () => provenance().priorStackObjectIds,
     stackLength: () => game.state?.stack.length ?? 0,
     selectedId,
+    flightOwnedIds: flightOwnedBridge,
   });
   const { camera, size, setSize, hitCard, hitSeat, dragging, drawnCards, inspectPin, clearInspect, tryPinInspect } =
     surface;
+
+  const cardFlights = useCardFlights({
+    camera,
+    size,
+    cards,
+    stackLength: () => game.state?.stack.length ?? 0,
+    landPlays: () => provenance().landPlayFrom,
+    fromStack: () => provenance().resolvedFromStack,
+    fromStackExit: () => provenance().leftStackToPile,
+    stackEntrances: () => provenance().stackEntrances,
+    reducedMotion: () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    onTick: () => setTick((t) => t + 1),
+  });
+  createEffect(() => setFlightOwnedBridge(cardFlights.flightOwnedIds()));
 
   /** Hand-card id → screen origin for stack DOM play-in; remapped to spell id on spell_cast. */
   const stackScreenByCard = new Map<number, { x: number; y: number }>();
@@ -180,10 +198,13 @@ export default function Board() {
     const cam = camera();
     const sz = size();
     const next = new Map(stackInDeltas());
+    const owned = cardFlights.flightOwnedIds();
     const stackLen = game.state?.stack.length ?? 0;
     const peek = stackPeekFor(stackLen, sz.y, STACK_VERTICAL_RESERVED);
     for (const [spell, meta] of provenance().stackEntrances) {
       if (next.has(spell)) continue;
+      // Canvas flight owns hand→stack; skip CSS stack-in deltas for those ids (ADR 0035).
+      if (owned.has(spell) || owned.has(meta.from)) continue;
       let fromScreen = stackScreenByCard.get(meta.from);
       if (!fromScreen) {
         const a = avatarPos(meta.controller, me(), playerCount());
@@ -212,9 +233,17 @@ export default function Board() {
     size,
     handBarH: HAND_BAR_H,
     setReject,
-    seedDrop: (cardId, world, screen) => {
+    seedDrop: (cardId, world, screen, flight) => {
       surface.notePlayOrigin(cardId, world);
       stackScreenByCard.set(cardId, screen);
+      const obj = game.state?.objects.find((o) => o.id === cardId);
+      cardFlights.spawnFromHand({
+        cardId,
+        print: obj?.print ?? "",
+        name: obj?.name ?? "",
+        screen,
+        kind: flight,
+      });
     },
     clearPlayOrigin: (cardId) => {
       surface.clearPlayOrigin(cardId);
@@ -408,6 +437,8 @@ export default function Board() {
         paymentObjects: paymentPreviewIds(),
         stackResponseFocus: chrome.focus,
         responseObjects: chrome.brightIds,
+        flights: cardFlights.flights(),
+        hideCardIds: cardFlights.hideCardIds(),
       });
       // Combat/target arrows draw-on over ~180ms; without a follow-up paint they freeze as a stub
       // on the source card (staged attackers looked like they pointed at the creature).
@@ -666,7 +697,7 @@ export default function Board() {
       <Show when={!connected()}>
         <div
           data-testid="board-reconnecting"
-          class="fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-1.5 text-center font-semibold text-label text-white"
+          class="fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-1.5 text-center font-semibold text-label text-snow"
         >
           Reconnecting…
         </div>
@@ -701,7 +732,7 @@ export default function Board() {
           <>
             <TurnBanner me={me()} state={state()} />
             <Show when={spectating()}>
-              <div class="fixed top-3 left-1/2 z-20 -translate-x-1/2 rounded-control bg-llanowar px-3 py-1 font-semibold text-label text-white tracking-[0.04em]">
+              <div class="fixed top-3 left-1/2 z-20 -translate-x-1/2 rounded-control bg-llanowar px-3 py-1 font-semibold text-label text-snow-mint tracking-[0.04em]">
                 Spectating
               </div>
             </Show>
@@ -756,14 +787,7 @@ export default function Board() {
               state={state()}
               staged={stackStagedCard()}
               returningStaged={session.overlay().returningStaged}
-              stagedPlayIn={(() => {
-                const s = session.overlay().staged;
-                if (!s || !stackStagedCard()) return null;
-                const sz = size();
-                const peek = stackPeekFor(state().stack.length + 1, sz.y, STACK_VERTICAL_RESERVED);
-                const to = stackAimOrigin(sz.x, sz.y, state().stack.length + 1, peek);
-                return stackInFromDelta(s.playOriginScreen, to);
-              })()}
+              stagedPlayIn={null}
               stagedReturn={(() => {
                 const s = session.overlay().returningStaged;
                 if (!s) return null;
@@ -776,7 +800,10 @@ export default function Board() {
                 // Return keyframes end at translate(dx,dy) — delta from stack rest to hand.
                 return stackInFromDelta(to, from);
               })()}
-              showPileStaged={arrowAiming()}
+              showPileStaged={
+                arrowAiming() && !(stackStagedCard() != null && cardFlights.hideCardIds().has(stackStagedCard()!.id))
+              }
+              hideFaceIds={cardFlights.hideCardIds()}
               allowDwell={boardChrome().allowDwell}
               viewportW={size().x}
               viewportH={size().y}
@@ -796,6 +823,7 @@ export default function Board() {
         <Hand
           viewer={me()}
           hiddenId={stagedCard()?.id ?? session.overlay().returningStaged?.card.id ?? null}
+          flyingIds={cardFlights.handHidden()}
           onHoverCard={(c) => surface.setAuxHover("hand", c)}
           onHoverAction={setHoverAction}
           onDrop={onHandDrop}
@@ -861,7 +889,7 @@ function TurnBanner(props: { me: number; state: VisibleState }) {
       data-active-player={String(s().active_player)}
       data-priority={String(s().priority)}
       data-stack-len={String(s().stack.length)}
-      class="fixed top-[10px] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-[5px] rounded-panel border border-hud-edge px-lg py-sm shadow-hud"
+      class="fixed top-[10px] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-[5px] shadow-hud"
     >
       <div data-testid="board-turn-label" class={cn("font-bold text-turn-ember", yourTurn() && "text-turn-mint")}>
         {yourTurn() ? "Your turn" : `${playerLabel(s().players, s().active_player)}'s turn`}
@@ -981,26 +1009,10 @@ function PriorityContextBar(props: {
             aria-label="Auto-pass until my turn"
             title="Auto-pass until my turn"
             onClick={() => props.onTurnYield(!props.chrome.turnYielded)}
-            class={cn(
-              "flex h-[42px] items-center rounded-game border border-white/12 bg-[#141c18f0] px-3",
-              "transition-colors",
-              props.chrome.turnYielded && "border-priority-gold/50",
-            )}
+            class={turnYieldRockerClass(props.chrome.turnYielded)}
           >
-            <span
-              class={cn(
-                "relative h-[22px] w-[40px] shrink-0 rounded-full transition-colors",
-                props.chrome.turnYielded ? "bg-priority-gold" : "bg-tapped-out",
-              )}
-            >
-              <span
-                class={cn(
-                  "absolute top-[2px] left-[2px] flex size-[18px] items-center justify-center rounded-full",
-                  "bg-snow font-bold text-[#1a221e] text-[10px] leading-none shadow-press transition-transform",
-                  props.chrome.turnYielded && "translate-x-[18px] bg-[#1a221e] text-priority-gold",
-                )}
-                aria-hidden="true"
-              >
+            <span class={turnYieldTrackClass(props.chrome.turnYielded)}>
+              <span class={turnYieldThumbClass(props.chrome.turnYielded)} aria-hidden="true">
                 ≫
               </span>
             </span>
@@ -1033,20 +1045,25 @@ function PriorityContextBar(props: {
 
 // ── Discoverability: hint strip + legend panel (findings: undiscoverable interaction grammar) ──
 
-// A dismissible "✕" that adds no chrome of its own — used by the hint strip and legend panel.
-const QUIET_CLOSE = cn("hit-quiet cursor-pointer border-none bg-transparent p-0 text-label text-lichen leading-none");
-
 function HintStrip(props: { onDismiss: () => void }) {
   return (
     <Hud
-      style={{ "--b": `${HAND_BAR_H + 10}px` }}
+      style={{ "--b": `${HAND_BAR_H + 16}px` }}
+      // Left of center so it clears the viewer's life orb (centered under their band).
       // Lichen, not prose ink: this is metadata about the interface (DESIGN.md §6).
-      class="fixed bottom-(--b) left-1/2 z-20 flex -translate-x-1/2 items-center gap-md text-lichen"
+      class="fixed bottom-(--b) left-3 z-20 flex max-w-[min(420px,46vw)] items-center gap-md text-lichen"
     >
-      <span>Drag a card to play · Click a permanent to activate · Alt to inspect · Space to pass · Esc to cancel</span>
-      <button type="button" aria-label="Dismiss hint" onClick={props.onDismiss} class={QUIET_CLOSE}>
+      <span>Drag to play · Click to activate · Alt inspect · Space pass</span>
+      <Button
+        type="button"
+        aria-label="Dismiss hint"
+        onClick={props.onDismiss}
+        variant="ghost"
+        hitQuiet
+        class="border-none p-0 text-lichen"
+      >
         ✕
-      </button>
+      </Button>
     </Hud>
   );
 }
@@ -1075,9 +1092,16 @@ function LegendPanel(props: { onClose: () => void }) {
     <Hud style={{ "--b": `${HAND_BAR_H + 92}px` }} class="fixed right-[10px] bottom-(--b) z-21 w-[220px]">
       <div class="mb-1.5 flex items-center justify-between">
         <span class="font-bold">Board legend</span>
-        <button type="button" aria-label="Close legend" onClick={props.onClose} class={QUIET_CLOSE}>
+        <Button
+          type="button"
+          aria-label="Close legend"
+          onClick={props.onClose}
+          variant="ghost"
+          hitQuiet
+          class="border-none p-0 text-lichen"
+        >
           ✕
-        </button>
+        </Button>
       </div>
       <For each={LEGEND_ITEMS}>
         {(item) => (
@@ -1094,9 +1118,9 @@ function LegendPanel(props: { onClose: () => void }) {
 }
 function legendSwatch(shape: "dot" | "badge" | "outline") {
   const base = "inline-block h-[14px] w-[14px] shrink-0";
-  if (shape === "dot") return `${base} rounded-full border border-[#1a1a1a] bg-(--c)`;
-  if (shape === "badge") return `${base} rounded-[3px] border border-[#1a1a1a] bg-(--c)`;
-  return `${base} rounded-[3px] border-2 border-(--c)`;
+  if (shape === "dot") return `${base} rounded-full border border-morph-slate bg-(--c)`;
+  if (shape === "badge") return `${base} rounded-focus border border-morph-slate bg-(--c)`;
+  return `${base} rounded-focus border-2 border-(--c)`;
 }
 
 // ── Stack overlay, game log, prompt modals, pile overlay ───────────────────────────
@@ -1114,12 +1138,14 @@ function StackOverlay(props: {
   stagedReturn: { dx: number; dy: number } | null;
   /** Pile shows the staged ghost only while arrow aiming (suspended in expand/full). */
   showPileStaged: boolean;
+  /** Ids owned by canvas flight — hide resting stack faces until settle (ADR 0035). */
+  hideFaceIds: ReadonlySet<number>;
   /** From shared boardChrome — do not recompute with a divergent staged/mana policy. */
   allowDwell: boolean;
   viewportW: number;
   viewportH: number;
   expanded: boolean;
-  /** Per stack-object id play-in deltas (ADR 0033). */
+  /** Per stack-object id play-in deltas (opponent / non-flight entrances). */
   entranceDeltas: Map<number, { dx: number; dy: number }>;
   onExpand: () => void;
   onCollapse: () => void;
@@ -1245,6 +1271,8 @@ function StackOverlay(props: {
     isTop: boolean;
     staged?: boolean;
     returning?: boolean;
+    /** When set, play CSS stack-in from that delta; otherwise appear at rest (flight promote). */
+    entranceDelta?: { dx: number; dy: number } | null;
     style: Record<string, string>;
   }) => (
     // biome-ignore lint/a11y/noStaticElementInteractions: hover reveals art / dwell
@@ -1253,7 +1281,7 @@ function StackOverlay(props: {
       style={opts.style}
       class={cn(
         "absolute rounded-game shadow-[0_4px_14px_rgb(0_0_0/0.55)]",
-        opts.returning ? "animate-stack-return" : "animate-stack-in",
+        opts.returning ? "animate-stack-return" : opts.entranceDelta ? "animate-stack-in" : null,
         opts.staged && "ring-(--target) ring-2",
         opts.isTop && holdMs() > 0 && stackHover() && "shadow-[0_0_16px_rgba(255,215,106,0.4)]",
       )}
@@ -1263,7 +1291,7 @@ function StackOverlay(props: {
         fallback={
           <div
             style={{ "--h": `${cardH()}px`, "--w": `${STACK_CARD_W}px` }}
-            class="flex h-(--h) w-(--w) items-center justify-center rounded-game bg-[rgb(14_26_20/0.95)] px-1 text-center font-semibold text-caption text-seafoam"
+            class="flex h-(--h) w-(--w) items-center justify-center rounded-game bg-forest-hud px-1 text-center font-semibold text-caption text-seafoam"
           >
             {opts.label}
           </div>
@@ -1292,28 +1320,33 @@ function StackOverlay(props: {
             const imageName = () => (entry().kind === "spell" ? entry().label : (names().get(entry().source) ?? null));
             const meta = byId().get(entry().source) ?? { print: "", cardId: undefined };
             const isTop = () => row === props.state.stack.length - 1 && !(props.staged && props.showPileStaged);
-            const delta = props.entranceDeltas.get(entry().source);
-            return stackFace({
-              row,
-              imageName: imageName(),
-              print: meta.print,
-              cardId: meta.cardId,
-              label: entry().label,
-              isTop: isTop(),
-              style: {
-                "--w": `${STACK_CARD_W}px`,
-                width: `${STACK_CARD_W}px`,
-                bottom: `${row * peek()}px`,
-                "z-index": String(row),
-                left: "0",
-                ...(delta
-                  ? {
-                      "--stack-from-dx": `${delta.dx}px`,
-                      "--stack-from-dy": `${delta.dy}px`,
-                    }
-                  : {}),
-              },
-            });
+            const delta = () => props.entranceDeltas.get(entry().source) ?? null;
+            return (
+              <Show when={!props.hideFaceIds.has(entry().source)}>
+                {stackFace({
+                  row,
+                  imageName: imageName(),
+                  print: meta.print,
+                  cardId: meta.cardId,
+                  label: entry().label,
+                  isTop: isTop(),
+                  entranceDelta: delta(),
+                  style: {
+                    "--w": `${STACK_CARD_W}px`,
+                    width: `${STACK_CARD_W}px`,
+                    bottom: `${row * peek()}px`,
+                    "z-index": String(row),
+                    left: "0",
+                    ...(delta()
+                      ? {
+                          "--stack-from-dx": `${delta()!.dx}px`,
+                          "--stack-from-dy": `${delta()!.dy}px`,
+                        }
+                      : {}),
+                  },
+                })}
+              </Show>
+            );
           }}
         </Index>
         <Show when={props.showPileStaged ? props.staged : null}>
@@ -1326,6 +1359,7 @@ function StackOverlay(props: {
               label: card().name,
               isTop: true,
               staged: true,
+              entranceDelta: props.stagedPlayIn,
               style: {
                 "--w": `${STACK_CARD_W}px`,
                 "--target": TARGET_COLOR,
@@ -1353,6 +1387,7 @@ function StackOverlay(props: {
               label: card().card.name,
               isTop: true,
               returning: true,
+              entranceDelta: props.stagedReturn,
               style: {
                 "--w": `${STACK_CARD_W}px`,
                 width: `${STACK_CARD_W}px`,
@@ -1390,7 +1425,7 @@ function StackOverlay(props: {
           >
             <div
               style={{ width: `${holdPct()}%` }}
-              class="h-full rounded-full bg-priority-gold transition-[width] duration-100 ease-linear"
+              class="h-full rounded-full bg-vine transition-[width] duration-150 ease-linear"
             />
           </div>
         </Show>
@@ -1425,6 +1460,7 @@ function StackOverlay(props: {
         const meta = byId().get(entry.source) ?? { print: "", cardId: undefined };
         return {
           row,
+          source: entry.source,
           imageName: entry.kind === "spell" ? entry.label : (names().get(entry.source) ?? null),
           print: meta.print,
           cardId: meta.cardId,
@@ -1432,9 +1468,10 @@ function StackOverlay(props: {
           staged: false as boolean,
         };
       });
-      if (props.staged) {
+      if (props.staged && props.showPileStaged) {
         list.push({
           row: props.state.stack.length,
+          source: props.staged.id,
           imageName: props.staged.name,
           print: props.staged.print ?? "",
           cardId: props.staged.card_id || undefined,
@@ -1494,24 +1531,36 @@ function StackOverlay(props: {
               const col = () => item.row % perRow();
               const rowY = () => Math.floor(item.row / perRow());
               const isTop = () => item.row === n() - 1;
+              const delta = () => (item.staged ? props.stagedPlayIn : (props.entranceDeltas.get(item.source) ?? null));
               onCleanup(() => clearHover(item.row));
-              return stackFace({
-                row: item.row,
-                imageName: item.imageName,
-                print: item.print,
-                cardId: item.cardId,
-                label: item.label,
-                isTop: isTop(),
-                staged: item.staged,
-                style: {
-                  "--w": `${STACK_CARD_W}px`,
-                  "--target": TARGET_COLOR,
-                  width: `${STACK_CARD_W}px`,
-                  left: `${col() * hPeek()}px`,
-                  top: `${rowY() * cardH() * 0.35}px`,
-                  "z-index": String(item.row),
-                },
-              });
+              return (
+                <Show when={!props.hideFaceIds.has(item.source)}>
+                  {stackFace({
+                    row: item.row,
+                    imageName: item.imageName,
+                    print: item.print,
+                    cardId: item.cardId,
+                    label: item.label,
+                    isTop: isTop(),
+                    staged: item.staged,
+                    entranceDelta: delta(),
+                    style: {
+                      "--w": `${STACK_CARD_W}px`,
+                      "--target": TARGET_COLOR,
+                      width: `${STACK_CARD_W}px`,
+                      left: `${col() * hPeek()}px`,
+                      top: `${rowY() * cardH() * 0.35}px`,
+                      "z-index": String(item.row),
+                      ...(delta()
+                        ? {
+                            "--stack-from-dx": `${delta()!.dx}px`,
+                            "--stack-from-dy": `${delta()!.dy}px`,
+                          }
+                        : {}),
+                    },
+                  })}
+                </Show>
+              );
             }}
           </For>
         </div>
@@ -1523,7 +1572,7 @@ function StackOverlay(props: {
           >
             <div
               style={{ width: `${holdPct()}%` }}
-              class="h-full rounded-full bg-priority-gold transition-[width] duration-100 ease-linear"
+              class="h-full rounded-full bg-vine transition-[width] duration-150 ease-linear"
             />
           </div>
         </Show>
@@ -1673,11 +1722,11 @@ function PileOverlay(props: { cards: ObjectView[]; onClose: () => void }) {
 function phaseSegment(state: "past" | "now" | "future", yourTurn: boolean): string {
   return cn(
     // Fixed equal width — sized for the longest step detail ("First Strike Damage" at text-micro).
-    "w-[7.5rem] rounded-[7px] border border-transparent px-md py-1 text-center font-semibold text-caption",
-    "bg-[rgb(24_34_30/0.6)] text-phase-fern", // future: the resting band
-    state === "past" && "bg-[rgb(40_55_48/0.9)] text-snow-mint",
+    "w-[7.5rem] rounded-control border border-transparent px-md py-1 text-center font-semibold text-caption",
+    "bg-tapped-out/60 text-phase-fern", // future: the resting band
+    state === "past" && "bg-quiet-hover text-snow-mint",
     state === "now" && "text-snow-mint",
-    state === "now" && yourTurn && "border-phase-mint bg-[rgb(60_150_95/0.9)]",
-    state === "now" && !yourTurn && "border-phase-ember bg-[rgb(150_95_55/0.9)]",
+    state === "now" && yourTurn && "border-phase-mint bg-llanowar/90",
+    state === "now" && !yourTurn && "border-phase-ember bg-phase-ember/90",
   );
 }

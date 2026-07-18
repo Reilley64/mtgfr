@@ -15,14 +15,15 @@ import type { ObjectView, VisibleState, WireAttack, WireBlock, WireIntent, WireT
 // phase segments + priority watch, ~10px top offset + ~8px padding top/bottom + up to three text
 // rows) so the topmost seat's life-orb avatar never renders underneath it. Static estimate, not a
 // measured DOM rect (fitCamera is pure/DOM-free) — bump it if the HUD gains rows.
-export const TOP_MARGIN = 120;
+export const TOP_MARGIN = 92;
 export function fitCamera(size: { x: number; y: number }, count: number, handBarH: number): Camera {
   const b = boardBounds(count);
   const bw = b.maxX - b.minX;
   const bh = b.maxY - b.minY;
   const availW = Math.max(200, size.x - 32);
   const availH = Math.max(200, size.y - handBarH - TOP_MARGIN - 12);
-  const zoom = Math.min(availW / bw, availH / bh, 1.1);
+  // Cap keeps text/orbs readable on ultrawide; below the cap we fill the playable frame.
+  const zoom = Math.min(availW / bw, availH / bh, 1.35);
   const panX = (size.x - bw * zoom) / 2 - b.minX * zoom;
   const panY = TOP_MARGIN - b.minY * zoom;
   return { panX, panY, zoom };

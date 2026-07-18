@@ -43,7 +43,7 @@ const GAP = 24;
 /** Inspect dock / column wrap ceiling — keep in sync with `max-h-(--dock-h)` classes below. */
 const DOCK_H = "min(90vh, 720px)";
 const PANEL_CARD = cn(
-  "w-(--w) shrink-0 rounded-panel border border-white/12 bg-[#141418f5] px-xl py-lg text-preview-ash leading-[1.4]",
+  "w-(--w) shrink-0 rounded-panel border border-vine bg-forest-surface px-xl py-lg text-preview-ash leading-[1.4]",
 );
 
 /** Oracle / approximates prose with `{T}` / `{G}` etc. as mana-font glyphs. */
@@ -86,7 +86,7 @@ function TextPanel(props: {
         </Show>
         <Show when={props.approximates}>
           {(approx) => (
-            <div class={cn("text-label text-note-gold italic", props.oracle && "mt-3 border-white/12 border-t pt-3")}>
+            <div class={cn("text-label text-note-gold italic", props.oracle && "mt-3 border-vine/40 border-t pt-3")}>
               <span class="font-semibold not-italic">Approximation: </span>
               <OracleRichText text={approx()} />
             </div>
@@ -107,7 +107,7 @@ function ModifierLedger(props: {
         <div style={{ "--w": `${PANEL}px` }} class={cn(PANEL_CARD, "text-label")}>
           <button
             type="button"
-            class="cursor-pointer underline decoration-white/40 underline-offset-2 hover:decoration-white"
+            class="cursor-pointer text-seafoam underline decoration-mist/50 underline-offset-2 hover:decoration-seafoam"
             onClick={() =>
               props.onSource({
                 name: group.source_name,
@@ -144,7 +144,7 @@ export function HoverPreview(props: { id: string | null; print?: string | null; 
         <div
           style={{ "--x": `${left()}px`, "--y": `${top()}px` }}
           class={cn(
-            "pointer-events-none fixed top-(--y) left-(--x) z-[2000] flex flex-row items-start gap-3",
+            "pointer-events-none fixed top-(--y) left-(--x) z-40 flex flex-row items-start gap-3",
             flipped() && "flex-row-reverse",
           )}
         >
@@ -235,7 +235,7 @@ export function InspectDock(props: {
       ref={dialog}
       onClose={() => props.pin && props.onDismiss()}
       onClick={(e) => e.target === dialog && props.onDismiss()}
-      class="fixed inset-0 z-[2000] m-0 h-full max-h-none w-full max-w-none border-0 bg-black/55 p-0 open:flex open:items-center"
+      class="fixed inset-0 z-30 m-0 h-full max-h-none w-full max-w-none border-0 bg-black/55 p-0 open:flex open:items-center"
     >
       <Show when={current()}>
         {/* pt-(--back-gutter) reserves room for the top chrome (Back / Flip) so the card never
@@ -254,7 +254,7 @@ export function InspectDock(props: {
                     type="button"
                     onClick={goBack}
                     variant="link"
-                    class="flex items-center gap-1 text-label text-white/50 no-underline hover:text-white/80 hover:underline"
+                    class="flex items-center gap-1 text-label text-fog no-underline hover:text-mist hover:underline"
                   >
                     <svg
                       aria-hidden="true"

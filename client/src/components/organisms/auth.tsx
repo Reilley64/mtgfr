@@ -74,7 +74,10 @@ export default function Auth() {
       <div class="flex min-h-full items-center justify-center p-xxl">
         <Panel as="main" data-testid="auth-panel">
           <form onSubmit={submit} class="contents" data-testid="auth-form">
-            <h1 class="m-0 text-title">mtgfr — {isLogin() ? "sign in" : "create account"}</h1>
+            <div class="flex flex-col gap-xs">
+              <div class="m-0 text-display tracking-[-0.02em]">mtgfr</div>
+              <h1 class="m-0 text-title text-lichen">{isLogin() ? "Sign in" : "Create account"}</h1>
+            </div>
             <label for="email" class="text-label text-lichen">
               Email
             </label>
