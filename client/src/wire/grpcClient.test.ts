@@ -3,7 +3,6 @@ import {
   callOpts,
   GrpcCallError,
   httpStatusOf,
-  runWithTraceparent,
   SESSION_METADATA_KEY,
   TRACEPARENT_METADATA_KEY,
   toCallError,
@@ -27,22 +26,22 @@ describe("toCallError", () => {
   });
 });
 
-describe("callOpts / runWithTraceparent", () => {
+describe("callOpts", () => {
   it("includes session token metadata", () => {
     const opts = callOpts("tok", null);
     expect(opts?.metadata).toEqual([[SESSION_METADATA_KEY, "tok"]]);
   });
 
-  it("includes an explicit traceparent", () => {
+  it("includes an explicit traceparent (required for gRPC ManagedRuntime boundary)", () => {
     const opts = callOpts(null, "00-abc-def-01");
     expect(opts?.metadata).toEqual([[TRACEPARENT_METADATA_KEY, "00-abc-def-01"]]);
   });
 
-  it("reads traceparent from ALS when not passed explicitly", () => {
-    const opts = runWithTraceparent("00-from-als-00", () => callOpts("tok"));
+  it("includes both session and traceparent", () => {
+    const opts = callOpts("tok", "00-from-bff-01");
     expect(opts?.metadata).toEqual([
       [SESSION_METADATA_KEY, "tok"],
-      [TRACEPARENT_METADATA_KEY, "00-from-als-00"],
+      [TRACEPARENT_METADATA_KEY, "00-from-bff-01"],
     ]);
   });
 

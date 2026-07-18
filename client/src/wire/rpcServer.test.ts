@@ -60,6 +60,7 @@ class MockGrpcCallError extends Error {
 
 vi.mock("~/wire/grpcClient", () => ({
   grpcClient: () => mockClient,
+  grpcClientFor: () => mockClient,
   GrpcCallError: MockGrpcCallError,
   httpStatusOf: (code: string) => {
     if (code === "invalid_argument") return 422;
@@ -73,6 +74,7 @@ const { dispatchRpc } = await import("~/wire/rpcServer");
 
 const env = {
   sessionToken: "tok",
+  traceparent: null as string | null,
   defaultAddress: "127.0.0.1:50051",
   resolveTableAddress: vi.fn(async (tableId: string) => (tableId === "unknown" ? null : "pod:50051")),
 };

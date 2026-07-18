@@ -1,6 +1,6 @@
 // BFF helpers for the lobby route: me/deck/seed over gRPC; version stays HTTP `/health/live`.
 
-import { GrpcCallError, grpcClient, httpStatusOf } from "~/wire/grpcClient";
+import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "~/wire/grpcClient";
 import type { SaveDeckRequest, SeedRequest, SeedResponse } from "~/wire/types";
 
 export function apiUpstream(): string {
@@ -24,19 +24,19 @@ export function parseMePayload(body: unknown): Me | null {
   return { id: rec.id, email: rec.email, username: rec.username };
 }
 
-export async function fetchMe(sessionToken: string | null): Promise<Me | null> {
-  if (!sessionToken) return null;
+export async function fetchMe(env: GrpcRequestEnv): Promise<Me | null> {
+  if (!env.sessionToken) return null;
   try {
-    return await grpcClient(grpcUpstream()).auth.getMe(sessionToken);
+    return await grpcClientFor(grpcUpstream(), env).auth.getMe(env.sessionToken);
   } catch {
     return null;
   }
 }
 
-export async function fetchDeckName(sessionToken: string | null, deckId: number): Promise<string | null> {
-  if (!sessionToken) return null;
+export async function fetchDeckName(env: GrpcRequestEnv, deckId: number): Promise<string | null> {
+  if (!env.sessionToken) return null;
   try {
-    const deck = await grpcClient(grpcUpstream()).decks.get(deckId, sessionToken);
+    const deck = await grpcClientFor(grpcUpstream(), env).decks.get(deckId, env.sessionToken);
     return deck.name ?? null;
   } catch {
     return null;
@@ -53,12 +53,12 @@ export async function fetchApiVersion(): Promise<string | null> {
 export type { SeedResponse };
 
 export async function seedGame(
-  sessionToken: string | null,
+  env: GrpcRequestEnv,
   body: SeedRequest,
 ): Promise<{ ok: true; data: SeedResponse } | { ok: false; status: number }> {
-  if (!sessionToken) return { ok: false, status: 401 };
+  if (!env.sessionToken) return { ok: false, status: 401 };
   try {
-    const data = await grpcClient(grpcUpstream()).tables.seed(body, sessionToken);
+    const data = await grpcClientFor(grpcUpstream(), env).tables.seed(body, env.sessionToken);
     return { ok: true, data };
   } catch (err) {
     if (err instanceof GrpcCallError) {
