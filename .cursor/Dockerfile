@@ -57,5 +57,19 @@ RUN cargo install just --locked \
 RUN curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.14"
 ENV PATH=/home/ubuntu/.bun/bin:${PATH}
 
+# Cursor `install`/`start` hooks often run with a stripped system PATH (no login
+# shell, image ENV PATH ignored). Symlink toolchains into /usr/local/bin so
+# `bun install` / `cargo fetch` work without exporting PATH in environment.json.
+RUN sudo ln -sf /home/ubuntu/.cargo/bin/rustup /usr/local/bin/rustup \
+    && sudo ln -sf /home/ubuntu/.cargo/bin/cargo /usr/local/bin/cargo \
+    && sudo ln -sf /home/ubuntu/.cargo/bin/rustc /usr/local/bin/rustc \
+    && sudo ln -sf /home/ubuntu/.cargo/bin/rustfmt /usr/local/bin/rustfmt \
+    && sudo ln -sf /home/ubuntu/.cargo/bin/cargo-fmt /usr/local/bin/cargo-fmt \
+    && sudo ln -sf /home/ubuntu/.cargo/bin/cargo-clippy /usr/local/bin/cargo-clippy \
+    && sudo ln -sf /home/ubuntu/.cargo/bin/clippy-driver /usr/local/bin/clippy-driver \
+    && sudo ln -sf /home/ubuntu/.cargo/bin/just /usr/local/bin/just \
+    && sudo ln -sf /home/ubuntu/.cargo/bin/cargo-nextest /usr/local/bin/cargo-nextest \
+    && sudo ln -sf /home/ubuntu/.bun/bin/bun /usr/local/bin/bun
+
 ENV DATABASE_URL=postgresql://mtgfr:mtgfr@127.0.0.1:5432/mtgfr
 ENV WEB_DATABASE_URL=postgresql://mtgfr:mtgfr@127.0.0.1:5432/mtgfr_web
