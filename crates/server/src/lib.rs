@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use axum::{Router, http::HeaderValue, routing::get};
 #[cfg(test)]
@@ -42,11 +43,33 @@ pub struct Registry {
     tables: HashMap<String, Table>,
 }
 
+/// How long a started table may sit with zero `Game.Stream` subscribers before drain treats it
+/// as abandoned ("seats vacated" in the deploy PRD). Long enough for a reconnect blip; short
+/// enough that ghost tables from closed browsers don't pin Terminating pods for the full grace.
+pub const ABANDONED_TABLE_GRACE: Duration = Duration::from_secs(60);
+
 impl Registry {
     /// Live games this instance holds (every table is born already seeded — see
     /// [`decks::Table::seeded`] — so this is simply how many tables are registered).
     pub fn active_table_count(&self) -> usize {
         self.tables.values().filter(|t| t.game.is_some()).count()
+    }
+
+    /// Drop started tables that have had no stream subscribers for at least `grace`.
+    /// Returns how many were removed. Call from the SIGTERM drain loop.
+    pub fn evict_abandoned(&mut self, now: Instant, grace: Duration) -> usize {
+        let before = self.tables.len();
+        self.tables.retain(|_, table| {
+            if table.game.is_none() {
+                return true;
+            }
+            if table.tx.receiver_count() > 0 {
+                table.quiet_since = now;
+                return true;
+            }
+            now.saturating_duration_since(table.quiet_since) < grace
+        });
+        before - self.tables.len()
     }
 }
 
@@ -197,5 +220,78 @@ mod tests {
             1,
             "a seeded table counts as active"
         );
+    }
+
+    /// Drain waits on `active_table_count() == 0`. A seeded game with no stream subscribers is
+    /// "seats vacated" (DEPLOYMENT.md) — it must not block SIGTERM forever the way production
+    /// Terminating pods did (ghost `active_tables` long after players left).
+    #[test]
+    fn abandoned_table_with_no_stream_subscribers_is_evicted_for_drain() {
+        use std::time::{Duration, Instant};
+
+        let mut registry = Registry::default();
+        let mut table = Table::empty();
+        table.game = Some(crate::decks::seed_game(
+            &[
+                (PlayerId(0), crate::test_support::seat_deck()),
+                (PlayerId(1), crate::test_support::seat_deck()),
+            ],
+            0,
+        ));
+        // Quiet since long before grace — stands in for a table abandoned hours ago.
+        table.quiet_since = Instant::now() - Duration::from_secs(120);
+        registry.tables.insert("ghost".to_string(), table);
+        assert_eq!(registry.active_table_count(), 1);
+
+        let removed = registry.evict_abandoned(Instant::now(), Duration::from_secs(60));
+        assert_eq!(removed, 1, "no-listener table past grace is abandoned");
+        assert_eq!(
+            registry.active_table_count(),
+            0,
+            "drain can reach zero after eviction"
+        );
+    }
+
+    #[test]
+    fn table_with_a_live_stream_subscriber_survives_drain_eviction() {
+        use std::time::{Duration, Instant};
+
+        let mut registry = Registry::default();
+        let mut table = Table::empty();
+        table.game = Some(crate::decks::seed_game(
+            &[
+                (PlayerId(0), crate::test_support::seat_deck()),
+                (PlayerId(1), crate::test_support::seat_deck()),
+            ],
+            0,
+        ));
+        table.quiet_since = Instant::now() - Duration::from_secs(120);
+        let _rx = table.tx.subscribe();
+        registry.tables.insert("watched".to_string(), table);
+
+        let removed = registry.evict_abandoned(Instant::now(), Duration::from_secs(60));
+        assert_eq!(removed, 0, "a live Game.Stream keeps the table for drain");
+        assert_eq!(registry.active_table_count(), 1);
+    }
+
+    #[test]
+    fn abandoned_table_inside_reconnect_grace_is_kept() {
+        use std::time::{Duration, Instant};
+
+        let mut registry = Registry::default();
+        let mut table = Table::empty();
+        table.game = Some(crate::decks::seed_game(
+            &[
+                (PlayerId(0), crate::test_support::seat_deck()),
+                (PlayerId(1), crate::test_support::seat_deck()),
+            ],
+            0,
+        ));
+        table.quiet_since = Instant::now() - Duration::from_secs(30);
+        registry.tables.insert("blip".to_string(), table);
+
+        let removed = registry.evict_abandoned(Instant::now(), Duration::from_secs(60));
+        assert_eq!(removed, 0, "brief disconnects stay within grace");
+        assert_eq!(registry.active_table_count(), 1);
     }
 }

@@ -6,6 +6,8 @@
 //! the host, the ordered seats (each with its resolved deck), and this module builds the running
 //! `Game` right away. There is no more claim/ready/start dance on this side.
 
+use std::time::Instant;
+
 use engine::{CardDef, Game, PlayerId};
 use schema::SeedSeat;
 use tokio::sync::broadcast;
@@ -47,6 +49,9 @@ pub struct Table {
     pub chrome: ChromeState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// Last time a drain sweep saw a live `Game.Stream` subscriber (or seed time). Used to
+    /// drop abandoned tables so SIGTERM can reach `active_tables=0` after seats vacate.
+    pub(crate) quiet_since: Instant,
 }
 
 impl Table {
@@ -69,6 +74,7 @@ impl Table {
             tx,
             chrome: ChromeState::default(),
             prints: Default::default(),
+            quiet_since: Instant::now(),
         }
     }
 
