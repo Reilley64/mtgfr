@@ -3,6 +3,7 @@
 import { getWebInstrumentations, initializeFaro } from "@grafana/faro-web-sdk";
 import { TracingInstrumentation } from "@grafana/faro-web-tracing";
 import { appVersion, gitCommit } from "~/lib/buildMeta";
+import { ensureFaroSessionSampled } from "~/lib/faroSession";
 import { defineClientPlugin } from "~/plugins/runtime";
 
 const COLLECT_URL = "/api/faro/collect";
@@ -13,6 +14,10 @@ const plugin = defineClientPlugin(() => {
   if (started || typeof window === "undefined") return;
   started = true;
 
+  // Repair resumed Faro sessions that lack isSampled / are stuck unsampled —
+  // otherwise web-tracing never records spans but still injects traceparent.
+  ensureFaroSessionSampled();
+
   initializeFaro({
     url: COLLECT_URL,
     app: {
@@ -20,6 +25,11 @@ const plugin = defineClientPlugin(() => {
       name: "edh-web",
       version: appVersion(),
       gitHash: gitCommit(),
+    },
+    // Explicit 100% session sampling for self-hosted LGTM (Faro tracing keys off this).
+    sessionTracking: {
+      enabled: true,
+      samplingRate: 1,
     },
     instrumentations: [
       ...getWebInstrumentations({

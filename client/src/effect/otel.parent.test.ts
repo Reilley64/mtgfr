@@ -9,10 +9,17 @@ describe("continueIncomingTrace", () => {
     expect(continueIncomingTrace(sentinel, "bad")).toBe(sentinel);
   });
 
-  it("accepts a parseable Faro-style traceparent", () => {
+  it("is a no-op for unsampled traceparents (Faro non-recording inject)", () => {
+    const sentinel = { _tag: "effect-stub" } as never;
+    const unsampled = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00";
+    expect(parseTraceparent(unsampled)?.traceFlags).toBe(0);
+    expect(continueIncomingTrace(sentinel, unsampled)).toBe(sentinel);
+  });
+
+  it("accepts a parseable sampled Faro-style traceparent", () => {
     const header = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
     expect(parseTraceparent(header)).not.toBeNull();
-    // Wiring smoke: with a valid header the helper must return a different Effect
+    // Wiring smoke: with a valid sampled header the helper must return a different Effect
     // (parent span attached) rather than the identical reference.
     const sentinel = { _tag: "effect-stub" } as never;
     expect(continueIncomingTrace(sentinel, header)).not.toBe(sentinel);
