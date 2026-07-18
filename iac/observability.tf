@@ -67,7 +67,7 @@ locals {
       server {
         listen_address           = "0.0.0.0"
         listen_port              = 12347
-        # BFF proxies same-origin; no browser CORS on Alloy.
+        // BFF proxies same-origin; no browser CORS on Alloy.
         max_allowed_payload_size = "512KiB"
         rate_limiting {
           enabled = true
@@ -76,7 +76,7 @@ locals {
       }
 
       output {
-        logs   = [otelcol.processor.batch.default.input]
+        logs   = [loki.write.default.receiver]
         traces = [otelcol.processor.batch.default.input]
       }
     }
