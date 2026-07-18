@@ -16,9 +16,10 @@ COPY config ./config
 COPY Toasty.toml ./
 COPY toasty ./toasty
 
+# `--no-default-features` drops the test-only `test-sqlite` feature (rusqlite).
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
-    cargo build -p server --release \
+    cargo build -p server --release --no-default-features \
     && cp target/release/server /server
 
 FROM gcr.io/distroless/cc-debian12:nonroot
