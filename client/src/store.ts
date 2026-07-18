@@ -130,11 +130,6 @@ export function setReject(reason: string | null): void {
 // the old one's position (see Board.tsx). Rebuilt per delta; a snapshot carries no events, so empty.
 let moveMap = new Map<number, number>();
 
-/** New-object-id → source-object-id for zone moves in the most recent delta. */
-export function zoneMoves(): Map<number, number> {
-  return moveMap;
-}
-
 // Permanents in the most recent delta that entered by a spell resolving off the stack
 // (`permanent_entered.from` is the spell's stack object — the engine emits this event only
 // from spell resolution; tokens, land drops, and reanimations have their own events). The
@@ -142,40 +137,20 @@ export function zoneMoves(): Map<number, number> {
 // from — the board seeds their entrance at the overlay's anchor instead.
 let stackResolved = new Set<number>();
 
-/** Ids of permanents that entered from the stack in the most recent delta. */
-export function resolvedFromStack(): Set<number> {
-  return stackResolved;
-}
-
 /** Cards that left the stack to GY/exile in the most recent delta. */
 let stackExits = new Set<number>();
-export function leftStackToPile(): Set<number> {
-  return stackExits;
-}
 
 /** Token id → creator object id from the most recent delta. */
 let tokenCreators = new Map<number, number>();
-export function tokenCreatorMap(): Map<number, number> {
-  return tokenCreators;
-}
 
 /** Land permanent id → hand card id (`from`) for play-origin matching. */
 let landPlays = new Map<number, number>();
-export function landPlayFrom(): Map<number, number> {
-  return landPlays;
-}
 
 export type ZonePileEntrance = { zone: "library" | "graveyard" | "exile"; seat: number };
 let zonePileEntrances = new Map<number, ZonePileEntrance>();
-export function zonePileEntranceMap(): Map<number, ZonePileEntrance> {
-  return zonePileEntrances;
-}
 
 /** Stack object id → { controller, from hand/command card id } for play-in. */
 let stackEntrances = new Map<number, { controller: number; from: number }>();
-export function stackEntranceMap(): Map<number, { controller: number; from: number }> {
-  return stackEntrances;
-}
 
 /** Stack object ids from the last applied state (next delta's prior). */
 let prevStackIds = new Set<number>();
@@ -185,8 +160,73 @@ let prevStackIds = new Set<number>();
  * to the post-delta stack as soon as the delta is applied.
  */
 let stackIdsAtDeltaStart = new Set<number>();
+
+/**
+ * Canvas glide provenance from the most recent fold — one seam for TableSurface / Board.
+ * Individual getters below are thin views of this bundle (tests + stack play-in).
+ */
+export type FoldProvenance = {
+  zoneMoves: Map<number, number>;
+  resolvedFromStack: Set<number>;
+  leftStackToPile: Set<number>;
+  tokenCreators: Map<number, number>;
+  landPlayFrom: Map<number, number>;
+  zonePileEntrances: Map<number, ZonePileEntrance>;
+  stackEntrances: Map<number, { controller: number; from: number }>;
+  priorStackObjectIds: Set<number>;
+};
+
+/** Provenance shape TableSurface needs after the latest delta fold. */
+export function foldProvenance(): FoldProvenance {
+  return {
+    zoneMoves: moveMap,
+    resolvedFromStack: stackResolved,
+    leftStackToPile: stackExits,
+    tokenCreators,
+    landPlayFrom: landPlays,
+    zonePileEntrances,
+    stackEntrances,
+    priorStackObjectIds: stackIdsAtDeltaStart,
+  };
+}
+
+/** New-object-id → source-object-id for zone moves in the most recent delta. */
+export function zoneMoves(): Map<number, number> {
+  return foldProvenance().zoneMoves;
+}
+
+/** Ids of permanents that entered from the stack in the most recent delta. */
+export function resolvedFromStack(): Set<number> {
+  return foldProvenance().resolvedFromStack;
+}
+
+/** Cards that left the stack to GY/exile in the most recent delta. */
+export function leftStackToPile(): Set<number> {
+  return foldProvenance().leftStackToPile;
+}
+
+/** Token id → creator object id from the most recent delta. */
+export function tokenCreatorMap(): Map<number, number> {
+  return foldProvenance().tokenCreators;
+}
+
+/** Land permanent id → hand card id (`from`) for play-origin matching. */
+export function landPlayFrom(): Map<number, number> {
+  return foldProvenance().landPlayFrom;
+}
+
+export function zonePileEntranceMap(): Map<number, ZonePileEntrance> {
+  return foldProvenance().zonePileEntrances;
+}
+
+/** Stack object id → { controller, from hand/command card id } for play-in. */
+export function stackEntranceMap(): Map<number, { controller: number; from: number }> {
+  return foldProvenance().stackEntrances;
+}
+
+/** Stack object ids before the most recent delta (token-creator hybrid). */
 export function priorStackObjectIds(): Set<number> {
-  return stackIdsAtDeltaStart;
+  return foldProvenance().priorStackObjectIds;
 }
 
 /** One pass over a delta's events building glide-provenance structures. */

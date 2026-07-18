@@ -278,7 +278,7 @@ impl Game {
             // Needs `&mut self` to mint the exiled object id (`Game::next_object_id`) — only
             // resolves via `Game::run`, never this pure path.
             | Effect::ExileTargetGraveyardSpellCastFree { .. }
-            // Needs `&mut self` to write `Game::surge_exiled_card` — only resolves via
+            // Needs `&mut self` to write `ResolutionFrame::surge_exiled_card` — only resolves via
             // `Game::run`, never this pure path.
             | Effect::ExileTargetGraveyardCardRecordManaValue { .. }
             // Needs `&mut self` to mark `Game::self_exile_time_counters` — only resolves via

@@ -3,7 +3,7 @@
 // Engine pending_choice stays on PromptHost (same act sink). Pre-submit chrome: ActionChrome.
 
 import { type Accessor, type Component, createMemo } from "solid-js";
-import { ActionChrome, type ActionChromeModel } from "~/controllers/action-chrome";
+import { ActionChrome } from "~/controllers/action-chrome";
 import { type ActionExecutionDeps, type StagedAction, useActionExecution } from "~/controllers/actionExecution";
 import type { TargetMode } from "~/lib/targeting";
 import type { ActionView, ObjectView, WireTarget } from "~/wire/types";
@@ -54,34 +54,9 @@ export function useActionSession(deps: ActionExecutionDeps): ActionSession {
     }),
   );
 
-  const chromeModel: ActionChromeModel = {
-    staged: execution.staged,
-    cancelStaged: execution.cancelStagedOnly,
-    setStaged: execution.setStaged,
-    stagedMode: execution.stagedMode,
-    xPrompt: execution.xPrompt,
-    setXPrompt: execution.setXPrompt,
-    modalCast: execution.modalCast,
-    setModalCast: execution.setModalCast,
-    sacrificePick: execution.sacrificePick,
-    setSacrificePick: execution.setSacrificePick,
-    discardPick: execution.discardPick,
-    setDiscardPick: execution.setDiscardPick,
-    gyExilePick: execution.gyExilePick,
-    setGyExilePick: execution.setGyExilePick,
-    pendingMode: execution.pendingMode,
-    advanceModal: execution.advanceModal,
-    answerMode: execution.answerMode,
-    continueAfterCostPick: execution.continueAfterCostPick,
-    objectName: execution.objectName,
-    objectPrint: execution.objectPrint,
-    getState: execution.getState,
-    aim: (target) => execution.completeTarget(target),
-  };
-
   // JSX (not a function call) so Solid owns the reactive tree for nested Show/memos.
   const Chrome: Component<{ playerName: (seat: number) => string }> = (props) => (
-    <ActionChrome model={chromeModel} playerName={props.playerName} />
+    <ActionChrome execution={execution} playerName={props.playerName} />
   );
 
   return {

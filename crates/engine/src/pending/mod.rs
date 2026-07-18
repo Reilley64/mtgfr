@@ -19,7 +19,8 @@
 //! `ChoiceRequest` factories because prep mutates via events before the pause.
 //!
 //! ## Deferred (next increments)
-//! - Optional internal `ChoiceHandler` per kind family (locality for new kinds).
+//! - Optional `ChoiceHandler` table keyed by [`PendingChoice`] discriminant (answer
+//!   multiplex still Intent-first; handlers are already split by family under [`handlers`]).
 
 mod handlers;
 mod raise;

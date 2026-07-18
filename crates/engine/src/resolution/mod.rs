@@ -1,9 +1,10 @@
-//! Effect resolution behind [`Game::run`]: sequence continuations, and (growing) family mint
-//! locality. Pause bookkeeping lives in [`crate::pending`]; board mutation stays in [`crate::apply`].
+//! Effect resolution behind [`Game::run`]: sequence continuations, resolution-local
+//! [`ResolutionFrame`] scratch, and (growing) family mint / resolve locality. Pause
+//! bookkeeping lives in [`crate::pending`]; board mutation stays in [`crate::apply`].
 //!
 //! Primary: CR 608. External seam: [`Game::run`] (in `effects`) is the sole Effect→board verb —
-//! callers never choose mint vs pause. Internals here: [`SequenceCont`] / resume, pure mint
-//! dispatcher ([`mint`]) + families ([`draw`], [`damage`], [`life`], …), and pause peels
+//! callers never choose mint vs pause. Internals here: [`SequenceCont`] / resume, [`ResolutionFrame`],
+//! pure mint dispatcher ([`mint`]) + families ([`draw`], [`damage`], [`life`], …), and pause peels
 //! ([`pause_arrange`]). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
 
 mod control;
@@ -11,6 +12,7 @@ mod counters;
 mod damage;
 mod destroy;
 mod draw;
+mod frame;
 mod life;
 mod mana;
 mod mill;
@@ -21,6 +23,8 @@ mod pump;
 mod reveal;
 mod tokens;
 mod zones;
+
+pub(crate) use frame::ResolutionFrame;
 
 use crate::*;
 

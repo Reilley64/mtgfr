@@ -76,7 +76,9 @@ pub struct DwellResult {
 }
 
 /// Server policy for one live table: the three chrome verbs (submit / yield / dwell), then
-/// auto-advance and broadcast. Unlock-tail ([`settle_after_apply`]) stays outside this type.
+/// auto-advance and broadcast. Unlock-tail ([`settle_after_apply`]) is owned by
+/// [`crate::game_loop`]'s `with_seated_drive` — callers of these verbs still return
+/// [`Disposition`] so that one seam can settle after releasing nothing mid-borrow.
 pub struct TableSession<'a> {
     table: &'a mut Table,
 }

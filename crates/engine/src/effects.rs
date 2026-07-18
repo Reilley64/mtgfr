@@ -819,7 +819,7 @@ impl Game {
             // is the real-stack-object primitive; migrate to it when Augusta's "you do" condition
             // (its own exile fan-out, not a token creation) is threadable through it.
             Effect::EachPlayerExilesFromGraveyard => {
-                self.nonland_cards_exiled_this_way = 0;
+                self.resolution_frame.nonland_cards_exiled_this_way = 0;
                 pending::raise(
                     self,
                     pending::ChoiceRequest::NextGraveyardExile {
@@ -869,8 +869,8 @@ impl Game {
             // CastVote choice; the tally-scaled payoff rides in the enclosing `Sequence`, resumed
             // once every player has voted (the same deferred-tail path as the graveyard fan-out).
             Effect::CouncilsDilemmaVote { options } => {
-                self.council_past_votes = 0;
-                self.council_present_votes = 0;
+                self.resolution_frame.council_past_votes = 0;
+                self.resolution_frame.council_present_votes = 0;
                 let n = self.players.len();
                 let start = controller.0 as usize;
                 let remaining: Vec<PlayerId> = (0..n)
@@ -992,7 +992,9 @@ impl Game {
                 filter,
                 if_you_sacrificed_this_way,
             } => {
-                if if_you_sacrificed_this_way && !self.sacrificed_by_edict_controller {
+                if if_you_sacrificed_this_way
+                    && !self.resolution_frame.sacrificed_by_edict_controller
+                {
                     return;
                 }
                 pending::raise(
@@ -1776,7 +1778,7 @@ impl Game {
                 let exiled = self.next_object_id();
                 let move_event = self.exile_or_command(object, exiled);
                 self.push_apply(events, move_event);
-                self.surge_exiled_card = Some((exiled, mana_value));
+                self.resolution_frame.surge_exiled_card = Some((exiled, mana_value));
             }
             // Surge to Victory's combat-damage-copy step: mint one free copy of the card the
             // arming watch names — the exile already happened when the watch was armed, so this
@@ -2164,103 +2166,16 @@ impl Game {
                     },
                 );
             }
-            // Mass destruction (unchanged batch via `execute_effect`), then snapshot which
-            // permanents it destroyed onto `Game::destroyed_this_way` — overwriting any prior
-            // call's snapshot, so it's scoped to this one `DestroyAll` step, not the whole turn
-            // — for a following `Sequence` step to count (Ceaseless Conflict's "for each
-            // nontoken creature you controlled that was destroyed this way" token rider, Culling
-            // Ritual's "for each permanent destroyed this way" mana rider; see
-            // `Amount::PermanentsDestroyedThisWay`). Built from `execute_effect`'s own destroy
-            // events (already filtered/indestructible-checked) rather than re-deriving the (CR 702.12)
-            // filter — reads each event's pre-move battlefield state before `apply_all`
-            // tombstones it. `TokenCeasedToExist` already carries its own controller/def
-            // (a token vanishes rather than moving, so there's no `from` to read back).
+            // Destroy / exile / mill "this way" snapshot choreography lives in the family modules
+            // (`resolve_destroy_all` / `resolve_exile_all` / `resolve_mill_self`).
             Effect::DestroyAll { .. } => {
-                let evs = self.execute_effect(effect, controller, source, target, x);
-                self.destroyed_this_way.clear();
-                for e in &evs {
-                    match *e {
-                        Event::TokenCeasedToExist {
-                            controller: died_controller,
-                            def,
-                            ..
-                        } => {
-                            self.destroyed_this_way.push(state::DestroyedThisWay {
-                                def,
-                                controller: died_controller,
-                                token: true,
-                            });
-                        }
-                        Event::MovedToGraveyard { from, .. }
-                        | Event::MovedToCommandZone { from, .. } => {
-                            if let Some(p) = self.as_permanent(from) {
-                                self.destroyed_this_way.push(state::DestroyedThisWay {
-                                    def: p.def,
-                                    controller: self.controller_of(from),
-                                    token: false,
-                                });
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                self.apply_all(&evs);
-                events.extend(evs);
+                self.resolve_destroy_all(effect, controller, source, target, x, events)
             }
-            // Mass exile (unchanged batch via `execute_effect`), then snapshot each exiled
-            // creature's controller and power onto `Game::power_exiled_this_way` — overwriting
-            // any prior call's snapshot, so it's scoped to this one `ExileAll` step — for a
-            // following `EachPlayerCreatesFractalFromExiledPower` step to sum per player
-            // (Oversimplify's "total power of creatures they controlled that were exiled this
-            // way"). Power is read off each event's pre-move object id before `apply_all` moves
-            // it, same ordering `DestroyAll`'s snapshot above uses.
             Effect::ExileAll { .. } => {
-                let evs = self.execute_effect(effect, controller, source, target, x);
-                self.power_exiled_this_way.clear();
-                for e in &evs {
-                    match *e {
-                        Event::TokenCeasedToExist {
-                            token,
-                            controller: died_controller,
-                            ..
-                        } => {
-                            self.power_exiled_this_way.push(state::PowerExiledThisWay {
-                                controller: died_controller,
-                                power: self.power(token),
-                            });
-                        }
-                        Event::MovedToExile { from, .. }
-                        | Event::MovedToCommandZone { from, .. } => {
-                            self.power_exiled_this_way.push(state::PowerExiledThisWay {
-                                controller: self.controller_of(from),
-                                power: self.power(from),
-                            });
-                        }
-                        _ => {}
-                    }
-                }
-                self.apply_all(&evs);
-                events.extend(evs);
+                self.resolve_exile_all(effect, controller, source, target, x, events)
             }
-            // Self-mill (Perpetual Timepiece, Fateful Tempest's past-vote step), snapshotting the
-            // total mana value of the milled cards onto `Game::milled_mana_value_this_way` —
-            // overwriting any prior call, so scoped to this one `MillSelf` step — for a following
-            // `Sequence` step to read via `Amount::TotalManaValueMilledThisWay` (Fateful Tempest's
-            // "damage … equal to the total mana value of cards milled this way"). Each card's mana
-            // value is read off its pre-move library id before `apply_all` moves it to the
-            // graveyard, the same ordering `DestroyAll`/`ExileAll`'s snapshots above use.
             Effect::MillSelf { count } => {
-                let n = self.resolve_count(count, controller, source, target, x);
-                let evs = self.mill_events(controller, n);
-                self.milled_mana_value_this_way = evs
-                    .iter()
-                    .filter_map(|e| match e {
-                        Event::Milled { from, .. } => Some(self.def_of(*from).mana_value()),
-                        _ => None,
-                    })
-                    .sum();
-                self.apply_all(&evs);
-                events.extend(evs);
+                self.resolve_mill_self(count, controller, source, target, x, events)
             }
             // "Exile [this card] with N time counters on it" (Rousing Refrain): mark the resolving
             // spell so `finish_instant_sorcery_resolution` sends it to exile with time counters
@@ -2287,6 +2202,7 @@ impl Game {
                         },
                     );
                     let power: i32 = self
+                        .resolution_frame
                         .power_exiled_this_way
                         .iter()
                         .filter(|snap| snap.controller == player)

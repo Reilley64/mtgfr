@@ -38,14 +38,16 @@ impl Game {
             // exile step never ran) is unreachable in practice — CR 608.2b already fizzles the
             // whole ability before either step resolves without a legal target — but a silent
             // no-op rather than a panic, matching this resolution's other snapshot-read arms.
-            Effect::ScheduleThisTurnCombatDamageCopy => match self.surge_exiled_card {
-                Some((card, _)) => vec![Event::CombatDamageCopyArmed {
-                    controller,
-                    source,
-                    card,
-                }],
-                None => vec![],
-            },
+            Effect::ScheduleThisTurnCombatDamageCopy => {
+                match self.resolution_frame.surge_exiled_card {
+                    Some((card, _)) => vec![Event::CombatDamageCopyArmed {
+                        controller,
+                        source,
+                        card,
+                    }],
+                    None => vec![],
+                }
+            }
             // Alchemist's Refuge: "You may cast spells this turn as though they had flash." (CR 702.8, CR 601, CR 500)
             // ponytail: resolved as a one-shot turn-flag set (`Player::flash_permission_this_turn`) (CR 500)
             // rather than a continuous "as though they had flash" static — behaviorally identical (CR 702.8)

@@ -1,12 +1,34 @@
-// The PendingChoice → WireIntent mapping, pulled out of PromptModal's JSX so it's one tested
-// function instead of nine intent literals scattered across <Match> arms. A prompt form is now
-// "dumb": it collects the player's answer as an `AnswerInput` and hands it here; this maps that
-// answer to the wire intent the engine expects (ADR 0006).
-//
-// Schema counterpart: `crates/schema/src/answer_protocol.rs` (`encode_answer`) — keep these in sync.
+// PendingChoice client module: answer packing + prompt chrome helpers.
+// Forms stay dumb — they collect AnswerInput; choiceIntent maps to WireIntent (ADR 0006).
+// Schema counterpart: `crates/schema/src/answer_protocol.rs` (`encode_answer`) — keep in sync.
 
 import * as Match from "effect/Match";
-import type { PendingChoiceView, WireDamage, WireIntent, WireModeChoice } from "~/wire/types";
+import type { PendingChoiceView, VisibleState, WireDamage, WireIntent, WireModeChoice } from "~/wire/types";
+
+/** The viewer's pending choice, if any. */
+export function myChoice(state: VisibleState, me: number): PendingChoiceView | null {
+  const pc = state.pending_choice;
+  return pc && pc.player === me ? pc : null;
+}
+
+/**
+ * Identity for a pending choice surface: kind + answering seat. Useful when remounting a form
+ * only when the choice *type* changes (not on every same-kind delta).
+ */
+export function choiceShowKey(state: VisibleState, me: number): string | false {
+  const c = myChoice(state, me);
+  return c ? `${c.kind}:${c.player}` : false;
+}
+
+/**
+ * Whether a choose_target prompt can use the card-image picker. Player seats (Bojuka Bog's
+ * "exile target player's graveyard") have no art — those need the life-orb PickDialog instead.
+ */
+export function chooseTargetIsCardPick(
+  items: ReadonlyArray<{ id?: number; label?: string; player?: number | null }>,
+): boolean {
+  return items.length > 0 && items.every((it) => it.player == null);
+}
 
 // What a prompt form produces — the raw answer, tagged so the mapping (and TypeScript) can tell the
 // choices apart. One per PendingChoice kind that needs an answer.
