@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { continueIncomingTrace } from "~/effect/otel";
+import { continueIncomingTrace, currentTraceparent } from "~/effect/otel";
 import { parseTraceparent } from "~/lib/traceContext";
 
 describe("continueIncomingTrace", () => {
@@ -16,5 +16,14 @@ describe("continueIncomingTrace", () => {
     // (parent span attached) rather than the identical reference.
     const sentinel = { _tag: "effect-stub" } as never;
     expect(continueIncomingTrace(sentinel, header)).not.toBe(sentinel);
+  });
+});
+
+describe("currentTraceparent", () => {
+  it("is an Effect.fn (callable that returns an Effect)", () => {
+    expect(typeof currentTraceparent).toBe("function");
+    const effect = currentTraceparent();
+    expect(effect).toBeDefined();
+    expect(typeof (effect as { pipe?: unknown }).pipe).toBe("function");
   });
 });

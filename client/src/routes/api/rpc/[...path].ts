@@ -5,11 +5,10 @@ import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import { deleteCookie, getCookie, setCookie } from "vinxi/http";
 import { createWebDb } from "~/db/client";
-import { continueIncomingTrace, runTraced } from "~/effect/otel";
+import { currentTraceparent, runTracedRequest } from "~/effect/otel";
 import { grpcUpstreamFromPodDns } from "~/lib/apiUpstream";
 import { grpcUpstream } from "~/lib/apiUpstreamAuth";
 import { lookupTableRoute } from "~/lib/lobbyStore";
-import { formatTraceparent } from "~/lib/traceContext";
 import { GrpcCallError, httpStatusOf, runWithTraceparent } from "~/wire/grpcClient";
 import { dispatchRpc, type RpcOutcome } from "~/wire/rpcServer";
 import type { StreamFrame } from "~/wire/types";
@@ -100,6 +99,39 @@ function outcomeToResponse(outcome: RpcOutcome): Response | Promise<Response> {
   );
 }
 
+type RpcDispatchArgs = {
+  segments: string[];
+  method: string;
+  body: unknown;
+  searchParams: URLSearchParams;
+  sessionToken: string | null;
+};
+
+/**
+ * Dispatch under the request span. Unnamed `Effect.fn` — stack traces without a
+ * second named span; the edge opens `rpc <path>` via `runTracedRequest` / `withSpan`.
+ * Faro → BFF → API: inject *this* BFF span into gRPC (not the raw inbound header).
+ */
+const dispatchRpcTraced = Effect.fn(function* (args: RpcDispatchArgs) {
+  const path = args.segments.join("/");
+  yield* Effect.annotateCurrentSpan({
+    "http.method": args.method,
+    "rpc.path": path,
+  });
+  const outboundTraceparent = yield* currentTraceparent();
+  return yield* Effect.tryPromise({
+    try: () =>
+      runWithTraceparent(outboundTraceparent, () =>
+        dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
+          sessionToken: args.sessionToken,
+          defaultAddress: grpcUpstream(),
+          resolveTableAddress,
+        }),
+      ),
+    catch: (err) => (err instanceof Error ? err : new Error(String(err))),
+  });
+});
+
 async function handle(event: APIEvent): Promise<Response> {
   const segments = (event.params.path ?? "").split("/").filter(Boolean);
   const sessionToken = getCookie(event.nativeEvent, SESSION_COOKIE) ?? null;
@@ -114,39 +146,16 @@ async function handle(event: APIEvent): Promise<Response> {
     }
   }
 
-  const spanName = `rpc ${segments.join("/") || "root"}`;
-  // Faro → BFF → API: continue the browser span as parent, then inject *this*
-  // BFF span's context into gRPC (not the raw inbound header, which skipped BFF).
-  const outcome = await runTraced(
-    continueIncomingTrace(
-      Effect.gen(function* () {
-        const span = yield* Effect.currentSpan;
-        const outboundTraceparent = formatTraceparent({
-          traceId: span.traceId,
-          spanId: span.spanId,
-          sampled: span.sampled,
-        });
-        return yield* Effect.tryPromise({
-          try: () =>
-            runWithTraceparent(outboundTraceparent, () =>
-              dispatchRpc(segments, event.request.method, body, new URL(event.request.url).searchParams, {
-                sessionToken,
-                defaultAddress: grpcUpstream(),
-                resolveTableAddress,
-              }),
-            ),
-          catch: (err) => (err instanceof Error ? err : new Error(String(err))),
-        });
-      }).pipe(
-        Effect.withSpan(spanName, {
-          attributes: {
-            "http.method": event.request.method,
-            "rpc.path": segments.join("/"),
-          },
-        }),
-      ),
-      traceparent,
-    ),
+  const outcome = await runTracedRequest(
+    traceparent,
+    `rpc ${segments.join("/") || "root"}`,
+    dispatchRpcTraced({
+      segments,
+      method: event.request.method,
+      body,
+      searchParams: new URL(event.request.url).searchParams,
+      sessionToken,
+    }),
   );
 
   if (outcome.kind === "json" && outcome.setSessionToken) {
