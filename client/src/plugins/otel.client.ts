@@ -16,8 +16,8 @@ const plugin = defineClientPlugin(() => {
   initializeFaro({
     url: COLLECT_URL,
     app: {
-      // Distinct from BFF OTEL `edh-web` so Tempo/Loki can tell browser RUM apart.
-      name: "edh-browser",
+      // Same service.name as the BFF; distinguish via telemetry.sdk.name in Grafana.
+      name: "edh-web",
       version: appVersion(),
       gitHash: gitCommit(),
     },
