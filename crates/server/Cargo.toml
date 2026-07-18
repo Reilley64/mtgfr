@@ -3,12 +3,6 @@ name = "server"
 version.workspace = true
 edition.workspace = true
 
-[features]
-# sqlite driver is test-only (`sqlite::memory:`). Docker release builds use
-# `--no-default-features` so rusqlite/libsqlite3-sys never compile into the image.
-default = ["test-sqlite"]
-test-sqlite = ["toasty/sqlite"]
-
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 engine.workspace = true
@@ -59,3 +53,5 @@ tower = { version = "0.5", features = ["util"] }
 # `test-util` unlocks `#[tokio::test(start_paused = true)]` so the heartbeat test advances virtual
 # time to the interval instead of sleeping for real.
 tokio = { version = "1", features = ["test-util"] }
+# Unifies only for tests (resolver v2/v3) — not `cargo build` / `--release`.
+toasty = { version = "0.8", features = ["sqlite"] }
