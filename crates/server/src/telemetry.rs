@@ -173,4 +173,16 @@ mod tests {
             None
         );
     }
+
+    /// Regression: default otlp features enable both reqwest clients, which
+    /// skips auto-wiring and yields `no http client specified` (empty Tempo).
+    #[test]
+    fn try_build_otlp_builds_http_exporters() {
+        let stack = try_build_otlp("http://127.0.0.1:4318")
+            .unwrap_or_else(|e| panic!("expected OTLP HTTP exporters to build, got {e}"));
+        // Batch exporters spawn workers; shut down so the test process exits.
+        let _ = stack.tracer_provider.shutdown();
+        let _ = stack.meter_provider.shutdown();
+        let _ = stack.logger_provider.shutdown();
+    }
 }

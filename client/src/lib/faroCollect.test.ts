@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentLengthTooLarge, FARO_MAX_BODY_BYTES, readBodyCapped, upstreamUrl } from "~/routes/api/faro/collect";
+import { contentLengthTooLarge, FARO_MAX_BODY_BYTES, readBodyCapped, upstreamUrl } from "~/lib/faroCollect";
 
 describe("faro collect helpers", () => {
   it("upstreamUrl requires a non-empty FARO_COLLECT_UPSTREAM", () => {
