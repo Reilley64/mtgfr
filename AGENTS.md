@@ -61,3 +61,13 @@ Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic 
 - **Every bug fix gets a regression test.** When you find a bug, add a test that fails on the broken behavior and passes with the fix — in the same change if you can. Place it at the lowest layer that catches the failure (engine unit test, schema projection test, client mapping test, HTTP integration test).
 - **Keep the engine pure.** No I/O, no networking, no wall-clock or randomness that isn't injected.
 - **Use Magic terminology and semantics wherever possible.** The ubiquitous language lives in `CONTEXT.md`; keep code and glossary aligned. When rules and simplicity genuinely conflict, name the rule approximated in a `ponytail:` comment.
+
+## Cursor Cloud specific instructions
+
+Cloud Agents use the Dockerfile at [`.cursor/Dockerfile`](.cursor/Dockerfile) via [`.cursor/environment.json`](.cursor/environment.json). Do **not** use interactive dashboard “Set up agent” / snapshot setup for this repo — that mode ignores the Dockerfile. If a saved Cloud environment snapshot exists for the repo, delete it so Dockerfile builds win.
+
+The image already has Rust stable (rustfmt/clippy), Bun 1.3.14, `protoc`, `just`, `cargo-nextest`, and Postgres with `mtgfr` / `mtgfr_web` seeded. `DATABASE_URL` and `WEB_DATABASE_URL` are set. Postgres is started by the environment `start` command.
+
+- Before DB-touching work: `just migrate` (Toasty / `mtgfr`) and/or `just client-migrate` (Drizzle / `mtgfr_web`).
+- Prefer `just server-check` / `just client-check` (or `just check`) for verification.
+- Put secrets in the Cursor Cloud Agents Secrets UI — do not bake credentials into the image or commit `.env` files.

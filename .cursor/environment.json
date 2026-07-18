@@ -1,0 +1,8 @@
+{
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "cd client && bun install --frozen-lockfile && cd .. && cargo fetch",
+  "start": "sudo service postgresql start"
+}
