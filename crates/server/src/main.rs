@@ -124,11 +124,26 @@ async fn await_shutdown_signal(state: server::AppState) {
         _ = terminate => {}
     }
     state.draining.store(true, Ordering::Relaxed);
+    tracing::info!("entered drain — waiting for active tables (or abandoned eviction)");
     loop {
-        let n = server::lock(&state.reg).active_table_count();
+        let n = {
+            let mut reg = server::lock(&state.reg);
+            let removed =
+                reg.evict_abandoned(std::time::Instant::now(), server::ABANDONED_TABLE_GRACE);
+            if removed > 0 {
+                tracing::info!(
+                    removed,
+                    remaining = reg.active_table_count(),
+                    "evicted abandoned tables with no stream subscribers"
+                );
+            }
+            reg.active_table_count()
+        };
         if n == 0 {
+            tracing::info!("drain complete — no active tables");
             break;
         }
+        tracing::info!(active_tables = n, "drain waiting");
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
 }

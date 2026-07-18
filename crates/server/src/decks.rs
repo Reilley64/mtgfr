@@ -6,6 +6,8 @@
 //! the host, the ordered seats (each with its resolved deck), and this module builds the running
 //! `Game` right away. There is no more claim/ready/start dance on this side.
 
+use std::time::Instant;
+
 use engine::{CardDef, Game, PlayerId};
 use schema::SeedSeat;
 use tokio::sync::broadcast;
@@ -47,6 +49,10 @@ pub struct Table {
     pub chrome: ChromeState,
     /// Per-seat Card id → Printing UUID from the seat's deck (art preference for ObjectView).
     pub prints: [std::collections::HashMap<String, String>; 4],
+    /// When `Game.Stream` last went quiet (`None` = has/had listeners, grace not armed).
+    /// Seed starts `Some(now)`; subscribe clears to `None`; drain arms `Some(now)` on the
+    /// first no-listener sweep so reconnect grace is not skipped off a stale seed timestamp.
+    pub(crate) quiet_since: Option<Instant>,
 }
 
 impl Table {
@@ -69,6 +75,7 @@ impl Table {
             tx,
             chrome: ChromeState::default(),
             prints: Default::default(),
+            quiet_since: Some(Instant::now()),
         }
     }
 
