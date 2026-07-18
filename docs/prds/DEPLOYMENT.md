@@ -713,6 +713,8 @@ After squash, **all** commits on `main` follow the [Angular commit message guide
 
 Commits that do not warrant a release under the default analyzer produce no tag and no image build (`docker.yml` does not fire).
 
+**Squash merges:** GitHub writes one commit on `main` whose subject is the **PR title**. That is the only line semantic-release sees for the merge — branch commits (`feat:` inside the PR, `build:` title, etc.) do not matter after squash. Title the PR for the release outcome you want (`feat:` / `fix:` / breaking footer), not merely for the largest file churn. See also [AGENTS.md](../../AGENTS.md) § Commits & releases.
+
 ### GitHub Actions
 
 Follow the official [semantic-release GitHub Actions recipe](https://semantic-release.org/recipes/ci-configurations/github-actions/): verify first, then `npx semantic-release` with `GITHUB_TOKEN`. Terraform in `iac/` consumes GHCR images built after the GitHub Release is published.
