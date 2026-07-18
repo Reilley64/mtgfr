@@ -1,7 +1,11 @@
 // Server-only gRPC client for the BFF. Do not import from the browser bundle.
 // Channels/runtimes are cached per base URL.
+//
+// Trace parenting: the gRPC ManagedRuntime is separate from the OTEL runtime.
+// Effect parent spans live in fiber Context and do NOT survive
+// `ManagedRuntime.runPromise` into this client — always pass `outboundTraceparent`
+// explicitly (see ADR 0034). Do not reintroduce Node ALS for this.
 
-import { AsyncLocalStorage } from "node:async_hooks";
 import { GrpcClientProtocol, type GrpcStatusCode, GrpcStatusError } from "@effect-grpc/effect-grpc";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -51,13 +55,6 @@ import type {
 export const SESSION_METADATA_KEY = "x-session-token";
 export const TRACEPARENT_METADATA_KEY = "traceparent";
 
-const traceAls = new AsyncLocalStorage<string | null>();
-
-/** Run `fn` with a W3C traceparent visible to outbound gRPC `callOpts` (per-request). */
-export function runWithTraceparent<T>(traceparent: string | null, fn: () => T): T {
-  return traceAls.run(traceparent, fn);
-}
-
 const AllGrpcRegistry = new Map([
   ...AuthGrpcRegistry,
   ...DecksGrpcRegistry,
@@ -71,11 +68,10 @@ function meFromProto(me: ProtoMe): Me {
 }
 
 /** Build gRPC call metadata: session cookie token + optional W3C traceparent. */
-export function callOpts(sessionToken: string | null, traceparent?: string | null) {
-  const tp = traceparent ?? traceAls.getStore() ?? null;
+export function callOpts(sessionToken: string | null, traceparent: string | null) {
   const metadata: Array<readonly [string, string]> = [];
   if (sessionToken) metadata.push([SESSION_METADATA_KEY, sessionToken]);
-  if (tp) metadata.push([TRACEPARENT_METADATA_KEY, tp]);
+  if (traceparent) metadata.push([TRACEPARENT_METADATA_KEY, traceparent]);
   if (metadata.length === 0) return undefined;
   return { metadata };
 }
@@ -186,8 +182,9 @@ export interface GrpcClient {
 const clientCache = new Map<string, GrpcClient>();
 
 /**
- * @param outboundTraceparent BFF span context for every call. Prefer explicit over ALS —
- *   Effect `ManagedRuntime.runPromise` does not reliably inherit Node AsyncLocalStorage.
+ * @param outboundTraceparent BFF span `traceparent` for every call on this client.
+ *   Required for Tempo parenting across the gRPC ManagedRuntime boundary; pass `null`
+ *   only when the caller intentionally starts a new trace (tests / untraced health).
  */
 export function grpcClient(address: string, outboundTraceparent: string | null = null): GrpcClient {
   const key = grpcBaseUrl(address);
@@ -197,8 +194,7 @@ export function grpcClient(address: string, outboundTraceparent: string | null =
     if (cached) return cached;
   }
 
-  const opts = (sessionToken: string | null) =>
-    callOpts(sessionToken, outboundTraceparent ?? traceAls.getStore() ?? null);
+  const opts = (sessionToken: string | null) => callOpts(sessionToken, outboundTraceparent);
 
   const client: GrpcClient = {
     auth: {

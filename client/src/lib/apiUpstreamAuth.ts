@@ -24,19 +24,26 @@ export function parseMePayload(body: unknown): Me | null {
   return { id: rec.id, email: rec.email, username: rec.username };
 }
 
-export async function fetchMe(sessionToken: string | null): Promise<Me | null> {
+export async function fetchMe(
+  sessionToken: string | null,
+  traceparent: string | null = null,
+): Promise<Me | null> {
   if (!sessionToken) return null;
   try {
-    return await grpcClient(grpcUpstream()).auth.getMe(sessionToken);
+    return await grpcClient(grpcUpstream(), traceparent).auth.getMe(sessionToken);
   } catch {
     return null;
   }
 }
 
-export async function fetchDeckName(sessionToken: string | null, deckId: number): Promise<string | null> {
+export async function fetchDeckName(
+  sessionToken: string | null,
+  deckId: number,
+  traceparent: string | null = null,
+): Promise<string | null> {
   if (!sessionToken) return null;
   try {
-    const deck = await grpcClient(grpcUpstream()).decks.get(deckId, sessionToken);
+    const deck = await grpcClient(grpcUpstream(), traceparent).decks.get(deckId, sessionToken);
     return deck.name ?? null;
   } catch {
     return null;
@@ -55,10 +62,11 @@ export type { SeedResponse };
 export async function seedGame(
   sessionToken: string | null,
   body: SeedRequest,
+  traceparent: string | null = null,
 ): Promise<{ ok: true; data: SeedResponse } | { ok: false; status: number }> {
   if (!sessionToken) return { ok: false, status: 401 };
   try {
-    const data = await grpcClient(grpcUpstream()).tables.seed(body, sessionToken);
+    const data = await grpcClient(grpcUpstream(), traceparent).tables.seed(body, sessionToken);
     return { ok: true, data };
   } catch (err) {
     if (err instanceof GrpcCallError) {

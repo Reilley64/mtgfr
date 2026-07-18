@@ -1,9 +1,13 @@
 // BFF OpenTelemetry — process-scoped `@effect/opentelemetry` (ADR 0034).
 //
-// Architecture (effect-ts observability guide):
+// Architecture ([Effect tracing](https://effect.website/docs/observability/tracing) +
+// `OtelTracer.withSpanContext`):
 // - Business/request code uses Effect APIs (`Effect.fn`, `Effect.withSpan`, annotations).
 // - OTEL JS exporters live once in `NodeSdk.layer` — not inside handlers.
-// - W3C `traceparent` bridging (`withSpanContext`) stays at the HTTP/RPC edge only.
+// - W3C `traceparent` bridging stays at the HTTP/RPC edge only.
+// - Parent spans live in Effect **fiber Context**. A second `ManagedRuntime` (gRPC)
+//   does not inherit them — capture via `currentTraceparent` and pass explicitly
+//   into `grpcClient` / `RpcEnv`. Never rely on Node ALS across that boundary.
 
 import { NodeSdk, OtelTracer } from "@effect/opentelemetry";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
@@ -115,6 +119,7 @@ export async function runTracedRequest<A, E>(
 
 /**
  * W3C `traceparent` for the current Effect span (outbound gRPC parenting).
+ * Call only under an active `Effect.withSpan` (e.g. inside `runTracedRequest`).
  * Unnamed `Effect.fn` — stack traces without an extra named span (guide default).
  */
 export const currentTraceparent = Effect.fn(function* () {

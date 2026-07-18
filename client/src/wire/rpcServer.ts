@@ -7,7 +7,8 @@ import type { DeckError, IntentEnvelope, SaveDeckRequest, StreamFrame } from "~/
 
 export interface RpcEnv {
   readonly sessionToken: string | null;
-  /** BFF span `traceparent` for outbound gRPC — must be explicit; ALS does not survive Effect runtimes. */
+  /** BFF span `traceparent` for outbound gRPC — explicit; Effect fiber context does not
+   *  cross into the gRPC ManagedRuntime (ADR 0034). */
   readonly traceparent: string | null;
   readonly defaultAddress: string;
   /** Resolve a table id to its owning pod's gRPC address, or `null` for an unknown table. */
