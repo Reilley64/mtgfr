@@ -136,6 +136,22 @@ export function useCardFlights(deps: CardFlightsDeps) {
     kickRaf();
   };
 
+  /** Drop an in-flight card (e.g. staged cast cancel) so it cannot race the return animation. */
+  const cancelFlight = (cardId: number) => {
+    setFlights((prev) => {
+      const next = new Map(prev);
+      for (const [id, f] of prev) {
+        if (id === cardId || f.fromCardId === cardId) next.delete(id);
+      }
+      return next;
+    });
+    setHandHidden((h) => {
+      const n = new Set(h);
+      n.delete(cardId);
+      return n;
+    });
+  };
+
   createEffect(() => {
     const plays = deps.landPlays();
     let next = flights();
@@ -146,11 +162,7 @@ export function useCardFlights(deps: CardFlightsDeps) {
       const f = next.get(permanent);
       if (f) next.set(permanent, { ...f, kind: "battlefield" });
       changed = true;
-      setHandHidden((h) => {
-        const n = new Set(h);
-        n.delete(from);
-        return n;
-      });
+      // Keep `from` in handHidden until settle — commander/bar faces stay dim under the flight.
     }
     if (changed) {
       setFlights(next);
@@ -177,11 +189,7 @@ export function useCardFlights(deps: CardFlightsDeps) {
         );
       }
       changed = true;
-      setHandHidden((h) => {
-        const n = new Set(h);
-        n.delete(meta.from);
-        return n;
-      });
+      // Keep meta.from dimmed until settle (same as land rebind).
     }
     if (changed) {
       setFlights(next);
@@ -194,6 +202,7 @@ export function useCardFlights(deps: CardFlightsDeps) {
     const exited = deps.fromStackExit();
     const cam = deps.camera();
     const cards = deps.cards();
+    const ents = deps.stackEntrances();
     const len = deps.stackLength();
     const originCount = Math.max(1, prevStackLen || len + 1);
     const peek = stackPeekFor(originCount, deps.size().y, STACK_VERTICAL_RESERVED);
@@ -201,9 +210,43 @@ export function useCardFlights(deps: CardFlightsDeps) {
     let next = flights();
     let changed = false;
     for (const id of new Set([...resolved, ...exited])) {
-      if (next.has(id) || spawnedFromStack.has(id)) continue;
+      if (spawnedFromStack.has(id)) continue;
+
       const card = cards.find((c) => c.id === id);
       const scr = card ? worldToScreen(cam, card.x + CARD_W / 2, card.y + CARD_H / 2) : from;
+      const target = { x: scr.x, y: scr.y, scale: 1 as const };
+
+      // Absorb an unfinished stack flight for this resolve instead of drawing a second actor.
+      let stackFlight = next.get(id);
+      if (stackFlight?.kind !== "stack") {
+        const fromHand = ents.get(id)?.from;
+        if (fromHand != null && next.get(fromHand)?.kind === "stack") {
+          next = rebindFlightId(next, fromHand, id);
+          stackFlight = next.get(id);
+        }
+      }
+      if (stackFlight?.kind === "stack") {
+        next = new Map(next);
+        next.set(
+          id,
+          retargetFlight(
+            {
+              ...stackFlight,
+              id,
+              kind: "from-stack",
+              print: card?.print || stackFlight.print,
+              name: card?.name || stackFlight.name,
+            },
+            target,
+          ),
+        );
+        spawnedFromStack.add(id);
+        changed = true;
+        continue;
+      }
+
+      if (next.has(id)) continue;
+
       const f = spawnFlight({
         id,
         print: card?.print ?? "",
@@ -211,9 +254,9 @@ export function useCardFlights(deps: CardFlightsDeps) {
         x: from.x,
         y: from.y,
         scale: stackFlightScale(cam.zoom),
-        targetX: scr.x,
-        targetY: scr.y,
-        targetScale: 1,
+        targetX: target.x,
+        targetY: target.y,
+        targetScale: target.scale,
         kind: "from-stack",
       });
       next = new Map(next);
@@ -238,5 +281,6 @@ export function useCardFlights(deps: CardFlightsDeps) {
     flightOwnedIds,
     handHidden,
     spawnFromHand,
+    cancelFlight,
   };
 }

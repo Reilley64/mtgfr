@@ -248,6 +248,7 @@ export default function Board() {
     clearPlayOrigin: (cardId) => {
       surface.clearPlayOrigin(cardId);
       stackScreenByCard.delete(cardId);
+      cardFlights.cancelFlight(cardId);
     },
     onHintUsed: () => setHintAutoHidden(true),
   });
