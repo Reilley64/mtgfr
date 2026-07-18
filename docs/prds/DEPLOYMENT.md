@@ -553,7 +553,7 @@ Distroless has no shell — use ephemeral debug containers for inspection. All c
 
 Multi-stage `docker/server/Dockerfile`:
 
-1. **Build:** `rust:1-bookworm` — install `protobuf-compiler`, copy `proto/` + crates, then `cargo build -p server --release` (cache mount on `target/`). tonic stubs land in Cargo `OUT_DIR` via `build.rs` (never committed).
+1. **Build:** `rust:1-bookworm` — install `protobuf-compiler`, copy `proto/` + crates, then `cargo build -p server --release` (cache mount on `target/`). tonic stubs land in Cargo `OUT_DIR` via `build.rs` (never committed). Test-only Toasty sqlite is a `[dev-dependencies]` feature, so it is not compiled into this image.
 2. **Runtime:** `gcr.io/distroless/cc-debian12:nonroot` — copy `server`, `config/mtgfr.toml`, `Toasty.toml`, `toasty/`; `EXPOSE 8080` (health) / gRPC is `:50051` in chart/TF.
    - Use `cc` (glibc) variant for default dynamically-linked release binaries. Switch to `gcr.io/distroless/static-debian12:nonroot` only if we build fully static binaries (`musl`).
 3. **Entrypoints:**
