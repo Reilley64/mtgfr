@@ -283,9 +283,17 @@ resource "helm_release" "grafana" {
         enabled = true
         size    = "2Gi"
       }
-      # Faro RUM UI (sessions / errors / web vitals). Traces still live in Tempo;
-      # Faro events/logs land in Loki via Alloy faro.receiver.
-      plugins = ["grafana-faro-app"]
+      # PVC dirs (csv/png/pdf) are mode 0700 as uid 472. The chart's init-chown
+      # runs as root with only CAP_CHOWN (no DAC_OVERRIDE), so chown -R fails with
+      # Permission denied and the rollout never becomes Ready. Data is already
+      # owned correctly after first start — skip the init.
+      initChownData = {
+        enabled = false
+      }
+      # Do NOT set plugins = ["grafana-faro-app"]: that ID 404s on grafana.com and
+      # Grafana 12's background installer treats install failure as fatal (crash loop).
+      # Faro RUM for self-hosted LGTM is Loki (events) + Tempo (traces) dashboards —
+      # the Cloud "Frontend Observability" app is not available as an OSS plugin.
       datasources = {
         "datasources.yaml" = {
           apiVersion = 1
