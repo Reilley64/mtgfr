@@ -9,7 +9,7 @@ import { currentTraceparent, runTracedRequest } from "~/effect/otel";
 import { grpcUpstreamFromPodDns } from "~/lib/apiUpstream";
 import { grpcUpstream } from "~/lib/apiUpstreamAuth";
 import { lookupTableRoute } from "~/lib/lobbyStore";
-import { GrpcCallError, httpStatusOf, runWithTraceparent } from "~/wire/grpcClient";
+import { GrpcCallError, httpStatusOf } from "~/wire/grpcClient";
 import { dispatchRpc, type RpcOutcome } from "~/wire/rpcServer";
 import type { StreamFrame } from "~/wire/types";
 
@@ -121,13 +121,12 @@ const dispatchRpcTraced = Effect.fn(function* (args: RpcDispatchArgs) {
   const outboundTraceparent = yield* currentTraceparent();
   return yield* Effect.tryPromise({
     try: () =>
-      runWithTraceparent(outboundTraceparent, () =>
-        dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
-          sessionToken: args.sessionToken,
-          defaultAddress: grpcUpstream(),
-          resolveTableAddress,
-        }),
-      ),
+      dispatchRpc(args.segments, args.method, args.body, args.searchParams, {
+        sessionToken: args.sessionToken,
+        traceparent: outboundTraceparent,
+        defaultAddress: grpcUpstream(),
+        resolveTableAddress,
+      }),
     catch: (err) => (err instanceof Error ? err : new Error(String(err))),
   });
 });
