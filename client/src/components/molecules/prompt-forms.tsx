@@ -475,7 +475,7 @@ const ChooseModeForm: Component<FormProps> = (props) => {
               aria-pressed={mode() === i()}
               onClick={() => setMode(i())}
               variant="ghost"
-              class={cn("text-left", mode() === i() && "border-llanowar bg-[rgb(60_150_95/0.25)]")}
+              class={cn("text-left", mode() === i() && "border-llanowar bg-llanowar/25")}
             >
               {label}
             </Button>
@@ -638,7 +638,7 @@ export function ModePickPrompt(props: {
                 onClick={() => toggle(i())}
                 class={cn(
                   "flex cursor-pointer items-center gap-md rounded-hud border border-hud-edge bg-glass-dim px-lg py-md text-left text-snow",
-                  picked().includes(i()) && "border-llanowar bg-[rgb(60_150_95/0.25)]",
+                  picked().includes(i()) && "border-llanowar bg-llanowar/25",
                   !modeAvailable(m) && "cursor-not-allowed opacity-40",
                 )}
               >
@@ -1255,7 +1255,7 @@ const ChooseCreatureTypeForm: Component<FormProps> = (props) => {
               aria-pressed={sel() === opt}
               onClick={() => setSel(opt)}
               variant="ghost"
-              class={cn("text-left", sel() === opt && "border-llanowar bg-[rgb(60_150_95/0.25)]")}
+              class={cn("text-left", sel() === opt && "border-llanowar bg-llanowar/25")}
             >
               {opt}
             </Button>
@@ -1506,7 +1506,7 @@ const DistributeTopForm: Component<FormProps> = (props) => {
                         aria-pressed={slots()[it.id] === s}
                         onClick={() => setSlots((cur) => ({ ...cur, [it.id]: s }))}
                         variant="ghost"
-                        class={cn("text-caption", slots()[it.id] === s && "border-llanowar bg-[rgb(60_150_95/0.25)]")}
+                        class={cn("text-caption", slots()[it.id] === s && "border-llanowar bg-llanowar/25")}
                       >
                         {label[s]}
                       </Button>
@@ -1583,7 +1583,7 @@ const ChooseTriggerModesForm: Component<FormProps> = (props) => {
                 <div
                   class={cn(
                     "rounded-hud border border-hud-edge bg-glass-dim p-md",
-                    on() && "border-llanowar bg-[rgb(60_150_95/0.25)]",
+                    on() && "border-llanowar bg-llanowar/25",
                   )}
                 >
                   <button
@@ -1607,10 +1607,7 @@ const ChooseTriggerModesForm: Component<FormProps> = (props) => {
                                 aria-pressed={picks()[i()] === seat()}
                                 onClick={() => setSeat(i(), seat())}
                                 variant="ghost"
-                                class={cn(
-                                  "text-caption",
-                                  picks()[i()] === seat() && "border-llanowar bg-[rgb(60_150_95/0.25)]",
-                                )}
+                                class={cn("text-caption", picks()[i()] === seat() && "border-llanowar bg-llanowar/25")}
                               >
                                 {seatLabel(seat())}
                               </Button>

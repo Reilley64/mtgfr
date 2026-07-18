@@ -18,11 +18,11 @@ describe("projectManaTrays", () => {
       cam,
     );
     expect(trays).toHaveLength(1);
-    // manaTrayPos(0,0,2) === manaTrayPos(0,0,4) for the viewer's upright cell: (-16, 1068)
+    // manaTrayPos(0,0,2) for the viewer's upright cell is (-8, 868) after denser 4p layout.
     expect(trays[0]).toMatchObject({
       seat: 0,
-      x: -16 * 2 + 10,
-      y: 1068 * 2 + 20,
+      x: -8 * 2 + 10,
+      y: 868 * 2 + 20,
       zoom: 2,
     });
     expect(trays[0].chips).toEqual([{ kind: "glyph", ms: "w", code: "W", amount: 2 }]);

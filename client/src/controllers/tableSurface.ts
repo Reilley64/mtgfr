@@ -75,6 +75,8 @@ export type TableSurfaceDeps = {
   stackObjectIds?: Accessor<Set<number>>;
   /** Live stack length for stack→battlefield entrance seed. */
   stackLength?: Accessor<number>;
+  /** Ids currently owned by the canvas flight layer — skip competing entrance seeds. */
+  flightOwnedIds?: Accessor<ReadonlySet<number>>;
   /** Override for tests; defaults to `prefers-reduced-motion`. */
   reducedMotion?: Accessor<boolean>;
   /** Selected permanent — stays raised / fans pinned until cleared. */
@@ -146,6 +148,8 @@ export type EntranceSeedOpts = {
   camera: Camera;
   me: number;
   playerCount: number;
+  /** Object ids owned by the canvas flight layer — do not seed a competing entrance. */
+  skipIds?: ReadonlySet<number>;
 };
 
 function zoneToConst(zone: ZonePileKind): typeof ZONE.Library | typeof ZONE.Graveyard | typeof ZONE.Exile {
@@ -162,17 +166,19 @@ function zoneToConst(zone: ZonePileKind): typeof ZONE.Library | typeof ZONE.Grav
 export function seedEntrances(anim: Positions, targets: readonly RenderCard[], opts: EntranceSeedOpts): void {
   for (const c of targets) {
     if (anim.has(c.id)) continue;
+    // Own play / stack resolve: ADR 0035 canvas flight owns the motion — park the tween at the
+    // layout slot so settle doesn't ENTER_RISE or compete with a second glide.
+    if (opts.playEntrances.has(c.id) || opts.fromStack.has(c.id) || opts.fromStackExit.has(c.id)) {
+      anim.set(c.id, { x: c.x, y: c.y });
+      continue;
+    }
+    if (opts.skipIds?.has(c.id)) {
+      anim.set(c.id, { x: c.x, y: c.y });
+      continue;
+    }
     const origin = anim.get(opts.moves.get(c.id) ?? -1);
     if (origin) {
       anim.set(c.id, { ...origin });
-      continue;
-    }
-    if (opts.fromStack.has(c.id) || opts.fromStackExit.has(c.id)) {
-      const count = opts.stackLength + 1;
-      const peek = stackPeekFor(count, opts.size.y, STACK_VERTICAL_RESERVED);
-      const scr = stackAimOrigin(opts.size.x, opts.size.y, count, peek);
-      const w = screenToWorld(opts.camera, scr.x, scr.y);
-      anim.set(c.id, { x: w.x - CARD_W / 2, y: w.y - CARD_H / 2 });
       continue;
     }
     const creator = opts.tokenCreators.get(c.id);
@@ -192,11 +198,6 @@ export function seedEntrances(anim: Positions, targets: readonly RenderCard[], o
       }
       const a = avatarPos(c.controller, opts.me, opts.playerCount);
       anim.set(c.id, { x: a.x, y: a.y });
-      continue;
-    }
-    const play = opts.playEntrances.get(c.id);
-    if (play) {
-      anim.set(c.id, { ...play });
       continue;
     }
     const pile = opts.zonePileEntrances.get(c.id);
@@ -526,6 +527,7 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   const zonePileEntrances = () => deps.zonePileEntrances?.() ?? new Map();
   const stackObjectIds = () => deps.stackObjectIds?.() ?? new Set<number>();
   const stackLength = () => deps.stackLength?.() ?? 0;
+  const flightOwnedIds = () => deps.flightOwnedIds?.() ?? new Set<number>();
 
   /** Match land_played.from → pending play origin before seeding (same tick as layout). */
   const bindLandPlayEntrances = (targets: readonly RenderCard[]) => {
@@ -565,6 +567,7 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
       camera: camera(),
       me: deps.me(),
       playerCount: deps.playerCount(),
+      skipIds: flightOwnedIds(),
     };
     // First paint: seed provenance into an empty anim, then snap anything left to layout.
     // (A blanket snapAll first would mark ids present and skip play/stack entrances.)

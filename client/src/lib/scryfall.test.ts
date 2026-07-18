@@ -29,11 +29,10 @@ describe("imageUrlByPrint", () => {
     expect(url).toBe("https://cdn.example/large/back/a/a/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.webp");
   });
 
-  it("omits face=back on the front face", async () => {
+  it("honors art_crop size on Scryfall when no CDN", async () => {
     vi.stubEnv("VITE_CARD_CDN", "");
     const { imageUrlByPrint } = await import("~/lib/scryfall");
-    const url = imageUrlByPrint(printId, "large", "front");
-    expect(url).not.toContain("face=back");
+    expect(imageUrlByPrint(printId, "art_crop")).toContain("version=art_crop");
   });
 });
 

@@ -231,8 +231,8 @@ export interface ActionExecutionDeps {
   size: Accessor<Vec>;
   handBarH: number;
   setReject: (msg: string | null) => void;
-  /** Record play-in world origin for a hand/command card id (canvas land path). */
-  seedDrop: (cardId: number, world: Vec, screen: Vec) => void;
+  /** Record play-in origin and spawn canvas flight (ADR 0035). */
+  seedDrop: (cardId: number, world: Vec, screen: Vec, flight: "battlefield" | "stack") => void;
   clearPlayOrigin: (cardId: number) => void;
   onHintUsed: () => void;
 }
@@ -374,7 +374,7 @@ export function useActionExecution(deps: ActionExecutionDeps) {
       return;
     }
     if (plan.kind === "stage") {
-      if (plan.card.id != null) deps.seedDrop(plan.card.id, dropSeed, screenOrigin);
+      if (plan.card.id != null) deps.seedDrop(plan.card.id, dropSeed, screenOrigin, "stack");
       setStaged({
         card: plan.card,
         action: plan.action,
@@ -386,12 +386,12 @@ export function useActionExecution(deps: ActionExecutionDeps) {
       return;
     }
     if (plan.kind === "play-land") {
-      if (card) deps.seedDrop(card.id, dropSeed, screenOrigin);
+      if (card) deps.seedDrop(card.id, dropSeed, screenOrigin, "battlefield");
       void deps.act(buildTakeActionIntent(deps.me(), plan.actionId, null, 0, [], plan.picks));
       return;
     }
     if (plan.kind === "cast") {
-      if (card) deps.seedDrop(card.id, dropSeed, screenOrigin);
+      if (card) deps.seedDrop(card.id, dropSeed, screenOrigin, "stack");
       void takeCastAction(plan.action, null, undefined, [], plan.picks);
       return;
     }

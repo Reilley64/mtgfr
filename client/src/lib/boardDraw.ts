@@ -1,8 +1,9 @@
 // Canvas board drawing: seat bands, cards, avatars, combat/target arrows.
 
-import { AVATAR_R, type RenderCard, STEP, seatBand, seatColor, ZONE } from "~/layout";
+import { AVATAR_R, CARD_H, CARD_W, type RenderCard, STEP, seatBand, seatColor, ZONE } from "~/layout";
 import { type Camera, worldToScreen } from "~/lib/camera";
 import { abilityGlyph, hiddenKeywordCount, keywordBadges, showsSummoningSick, TAP_GLYPH } from "~/lib/cardBadges";
+import type { CardFlight } from "~/lib/cardFlight";
 import type { ImageCache } from "~/lib/imageCache";
 import { LETHAL_COMMANDER_DAMAGE, worstCommanderDamage } from "~/lib/outcome";
 import { cardBackUrl, imageUrlByPrint } from "~/lib/scryfall";
@@ -182,6 +183,10 @@ export interface DrawCtx {
   responseObjects: ReadonlySet<number>;
   /** Screen-space origin for the targeting arrow while aiming (stack-card center). */
   aimFrom: Vec | null;
+  /** In-flight cards (ADR 0035) — drawn in screen space above board cards. */
+  flights?: readonly CardFlight[];
+  /** Canvas card ids still owned by a flight — skip drawing the resting face. */
+  hideCardIds?: ReadonlySet<number>;
 }
 
 interface Stroke {
@@ -211,12 +216,11 @@ export function draw(ctx: CanvasRenderingContext2D, d: DrawCtx): boolean {
     const band = seatBand(seat, d.viewer, d.count);
     const tl = worldToScreen(d.cam, band.x, band.y);
     ctx.save();
-    if (seat === d.active) {
-      ctx.fillStyle = seatColor(seat, 0.09);
-      roundRect(ctx, tl.x, tl.y, band.w * d.cam.zoom, band.h * d.cam.zoom, 12 * d.cam.zoom);
-      ctx.fill();
-    }
-    ctx.strokeStyle = seatColor(seat, seat === d.active ? 0.55 : 0.22);
+    // Soft seat wash + border for every seat; active reads louder so turn ownership stays clear.
+    ctx.fillStyle = seatColor(seat, seat === d.active ? 0.12 : 0.06);
+    roundRect(ctx, tl.x, tl.y, band.w * d.cam.zoom, band.h * d.cam.zoom, 12 * d.cam.zoom);
+    ctx.fill();
+    ctx.strokeStyle = seatColor(seat, seat === d.active ? 0.65 : 0.28);
     ctx.lineWidth = seat === d.active ? 2.5 : 1.5;
     roundRect(ctx, tl.x, tl.y, band.w * d.cam.zoom, band.h * d.cam.zoom, 12 * d.cam.zoom);
     ctx.stroke();
@@ -231,6 +235,7 @@ export function draw(ctx: CanvasRenderingContext2D, d: DrawCtx): boolean {
   const dimOthers = !d.aiming && d.stackResponseFocus;
 
   for (const card of d.cards) {
+    if (d.hideCardIds?.has(card.id)) continue;
     let outline: Stroke | null = null;
     let glow: string | null = null;
     if (attackerSet.has(card.id) || (incoming.has(card.id) && card.controller !== d.me)) {
@@ -248,6 +253,14 @@ export function draw(ctx: CanvasRenderingContext2D, d: DrawCtx): boolean {
     }
     const dim = dimOthers && !d.responseObjects.has(card.id) && d.selectedId !== card.id;
     drawCard(ctx, d.cam, card, d.cache, outline, d.viewer, glow, dim, d.paymentObjects.has(card.id));
+  }
+
+  if (d.flights?.length) {
+    for (const f of d.flights) {
+      if (f.phase === "settled") continue;
+      drawFlightCard(ctx, d.cam, f, d.cache);
+      arrowsAnimating = true; // keep the paint loop alive while flights ease
+    }
   }
 
   for (const p of d.players) {
@@ -447,6 +460,38 @@ function arrowBetween(ctx: CanvasRenderingContext2D, a: Vec, b: Vec, stroke: Str
   ctx.lineTo(endX - 13 * Math.cos(ang + 0.4), endY - 13 * Math.sin(ang + 0.4));
   ctx.closePath();
   ctx.fill();
+  ctx.restore();
+}
+
+function drawFlightCard(ctx: CanvasRenderingContext2D, cam: Camera, flight: CardFlight, cache: ImageCache) {
+  const w = CARD_W * cam.zoom * flight.scale;
+  const h = CARD_H * cam.zoom * flight.scale;
+  const x = flight.x - w / 2;
+  const y = flight.y - h / 2;
+  const r = 6 * cam.zoom * Math.max(flight.scale, 0.5);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.45)";
+  ctx.shadowBlur = 16;
+  roundRect(ctx, x, y, w, h, r);
+  ctx.fillStyle = "#e8e4d8";
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = CARD_OUTLINE;
+  ctx.lineWidth = Math.max(1, 2 * cam.zoom);
+  ctx.stroke();
+  const img = flight.print ? cache.get(imageUrlByPrint(flight.print)) : null;
+  if (img) {
+    ctx.save();
+    roundRect(ctx, x, y, w, h, r);
+    ctx.clip();
+    ctx.drawImage(img, x, y, w, h);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#1a1a1a";
+    ctx.font = `bold ${Math.max(10, 12 * cam.zoom * flight.scale)}px system-ui,sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(flight.name, flight.x, flight.y, w - 8);
+  }
   ctx.restore();
 }
 

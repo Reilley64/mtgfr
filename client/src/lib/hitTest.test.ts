@@ -58,32 +58,32 @@ describe("hitAvatar", () => {
   });
 
   it("returns the seat of an avatar inside the circle", () => {
-    // Avatar 0 at (100, 100) with radius 60: (100, 100) is the center
+    // Avatar 0 at (100, 100) with radius AVATAR_R (40): (100, 100) is the center
     expect(hitAvatar(identity, 100, 100, avatars)).toBe(0);
-    // (110, 100) is 10 pixels away, well within the 60-pixel radius
+    // (110, 100) is 10 pixels away, well within the radius
     expect(hitAvatar(identity, 110, 100, avatars)).toBe(0);
-    // (150, 100) is 50 pixels away, still within 60
-    expect(hitAvatar(identity, 150, 100, avatars)).toBe(0);
+    // (130, 100) is 30 pixels away, still within 40
+    expect(hitAvatar(identity, 130, 100, avatars)).toBe(0);
   });
 
   it("returns null when the point is outside the avatar circle", () => {
-    // Avatar 0 at (100, 100) with radius 60: (200, 100) is 100 pixels away, outside
+    // Avatar 0 at (100, 100) with radius 40: (200, 100) is 100 pixels away, outside
     expect(hitAvatar(identity, 200, 100, avatars)).toBeNull();
   });
 
   it("scales the radius with zoom", () => {
-    // Zoom 2x: a screen point that maps to world distance 50 should hit (50 < 60)
+    // Zoom 2x: a screen point that maps to world distance 30 should hit (30 < 40)
     const cam: Camera = { panX: 0, panY: 0, zoom: 2 };
     // Avatar 0 is at world (100, 100). At zoom 2 with no pan, screen (200, 200) = world (100, 100).
     expect(hitAvatar(cam, 200, 200, avatars)).toBe(0);
-    // Screen (220, 200) = world (110, 100), which is 10 pixels away in world space, well within 60.
+    // Screen (220, 200) = world (110, 100), which is 10 pixels away in world space, well within 40.
     expect(hitAvatar(cam, 220, 200, avatars)).toBe(0);
-    // Screen (330, 200) = world (165, 100), which is 65 pixels away, outside the 60-pixel radius.
-    expect(hitAvatar(cam, 330, 200, avatars)).toBeNull();
+    // Screen (290, 200) = world (145, 100), which is 45 pixels away, outside the 40-pixel radius.
+    expect(hitAvatar(cam, 290, 200, avatars)).toBeNull();
   });
 
   it("returns the first avatar hit when multiple overlap (iteration order)", () => {
-    // Both avatars are at y=100; avatar 0 at x=100, avatar 1 at x=300, each with radius 60.
+    // Both avatars are at y=100; avatar 0 at x=100, avatar 1 at x=300, each with radius 40.
     // Screen point (200, 100) is 100 away from avatar 0, outside. 100 away from avatar 1, also outside.
     expect(hitAvatar(identity, 200, 100, avatars)).toBeNull();
     // Screen point (130, 100) is 30 away from avatar 0 (hit), 170 away from avatar 1.

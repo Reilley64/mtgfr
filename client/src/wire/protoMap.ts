@@ -175,8 +175,7 @@ export function seedResponseFromProto(proto: unknown): SeedResponse {
  * accepts the same sparse payloads the browser sends. */
 export function intentEnvelopeToProto(envelope: IntentEnvelope): ProtoIntentEnvelope {
   const { kind, ...rest } = envelope.intent;
-  const value =
-    kind === "take_action" ? takeActionValueToProto(rest) : (toProtoWire(rest) as Record<string, unknown>);
+  const value = kind === "take_action" ? takeActionValueToProto(rest) : (toProtoWire(rest) as Record<string, unknown>);
   return create(
     IntentEnvelopePbSchema,
     coerceBigints({

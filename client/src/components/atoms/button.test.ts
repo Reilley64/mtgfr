@@ -21,6 +21,7 @@ describe("buttonClass (cva)", () => {
     expect(c).toContain("bg-yielded");
     expect(c).toContain("text-yielded-ink");
     expect(c).toContain("min-w-0");
+    expect(c).toContain("ease-state");
   });
 
   it("danger keeps control chrome with burn-red ink", () => {

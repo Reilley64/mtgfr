@@ -7,17 +7,19 @@ const button = cva({
   base: "cursor-pointer",
   variants: {
     variant: {
-      primary: "rounded-control border-none bg-llanowar px-lg py-sm text-button text-snow-mint disabled:opacity-50",
-      ghost: "rounded-control border border-vine bg-transparent px-lg py-sm text-button text-mist disabled:opacity-50",
+      primary:
+        "rounded-control border-none bg-llanowar px-lg py-sm text-button text-snow-mint transition-colors duration-150 ease-state disabled:opacity-50",
+      ghost:
+        "rounded-control border border-vine bg-transparent px-lg py-sm text-button text-mist transition-colors duration-150 ease-state disabled:opacity-50",
       // Ghost chrome + destructive ink (two-step confirm).
       danger:
-        "rounded-control border border-burn-red bg-transparent px-lg py-sm text-button text-burn-red disabled:opacity-50",
+        "rounded-control border border-burn-red bg-transparent px-lg py-sm text-button text-burn-red transition-colors duration-150 ease-state disabled:opacity-50",
       // Inline-sentence action that is not navigation.
       link: "border-none bg-transparent p-0 font-[inherit] text-vine underline",
       game: [
         "min-w-[132px] rounded-game border-none bg-llanowar-deep px-[26px] py-[11px]",
         "text-game text-snow-mint shadow-press",
-        "transition-[background_0.15s_ease,transform_0.06s_ease,box-shadow_0.15s_ease]",
+        "transition-[background,transform,box-shadow] duration-150 ease-state",
         "hover:enabled:bg-llanowar",
         "active:enabled:translate-y-px active:enabled:scale-[0.99] active:enabled:shadow-press-active",
         "disabled:bg-tapped-out disabled:text-tapped-ink disabled:shadow-none",
@@ -26,7 +28,7 @@ const button = cva({
       "game-quiet": [
         "min-w-0 rounded-game border-none bg-tapped-out px-lg py-[7px]",
         "text-label text-mist shadow-press",
-        "transition-[background_0.15s_ease,transform_0.06s_ease,box-shadow_0.15s_ease]",
+        "transition-[background,transform,box-shadow] duration-150 ease-state",
         "hover:enabled:bg-quiet-hover",
         "active:enabled:translate-y-px active:enabled:scale-[0.99] active:enabled:shadow-press-active",
         "disabled:bg-tapped-out disabled:text-tapped-ink disabled:shadow-none",
@@ -35,7 +37,7 @@ const button = cva({
       "game-yielded": [
         "min-w-0 rounded-game border-none bg-yielded px-lg py-[7px]",
         "text-label text-yielded-ink shadow-press",
-        "transition-[background_0.15s_ease,transform_0.06s_ease,box-shadow_0.15s_ease]",
+        "transition-[background,transform,box-shadow] duration-150 ease-state",
         "hover:enabled:bg-yielded-hover",
         "active:enabled:translate-y-px active:enabled:scale-[0.99] active:enabled:shadow-press-active",
         "disabled:bg-tapped-out disabled:text-tapped-ink disabled:shadow-none",

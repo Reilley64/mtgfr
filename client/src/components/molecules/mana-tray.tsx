@@ -71,7 +71,7 @@ function Chip(props: { chip: ManaTrayChip; zoom: number }) {
         ),
       text: (chip) => (
         <span
-          class="inline-flex items-center gap-px font-semibold text-[#7fd4a8]"
+          class="inline-flex items-center gap-px font-semibold text-seat-forest"
           style={{ "font-size": `${fontPx()}px` }}
         >
           <span class="leading-none">{chip.text}</span>
