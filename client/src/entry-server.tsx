@@ -9,6 +9,8 @@ export default createHandler(() => (
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <title>mtgfr</title>
+          <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+          <link rel="icon" href="/favicon.ico" sizes="any" />
           <style>{`html, body { margin: 0; height: 100%; background: #0b1310; overflow: hidden; } #app { position: fixed; inset: 0; }`}</style>
           {assets}
         </head>

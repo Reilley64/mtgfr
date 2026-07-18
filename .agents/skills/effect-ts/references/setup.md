@@ -1,7 +1,5 @@
 # Effect Source Setup
 
-**This repository uses option 1** — `https://github.com/Effect-TS/effect-smol` vendored as a git subtree (squashed) at `./.repos/effect`.
-
 This setup task is required when `./.repos/effect` is missing from the root of the repository where this skill is used.
 
 ## Prompt

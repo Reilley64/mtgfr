@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="E">
+  <!-- forest-floor plate, ~20% corner radius -->
+  <rect width="32" height="32" rx="6.4" fill="#0B1310"/>
+  <!-- commander-gold geometric E; ~14% inset, hard paths -->
+  <path
+    fill="#E9B84A"
+    d="M6 6H26V10.2H11.2V13.6H23.2V17.4H11.2V21.8H26V26H6Z"
+  />
+</svg>
