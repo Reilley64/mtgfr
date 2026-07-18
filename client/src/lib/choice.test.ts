@@ -76,6 +76,14 @@ describe("choiceIntent", () => {
       { kind: "put_land_from_hand", player: 2, choice: 3 },
     ],
     [
+      { kind: "put_creature", choice: 7 },
+      { kind: "put_creature_from_hand", player: 2, choice: 7 },
+    ],
+    [
+      { kind: "put_creature", choice: null },
+      { kind: "put_creature_from_hand", player: 2, choice: null },
+    ],
+    [
       { kind: "choose_exiled", choice: 5 },
       { kind: "choose_exiled_with_card", player: 2, choice: 5 },
     ],
@@ -162,6 +170,14 @@ describe("choiceIntent", () => {
     [
       { kind: "cast_face_down_choice", choice: 6 },
       { kind: "cast_creature_face_down", player: 2, choice: 6 },
+    ],
+    [
+      { kind: "dredge", dredger: 8 },
+      { kind: "choose_dredge", player: 2, dredger: 8 },
+    ],
+    [
+      { kind: "dredge", dredger: null },
+      { kind: "choose_dredge", player: 2, dredger: null },
     ],
   ];
 

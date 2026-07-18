@@ -1,0 +1,41 @@
+# This creature enters with a -1/-1 counter on it.
+# {G}, Remove a -1/-1 counter from this creature: Destroy target artifact or enchantment.
+name = "Wickerbough Elder"
+set = "ecc"
+id = "3d794629-9014-460a-8d3b-785eadc1cdb5"
+default_print = "83e0b855-0259-4229-a6b9-d0faaf225355"
+oracle = "This creature enters with a -1/-1 counter on it.\n{G}, Remove a -1/-1 counter from this creature: Destroy target artifact or enchantment."
+subtypes = ["Treefolk", "Shaman"]
+
+[cost]
+generic = 3
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# This creature enters with a -1/-1 counter on it.
+[[abilities]]
+timing = "static"
+
+# This creature enters with a -1/-1 counter on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = 1
+kind = "minus_one_minus_one"
+
+# {G}, Remove a -1/-1 counter from this creature: Destroy target artifact or enchantment.
+[[abilities]]
+timing = "activated"
+remove_counters = 1
+remove_counters_kind = "minus_one_minus_one"
+
+[abilities.activation_cost]
+green = 1
+
+# Destroy target artifact or enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact_or_enchantment" } }

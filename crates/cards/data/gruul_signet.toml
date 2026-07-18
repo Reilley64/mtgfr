@@ -1,0 +1,24 @@
+# {1}, {T}: Add {R}{G}.
+name = "Gruul Signet"
+otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
+oracle = "{1}, {T}: Add {R}{G}."
+set = "clu"
+id = "d36e0c9f-c025-4dfe-9644-9cad2461ce38"
+default_print = "ed1adca8-9386-42b0-ac6b-699394ac7969"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {1}, {T}: Add {R}{G}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {R}{G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["red", "green"]

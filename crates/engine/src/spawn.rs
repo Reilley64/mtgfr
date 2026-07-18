@@ -142,17 +142,12 @@ impl Game {
         if self.as_permanent(from).is_some_and(|p| p.finality_counter) && !self.is_commander(from) {
             return Event::MovedToExile { card: new_id, from };
         }
-        // Serra Paragon's granted rider (CR 118.9): a permanent played/cast from a graveyard under
-        // its permission is exiled instead of dying, and its controller gains 2 life (queued at the
-        // [`Event::MovedToExile`] choke). A commander still diverts to the command zone below.
-        // ponytail: modeled as a rules-driven zone redirect (like `finality_counter` above), not (CR 400)
-        // the real triggered ability it prints as — so it never uses the stack / can't be responded (CR 603, CR 405, CR 113)
-        // to, and the permanent never touches the graveyard, meaning its own Dies triggers and the
-        // `permanents_died_this_turn` tally don't fire. No pool card observes that gap; make it a
-        // real placed trigger if one ever needs to respond to the exile or watch this death.
-        if self.as_permanent(from).is_some_and(|p| p.serra_recursion) && !self.is_commander(from) {
-            return Event::MovedToExile { card: new_id, from };
-        }
+        // Serra Paragon's granted rider (CR 118.9 — "When this permanent is put into a graveyard
+        // from the battlefield, exile it and you gain 2 life.") is a real placed trigger, not a
+        // zone redirect: the tagged permanent genuinely dies here (a commander still diverts to
+        // the command zone below, same as any other death), and `Game::enqueue_triggers`
+        // fabricates the exile-and-gain-2-life trigger off the real `Event::MovedToGraveyard` —
+        // see `Effect::ExileGraveyardObjectGainLife`.
         if self.is_commander(from) {
             Event::MovedToCommandZone { card: new_id, from }
         } else {

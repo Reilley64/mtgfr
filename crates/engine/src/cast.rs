@@ -164,6 +164,15 @@ impl Game {
         if zone == Zone::Exile && self.may_cast_from_exile_free(object, player) {
             return Cost::FREE;
         }
+        // A printed conditional free-cast permission (CR 118.5, `CardDef::free_cast_if` —
+        // Massacre: "you may cast this spell without paying its mana cost"): the caster always
+        // takes it once the gate holds, same "no reason to decline a strictly-better cost"
+        // modeling as the exile permission above.
+        if let Some(condition) = def.free_cast_if
+            && self.condition_holds(condition, TriggerContext::of(player))
+        {
+            return Cost::FREE;
+        }
         let from_command = zone == Zone::Command;
         // Flashback (CR 702.34), escape (CR 702.19), or a fixed cast-from-graveyard alternative
         // cost for a permanent (CR 118.9, Raffine's Guidance) casts for that alternative cost,
@@ -231,6 +240,18 @@ impl Game {
                 *pip = pip.saturating_add(*extra);
             }
             cost.colorless = cost.colorless.saturating_add(buyback.colorless);
+            // A non-mana buyback rider (CR 702.27f — Constant Mists' "Buyback—Sacrifice a
+            // land"): the buyback cost's own `additional.sacrifice` rider (the same
+            // `[[cost.additional.buyback.additional]]` sub-table `AdditionalCost::sacrifice`
+            // uses for a plain spell) folds into the returned cost's sacrifice rider, so
+            // `Game::validate_cast_cost_picks`/the `sacrifice_cost` pay loop in `Game::cast`
+            // require and pay it exactly like an ordinary additional-sacrifice cost.
+            // ponytail: overwrites rather than merges with a base-spell `additional.sacrifice`
+            // — no pool card combines a buyback-sacrifice rider with the base spell's own
+            // separate sacrifice cost; merge counts/filters if one ever does.
+            if let Some(sacrifice) = buyback.additional.sacrifice {
+                cost.additional.sacrifice = Some(sacrifice);
+            }
         }
         // Strive (CR 601.2f/702.42): "{2}{R} more to cast for each target beyond the first" —
         // the caster's declared target count (settled pre-stack, see `Intent::Cast::strive_count`'s
@@ -833,11 +854,79 @@ impl Game {
         Ok(events)
     }
 
+    /// Validate a [`SacrificeCost`]'s named picks (CR 118.9/602.2b — checked before anything is
+    /// paid, an uncompletable/unnamed cost makes the activation illegal): `None` needs no picks,
+    /// `This` sacrifices `source` itself, `Creature { filter, count }` needs exactly `count`
+    /// distinct permanents `player` controls matching `filter`. Read-only (no events) — shared by
+    /// [`Self::activate_ability`]'s activation-sacrifice cost and [`Self::cycle`]'s cycling one
+    /// (CR 702.29b, Edge of Autumn's "Cycling—Sacrifice a land").
+    fn validate_sacrifice_cost(
+        &self,
+        player: PlayerId,
+        source: ObjectId,
+        cost: SacrificeCost,
+        named: &[ObjectId],
+    ) -> Result<Vec<ObjectId>, Reject> {
+        match cost {
+            SacrificeCost::None => Ok(Vec::new()),
+            SacrificeCost::This => Ok(vec![source]),
+            SacrificeCost::Creature { filter, count } => {
+                if named.len() != count as usize {
+                    return Err(Reject::CannotActivate);
+                }
+                let mut chosen: Vec<ObjectId> = Vec::with_capacity(named.len());
+                for &s in named {
+                    let legal = !chosen.contains(&s)
+                        && self.as_permanent(s).is_some()
+                        && self.controller_of(s) == player
+                        && self.permanent_matches(&filter, s, player, Some(source));
+                    if !legal {
+                        return Err(Reject::CannotActivate);
+                    }
+                    chosen.push(s);
+                }
+                Ok(chosen)
+            }
+        }
+    }
+
+    /// Pay a validated sacrifice cost's events (CR 118.9): each of `sacrificed` goes to the
+    /// graveyard via the normal death choke, so "when this/a creature dies" watchers fire off it
+    /// like any other sacrifice. Shared by [`Self::activate_ability`] and [`Self::cycle`], paired
+    /// with [`Self::validate_sacrifice_cost`].
+    fn pay_sacrifice_events(
+        &mut self,
+        player: PlayerId,
+        sacrificed: &[ObjectId],
+        events: &mut Vec<Event>,
+    ) {
+        for &id in sacrificed {
+            let def = self.def_of(id);
+            let sac = self.sacrifice_event(id);
+            self.push_apply(events, sac);
+            self.push_apply(
+                events,
+                Event::Sacrificed {
+                    object: id,
+                    by: player,
+                    def,
+                },
+            );
+        }
+    }
+
     /// Activate a hand card's Cycling ability (CR 702.29a — "{N}, Discard this card: Draw a
-    /// card."): pay the mana, discard `card` (that's the rest of the cost), then draw one card.
-    /// This is the engine's first activate-from-hand surface — a keyword ability that functions
-    /// only from the hand, not a permanent's [`Timing::Activated`].
-    pub(crate) fn cycle(&mut self, player: PlayerId, card: ObjectId) -> Result<Vec<Event>, Reject> {
+    /// card."): pay the mana and any [`CardDef::cycling_sacrifice`] (CR 702.29b), discard `card`
+    /// (that's the rest of the cost), then draw one card. This is the engine's first
+    /// activate-from-hand surface — a keyword ability that functions only from the hand, not a
+    /// permanent's [`Timing::Activated`]. `sacrifice` names the permanent paying
+    /// `cycling_sacrifice`; ignored for a card whose cycling carries none.
+    pub(crate) fn cycle(
+        &mut self,
+        player: PlayerId,
+        card: ObjectId,
+        sacrifice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
         // Cycling is an activated ability (CR 702.29) — requires priority (CR 117.1b).
         if player != self.priority {
             return Err(Reject::NotYourPriority);
@@ -851,12 +940,19 @@ impl Game {
         let Some(cost) = c.def.cycling else {
             return Err(Reject::CannotActivate);
         };
+        // Resolve the cycling sacrifice cost up front (CR 118.9/602.2b), same choke an ordinary
+        // activation's sacrifice cost uses.
+        let named: Vec<ObjectId> = sacrifice.into_iter().collect();
+        let sacrificed =
+            self.validate_sacrifice_cost(player, card, c.def.cycling_sacrifice, &named)?;
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
-        // before the discard) and "discard this card" (CR 702.29a) — before the ability resolves.
+        // before the discard), the sacrifice, and "discard this card" (CR 702.29a) — before the
+        // ability resolves.
         let mut events = Vec::new();
         self.settle_payment(player, cost, None, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
+        self.pay_sacrifice_events(player, &sacrificed, &mut events);
         self.push_apply(
             &mut events,
             Event::MovedToGraveyard {
@@ -1710,6 +1806,7 @@ impl Game {
 
     /// Activate a permanent's activated ability. Mana abilities pay and produce mana
     /// immediately; any other activated ability pays its cost and goes on the stack.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn activate_ability(
         &mut self,
         player: PlayerId,
@@ -1717,6 +1814,7 @@ impl Game {
         ability_index: usize,
         target: Option<Target>,
         sacrifice: Vec<ObjectId>,
+        discard_cost: Vec<ObjectId>,
         x: u32,
     ) -> Result<Vec<Event>, Reject> {
         let (ability, cost) = self.ability_activation_gate(player, object, ability_index)?;
@@ -1775,30 +1873,24 @@ impl Game {
             }
         }
         // Resolve the sacrifice cost up front (CR 118.9 — a cost, checked before anything is
-        // paid). "Sacrifice this" sacrifices the source; "Sacrifice N creature(s)" sacrifices
-        // exactly `count` distinct named creatures the activator controls (an illegal / short /
-        // duplicated choice rejects the whole activation before any event is applied).
-        let sacrificed: Vec<ObjectId> = match cost.sacrifice {
-            SacrificeCost::None => Vec::new(),
-            SacrificeCost::This => vec![object],
-            SacrificeCost::Creature { filter, count } => {
-                if sacrifice.len() != count as usize {
-                    return Err(Reject::CannotActivate);
-                }
-                let mut chosen: Vec<ObjectId> = Vec::with_capacity(sacrifice.len());
-                for &s in &sacrifice {
-                    let legal = !chosen.contains(&s)
-                        && self.as_permanent(s).is_some()
-                        && self.controller_of(s) == player
-                        && self.permanent_matches(&filter, s, player, Some(object));
-                    if !legal {
-                        return Err(Reject::CannotActivate);
-                    }
-                    chosen.push(s);
-                }
-                chosen
+        // paid).
+        let sacrificed =
+            self.validate_sacrifice_cost(player, object, cost.sacrifice, &sacrifice)?;
+        // A "discard a card" cost (CR 602.2b — Wild Mongrel's "Discard a card") names exactly
+        // `discard_cost` distinct cards currently in the activator's hand; a short, duplicated,
+        // or not-in-hand choice rejects the whole activation before any event is applied, same
+        // as an illegal sacrifice pick above.
+        if discard_cost.len() != cost.discard_cost as usize {
+            return Err(Reject::CannotActivate);
+        }
+        let hand = self.hand_of(player);
+        let mut named: Vec<ObjectId> = Vec::with_capacity(discard_cost.len());
+        for &id in &discard_cost {
+            if named.contains(&id) || !hand.contains(&id) {
+                return Err(Reject::CannotActivate);
             }
-        };
+            named.push(id);
+        }
         // Read the sacrificed creature's power/toughness *before* it's sacrificed (Dina, Soul
         // Steeper's "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters", X = that
         // power; Miren, the Moaning Well's "gain life equal to the sacrificed creature's
@@ -1872,6 +1964,24 @@ impl Game {
                 self.push_apply(&mut events, event);
             }
         }
+        // "Discard a card" as part of the cost (CR 602.2b — Wild Mongrel's "Discard a card").
+        // Validated payable above; routes through the normal discard events (mirroring `cast`'s
+        // own additional-discard-cost loop) so "whenever you discard a card" watchers fire off
+        // it, same as any other discard.
+        for &id in &named {
+            let card = self.next_object_id();
+            let def = self.def_of(id);
+            self.push_apply(&mut events, Event::MovedToGraveyard { card, from: id });
+            self.push_apply(
+                &mut events,
+                Event::Discarded {
+                    card,
+                    from: id,
+                    def,
+                    player,
+                },
+            );
+        }
         // "Return this to its owner's hand" as part of the cost (Rootha, Mercurial Artist's
         // "Return Rootha to its owner's hand"). A token ceases to exist instead of reaching a
         // hand (CR 111.7) — same branch `Effect::ReturnToHand` takes for a targeted bounce.
@@ -1923,19 +2033,7 @@ impl Game {
                 },
             );
         }
-        for &id in &sacrificed {
-            let def = self.def_of(id);
-            let sac = self.sacrifice_event(id);
-            self.push_apply(&mut events, sac);
-            self.push_apply(
-                &mut events,
-                Event::Sacrificed {
-                    object: id,
-                    by: player,
-                    def,
-                },
-            );
-        }
+        self.pay_sacrifice_events(player, &sacrificed, &mut events);
 
         if effect.is_mana_ability() {
             // "Add N mana of any one color" (CR 106.4 — Lotus Field, Kami of Whispered Hopes):

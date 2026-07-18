@@ -217,6 +217,29 @@ pub(crate) struct BatchTriggerScratch {
     /// before the exit tears the attachment down. Read (not drained) by
     /// `Game::queue_leaves_battlefield_triggers`, cleared wholesale at the end of every batch.
     pub permanents_left_battlefield: Vec<(ObjectId, Option<ObjectId>)>,
+    /// Pre-move ids of objects that were live battlefield [`Permanent`]s tagged
+    /// [`Permanent::serra_recursion`](crate::Permanent) the instant they were put into a
+    /// graveyard from the battlefield this batch — Serra Paragon's granted rider (CR 118.9). A
+    /// subset of [`permanents_put_into_graveyard_from_battlefield`](Self::permanents_put_into_graveyard_from_battlefield),
+    /// captured at the same `Game::apply` `MovedToGraveyard` choke point for the same
+    /// last-known-information reason (the flag lives on the live `Object::Permanent`, gone once
+    /// `create_object` tombstones it). Read (not drained) by `Game::enqueue_triggers`'s
+    /// `Event::MovedToGraveyard` arm to fabricate the real placed trigger (see
+    /// [`crate::Effect::ExileGraveyardObjectGainLife`]), cleared wholesale at the end of every batch.
+    pub serra_recursion_deaths: Vec<ObjectId>,
+    /// `(pre-move id, def, owner)` for every creature put into a graveyard from the battlefield
+    /// this batch — CR 603.10a last-known information for [`Game::queue_watch_death_triggers`],
+    /// read only when a *different* event in the same batch (`Event::PlayerLost`) has since
+    /// tombstoned that id to [`Object::Removed`]. CR 800.4a: a creature whose owner leaves the
+    /// game in the same SBA sweep it dies in leaves the game with them — its own Dies/self-watch
+    /// stays suppressed (`Game::enqueue_triggers` never reads this for the self arms) — but the
+    /// death is still visible to *other*, surviving players' death-watch (CR 603.6e; Hissing
+    /// Iguanar). Captured at the same `Game::apply` `MovedToGraveyard` choke point as
+    /// [`dying_creature_stats`](Self::dying_creature_stats), before `PlayerLost` (later in the
+    /// same batch) can tombstone the object and make `def_of`/`owner_of` panic. Read (not
+    /// drained) by `Game::enqueue_triggers`'s `Event::MovedToGraveyard` arm, cleared wholesale at
+    /// the end of every batch.
+    pub dying_creature_lki: Vec<(ObjectId, CardDef, PlayerId)>,
 }
 
 /// Once-per-turn activation and trigger caps, reset at each untap step.

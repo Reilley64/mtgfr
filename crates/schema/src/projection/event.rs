@@ -113,6 +113,7 @@ pub(crate) fn project_event(
             object: source,
             level,
         },
+        Event::Flipped { object } => VisibleEvent::Flipped { object },
         Event::PhasedOut { object } => VisibleEvent::PhasedOut { object },
         Event::PhasedIn { object } => VisibleEvent::PhasedIn { object },
         Event::CreatureTypeChosen { object, subtype } => VisibleEvent::CreatureTypeChosen {
@@ -120,6 +121,10 @@ pub(crate) fn project_event(
             subtype: subtype.to_string(),
         },
         Event::ColorChosen { object, color } => VisibleEvent::ColorChosen {
+            object,
+            color: color.index() as u8,
+        },
+        Event::ColorSetUntilEndOfTurn { object, color } => VisibleEvent::ColorSetUntilEndOfTurn {
             object,
             color: color.index() as u8,
         },
@@ -463,6 +468,15 @@ pub(crate) fn project_event(
         } => VisibleEvent::CombatDamageDealtToPlayer {
             source,
             player: player.0,
+            amount,
+        },
+        Event::CombatDamageDealtToCreature {
+            source,
+            target,
+            amount,
+        } => VisibleEvent::CombatDamageDealtToCreature {
+            source,
+            target,
             amount,
         },
         Event::DamageDealtToPlayer {

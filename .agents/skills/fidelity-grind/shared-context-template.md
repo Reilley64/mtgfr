@@ -18,7 +18,7 @@ delete/trim their notes.
 
 ## The backlog (authoritative task source)
 
-`docs/FIDELITY_BACKLOG.md` — your brief names ONE increment by number and heading. Read
+`{{BACKLOG_FILE}}` (deck increments; engine-wide tiers stay in `docs/FIDELITY_BACKLOG.md`) — your brief names ONE increment by number and heading. Read
 that section; the *Sketch* line is the intended design. Verify "landed" claims against
 the code, not the prose.
 

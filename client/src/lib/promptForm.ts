@@ -12,6 +12,7 @@ const FULLSCREEN_KINDS: ReadonlySet<PendingChoiceView["kind"]> = new Set([
   "choose_target",
   "choose_spell_targets",
   "put_land_from_hand",
+  "put_creature_from_hand",
   "choose_exiled_with_card",
   "search_library",
   "select_from_top",
@@ -38,6 +39,7 @@ const FULLSCREEN_KINDS: ReadonlySet<PendingChoiceView["kind"]> = new Set([
   "choose_target_players",
   "distribute_top",
   "choose_trigger_modes",
+  "choose_dredge",
 ]);
 
 /** Chrome for a pending Choice view kind. */

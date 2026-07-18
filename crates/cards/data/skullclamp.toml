@@ -1,0 +1,46 @@
+# Equipped creature gets +1/-1.
+# Whenever equipped creature dies, draw two cards.
+# Equip {1}
+name = "Skullclamp"
+otags = ["activated-ability", "death-trigger", "draw-engine", "flowstone", "hand-positive", "repeatable-pure-draw"]
+oracle = "Equipped creature gets +1/-1.\nWhenever equipped creature dies, draw two cards.\nEquip {1}"
+set = "msc"
+subtypes = ["Equipment"]
+id = "65986c1b-8e51-4604-b685-d82fa7d1263a"
+default_print = "1d8b007b-3169-4ee3-80c7-781fc096fc7a"
+
+[cost]
+generic = 1
+
+[kind]
+type = "artifact"
+
+# Equipped creature gets +1/-1.
+[[abilities]]
+timing = "static"
+
+# Equipped creature gets +1/-1.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 1
+toughness = -1
+
+# Whenever equipped creature dies, draw two cards.
+[[abilities]]
+timing = "enchanted_creature_dies"
+
+# draw two cards.
+[[abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# Equip {1}
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 1
+
+# Equip {1}
+[[abilities.effects]]
+type = "equip"

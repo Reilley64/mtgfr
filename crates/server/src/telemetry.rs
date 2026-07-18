@@ -10,8 +10,8 @@
 
 use std::sync::OnceLock;
 
-use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
+use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter, WithExportConfig};
 use opentelemetry_sdk::logs::log_processor_with_async_runtime::BatchLogProcessor;
@@ -23,9 +23,9 @@ use opentelemetry_sdk::resource::Resource;
 use opentelemetry_sdk::runtime;
 use opentelemetry_sdk::trace::span_processor_with_async_runtime::BatchSpanProcessor;
 use opentelemetry_sdk::trace::SdkTracerProvider;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 
 static INIT: OnceLock<()> = OnceLock::new();
 
@@ -227,10 +227,7 @@ mod tests {
 
     #[test]
     fn image_tag_strips_registry_ref() {
-        assert_eq!(
-            image_tag("ghcr.io/reilley64/mtgfr-server:2.3.0"),
-            "2.3.0"
-        );
+        assert_eq!(image_tag("ghcr.io/reilley64/mtgfr-server:2.3.0"), "2.3.0");
         assert_eq!(image_tag("2.3.0"), "2.3.0");
     }
 

@@ -44,6 +44,7 @@ export type AnswerInput =
   | { kind: "sacrifice"; ids: number[] } // sacrifice_edict
   | { kind: "discard"; cards: number[] } // discard
   | { kind: "put_land"; choice: number | null } // put_land_from_hand (null = decline)
+  | { kind: "put_creature"; choice: number | null } // put_creature_from_hand (null = decline)
   | { kind: "choose_exiled"; choice: number | null } // choose_exiled_with_card (null = decline)
   | { kind: "select_top"; cards: number[] } // select_from_top
   | { kind: "mode"; mode: number } // choose_mode
@@ -63,7 +64,8 @@ export type AnswerInput =
   | { kind: "keep_tapped"; ids: number[] } // decline_untap (empty = untap everything)
   | { kind: "top_or_bottom"; top: boolean } // choose_countered_spell_destination
   | { kind: "return_land"; land: number | null } // sacrifice_unless_return_land (null = sacrifice)
-  | { kind: "cast_face_down_choice"; choice: number | null }; // cast_creature_face_down (null = decline)
+  | { kind: "cast_face_down_choice"; choice: number | null } // cast_creature_face_down (null = decline)
+  | { kind: "dredge"; dredger: number | null }; // choose_dredge (null = draw normally)
 
 /** Map a pending choice and the player's answer to the wire intent that answers it. `pc` supplies
  * the answering `player`; the intent shape follows from the answer's tag. `discriminatorsExhaustive`
@@ -92,6 +94,7 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
       sacrifice: (a) => ({ kind: "choose_sacrifices", player, sacrifices: a.ids }),
       discard: (a) => ({ kind: "discard", player, cards: a.cards }),
       put_land: (a) => ({ kind: "put_land_from_hand", player, choice: a.choice }),
+      put_creature: (a) => ({ kind: "put_creature_from_hand", player, choice: a.choice }),
       choose_exiled: (a) => ({
         kind: "choose_exiled_with_card",
         player,
@@ -122,6 +125,7 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
       top_or_bottom: (a) => ({ kind: "choose_top_or_bottom", player, top: a.top }),
       return_land: (a) => ({ kind: "return_land_or_sacrifice", player, land: a.land }),
       cast_face_down_choice: (a) => ({ kind: "cast_creature_face_down", player, choice: a.choice }),
+      dredge: (a) => ({ kind: "choose_dredge", player, dredger: a.dredger }),
     }),
   );
 }

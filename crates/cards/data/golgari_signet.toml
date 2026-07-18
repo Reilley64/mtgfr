@@ -1,0 +1,24 @@
+# {1}, {T}: Add {B}{G}.
+name = "Golgari Signet"
+otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
+oracle = "{1}, {T}: Add {B}{G}."
+set = "dsc"
+id = "1cf51f50-24e4-48d0-95b3-1dad3ffa4bf5"
+default_print = "95103b4c-d0c0-40fa-9ddd-c7416455ca0c"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {1}, {T}: Add {B}{G}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {B}{G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["black", "green"]

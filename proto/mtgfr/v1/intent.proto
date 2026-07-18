@@ -68,6 +68,8 @@ message WireIntent {
     WireIntentReturnLandOrSacrifice return_land_or_sacrifice = 47;
     WireIntentChooseTopOrBottom choose_top_or_bottom = 48;
     WireIntentCastFaceDown cast_face_down = 49;
+    WireIntentChooseDredge choose_dredge = 50;
+    WireIntentPutCreatureFromHand put_creature_from_hand = 51;
   }
 }
 
@@ -124,6 +126,9 @@ message WireIntentActivateAbility {
   // The creature(s) to sacrifice for a "Sacrifice N creature(s)" cost (empty otherwise; must
   // have exactly the cost's count of entries).
   repeated uint32 sacrifice = 5;
+  // Hand cards named to pay a "discard a card" cost (empty otherwise; must have exactly the
+  // cost's `discard_cost` count of distinct entries currently in the activator's hand).
+  repeated uint32 discard_cost = 6;
 }
 
 message WireIntentDeclareAttackers {
@@ -323,6 +328,9 @@ message WireIntentChooseCopyTarget {
 message WireIntentCycle {
   uint32 player = 1;
   uint32 card = 2;
+  // The permanent paying a cycling sacrifice cost (CR 702.29b — Edge of Autumn's
+  // "Cycling—Sacrifice a land"); absent for a card whose cycling carries none.
+  optional uint32 sacrifice = 3;
 }
 
 // Activate a hand card's hand-activated, discard-this-card ability (CR 113.6/602.5e — Magma
@@ -442,4 +450,18 @@ message WireIntentChooseTopOrBottom {
 message WireIntentCastFaceDown {
   uint32 player = 1;
   uint32 card = 2;
+}
+
+// Answer a dredge choice (CR 702.52): `dredger` is the chosen graveyard dredger to
+// mill-and-return in place of the draw, or absent to decline and draw normally.
+message WireIntentChooseDredge {
+  uint32 player = 1;
+  optional uint32 dredger = 2;
+}
+
+// Answer a put-a-creature-from-hand choice (Cauldron Dance): `choice` is the hand creature put
+// onto the battlefield, or absent to decline.
+message WireIntentPutCreatureFromHand {
+  uint32 player = 1;
+  optional uint32 choice = 2;
 }

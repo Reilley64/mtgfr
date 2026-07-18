@@ -1,0 +1,36 @@
+# Flying
+# {B}{R}{G}, {T}: Target player draws a card.
+name = "Xira Arien"
+otags = ["activated-ability", "cycle-dmr-tricolor-legend", "deprecated-legend-type", "draw-engine", "evasion", "force-draw", "repeatable-crime", "repeatable-pure-draw", "unique-type-line"]
+oracle = "Flying\n{B}{R}{G}, {T}: Target player draws a card."
+set = "dmr"
+subtypes = ["Insect", "Wizard"]
+id = "4a6e367c-7bc9-44a3-8ede-f2d0651abad3"
+default_print = "ce050d13-7897-4889-a514-a7617a1ed686"
+legendary = true
+keywords = ["flying"]
+
+[cost]
+black = 1
+red = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+
+# {B}{R}{G}, {T}: Target player draws a card.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+black = 1
+red = 1
+green = 1
+
+# Target player draws a card.
+[[abilities.effects]]
+type = "target_player_draws"
+count = 1

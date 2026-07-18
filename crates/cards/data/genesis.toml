@@ -1,0 +1,34 @@
+# At the beginning of your upkeep, if this creature is in your graveyard, you may pay {2}{G}. If you do, return
+# target creature card from your graveyard to your hand.
+name = "Genesis"
+otags = ["intervening-if-clause", "regrowth-creature", "regrowth-self", "repeatable-card-advantage", "single-english-word-name", "trigger-from-graveyard"]
+oracle = "At the beginning of your upkeep, if this creature is in your graveyard, you may pay {2}{G}. If you do, return target creature card from your graveyard to your hand."
+set = "mh1"
+subtypes = ["Incarnation"]
+id = "15afdd88-05fc-4335-8a55-c6ee702f3bef"
+default_print = "9b741d88-513a-4f47-a4fd-af42c5e44b6d"
+functions_in_graveyard = true
+
+[cost]
+generic = 4
+green = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# At the beginning of your upkeep, if this creature is in your graveyard, you may pay {2}{G}. If
+# you do, return target creature card from your graveyard to your hand.
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+[abilities.cost]
+generic = 2
+green = 1
+
+# return target creature card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = "your_graveyard"

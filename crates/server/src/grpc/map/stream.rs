@@ -252,6 +252,15 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             cost: Some(wire_cost_to_pb(cost)),
         }),
+        PendingChoiceView::PayRecoverOrExile {
+            player,
+            source,
+            cost,
+        } => Choice::PayRecoverOrExile(pb::PendingChoiceViewPayRecoverOrExile {
+            player: u32::from(player),
+            source,
+            cost: Some(wire_cost_to_pb(cost)),
+        }),
         PendingChoiceView::AssignCombatDamage {
             player,
             source,
@@ -471,6 +480,18 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
         }),
         PendingChoiceView::PutLandFromHand { player, items } => {
             Choice::PutLandFromHand(pb::PendingChoiceViewPutLandFromHand {
+                player: u32::from(player),
+                items: choice_items_to_pb(items),
+            })
+        }
+        PendingChoiceView::PutCreatureFromHand { player, items } => {
+            Choice::PutCreatureFromHand(pb::PendingChoiceViewPutCreatureFromHand {
+                player: u32::from(player),
+                items: choice_items_to_pb(items),
+            })
+        }
+        PendingChoiceView::ChooseDredge { player, items } => {
+            Choice::ChooseDredge(pb::PendingChoiceViewChooseDredge {
                 player: u32::from(player),
                 items: choice_items_to_pb(items),
             })
@@ -750,6 +771,13 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
                 color: u32::from(color),
             })
         }
+        VisibleEvent::ColorSetUntilEndOfTurn { object, color } => {
+            Event::ColorSetUntilEndOfTurn(pb::VisibleEventColorSetUntilEndOfTurn {
+                object,
+                color: u32::from(color),
+            })
+        }
+        VisibleEvent::Flipped { object } => Event::Flipped(pb::VisibleEventFlipped { object }),
         VisibleEvent::PreparedSpellCast {
             spell,
             source,
@@ -1076,6 +1104,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
         } => Event::CombatDamageDealtToPlayer(pb::VisibleEventCombatDamageDealtToPlayer {
             source,
             player: u32::from(player),
+            amount,
+        }),
+        VisibleEvent::CombatDamageDealtToCreature {
+            source,
+            target,
+            amount,
+        } => Event::CombatDamageDealtToCreature(pb::VisibleEventCombatDamageDealtToCreature {
+            source,
+            target,
             amount,
         }),
         VisibleEvent::CombatDamagePrevented { player, amount } => {

@@ -1,0 +1,31 @@
+# Discard a card: This creature gets +1/+1 and becomes the color of your choice until end of turn.
+name = "Wild Mongrel"
+id = "e9441ab3-7a17-4f9b-a873-e5e82f6e9690"
+default_print = "4d5be4ab-f85a-4272-ac08-99cb0105eb11"
+oracle = "Discard a card: This creature gets +1/+1 and becomes the color of your choice until end of turn."
+set = "uma"
+subtypes = ["Dog"]
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Discard a card: This creature gets +1/+1 and becomes the color of your choice ...
+[[abilities]]
+timing = "activated"
+discard_cost = 1
+
+# This creature gets +1/+1 ... until end of turn.
+[[abilities.effects]]
+type = "pump_self_until_end_of_turn"
+power = 1
+toughness = 1
+
+# ... and becomes the color of your choice until end of turn.
+[[abilities.effects]]
+type = "set_own_color_until_end_of_turn"

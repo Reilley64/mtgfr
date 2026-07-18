@@ -94,6 +94,11 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
                 game.pay_echo(player, pay)
             } else if matches!(
                 game.pending_choice,
+                Some(PendingChoice::PayRecoverOrExile { .. })
+            ) {
+                game.pay_recover(player, pay)
+            } else if matches!(
+                game.pending_choice,
                 Some(PendingChoice::SacrificeUnlessPay { .. })
             ) {
                 game.pay_sacrifice_unless(player, pay)
@@ -199,7 +204,11 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             player,
             keep_tapped,
         } => game.answer_decline_untap(player, keep_tapped),
+        Intent::ChooseDredge { player, dredger } => game.answer_choose_dredge(player, dredger),
         Intent::PutLandFromHand { player, choice } => game.put_land_from_hand(player, choice),
+        Intent::PutCreatureFromHand { player, choice } => {
+            game.put_creature_from_hand(player, choice)
+        }
         Intent::CastCreatureFaceDown { player, choice } => {
             game.cast_creature_face_down(player, choice)
         }

@@ -1,0 +1,23 @@
+# Return target card from your graveyard to your hand.
+name = "Elven Cache"
+otags = ["hand-neutral", "regrowth-any", "single-target-instant-sorcery"]
+oracle = "Return target card from your graveyard to your hand."
+set = "6ed"
+id = "8a922366-ee2a-4ddb-a904-683dcf4f191a"
+default_print = "10d3d239-1e16-4a23-9098-ee67d32e0208"
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "sorcery"
+
+# Return target card from your graveyard to your hand.
+[[abilities]]
+timing = "spell"
+
+# Return target card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "any_card" } }

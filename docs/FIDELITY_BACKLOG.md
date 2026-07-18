@@ -1994,6 +1994,15 @@ stops being a creature.
 
 ---
 
+## Deathdancer Xira deck increments (2026-07-17)
+
+Moved to [docs/fidelity/deathdancer-xira-increments.md](fidelity/deathdancer-xira-increments.md)
+(increments #167-#202 — global numbering continues across files). Per-deck increments now live
+next to their deck report in `docs/fidelity/`; this file keeps the engine-wide tiers and
+per-card exotics.
+
+---
+
 ## Top 5 next increments (build in this order)
 
 1. **`target-filter-adoption` (#66)** — 18 cards for an S: pure wiring of the already-landed `PermanentFilter` into the remaining targeted/mass effects. Highest leverage in the audit, zero new machinery.

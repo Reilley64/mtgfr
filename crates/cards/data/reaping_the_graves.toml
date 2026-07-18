@@ -1,0 +1,37 @@
+# Return target creature card from your graveyard to your hand.
+# Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
+# the copies.)
+name = "Reaping the Graves"
+id = "80c663a5-2794-4748-b47a-34352fb2112f"
+default_print = "760a66bd-2821-4710-8f02-3c30772dd884"
+otags = ["cast-trigger-self", "copy-self", "graveyard-recursion-creature", "hand-positive", "single-target-instant-sorcery", "storm-like"]
+oracle = "Return target creature card from your graveyard to your hand.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)"
+set = "scg"
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "instant"
+
+# Return target creature card from your graveyard to your hand.
+[[abilities]]
+timing = "spell"
+
+# Return target creature card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "creature" } }
+
+# Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
+# the copies.)
+[[abilities]]
+timing = "when_you_cast_this"
+
+# copy it for each spell cast before it this turn. You may choose new targets for the copies.
+[[abilities.effects]]
+type = "copy_triggering_spell"
+count = "spells_cast_before_this_this_turn"
+may_choose_new_targets = true
+last_known_information = true

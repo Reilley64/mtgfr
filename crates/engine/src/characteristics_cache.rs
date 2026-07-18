@@ -161,6 +161,8 @@ impl Game {
             }
             // Turning face up swaps the anonymous 2/2 for the real card's characteristics.
             Event::TurnedFaceUp { permanent } => cache.invalidate_object(permanent),
+            // Flipping (CR 712) swaps the front face's name/types/P/T/abilities for the back's.
+            Event::Flipped { object } => cache.invalidate_object(object),
             // An enter-as-copy overwrites name/types/subtypes/P/T/keywords wholesale; a copied
             // anthem-lord could also buff the controller's other creatures, so drop the whole
             // board (CR 706/707.2 — Altered Ego, Cursed Mirror; the same at the until-EOT revert).

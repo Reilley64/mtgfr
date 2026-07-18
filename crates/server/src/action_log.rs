@@ -183,7 +183,11 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::ChooseSacrifices { sacrifices, .. } => format!("sacrifice {sacrifices:?}"),
         WireIntent::Discard { cards, .. } => format!("discard {cards:?}"),
         WireIntent::DeclineUntap { keep_tapped, .. } => format!("keep-tapped {keep_tapped:?}"),
+        WireIntent::ChooseDredge { dredger, .. } => format!("dredge {dredger:?}"),
         WireIntent::PutLandFromHand { choice, .. } => format!("put-land {}", opt_id(choice)),
+        WireIntent::PutCreatureFromHand { choice, .. } => {
+            format!("put-creature {}", opt_id(choice))
+        }
         WireIntent::CastCreatureFaceDown { choice, .. } => {
             format!("cast-creature-face-down {}", opt_id(choice))
         }

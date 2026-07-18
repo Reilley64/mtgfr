@@ -38,6 +38,7 @@ impl Game {
             consecutive_passes: 0,
             pending_trigger_groups: Vec::new(),
             pending_echo: Vec::new(),
+            pending_recover: Vec::new(),
             pending_choice: None,
             pending_sequence: None,
             pending_spell_finish: None,
@@ -55,8 +56,8 @@ impl Game {
             next_action_id: 0,
             batch_trigger_scratch: state::BatchTriggerScratch::default(),
             permanents_died_this_turn: 0,
+            damaged_this_turn: Vec::new(),
             resolution_frame: crate::resolution::ResolutionFrame::default(),
-            pending_serra_lifegain: Vec::new(),
             characteristics_cache: characteristics_cache::CharacteristicsCacheCell::default(),
             abilities_granted_until_eot: Vec::new(),
             pending_enter_bonus_counters: Vec::new(),
@@ -303,8 +304,27 @@ impl Game {
         match self.objects[id as usize] {
             Object::Card(c) => c.def,
             Object::Spell(s) => s.def,
+            // CR 712: a flipped permanent (a Kamigawa flip card) permanently uses its back face's
+            // characteristics — every accessor that reads `def_of` (name, types, subtypes,
+            // abilities, and `pt_base`) sees the back face at once.
+            Object::Permanent(p) if p.flipped => p.def.back.copied().unwrap_or(p.def),
             Object::Permanent(p) => p.def,
             Object::Moved { to } => self.def_of(to),
+            Object::Removed => panic!("object {id} has left the game"),
+        }
+    }
+
+    /// The object's *printed front* card definition, ignoring any flip swap. For a CR 712 flip
+    /// card this is the physical printing's front face — the identity a single Scryfall print (one
+    /// image) is keyed by — whereas [`def_of`](Self::def_of) returns the live (back) face once
+    /// flipped. Used by the wire snapshot to keep a flipped permanent's `card_id`/`print` (art,
+    /// oracle lookup) on the shared physical print while name/type/P-T display the back face.
+    pub fn front_def_of(&self, id: ObjectId) -> CardDef {
+        match self.objects[id as usize] {
+            Object::Card(c) => c.def,
+            Object::Spell(s) => s.def,
+            Object::Permanent(p) => p.def,
+            Object::Moved { to } => self.front_def_of(to),
             Object::Removed => panic!("object {id} has left the game"),
         }
     }
@@ -442,6 +462,31 @@ impl Game {
             .iter()
             .find(|(o, _)| *o == id)
             .map_or(0, |(_, count)| *count)
+    }
+
+    /// The expiry payload of the exiled card at `id`: the `on_expiry` effects of its
+    /// [`Effect::ExileSelfWithTimeCounters`] step (All Hallow's Eve's scream-counter self-exile).
+    /// Empty (Rousing Refrain's plain suspend, or any card without such a step) means "grant the
+    /// suspend free-cast permission when the last counter is removed" — a non-empty slice replaces
+    /// that with a graveyard move plus these effects (see [`Step::Upkeep`](crate::Step) tick).
+    /// ponytail: scans the ability's own effect and one level of [`Effect::Sequence`] nesting —
+    /// deep enough for the pool's self-exile cards; recurse when a card buries the step deeper.
+    pub(crate) fn suspend_expiry_payload(&self, id: ObjectId) -> &'static [Effect] {
+        let payload = |effect: &Effect| match effect {
+            Effect::ExileSelfWithTimeCounters { on_expiry, .. } => Some(*on_expiry),
+            _ => None,
+        };
+        for ability in self.def_of(id).abilities {
+            if let Some(on_expiry) = payload(&ability.effect) {
+                return on_expiry;
+            }
+            if let Effect::Sequence { steps } = ability.effect
+                && let Some(on_expiry) = steps.iter().find_map(payload)
+            {
+                return on_expiry;
+            }
+        }
+        &[]
     }
 
     /// A planeswalker's current loyalty (0 if `id` isn't a permanent).

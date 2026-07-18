@@ -103,6 +103,32 @@ impl Cost {
         let left: u32 = remaining.iter().map(|&n| u32::from(n)).sum();
         left >= u32::from(self.generic)
     }
+
+    /// Render this cost's mana pips as cost text (CR 202.3) — `{X}`, the generic number, `{C}`
+    /// colorless pips, WUBRG colored pips, then `{a/b}` hybrid pips. Ignores non-mana riders
+    /// (`additional`); used wherever a full `Cost` needs to read back as a pip string, e.g.
+    /// [`Effect`](super::Effect)'s `SacrificeSelfUnlessPay` label (Keldon Vandals' `{2}{R}`).
+    pub fn mana_label(&self) -> String {
+        let mut out = String::new();
+        for _ in 0..self.x {
+            out.push_str("{X}");
+        }
+        if self.generic > 0 {
+            out.push_str(&format!("{{{}}}", self.generic));
+        }
+        for _ in 0..self.colorless {
+            out.push_str("{C}");
+        }
+        for color in Color::ALL {
+            for _ in 0..self.colored[color.index()] {
+                out.push_str(&format!("{{{}}}", color.letter()));
+            }
+        }
+        for &(a, b) in self.hybrid {
+            out.push_str(&format!("{{{}/{}}}", a.letter(), b.letter()));
+        }
+        out
+    }
 }
 
 /// Assign each hybrid pip (CR 107.4e — `{a/b}`) one remaining spent unit of either of its colors,
@@ -156,15 +182,16 @@ pub struct AdditionalCost {
     /// never touches mana. 0 for none. [`Game::cast`] rejects the cast if the caster has less life
     /// (CR 119.4) and otherwise pays it alongside the mana cost. TOML `pay_life = 3`.
     pub pay_life: u8,
-    /// "You may sacrifice any number of permanents matching this filter" (CR 601.2f — Plumb the
-    /// Forbidden's "you may sacrifice one or more creatures"): entirely optional, 0 up to however
-    /// many the caster controls. `None` for no sacrifice cost on this spell. The chosen
-    /// permanents are named in [`Intent::Cast`]'s `sacrifice_cost`, paid alongside `discard_cost`
-    /// by [`Game::cast`]; the count actually paid is recorded on the resulting [`Spell`] (read by
-    /// a copy-per-sacrifice rider once one exists). TOML `sacrifice = { count = "one_or_more",
-    /// filter = "creature" }` — `count` is a marker (only `"one_or_more"` is modeled; a fixed or
-    /// mandatory sacrifice cast cost would need its own shape).
-    pub sacrifice: Option<PermanentFilter>,
+    /// A sacrifice rider on the cost (CR 601.2f), either [`SacrificeAdditionalCostCount::OneOrMore`]'s
+    /// entirely-optional "sacrifice any number" (Plumb the Forbidden) or
+    /// [`SacrificeAdditionalCostCount::Exactly`]'s mandatory fixed count (Dread Return's
+    /// Flashback—Sacrifice three creatures, CR 601.2f/602.2b). `None` for no sacrifice cost on
+    /// this spell. The chosen permanents are named in [`Intent::Cast`]'s `sacrifice_cost`, paid
+    /// alongside `discard_cost` by [`Game::cast`]; the count actually paid is recorded on the
+    /// resulting [`Spell`] (read by a copy-per-sacrifice rider for the optional shape). TOML
+    /// `sacrifice = { count = "one_or_more", filter = "creature" }` or `sacrifice = { count = 3,
+    /// filter = "creature" }`.
+    pub sacrifice: Option<SacrificeAdditionalCost>,
     /// Kicker (CR 702.33) — "You may pay an additional [cost] as you cast this spell" (Rite of
     /// Replication's "Kicker {5}"). `None` for a spell with no kicker. Entirely optional: the
     /// caster chooses whether to pay when casting (CR 702.33d), recorded on the resulting
@@ -216,6 +243,25 @@ pub struct AdditionalCost {
     /// ponytail: single replicate cost only (Changing Loyalty is the pool's only replicate
     /// card) — grow a per-card cap or multi-replicate-cost shape from a real card that needs one.
     pub replicate: Option<&'static Cost>,
+}
+
+/// A sacrifice rider on a spell's mana cost (CR 601.2f — [`AdditionalCost::sacrifice`]): the
+/// permanent filter the named sacrifices must match, plus how many are required.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SacrificeAdditionalCost {
+    pub filter: PermanentFilter,
+    pub count: SacrificeAdditionalCostCount,
+}
+
+/// How many permanents [`SacrificeAdditionalCost`] requires (CR 601.2f).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SacrificeAdditionalCostCount {
+    /// "You may sacrifice any number of permanents..." (Plumb the Forbidden) — entirely
+    /// optional, 0 up to however many the caster controls.
+    OneOrMore,
+    /// "Sacrifice N creatures" (Dread Return's Flashback—Sacrifice three creatures) — mandatory:
+    /// the cast names exactly N distinct matching permanents (CR 601.2f/602.2b) or is rejected.
+    Exactly(u8),
 }
 
 /// Escape's cost (CR 702.19): the escape mana cost plus how many *other* graveyard cards must

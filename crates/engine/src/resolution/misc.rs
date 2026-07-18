@@ -112,6 +112,13 @@ impl Game {
                 }]
             }
 
+            // Nezumi Graverobber: the source permanent flips to its back face (CR 712). One-way and
+            // idempotent — flipping an already-flipped or vanished source is a no-op (guard-return
+            // before minting, since the apply choke reads `permanent_mut`).
+            Effect::FlipSource => match self.as_permanent(source) {
+                Some(p) if !p.flipped => vec![Event::Flipped { object: source }],
+                _ => vec![],
+            },
             _ => unreachable!("misc family mint received a non-family effect"),
         }
     }

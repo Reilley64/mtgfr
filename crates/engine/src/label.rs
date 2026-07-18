@@ -37,6 +37,8 @@ fn amount_label(amount: Amount) -> String {
                 CounterKind::Study => "study",
                 CounterKind::Vow => "vow",
                 CounterKind::Time => "time",
+                CounterKind::Scream => "scream",
+                CounterKind::MinusOneMinusOne => "-1/-1",
             };
             format!("1 per {kind_name} counter on it")
         }
@@ -105,6 +107,7 @@ fn amount_label(amount: Amount) -> String {
         }
         Amount::CombatDamageDealt => "the damage dealt".to_string(),
         Amount::TriggeringDamageDealt => "that much".to_string(),
+        Amount::SpellsCastBeforeThisThisTurn => "each spell cast before it this turn".to_string(),
     }
 }
 
@@ -198,6 +201,25 @@ fn permanent_filter_label(filter: PermanentFilter) -> String {
         format!("{}s", names.join("/"))
     };
 
+    // Excluded types (Haywire Mite's "noncreature"; Terror/Shriekmaw/Ashes to Ashes's
+    // "nonartifact") — a "non<type>" prefix per excluded type.
+    for (bit, name) in [
+        (TypeSet::CREATURE, "noncreature"),
+        (TypeSet::ARTIFACT, "nonartifact"),
+        (TypeSet::ENCHANTMENT, "nonenchantment"),
+        (TypeSet::PLANESWALKER, "nonplaneswalker"),
+        (TypeSet::LAND, "nonland"),
+    ] {
+        if filter.exclude.intersects(bit) {
+            base = format!("{name} {base}");
+        }
+    }
+    // Negated specific color (Terror/Shriekmaw's "nonblack").
+    if let ColorFilter::NotColor(color) = filter.color {
+        let name = format!("{color:?}").to_lowercase();
+        base = format!("non{name} {base}");
+    }
+
     if let TokenFilter::Nontoken = filter.token {
         base = format!("nontoken {base}");
     } else if let TokenFilter::Token = filter.token {
@@ -248,6 +270,7 @@ fn card_filter_label(filter: CardFilter) -> String {
             "an artifact, creature, or non-Aura enchantment card with mana value {max} or less"
         ),
         CardFilter::InstantOrSorcery => "an instant or sorcery card".to_string(),
+        CardFilter::Sorcery => "a sorcery card".to_string(),
         CardFilter::Enchantment => "enchantment cards".to_string(),
         CardFilter::Permanent => "a permanent card".to_string(),
         CardFilter::NoncreatureNonland => "a noncreature, nonland card".to_string(),
@@ -299,6 +322,7 @@ impl Effect {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
                     SearchDest::LibraryTop => "on top of your library",
+                    SearchDest::Graveyard => "into your graveyard",
                 };
                 format!(
                     "Reveal cards from the top of your library until you reveal {} {}, put them {}, and put the rest on the bottom of your library",
@@ -332,6 +356,7 @@ impl Effect {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
                     SearchDest::LibraryTop => "on top of your library",
+                    SearchDest::Graveyard => "into your graveyard",
                 };
                 format!(
                     "Reveal the top {} cards of your library, put all cards among them that are {} {}, and put the rest on the bottom of your library",
@@ -342,6 +367,9 @@ impl Effect {
             }
             Effect::GainLife { amount } => format!("Gain {} life", amount_label(amount)),
             Effect::LoseLife { amount } => format!("Lose {} life", amount_label(amount)),
+            Effect::DealDamageToSelf { amount } => {
+                format!("Deals {} damage to you", amount_label(amount))
+            }
             Effect::GainLifeTargetController { amount } => {
                 format!("Target's controller gains {} life", amount_label(amount))
             }
@@ -648,6 +676,8 @@ impl Effect {
                     CounterKind::Study => "study",
                     CounterKind::Vow => "vow",
                     CounterKind::Time => "time",
+                    CounterKind::Scream => "scream",
+                    CounterKind::MinusOneMinusOne => "-1/-1",
                 };
                 format!("Put {} {kind_name} counters", amount_label(count))
             }
@@ -694,6 +724,8 @@ impl Effect {
                     CounterKind::Study => "study",
                     CounterKind::Vow => "vow",
                     CounterKind::Time => "time",
+                    CounterKind::Scream => "scream",
+                    CounterKind::MinusOneMinusOne => "-1/-1",
                 };
                 format!("Enters with {} {kind_name} counters", amount_label(amount))
             }
@@ -792,6 +824,10 @@ impl Effect {
             Effect::ReturnThisAuraAttachedTo { .. } => {
                 "Return this to the battlefield attached to that creature".to_string()
             }
+            Effect::ScheduleReturnReanimatedToHand => "That creature gains haste. Return it to \
+                 your hand at the beginning of the next end step"
+                .to_string(),
+            Effect::ReturnObjectToHand { .. } => "Return it to your hand".to_string(),
             Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost => {
                 "Return this from your graveyard to the battlefield".to_string()
             }
@@ -930,10 +966,17 @@ impl Effect {
             Effect::TuckFromGraveyard { to_top: false, .. } => {
                 "Put graveyard card on bottom of library".to_string()
             }
-            Effect::MassReturnFromGraveyard { filter } => format!(
-                "Return all {} from your graveyard to the battlefield",
-                card_filter_label(filter)
-            ),
+            Effect::MassReturnFromGraveyard {
+                filter,
+                all_players,
+            } => {
+                let kind = card_filter_label(filter);
+                if all_players {
+                    format!("Each player returns all {kind} from their graveyard to the battlefield")
+                } else {
+                    format!("Return all {kind} from your graveyard to the battlefield")
+                }
+            }
             Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, target_player } => {
                 let count = if max == 0 {
                     "any number of".to_string()
@@ -1029,13 +1072,16 @@ impl Effect {
                 let suffix = if tapped { " tapped" } else { "" };
                 format!("Put a land from hand onto the battlefield{suffix}")
             }
+            Effect::PutCreatureFromHand => {
+                "You may put a creature card from your hand onto the battlefield. It gains \
+                 haste. Sacrifice it at the beginning of the next end step"
+                    .to_string()
+            }
             Effect::CastCreatureFaceDown => {
                 "Cast a creature card from hand face down as a 2/2".to_string()
             }
-            // ponytail: generic pips only (Rupture Spire's {1}) — no pool card needs a colored
-            // sacrifice-unless-pay cost yet; extend if one does.
             Effect::SacrificeSelfUnlessPay { cost } => {
-                format!("Sacrifice this unless you pay {{{}}}", cost.generic)
+                format!("Sacrifice this unless you pay {}", cost.mana_label())
             }
             Effect::SacrificeSelfUnlessReturnLand { .. } => {
                 "Sacrifice this unless you return a non-Lair land you control".to_string()
@@ -1067,6 +1113,10 @@ impl Effect {
             Effect::CopyTargetSpell => "Copy target spell".to_string(),
             Effect::CopyThisSpell { .. } => "Copy this spell".to_string(),
             Effect::RetargetSpellCopy { .. } => "Choose new targets for the copy".to_string(),
+            Effect::MayPayToCopyThis { cost, .. } => format!(
+                "That player or that permanent's controller may pay {} to copy this",
+                cost.mana_label()
+            ),
             Effect::ChangeTargetOfTargetSpellOrAbility { .. } => {
                 "Change the target of target spell or ability with a single target".to_string()
             }
@@ -1175,6 +1225,7 @@ impl Effect {
                     SearchDest::Hand => "into your hand",
                     SearchDest::Battlefield => "onto the battlefield",
                     SearchDest::LibraryTop => "on top of your library, revealing it",
+                    SearchDest::Graveyard => "into your graveyard",
                 };
                 format!("Search your library for {what}, put it {dest}")
             }
@@ -1281,12 +1332,17 @@ impl Effect {
             Effect::SacrificeEnchantedCreature { .. } => {
                 "That creature's controller sacrifices it".to_string()
             }
+            Effect::DestroyTriggeringDamagedCreature { .. } => "Destroy that creature".to_string(),
             Effect::ExileObject { .. } => "Exile it".to_string(),
+            Effect::ExileGraveyardObjectGainLife { amount, .. } => {
+                format!("Exile it and gain {amount} life")
+            }
             Effect::MillSelf { count } => format!("Mill {}", amount_label(count)),
-            Effect::ExileSelfWithTimeCounters { counters } => {
+            Effect::ExileSelfWithTimeCounters { counters, .. } => {
                 format!("Exile this with {counters} time counters on it")
             }
             Effect::BecomePrepared => "Become prepared".to_string(),
+            Effect::FlipSource => "Flip this permanent".to_string(),
             Effect::LevelUp { level } => format!("Level {level}"),
             Effect::ArmCombatDamageWatch => {
                 "Arm a delayed watch: this creature becomes prepared when target creature deals \
@@ -1295,6 +1351,9 @@ impl Effect {
             }
             Effect::ChooseCreatureType => "Choose a creature type".to_string(),
             Effect::ChooseColor => "Choose a color".to_string(),
+            Effect::SetOwnColorUntilEndOfTurn => {
+                "Become the color of your choice until end of turn".to_string()
+            }
             Effect::RemoveCounterFromSelf => "Remove a +1/+1 counter from it".to_string(),
             Effect::GrantFlashThisTurn => {
                 "You may cast spells this turn as though they had flash".to_string()

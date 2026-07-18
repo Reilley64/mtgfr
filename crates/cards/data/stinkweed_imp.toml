@@ -1,0 +1,32 @@
+# Flying
+# Whenever this creature deals combat damage to a creature, destroy that creature.
+# Dredge 5 (If you would draw a card, you may mill five cards instead. If you do, return this card from your
+# graveyard to your hand.)
+name = "Stinkweed Imp"
+id = "e005bc76-4985-4ec6-b9f6-cf6d0d9f5df4"
+default_print = "2ab08d69-210b-4b06-88a2-45281a1a4e1e"
+oracle = "Flying\nWhenever this creature deals combat damage to a creature, destroy that creature.\nDredge 5 (If you would draw a card, you may mill five cards instead. If you do, return this card from your graveyard to your hand.)"
+set = "dvd"
+subtypes = ["Imp"]
+keywords = ["flying"]
+
+# Dredge 5 (If you would draw a card, you may mill five cards instead. If you do, return this
+# card from your graveyard to your hand.)
+dredge = 5
+
+[cost]
+generic = 2
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 2
+
+# Whenever this creature deals combat damage to a creature, destroy that creature.
+[[abilities]]
+timing = "deals_combat_damage_to_creature"
+
+# destroy that creature.
+[[abilities.effects]]
+type = "destroy_triggering_damaged_creature"

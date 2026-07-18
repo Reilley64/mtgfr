@@ -24,7 +24,9 @@ the wrap-up report as its body.
   force-pushed with rewritten history mid-grind ("refusing to merge unrelated histories"),
   graft the old root under the new one (`git replace --graft <new-root> <old-root>`), do the
   normal 3-way merge, then `git replace -d <new-root>` — one real conflict instead of
-  hundreds of add/add ones.
+  hundreds of add/add ones. Before grafting, find the rewritten commit equivalent to your
+  branch's base and prove the graft point with `git diff <old> <new>` — an empty diff means
+  the 3-way will contain only genuinely-new work from each side.
 - All agent briefs must name the worktree root and forbid touching the main checkout.
 
 ## Phase 1 — Deck intake
@@ -44,10 +46,12 @@ Write `docs/fidelity/<slug>.md` — a checkbox per deck card, in four sections:
 - **B. In pool, approximated** — quote each card's current note verbatim.
 - **C. New, expressible today** — cards the current DSL can script with no engine change
   (judge against `DSL_REFERENCE.md` + `de.rs`; when unsure, mark D — flag-don't-force).
-- **D. New, needs engine work** — for these, append ranked increments to
-  `docs/FIDELITY_BACKLOG.md` in the existing format: numbered heading, effort (S/M/L/XL),
-  `Depends on:` line, example cards, a *Sketch* of the intended design. XL increments get an
-  explicit slice staging.
+- **D. New, needs engine work** — for these, write ranked increments to a per-deck file,
+  `docs/fidelity/<slug>-increments.md`, in the backlog's format: numbered heading (numbering
+  is GLOBAL — continue from the highest number anywhere), effort (S/M/L/XL), `Depends on:`
+  line, example cards, a *Sketch* of the intended design. XL increments get an explicit slice
+  staging. Leave a one-line pointer section in `docs/FIDELITY_BACKLOG.md` (which keeps only
+  the engine-wide tiers and per-card exotics).
 
 **Observability re-audit (do not skip):** many residuals are justified by pool absence —
 notes saying "no pool card does X", "unobservable", "dead variant". Grep every
@@ -68,7 +72,11 @@ phantom keywords (Rubinia herself was {2}{W}{U}{U} 2/4 *with flying*), invisible
 ability-level tests but fatal to deck legality. Script a diff of every new card's mana cost,
 P/T, type, legendary flag, and verbatim `oracle` field against a fresh Scryfall
 `cards/collection` fetch; fix every mismatch (some are behavioral — a wrong activation cost
-or counter count changes play) and keep the two-sided check until it reports zero.
+or counter count changes play) and keep the two-sided check until it reports zero. Stale
+oracle TEXT is the sneakiest frame bug: the Xira grind shipped a card modeled on old
+mandatory wording where current text says "you may" — invisible to its own ability tests.
+The wave verify stage runs this audit as a green-gate requirement (baked into
+[`wave-workflow.js`](wave-workflow.js)); zero problems or the wave is red.
 
 ## Phase 4 — Engine grind loop
 
@@ -76,7 +84,7 @@ Run the wave loop until the planner declares done. Assets in this folder:
 
 - [`wave-workflow.js`](wave-workflow.js) — the orchestration script (plan → implement
   sequentially on the shared tree → verify+reconcile). Copy it to scratch space, fill the
-  `{{WORKTREE}}` / `{{BRANCH}}` / `{{BACKLOG_RANGE}}` tokens, and run it via the Workflow
+  `{{WORKTREE}}` / `{{BRANCH}}` / `{{BACKLOG_RANGE}}` / `{{BACKLOG_FILE}}` tokens, and run it via the Workflow
   tool, relaunching after each green wave. Without a workflow orchestrator, run the same
   three stages as sequential subagent dispatches.
 - [`shared-context-template.md`](shared-context-template.md) — the brief every wave agent
@@ -118,6 +126,24 @@ form when the answer shape matches; the engine dispatches by pending-choice kind
 `MeaningfulAction`s surface via the existing generic tiles/radial. Gate:
 `npx tsc --noEmit` clean + client tests green.
 
+## Phase 5.5 — Ship the deck as a precon
+
+Every grind deck ends as a read-only in-app precon, so players get the deck, not just the
+pool that supports it. After client catch-up (the wire is settled by then):
+
+- Write `decklists/<snake_slug>.md` — the frozen target list (commander + grouped tables,
+  totals summing to 99), sourced from the Archidekt fetch.
+- Generate `crates/server/fixtures/decks/<snake_slug>.json` from that list: `commander` /
+  `commander_print` (the commander card's `id` / `default_print` from its TOML) and one
+  `{id, count, print}` entry per non-commander card (basics carry their count), mapped
+  through the pool TOMLs. Do not use `tooling/rewrite-precon-fixtures.mjs` for non-soc
+  decks — it prefers `soc` prints; the TOMLs' `default_print` is already right.
+- Register it in `crates/server/src/precons.rs`: one `Source` entry with the **next
+  negative id** (grow the `SOURCES` array length), name it after the deck.
+- Add the fixture to `FIXTURES` and an `<slug>_is_a_legal_commander_deck` acceptance test
+  in `crates/server/src/decks.rs` — deck legality is itself a frame gate.
+- The client needs nothing: precons flow through the same deck-list wire.
+
 ## Phase 6 — Final verify + PR
 
 1. Re-run the deck checklist: every card checked, or carrying a precise residual note the
@@ -132,7 +158,15 @@ form when the answer shape matches; the engine dispatches by pending-choice kind
    layer.
 3. Sync-merge the default branch into the grind branch one last time; full bar both sides
    (`just check`-equivalent: workspace tests, fmt, clippy-no-new, tsc, client tests).
-4. **End with an open PR, not a direct merge:** push the branch and open it with
+4. **Commit hygiene for the PR:** the repo commitlint-lints every PR commit (≤72-char
+   header, lower-case subject, type enum — `merge:` is not a type and defeats commitlint's
+   built-in merge-commit ignore). Grind-wave headers rarely survive this, and after a
+   history rewrite the branch lineage can't be made to lint at all. Since `main` takes
+   squash merges anyway, collapse the branch to ONE conforming commit with the identical
+   verified tree: tag the old head (`git tag grind-<slug>-history`), then
+   `git commit-tree 'HEAD^{tree}' -p origin/<default> -m "<conforming message>"`,
+   `git reset --hard` to it, and force-push. The PR body carries the full story.
+5. **End with an open PR, not a direct merge:** push the branch and open it with
    `gh pr create` against the default branch. The PR body is the wrap-up report — the deck
    checklist summary (faithful counts before/after), engine capabilities landed, remaining
    residuals and their why, client surface added, and the test totals. The user reviews and
@@ -159,11 +193,12 @@ Stay on the PR until it merges; don't end the run at "PR opened".
   for something out of scope (a design decision), or when the same check fails twice with
   no fix in sight. Remove the worktree after the PR merges.
 
-## Phase 8 — Skill retrospective (after the merge)
+## Phase 8 — Skill retrospective (in the grind PR)
 
-The grind isn't done when the PR merges — it's done when this skill has absorbed what the
-grind taught. Review the whole run against the skill and fold every lesson back in, as its
-own small docs PR (the grind PR is already merged, so it can't carry them):
+The grind isn't done until this skill has absorbed what the grind taught. Do the
+retrospective while the grind PR is still open and push the skill edits ONTO it — a
+follow-up docs PR is only for lessons learned during the PR watch itself (a CI failure
+mode, a review pattern). Review the whole run against the skill and fold every lesson in:
 
 - Walk the run phase by phase and ask, for each surprise, rework loop, red wave, planner
   misread, or verification gap: *would the skill as written have prevented it?* If not, the
@@ -178,10 +213,9 @@ own small docs PR (the grind PR is already merged, so it can't carry them):
 - Check the assets still match reality: file paths, recipe names, API/lobby flows, and the
   project `verify` skill drift between grinds — fix stale handles now, while you know what
   the fresh ones are.
-- Open the edits as a `docs(skills):` PR against the default branch and watch it to merge
-  (Phase 7 rules apply). Push skill edits BEFORE the user merges the grind PR when possible —
-  a lesson pushed seconds after the squash cut misses the train and needs exactly this
-  follow-up PR.
+- Push the edits to the grind branch before the user merges (they ride the same squash).
+  Anything learned after the merge goes in a small `docs(skills):` follow-up PR watched to
+  merge under Phase 7 rules.
 
 ## Conventions (enforced in every brief and verify stage)
 

@@ -1,0 +1,28 @@
+# At the beginning of your upkeep, you draw a card and you lose 1 life.
+name = "Phyrexian Arena"
+otags = ["cycle-apc-phyrexian-vertical", "deal-with-the-devil", "draw-engine", "life-for-cards", "repeatable-pure-draw", "triggered-ability"]
+oracle = "At the beginning of your upkeep, you draw a card and you lose 1 life."
+set = "fdn"
+id = "ee579a32-a048-4335-b966-231ba731cdea"
+default_print = "0784b6f0-9ebf-43d2-ba0f-a6bc93ba0c48"
+
+[cost]
+generic = 1
+black = 2
+
+[kind]
+type = "enchantment"
+
+# At the beginning of your upkeep, you draw a card and you lose 1 life.
+[[abilities]]
+timing = "upkeep"
+
+# you draw a card
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# and you lose 1 life.
+[[abilities.effects]]
+type = "lose_life"
+amount = 1

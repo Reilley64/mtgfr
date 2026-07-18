@@ -16,7 +16,7 @@ description: Drive a live two-player mtgfr game end-to-end to verify engine/serv
 The client talks to the BFF at `client/src/routes/api/rpc/[...path].ts`, which dials tonic. Drive the same calls with `curl` against the BFF (`localhost:3000` in dev) rather than the API directly — cookies still carry the session (`-c jar.txt` on signup, `-b jar.txt` after). See `client/src/wire/rpcs.ts` for the RPC names/shapes, or use a gRPC client (e.g. `grpcurl`) straight against `:50051` with `x-session-token` metadata (see `crates/server/src/grpc/auth_ctx.rs`).
 
 1. Sign up per player (fresh throwaway emails — the dev DB persists).
-2. List decks — precons have negative ids (-1 Silverquill … -5 Quandrix); usable by anyone, no deck building.
+2. List decks — precons have negative ids (-1 Silverquill … -5 Quandrix, -6 Enchantress Rubinia, -7 Deathdancer Xira); usable by anyone, no deck building.
 3. Seed a table (`Tables.Seed` / the BFF's seed RPC) with both seats' user id + deck id.
 
 ## Reading state / driving intents

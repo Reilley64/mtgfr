@@ -1,0 +1,29 @@
+# This creature can't block.
+# Sacrifice a creature: Put a +1/+1 counter on this creature.
+name = "Carrion Feeder"
+otags = ["activated-ability", "drawback", "free-sacrifice-outlet", "gains-pp-counters", "repeatable-pp-counters", "sacrifice-outlet-creature"]
+oracle = "This creature can't block.\nSacrifice a creature: Put a +1/+1 counter on this creature."
+set = "mh1"
+subtypes = ["Zombie"]
+id = "a1cc5e37-b09a-4b7f-afd5-77c1c35aa425"
+default_print = "0a19da90-880e-4eca-8cf7-6d7baf090d53"
+keywords = ["cant_block"]
+
+[cost]
+black = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Sacrifice a creature: Put a +1/+1 counter on this creature.
+[[abilities]]
+timing = "activated"
+sacrifice = "creature"
+
+# Put a +1/+1 counter on this creature.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"

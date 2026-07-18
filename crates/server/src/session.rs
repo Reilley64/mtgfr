@@ -520,7 +520,7 @@ mod tests {
     use crate::db;
     use crate::decks::seed_game;
     use crate::test_support::{as_user, seat_deck, user_with_deck};
-    use engine::PlayerId;
+    use engine::{PlayerId, SacrificeCost};
     use schema::{IntentEnvelope, WireIntent, to_intent};
 
     use crate::game_loop::{set_yield_core, submit_intent_core};
@@ -673,8 +673,11 @@ mod tests {
         modal_choose_max_if_commander: false,
         identity_pips: &[],
         colors: &[],
+        devoid: false,
         enters_tapped: false,
         enters_tapped_unless: None,
+        free_cast_if: None,
+        cast_only_during_combat: false,
         approximates: None,
         oracle: None,
         set: "",
@@ -703,8 +706,10 @@ mod tests {
             once_each_turn: false,
         }],
         cycling: None,
+        cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        recover: None,
         bestow: None,
         morph: None,
         evoke: None,
@@ -724,6 +729,7 @@ mod tests {
         encore: None,
         hand_ability: None,
         may_choose_not_to_untap: false,
+        dredge: None,
         suspend: None,
     };
 

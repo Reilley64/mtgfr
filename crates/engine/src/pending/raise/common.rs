@@ -41,7 +41,11 @@ define_map_identical! {
         source,
         options,
     },
-    ChooseColor { player, source },
+    ChooseColor {
+        player,
+        source,
+        until_end_of_turn,
+    },
     ChooseMode {
         player,
         source,

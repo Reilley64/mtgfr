@@ -104,31 +104,48 @@ impl Game {
                     self.queue_myriad_triggers(object, defender);
                 }
                 // A creature dying (battlefield → graveyard) fires its own Dies trigger. (CR 603.6, CR 403.5, CR 603)
-                // ponytail: keyed off `MovedToGraveyard`, which carries no source zone, so a (CR 400)
-                //   creature *discarded* from hand would also match — guarded to creatures, and
-                // no pool card has both a Dies trigger and is a discard target. Commanders (CR 603.6, CR 601.2c, CR 603)
-                //   divert to the command zone (a different event) and don't fire Dies yet.
-                Event::MovedToGraveyard { from, .. } => {
+                // CR 700.4: "died" means specifically "put into a graveyard from the battlefield" (CR 700.4, CR 603.6)
+                //   — a discard/mill/tutor arrival is gated out below via
+                //   `permanents_put_into_graveyard_from_battlefield`. Commanders divert to the
+                //   command zone (a different event) and don't fire Dies yet.
+                Event::MovedToGraveyard { from, card } => {
                     // If the dying creature's owner left the game in this same SBA sweep, the (CR 704, CR 108.4)
                     // creature left with them (CR 800.4a) and its arena slot is already Removed —
-                    // guard before reading it, since its Dies trigger doesn't fire. (CR 603.6, CR 603)
-                    // ponytail: this also suppresses other players' death-watch (Blood Artist) for
-                    //   that one simultaneous death; no pool card is documented to care — revisit if
-                    // a "whenever a creature dies" card must see a death coincident with a loss. (CR 704, CR 603.6, CR 108.4)
+                    // guard before reading it live, since its own Dies/self-watch don't fire. But
+                    // the death itself still happened (CR 603.6e): a *different*, surviving
+                    // player's death-watch (Hissing Iguanar) must still see it, off the LKI
+                    // `Game::dying_creature_lki` captured before the slot was tombstoned.
                     if matches!(
                         self.objects[self.current_id(from) as usize],
                         Object::Removed
                     ) {
+                        if let Some(&(_, def, owner)) = self
+                            .batch_trigger_scratch
+                            .dying_creature_lki
+                            .iter()
+                            .find(|&&(id, ..)| id == from)
+                        {
+                            self.queue_watch_death_triggers(
+                                owner,
+                                from,
+                                def,
+                                &batch_deaths,
+                                false, // a nontoken permanent
+                                false, // include_self: its own controller left the game too (CR 800.4a)
+                            );
+                        }
                         continue;
                     }
                     let def = self.def_of(from);
-                    // Self-referential "put into a graveyard from the battlefield" (CR): any
-                    // permanent kind, not `Dies`'s creature-only guard below — Fallen Ideal.
-                    if self
+                    // CR 700.4 "put into a graveyard from the battlefield" — the single source-zone
+                    // gate behind both `ThisAuraLeaves` (any permanent kind — Fallen Ideal) and
+                    // `Dies` (creature-only) below; false for a discard/mill/tutor arrival, whose
+                    // `from` was never a live `Object::Permanent` at `Game::apply`'s choke point.
+                    let from_battlefield = self
                         .batch_trigger_scratch
                         .permanents_put_into_graveyard_from_battlefield
-                        .contains(&from)
-                    {
+                        .contains(&from);
+                    if from_battlefield {
                         self.queue_trigger_group(
                             TriggerContext::of(self.owner_of(from)),
                             from,
@@ -136,11 +153,46 @@ impl Game {
                             Trigger::ThisAuraLeaves,
                         );
                     }
+                    // Serra Paragon's granted rider (CR 118.9 — "When this permanent is put into
+                    // a graveyard from the battlefield, exile it and you gain 2 life."): a real
+                    // CR 603.6 placed trigger, fabricated here rather than scanned off `def` since
+                    // the rider isn't one of the recurred card's own printed abilities.
+                    // `Trigger::ThisAuraLeaves` is reused as the fabricated timing — it's the
+                    // exact oracle condition this rider fires on. `card` (the just-created
+                    // graveyard object) is baked into the effect now, mirroring how
+                    // `Game::fire_combat_damage_watch_triggers` fabricates its own object-armed
+                    // payoff.
+                    if from_battlefield
+                        && self
+                            .batch_trigger_scratch
+                            .serra_recursion_deaths
+                            .contains(&from)
+                    {
+                        self.pending_trigger_groups.push(TriggerGroup {
+                            expanded: false,
+                            controller: self.owner_of(from),
+                            source: card,
+                            abilities: vec![Ability {
+                                timing: Timing::Triggered(Trigger::ThisAuraLeaves),
+                                effect: Effect::ExileGraveyardObjectGainLife {
+                                    object: Some(card),
+                                    amount: 2,
+                                },
+                                optional: false,
+                                min_level: 0,
+                                cost: Cost::FREE,
+                                condition: None,
+                                once_each_turn: false,
+                            }],
+                        });
+                    }
                     // Leaves-to-ANY-zone self-trigger (Animate Dead): unlike `ThisAuraLeaves`
                     // above, this also fires off `MovedToExile`/`ReturnedToHand`/
                     // `TuckedToLibrary` below, and its payoff acts on the captured host, not self.
+                    // Safe to call unconditionally — a no-op for a non-battlefield `from`, since
+                    // `permanents_left_battlefield` is populated by the same battlefield-only gate.
                     self.queue_leaves_battlefield_triggers(from, self.owner_of(from), def);
-                    if matches!(def.kind, CardKind::Creature { .. }) {
+                    if from_battlefield && matches!(def.kind, CardKind::Creature { .. }) {
                         let ctx = TriggerContext {
                             dying_source_stats: self.dying_source_stats(from),
                             ..TriggerContext::of(self.owner_of(from))
@@ -152,9 +204,21 @@ impl Game {
                             def,
                             &batch_deaths,
                             false, // a nontoken permanent (CR: "put into a graveyard from the battlefield")
+                            true,  // include_self: its controller is still in the game
                         );
                         self.queue_enchanted_creature_dies_triggers(from);
                         self.queue_an_enchanted_creature_dies_triggers(from, &batch_deaths);
+                        self.queue_damaged_by_this_dies_watchers(from);
+                        // Recover (CR 702.59a): every recover-bearing card already in the dying
+                        // creature's owner's graveyard — including the just-died creature itself,
+                        // CR 702.59b — triggers once for this death. Queued like Echo's pay-or-
+                        // sacrifice pause; placed one at a time by `Game::place_pending_triggers`
+                        // once the ordinary trigger queue (and Echo's) empty.
+                        for candidate in self.graveyard_cards(self.owner_of(from)) {
+                            if self.def_of(candidate).recover.is_some() {
+                                self.pending_recover.push(candidate);
+                            }
+                        }
                     }
                 }
                 // A dying token fires its Dies trigger before vanishing; its arena slot is (CR 603.6, CR 111, CR 603)
@@ -192,9 +256,11 @@ impl Game {
                             def,
                             &batch_deaths,
                             true, // a token ceasing to exist never satisfies a "nontoken" watch
+                            true, // include_self: its controller is still in the game
                         );
                         self.queue_enchanted_creature_dies_triggers(token);
                         self.queue_an_enchanted_creature_dies_triggers(token, &batch_deaths);
+                        self.queue_damaged_by_this_dies_watchers(token);
                     }
                 }
                 // Leaves-to-ANY-zone self-trigger (Animate Dead) — the exile/bounce/tuck
@@ -329,9 +395,23 @@ impl Game {
                     // own def, not a battlefield watcher — the source is the spell object itself,
                     // so the resulting ability is a separate stack object (Hydroid Krasis's cast
                     // trigger resolves even if the spell is later countered, CR 702.137a).
+                    //
+                    // CR 702.40a Storm's count: the game-wide tally of `spells_cast_this_turn`
+                    // across every player has already counted THIS cast (apply.rs increments it
+                    // before triggers are scanned), so subtracting 1 gives exactly "spells cast
+                    // before this one this turn" — snapshotted here, before any response or the
+                    // storm spell's own later-minted copies can add to the tally.
+                    let spells_cast_before_this = self
+                        .players
+                        .iter()
+                        .map(|p| p.spells_cast_this_turn)
+                        .sum::<u32>()
+                        .saturating_sub(1);
                     self.queue_trigger_group(
                         TriggerContext {
                             cast_x: Some(x),
+                            triggering_spell: Some(spell),
+                            spells_cast_before_this: Some(spells_cast_before_this),
                             ..TriggerContext::of(controller)
                         },
                         spell,
@@ -429,6 +509,35 @@ impl Game {
                     // combat half of that watch; the noncombat half is the arm below.
                     self.queue_deals_damage_to_opponent_triggers(source, player);
                 }
+                // Combat damage to a creature (CR 510.2) — Stinkweed Imp's self-referential
+                // "deals combat damage to a creature" watch. Unlike `CombatDamageDealtToPlayer`'s
+                // multi-scope battlefield scan (`queue_combat_damage_triggers`), this fires
+                // directly off `source`'s own ability: the pool's only consumer needs no
+                // `who`-style scope (flag-don't-force). Never fired by plain `DamageMarked` alone
+                // — a fight (CR 701.12) or other noncombat creature damage only emits that.
+                Event::CombatDamageDealtToCreature { source, target, .. } => {
+                    // CR 800.4a: if `source`'s owner left the game in this same SBA sweep (e.g. a
+                    // blocker trading with its attacker in the same combat-damage batch that also
+                    // drops its own controller to 0 life), its arena slot is already Removed and
+                    // its own trigger left with it — same guard as the `Dies` `include_self:
+                    // false` case above.
+                    if matches!(
+                        self.objects[self.current_id(source) as usize],
+                        Object::Removed
+                    ) {
+                        continue;
+                    }
+                    let ctx = TriggerContext {
+                        damaged_creature: Some(target),
+                        ..TriggerContext::of(self.owner_of(source))
+                    };
+                    self.queue_trigger_group(
+                        ctx,
+                        source,
+                        self.def_of(source),
+                        Trigger::DealsCombatDamageToCreature,
+                    );
+                }
                 // Noncombat damage dealt to a player (CR 120.1) — the marker
                 // `Effect::DealDamage`'s player arm pushes alongside its `LifeChanged`, never a
                 // non-damage life loss (drain, pay-life), which only emits `LifeChanged`.
@@ -441,9 +550,15 @@ impl Game {
                 // Armadillo Cloak's attached-host damage watch.
                 Event::DamageMarked {
                     source: Some(source),
+                    object,
                     amount,
-                    ..
-                } => self.queue_enchanted_creature_deals_damage_triggers(source, amount),
+                } => {
+                    self.queue_enchanted_creature_deals_damage_triggers(source, amount);
+                    // Vampiric Dragon's turn-scoped "a creature dealt damage by this creature
+                    // this turn dies" tally (fidelity backlog #194) — every creature-damage choke
+                    // records here, combat or noncombat alike; read back at the death choke below.
+                    self.damaged_this_turn.push((source, object));
+                }
                 _ => {}
             }
         }
@@ -526,12 +641,14 @@ impl Game {
             .dying_creature_attachments
             .clear();
         self.batch_trigger_scratch.dying_creature_stats.clear();
+        self.batch_trigger_scratch.dying_creature_lki.clear();
         self.batch_trigger_scratch
             .permanents_put_into_graveyard_from_battlefield
             .clear();
         self.batch_trigger_scratch
             .permanents_left_battlefield
             .clear();
+        self.batch_trigger_scratch.serra_recursion_deaths.clear();
     }
 
     /// Fire `Trigger::ThisPermanentLeavesBattlefield` for `from` if it left the battlefield to
@@ -640,7 +757,10 @@ impl Game {
     /// creature itself for the plain arms, which never watch their own death ("another creature
     /// dies"). The dying creature *does* separately self-fire its `*IncludingThis` arms ("this
     /// creature or another creature dies" — Blood Artist / Zulaport Cutthroat), reading its own
-    /// last-known information since it's already off the battlefield.
+    /// last-known information since it's already off the battlefield — unless `include_self` is
+    /// false (CR 800.4a: the dying creature's own controller also left the game in this same
+    /// sweep, so its own abilities left with it — only the *other* watchers above still see the
+    /// death; see `Game::enqueue_triggers`'s `Event::MovedToGraveyard` `Object::Removed` arm).
     pub(crate) fn queue_watch_death_triggers(
         &mut self,
         dead_controller: PlayerId,
@@ -648,6 +768,7 @@ impl Game {
         dying_def: CardDef,
         batch_deaths: &[(ObjectId, CardDef, PlayerId)],
         dying_is_token: bool,
+        include_self: bool,
     ) {
         // Feeds `Amount::CreaturesDiedThisTurn` (Gorma, the Gullet) — called exactly once per
         // creature death (see the two `enqueue_triggers` call sites), so this is a clean count.
@@ -690,7 +811,43 @@ impl Game {
             }
             self.queue_death_watcher(id, def, controller, dead_controller, dying, dying_is_token);
         }
-        self.queue_self_death_watcher(dying, dying_def, dead_controller);
+        if include_self {
+            self.queue_self_death_watcher(dying, dying_def, dead_controller);
+        }
+    }
+
+    /// Fire [`Trigger::CreatureDealtDamageByThisDies`] for every source whose turn-scoped
+    /// [`Game::damaged_this_turn`] tally recorded `dying` as a victim (CR 603.10a last-known
+    /// information — Vampiric Dragon). Guard `Object::Removed` the same way the
+    /// `DealsCombatDamageToCreature`/`Dies` death-choke arms do: a source that left the game in
+    /// the same SBA sweep as `dying` (CR 800.4a) doesn't get its own trigger either.
+    fn queue_damaged_by_this_dies_watchers(&mut self, dying: ObjectId) {
+        // Dedup by source: the trigger fires once per *death event*, not once per damage instance,
+        // so a source that damaged `dying` several times this turn (two pings, a ping then combat)
+        // still gets one trigger for this single death. Distinct sources each fire once.
+        let mut sources: Vec<ObjectId> = self
+            .damaged_this_turn
+            .iter()
+            .filter(|&&(_, victim)| victim == dying)
+            .map(|&(source, _)| source)
+            .collect();
+        sources.sort_unstable();
+        sources.dedup();
+        for source in sources {
+            if matches!(
+                self.objects[self.current_id(source) as usize],
+                Object::Removed
+            ) {
+                continue;
+            }
+            let ctx = TriggerContext::of(self.owner_of(source));
+            self.queue_trigger_group(
+                ctx,
+                source,
+                self.def_of(source),
+                Trigger::CreatureDealtDamageByThisDies,
+            );
+        }
     }
 
     /// Queue one watcher's death triggers against a creature that just died: its `CreatureDies`
@@ -799,6 +956,15 @@ impl Game {
                     ) {
                         continue;
                     }
+                    // CR 700.4 "put into a graveyard from the battlefield" — same gate as
+                    // `enqueue_triggers`'s `Dies` arm; a discard/mill/tutor arrival isn't a death.
+                    if !self
+                        .batch_trigger_scratch
+                        .permanents_put_into_graveyard_from_battlefield
+                        .contains(&from)
+                    {
+                        continue;
+                    }
                     let def = self.def_of(from);
                     if matches!(def.kind, CardKind::Creature { .. }) {
                         deaths.push((from, def, self.owner_of(from)));
@@ -839,6 +1005,15 @@ impl Game {
                         self.objects[self.current_id(from) as usize],
                         Object::Removed
                     ) {
+                        continue;
+                    }
+                    // CR 700.4 "put into a graveyard from the battlefield" — same gate as
+                    // `batch_creature_deaths`; a discard/mill/tutor arrival isn't a death.
+                    if !self
+                        .batch_trigger_scratch
+                        .permanents_put_into_graveyard_from_battlefield
+                        .contains(&from)
+                    {
                         continue;
                     }
                     (from, self.owner_of(from), self.def_of(from))
@@ -1148,7 +1323,9 @@ impl Game {
                 combat_damage: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
+                damaged_creature: None,
                 triggering_spell: None,
+                spells_cast_before_this: None,
                 source_power: None,
                 dead_creature: None,
                 cards_left_graveyard: &[],
@@ -1278,7 +1455,9 @@ impl Game {
                 combat_damage: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
+                damaged_creature: None,
                 triggering_spell: None,
+                spells_cast_before_this: None,
                 source_power: None,
                 dead_creature: None,
                 cards_left_graveyard: &[],
@@ -1533,7 +1712,9 @@ impl Game {
             combat_damage: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
+            damaged_creature: None,
             triggering_spell: None,
+            spells_cast_before_this: None,
             source_power: None,
             dead_creature: None,
             cards_left_graveyard: &[],
@@ -2609,6 +2790,12 @@ impl Game {
             Condition::ControlsLandsWithSubtype { subtypes, count } => {
                 self.lands_with_subtype_controlled(ctx.controller, subtypes) as u32 >= count
             }
+            // "an opponent controls ... a Plains": holds when *some* living opponent
+            // individually meets the threshold (unlike `OpponentsControlLands`, which sums).
+            Condition::OpponentControlsLandsWithSubtype { subtypes, count } => self
+                .living_players()
+                .filter(|&p| p != ctx.controller)
+                .any(|p| self.lands_with_subtype_controlled(p, subtypes) as u32 >= count),
             Condition::ControlsBasicLands { count } => {
                 self.basic_lands_controlled(ctx.controller) as u32 >= count
             }
@@ -2635,6 +2822,9 @@ impl Game {
             }
             Condition::YouControlLands { at_least } => {
                 self.lands_controlled(ctx.controller) as u32 >= at_least
+            }
+            Condition::YouControlLandsAtMost { at_most } => {
+                self.lands_controlled(ctx.controller) as u32 <= at_most
             }
             Condition::YouGainedLifeThisTurn => {
                 self.players[ctx.controller.0 as usize].life_gained_this_turn > 0
@@ -2689,6 +2879,10 @@ impl Game {
             // site (`Game::run`), which intercepts it directly against the shared
             // `target` before falling through here (Yavimaya Bloomsage's power-7 check).
             Condition::TargetPowerAtLeast { .. } => false,
+            // Target-based (Nezumi Graverobber's flip gate), same as `TargetPowerAtLeast` above:
+            // `TriggerContext` carries no target, so this is intercepted at the
+            // `Effect::Conditional` resolve site and never reaches here.
+            Condition::TargetCardOwnerGraveyardEmpty => false,
             Condition::TriggeringSpellManaValueAtLeast { at_least } => ctx
                 .cast_mana_value
                 .is_some_and(|mv| mv >= u32::from(at_least)),
@@ -2714,6 +2908,16 @@ impl Game {
                             CardKind::Artifact | CardKind::Creature { .. }
                         )
                     })
+                    .count() as u32
+                    >= count
+            }
+            Condition::CardsInYourGraveyardAtLeast { count } => {
+                self.graveyard_cards(ctx.controller).len() as u32 >= count
+            }
+            Condition::CreatureCardsInAllGraveyardsAtLeast { count } => {
+                self.living_players()
+                    .flat_map(|p| self.graveyard_cards(p))
+                    .filter(|&id| matches!(self.def_of(id).kind, CardKind::Creature { .. }))
                     .count() as u32
                     >= count
             }
@@ -3024,6 +3228,32 @@ impl Game {
             crate::pending::raise_choice(
                 self,
                 PendingChoice::PayEchoOrSacrifice {
+                    player: self.owner_of(source),
+                    source,
+                    cost,
+                },
+            );
+            return;
+        }
+
+        // Recover (CR 702.59a): once Echo's queue is empty too, offer one queued pay-or-exile
+        // choice at a time. A card that already left the graveyard since being queued (recovered
+        // or exiled by an earlier trigger from the same simultaneous batch of deaths — CR
+        // 702.59a's ruling that only the first of several such triggers has any effect) is
+        // silently skipped: nothing left to pay for.
+        while let Some(source) = self.pending_recover.first().copied() {
+            self.pending_recover.remove(0);
+            if !matches!(self.objects[source as usize], Object::Card(c) if c.zone == Zone::Graveyard)
+            {
+                continue;
+            }
+            let cost = self
+                .def_of(source)
+                .recover
+                .expect("only queued for a card with a recover cost");
+            crate::pending::raise_choice(
+                self,
+                PendingChoice::PayRecoverOrExile {
                     player: self.owner_of(source),
                     source,
                     cost,

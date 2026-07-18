@@ -148,6 +148,30 @@ pub(super) fn put_land_from_hand(
     })
 }
 
+/// Cauldron Dance's "you may put a creature card from your hand onto the battlefield": the
+/// creature sibling of [`put_land_from_hand`] (CR 608.2b's "may" — no creature in hand raises no
+/// choice). `source` is carried on the choice so the answer can later schedule the end-step
+/// sacrifice against this same resolving ability.
+pub(super) fn put_creature_from_hand(
+    game: &Game,
+    player: PlayerId,
+    source: ObjectId,
+) -> Option<PendingChoice> {
+    let candidates: Vec<ObjectId> = game
+        .hand_of(player)
+        .into_iter()
+        .filter(|&id| matches!(game.def_of(id).kind, crate::CardKind::Creature { .. }))
+        .collect();
+    if candidates.is_empty() {
+        return None;
+    }
+    Some(PendingChoice::PutCreatureFromHand {
+        player,
+        source,
+        candidates,
+    })
+}
+
 pub(super) fn cast_creature_face_down(
     game: &Game,
     player: PlayerId,

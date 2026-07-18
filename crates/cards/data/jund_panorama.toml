@@ -1,0 +1,32 @@
+# {T}: Add {C}.
+# {1}, {T}, Sacrifice this land: Search your library for a basic Swamp, Mountain, or Forest card, put it onto the
+# battlefield tapped, then shuffle.
+name = "Jund Panorama"
+otags = ["activated-ability", "cycle-ala-panorama", "tutor-land-basic-forest", "tutor-land-basic-mountain", "tutor-land-basic-swamp"]
+oracle = "{T}: Add {C}.\n{1}, {T}, Sacrifice this land: Search your library for a basic Swamp, Mountain, or Forest card, put it onto the battlefield tapped, then shuffle."
+set = "ncc"
+id = "f39f33ac-074d-442d-ae4c-1d694ee315f3"
+default_print = "50d8346a-e0b5-41eb-be89-7d1eb0e84f28"
+
+# {T}: Add {C}.
+[kind]
+type = "land"
+produces = "colorless"
+
+# {1}, {T}, Sacrifice this land: Search your library for a basic Swamp, Mountain, or Forest card,
+# put it onto the battlefield tapped, then shuffle.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 1
+
+# Search your library for a basic Swamp, Mountain, or Forest card, put it onto the battlefield
+# tapped, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = { basic_land_with_subtype = ["Swamp", "Mountain", "Forest"] }
+to_zone = "battlefield"
+tapped = true

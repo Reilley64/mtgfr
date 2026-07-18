@@ -252,6 +252,13 @@ pub enum Amount {
     /// never happens (see [`Game::resolve_amount`]'s fallback). Distinct from `CombatDamageDealt`,
     /// which is specifically the summed *combat* damage a base-power-0 batch dealt *a player*.
     TriggeringDamageDealt,
+    /// CR 702.40a's storm count: "for each spell cast before it this turn" — the game-wide tally
+    /// (every player) of spells cast before this one this turn (Reaping the Graves' Storm). A
+    /// placeholder, like [`TriggeringSpellManaValue`](Self::TriggeringSpellManaValue) above:
+    /// `fill_spells_cast_before_this` rewrites it to [`Fixed`](Self::Fixed) with the snapshotted
+    /// count when a [`Trigger::YouCastThis`] ability is placed on the stack — resolving this
+    /// variant directly never happens (see [`Game::resolve_amount`]'s fallback).
+    SpellsCastBeforeThisThisTurn,
 }
 
 impl Default for Amount {
@@ -385,6 +392,12 @@ pub enum Effect {
     /// rather than a negated `GainLife` amount, matching how [`EachOpponentLosesLife`] stays
     /// distinct from [`EachOpponentDrain`].
     LoseLife { amount: Amount },
+    /// Ashes to Ashes' "Ashes to Ashes deals 5 damage to you": real damage (CR 120.1) to the
+    /// ability's own controller, not life loss — the fieldless-target self-damage twin of
+    /// [`DealDamage`](Self::DealDamage)'s `Target::Player` arm, so damage-triggered watchers
+    /// and future damage-prevention/replacement effects see it as damage rather than a plain
+    /// [`LoseLife`](Self::LoseLife).
+    DealDamageToSelf { amount: Amount },
     /// Swords to Plowshares' life-gain rider (CR: "Its controller gains life equal to its
     /// power"): the *target's* controller — not the ability's own controller — gains `amount`
     /// life. Reads the target's owner (the engine conflates control with ownership for
@@ -963,12 +976,10 @@ pub enum Effect {
     /// Grant the target creature a regeneration shield (CR 701.15b — a replacement effect: the
     /// next time it would be destroyed this turn, instead tap it, remove it from combat, and heal
     /// all its damage). Increments [`Permanent::regeneration_shields`]; a shield is consumed by
-    /// the destroy path unless the destruction carries [`DestroyTarget::cant_be_regenerated`], and
-    /// all shields expire at cleanup (CR 701.15b's "this turn").
-    /// ponytail: a bare shield-granting primitive tested directly — no pool card grants a shield
-    /// yet (Rapid Hybridization only *defeats* one). The upgrade path when a granter lands: a
-    /// per-source shield ("regenerate {this}" via a shield the ability tracks) or a "regenerate up
-    /// to one target creature" grant would reuse this same counter and destroy-time check.
+    /// the `DestroyTarget` path (unless the destruction carries
+    /// [`DestroyTarget::cant_be_regenerated`]) and alike by `check_state_based_actions`'s CR
+    /// 704.5g lethal-marked-damage destroy, and all shields expire at cleanup (CR 701.15b's "this
+    /// turn").
     RegenerateShield { target: TargetSpec },
     /// Destroy every battlefield permanent matching `filter` (mass removal — Winds of Rath).
     /// Each goes to the graveyard (a commander diverts to the command zone); a token ceases to
@@ -1554,6 +1565,33 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         creature: Option<ObjectId>,
     },
+    /// Cauldron Dance: "That creature gains haste. Return it to your hand at the beginning of
+    /// the next end step." Reads back the permanent this same resolution's preceding
+    /// [`ReanimateToBattlefield`](Self::ReanimateToBattlefield) step just put onto the
+    /// battlefield — the same read-back pattern as
+    /// [`ScheduleReturnThisAuraAttachedToReanimated`](Self::ScheduleReturnThisAuraAttachedToReanimated),
+    /// except this grants haste (an until-end-of-turn [`Event::TempBoost`], the same "grant
+    /// expires before it would matter" shape [`CreateTokenCopy::haste`](Self::CreateTokenCopy)
+    /// uses — the creature always leaves the battlefield this same end step) rather than
+    /// attaching an Aura. Schedules [`ReturnObjectToHand`](Self::ReturnObjectToHand) against the
+    /// reanimated permanent via [`Event::DelayedTriggerScheduled`] at [`Step::End`]. No-op if no
+    /// such event is in this resolution's history yet (the reanimation target was illegal —
+    /// CR 608.2b).
+    ScheduleReturnReanimatedToHand,
+    /// The delayed payload [`ScheduleReturnReanimatedToHand`](Self::ScheduleReturnReanimatedToHand)
+    /// schedules (Cauldron Dance), and [`PutCreatureFromHand`](Self::PutCreatureFromHand)'s own
+    /// answer schedules a [`SacrificeObject`](Self::SacrificeObject) twin of: return one
+    /// already-resolved object to its owner's hand, no re-scan — the return-flavored sibling of
+    /// [`SacrificeObject`](Self::SacrificeObject)/[`ExileObject`](Self::ExileObject). `object` is
+    /// filled in when the delayed trigger is scheduled, never authored directly in a card
+    /// template. Guard-returns with no return if the object has already left the battlefield
+    /// some other way before the delayed trigger fired (CR 603.10a last-known information). A
+    /// token ceases to exist instead of changing zones (CR 111.7), mirroring
+    /// [`ReturnToHand`](Self::ReturnToHand)'s own token branch.
+    ReturnObjectToHand {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        object: Option<ObjectId>,
+    },
     /// Screams from Within's death-return: "return this card from your graveyard to the
     /// battlefield" — unlike [`ReturnThisAuraAttachedTo`](Self::ReturnThisAuraAttachedTo)
     /// (attaches to the *same* look-back creature), this Aura's host stays dead, so the return
@@ -1989,9 +2027,17 @@ pub enum Effect {
     /// lifegain-less sibling of [`EachOpponentDrain`](Self::EachOpponentDrain): a controller
     /// gain would re-trigger a "whenever you gain life" ability into a loop. No target.
     EachOpponentLosesLife { amount: Amount },
-    /// Return the targeted creature card from a graveyard to its owner's hand (Raise Dead).
-    /// The `target` scopes which graveyards are legal (typically your own).
-    ReturnFromGraveyardToHand { target: TargetSpec },
+    /// Return the targeted graveyard card(s) to their owner's hand (Raise Dead). The `target`
+    /// scopes which graveyards are legal (typically your own). `count` is the same
+    /// [`TargetCount`] multi-target surface [`ReturnToHand`](Self::ReturnToHand)'s `count` is: the
+    /// default `{1, 1}` is a single mandatory target (Raise Dead); Life from the Loam's "return up
+    /// to three target land cards" is `{0, 3}`. Each chosen card is bounced independently, same as
+    /// `ReturnToHand`.
+    ReturnFromGraveyardToHand {
+        target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        count: TargetCount,
+    },
     /// Put the targeted graveyard creature card onto the battlefield under the ability's
     /// controller's control (Reanimate/Animate Dead). Enters via the same ETB path as a cast
     /// permanent (summoning-sick, ETB triggers fire). Reanimate's "you lose life equal to its
@@ -2029,14 +2075,22 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         to_top: bool,
     },
-    /// Return every card in the ability's controller's own graveyard matching `filter` to the
-    /// battlefield under their control (Eiganjo Dynastorian's Replenish face: "return all
-    /// enchantment cards from your graveyard to the battlefield"). Each enters via the same ETB
-    /// path as [`ReanimateToBattlefield`](Self::ReanimateToBattlefield) (summoning-sick, ETB
-    /// triggers fire), with no finality counter. Takes no target of its own — every matching
-    /// graveyard card is affected, not a chosen one — the mass-return twin of
-    /// [`ReturnAllToHand`](Self::ReturnAllToHand).
-    MassReturnFromGraveyard { filter: CardFilter },
+    /// Return every matching card in a graveyard to the battlefield, each under its owner's
+    /// control. Each enters via the same ETB path as
+    /// [`ReanimateToBattlefield`](Self::ReanimateToBattlefield) (summoning-sick, ETB triggers
+    /// fire), with no finality counter. Takes no target of its own — every matching graveyard card
+    /// is affected, not a chosen one — the mass-return twin of
+    /// [`ReturnAllToHand`](Self::ReturnAllToHand). `all_players = false` (default) scans only the
+    /// ability controller's own graveyard, returning under their control (Eiganjo Dynastorian's
+    /// Replenish face: "return all enchantment cards from your graveyard to the battlefield").
+    /// `all_players = true` scans EVERY player's graveyard in APNAP order, each player's cards
+    /// returning under that player's own control (All Hallow's Eve: "each player returns all
+    /// creature cards from their graveyard to the battlefield" — a symmetric, per-owner return).
+    MassReturnFromGraveyard {
+        filter: CardFilter,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        all_players: bool,
+    },
     /// Perpetual Timepiece's second ability: "Shuffle any number of target cards from your
     /// graveyard into your library" (`max = 0`, `target_player = false`), or Quandrix Command
     /// mode 3: "Target player shuffles up to three target cards from their graveyard into their
@@ -2422,8 +2476,12 @@ pub enum Effect {
     /// doesn't fire for it).
     /// ponytail: resolves as one of this spell's own resolution effects (last in its ability's
     /// sequence), not CR 706.9's true "copy when cast, copies resolve before the original" stack
-    /// ordering — no pool storm/Gravestorm card has a response between cast and resolution that
-    /// would see the difference.
+    /// ordering — neither current consumer (Plumb the Forbidden, Ominous Harvest) has a response
+    /// between cast and resolution that would see the difference. A *true* Storm keyword whose
+    /// copies must survive the original being countered (CR 702.40a — Reaping the Graves) is
+    /// modeled the other way instead: a real `Trigger::YouCastThis` ability using
+    /// [`CopyTriggeringSpell`](Self::CopyTriggeringSpell)'s `last_known_information` rider, a
+    /// separate stack object that doesn't depend on this rider's own resolution timing at all.
     CopyThisSpell {
         #[cfg_attr(feature = "card-dsl", serde(default = "de::one_amount"))]
         count: Amount,
@@ -2446,6 +2504,31 @@ pub enum Effect {
     /// (the copy `CopyThisSpell` just minted), never a card-template value — not meant to be
     /// authored directly in a card TOML.
     RetargetSpellCopy { copy: ObjectId },
+    /// Chain Lightning's reflexive rider: "Then that player or that permanent's controller may
+    /// pay {cost}. If the player or permanent's controller does, they may copy this spell and
+    /// may choose new targets for the copy." Takes no target of its own — it reads the enclosing
+    /// [`Sequence`](Self::Sequence)'s shared `target` (a preceding [`DealDamage`](Self::DealDamage)
+    /// step's own target) to find the payer: that player themself if the target was a player, or
+    /// [`Game::controller_of`](crate::Game::controller_of) if it was a permanent. Pauses that
+    /// payer on a [`PendingChoice::PayCost`](crate::PendingChoice::PayCost); paying mints one
+    /// copy of the resolving spell under THEM (not this ability's own controller) via
+    /// [`Game::mint_spell_copies`](crate::Game::mint_spell_copies), offering the usual CR 707.10c
+    /// retarget (see the `Effect::MayPayToCopyThis` arm in `Game::pay_optional_cost`). The minted
+    /// copy is itself a full copy of this ability, so once it resolves it offers its own damaged
+    /// player/controller the same rider — the chain continues on its own, no dedicated
+    /// "chain" bookkeeping needed. A missing/gone target (CR 608.2b) guard-returns a no-op —
+    /// unreachable in practice, since the enclosing spell's own upfront target-legality check
+    /// already fizzles the whole ability before this step could run without one.
+    /// ponytail: collapses the oracle's two "may"s (may pay, then — only if paid — may copy) into
+    /// one pay-mints-unconditionally step; declining to copy after already paying is never
+    /// distinguishable from never paying (the retarget re-pick can always keep the same target),
+    /// so no pool card needs the extra decision. Single-consumer primitive (Chain Lightning only)
+    /// — grow a general reflexive-pay-to-copy DSL only from a second card that needs one.
+    MayPayToCopyThis {
+        cost: Cost,
+        #[cfg_attr(feature = "card-dsl", serde(default = "de::one_amount"))]
+        count: Amount,
+    },
     /// Willbender's turned-face-up payload (CR 114.6 / 702.37f): "change the target of target spell
     /// or ability with a single target." `target` (the spell to bend) is
     /// [`TargetSpec::SingleTargetSpellOnStack`], chosen as this trigger goes on the stack (CR
@@ -2471,8 +2554,9 @@ pub enum Effect {
     /// object id baked in by [`contextualize_effect`]/`fill_triggering_spell` when the watch
     /// fires (from [`TriggerContext::triggering_spell`]) — `None` in a card template. Guard-
     /// returns with no copies if the triggering spell already left the stack (countered in
-    /// response, CR 603.4) before this delayed trigger resolved — the delayed trigger goes on
-    /// the stack *above* the triggering spell (CR 603.3), so ordinarily it's still there.
+    /// response, CR 603.4) before this delayed trigger resolved and `last_known_information` is
+    /// unset — the delayed trigger goes on the stack *above* the triggering spell (CR 603.3), so
+    /// ordinarily it's still there.
     CopyTriggeringSpell {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         triggering_spell: Option<ObjectId>,
@@ -2484,6 +2568,16 @@ pub enum Effect {
         /// by any pool card yet.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         may_choose_new_targets: bool,
+        /// CR 702.40a Storm's documented exception: mint the copies from the triggering spell's
+        /// copiable characteristics *even if it's already left the stack* (countered in response)
+        /// by the time this resolves — long-established Storm rulings hold that countering a
+        /// spell with Storm doesn't stop its copies, since the storm trigger triggers on cast and
+        /// is independent of the original spell ever resolving. `true` for a real Storm keyword
+        /// (Reaping the Graves); `false` (default) keeps Thunderclap Drake's generic "copy the
+        /// spell that fired this delayed trigger" no-op-if-gone behavior — the plain CR 603.4
+        /// default for a bespoke copy-on-cast trigger that isn't itself the Storm keyword.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        last_known_information: bool,
     },
     /// Mirrorwing Dragon's watch payoff (CR 707.10 — "that player copies that spell for each
     /// other creature they control that the spell could target. Each copy targets a different
@@ -2933,6 +3027,21 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         tapped: bool,
     },
+    /// Cauldron Dance: "You may put a creature card from your hand onto the battlefield. That
+    /// creature gains haste. Its controller sacrifices it at the beginning of the next end
+    /// step." The creature sibling of [`PutLandFromHand`](Self::PutLandFromHand): pauses on a
+    /// [`PendingChoice::PutCreatureFromHand`] over the controller's hand creature cards, or
+    /// declines ("you may"); no creature in hand is a no-op (CR 608.2b). Enters via the same ETB
+    /// path as any other put-onto-the-battlefield effect. On acceptance grants haste (an
+    /// until-end-of-turn [`Event::TempBoost`], the same "grant expires before it would matter"
+    /// shape [`CreateTokenCopy::haste`](Self::CreateTokenCopy) uses — the creature always leaves
+    /// the battlefield this same end step) and schedules a delayed
+    /// [`SacrificeObject`](Self::SacrificeObject) against the deployed permanent via
+    /// [`Event::DelayedTriggerScheduled`] at [`Step::End`].
+    /// ponytail: haste and the end-step sacrifice are unconditional (the pool's only consumer
+    /// always wants both) rather than bool-flagged like `CreateTokenCopy`'s — parametrize if a
+    /// second card needs a different combination.
+    PutCreatureFromHand,
     /// Illusionary Mask's `{X}` ability (clause 1): the ability's controller may cast a creature
     /// card from their hand — one "whose mana cost could be paid by some amount of, or all of,
     /// the mana you spent on {X}" ([`Cost::payable_from_multiset`], CR 107.3) — face down as a
@@ -3033,6 +3142,19 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         creature: Option<ObjectId>,
     },
+    /// A [`Trigger::DealsCombatDamageToCreature`] payoff (Stinkweed Imp): "destroy that
+    /// creature" — the creature this ability's source just dealt combat damage to (CR 603.10a
+    /// last-known information). `creature` is filled in from the triggering context when the
+    /// ability is placed; it is `None` in a card template — mirrors
+    /// [`SacrificeEnchantedCreature`](Self::SacrificeEnchantedCreature). Guard-returns with no
+    /// destruction if the context never filled a target, or if that creature no longer sits on
+    /// the battlefield (it died first, or was bounced/exiled in response — CR 603.10a's "that
+    /// creature" fizzle). An ordinary destroy otherwise (CR 701.7): indestructible ignores it (CR
+    /// 702.12b), and a regeneration shield replaces it, same as [`DestroyTarget`](Self::DestroyTarget).
+    DestroyTriggeringDamagedCreature {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        creature: Option<ObjectId>,
+    },
     /// Exile one already-resolved object, no re-scan (CR 603.7's "exile it" — Manaform
     /// Hellkite's minted Dragon Illusion token). `object` is filled in when the delayed trigger
     /// is scheduled (see [`Effect::CreateToken`]'s `exile_at_next_end_step`), never authored
@@ -3041,6 +3163,23 @@ pub enum Effect {
     ExileObject {
         #[cfg_attr(feature = "card-dsl", serde(skip))]
         object: Option<ObjectId>,
+    },
+    /// Serra Paragon's granted rider (CR 118.9 — "When this permanent is put into a graveyard
+    /// from the battlefield, exile it and you gain 2 life."): a real CR 603.6 placed trigger,
+    /// fired off the genuine [`Event::MovedToGraveyard`] once the tagged permanent actually
+    /// dies (see [`Permanent::serra_recursion`](crate::Permanent), captured into
+    /// `Game`'s batch scratch and fabricated into a [`TriggerGroup`](crate::TriggerGroup) by
+    /// [`Game::enqueue_triggers`]'s `MovedToGraveyard` arm) — not one of the recurred card's own
+    /// printed abilities, so it can't be scanned off its `def` the way an ordinary Dies trigger
+    /// is. `object` (the just-created graveyard object) is baked in there, never authored
+    /// directly in a card template — the graveyard-scoped twin of [`ExileObject`](Self::ExileObject).
+    /// Guard-returns with no exile/no life gain if the card already left the graveyard by the
+    /// time this (respondable) trigger resolves — CR 603.6 puts it on the stack, so a player can
+    /// react before it resolves (return the card to hand, reanimate it, and so on).
+    ExileGraveyardObjectGainLife {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        object: Option<ObjectId>,
+        amount: i32,
     },
     /// The ability's controller mills `count` cards from their own library — untargeted
     /// self-mill (Perpetual Timepiece's "{T}: Mill two cards"), unlike [`Mill`](Self::Mill)
@@ -3051,7 +3190,21 @@ pub enum Effect {
     /// counters instead of going to the graveyard. Marks the resolving spell (see
     /// [`Game::self_exile_time_counters`](crate::Game)); the actual zone move + counter placement
     /// happen in [`Game::finish_instant_sorcery_resolution`] once every effect step has run.
-    ExileSelfWithTimeCounters { counters: u32 },
+    ///
+    /// `on_expiry` is the expiry payload (All Hallow's Eve's scream-counter self-exile with a
+    /// resolution rider): when the last counter is removed at the owner's upkeep, an empty slice
+    /// grants the suspend free-cast permission as usual (Rousing Refrain), while a non-empty slice
+    /// instead sends the card to its owner's graveyard and resolves these effects (CR 702.62-flavored
+    /// scream counter — the card "resolves" its payload rather than becoming castable). Read at the
+    /// upkeep tick from the exiled card's def, not carried through resolution.
+    ExileSelfWithTimeCounters {
+        counters: u32,
+        #[cfg_attr(
+            feature = "card-dsl",
+            serde(default, deserialize_with = "de::static_slice")
+        )]
+        on_expiry: &'static [Effect],
+    },
     /// Run `steps` in order as one resolution, sharing this ability's target and `{X}` (Faithless
     /// Looting's "draw two cards, then discard two cards" is one ability, not two). A single-effect
     /// ability is the one-element case (the `effect = …` TOML form is sugar for `effects = […]`).
@@ -3079,6 +3232,12 @@ pub enum Effect {
     /// [`CardDef::back`] face (see [`Game::cast_prepared`]). No target — it's always the
     /// ability's own source. Setting an already-prepared permanent prepared is idempotent.
     BecomePrepared,
+    /// The source permanent "flips" (CR 712 — a Kamigawa flip card, Nezumi Graverobber →
+    /// Nighteyes the Devourer): sets its [`Permanent::flipped`] status via [`Event::Flipped`], so
+    /// its live characteristics permanently come from its [`CardDef::back`] face. No target — it's
+    /// always the ability's own source, and flipping is one-way (idempotent if already flipped).
+    /// `{ type = "flip_source" }` in TOML.
+    FlipSource,
     /// A Class's "Level N" activated ability (CR 717.2 — "Gain the next level as a sorcery"):
     /// sets the source permanent's [`Permanent::level`] to `level` via [`Event::LeveledUp`]. No
     /// target — always the ability's own source. The activation gate offers this ability only
@@ -3101,6 +3260,14 @@ pub enum Effect {
     /// the source. Resolving it as the ETB trigger's own first step is faithful for this pool since
     /// nothing depends on the choice mid-enter.
     ChooseColor,
+    /// "... becomes the color of your choice until end of turn" (CR 613.3c layer 5, a color-SET
+    /// — Wild Mongrel). Pauses on a [`PendingChoice::ChooseColor`] for the ability's controller
+    /// over the five colors, same as [`Self::ChooseColor`]; the chosen color is stored on the
+    /// ability's own source as a runtime override ([`Permanent::set_color_eot`]), read by
+    /// [`Game::colors_of`] *ahead of* the source's derived/added colors (a SET replaces them,
+    /// unlike [`Self::AnimateSelfUntilEndOfTurn`]'s `add_colors` union) — and cleared at cleanup,
+    /// unlike `ChooseColor`'s indefinite [`Permanent::chosen_color`]. No target — always the source.
+    SetOwnColorUntilEndOfTurn,
     /// Removes one +1/+1 counter from the ability's own source (Ingenious Prodigy's "remove a
     /// +1/+1 counter from it" — a CR 608.2c effect-internal sub-action, not a CR 602 activation
     /// cost). No target. A no-op if the source has none (guarded so the count never goes
@@ -3132,12 +3299,14 @@ pub enum Effect {
     /// untap that land"; Zimone, Quandrix Prodigy's "if you control eight or more lands, draw two
     /// cards instead," modeled as an unconditional draw plus this conditional second draw).
     /// Shares the enclosing ability's controller/source/target/`{X}`.
-    /// ponytail: one `Condition` per gate, no boolean combinators (AND/OR) — the pool has no
-    /// card that needs composed conditions here; add one only from a real card. `negate` is the
-    /// one combinator that *is* modeled (CR 603.3b-style "unless" — Court Hussar's "sacrifice it
-    /// unless {W} was spent to cast it" is `condition = color_was_spent_to_cast_this`,
-    /// `negate = true`): flips whether `then` runs, rather than adding a second `Condition` arm
-    /// per negated check.
+    /// A composed gate (Massacre's "if an opponent controls a Plains **and** you control a
+    /// Swamp") nests [`Condition::All`] here rather than adding a second `condition` field.
+    /// `negate` is the complementary combinator (CR 603.3b-style "unless" — Court Hussar's
+    /// "sacrifice it unless {W} was spent to cast it" is `condition =
+    /// color_was_spent_to_cast_this`, `negate = true`): flips whether `then` runs, rather than
+    /// adding a second `Condition` arm per negated check.
+    /// ponytail: no `Any` (OR) combinator yet — the pool has no card that needs one; add it
+    /// alongside `Condition::All` only from a real card.
     Conditional {
         condition: Condition,
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
@@ -3181,7 +3350,7 @@ impl Effect {
             | Effect::ExileUntilSourceLeaves { target }
             | Effect::ExileTargetMintingIllusionOnLeave { target }
             | Effect::FlickerTarget { target, .. }
-            | Effect::ReturnFromGraveyardToHand { target }
+            | Effect::ReturnFromGraveyardToHand { target, .. }
             | Effect::ReanimateToBattlefield { target, .. }
             | Effect::TuckFromGraveyard { target, .. }
             | Effect::Mill { target, .. }
@@ -3331,6 +3500,7 @@ impl Effect {
             }
             | Effect::CopyThisSpell { .. }
             | Effect::RetargetSpellCopy { .. }
+            | Effect::MayPayToCopyThis { .. }
             | Effect::CopyTriggeringSpell { .. }
             | Effect::CopyTriggeringSpellForEachOtherCreatureYouControl { .. }
             | Effect::CopyTriggeringAbility { .. }
@@ -3408,6 +3578,7 @@ impl Effect {
                 ..
             }
             | Effect::PutLandFromHand { .. }
+            | Effect::PutCreatureFromHand
             | Effect::CastCreatureFaceDown
             | Effect::UntapAll { .. }
             | Effect::EachPlayerDraws { .. }
@@ -3416,7 +3587,10 @@ impl Effect {
             | Effect::SacrificeObject { .. }
             | Effect::SacrificeSource
             | Effect::SacrificeEnchantedCreature { .. }
+            | Effect::DestroyTriggeringDamagedCreature { .. }
             | Effect::ExileObject { .. }
+            | Effect::ReturnObjectToHand { .. }
+            | Effect::ExileGraveyardObjectGainLife { .. }
             | Effect::MillSelf { .. }
             | Effect::ExileSelfWithTimeCounters { .. }
             | Effect::ExileRandomFromGraveyardMayPlay
@@ -3445,6 +3619,7 @@ impl Effect {
             | Effect::PreventAllCombatDamageThisTurn
             | Effect::PlaceVowCounters { .. }
             | Effect::LoseLife { .. }
+            | Effect::DealDamageToSelf { .. }
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target.
             | Effect::GainLifeTargetController { .. }
             // A no-target-of-its-own step: manifests the enclosing `Sequence`'s shared target's
@@ -3462,11 +3637,14 @@ impl Effect {
             | Effect::ChooseOne { .. }
             // "Become prepared" always affects the ability's own source, never a chosen target.
             | Effect::BecomePrepared
+            // Flipping (CR 712) always affects the ability's own source, never a chosen target.
+            | Effect::FlipSource
             // "Level N" always raises the ability's own source's level, never a chosen target.
             | Effect::LevelUp { .. }
             // The as-enters creature-type/color choices always affect the ability's own source.
             | Effect::ChooseCreatureType
             | Effect::ChooseColor
+            | Effect::SetOwnColorUntilEndOfTurn
             // Removes a counter from the ability's own source, never a chosen target.
             | Effect::RemoveCounterFromSelf
             // Grants the ability's controller a permission — no chosen target.
@@ -3491,6 +3669,7 @@ impl Effect {
             // schedule time, not a chosen target.
             | Effect::ScheduleReturnThisAuraAttachedToReanimated
             | Effect::ReturnThisAuraAttachedTo { .. }
+            | Effect::ScheduleReturnReanimatedToHand
             // The specific exiled card was already resolved when the delayed trigger was
             // scheduled — no chosen target of its own.
             | Effect::ReturnFlickeredCard { .. }
@@ -3561,6 +3740,7 @@ impl Effect {
     pub(crate) fn target_count(self) -> TargetCount {
         match self {
             Effect::ReturnToHand { count, .. }
+            | Effect::ReturnFromGraveyardToHand { count, .. }
             | Effect::DealDamage { count, .. }
             | Effect::TapTarget { count, .. }
             | Effect::ExileTarget { count, .. }
@@ -3671,9 +3851,11 @@ pub enum SacrificeCost {
     Creature { filter: PermanentFilter, count: u8 },
 }
 
-/// A named non-P/T counter kind (CR 122.1) tracked on [`Permanent::kind_counters`] — distinct
-/// from the +1/+1 counter path ([`Permanent::plus_counters`]), which stays untouched. Grows only
-/// as real cards demand a kind (mana_bloom/astral_cornucopia's charge counters, staff_of_the_
+/// A named counter kind (CR 122.1) tracked on [`Permanent::kind_counters`] — distinct from the
+/// +1/+1 counter path ([`Permanent::plus_counters`]), which stays untouched, even for
+/// [`MinusOneMinusOne`](Self::MinusOneMinusOne) (its P/T contribution is read straight off this
+/// map by [`Game::pt_layers`](crate::Game::pt_layers), not folded into `plus_counters`). Grows
+/// only as real cards demand a kind (mana_bloom/astral_cornucopia's charge counters, staff_of_the_
 /// storyteller's story counters).
 /// ponytail: `pub`, not `pub(crate)` — it rides inside [`Effect`]/[`Event`]/[`ActivationCost`],
 /// all `pub` types, so a private enum there would be E0446 (private type in public interface).
@@ -3700,6 +3882,20 @@ pub enum CounterKind {
     /// add a time counter to a suspended card — wire the exile store into proliferate when a pool
     /// card wants that.
     Time,
+    /// A scream counter (All Hallow's Eve — CR 122.1's functional-reminder family). Mechanically a
+    /// time counter with a different name: it sits on a card in *exile*, ticks down at the owner's
+    /// upkeep, and drives the card's expiry payload when the last is removed.
+    /// ponytail: reuses the [`Game::exile_time_counters`](crate::Game) store (keyed by object id,
+    /// kind-agnostic), so a scream counter and a time counter are indistinguishable there — the
+    /// distinct variant only earns the card its oracle-faithful name; split the store when a card
+    /// needs both kinds on one exiled object at once.
+    Scream,
+    /// A -1/-1 counter (CR 121.4/122.1 — Wickerbough Elder), tracked in the same kind-keyed map as
+    /// every other named counter rather than as negative [`Permanent::plus_counters`] — the two
+    /// stay independently addressable so a "remove a -1/-1 counter" cost can't ever accidentally
+    /// pay with a +1/+1 counter. [`Game::pt_layers`] reads this slot to subtract 1/1 per counter,
+    /// mirroring `plus_counters`' own P/T contribution.
+    MinusOneMinusOne,
 }
 
 impl CounterKind {
@@ -3709,7 +3905,7 @@ impl CounterKind {
     /// `Vec`/`HashMap`. Grow this (and add the matching variant) when a future card needs
     /// another named kind, or swap to a leaked `&'static [(CounterKind, u8)]`
     /// slice if the kind set ever needs to be open-ended.
-    pub(crate) const COUNT: usize = 5;
+    pub(crate) const COUNT: usize = 7;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub(crate) const ALL: [CounterKind; Self::COUNT] = [
@@ -3718,6 +3914,8 @@ impl CounterKind {
         CounterKind::Study,
         CounterKind::Vow,
         CounterKind::Time,
+        CounterKind::Scream,
+        CounterKind::MinusOneMinusOne,
     ];
 }
 
@@ -3869,6 +4067,14 @@ pub struct ActivationCost {
     /// Paid on activation; a library with fewer than this many cards can't pay it (CR 602.2b —
     /// an uncompletable cost makes activation illegal).
     pub mill_self: u8,
+    /// "Discard a card" as part of the cost (CR 602.2b/118 — Wild Mongrel's "Discard a card:
+    /// Wild Mongrel gets +1/+1..."): the activating [`Intent::ActivateAbility`]'s own
+    /// `discard_cost` names this many distinct hand cards to discard. `0` for none. Paid on
+    /// activation via the normal discard choke (so "whenever you discard a card" watchers fire);
+    /// an activator whose hand holds fewer than this many cards — or who names cards not in
+    /// hand, or names the same card twice — can't pay it (CR 602.2b — an uncompletable/illegal
+    /// cost makes activation illegal).
+    pub discard_cost: u8,
     /// "Exile this artifact"/"exile this permanent" as part of the cost (CR 118 — Perpetual
     /// Timepiece's "{2}, Exile this artifact: …"). Paid on activation via the same
     /// [`Event::MovedToExile`] path a targeted exile effect uses; a token ceases to exist
@@ -3906,6 +4112,17 @@ pub enum Condition {
         subtypes: &'static [&'static str],
         count: u32,
     },
+    /// "if an opponent controls `count` or more lands whose type line carries any of
+    /// `subtypes`" (Massacre's free-cast permission: "if an opponent controls a Plains" —
+    /// `subtypes = ["Plains"], count = 1`). The opponent-scoped twin of
+    /// [`ControlsLandsWithSubtype`](Self::ControlsLandsWithSubtype) — holds when *some* living
+    /// opponent of the controller meets the threshold individually (not summed across
+    /// opponents, unlike [`OpponentsControlLands`](Self::OpponentsControlLands)).
+    OpponentControlsLandsWithSubtype {
+        #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_str_slice"))]
+        subtypes: &'static [&'static str],
+        count: u32,
+    },
     /// "if you control `count` or more basic lands" (Eclipsed Steppe and its tango-land cousins).
     ControlsBasicLands { count: u32 },
     /// "if your opponents control `count` or more lands, combined" (the turbulent_* slowland
@@ -3932,9 +4149,13 @@ pub enum Condition {
     /// "if you control `at_least` or more lands" — both an intervening-if and an *activation*
     /// restriction (Temple of the False God: "Activate only if you control five or more lands";
     /// checked in [`Game::ability_activation_gate`]).
-    /// ponytail: only the `at_least` bound has a pool consumer; add an `at_most` sibling when a
-    /// "if you control N or fewer lands" card appears.
     YouControlLands { at_least: u32 },
+    /// "if you control `at_most` or fewer lands" (Edge of Autumn's "If you control four or fewer
+    /// lands, search your library for a basic land card…") — the `at_most` twin of
+    /// [`YouControlLands`](Self::YouControlLands), only reachable inside `{ type = "conditional",
+    /// … }` (a spell's own resolve-time check, CR 608.2h) since no pool card needs it as an
+    /// intervening-if or activation restriction yet.
+    YouControlLandsAtMost { at_most: u32 },
     /// "if you gained life this turn" (Witch of the Moors). Reads the controller's turn-scoped
     /// life-gain tally (`Player::life_gained_this_turn`).
     YouGainedLifeThisTurn,
@@ -4024,6 +4245,16 @@ pub enum Condition {
     /// [`CardKind::Artifact`] or [`CardKind::Creature`] — the intervening-if sibling of
     /// [`InstantOrSorceryCardsInYourGraveyardAtLeast`](Self::InstantOrSorceryCardsInYourGraveyardAtLeast).
     ArtifactOrCreatureCardsInYourGraveyardAtLeast { count: u32 },
+    /// "if there are `count` or more cards in your graveyard" (Werebear's Threshold ability
+    /// word: "gets +3/+3 as long as there are seven or more cards in your graveyard") — every
+    /// card in the controller's graveyard, any kind, re-checked live like the other
+    /// graveyard-count siblings above.
+    CardsInYourGraveyardAtLeast { count: u32 },
+    /// "if there are `count` or more creature cards total in all graveyards" (Avatar of Woe's
+    /// self cost reduction). Sums [`Game::graveyard_cards`] over *every* living player, not just
+    /// the controller — the all-graveyards sibling of
+    /// [`ArtifactOrCreatureCardsInYourGraveyardAtLeast`](Self::ArtifactOrCreatureCardsInYourGraveyardAtLeast).
+    CreatureCardsInAllGraveyardsAtLeast { count: u32 },
     /// "if that creature has power `at_least` or greater" (Yavimaya Bloomsage's "Then if that
     /// creature has power 7 or greater, this creature becomes prepared") — reads the *resolving
     /// effect's own chosen target's* power, not a `TriggerContext` field like every other arm
@@ -4048,8 +4279,10 @@ pub enum Condition {
     /// A composed AND of every arm in `conditions` (CR 603.4 — Zimone, All-Questioning's "if a
     /// land entered the battlefield under your control this turn *and* you control a prime
     /// number of lands" is two intervening-ifs on one trigger, and `Ability::condition` is a
-    /// single slot). Holds iff every element holds. `&'static` keeps `Condition` `Copy`, leaked
-    /// at deserialize like any other `&'static [T]` card field.
+    /// single slot; Massacre's free-cast permission — "if an opponent controls a Plains *and*
+    /// you control a Swamp" — reuses the same combinator on [`CardDef::free_cast_if`]). Holds
+    /// iff every element holds. `&'static` keeps `Condition` `Copy`, leaked at deserialize like
+    /// any other `&'static [T]` card field.
     All {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_slice"))]
         conditions: &'static [Condition],
@@ -4068,6 +4301,15 @@ pub enum Condition {
     /// `ctx.controller`, re-evaluated live like every other static-anthem gate here — flips off
     /// the instant the turn passes to someone else, not just at cleanup.
     DuringYourTurn,
+    /// "Then if there are no cards in that player's graveyard" (Nezumi Graverobber's flip gate —
+    /// CR 608.2, evaluated as the ability resolves, after the same ability's exile step already
+    /// emptied — or didn't — the targeted card's owner's graveyard). Target-based like
+    /// [`TargetPowerAtLeast`](Self::TargetPowerAtLeast): `TriggerContext` carries no target, so the
+    /// [`Effect::Conditional`] resolve site special-cases it directly against the shared `target`,
+    /// reading the owner of that graveyard card (its owner survives the exile — the moved object
+    /// still records it) and checking that owner's graveyard is now empty. Unreachable through the
+    /// ordinary [`condition_holds`](Game::condition_holds) path (returns `false` there).
+    TargetCardOwnerGraveyardEmpty,
     /// "if `color` was spent to cast this" (CR 106.9 — Court Hussar's "unless {W} was spent to
     /// cast it"). Source-object-based like [`SourceEnteredWithXAtLeast`](Self::SourceEnteredWithXAtLeast):
     /// `TriggerContext` carries no source id, so the [`Effect::Conditional`] resolve site
@@ -4218,6 +4460,13 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
         Some(dying) => fill_dying_enchanted_creature(effect, dying),
         None => effect,
     };
+    // A `DealsCombatDamageToCreature` trigger's destroy payoff needs the damaged creature's id,
+    // not the attack tuple below — guarded separately for the same reason as
+    // `dying_enchanted_creature` above.
+    let effect = match ctx.damaged_creature {
+        Some(damaged) => fill_damaged_creature(effect, damaged),
+        None => effect,
+    };
     // A `ThisPermanentLeavesBattlefield` trigger's sacrifice payoff needs the host this
     // permanent was attached to when it left (Animate Dead), not the attack tuple below —
     // guarded separately for the same reason as `dying_enchanted_creature` above.
@@ -4245,6 +4494,12 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     // `entering`/`dying_enchanted_creature` above.
     let effect = match ctx.triggering_spell {
         Some(spell) => fill_triggering_spell(effect, spell),
+        None => effect,
+    };
+    // CR 702.40a Storm's copy count, locked in when a `Trigger::YouCastThis` ability goes on the
+    // stack — same last-known-information shape as `triggering_spell` above.
+    let effect = match ctx.spells_cast_before_this {
+        Some(n) => fill_spells_cast_before_this(effect, n),
         None => effect,
     };
     // An `ActivateAbility` watch's copy payoff (Unbound Flourishing) needs the source of the
@@ -4404,6 +4659,29 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
     }
 }
 
+/// Rewrite a [`Trigger::DealsCombatDamageToCreature`] look-back destroy placeholder (Stinkweed
+/// Imp) to the damaged creature's id — mirrors [`fill_dying_enchanted_creature`] above, one
+/// effect variant only (flag-don't-force: no other pool card reads this context field yet).
+fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
+    match effect {
+        Effect::DestroyTriggeringDamagedCreature { .. } => {
+            Effect::DestroyTriggeringDamagedCreature {
+                creature: Some(damaged),
+            }
+        }
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|&step| fill_damaged_creature(step, damaged))
+                .collect();
+            Effect::Sequence {
+                steps: Box::leak(filled.into_boxed_slice()),
+            }
+        }
+        other => other,
+    }
+}
+
 /// Rewrite a [`Trigger::ThisPermanentLeavesBattlefield`] look-back sacrifice placeholder (Animate
 /// Dead) to the host's id — mirrors [`fill_dying_enchanted_creature`] above, one effect variant
 /// only (flag-don't-force: no other pool card reads this context field yet).
@@ -4500,11 +4778,13 @@ fn fill_triggering_spell(effect: Effect, spell: ObjectId) -> Effect {
         Effect::CopyTriggeringSpell {
             count,
             may_choose_new_targets,
+            last_known_information,
             ..
         } => Effect::CopyTriggeringSpell {
             triggering_spell: Some(spell),
             count,
             may_choose_new_targets,
+            last_known_information,
         },
         Effect::CommanderEntersWithBonusCounters { count, .. } => {
             Effect::CommanderEntersWithBonusCounters {
@@ -4521,6 +4801,36 @@ fn fill_triggering_spell(effect: Effect, spell: ObjectId) -> Effect {
             let filled: Vec<Effect> = steps
                 .iter()
                 .map(|&step| fill_triggering_spell(step, spell))
+                .collect();
+            Effect::Sequence {
+                steps: Box::leak(filled.into_boxed_slice()),
+            }
+        }
+        other => other,
+    }
+}
+
+/// Rewrite a [`TriggerContext::spells_cast_before_this`]-reading effect placeholder to CR
+/// 702.40a's storm count: [`Effect::CopyTriggeringSpell`]'s `count` field, when it holds
+/// [`Amount::SpellsCastBeforeThisThisTurn`] (Reaping the Graves' Storm, off
+/// [`Trigger::YouCastThis`]) — mirrors [`fill_triggering_spell`] above, one field over.
+fn fill_spells_cast_before_this(effect: Effect, n: u32) -> Effect {
+    match effect {
+        Effect::CopyTriggeringSpell {
+            triggering_spell,
+            count: Amount::SpellsCastBeforeThisThisTurn,
+            may_choose_new_targets,
+            last_known_information,
+        } => Effect::CopyTriggeringSpell {
+            triggering_spell,
+            count: Amount::Fixed(n as i32),
+            may_choose_new_targets,
+            last_known_information,
+        },
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|&step| fill_spells_cast_before_this(step, n))
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),

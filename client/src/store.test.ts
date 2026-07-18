@@ -262,6 +262,16 @@ describe("applyDelta", () => {
       expect(game.log[0].text).toBe("P3 loses the game");
     });
 
+    it("flipped", () => {
+      applyDelta(mkDelta(1, [{ kind: "flipped", object: 2 }], [bear]));
+      expect(game.log[0].text).toBe("Grizzly Bears flips");
+    });
+
+    it("color_set_until_end_of_turn", () => {
+      applyDelta(mkDelta(1, [{ kind: "color_set_until_end_of_turn", object: 2, color: 2 }], [bear]));
+      expect(game.log[0].text).toBe("Grizzly Bears becomes black until end of turn");
+    });
+
     it("creature_type_chosen", () => {
       applyDelta(mkDelta(1, [{ kind: "creature_type_chosen", object: 2, subtype: "Goblin" }], [bear]));
       expect(game.log[0].text).toBe("Grizzly Bears is chosen as Goblin");

@@ -64,7 +64,13 @@ pub enum Intent {
     PlayLand { player: PlayerId, object: ObjectId },
     /// Activate a hand card's Cycling ability (CR 702.29a — "{N}, Discard this card: Draw a
     /// card."), functioning from the hand rather than a permanent's activated ability.
-    Cycle { player: PlayerId, card: ObjectId },
+    /// `sacrifice` names the permanent paying [`CardDef::cycling_sacrifice`] (CR 702.29b — Edge
+    /// of Autumn's "Cycling—Sacrifice a land"); ignored for a card whose cycling carries none.
+    Cycle {
+        player: PlayerId,
+        card: ObjectId,
+        sacrifice: Option<ObjectId>,
+    },
     /// Activate a hand card's [`CardDef::hand_ability`] (CR 113.6/602.5e — a hand-activated,
     /// discard-this-card ability with an authored payload, e.g. Magma Opus's "{U/R}{U/R},
     /// Discard this card: Create a Treasure token."). The general sibling of [`Self::Cycle`]
@@ -139,6 +145,10 @@ pub enum Intent {
         ability_index: usize,
         target: Option<Target>,
         sacrifice: Vec<ObjectId>,
+        /// Hand cards named to pay a `discard_cost` (CR 602.2b — Wild Mongrel's "Discard a
+        /// card"); ignored for a cost with no discard, and must have exactly `discard_cost`
+        /// distinct entries, all currently in `player`'s hand, for a cost that has one.
+        discard_cost: Vec<ObjectId>,
         /// The chosen `{X}` for an activation cost that contains `{X}` (CR 107.3 — paid once per
         /// `{X}` symbol); `0` for an ability with no `{X}` in its cost.
         x: u32,
@@ -176,6 +186,12 @@ pub enum Intent {
     DeclineUntap {
         player: PlayerId,
         keep_tapped: Vec<ObjectId>,
+    },
+    /// Answer a [`PendingChoice::ChooseDredge`]: `Some(dredger)` dredges that graveyard card
+    /// (mill its N, return it to hand, no draw); `None` declines and draws normally (CR 702.52).
+    ChooseDredge {
+        player: PlayerId,
+        dredger: Option<ObjectId>,
     },
     /// Answer a [`PendingChoice::PayCost`]: pay the cost (getting the effect) or decline.
     PayOptionalCost { player: PlayerId, pay: bool },
@@ -252,6 +268,12 @@ pub enum Intent {
     /// Answer a [`PendingChoice::PutLandFromHand`]: `choice` is the hand land put onto the
     /// battlefield (one of the offered candidates), or `None` to decline.
     PutLandFromHand {
+        player: PlayerId,
+        choice: Option<ObjectId>,
+    },
+    /// Answer a [`PendingChoice::PutCreatureFromHand`]: `choice` is the hand creature put onto
+    /// the battlefield (one of the offered candidates), or `None` to decline.
+    PutCreatureFromHand {
         player: PlayerId,
         choice: Option<ObjectId>,
     },
@@ -349,9 +371,9 @@ pub enum Intent {
     /// concrete intent would (`Cast`/`PlayLand`/`ActivateAbility`/`DeclareAttackers`/
     /// `DeclareBlockers`) — this is an additional entry point, not a replacement. Which
     /// parameters matter depends on the resolved action's kind: `target`/`x`/`modes` for a cast,
-    /// `target`/`sacrifice` for an activation, `attackers`/`blocks` for a combat declaration; the
-    /// rest are ignored. An unknown `id`, or one whose stored `player` isn't the submitter,
-    /// rejects with [`Reject::UnknownAction`].
+    /// `target`/`sacrifice`/`discard_cost` for an activation, `attackers`/`blocks` for a combat
+    /// declaration; the rest are ignored. An unknown `id`, or one whose stored `player` isn't
+    /// the submitter, rejects with [`Reject::UnknownAction`].
     TakeAction {
         player: PlayerId,
         id: u64,
@@ -359,7 +381,9 @@ pub enum Intent {
         x: u32,
         modes: Vec<(usize, Option<Target>)>,
         sacrifice: Vec<ObjectId>,
-        /// Hand cards paying an additional discard cost (CR 601.2f); empty when the cast has none.
+        /// Hand cards paying a cast's additional discard cost (CR 601.2f) or an activation's
+        /// `discard_cost` (CR 602.2b) — whichever the resolved action's kind actually charges;
+        /// empty when it charges neither.
         discard_cost: Vec<ObjectId>,
         /// Graveyard cards paying delve or escape exile (CR 702.66 / 702.19); empty when neither.
         graveyard_exile: Vec<ObjectId>,
@@ -396,15 +420,19 @@ impl Intent {
                 object,
                 target,
                 sacrifice,
+                discard_cost,
                 ..
             } => once(*object)
                 .chain(target.and_then(Target::object_id))
                 .chain(sacrifice.iter().copied())
+                .chain(discard_cost.iter().copied())
                 .collect(),
             Intent::PlayLand { object, .. } | Intent::TapForMana { object, .. } => vec![*object],
             Intent::ChannelColorlessMana { .. } => Vec::new(),
-            Intent::Cycle { card, .. }
-            | Intent::ActivateHandAbility { card, .. }
+            Intent::Cycle {
+                card, sacrifice, ..
+            } => once(*card).chain(sacrifice.iter().copied()).collect(),
+            Intent::ActivateHandAbility { card, .. }
             | Intent::Suspend { card, .. }
             | Intent::Encore { card, .. }
             | Intent::CastFaceDown { card, .. } => vec![*card],
@@ -447,6 +475,7 @@ impl Intent {
                 .collect(),
             Intent::SearchLibrary { choice, .. }
             | Intent::PutLandFromHand { choice, .. }
+            | Intent::PutCreatureFromHand { choice, .. }
             | Intent::CastCreatureFaceDown { choice, .. }
             | Intent::ChooseExiledWithCard { choice, .. }
             | Intent::ChooseExiledWithCardToCast { choice, .. }
@@ -458,6 +487,7 @@ impl Intent {
             Intent::ChooseSacrifices { sacrifices, .. } => sacrifices.clone(),
             Intent::Discard { cards, .. } => cards.clone(),
             Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
+            Intent::ChooseDredge { dredger, .. } => dredger.iter().copied().collect(),
             Intent::ChooseAttachHost { host, .. } => host.iter().copied().collect(),
             Intent::ChooseCopyTarget { copy, .. } => copy.iter().copied().collect(),
             // The carried params reference real object ids (the action's own object is looked
@@ -533,6 +563,7 @@ impl Intent {
             | Intent::AssignDamage { player, .. }
             | Intent::DivideSpellDamage { player, .. }
             | Intent::DeclineUntap { player, .. }
+            | Intent::ChooseDredge { player, .. }
             | Intent::ArrangeTop { player, .. }
             | Intent::SelectFromTop { player, .. }
             | Intent::DistributeTop { player, .. }
@@ -541,6 +572,7 @@ impl Intent {
             | Intent::ChooseSacrifices { player, .. }
             | Intent::Discard { player, .. }
             | Intent::PutLandFromHand { player, .. }
+            | Intent::PutCreatureFromHand { player, .. }
             | Intent::CastCreatureFaceDown { player, .. }
             | Intent::ReturnLandOrSacrifice { player, .. }
             | Intent::ChooseExiledWithCard { player, .. }
@@ -580,6 +612,7 @@ impl Intent {
             | Intent::AssignDamage { .. }
             | Intent::DivideSpellDamage { .. }
             | Intent::DeclineUntap { .. }
+            | Intent::ChooseDredge { .. }
             | Intent::ArrangeTop { .. }
             | Intent::SelectFromTop { .. }
             | Intent::DistributeTop { .. }
@@ -588,6 +621,7 @@ impl Intent {
             | Intent::ChooseSacrifices { .. }
             | Intent::Discard { .. }
             | Intent::PutLandFromHand { .. }
+            | Intent::PutCreatureFromHand { .. }
             | Intent::CastCreatureFaceDown { .. }
             | Intent::ReturnLandOrSacrifice { .. }
             | Intent::ChooseExiledWithCard { .. }
@@ -694,6 +728,22 @@ pub enum PendingChoice {
         player: PlayerId,
         permanents: Vec<ObjectId>,
     },
+    /// `player` is about to draw one card of a batch of `remaining` and may instead dredge (CR
+    /// 702.52): each entry in `eligible` is one dredger in their own graveyard (its object id and its
+    /// Dredge N), offered only when the library holds at least N (CR 702.52a). Answered by
+    /// [`Intent::ChooseDredge`] — picking one mills N and returns it graveyard→hand instead of
+    /// drawing; declining (`None`) performs the normal draw. Each of a "draw N"'s draws is its own
+    /// replaceable event (CR 121.2), so after this one resolves the answer handler re-enters the draw
+    /// loop for `remaining - 1`, re-checking `eligible` against the now-live graveyard/library.
+    /// `from_draw_step` distinguishes the two draw chokes that raise this: the turn-based draw step
+    /// (`remaining == 1`; resume by re-entering [`Game::advance_step`]) versus a mid-resolution
+    /// [`Effect::DrawCards`] (resume via the deferred sequence, like every other resolution pause).
+    ChooseDredge {
+        player: PlayerId,
+        eligible: Vec<(ObjectId, u8)>,
+        remaining: u8,
+        from_draw_step: bool,
+    },
     /// `player` may pay `cost` to get an optional triggered ability (`source`'s `effect`).
     /// Answered by [`Intent::PayOptionalCost`].
     PayCost {
@@ -736,6 +786,18 @@ pub enum PendingChoice {
     /// [`Self::PayOrCounter`] — same "declining does something" polarity (there, countering the
     /// spell; here, sacrificing the source).
     PayEchoOrSacrifice {
+        player: PlayerId,
+        source: ObjectId,
+        cost: Cost,
+    },
+    /// `player` (`source`'s owner) may pay `cost` (its printed Recover cost) to return `source`
+    /// from their graveyard to hand, or decline and have it exiled instead (CR 702.59a — "When a
+    /// creature is put into your graveyard from the battlefield, you may pay {cost}. If you do,
+    /// return this card from your graveyard to your hand. Otherwise, exile this card."). Answered
+    /// by [`Intent::PayOptionalCost`], the graveyard-scoped twin of [`Self::PayEchoOrSacrifice`] —
+    /// same "declining does something" polarity (there, sacrificing the permanent; here, exiling
+    /// the graveyard card).
+    PayRecoverOrExile {
         player: PlayerId,
         source: ObjectId,
         cost: Cost,
@@ -1106,6 +1168,15 @@ pub enum PendingChoice {
         tapped: bool,
         candidates: Vec<ObjectId>,
     },
+    /// `player` may put one of `candidates` (their hand's creature cards) onto the battlefield,
+    /// or decline ("up to one" — an [`Effect::PutCreatureFromHand`] resolving, Cauldron Dance).
+    /// `source` is the resolving ability, threaded through so the answer can schedule the
+    /// end-step sacrifice against it. Answered by [`Intent::PutCreatureFromHand`].
+    PutCreatureFromHand {
+        player: PlayerId,
+        source: ObjectId,
+        candidates: Vec<ObjectId>,
+    },
     /// `player` may cast one of `candidates` — the creature cards in their hand whose mana cost
     /// could be paid by some amount of, or all of, the mana spent on the `{X}` paid (CR 107.3,
     /// [`Cost::payable_from_multiset`]) — face down as a 2/2 creature spell without paying its
@@ -1291,12 +1362,19 @@ pub enum PendingChoice {
         source: ObjectId,
         options: &'static [&'static str],
     },
-    /// `player` (an as-enters permanent's controller) must name a color for `source` (CR
-    /// 614.12/700.9-style "as ~ enters, choose a color" — Flickering Ward's
-    /// [`Effect::ChooseColor`]). The candidate list is the fixed five colors ([`Color::ALL`]), so
-    /// unlike [`Self::ChooseCreatureType`] no `options` slice is carried. Answered by
-    /// [`Intent::ChooseColor`], which sets `source`'s [`Permanent::chosen_color`].
-    ChooseColor { player: PlayerId, source: ObjectId },
+    /// `player` must name a color for `source` — either an as-enters choice (CR 614.12/700.9-style
+    /// — Flickering Ward's [`Effect::ChooseColor`]) or a resolution-time color-SET (CR 613.3c —
+    /// Wild Mongrel's [`Effect::SetOwnColorUntilEndOfTurn`]). The candidate list is the fixed five
+    /// colors ([`Color::ALL`]), so unlike [`Self::ChooseCreatureType`] no `options` slice is
+    /// carried. Both raise this same picker (same wire prompt — [`Self::ChooseColor`] variant
+    /// reused, not a second picker); `until_end_of_turn` tells [`Intent::ChooseColor`]'s handler
+    /// which of the two answered: `false` sets `source`'s indefinite [`Permanent::chosen_color`],
+    /// `true` sets its until-end-of-turn [`Permanent::set_color_eot`] instead.
+    ChooseColor {
+        player: PlayerId,
+        source: ObjectId,
+        until_end_of_turn: bool,
+    },
     /// `player` (an entering permanent's controller) may have `source` enter as a copy of one of
     /// `candidates` (every other object of the marker's [`EnterAsCopy::of`] type on the
     /// battlefield — CR 706/707.2: a creature for Altered Ego/Cursed Mirror, an enchantment
@@ -1370,10 +1448,12 @@ pub(crate) const CREATURE_TYPES: &[&str] = &[
     "Angel",
     "Archon",
     "Artificer",
+    "Avatar",
     "Bard",
     "Bear",
     "Beast",
     "Bird",
+    "Boar",
     "Cat",
     "Cleric",
     "Construct",
@@ -1405,11 +1485,13 @@ pub(crate) const CREATURE_TYPES: &[&str] = &[
     "Horse",
     "Human",
     "Hydra",
+    "Imp",
     "Incarnation",
     "Inkling",
     "Insect",
     "Jackal",
     "Jellyfish",
+    "Kavu",
     "Knight",
     "Kor",
     "Lizard",
@@ -1417,6 +1499,7 @@ pub(crate) const CREATURE_TYPES: &[&str] = &[
     "Merfolk",
     "Monk",
     "Monkey",
+    "Mutant",
     "Myr",
     "Ooze",
     "Orc",
@@ -1424,6 +1507,7 @@ pub(crate) const CREATURE_TYPES: &[&str] = &[
     "Ox",
     "Pest",
     "Phyrexian",
+    "Plant",
     "Rabbit",
     "Rat",
     "Rogue",
@@ -1435,6 +1519,7 @@ pub(crate) const CREATURE_TYPES: &[&str] = &[
     "Soldier",
     "Sorcerer",
     "Spirit",
+    "Treefolk",
     "Troll",
     "Turtle",
     "Vampire",
@@ -1456,11 +1541,13 @@ impl PendingChoice {
             | PendingChoice::ChooseAbilityTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
             | PendingChoice::DeclineUntap { player, .. }
+            | PendingChoice::ChooseDredge { player, .. }
             | PendingChoice::PayCost { player, .. }
             | PendingChoice::PayOrCounter { player, .. }
             | PendingChoice::PayOrControllerDraws { player, .. }
             | PendingChoice::ChooseCounteredSpellDestination { player, .. }
             | PendingChoice::PayEchoOrSacrifice { player, .. }
+            | PendingChoice::PayRecoverOrExile { player, .. }
             | PendingChoice::SacrificeUnlessPay { player, .. }
             | PendingChoice::SacrificeUnlessReturnLand { player, .. }
             | PendingChoice::AssignCombatDamage { player, .. }
@@ -1484,6 +1571,7 @@ impl PendingChoice {
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
             | PendingChoice::PutLandFromHand { player, .. }
+            | PendingChoice::PutCreatureFromHand { player, .. }
             | PendingChoice::CastCreatureFaceDown { player, .. }
             | PendingChoice::ChooseMode { player, .. }
             | PendingChoice::ChooseTriggerModes { player, .. }
@@ -1694,6 +1782,10 @@ pub enum Event {
     /// A Class permanent gained a level (CR 717.2 — [`Effect::LevelUp`]): sets `source`'s
     /// [`Permanent::level`] to `level`. Public battlefield status, like [`Self::PreparedChanged`].
     LeveledUp { source: ObjectId, level: u8 },
+    /// `object` flipped (CR 712 — a Kamigawa flip card's [`Effect::FlipSource`]): sets
+    /// [`Permanent::flipped`], so it permanently uses its [`CardDef::back`] face's characteristics.
+    /// Public battlefield status, like [`Self::PreparedChanged`].
+    Flipped { object: ObjectId },
     /// `object` phased out (CR 702.26 — Guardian of Faith's [`Effect::PhaseOut`]): sets
     /// [`Permanent::phased_out`] on it and on everything attached to it (CR 702.26g), so it's
     /// treated as though it doesn't exist until its controller's next turn.
@@ -1711,6 +1803,11 @@ pub enum Event {
     /// An as-enters "choose a color" choice was answered (CR 614.12/700.9-style — Flickering
     /// Ward's [`Effect::ChooseColor`]). Sets `object`'s [`Permanent::chosen_color`].
     ColorChosen { object: ObjectId, color: Color },
+    /// A "becomes the color of your choice until end of turn" choice was answered (CR 613.3c
+    /// layer 5 — Wild Mongrel's [`Effect::SetOwnColorUntilEndOfTurn`]). Sets `object`'s
+    /// [`Permanent::set_color_eot`]; cleared alongside the other until-EOT boosts by
+    /// [`Self::TempBoostsEnded`].
+    ColorSetUntilEndOfTurn { object: ObjectId, color: Color },
     /// A copy of a prepared permanent's back-face spell was put on the stack (soc/sos prepare
     /// DFCs). `source` is the prepared permanent (its [`CardDef::back`] is the spell def);
     /// `spell` is the freshly-minted spell object, controlled by `controller`, targeting `target`.
@@ -2139,6 +2236,17 @@ pub enum Event {
     CombatDamageDealtToPlayer {
         source: ObjectId,
         player: PlayerId,
+        amount: i32,
+    },
+    /// A creature dealt combat damage to another creature (CR 510.2) — a marker distinct from the
+    /// `DamageMarked` it accompanies in [`Game::damage_creature`]/[`Game::assign_attacker_damage`],
+    /// since noncombat creature damage (fight, CR 701.12) also emits `DamageMarked` but must not
+    /// fire a [`Trigger::DealsCombatDamageToCreature`] watch. The creature-target twin of
+    /// [`Self::CombatDamageDealtToPlayer`]. See the `Event::CombatDamageDealtToCreature` arm of
+    /// [`Game::enqueue_triggers`].
+    CombatDamageDealtToCreature {
+        source: ObjectId,
+        target: ObjectId,
         amount: i32,
     },
     /// `source` dealt `amount` *noncombat* damage to `player` (CR 120.1) — a marker distinct

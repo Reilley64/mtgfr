@@ -436,6 +436,11 @@ pub enum PendingChoiceView {
     /// Soulsinger). `items` are public battlefield permanents. Answering keeps the chosen subset
     /// tapped and untaps the rest.
     DeclineUntap { player: u8, items: Vec<ChoiceItem> },
+    /// This player is about to draw and may dredge instead (CR 702.52): `items` are the eligible
+    /// dredgers in their own graveyard (public to them). Answering picks one to mill-and-return, or
+    /// declines to draw normally. ponytail: full client rendering of the decline option is #200
+    /// slice 3 — this terse projection just names the eligible dredgers.
+    ChooseDredge { player: u8, items: Vec<ChoiceItem> },
     /// The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
     /// effect label so the client can say what paying does.
     PayCost {
@@ -467,6 +472,15 @@ pub enum PendingChoiceView {
     /// Pay `cost` (Echo) to keep `source`, or decline and sacrifice it (CR 702.31 — the
     /// permanent-scoped twin of `PayOrCounter`).
     PayEchoOrSacrifice {
+        player: u8,
+        source: ObjectId,
+        cost: WireCost,
+    },
+    /// Pay `cost` (Recover) to return `source` from the graveyard to hand, or decline and exile
+    /// it (CR 702.59 — the graveyard-scoped twin of `PayEchoOrSacrifice`).
+    // ponytail: no client form yet — deferred to Phase 5 client catch-up. Answerable today via
+    // the wire `PayOptionalCost` intent; only the reveal projection lands in this increment.
+    PayRecoverOrExile {
         player: u8,
         source: ObjectId,
         cost: WireCost,
@@ -650,6 +664,10 @@ pub enum PendingChoiceView {
     /// This player may put one hand land (`items`, private to them) onto the battlefield, or
     /// decline.
     PutLandFromHand { player: u8, items: Vec<ChoiceItem> },
+    /// This player may put one hand creature (`items`, private to them) onto the battlefield
+    /// (it gains haste and is sacrificed at the beginning of the next end step — Cauldron
+    /// Dance), or decline.
+    PutCreatureFromHand { player: u8, items: Vec<ChoiceItem> },
     /// This player may cast one hand creature (`items`, private to them — mana value at most the
     /// paid `{X}`) face down as a 2/2 without paying its mana cost (Illusionary Mask), or decline.
     CastCreatureFaceDown { player: u8, items: Vec<ChoiceItem> },
@@ -834,6 +852,8 @@ impl PendingChoiceView {
             | Self::MayDiscard { items, .. }
             | Self::Discard { items, .. }
             | Self::PutLandFromHand { items, .. }
+            | Self::PutCreatureFromHand { items, .. }
+            | Self::ChooseDredge { items, .. }
             | Self::CastCreatureFaceDown { items, .. }
             | Self::ChooseExiledWithCard { items, .. }
             | Self::ChooseExiledWithCardToCast { items, .. }
@@ -863,6 +883,7 @@ impl PendingChoiceView {
             | Self::PayOrControllerDraws { .. }
             | Self::ChooseCounteredSpellDestination { .. }
             | Self::PayEchoOrSacrifice { .. }
+            | Self::PayRecoverOrExile { .. }
             | Self::SacrificeUnlessPay { .. }
             | Self::ChooseMode { .. }
             | Self::ChooseTriggerModes { .. }

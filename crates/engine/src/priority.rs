@@ -141,7 +141,7 @@ impl Game {
             let Some(index) = self.free_tap_mana_ability(object) else {
                 return Err(Reject::CannotProduceMana);
             };
-            return self.activate_ability(player, object, index, None, Vec::new(), 0);
+            return self.activate_ability(player, object, index, None, Vec::new(), Vec::new(), 0);
         };
         if perm.owner != player || perm.tapped {
             return Err(Reject::CannotProduceMana);
@@ -333,6 +333,13 @@ impl Game {
     /// mode-less query on a modal card (snapshot / auto-pass, which don't know the pick) reports
     /// no requirement.
     pub(crate) fn required_target(&self, def: CardDef, mode: Option<usize>) -> TargetSpec {
+        // Animate Dead (CR 303.4a's "enchant creature card in a graveyard"): the pool's one Aura
+        // whose enchant subject is a graveyard card, not a battlefield permanent — checked ahead
+        // of the ordinary `CardKind::Aura` battlefield-permanent case below (see
+        // `CardDef::enchant_graveyard`'s doc).
+        if def.enchant_graveyard {
+            return TargetSpec::CreatureCardInAnyGraveyard;
+        }
         // An Aura is cast targeting the creature it will enchant (CR 303.4a), even though its
         // grant is a static ability, not a spell effect. An "Enchant creature you control"-style
         // restriction narrows that to `def.enchant`'s filter; an unrestricted "Enchant creature"
@@ -342,13 +349,6 @@ impl Game {
                 def.enchant
                     .unwrap_or(PermanentFilter::of(TypeSet::CREATURE)),
             );
-        }
-        // Animate Dead (CR 303.4a's "enchant creature card in a graveyard"): the pool's one Aura
-        // whose enchant subject is a graveyard card, not a battlefield permanent — kind stays
-        // `Enchantment` (see `CardDef::enchant_graveyard`'s doc), so it needs its own cast-target
-        // branch alongside the `CardKind::Aura` one above.
-        if def.enchant_graveyard {
-            return TargetSpec::CreatureCardInAnyGraveyard;
         }
         if def.modal {
             return mode
@@ -1224,7 +1224,7 @@ impl Game {
                 PlannedTap::Base(source) => self.tap_for_mana(player, source)?,
                 PlannedTap::Ability(source, index) => {
                     // A mana-payment plan only taps mana abilities, none of which carry `{X}`.
-                    self.activate_ability(player, source, index, None, Vec::new(), 0)?
+                    self.activate_ability(player, source, index, None, Vec::new(), Vec::new(), 0)?
                 }
             };
             events.extend(produced);
@@ -1436,7 +1436,16 @@ impl Game {
                     .collect();
                 for (card, count) in ticking {
                     self.push_apply(events, Event::TimeCountersRemoved { card });
-                    if count == 1 {
+                    if count != 1 {
+                        continue;
+                    }
+                    // All Hallow's Eve (CR 702.62-flavored scream counter): a self-exiled card
+                    // carrying an `on_expiry` payload resolves that payload when its last counter
+                    // is removed — it goes to its owner's graveyard, then the effects run — instead
+                    // of becoming free-castable from exile. A plain suspend card (empty payload)
+                    // keeps the free-cast permission below.
+                    let payload = self.suspend_expiry_payload(card);
+                    if payload.is_empty() {
                         self.push_apply(
                             events,
                             Event::CastFromExileFreePermissionGranted {
@@ -1444,7 +1453,26 @@ impl Game {
                                 player: active,
                             },
                         );
+                        continue;
                     }
+                    let owner = self.owner_of(card);
+                    let moved = self.next_object_id();
+                    self.push_apply(
+                        events,
+                        Event::MovedToGraveyard {
+                            card: moved,
+                            from: card,
+                        },
+                    );
+                    let ctx = crate::resolution::ResolveCtx {
+                        controller: owner,
+                        source: moved,
+                        target: None,
+                        targets_second: crate::TargetList::default(),
+                        x: 0,
+                        spent_mana: [0; 6],
+                    };
+                    self.run_sequence(payload, ctx, events);
                 }
             }
             Step::Draw => {
@@ -1452,6 +1480,22 @@ impl Game {
                 // in multiplayer no one skips (CR 103.8c). `begin_first_turn` arms the flag from the
                 // seat count; spend it here so only that first draw is skipped.
                 if std::mem::take(&mut self.skip_starting_players_first_draw) {
+                    return;
+                }
+                // Dredge (CR 702.52): if a dredger is eligible, pause on the replacement choice
+                // instead of drawing. `advance_step` returns on the pause; `answer_choose_dredge`
+                // performs the draw (decline) or the mill+return (accept) and resumes the step loop.
+                let dredgers = self.dredge_options(active);
+                if !dredgers.is_empty() {
+                    crate::pending::raise_choice(
+                        self,
+                        PendingChoice::ChooseDredge {
+                            player: active,
+                            eligible: dredgers,
+                            remaining: 1,
+                            from_draw_step: true,
+                        },
+                    );
                     return;
                 }
                 let drawn = self.draw_card(active);
@@ -1485,6 +1529,7 @@ impl Game {
                             || p.base_pt_set_eot.is_some()
                             || p.added_types_eot != TypeSet::NONE
                             || !p.added_subtypes_eot.is_empty()
+                            || p.set_color_eot.is_some()
                             || !p.temp_keywords.is_empty()
                             || !p.temp_lost_keywords.is_empty()
                             || p.reverts_to_def_eot.is_some()
@@ -1614,16 +1659,21 @@ mod tests {
             abilities: &[],
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -1642,6 +1692,7 @@ mod tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 

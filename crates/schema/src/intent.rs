@@ -148,6 +148,11 @@ pub enum WireIntent {
         /// must have exactly the cost's count of entries).
         #[serde(default)]
         sacrifice: Vec<ObjectId>,
+        /// Hand cards named to pay a "discard a card" cost (empty otherwise; must have exactly
+        /// the cost's `discard_cost` count of distinct entries currently in the activator's
+        /// hand). See [`engine::Intent::ActivateAbility`].
+        #[serde(default)]
+        discard_cost: Vec<ObjectId>,
     },
     DeclareAttackers {
         player: u8,
@@ -245,9 +250,23 @@ pub enum WireIntent {
         player: u8,
         keep_tapped: Vec<ObjectId>,
     },
+    /// Answer a dredge choice (CR 702.52): `dredger` is the chosen graveyard dredger to mill-and-
+    /// return in place of the draw, or absent to decline and draw normally.
+    ChooseDredge {
+        player: u8,
+        #[serde(default)]
+        dredger: Option<ObjectId>,
+    },
     /// Answer a put-a-land-from-hand choice: `choice` is the hand land put onto the battlefield,
     /// or absent to decline.
     PutLandFromHand {
+        player: u8,
+        #[serde(default)]
+        choice: Option<ObjectId>,
+    },
+    /// Answer a put-a-creature-from-hand choice (Cauldron Dance): `choice` is the hand creature
+    /// put onto the battlefield, or absent to decline.
+    PutCreatureFromHand {
         player: u8,
         #[serde(default)]
         choice: Option<ObjectId>,
@@ -352,10 +371,14 @@ pub enum WireIntent {
         top: bool,
     },
     /// Activate a hand card's Cycling ability (CR 702.29a): pay its cycling cost, discard the
-    /// card, draw one.
+    /// card, draw one. `sacrifice` names the permanent paying a cycling sacrifice cost (CR
+    /// 702.29b — Edge of Autumn's "Cycling—Sacrifice a land"); absent for a card whose cycling
+    /// carries none. See [`engine::Intent::Cycle`].
     Cycle {
         player: u8,
         card: ObjectId,
+        #[serde(default)]
+        sacrifice: Option<ObjectId>,
     },
     /// Activate a hand card's hand-activated, discard-this-card ability (CR 113.6/602.5e —
     /// Magma Opus's "{U/R}{U/R}, Discard this card: Create a Treasure token."). See
@@ -502,6 +525,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             ability_index,
             target,
             sacrifice,
+            discard_cost,
             ..
         } => ActivateAbility {
             player,
@@ -509,6 +533,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             ability_index,
             target,
             sacrifice,
+            discard_cost,
         },
         DeclareAttackers { attackers, .. } => DeclareAttackers { player, attackers },
         DeclareBlockers { blocks, .. } => DeclareBlockers { player, blocks },
@@ -532,7 +557,9 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             player,
             keep_tapped,
         },
+        ChooseDredge { dredger, .. } => ChooseDredge { player, dredger },
         PutLandFromHand { choice, .. } => PutLandFromHand { player, choice },
+        PutCreatureFromHand { choice, .. } => PutCreatureFromHand { player, choice },
         CastCreatureFaceDown { choice, .. } => CastCreatureFaceDown { player, choice },
         ReturnLandOrSacrifice { land, .. } => ReturnLandOrSacrifice { player, land },
         ChooseExiledWithCard { choice, .. } => ChooseExiledWithCard { player, choice },
@@ -562,7 +589,13 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ChooseTopOrBottom { top, .. } => ChooseTopOrBottom { player, top },
         ChooseMode { mode, .. } => ChooseMode { player, mode },
         ChooseTriggerModes { modes, .. } => ChooseTriggerModes { player, modes },
-        Cycle { card, .. } => Cycle { player, card },
+        Cycle {
+            card, sacrifice, ..
+        } => Cycle {
+            player,
+            card,
+            sacrifice,
+        },
         ActivateHandAbility { card, .. } => ActivateHandAbility { player, card },
         Suspend { card, .. } => Suspend { player, card },
         Encore { card, .. } => Encore { player, card },
@@ -667,12 +700,14 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             ability_index,
             target,
             sacrifice,
+            discard_cost,
         } => Intent::ActivateAbility {
             player: PlayerId(player),
             object,
             ability_index: ability_index as usize,
             target: target.map(WireTarget::to_engine),
             sacrifice,
+            discard_cost,
             // ponytail: no pool card has an `{X}`-cost activated ability, so the wire intent
             // carries no chosen X yet — default to 0. Add an `x` to `WireIntent::ActivateAbility`
             // (and regenerate the OpenAPI client) when a real card first needs one.
@@ -773,7 +808,15 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             keep_tapped,
         },
+        WireIntent::ChooseDredge { player, dredger } => Intent::ChooseDredge {
+            player: PlayerId(player),
+            dredger,
+        },
         WireIntent::PutLandFromHand { player, choice } => Intent::PutLandFromHand {
+            player: PlayerId(player),
+            choice,
+        },
+        WireIntent::PutCreatureFromHand { player, choice } => Intent::PutCreatureFromHand {
             player: PlayerId(player),
             choice,
         },
@@ -859,9 +902,14 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             top,
         },
-        WireIntent::Cycle { player, card } => Intent::Cycle {
+        WireIntent::Cycle {
+            player,
+            card,
+            sacrifice,
+        } => Intent::Cycle {
             player: PlayerId(player),
             card,
+            sacrifice,
         },
         WireIntent::ActivateHandAbility { player, card } => Intent::ActivateHandAbility {
             player: PlayerId(player),

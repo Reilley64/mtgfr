@@ -1,0 +1,32 @@
+# This land enters tapped.
+# When this land enters, return a land you control to its owner's hand.
+# {T}: Add {B}{R}.
+name = "Rakdos Carnarium"
+otags = ["activated-ability", "cycle-rav-bounceland", "drawback", "triggered-ability"]
+oracle = "This land enters tapped.\nWhen this land enters, return a land you control to its owner's hand.\n{T}: Add {B}{R}."
+set = "ecc"
+id = "0a023964-2905-4928-9c3e-dc63e6ebd218"
+default_print = "20c799a9-ab94-46e6-9111-00505e071c41"
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# When this land enters, return a land you control to its owner's hand.
+[[abilities]]
+timing = "etb"
+
+# return a land you control to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = { permanent = { types = "land", controller = "you" } }
+
+# {T}: Add {B}{R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {B}{R}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["black", "red"]

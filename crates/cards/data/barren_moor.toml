@@ -1,0 +1,15 @@
+# This land enters tapped.
+# {T}: Add {B}.
+# Cycling {B} ({B}, Discard this card: Draw a card.)
+name = "Barren Moor"
+otags = ["activate-from-hand", "cycle-ons-m-cycling-land", "hand-neutral", "pure-draw", "utility-land"]
+oracle = "This land enters tapped.\n{T}: Add {B}.\nCycling {B} ({B}, Discard this card: Draw a card.)"
+set = "dsc"
+id = "326ba371-124c-4949-a048-3a0c8962e567"
+default_print = "380eb7fd-bc79-4cad-9c2b-9b2b10761a72"
+enters_tapped = true
+cycling = { black = 1 }
+
+[kind]
+type = "land"
+produces = "black"

@@ -242,6 +242,9 @@ message PendingChoiceView {
     PendingChoiceViewChooseSplittingOpponent choose_splitting_opponent = 53;
     PendingChoiceViewPartitionRevealed partition_revealed = 54;
     PendingChoiceViewChoosePileForHand choose_pile_for_hand = 55;
+    PendingChoiceViewChooseDredge choose_dredge = 56;
+    PendingChoiceViewPayRecoverOrExile pay_recover_or_exile = 57;
+    PendingChoiceViewPutCreatureFromHand put_creature_from_hand = 58;
   }
 }
 
@@ -316,6 +319,14 @@ message PendingChoiceViewPayOrCounter {
 // Pay `cost` (Echo) to keep `source`, or decline and sacrifice it (CR 702.31 — the
 // permanent-scoped twin of `PayOrCounter`).
 message PendingChoiceViewPayEchoOrSacrifice {
+  uint32 player = 1;
+  uint32 source = 2;
+  WireCost cost = 3;
+}
+
+// Pay `cost` (Recover, CR 702.59) to return `source` from the graveyard to hand, or decline and
+// exile it — the graveyard-scoped twin of `PayEchoOrSacrifice`.
+message PendingChoiceViewPayRecoverOrExile {
   uint32 player = 1;
   uint32 source = 2;
   WireCost cost = 3;
@@ -512,6 +523,22 @@ message PendingChoiceViewDiscard {
 // This player may put one hand land (`items`, private to them) onto the battlefield, or
 // decline.
 message PendingChoiceViewPutLandFromHand {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// This player may put one hand creature (`items`, private to them) onto the battlefield (it
+// gains haste and is sacrificed at the beginning of the next end step — Cauldron Dance), or
+// decline.
+message PendingChoiceViewPutCreatureFromHand {
+  uint32 player = 1;
+  repeated ChoiceItem items = 2;
+}
+
+// This player is about to draw and may dredge instead (CR 702.52): `items` are the eligible
+// dredgers in their own graveyard. Answering picks one to mill-and-return, or declines to draw
+// normally.
+message PendingChoiceViewChooseDredge {
   uint32 player = 1;
   repeated ChoiceItem items = 2;
 }
@@ -890,6 +917,9 @@ message VisibleEvent {
     VisibleEventConditionedControlEnded conditioned_control_ended = 120;
     VisibleEventDamageDealtToPlayer damage_dealt_to_player = 121;
     VisibleEventFlickeredToBattlefield flickered_to_battlefield = 122;
+    VisibleEventFlipped flipped = 123;
+    VisibleEventColorSetUntilEndOfTurn color_set_until_end_of_turn = 124;
+    VisibleEventCombatDamageDealtToCreature combat_damage_dealt_to_creature = 125;
   }
 }
 
@@ -947,6 +977,27 @@ message VisibleEventCreatureTypeChosen {
 message VisibleEventColorChosen {
   uint32 object = 1;
   uint32 color = 2;
+}
+
+// A permanent flipped (CR 712 — a Kamigawa flip card): it now uses its back face's
+// characteristics. Public battlefield status, like `PreparedChanged`.
+message VisibleEventFlipped {
+  uint32 object = 1;
+}
+
+// A "becomes the color of your choice until end of turn" choice was answered (CR 613.3c layer 5
+// — Wild Mongrel). Public battlefield status, like `ColorChosen`; `color` is the WUBRG index.
+message VisibleEventColorSetUntilEndOfTurn {
+  uint32 object = 1;
+  uint32 color = 2;
+}
+
+// A creature dealt combat damage to another creature (public — combat damage is announced to
+// the table, CR 510.1c/510.4) — the creature-target twin of `CombatDamageDealtToPlayer`.
+message VisibleEventCombatDamageDealtToCreature {
+  uint32 source = 1;
+  uint32 target = 2;
+  int32 amount = 3;
 }
 
 // A copy of a prepared permanent's back-face spell went on the stack (soc/sos prepare DFCs).

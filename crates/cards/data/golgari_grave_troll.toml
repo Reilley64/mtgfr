@@ -1,0 +1,43 @@
+# This creature enters with a +1/+1 counter on it for each creature card in your graveyard.
+# {1}, Remove a +1/+1 counter from this creature: Regenerate this creature.
+# Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your
+# graveyard to your hand.)
+name = "Golgari Grave-Troll"
+id = "686f4a37-b5e4-46d4-9e0e-11794b2d12cd"
+default_print = "d332acbc-6224-43bc-a509-3a7edc877423"
+oracle = "This creature enters with a +1/+1 counter on it for each creature card in your graveyard.\n{1}, Remove a +1/+1 counter from this creature: Regenerate this creature.\nDredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your graveyard to your hand.)"
+set = "rvr"
+subtypes = ["Troll", "Skeleton"]
+
+# Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this
+# card from your graveyard to your hand.)
+dredge = 6
+
+[cost]
+generic = 4
+green = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0
+
+# This creature enters with a +1/+1 counter on it for each creature card in your graveyard.
+[[abilities]]
+timing = "static"
+
+# enters with a +1/+1 counter on it for each creature card in your graveyard.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
+
+# {1}, Remove a +1/+1 counter from this creature: Regenerate this creature.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+remove_counters = 1
+
+# Regenerate this creature.
+[[abilities.effects]]
+type = "regenerate_shield"
+target = "this"

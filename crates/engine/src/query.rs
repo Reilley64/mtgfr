@@ -490,6 +490,31 @@ impl Game {
         )
     }
 
+    /// The permanents that may pay `card`'s [`CardDef::cycling_sacrifice`] (CR 702.29b — Edge of
+    /// Autumn's "Cycling—Sacrifice a land.").
+    ///
+    /// `None` when the card's cycling carries no such cost; `Some(vec![])` when the owner has
+    /// nothing to pay with. The cycling sibling of [`Self::sacrifice_candidates`], so a client can
+    /// offer the pick that rides [`Intent::Cycle`]'s `sacrifice`.
+    pub fn cycling_sacrifice_candidates(&self, card: ObjectId) -> Option<Vec<ObjectId>> {
+        let Object::Card(c) = &self.objects[card as usize] else {
+            return None;
+        };
+        let SacrificeCost::Creature { filter, .. } = c.def.cycling_sacrifice else {
+            return None;
+        };
+        let owner = c.owner;
+        Some(
+            self.battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    self.controller_of(id) == owner
+                        && self.permanent_matches(&filter, id, owner, Some(card))
+                })
+                .collect(),
+        )
+    }
+
     /// Hand cards that may pay `object`'s additional discard cost when casting it.
     ///
     /// `None` when the spell has no discard cost. `Some(candidates)` otherwise (excluding the
@@ -765,7 +790,16 @@ impl Game {
                 .filter(|&id| {
                     self.zone_of(id) == Zone::Graveyard
                         && filter.matches(self.def_of(id))
-                        && (whose == GraveyardScope::Any || self.owner_of(id) == controller)
+                        && match whose {
+                            GraveyardScope::Any => true,
+                            GraveyardScope::Yours => self.owner_of(id) == controller,
+                            // CR "target card in an opponent's graveyard": a living opponent's
+                            // graveyard, never the chooser's own.
+                            GraveyardScope::Opponents => self
+                                .living_players()
+                                .filter(|&p| p != controller)
+                                .any(|p| p == self.owner_of(id)),
+                        }
                 })
                 .map(Target::Object)
                 .collect(),
@@ -1165,9 +1199,11 @@ impl Game {
                 return false;
             }
         }
-        // Noncreature exclusion (Haywire Mite's "noncreature artifact or noncreature
-        // enchantment") — rejects an Artifact/Enchantment Creature, not just a bare Creature.
-        if filter.noncreature && perm.def.kind.types().intersects(TypeSet::CREATURE) {
+        // Excluded types (Haywire Mite's "noncreature artifact or noncreature enchantment";
+        // Terror/Shriekmaw/Ashes to Ashes's "nonartifact creature") — rejects a permanent
+        // carrying ANY excluded type, so an Artifact Creature fails an artifact exclusion even
+        // though it's also a creature.
+        if filter.exclude.intersects(perm.def.kind.types()) {
             return false;
         }
         // Color-count (Vanishing Verse's "monocolored permanent", CR 105.2a) — a colorless
@@ -1184,10 +1220,17 @@ impl Game {
             ColorFilter::Black => Some(Color::Black),
             ColorFilter::Red => Some(Color::Red),
             ColorFilter::Green => Some(Color::Green),
-            ColorFilter::Any | ColorFilter::Monocolored => None,
+            ColorFilter::Any | ColorFilter::Monocolored | ColorFilter::NotColor(_) => None,
         };
         if let Some(color) = specific_color
             && !self.colors_of(id)[color.index()]
+        {
+            return false;
+        }
+        // Negated specific color (CR 105.2a's negation — Terror/Shriekmaw's "nonblack
+        // creature"). A colorless permanent has no colors, so it always passes.
+        if let ColorFilter::NotColor(color) = filter.color
+            && self.colors_of(id)[color.index()]
         {
             return false;
         }
@@ -1299,16 +1342,21 @@ mod permanent_filter_tests {
             abilities: &[],
             identity_pips: &[],
             colors: &[],
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: &[],
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -1329,6 +1377,7 @@ mod permanent_filter_tests {
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         }
     }
 

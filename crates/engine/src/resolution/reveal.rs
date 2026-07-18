@@ -107,6 +107,12 @@ impl Game {
                         // routed away by `rest_dest`, the match sits on top with nothing further
                         // to do. Give this a real move event if a card ever needs it.
                         SearchDest::LibraryTop => {}
+                        // ponytail: no pool card sets `matched_dest = "graveyard"` on
+                        // `reveal_until`/`reveal_top_cards` either (Buried Alive's #172 search is
+                        // a genuine `search_library`, not a top-down reveal) — wire an
+                        // `Event::Milled` arm here, mirroring `SearchDest::Graveyard`'s
+                        // `search_library` arm, from the first card that needs it.
+                        SearchDest::Graveyard => {}
                     }
                     next += 1;
                 }
@@ -184,6 +190,9 @@ impl Game {
                         // `reveal_until`/`reveal_top_cards` — see the sibling arm in
                         // `RevealUntil`'s resolution above for why this is a genuine no-op today.
                         SearchDest::LibraryTop => {}
+                        // ponytail: see the sibling arm in `RevealUntil`'s resolution above — no
+                        // pool card sets `matched_dest = "graveyard"` on `reveal_top_cards` either.
+                        SearchDest::Graveyard => {}
                     }
                     next += 1;
                 }

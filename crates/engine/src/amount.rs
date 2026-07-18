@@ -200,6 +200,12 @@ impl Game {
             // so a live read here never happens for the pool. The arm exists only so this match
             // stays exhaustive.
             Amount::CombatDamageDealt => 0,
+            // ponytail: like `TriggeringSpellManaValue` above, a placeholder — `fill_spells_cast_before_this`
+            // must have already rewritten it to `Fixed` with the snapshotted storm count before a
+            // `Trigger::YouCastThis` ability's effect reaches the stack (see the `Event::SpellCast`
+            // arm of `Game::enqueue_triggers`), so a live read here never happens for the pool.
+            // The arm exists only so this match stays exhaustive.
+            Amount::SpellsCastBeforeThisThisTurn => 0,
             // ponytail: same placeholder shape as `CombatDamageDealt` above — `fill_triggering_damage_dealt`
             // must have already rewritten it to `Fixed` with the dealt amount before an
             // `EnchantedCreatureDealsDamage` watch's ability reaches the stack (see

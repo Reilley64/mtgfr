@@ -98,192 +98,22 @@ impl Game {
             spell.def.kind
         };
         match kind {
+            // Animate Dead (CR 303.4a's "enchant creature card in a graveyard"): a real Aura, but
+            // its cast-time target is a graveyard card, not an on-battlefield permanent — the
+            // ordinary `CardKind::Aura` arm below assumes a live host to attach to immediately, so
+            // this one instead runs the same generic permanent-enter path a Creature/Enchantment
+            // does (it enters unattached; its own ETB ability's `reanimate_to_battlefield` +
+            // `attach_self_to_reanimated` effects do the reanimate-then-attach, see
+            // `CardDef::enchant_graveyard`'s doc). Every ordinary Aura keeps the immediate-attach
+            // arm below.
+            CardKind::Aura if spell.def.enchant_graveyard => {
+                self.resolve_permanent_enter(spell, object, events);
+            }
             CardKind::Creature { .. }
             | CardKind::Enchantment
             | CardKind::Artifact
             | CardKind::Planeswalker { .. } => {
-                // Animate Dead (CR 303.4a/608.2b): its own cast-time "enchant creature card in a
-                // graveyard" target can fizzle the same way an Aura's battlefield host can — an
-                // opponent exiling the chosen graveyard card in response leaves it with no legal
-                // object, so it goes to the graveyard (or ceases to exist, if it's a copy)
-                // instead of entering unattached. The pool's only non-Aura kind with a cast-time
-                // target, so this re-check is scoped to `enchant_graveyard` rather than folded
-                // into the `CardKind::Aura` fizzle branch below.
-                if spell.def.enchant_graveyard
-                    && !self.target_still_legal(
-                        TargetSpec::CreatureCardInAnyGraveyard,
-                        object,
-                        spell.targets.primary(),
-                        spell.controller,
-                        color_identity(spell.def),
-                        spell.x,
-                    )
-                {
-                    if spell.copy {
-                        self.push_apply(events, Event::SpellCeasedToExist { spell: object });
-                        return;
-                    }
-                    self.push_apply(
-                        events,
-                        Event::MovedToGraveyard {
-                            card: self.next_object_id(),
-                            from: object,
-                        },
-                    );
-                    return;
-                }
-                let entered = self.next_object_id();
-                self.push_apply(
-                    events,
-                    Event::PermanentEntered {
-                        permanent: entered,
-                        from: object,
-                    },
-                );
-                // Devour N (CR 702.82): pause as the creature enters so its controller may
-                // sacrifice any number of the other creatures they control; the counters are
-                // applied when that choice is answered (see `Game::answer_devour`). With no other
-                // creature to give up there's nothing to choose — resolution runs on unpaused.
-                if let Some(multiplier) = spell.def.devour {
-                    pending::raise(
-                        self,
-                        pending::ChoiceRequest::Devour {
-                            player: spell.controller,
-                            source: entered,
-                            multiplier,
-                        },
-                    );
-                    if self.resolution_is_paused() {
-                        return;
-                    }
-                }
-                // Enter-as-a-copy (CR 706/707.2 — Altered Ego, Cursed Mirror): pause as the
-                // permanent enters (before the enters-with-counters / ETB steps, CR 616) so its
-                // controller may have it become a copy of a battlefield creature; the copy, extra
-                // counters, and haste are applied when that choice is answered (see
-                // `Game::answer_enter_as_copy`). With no creature to copy there's nothing to
-                // choose — resolution runs on unpaused.
-                if let Some(marker) = spell.def.enter_as_copy {
-                    pending::raise(
-                        self,
-                        pending::ChoiceRequest::EnterAsCopy {
-                            player: spell.controller,
-                            source: entered,
-                            marker,
-                        },
-                    );
-                    if self.resolution_is_paused() {
-                        return;
-                    }
-                }
-                // "Enters with N +1/+1 counters" (hydras: N = the spell's {X}) — placed as the
-                // permanent enters and grown by any counter-replacement static (Hardened Scales,
-                // a doubler), reading the just-entered permanent's controller. "Enters with N
-                // `kind` counters" (mana_bloom/astral_cornucopia) instead places the raw amount
-                // in the kind-keyed map — no replacement static touches a named kind.
-                if let Some((amount, kind)) = enters_with_counters(spell.def) {
-                    let counters = self.resolve_count(
-                        amount,
-                        spell.controller,
-                        entered,
-                        spell.targets.primary(),
-                        spell.x,
-                    );
-                    match kind {
-                        None => {
-                            let n = self.counters_after_replacements(entered, counters as i32);
-                            if n > 0 {
-                                self.push_apply(
-                                    events,
-                                    Event::CountersPlaced {
-                                        object: entered,
-                                        count: n,
-                                        source_name: spell.def.name,
-                                    },
-                                );
-                            }
-                        }
-                        Some(kind) if counters > 0 => {
-                            self.push_apply(
-                                events,
-                                Event::KindCountersPlaced {
-                                    object: entered,
-                                    kind,
-                                    count: counters as i32,
-                                },
-                            );
-                        }
-                        Some(_) => {}
-                    }
-                }
-                // "Nontoken creatures you control enter with an additional +1/+1 counter on
-                // them for each creature that died under your control this turn." (Gorma, the
-                // Gullet, CR 614.1c): scan the caster's own battlefield for every static
-                // `CreaturesYouControlEnterWithCounters` ability on another permanent that matches
-                // the just-entered permanent (a static never modifies its own permanent's entry —
-                // see `Game::additional_enter_counters`'s doc), sum, and place through the same
-                // doubler/Hardened-Scales replacement pipeline as any other counter placement.
-                // ponytail: only wired at this cast-resolution choke — a reanimated or blinked-in
-                // nontoken creature doesn't pick up the bonus (no pool card observes that path;
-                // extend to `ReanimateToBattlefield`'s own PermanentEntered if one needs it).
-                let bonus = self.additional_enter_counters(entered, spell.controller);
-                let n = self.counters_after_replacements(entered, bonus);
-                if n > 0 {
-                    self.push_apply(
-                        events,
-                        Event::CountersPlaced {
-                            object: entered,
-                            count: n,
-                            source_name: spell.def.name,
-                        },
-                    );
-                }
-                // Opal Palace's spend-to-cast rider: additional +1/+1 counters this specific spell
-                // was told to enter with at cast payment (captured by
-                // `Effect::CommanderEntersWithBonusCounters`, keyed by this spell's stack id). Runs
-                // through the same counter-replacement statics (Hardened Scales, a doubler) as the
-                // printed `enters_with_counters` above.
-                if let Some(pos) = self
-                    .pending_enter_bonus_counters
-                    .iter()
-                    .position(|&(id, _)| id == object)
-                {
-                    let (_, bonus) = self.pending_enter_bonus_counters.remove(pos);
-                    let n = self.counters_after_replacements(entered, bonus as i32);
-                    if n > 0 {
-                        self.push_apply(
-                            events,
-                            Event::CountersPlaced {
-                                object: entered,
-                                count: n,
-                                source_name: spell.def.name,
-                            },
-                        );
-                    }
-                }
-                // "Escapes with N +1/+1 counters" (CR 702.19c — Woe Strider): unlike a hydra's
-                // unconditional `enters_with_counters`, this only applies when the permanent was
-                // actually cast via escape (a card with escape usually has a normal cast mode (CR 702.19, CR 601)
-                // too, which gets no counters).
-                if spell.escape
-                    && let Some(escape) = spell.def.escape
-                    && escape.plus_one_plus_one_counters > 0
-                {
-                    let n = self.counters_after_replacements(
-                        entered,
-                        escape.plus_one_plus_one_counters as i32,
-                    );
-                    if n > 0 {
-                        self.push_apply(
-                            events,
-                            Event::CountersPlaced {
-                                object: entered,
-                                count: n,
-                                source_name: spell.def.name,
-                            },
-                        );
-                    }
-                }
+                self.resolve_permanent_enter(spell, object, events);
             }
             CardKind::Aura => {
                 let host = expect_object_target(spell.targets.primary(), "an Aura");
@@ -445,6 +275,195 @@ impl Game {
             }
             CardKind::Land { .. } => {
                 unreachable!("lands are played directly to the battlefield, never resolved")
+            }
+        }
+    }
+
+    /// Resolve a Creature/Enchantment/Artifact/Planeswalker (or Animate Dead's graveyard-target
+    /// Aura, see `resolve_spell`'s `enchant_graveyard` arm) entering the battlefield: the
+    /// devour/enter-as-copy pauses, `enters_with_counters`/Opal-Palace/escape counter placements,
+    /// and Gorma's "creatures enter with an additional counter" static. Split out of
+    /// [`Self::resolve_spell`] so a card that's `CardKind::Aura` but enters unattached (its own
+    /// ETB ability does the attaching) can share this generic entry with the non-Aura kinds.
+    fn resolve_permanent_enter(&mut self, spell: Spell, object: ObjectId, events: &mut Vec<Event>) {
+        // Animate Dead (CR 303.4a/608.2b): its own cast-time "enchant creature card in a
+        // graveyard" target can fizzle the same way an Aura's battlefield host can — an
+        // opponent exiling the chosen graveyard card in response leaves it with no legal
+        // object, so it goes to the graveyard (or ceases to exist, if it's a copy)
+        // instead of entering unattached. The pool's only card with a cast-time graveyard
+        // target, so this re-check is scoped to `enchant_graveyard` rather than folded
+        // into the `CardKind::Aura` fizzle branch in `resolve_spell`.
+        if spell.def.enchant_graveyard
+            && !self.target_still_legal(
+                TargetSpec::CreatureCardInAnyGraveyard,
+                object,
+                spell.targets.primary(),
+                spell.controller,
+                color_identity(spell.def),
+                spell.x,
+            )
+        {
+            if spell.copy {
+                self.push_apply(events, Event::SpellCeasedToExist { spell: object });
+                return;
+            }
+            self.push_apply(
+                events,
+                Event::MovedToGraveyard {
+                    card: self.next_object_id(),
+                    from: object,
+                },
+            );
+            return;
+        }
+        let entered = self.next_object_id();
+        self.push_apply(
+            events,
+            Event::PermanentEntered {
+                permanent: entered,
+                from: object,
+            },
+        );
+        // Devour N (CR 702.82): pause as the creature enters so its controller may
+        // sacrifice any number of the other creatures they control; the counters are
+        // applied when that choice is answered (see `Game::answer_devour`). With no other
+        // creature to give up there's nothing to choose — resolution runs on unpaused.
+        if let Some(multiplier) = spell.def.devour {
+            pending::raise(
+                self,
+                pending::ChoiceRequest::Devour {
+                    player: spell.controller,
+                    source: entered,
+                    multiplier,
+                },
+            );
+            if self.resolution_is_paused() {
+                return;
+            }
+        }
+        // Enter-as-a-copy (CR 706/707.2 — Altered Ego, Cursed Mirror): pause as the
+        // permanent enters (before the enters-with-counters / ETB steps, CR 616) so its
+        // controller may have it become a copy of a battlefield creature; the copy, extra
+        // counters, and haste are applied when that choice is answered (see
+        // `Game::answer_enter_as_copy`). With no creature to copy there's nothing to
+        // choose — resolution runs on unpaused.
+        if let Some(marker) = spell.def.enter_as_copy {
+            pending::raise(
+                self,
+                pending::ChoiceRequest::EnterAsCopy {
+                    player: spell.controller,
+                    source: entered,
+                    marker,
+                },
+            );
+            if self.resolution_is_paused() {
+                return;
+            }
+        }
+        // "Enters with N +1/+1 counters" (hydras: N = the spell's {X}) — placed as the
+        // permanent enters and grown by any counter-replacement static (Hardened Scales,
+        // a doubler), reading the just-entered permanent's controller. "Enters with N
+        // `kind` counters" (mana_bloom/astral_cornucopia) instead places the raw amount
+        // in the kind-keyed map — no replacement static touches a named kind.
+        if let Some((amount, kind)) = enters_with_counters(spell.def) {
+            let counters = self.resolve_count(
+                amount,
+                spell.controller,
+                entered,
+                spell.targets.primary(),
+                spell.x,
+            );
+            match kind {
+                None => {
+                    let n = self.counters_after_replacements(entered, counters as i32);
+                    if n > 0 {
+                        self.push_apply(
+                            events,
+                            Event::CountersPlaced {
+                                object: entered,
+                                count: n,
+                                source_name: spell.def.name,
+                            },
+                        );
+                    }
+                }
+                Some(kind) if counters > 0 => {
+                    self.push_apply(
+                        events,
+                        Event::KindCountersPlaced {
+                            object: entered,
+                            kind,
+                            count: counters as i32,
+                        },
+                    );
+                }
+                Some(_) => {}
+            }
+        }
+        // "Nontoken creatures you control enter with an additional +1/+1 counter on
+        // them for each creature that died under your control this turn." (Gorma, the
+        // Gullet, CR 614.1c): scan the caster's own battlefield for every static
+        // `CreaturesYouControlEnterWithCounters` ability on another permanent that matches
+        // the just-entered permanent (a static never modifies its own permanent's entry —
+        // see `Game::additional_enter_counters`'s doc), sum, and place through the same
+        // doubler/Hardened-Scales replacement pipeline as any other counter placement.
+        // ponytail: only wired at this cast-resolution choke — a reanimated or blinked-in
+        // nontoken creature doesn't pick up the bonus (no pool card observes that path;
+        // extend to `ReanimateToBattlefield`'s own PermanentEntered if one needs it).
+        let bonus = self.additional_enter_counters(entered, spell.controller);
+        let n = self.counters_after_replacements(entered, bonus);
+        if n > 0 {
+            self.push_apply(
+                events,
+                Event::CountersPlaced {
+                    object: entered,
+                    count: n,
+                    source_name: spell.def.name,
+                },
+            );
+        }
+        // Opal Palace's spend-to-cast rider: additional +1/+1 counters this specific spell
+        // was told to enter with at cast payment (captured by
+        // `Effect::CommanderEntersWithBonusCounters`, keyed by this spell's stack id). Runs
+        // through the same counter-replacement statics (Hardened Scales, a doubler) as the
+        // printed `enters_with_counters` above.
+        if let Some(pos) = self
+            .pending_enter_bonus_counters
+            .iter()
+            .position(|&(id, _)| id == object)
+        {
+            let (_, bonus) = self.pending_enter_bonus_counters.remove(pos);
+            let n = self.counters_after_replacements(entered, bonus as i32);
+            if n > 0 {
+                self.push_apply(
+                    events,
+                    Event::CountersPlaced {
+                        object: entered,
+                        count: n,
+                        source_name: spell.def.name,
+                    },
+                );
+            }
+        }
+        // "Escapes with N +1/+1 counters" (CR 702.19c — Woe Strider): unlike a hydra's
+        // unconditional `enters_with_counters`, this only applies when the permanent was
+        // actually cast via escape (a card with escape usually has a normal cast mode (CR 702.19, CR 601)
+        // too, which gets no counters).
+        if spell.escape
+            && let Some(escape) = spell.def.escape
+            && escape.plus_one_plus_one_counters > 0
+        {
+            let n =
+                self.counters_after_replacements(entered, escape.plus_one_plus_one_counters as i32);
+            if n > 0 {
+                self.push_apply(
+                    events,
+                    Event::CountersPlaced {
+                        object: entered,
+                        count: n,
+                        source_name: spell.def.name,
+                    },
+                );
             }
         }
     }
@@ -618,6 +637,29 @@ impl Game {
             card: self.next_object_id(),
             from: spell,
         }]
+    }
+
+    /// The live current id of a "return this" ability's own source — or `None` if it has left
+    /// every zone that effect's pool consumers actually fire from (CR 603.6e / 400.7: a
+    /// return-this effect only acts on the object in the zone the ability expects; if it left
+    /// that zone — exiled by Nezumi Graverobber mid-trigger, say — it's a new object the effect
+    /// does not track). Shared by every `ReturnThis*` arm, each passing its own `allowed` list:
+    /// [`Effect::ReturnThisFromGraveyardToBattlefield`]'s pool (Nether Traitor, Teacher's Pest)
+    /// only ever fires with its source already a graveyard card, so `&[Zone::Graveyard]`;
+    /// [`Effect::ReturnThisToHand`]'s pool fires from either a graveyard death trigger (Angelic
+    /// Destiny, Squee-shaped graveyard triggers) or a battlefield activated ability (Flickering
+    /// Ward), so `&[Zone::Graveyard, Zone::Battlefield]`. Folds in the pre-existing
+    /// left-the-game guard (`Object::Removed`), since `zone_of` panics on it.
+    pub(crate) fn return_this_source(
+        &self,
+        source: ObjectId,
+        allowed: &[Zone],
+    ) -> Option<ObjectId> {
+        let current = self.current_id(source);
+        if matches!(self.objects[current as usize], Object::Removed) {
+            return None;
+        }
+        allowed.contains(&self.zone_of(current)).then_some(current)
     }
 
     /// CR 608.2b: whether a spell/ability's stored target is still a legal choice for
@@ -1303,6 +1345,18 @@ impl Game {
                 pending::ChoiceRequest::ChooseColor {
                     player: controller,
                     source,
+                    until_end_of_turn: false,
+                },
+            ),
+            // Wild Mongrel's "...and becomes the color of your choice until end of turn": the same (CR 613.3c)
+            // ChooseColor picker as `ChooseColor` above, but the answer sets an until-end-of-turn
+            // color-SET instead of the indefinite `chosen_color`.
+            Effect::SetOwnColorUntilEndOfTurn => pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseColor {
+                    player: controller,
+                    source,
+                    until_end_of_turn: true,
                 },
             ),
             // "Choose one —" on a triggered ability (CR 700.2): pause on a ChooseMode for the
@@ -1504,6 +1558,37 @@ impl Game {
                     .map_or(TargetCount::default(), |a| a.effect.target_count());
                 self.choose_spell_targets(copy, spec, count, controller, events);
             }
+            // Chain Lightning's reflexive rider: "that player or that permanent's controller may
+            // pay {cost}." Reads the enclosing `Sequence`'s shared `target` (the preceding
+            // `DealDamage` step's own target) to find the payer — a player target pays
+            // themself; a permanent target's controller pays. A missing target (CR 608.2b) is
+            // unreachable in practice — the enclosing spell's own upfront target-legality check
+            // already fizzles the whole ability before this step could run without one — but
+            // stays a defensive no-op rather than a panic, matching this resolution's other
+            // guard arms.
+            Effect::MayPayToCopyThis { cost, count } => {
+                let payer = match target {
+                    Some(Target::Player(p)) => Some(p),
+                    Some(Target::Object(id)) => Some(self.controller_of(id)),
+                    None => None,
+                };
+                let Some(payer) = payer else {
+                    return;
+                };
+                pending::raise_choice(
+                    self,
+                    PendingChoice::PayCost {
+                        player: payer,
+                        source,
+                        cost,
+                        effect: Effect::CopyThisSpell {
+                            count,
+                            cast_from_graveyard_only: false,
+                            optional: false,
+                        },
+                    },
+                );
+            }
             // Willbender (CR 114.6 / 702.37f): "change the target of target spell … with a single
             // target." The bent spell is this trigger's own chosen target (CR 603.3d), already
             // re-checked legal by CR 608.2b before this ran (so a spell that left the stack fizzles
@@ -1563,14 +1648,26 @@ impl Game {
                 triggering_spell,
                 count,
                 may_choose_new_targets,
+                last_known_information,
             } => {
                 let Some(original) = triggering_spell else {
                     return;
                 };
-                // CR 603.4: the triggering spell may have left the stack (countered in response)
-                // before this delayed trigger resolved — nothing left to copy.
-                if !matches!(self.objects[original as usize], Object::Spell(_)) {
-                    return;
+                let still_on_stack = matches!(self.objects[original as usize], Object::Spell(_));
+                if !still_on_stack {
+                    // CR 603.4: the triggering spell may have left the stack (countered in
+                    // response) before this trigger resolved. A true Storm keyword (CR 702.40a)
+                    // copies it anyway, from its last-known copiable characteristics — the object
+                    // is still there under a different `Object` variant (`SpellCopied`'s apply
+                    // already handles a non-Spell `original`, the same fallback Surge to
+                    // Victory's "copy the exiled card" relies on) — only bail outright if the
+                    // object left the game entirely (`def_of` would panic). Every other consumer
+                    // (Thunderclap Drake) keeps the plain "nothing left to copy" no-op.
+                    if !last_known_information
+                        || matches!(self.objects[original as usize], Object::Removed)
+                    {
+                        return;
+                    }
                 }
                 if may_choose_new_targets {
                     self.mint_spell_copies(count, controller, original, target, x, events);
@@ -1823,6 +1920,17 @@ impl Game {
                     tapped,
                 },
             ),
+            // Cauldron Dance's "You may put a creature card from your hand onto the
+            // battlefield" pauses on the creature sibling of `PutLandFromHand`'s card-pick
+            // choice (up to one hand creature, or decline). `source` is threaded through so the
+            // answer can later schedule the end-step sacrifice against this same ability.
+            Effect::PutCreatureFromHand => pending::raise(
+                self,
+                pending::ChoiceRequest::PutCreatureFromHand {
+                    player: controller,
+                    source,
+                },
+            ),
             // Illusionary Mask's "you may cast a creature card in hand … face down as a 2/2"
             // pauses on a card-pick choice over the hand creatures whose mana cost the mana
             // spent on this ability's `{X}` could pay (`ctx.spent_mana`, CR 107.3).
@@ -1912,6 +2020,15 @@ impl Game {
                     Condition::TargetPowerAtLeast { at_least } => target
                         .and_then(Target::object_id)
                         .is_some_and(|object| self.power(object) >= at_least as i32),
+                    // Nezumi Graverobber: "Then if there are no cards in that player's graveyard"
+                    // — the just-exiled target's owner (the moved card object still records it) has
+                    // an empty graveyard now. No legal target exiled (the flip clause is a no-op):
+                    // `is_some_and` is false, so it doesn't flip.
+                    Condition::TargetCardOwnerGraveyardEmpty => {
+                        target.and_then(Target::object_id).is_some_and(|object| {
+                            self.graveyard_cards(self.owner_of(object)).is_empty()
+                        })
+                    }
                     Condition::SourceEnteredWithXAtLeast { at_least } => {
                         self.ability_source_x(source) >= at_least
                     }
@@ -2146,6 +2263,43 @@ impl Game {
                     },
                 );
             }
+            // Cauldron Dance: grant haste to the creature this same resolution's preceding
+            // `ReanimateToBattlefield` step just put onto the battlefield — read back from
+            // `events`, mirroring `ScheduleReturnThisAuraAttachedToReanimated`'s idiom above —
+            // then schedule its return to hand at the next end step (CR 603.7). No such event
+            // yet (the reanimation target was illegal): nothing to grant or schedule
+            // (guard-return).
+            Effect::ScheduleReturnReanimatedToHand => {
+                let Some(permanent) = events.iter().rev().find_map(|e| match e {
+                    Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
+                    _ => None,
+                }) else {
+                    return;
+                };
+                const HASTE: &[Keyword] = &[Keyword::Haste];
+                let source_name = self.source_name_of(source);
+                self.push_apply(
+                    events,
+                    Event::TempBoost {
+                        object: permanent,
+                        power: 0,
+                        toughness: 0,
+                        keywords: HASTE,
+                        source_name,
+                    },
+                );
+                self.push_apply(
+                    events,
+                    Event::DelayedTriggerScheduled {
+                        controller,
+                        source,
+                        fire_at: Step::End,
+                        effect: Effect::ReturnObjectToHand {
+                            object: Some(permanent),
+                        },
+                    },
+                );
+            }
             // Screams from Within: the immediate dies-return, choosing a new host (unlike Gift
             // of Immortality's same-creature return above). Pauses via the shared helper — see
             // its doc comment.
@@ -2180,7 +2334,7 @@ impl Game {
             // "Exile [this card] with N time counters on it" (Rousing Refrain): mark the resolving
             // spell so `finish_instant_sorcery_resolution` sends it to exile with time counters
             // instead of the graveyard (the resolving spell, `source`, is the card exiled).
-            Effect::ExileSelfWithTimeCounters { counters } => {
+            Effect::ExileSelfWithTimeCounters { counters, .. } => {
                 self.self_exile_time_counters = Some(counters);
             }
             // "Each player creates a 0/0 green and blue Fractal creature token and puts a number
@@ -2305,6 +2459,14 @@ impl Game {
             // Runtime orchestration state (like Inkshield's shield above), not an event.
             Effect::PreventAllCombatDamageThisTurn => {
                 self.combat_extras.prevent_all_combat_damage_this_turn = true;
+            }
+            // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
+            // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
+            // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters
+            // it for the remaining draws and resumes the deferred sequence once the batch is done.
+            Effect::DrawCards { count } => {
+                let n = self.resolve_count(count, controller, source, target, x);
+                self.draw_with_dredge(controller, n, false, events);
             }
             _ => {
                 let evs = self.execute_effect(effect, controller, source, target, x);

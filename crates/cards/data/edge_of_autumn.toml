@@ -1,0 +1,33 @@
+# If you control four or fewer lands, search your library for a basic land card, put it onto the battlefield tapped,
+# then shuffle.
+# Cycling—Sacrifice a land. (Sacrifice a land, Discard this card: Draw a card.)
+name = "Edge of Autumn"
+id = "42d86827-6459-42fc-86b6-6eb055604c36"
+default_print = "1c72229c-f3da-4e35-af79-14452efe581b"
+otags = ["tutor-land-basic", "tutor-land-to-battlefield", "cycling"]
+oracle = "If you control four or fewer lands, search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\nCycling—Sacrifice a land. (Sacrifice a land, Discard this card: Draw a card.)"
+set = "tsr"
+# Cycling—Sacrifice a land.
+cycling = {}
+cycling_sacrifice = { permanent = { types = "land" } }
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "sorcery"
+
+# If you control four or fewer lands, search your library for a basic land card, put it onto the battlefield
+# tapped, then shuffle.
+[[abilities]]
+timing = "spell"
+
+# If you control four or fewer lands, search your library for a basic land card, put it onto the battlefield
+# tapped, then shuffle.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "you_control_lands_at_most", at_most = 4 }
+then = [
+        { type = "search_library", filter = "basic_land", to_zone = "battlefield", tapped = true },
+    ]

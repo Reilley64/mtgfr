@@ -273,6 +273,24 @@ const PutLandForm: Component<FormProps> = (props) => {
   );
 };
 
+// Mirrors PutLandForm: pick one offered creature card from hand to put onto the battlefield, or
+// decline (Cauldron Dance's "you may put a creature card from your hand onto the battlefield").
+const PutCreatureForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"put_creature_from_hand">;
+  return (
+    <CardPickPrompt
+      state={props.state}
+      title="Put a creature onto the battlefield?"
+      submitLabel="Put onto the battlefield"
+      declineLabel="Decline"
+      items={pc().items}
+      count={1}
+      onSubmit={(ids) => props.onAnswer({ kind: "put_creature", choice: ids[0] })}
+      onDecline={() => props.onAnswer({ kind: "put_creature", choice: null })}
+    />
+  );
+};
+
 // Mirrors PutLandForm: pick one card exiled with the source (Currency Converter's cash-out) to
 // put into its owner's graveyard, or decline.
 const ChooseExiledForm: Component<FormProps> = (props) => {
@@ -990,6 +1008,29 @@ const PayEchoOrSacrificeForm: Component<FormProps> = (props) => {
   );
 };
 
+// Recover (CR 702.59): a creature died, so the recover card in the graveyard asks — pay the
+// recover cost to return it to your hand, or exile it. Same `pay` answer as PayEchoOrSacrificeForm
+// (the engine routes it to the recover handler by pending kind), only the copy differs.
+const PayRecoverOrExileForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"pay_recover_or_exile">;
+  return (
+    <div>
+      <div class={PROMPT_TITLE}>
+        {objectName(props.state, pc().source)}: pay recover {costText(pc().cost)} to return it to your hand, or exile
+        it?
+      </div>
+      <div class={PROMPT_ROW}>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "pay", pay: true })}>
+          Pay {costText(pc().cost)}
+        </Button>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "pay", pay: false })} variant="ghost">
+          Exile it
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const DivideSpellDamageForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"divide_spell_damage">;
   return (
@@ -1626,6 +1667,27 @@ const DeclineUntapForm: Component<FormProps> = (props) => {
   );
 };
 
+// Dredge (CR 702.52): about to draw with an eligible dredger in your graveyard — pick one to
+// mill-and-return instead, or decline to draw normally. The mill count isn't in the wire label
+// (the projection drops it), so the hint stays generic. ponytail: widen the projection if a
+// per-dredger mill count in the label is wanted.
+const ChooseDredgeForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"choose_dredge">;
+  return (
+    <CardPickPrompt
+      state={props.state}
+      title="Dredge instead of drawing?"
+      hint="Mill this dredger's dredge value and return it from your graveyard instead of drawing, or draw normally."
+      submitLabel="Dredge"
+      declineLabel="Draw normally"
+      items={pc().items}
+      count={1}
+      onSubmit={(ids) => props.onAnswer({ kind: "dredge", dredger: ids[0] })}
+      onDecline={() => props.onAnswer({ kind: "dredge", dredger: null })}
+    />
+  );
+};
+
 // "Sacrifice it unless you pay …" as it enters (Rupture Spire). Same `pay` answer as
 // PayEchoOrSacrificeForm; only the copy differs (this isn't echo).
 const SacrificeUnlessPayForm: Component<FormProps> = (props) => {
@@ -1778,6 +1840,7 @@ export const FORMS: Record<PendingChoiceView["kind"], Component<FormProps>> = {
   pay_cost: PayForm,
   pay_or_counter: PayOrCounterForm,
   put_land_from_hand: PutLandForm,
+  put_creature_from_hand: PutCreatureForm,
   choose_exiled_with_card: ChooseExiledForm,
   assign_combat_damage: AssignDamageForm,
   scry: ArrangeTopForm,
@@ -1797,6 +1860,7 @@ export const FORMS: Record<PendingChoiceView["kind"], Component<FormProps>> = {
   may_return_from_graveyard: MayReturnFromGraveyardForm,
   may_discard: MayDiscardForm,
   pay_echo_or_sacrifice: PayEchoOrSacrificeForm,
+  pay_recover_or_exile: PayRecoverOrExileForm,
   divide_spell_damage: DivideSpellDamageForm,
   divide_counters: DivideCountersForm,
   choose_target_players: ChooseTargetPlayersForm,
@@ -1820,6 +1884,7 @@ export const FORMS: Record<PendingChoiceView["kind"], Component<FormProps>> = {
   distribute_top: DistributeTopForm,
   choose_trigger_modes: ChooseTriggerModesForm,
   decline_untap: DeclineUntapForm,
+  choose_dredge: ChooseDredgeForm,
   sacrifice_unless_pay: SacrificeUnlessPayForm,
   sacrifice_unless_return_land: SacrificeUnlessReturnLandForm,
   pay_or_controller_draws: PayOrControllerDrawsForm,

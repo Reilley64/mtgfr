@@ -83,6 +83,13 @@ impl Game {
         {
             return false;
         }
+        // Fear (CR 702.36b): can be blocked only by artifact creatures and/or black creatures.
+        if self.has_keyword(attacker, Keyword::Fear)
+            && !self.effective_types(blocker).intersects(TypeSet::ARTIFACT)
+            && !self.colors_of(blocker)[Color::Black.index()]
+        {
+            return false;
+        }
         !self.protection_blocks_source(attacker, blocker)
     }
 
@@ -650,22 +657,24 @@ impl Game {
             }
         };
 
+        // `assigned` tracks every amount the split above committed to a blocker, whether or not
+        // it's later prevented; `dealt` tracks only damage that actually lands (for lifelink).
+        // CR 510.1c / 702.19e: trample overflow is power minus *assigned*, not minus *dealt* — a
+        // blocker's protection or self-shield can't reroute its assigned share to the player.
         let mut dealt = 0;
+        let mut assigned = 0;
         for (blocker, amount) in assignment {
             if amount <= 0 || self.as_permanent(blocker).is_none() {
                 continue;
             }
-            // Protection prevents this blocker's share (CR 702.16d). ponytail: prevented damage
-            // isn't counted as dealt, so with trample it carries to the player — a minor (CR 702)
-            // inaccuracy no pool card exercises (a trampler blocked by a protected creature).
+            assigned += amount;
+            // Protection prevents this blocker's share (CR 702.16d); it still counts as assigned.
             if self.damage_prevented_by_protection(blocker, Some(attacker)) {
                 continue;
             }
             // A blocking Phantom Centaur prevents this share and removes one of its own +1/+1
             // counters instead (CR 615) — the same self-shield `deal_creature_damage` applies
-            // on the blocker-to-attacker path. ponytail: like the protection guard above, the
-            // prevented share isn't counted as dealt, so a trampler carries it to the player — a
-            // minor inaccuracy no pool card exercises (a trampler blocked by Phantom Centaur).
+            // on the blocker-to-attacker path. The prevented share still counts as assigned.
             if self.phantom_shield_active(blocker) {
                 if let Some(removal) = self.phantom_shield_counter_removal(blocker) {
                     self.push_apply(events, removal);
@@ -681,12 +690,22 @@ impl Game {
                     source: Some(attacker),
                 },
             );
+            // CR 510.2: this is combat damage to a creature — a `DealsCombatDamageToCreature`
+            // watch (Stinkweed Imp) fires off this marker, not the plain `DamageMarked` above.
+            self.push_apply(
+                events,
+                Event::CombatDamageDealtToCreature {
+                    source: attacker,
+                    target: blocker,
+                    amount,
+                },
+            );
             if deathtouch {
                 self.push_apply(events, Event::DeathtouchMarked { object: blocker });
             }
         }
         self.gain_lifelink(attacker, dealt, events);
-        let leftover = power - dealt;
+        let leftover = power - assigned;
         if leftover > 0 && self.has_keyword(attacker, Keyword::Trample) {
             self.damage_player(attacker, defender, leftover, events);
         }
@@ -756,6 +775,19 @@ impl Game {
                 source: Some(source),
             },
         );
+        // CR 510.2: combat damage to a creature (blocker → attacker) also fires a
+        // `DealsCombatDamageToCreature` watch (Stinkweed Imp) — `fight`'s noncombat call
+        // (`combat = false`) does not.
+        if combat {
+            self.push_apply(
+                events,
+                Event::CombatDamageDealtToCreature {
+                    source,
+                    target,
+                    amount,
+                },
+            );
+        }
         if self.has_keyword(source, Keyword::Deathtouch) {
             self.push_apply(events, Event::DeathtouchMarked { object: target });
         }

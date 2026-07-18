@@ -19,8 +19,9 @@ use crate::{
     CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterKind, EdictScope,
     Effect, EnterAsCopy, EnterController, EscapeCost, FilterController, GrantedAbility,
     HandActivatedAbility, Keyword, LandProduces, Mana, ManaPool, Parity, PermanentFilter,
-    ProtectionScope, ReanimateBecomes, SacrificeCost, SpellFilter, SpellSpeed,
-    SpendToCastPredicate, Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
+    ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost, SacrificeAdditionalCostCount,
+    SacrificeCost, SpellFilter, SpellSpeed, SpendToCastPredicate, Suspend, TargetCount, Timing,
+    TokenFilter, Trigger, TypeSet,
 };
 
 // ── Interning + serde defaults (referenced by the derives in lib.rs) ────────────────
@@ -213,16 +214,21 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             abilities: &[],
             identity_pips: &[],
             colors: intern(token.colors),
+            devoid: false,
             enters_tapped: false,
             enters_tapped_unless: None,
+            free_cast_if: None,
+            cast_only_during_combat: false,
             approximates: None,
             oracle: None,
             set: "",
             subtypes: intern_strs(token.subtypes),
             otags: &[],
             cycling: None,
+            cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            recover: None,
             bestow: None,
             morph: None,
             evoke: None,
@@ -241,6 +247,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             encore: None,
             hand_ability: None,
             may_choose_not_to_untap: false,
+            dredge: None,
         },
     })
 }
@@ -341,10 +348,22 @@ impl<'de> Deserialize<'de> for CardDef {
             /// TOML; empty (every ordinary card) derives color from cost pips as usual.
             #[serde(default)]
             colors: Vec<Color>,
+            /// Devoid (CR 702.114a) — `devoid = true`; absent (`false`) for every ordinary card.
+            #[serde(default)]
+            devoid: bool,
             #[serde(default)]
             enters_tapped: bool,
             #[serde(default)]
             enters_tapped_unless: Option<Condition>,
+            /// A printed conditional free-cast permission (CR 118.5) — `free_cast_if = { .. }`
+            /// with the same `Condition` table shape as `enters_tapped_unless`; absent for a
+            /// card without one.
+            #[serde(default)]
+            free_cast_if: Option<Condition>,
+            /// "Cast this spell only during combat" (CR 601.3e) — `cast_only_during_combat = true`;
+            /// absent (`false`) for every ordinary card.
+            #[serde(default)]
+            cast_only_during_combat: bool,
             #[serde(default)]
             approximates: Option<String>,
             #[serde(default)]
@@ -358,6 +377,11 @@ impl<'de> Deserialize<'de> for CardDef {
             /// Cycling {N} (CR 702.29a) — `cycling = { generic = N }`; absent for a card with none.
             #[serde(default)]
             cycling: Option<Cost>,
+            /// A sacrifice folded into the cycling cost (CR 702.29b — Edge of Autumn's
+            /// "Cycling—Sacrifice a land"), same [`SacrificeCost`] table/shorthand shape as an
+            /// [`ActivationCost::sacrifice`]. Absent (`SacrificeCost::None`) for ordinary cycling.
+            #[serde(default)]
+            cycling_sacrifice: SacrificeCost,
             /// Flashback (CR 702.34) — `[flashback]` with the same `[cost]`-table shape (may carry
             /// a `[flashback.additional]` rider); absent for a card without flashback.
             #[serde(default)]
@@ -366,6 +390,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// without echo.
             #[serde(default)]
             echo: Option<Cost>,
+            /// Recover (CR 702.59) — `[recover]` with the same `[cost]`-table shape as `[echo]`;
+            /// absent for a card without recover.
+            #[serde(default)]
+            recover: Option<Cost>,
             /// Bestow (CR 702.103) — `[bestow]` with the same `[cost]`-table shape as `[echo]`;
             /// absent for a card without bestow.
             #[serde(default)]
@@ -441,6 +469,9 @@ impl<'de> Deserialize<'de> for CardDef {
             /// permanent.
             #[serde(default)]
             may_choose_not_to_untap: bool,
+            /// Dredge N (CR 702.52) — `dredge = N` for a dredger; absent (`None`) otherwise.
+            #[serde(default)]
+            dredge: Option<u8>,
         }
 
         let card = Card::deserialize(d)?;
@@ -468,16 +499,21 @@ impl<'de> Deserialize<'de> for CardDef {
             abilities: intern(card.abilities),
             identity_pips: intern(card.identity),
             colors: intern(card.colors),
+            devoid: card.devoid,
             enters_tapped: card.enters_tapped,
             enters_tapped_unless: card.enters_tapped_unless,
+            free_cast_if: card.free_cast_if,
+            cast_only_during_combat: card.cast_only_during_combat,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
             set: Box::leak(card.set.into_boxed_str()),
             subtypes: intern_strs(card.subtypes),
             otags: intern_strs(card.otags),
             cycling: card.cycling,
+            cycling_sacrifice: card.cycling_sacrifice,
             flashback: card.flashback,
             echo: card.echo,
+            recover: card.recover,
             bestow: card.bestow,
             morph: card.morph,
             evoke: card.evoke,
@@ -501,6 +537,7 @@ impl<'de> Deserialize<'de> for CardDef {
             encore: card.encore.map(|cost| &*Box::leak(Box::new(cost))),
             hand_ability: card.hand_ability,
             may_choose_not_to_untap: card.may_choose_not_to_untap,
+            dredge: card.dredge,
         })
     }
 }
@@ -590,7 +627,9 @@ impl<'de> Deserialize<'de> for Cost {
 /// own `x = true` chooser) or a fixed integer `pay_life = 3` (Deep Analysis's flashback "Pay 3
 /// life"). The two are mutually exclusive — one card never spells both. `sacrifice = { count =
 /// "one_or_more", filter = "creature" }` spells an optional "sacrifice any number of permanents"
-/// cost (Plumb the Forbidden) — `count` is a marker; only `"one_or_more"` is modeled.
+/// cost (Plumb the Forbidden); `sacrifice = { count = 3, filter = "creature" }` spells a mandatory
+/// fixed-count sacrifice cost (Dread Return's Flashback—Sacrifice three creatures, CR 601.2f/
+/// 602.2b) — `count` is either the `"one_or_more"` marker or a positive integer.
 /// `kicker = { generic = 5 }` spells Kicker (CR 702.33) — the same table shape as `[cost]`.
 /// `buyback = { generic = 3 }` spells Buyback (CR 702.27) — same table shape.
 /// `strive = { generic = 2, red = 1 }` spells Strive (CR 702.42) — same table shape, the
@@ -607,10 +646,20 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             Fixed(u8),
         }
 
+        /// `count` is either the `"one_or_more"` marker (Plumb the Forbidden) or a fixed integer
+        /// (Dread Return's Flashback—Sacrifice three creatures); untagged so TOML's own scalar
+        /// type picks the arm, mirroring `PayLife` above.
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum RawSacrificeCount {
+            Marker(String),
+            Fixed(u8),
+        }
+
         #[derive(Deserialize, Default)]
         #[serde(default, deny_unknown_fields)]
         struct RawSacrifice {
-            count: Option<String>,
+            count: Option<RawSacrificeCount>,
             filter: PermanentFilter,
         }
 
@@ -648,12 +697,22 @@ impl<'de> Deserialize<'de> for AdditionalCost {
         let sacrifice = match raw.sacrifice {
             None => None,
             Some(RawSacrifice {
-                count: Some(ref s),
+                count: Some(RawSacrificeCount::Marker(ref s)),
                 filter,
-            }) if s == "one_or_more" => Some(filter),
+            }) if s == "one_or_more" => Some(SacrificeAdditionalCost {
+                filter,
+                count: SacrificeAdditionalCostCount::OneOrMore,
+            }),
+            Some(RawSacrifice {
+                count: Some(RawSacrificeCount::Fixed(n)),
+                filter,
+            }) if n > 0 => Some(SacrificeAdditionalCost {
+                filter,
+                count: SacrificeAdditionalCostCount::Exactly(n),
+            }),
             Some(_) => {
                 return Err(de::Error::custom(
-                    "cost.additional.sacrifice: only count = \"one_or_more\" is modeled",
+                    "cost.additional.sacrifice: count must be \"one_or_more\" or a positive integer",
                 ));
             }
         };
@@ -884,7 +943,7 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// `"sacrificed_creature_power"`, `"commander_color_count"`, `"total_power_you_control"`,
 /// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"permanents_died_this_turn"`,
 /// `"past_votes"`, `"present_votes"`, `"total_mana_value_milled_this_way"`,
-/// `"exiled_card_mana_value_this_way"`, `"combat_damage_dealt"`),
+/// `"exiled_card_mana_value_this_way"`, `"combat_damage_dealt"`, `"spells_cast_before_this_this_turn"`),
 /// or a table for a filtered count
 /// (`{ per_permanent = <filter>, zone = "graveyard" }`), a per-kind counter count
 /// (`{ per_counter_of_kind = "charge" }`), a conditional amount
@@ -936,6 +995,7 @@ impl<'de> Deserialize<'de> for Amount {
             "instant_or_sorcery_cards_in_your_graveyard",
             "combat_damage_dealt",
             "triggering_damage_dealt",
+            "spells_cast_before_this_this_turn",
         ];
 
         impl<'de> Visitor<'de> for AmountVisitor {
@@ -1002,6 +1062,7 @@ impl<'de> Deserialize<'de> for Amount {
                     }
                     "combat_damage_dealt" => Amount::CombatDamageDealt,
                     "triggering_damage_dealt" => Amount::TriggeringDamageDealt,
+                    "spells_cast_before_this_this_turn" => Amount::SpellsCastBeforeThisThisTurn,
                     other => return Err(E::unknown_variant(other, KEYWORDS)),
                 })
             }
@@ -1259,8 +1320,10 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// the old `destroy_all`/edict spellings working — or a full `{ … }` table with any of the
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
 /// `enchanted_by_you`, `mv_max`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
-/// `noncreature`, `color`, `modified`, `attacking`, `power_less_than_source`,
-/// `entered_this_turn`, `nonbasic`, `nonlegendary`).
+/// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`,
+/// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`). `noncreature` is
+/// sugar for `exclude = "creature"`; `not_color` is sugar for `color`'s negated-color arm — both
+/// fold into the same [`PermanentFilter`] fields as their general spelling (see below).
 impl<'de> Deserialize<'de> for PermanentFilter {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct FilterVisitor;
@@ -1318,10 +1381,18 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     power_max: Option<u8>,
                     #[serde(default)]
                     power_parity: Option<Parity>,
+                    /// Sugar for `exclude = "creature"` (kept for the pool's existing spelling).
                     #[serde(default)]
                     noncreature: bool,
+                    /// General type exclusion (Terror/Shriekmaw's "nonartifact") — a union with
+                    /// `noncreature`'s implied `TypeSet::CREATURE`, not a replacement for it.
+                    #[serde(default)]
+                    exclude: TypeSet,
                     #[serde(default)]
                     color: Option<ColorFilter>,
+                    /// Sugar for `color`'s negated arm (Terror/Shriekmaw's "nonblack").
+                    #[serde(default)]
+                    not_color: Option<Color>,
                     #[serde(default)]
                     modified: bool,
                     #[serde(default)]
@@ -1358,8 +1429,15 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     tapped: t.tapped,
                     power_max: t.power_max,
                     power_parity: t.power_parity,
-                    noncreature: t.noncreature,
-                    color: t.color.unwrap_or_default(),
+                    exclude: t.exclude.union(if t.noncreature {
+                        TypeSet::CREATURE
+                    } else {
+                        TypeSet::NONE
+                    }),
+                    color: t
+                        .not_color
+                        .map(ColorFilter::NotColor)
+                        .unwrap_or(t.color.unwrap_or_default()),
                     modified: t.modified,
                     attacking: t.attacking,
                     power_less_than_source: t.power_less_than_source,
@@ -1512,6 +1590,8 @@ enum TriggerTag {
     AnyPlayerSacrifices,
     YouDiscard,
     DealsCombatDamageToPlayer,
+    DealsCombatDamageToCreature,
+    CreatureDealtDamageByThisDies,
     DealsDamageToOpponent,
     CastSpell,
     PlayerDraws,
@@ -1601,6 +1681,9 @@ impl<'de> Deserialize<'de> for Ability {
             /// "Mill a card" as part of the cost (Millikin's "Mill a card").
             #[serde(default)]
             mill_self: u8,
+            /// "Discard a card" as part of the cost (Wild Mongrel's "Discard a card").
+            #[serde(default)]
+            discard_cost: u8,
             /// "Exile this artifact"/"exile this permanent" as part of the cost (Perpetual
             /// Timepiece's "Exile this artifact").
             #[serde(default)]
@@ -1760,6 +1843,8 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::DealsCombatDamageToPlayer => {
                     Trigger::DealsCombatDamageToPlayer { who: flat.who }
                 }
+                TriggerTag::DealsCombatDamageToCreature => Trigger::DealsCombatDamageToCreature,
+                TriggerTag::CreatureDealtDamageByThisDies => Trigger::CreatureDealtDamageByThisDies,
                 TriggerTag::DealsDamageToOpponent => Trigger::DealsDamageToOpponent,
                 TriggerTag::CastSpell => Trigger::CastSpell {
                     filter: flat.spell_filter,
@@ -1822,6 +1907,7 @@ impl<'de> Deserialize<'de> for Ability {
                 sorcery_speed: flat.sorcery_speed,
                 return_self: flat.return_self,
                 mill_self: flat.mill_self,
+                discard_cost: flat.discard_cost,
                 exile_self: flat.exile_self,
             }),
         };

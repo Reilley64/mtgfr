@@ -1,0 +1,31 @@
+# Return target creature card from your graveyard to your hand.
+# Recover {2}{B} (When a creature is put into your graveyard from the battlefield, you may pay
+# {2}{B}. If you do, return this card from your graveyard to your hand. Otherwise, exile this
+# card.)
+name = "Grim Harvest"
+id = "231ca538-b277-4c12-979f-57640a0e87f0"
+default_print = "bdb1972f-2ef7-4fe2-8c8e-ab07f48a3176"
+otags = ["hand-neutral", "regrowth-creature", "single-target-instant-sorcery"]
+oracle = "Return target creature card from your graveyard to your hand.\nRecover {2}{B} (When a creature is put into your graveyard from the battlefield, you may pay {2}{B}. If you do, return this card from your graveyard to your hand. Otherwise, exile this card.)"
+set = "csp"
+
+[cost]
+generic = 1
+black = 1
+
+# Recover {2}{B}
+[recover]
+generic = 2
+black = 1
+
+[kind]
+type = "instant"
+
+# Return target creature card from your graveyard to your hand.
+[[abilities]]
+timing = "spell"
+
+# Return target creature card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = "your_graveyard"
