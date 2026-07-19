@@ -12,6 +12,7 @@ function mountFlights(opts?: {
   landPlays?: Map<number, number>;
   stackEntrances?: Map<number, { from: number; controller: number }>;
   fromStack?: Set<number>;
+  zoneMoves?: Map<number, number>;
   cards?: RenderCard[];
 }) {
   vi.stubGlobal(
@@ -27,6 +28,7 @@ function mountFlights(opts?: {
   );
   const [fromStack, setFromStack] = createSignal(opts?.fromStack ?? new Set<number>());
   const [fromStackExit] = createSignal(new Set<number>());
+  const [zoneMoves, setZoneMoves] = createSignal(opts?.zoneMoves ?? new Map<number, number>());
   const [cards, setCards] = createSignal<RenderCard[]>(opts?.cards ?? []);
   const [stackLength, setStackLength] = createSignal(0);
   createRoot((d) => {
@@ -41,6 +43,7 @@ function mountFlights(opts?: {
       fromStack,
       fromStackExit,
       stackEntrances,
+      zoneMoves,
       reducedMotion: () => true, // snap so settle is deterministic when we step
       onTick: () => {},
     });
@@ -51,6 +54,7 @@ function mountFlights(opts?: {
     setLandPlays,
     setStackEntrances,
     setFromStack,
+    setZoneMoves,
     setCards,
     setStackLength,
   };
@@ -133,6 +137,52 @@ describe("useCardFlights", () => {
     const actors = api.flights().filter((f) => f.id === 42 || f.fromCardId === 9);
     expect(actors).toHaveLength(1);
     expect(actors[0]?.kind).toBe("from-stack");
+    dispose();
+  });
+
+  it("absorbs a stack-bound spell flight when permanent_entered mints a new permanent id", () => {
+    // Real cast path: hand id → spell id (stackEntrances) → permanent id (permanent_entered.from
+    // is the spell). Absorb must rebind spell→permanent; otherwise a ghost kind:"stack" actor
+    // stays aimed at the stack while a second from-stack flies to the battlefield (snap-back).
+    const bear = {
+      id: 60,
+      name: "Bear",
+      print: "p",
+      x: 200,
+      y: 200,
+      w: 96,
+      h: 134,
+      zone: 2,
+      owner: 0,
+      controller: 0,
+      kind: "creature",
+      tapped: false,
+      prepared: false,
+      faceDown: false,
+    } as RenderCard;
+    const { api, dispose, setStackEntrances, setFromStack, setStackLength, setCards, setZoneMoves } =
+      mountFlights();
+    api.spawnFromHand({
+      cardId: 9,
+      print: "p",
+      name: "Bear",
+      screen: { x: 100, y: 500 },
+      kind: "stack",
+    });
+    setStackLength(1);
+    setStackEntrances(new Map([[42, { from: 9, controller: 0 }]]));
+    expect(api.flights().some((f) => f.id === 42 && f.kind === "stack")).toBe(true);
+
+    setCards([bear]);
+    setStackLength(0);
+    setZoneMoves(new Map([[60, 42]])); // permanent ← spell (store zoneMoves)
+    setFromStack(new Set([60]));
+
+    const actors = api.flights().filter((f) => f.kind === "stack" || f.kind === "from-stack");
+    expect(actors).toHaveLength(1);
+    expect(actors[0]?.id).toBe(60);
+    expect(actors[0]?.kind).toBe("from-stack");
+    expect(api.flights().some((f) => f.kind === "stack")).toBe(false);
     dispose();
   });
 });

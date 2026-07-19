@@ -25,6 +25,8 @@ export type CardFlightsDeps = {
   fromStack: Accessor<Set<number>>;
   fromStackExit: Accessor<Set<number>>;
   stackEntrances: Accessor<Map<number, { from: number; controller: number }>>;
+  /** New-object-id → predecessor id (permanent → spell for `permanent_entered`). */
+  zoneMoves: Accessor<Map<number, number>>;
   reducedMotion: Accessor<boolean>;
   onTick: () => void;
 };
@@ -203,6 +205,7 @@ export function useCardFlights(deps: CardFlightsDeps) {
     const cam = deps.camera();
     const cards = deps.cards();
     const ents = deps.stackEntrances();
+    const moves = deps.zoneMoves();
     const len = deps.stackLength();
     const originCount = Math.max(1, prevStackLen || len + 1);
     const peek = stackPeekFor(originCount, deps.size().y, STACK_VERTICAL_RESERVED);
@@ -217,11 +220,19 @@ export function useCardFlights(deps: CardFlightsDeps) {
       const target = { x: scr.x, y: scr.y, scale: 1 as const };
 
       // Absorb an unfinished stack flight for this resolve instead of drawing a second actor.
+      // Hand→spell rebind uses stackEntrances; spell→permanent uses zoneMoves (permanent_entered.from).
       let stackFlight = next.get(id);
       if (stackFlight?.kind !== "stack") {
         const fromHand = ents.get(id)?.from;
         if (fromHand != null && next.get(fromHand)?.kind === "stack") {
           next = rebindFlightId(next, fromHand, id);
+          stackFlight = next.get(id);
+        }
+      }
+      if (stackFlight?.kind !== "stack") {
+        const fromSpell = moves.get(id);
+        if (fromSpell != null && next.get(fromSpell)?.kind === "stack") {
+          next = rebindFlightId(next, fromSpell, id);
           stackFlight = next.get(id);
         }
       }
