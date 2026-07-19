@@ -554,7 +554,7 @@ Distroless has no shell — use ephemeral debug containers for inspection. All c
 Multi-stage `docker/server/Dockerfile`:
 
 1. **Build:** `rust:1-bookworm` — install `protobuf-compiler`, copy `proto/` + crates, then `cargo build -p server --release` (cache mount on `target/`). tonic stubs land in Cargo `OUT_DIR` via `build.rs` (never committed). Test-only Toasty sqlite is a `[dev-dependencies]` feature, so it is not compiled into this image.
-2. **Runtime:** `gcr.io/distroless/cc-debian12:nonroot` — copy `server`, `config/mtgfr.toml`, `Toasty.toml`, `toasty/`; `EXPOSE 8080` (health) / gRPC is `:50051` in chart/TF.
+2. **Runtime:** `gcr.io/distroless/cc-debian12:nonroot` — copy `server`, `config/mtgfr.toml`, `Toasty.toml`, `toasty/`, empty `/logs` owned by uid 65532; `ENV ACTION_LOG_DIR=/logs`; `EXPOSE 8080` (health) / gRPC is `:50051` in chart/TF.
    - Use `cc` (glibc) variant for default dynamically-linked release binaries. Switch to `gcr.io/distroless/static-debian12:nonroot` only if we build fully static binaries (`musl`).
 3. **Entrypoints:**
    - `server serve` — API container default (`CMD ["/server", "serve"]`).
@@ -562,6 +562,8 @@ Multi-stage `docker/server/Dockerfile`:
 4. **Build-arg / env:** `VERSION` at build time; runtime env from Terraform/K8s (see [Configuration](#configuration-config-crate)).
 
 Card pool and engine are compiled in — no runtime volume for `crates/cards/data/`.
+
+**Action traces:** TOON files under `ACTION_LOG_DIR` (image default `/logs`). The edh chart mounts a **per-`apiActiveInstanceId` RWO PVC** (`{{instance}}-logs`, default 1Gi, cluster StorageClass) at `/logs` with `fsGroup: 65532` so nonroot can write. PVC annotations `argocd.argoproj.io/sync-options: Delete=false` and `helm.sh/resource-policy: keep` retain the volume when Argo prunes an old API Deployment after a drain roll — prune stale `edh-api-*-logs` PVCs by hand when done. Traces hold full hidden game state; keep them off Loki (ADR 0034). Local `cargo run` writes `./logs/` when the env is unset.
 
 ### `mtgfr-web`
 

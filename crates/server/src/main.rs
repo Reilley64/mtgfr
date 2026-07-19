@@ -69,12 +69,17 @@ async fn run_serve() {
 
     let version = settings.version.clone();
     // Tables are born already seeded via Tables.Seed (the BFF owns the pre-game lobby);
-    // the registry starts empty. Action traces land at data/actions.<table_id>.toon (gitignored)
-    // for post-hoc debugging.
+    // the registry starts empty. Action traces land under ACTION_LOG_DIR (default ./logs;
+    // cluster mounts a per-instance PVC at /logs) for post-hoc debugging.
     let state = server::AppState::new(db, Arc::new(settings));
+    let action_log_dir = server::log_dir();
     tracing::info!(%version, %addr, "mtgfr health checks listening");
     tracing::info!(%grpc_addr, "mtgfr gRPC listening");
-    tracing::info!("action traces: ./data/actions.<table>.toon");
+    tracing::info!(
+        dir = %action_log_dir.display(),
+        "action traces: {}/actions.<table>.toon",
+        action_log_dir.display()
+    );
 
     // Both transports share one drain signal: SIGTERM/Ctrl-C flips `draining`, then blocks on
     // this instance's in-memory tables draining to zero before either server stops accepting.

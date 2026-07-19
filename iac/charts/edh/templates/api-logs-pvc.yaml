@@ -1,0 +1,24 @@
+# Per-instance action-trace volume. Named by apiActiveInstanceId so drain generations
+# (old Terminating + new active) each keep their own RWO volume. Delete=false keeps the
+# PVC when Argo prunes the old Deployment so post-roll autopsies can still kubectl cp.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.apiActiveInstanceId }}-logs
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.apiActiveInstanceId }}
+    app.kubernetes.io/part-of: mtgfr
+    mtgfr.io/component: api-logs
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.apiLogsPvcSize | quote }}
+  {{- if .Values.apiLogsStorageClass }}
+  storageClassName: {{ .Values.apiLogsStorageClass | quote }}
+  {{- end }}

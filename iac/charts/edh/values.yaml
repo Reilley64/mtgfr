@@ -4,6 +4,10 @@ namespace: edh
 apiActiveInstanceId: edh-api
 apiTerminationGraceSeconds: 86400
 apiHeadlessService: edh-api-headless
+# TOON action traces at /logs — one PVC per apiActiveInstanceId (kept across Argo prune).
+apiLogsPvcSize: 1Gi
+# Empty = cluster default StorageClass (k3s local-path).
+apiLogsStorageClass: ""
 cookieDomain: ""
 corsOrigin: ""
 logLevel: info

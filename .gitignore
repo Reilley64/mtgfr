@@ -1,6 +1,8 @@
 /target
 /data
 /crates/server/data
+/logs
+/crates/server/logs
 /node_modules
 openapi.json
 client/src/wire/generated/

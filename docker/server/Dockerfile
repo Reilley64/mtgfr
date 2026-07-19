@@ -21,6 +21,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build -p server --release \
     && cp target/release/server /server
 
+# Empty dir for COPY --chown into the distroless image (nonroot uid 65532).
+RUN mkdir -p /logs_placeholder
+
 FROM gcr.io/distroless/cc-debian12:nonroot
 WORKDIR /
 COPY --from=build /server /server
@@ -30,10 +33,13 @@ COPY --from=build /src/toasty /toasty
 # cards::load_from_data_dir bakes CARGO_MANIFEST_DIR (/src/crates/cards) into the binary —
 # the TOML pool must live at that path in the runtime image too.
 COPY --from=build /src/crates/cards/data /src/crates/cards/data
+# Action traces (ACTION_LOG_DIR); cluster mounts a PVC over this path.
+COPY --from=build --chown=65532:65532 /logs_placeholder /logs
 ARG APP_VERSION=dev
 ARG GIT_COMMIT=unknown
 ENV HOST=0.0.0.0
 ENV PORT=8080
+ENV ACTION_LOG_DIR=/logs
 ENV APP_VERSION=$APP_VERSION
 ENV GIT_COMMIT=$GIT_COMMIT
 EXPOSE 8080

@@ -1,12 +1,15 @@
 //! Per-table intent traces for post-hoc debugging ("read the log").
 //!
-//! One TOON-tabular file per table under `./data/actions.<table_id>.toon`: header once, then
-//! one indented row per submitted intent (accepted or rejected). Independent of DB persistence
-//! (ADR 0021) — live games stay in-memory; these files are a local diagnostic only.
+//! One TOON-tabular file per table under `{ACTION_LOG_DIR}/actions.<table_id>.toon` (default
+//! `./logs/` locally, `/logs` in the cluster): header once, then one indented row per submitted
+//! intent (accepted or rejected). Independent of DB persistence (ADR 0021) — live games stay
+//! in-memory; these files are a local diagnostic only.
 //!
-//! ponytail: traces still hold full hidden info (Debug-formatted `CardDef`s) under `./data/`
-//! (gitignored), so a static-file route can't serve them. Redact to `VisibleEvent`s if they
+//! ponytail: traces still hold full hidden info (Debug-formatted `CardDef`s) under the log dir
+//! (gitignored / PVC), so a static-file route can't serve them. Redact to `VisibleEvent`s if they
 //! ever need to leave the box.
+
+use std::path::{Path, PathBuf};
 
 use engine::{Event, Game};
 use schema::WireIntent;
@@ -15,22 +18,29 @@ use crate::session::ApplyResult;
 
 const LOG_FIELDS: &str = "seq,player,intent,accepted,reason,step,active,priority,pending,events";
 
-/// Directory the action traces live in (gitignored).
-const LOG_DIR: &str = "data";
+/// Env override for the action-trace directory. Cluster sets `/logs` (PVC); unset → `./logs`.
+const ACTION_LOG_DIR_ENV: &str = "ACTION_LOG_DIR";
+
+/// Directory the action traces live in (`ACTION_LOG_DIR`, or `logs` when unset).
+pub fn log_dir() -> PathBuf {
+    std::env::var_os(ACTION_LOG_DIR_ENV)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("logs"))
+}
 
 /// Each table traces to its own file so concurrent games don't interleave.
-pub fn log_path(table_id: &str) -> String {
-    format!("{LOG_DIR}/actions.{table_id}.toon")
+pub fn log_path(table_id: &str) -> PathBuf {
+    log_dir().join(format!("actions.{table_id}.toon"))
 }
 
 /// Start a fresh trace for a table: truncate its file and write the TOON header.
 pub fn start(table_id: &str) {
-    let _ = std::fs::create_dir_all(LOG_DIR);
+    let _ = std::fs::create_dir_all(log_dir());
     start_at(&log_path(table_id));
 }
 
 /// Write the TOON header to an explicit path (test seam).
-fn start_at(path: &str) {
+fn start_at(path: &Path) {
     let _ = std::fs::write(path, format!("actions{{{LOG_FIELDS}}}:\n"));
 }
 
@@ -100,7 +110,7 @@ pub fn append(table_id: &str, row: &str) {
 }
 
 /// Append to an explicit path (test seam).
-fn append_at(path: &str, row: &str) {
+fn append_at(path: &Path, row: &str) {
     use std::io::Write;
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
@@ -335,11 +345,10 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("actions.TEST01.toon");
-        let path = path.to_str().unwrap();
 
-        start_at(path);
+        start_at(&path);
         append_at(
-            path,
+            &path,
             &format_labeled(
                 1,
                 0,
