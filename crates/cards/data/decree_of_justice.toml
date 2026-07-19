@@ -28,6 +28,8 @@ count = "x"
 
 [abilities.effects.token]
 name = "Angel"
+id = "40c64f08-ab2f-4933-8e0e-d1a1c729008f"
+default_print = "8fe9d826-2642-4dc8-9dfd-0526394d43ac"
 power = 4
 toughness = 4
 colors = ["white"]
@@ -49,6 +51,8 @@ count = "x"
 
 [abilities.effects.token]
 name = "Soldier"
+id = "eac25f12-6459-438c-a09e-93e23d2cf80d"
+default_print = "e17648a0-f680-429d-8dda-2b0c14f3d80a"
 power = 1
 toughness = 1
 colors = ["white"]

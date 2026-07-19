@@ -28,6 +28,8 @@ must_attack_defender = true
 
 [abilities.effects.token]
 name = "Elemental"
+id = "ed8ed87e-7c33-4201-81a6-1331b21a93bf"
+default_print = "57b98846-85e3-47c7-a903-29953d0b0e8a"
 power = 3
 toughness = 3
 keywords = ["flying", "haste"]

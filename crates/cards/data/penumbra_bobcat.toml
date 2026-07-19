@@ -26,6 +26,8 @@ type = "create_token"
 
 [abilities.effects.token]
 name = "Cat"
+id = "b1612d71-4e81-4ea7-95d9-05ed7a70e5f1"
+default_print = "05a61555-ddb9-4d55-b637-a219d772033d"
 colors = ["black"]
 subtypes = ["Cat"]
 

@@ -41,6 +41,8 @@ count = 1
 
 [abilities.effects.token]
 name = "Pest"
+id = "37c4adc8-7455-4725-95fb-169a8b0254e5"
+default_print = "c72ceae7-72d6-41dc-82cc-b86e845d7aa6"
 colors = ["black", "green"]
 subtypes = ["Pest"]
 

@@ -28,6 +28,8 @@ count = 1
 [abilities.effects.token]
 name = "Eldrazi Spawn"
 
+id = "3aaf906a-e749-4e86-ac79-97650b92f271"
+default_print = "96b0ffdf-351e-4b89-92f2-79b20420b3bc"
 [abilities.effects.token.kind]
 type = "creature"
 power = 0

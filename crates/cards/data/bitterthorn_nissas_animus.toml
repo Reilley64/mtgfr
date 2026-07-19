@@ -32,6 +32,8 @@ count = 1
 
 [abilities.effects.token]
 name = "Germ"
+id = "a1c2af93-83c0-4974-b4db-abf95981d4e3"
+default_print = "65c65445-1016-4fd3-963e-1c9eb252d4a6"
 power = 0
 toughness = 0
 colors = ["black"]

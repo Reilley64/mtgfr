@@ -162,11 +162,16 @@ pub(crate) fn creature_edict() -> PermanentFilter {
 /// which is acceptable while the pool is small.
 pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, D::Error> {
     /// The creature-token sugar: base P/T + evergreen keywords + colors/subtypes, no
-    /// `kind`/`abilities` table.
+    /// `kind`/`abilities` table. Optional Scryfall `id` / `default_print` stamp battlefield art
+    /// (ADR 0031) the same way a top-level card does.
     #[derive(Deserialize)]
     #[serde(deny_unknown_fields)]
     struct Sugar {
         name: String,
+        #[serde(default)]
+        id: String,
+        #[serde(default)]
+        default_print: String,
         power: i32,
         toughness: i32,
         #[serde(default)]
@@ -193,8 +198,8 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
         TokenSpec::Full(def) => def,
         TokenSpec::Sugar(token) => CardDef {
             name: Box::leak(token.name.into_boxed_str()),
-            id: "",
-            default_print: "",
+            id: Box::leak(token.id.into_boxed_str()),
+            default_print: Box::leak(token.default_print.into_boxed_str()),
             cost: Cost::FREE,
             kind: CardKind::Creature {
                 power: token.power,

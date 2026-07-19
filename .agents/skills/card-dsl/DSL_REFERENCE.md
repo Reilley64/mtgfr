@@ -1686,6 +1686,8 @@ a restricted credit floating in the pool can't fund one, even one that would oth
 `colors`/`subtypes` (CR 105.2a/111.4 — a token has no mana cost to derive color from) — or, when
 a token must be an artifact or carry an ability, a **full inline card table** (its own
 `[…token.kind]`, `[[…token.abilities]]`, …), the same shape a top-level card takes.
+Stamp Scryfall `id` (oracle id) and `default_print` (Printing UUID) on every token profile so
+battlefield art resolves the same way as a real card (ADR 0031); both forms accept them.
 ```toml
 [[abilities.effects]]
 type = "create_token"
@@ -1694,6 +1696,8 @@ count = 1   # count is an amount (§7): a number, "x", or a derived count like
 
 [abilities.effects.token]
 name = "Elephant"
+id = "<scryfall-oracle-id>"
+default_print = "<scryfall-printing-uuid>"
 power = 3
 toughness = 3
 keywords = ["trample"]   # optional, evergreen keywords only

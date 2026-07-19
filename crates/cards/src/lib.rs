@@ -354,6 +354,123 @@ keywords = ["flying"]
         );
         assert!(token.keywords.contains(&Keyword::Flying));
         assert!(token.abilities.is_empty());
+        assert!(token.id.is_empty(), "sugar omits id when unset");
+        assert!(token.default_print.is_empty());
+    }
+
+    #[test]
+    fn token_sugar_accepts_scryfall_art_ids() {
+        let inkling = r#"name = "Make Inkling (test)"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
+
+[kind]
+type = "sorcery"
+
+[[abilities]]
+timing = "spell"
+
+[[abilities.effects]]
+type = "create_token"
+count = 1
+token = { name = "Inkling", id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", default_print = "ffffffff-1111-2222-3333-444444444444", power = 2, toughness = 1, keywords = ["flying"] }
+"#;
+        let def: CardDef = toml::from_str(inkling).expect("sugar with art ids parses");
+        let Effect::CreateToken { token, .. } = def.abilities[0].effect else {
+            panic!("expected a create_token effect");
+        };
+        assert_eq!(token.id, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        assert_eq!(token.default_print, "ffffffff-1111-2222-3333-444444444444");
+    }
+
+    /// Battlefield art is print-UUID-only (ADR 0031). Token profiles without a Scryfall Printing
+    /// render as name placeholders — every pool `create_token` (and Inkshield / Oversimplify
+    /// token fields) must stamp `id` + `default_print`.
+    #[test]
+    fn pool_token_profiles_carry_scryfall_art_ids() {
+        fn collect(effect: &Effect, out: &mut Vec<(&'static str, CardDef)>) {
+            match effect {
+                Effect::CreateToken { token, .. }
+                | Effect::PreventCombatDamageToYouCreatingTokens { token }
+                | Effect::EachPlayerCreatesFractalFromExiledPower { token } => {
+                    out.push((token.name, *token));
+                }
+                Effect::Sequence { steps } => {
+                    for step in *steps {
+                        collect(step, out);
+                    }
+                }
+                Effect::Conditional { then, .. }
+                | Effect::ExileTargetGraveyardCardThenIfCreature { then }
+                | Effect::ReflexiveTrigger { then }
+                | Effect::DealDamageToEnteringPermanent { then, .. }
+                | Effect::ScheduleNextCastTrigger { then, .. }
+                | Effect::EachPlayerSacrifices { then, .. }
+                | Effect::MaySacrifice { then, .. }
+                | Effect::MayDiscard { then } => {
+                    for step in *then {
+                        collect(step, out);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        fn scan_card(def: CardDef, out: &mut Vec<(String, &'static str, CardDef)>) {
+            let mut tokens = Vec::new();
+            for ability in def.abilities {
+                collect(&ability.effect, &mut tokens);
+            }
+            if let Some(hand) = def.hand_ability {
+                for effect in hand.effects {
+                    collect(effect, &mut tokens);
+                }
+            }
+            if let Some(forecast) = def.forecast {
+                for effect in forecast.effects {
+                    collect(effect, &mut tokens);
+                }
+            }
+            if let Some(back) = def.back {
+                scan_card(*back, out);
+            }
+            if let Some(adventure) = def.adventure {
+                scan_card(*adventure, out);
+            }
+            for (name, token) in tokens {
+                out.push((def.name.to_string(), name, token));
+            }
+        }
+
+        let mut tokens = Vec::new();
+        for def in registry().values() {
+            scan_card(*def, &mut tokens);
+        }
+        assert!(
+            !tokens.is_empty(),
+            "pool should mint at least one authored token profile"
+        );
+        let missing: Vec<_> = tokens
+            .iter()
+            .filter(|(_, _, t)| t.id.is_empty() || t.default_print.is_empty())
+            .map(|(card, name, _)| format!("{card} → {name}"))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "token profiles need Scryfall id + default_print for battlefield art: {missing:?}"
+        );
+
+        let beast = get_by_name("Beast Within").expect("Beast Within in pool");
+        // Beast Within is a Sequence of destroy + create_token (two [[abilities.effects]]).
+        let Effect::Sequence { steps } = beast.abilities[0].effect else {
+            panic!("Beast Within spell body should be a Sequence");
+        };
+        let Effect::CreateToken { token, .. } = steps[1] else {
+            panic!("expected create_token step");
+        };
+        assert_eq!(token.name, "Beast");
+        assert_eq!(token.id, "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920");
+        assert_eq!(token.default_print, "5871be0a-0fd6-441d-8f9e-76c66b5bd8bc");
     }
 
     /// Regression: Rubinia shipped with a hallucinated frame — {2}{W}{U}{U}, 2/4, flying — which

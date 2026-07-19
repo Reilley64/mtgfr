@@ -58,6 +58,8 @@ type = "create_token"
 
 [abilities.effects.token]
 name = "Spirit"
+id = "994879c3-48a7-4da5-9a42-46561fafdd69"
+default_print = "5a9c5b21-c770-4fc0-b205-d96862e6be3e"
 power = 3
 toughness = 2
 colors = ["red", "white"]

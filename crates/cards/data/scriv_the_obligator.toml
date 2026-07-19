@@ -41,6 +41,8 @@ type = "create_token"
 
 [abilities.effects.token]
 name = "Contract"
+id = "c06d8d9d-a157-482e-9c9a-463745d7bf61"
+default_print = "4c5e0caa-a043-41de-acbf-cdf3a6b6ab18"
 colors = ["white"]
 subtypes = ["Aura"]
 enchant = { types = "creature" }
@@ -79,6 +81,8 @@ type = "create_token"
 
 [abilities.effects.token]
 name = "Contract"
+id = "c06d8d9d-a157-482e-9c9a-463745d7bf61"
+default_print = "4c5e0caa-a043-41de-acbf-cdf3a6b6ab18"
 colors = ["white"]
 subtypes = ["Aura"]
 enchant = { types = "creature" }

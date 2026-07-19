@@ -31,6 +31,8 @@ count = 1
 
 [abilities.effects.token]
 name = "Food"
+id = "a468338f-635e-4206-89d6-72d723071d45"
+default_print = "da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37"
 subtypes = ["Food"]
 
 [abilities.effects.token.kind]
@@ -66,6 +68,8 @@ count = 1
 
 [abilities.effects.token]
 name = "Food"
+id = "a468338f-635e-4206-89d6-72d723071d45"
+default_print = "da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37"
 subtypes = ["Food"]
 
 [abilities.effects.token.kind]

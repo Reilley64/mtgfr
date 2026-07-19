@@ -37,6 +37,8 @@ count = 1
 set_base_pt = "greatest_instant_or_sorcery_mana_value_cast_this_turn"
 [abilities.effects.token]
 name = "Elemental"
+id = "57094a2f-4c1b-4f96-bc06-3798a0c09125"
+default_print = "fe42cba4-e00f-4e34-8e26-99721727dced"
 power = 0
 toughness = 0
 colors = ["blue", "red"]

@@ -35,6 +35,8 @@ set_base_pt = "triggering_spell_mana_spent"
 exile_at_next_end_step = true
 [abilities.effects.token]
 name = "Dragon Illusion"
+id = "33b8ab7a-1c27-46f0-a682-7c9d7e9f43a6"
+default_print = "44b7c73d-80a0-4a27-b0a2-317164362449"
 power = 0
 toughness = 0
 colors = ["red"]

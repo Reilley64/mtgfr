@@ -45,6 +45,8 @@ count = 1
 
 [abilities.effects.token]
 name = "Myr"
+id = "d23c9257-f0fc-40fb-ab35-4be57979568a"
+default_print = "ca7e566f-5eb4-4f0f-bf87-5788c57ba1e4"
 colors = ["blue"]
 subtypes = ["Phyrexian", "Myr"]
 
