@@ -75096,6 +75096,32 @@ fn jund_panorama_fetches_a_tapped_basic_swamp_mountain_or_forest() {
 }
 
 #[test]
+fn gruul_signet_cast_resolves_onto_the_battlefield() {
+    // Permanent spell: cast → both pass → leaves the stack as a battlefield permanent.
+    // Regression seam for "stuck on stack" UI reports — engine must clear the stack.
+    let mut game = TestGame::new();
+    let signet = game.spawn_in_hand(PlayerId(0), card("Gruul Signet"));
+    game.cast(signet).submit();
+    assert_eq!(
+        game.zone_of(signet),
+        Zone::Stack,
+        "cast put Gruul Signet on the stack"
+    );
+    assert!(!game.stack().is_empty());
+    resolve_top_of_stack(&mut game);
+    let permanent = game.current_id(signet);
+    assert_eq!(
+        game.zone_of(permanent),
+        Zone::Battlefield,
+        "after both pass, Gruul Signet is on the battlefield"
+    );
+    assert!(
+        game.stack().is_empty(),
+        "the stack is empty after the permanent resolves"
+    );
+}
+
+#[test]
 fn jund_signets_pay_one_and_add_their_guild_colors() {
     // "{1}, {T}: Add {B}{G}." (and guild-mates) — a Forest funds the {1}; the output is one
     // mana of each guild color.

@@ -184,6 +184,7 @@ export default function Board() {
     fromStack: () => provenance().resolvedFromStack,
     fromStackExit: () => provenance().leftStackToPile,
     stackEntrances: () => provenance().stackEntrances,
+    zoneMoves: () => provenance().zoneMoves,
     reducedMotion: () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     onTick: () => setTick((t) => t + 1),
   });
