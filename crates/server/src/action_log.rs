@@ -1,12 +1,15 @@
 //! Per-table intent traces for post-hoc debugging ("read the log").
 //!
-//! One TOON-tabular file per table under `./data/actions.<table_id>.toon`: header once, then
-//! one indented row per submitted intent (accepted or rejected). Independent of DB persistence
-//! (ADR 0021) — live games stay in-memory; these files are a local diagnostic only.
+//! One TOON-tabular file per table under `{ACTION_LOG_DIR}/actions.<table_id>.toon` (default
+//! `./logs/` locally, `/logs` in the cluster): header once, then one indented row per submitted
+//! intent (accepted or rejected). Independent of DB persistence (ADR 0021) — live games stay
+//! in-memory; these files are a local diagnostic only.
 //!
-//! ponytail: traces still hold full hidden info (Debug-formatted `CardDef`s) under `./data/`
-//! (gitignored), so a static-file route can't serve them. Redact to `VisibleEvent`s if they
+//! ponytail: traces still hold full hidden info (Debug-formatted `CardDef`s) under the log dir
+//! (gitignored / PVC), so a static-file route can't serve them. Redact to `VisibleEvent`s if they
 //! ever need to leave the box.
+
+use std::path::{Path, PathBuf};
 
 use engine::{Event, Game};
 use schema::WireIntent;
@@ -15,22 +18,46 @@ use crate::session::ApplyResult;
 
 const LOG_FIELDS: &str = "seq,player,intent,accepted,reason,step,active,priority,pending,events";
 
-/// Directory the action traces live in (gitignored).
-const LOG_DIR: &str = "data";
+/// Env override for the action-trace directory. Cluster sets `/logs` (PVC); unset → `./logs`.
+const ACTION_LOG_DIR_ENV: &str = "ACTION_LOG_DIR";
+
+/// Directory the action traces live in (`ACTION_LOG_DIR`, or `logs` when unset).
+pub fn log_dir() -> PathBuf {
+    std::env::var_os(ACTION_LOG_DIR_ENV)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("logs"))
+}
+
+/// Accept only ASCII alphanumeric ids (matches lobby `randomTableCode` / hex). Rejects
+/// empty, `..`, separators, and anything else that could escape [`log_dir`] when joined.
+fn sanitize_table_id(table_id: &str) -> Option<&str> {
+    if table_id.is_empty() {
+        return None;
+    }
+    if !table_id.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return None;
+    }
+    Some(table_id)
+}
 
 /// Each table traces to its own file so concurrent games don't interleave.
-pub fn log_path(table_id: &str) -> String {
-    format!("{LOG_DIR}/actions.{table_id}.toon")
+/// Unsafe `table_id`s map to a fixed in-dir name so callers never escape [`log_dir`].
+pub fn log_path(table_id: &str) -> PathBuf {
+    let id = sanitize_table_id(table_id).unwrap_or("invalid");
+    log_dir().join(format!("actions.{id}.toon"))
 }
 
 /// Start a fresh trace for a table: truncate its file and write the TOON header.
 pub fn start(table_id: &str) {
-    let _ = std::fs::create_dir_all(LOG_DIR);
+    let Some(_) = sanitize_table_id(table_id) else {
+        return;
+    };
+    let _ = std::fs::create_dir_all(log_dir());
     start_at(&log_path(table_id));
 }
 
 /// Write the TOON header to an explicit path (test seam).
-fn start_at(path: &str) {
+fn start_at(path: &Path) {
     let _ = std::fs::write(path, format!("actions{{{LOG_FIELDS}}}:\n"));
 }
 
@@ -96,11 +123,14 @@ pub fn format_labeled(
 
 /// Append a pre-formatted trace row. Blocking file I/O — call outside the registry lock.
 pub fn append(table_id: &str, row: &str) {
+    let Some(_) = sanitize_table_id(table_id) else {
+        return;
+    };
     append_at(&log_path(table_id), row);
 }
 
 /// Append to an explicit path (test seam).
-fn append_at(path: &str, row: &str) {
+fn append_at(path: &Path, row: &str) {
     use std::io::Write;
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
@@ -335,11 +365,10 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("actions.TEST01.toon");
-        let path = path.to_str().unwrap();
 
-        start_at(path);
+        start_at(&path);
         append_at(
-            path,
+            &path,
             &format_labeled(
                 1,
                 0,
@@ -364,5 +393,27 @@ mod tests {
             "row from append_at: {body}"
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn malicious_table_id_does_not_escape_log_dir() {
+        let dir = log_dir();
+        for bad in ["../etc", "..", "a/b", "a\\b", "tbl-dash", ""] {
+            let path = log_path(bad);
+            assert_eq!(
+                path.parent(),
+                Some(dir.as_path()),
+                "escaped log dir for {bad:?}: {path:?}"
+            );
+            assert_eq!(
+                path.file_name().and_then(|n| n.to_str()),
+                Some("actions.invalid.toon"),
+                "expected fallback name for {bad:?}: {path:?}"
+            );
+        }
+        assert_eq!(
+            log_path("ABC123").file_name().and_then(|n| n.to_str()),
+            Some("actions.ABC123.toon")
+        );
     }
 }

@@ -30,6 +30,9 @@ spec:
       hostname: {{ .Values.apiActiveInstanceId | quote }}
       subdomain: {{ .Values.apiHeadlessService | quote }}
       terminationGracePeriodSeconds: {{ .Values.apiTerminationGraceSeconds }}
+      # local-path PVC mounts as root; fsGroup lets nonroot (65532) write action traces.
+      securityContext:
+        fsGroup: 65532
       containers:
         - name: edh-api
           image: {{ .Values.serverImage | quote }}
@@ -62,6 +65,8 @@ spec:
               value: "false"
             - name: VERSION
               value: {{ .Values.serverImage | quote }}
+            - name: ACTION_LOG_DIR
+              value: "/logs"
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
@@ -73,6 +78,9 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.dbSecretName }}
                   key: DATABASE_URL
+          volumeMounts:
+            - name: action-logs
+              mountPath: /logs
           livenessProbe:
             httpGet:
               path: /health/live
@@ -85,3 +93,7 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
+      volumes:
+        - name: action-logs
+          persistentVolumeClaim:
+            claimName: {{ .Values.apiActiveInstanceId }}-logs
