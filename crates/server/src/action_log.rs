@@ -28,13 +28,30 @@ pub fn log_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("logs"))
 }
 
+/// Accept only ASCII alphanumeric ids (matches lobby `randomTableCode` / hex). Rejects
+/// empty, `..`, separators, and anything else that could escape [`log_dir`] when joined.
+fn sanitize_table_id(table_id: &str) -> Option<&str> {
+    if table_id.is_empty() {
+        return None;
+    }
+    if !table_id.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return None;
+    }
+    Some(table_id)
+}
+
 /// Each table traces to its own file so concurrent games don't interleave.
+/// Unsafe `table_id`s map to a fixed in-dir name so callers never escape [`log_dir`].
 pub fn log_path(table_id: &str) -> PathBuf {
-    log_dir().join(format!("actions.{table_id}.toon"))
+    let id = sanitize_table_id(table_id).unwrap_or("invalid");
+    log_dir().join(format!("actions.{id}.toon"))
 }
 
 /// Start a fresh trace for a table: truncate its file and write the TOON header.
 pub fn start(table_id: &str) {
+    let Some(_) = sanitize_table_id(table_id) else {
+        return;
+    };
     let _ = std::fs::create_dir_all(log_dir());
     start_at(&log_path(table_id));
 }
@@ -106,6 +123,9 @@ pub fn format_labeled(
 
 /// Append a pre-formatted trace row. Blocking file I/O — call outside the registry lock.
 pub fn append(table_id: &str, row: &str) {
+    let Some(_) = sanitize_table_id(table_id) else {
+        return;
+    };
     append_at(&log_path(table_id), row);
 }
 
@@ -373,5 +393,27 @@ mod tests {
             "row from append_at: {body}"
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn malicious_table_id_does_not_escape_log_dir() {
+        let dir = log_dir();
+        for bad in ["../etc", "..", "a/b", "a\\b", "tbl-dash", ""] {
+            let path = log_path(bad);
+            assert_eq!(
+                path.parent(),
+                Some(dir.as_path()),
+                "escaped log dir for {bad:?}: {path:?}"
+            );
+            assert_eq!(
+                path.file_name().and_then(|n| n.to_str()),
+                Some("actions.invalid.toon"),
+                "expected fallback name for {bad:?}: {path:?}"
+            );
+        }
+        assert_eq!(
+            log_path("ABC123").file_name().and_then(|n| n.to_str()),
+            Some("actions.ABC123.toon")
+        );
     }
 }
