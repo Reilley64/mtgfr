@@ -21,6 +21,8 @@ export type CardFlightsDeps = {
   size: Accessor<{ x: number; y: number }>;
   cards: Accessor<RenderCard[]>;
   stackLength: Accessor<number>;
+  /** Live stack object source ids — used to GC orphan `kind:"stack"` flights. */
+  stackSourceIds: Accessor<ReadonlySet<number>>;
   landPlays: Accessor<Map<number, number>>;
   fromStack: Accessor<Set<number>>;
   fromStackExit: Accessor<Set<number>>;
@@ -276,6 +278,73 @@ export function useCardFlights(deps: CardFlightsDeps) {
       changed = true;
     }
     prevStackLen = len;
+    if (changed) {
+      setFlights(next);
+      kickRaf();
+    }
+  });
+
+  // If absorb misses the one delta that carries fromStack/zoneMoves, kind:"stack" flights are
+  // retargeted at the stack aim forever (refresh clears them). Drop or promote orphans whose
+  // ids are no longer on the live stack — keep pre-rebind hand flights (fromCardId === id).
+  createEffect(() => {
+    const sources = deps.stackSourceIds();
+    const moves = deps.zoneMoves();
+    const cards = deps.cards();
+    const cam = deps.camera();
+    let next = flights();
+    let changed = false;
+
+    const spellToPermanent = new Map<number, number>();
+    for (const [permanent, spell] of moves) spellToPermanent.set(spell, permanent);
+
+    for (const [id, f] of [...next]) {
+      if (f.kind !== "stack") continue;
+      if (sources.has(id)) continue;
+      // Hand→stack flight before spell_cast rebind — not on the stack yet.
+      if (f.fromCardId === id) continue;
+
+      const permanentId = spellToPermanent.get(id);
+      const card = permanentId != null ? cards.find((c) => c.id === permanentId) : undefined;
+      if (permanentId != null && card) {
+        next = rebindFlightId(next, id, permanentId);
+        const scr = worldToScreen(cam, card.x + CARD_W / 2, card.y + CARD_H / 2);
+        const rebound = next.get(permanentId);
+        if (rebound) {
+          next = new Map(next);
+          next.set(
+            permanentId,
+            retargetFlight(
+              {
+                ...rebound,
+                id: permanentId,
+                kind: "from-stack",
+                print: card.print || rebound.print,
+                name: card.name || rebound.name,
+              },
+              { x: scr.x, y: scr.y, scale: 1 },
+            ),
+          );
+          spawnedFromStack.add(permanentId);
+          changed = true;
+        }
+        continue;
+      }
+
+      next = new Map(next);
+      next.delete(id);
+      spawnedFromStack.delete(id);
+      const fromId = f.fromCardId;
+      if (fromId != null) {
+        setHandHidden((h) => {
+          const n = new Set(h);
+          n.delete(fromId);
+          return n;
+        });
+      }
+      changed = true;
+    }
+
     if (changed) {
       setFlights(next);
       kickRaf();

@@ -180,6 +180,7 @@ export default function Board() {
     size,
     cards,
     stackLength: () => game.state?.stack.length ?? 0,
+    stackSourceIds: () => new Set((game.state?.stack ?? []).map((s) => s.source)),
     landPlays: () => provenance().landPlayFrom,
     fromStack: () => provenance().resolvedFromStack,
     fromStackExit: () => provenance().leftStackToPile,
@@ -198,7 +199,12 @@ export default function Board() {
     game.seq;
     const cam = camera();
     const sz = size();
+    const live = new Set((game.state?.stack ?? []).map((s) => s.source));
     const next = new Map(stackInDeltas());
+    // Drop play-in deltas for objects that left the stack so they can't revive on remount.
+    for (const id of [...next.keys()]) {
+      if (!live.has(id)) next.delete(id);
+    }
     const owned = cardFlights.flightOwnedIds();
     const stackLen = game.state?.stack.length ?? 0;
     const peek = stackPeekFor(stackLen, sz.y, STACK_VERTICAL_RESERVED);
