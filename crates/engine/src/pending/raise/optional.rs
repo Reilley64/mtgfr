@@ -153,6 +153,23 @@ pub(super) fn discard(
     })
 }
 
+pub(super) fn put_from_hand_on_top(
+    game: &Game,
+    player: PlayerId,
+    count: u32,
+) -> Option<PendingChoice> {
+    let hand = game.hand_of(player);
+    let count = (count as usize).min(hand.len());
+    if count == 0 {
+        return None;
+    }
+    Some(PendingChoice::PutFromHandOnTop {
+        player,
+        hand,
+        count,
+    })
+}
+
 pub(super) fn sacrifice_unless_return_land(
     game: &Game,
     player: PlayerId,

@@ -127,12 +127,12 @@ impl Game {
                 push(source_name, ModifierContribution::Goaded);
             }
         }
-        for &(host, _, source_name) in &self.play_permissions.control_overrides {
+        for &(host, _, source_name, _) in &self.play_permissions.control_overrides {
             if host == object {
                 push(source_name, ModifierContribution::Controls);
             }
         }
-        for &(host, _, condition) in &self.play_permissions.conditioned_control_overrides {
+        for &(host, _, condition, _) in &self.play_permissions.conditioned_control_overrides {
             if host == object {
                 push(
                     self.source_name_of(condition.source),
@@ -152,6 +152,7 @@ impl Game {
                             toughness,
                             keywords,
                             goad,
+                            legendary_only,
                             ..
                         },
                     ) => {
@@ -163,8 +164,12 @@ impl Game {
                                 ModifierContribution::PowerToughness { power, toughness },
                             );
                         }
-                        for &keyword in keywords {
-                            push(name, ModifierContribution::Keyword(keyword));
+                        // Champion's Helm's "as long as equipped creature is legendary" gate — no
+                        // keyword contribution to explain while the host isn't legendary.
+                        if !legendary_only || self.def_of(object).legendary {
+                            for &keyword in keywords {
+                                push(name, ModifierContribution::Keyword(keyword));
+                            }
                         }
                         if goad {
                             push(name, ModifierContribution::Goaded);
@@ -387,12 +392,10 @@ impl Game {
 
     /// The mana credit "one mana of any color in your commander's color identity" (CR 903.4 —
     /// Command Tower, Arcane Signet) resolves to for `player`: their single identity color, an
-    /// [`Mana::Either`] credit for a two-color identity (exact for every soc commander, all
-    /// two-color), or `None` for a colorless identity (no commander designated, or a colorless
-    /// commander — CR 106.6 has no mana of no color).
-    /// ponytail: a 3+-color identity has no restricted-credit shape yet (only `Either` exists
-    /// beyond a single color); it falls back to [`Mana::Any`]. No soc-pool commander is 3+
-    /// colors — upgrade to a color-set credit only if one becomes a fidelity target.
+    /// [`Mana::Either`] credit for a two-color identity, a [`Mana::OfColors`] restricted-set
+    /// credit for a 3+-color identity (Ruhan of the Fomori/Zedruu the Greathearted/Numot, the
+    /// Devastator are all WUR), or `None` for a colorless identity (no commander designated, or a
+    /// colorless commander — CR 106.6 has no mana of no color).
     pub(crate) fn commander_identity_credit(&self, player: PlayerId) -> Option<Mana> {
         let identity = self.commander_identity_of(player);
         let mut colors = Color::ALL.iter().copied().filter(|c| identity[c.index()]);
@@ -400,7 +403,15 @@ impl Game {
             (None, ..) => None,
             (Some(c), None, _) => Some(Mana::Color(c)),
             (Some(a), Some(b), None) => Some(Mana::Either(a, b)),
-            (Some(_), Some(_), Some(_)) => Some(Mana::Any),
+            (Some(_), Some(_), Some(_)) => {
+                let mut mask = 0u8;
+                for c in Color::ALL {
+                    if identity[c.index()] {
+                        mask |= 1 << c.index();
+                    }
+                }
+                Some(Mana::OfColors(mask))
+            }
         }
     }
 
@@ -603,6 +614,9 @@ impl Game {
         &self,
         host: ObjectId,
     ) -> impl Iterator<Item = (i32, i32, &'static [Keyword])> + '_ {
+        // Champion's Helm's "as long as equipped creature is legendary" gate — a `legendary_only`
+        // grant contributes no keywords at all while the host isn't legendary.
+        let host_legendary = self.def_of(host).legendary;
         self.attachments(host)
             .into_iter()
             // A phased-out Aura/Equipment grants nothing (CR 702.26e — treated as though it
@@ -620,12 +634,17 @@ impl Game {
                                 power,
                                 toughness,
                                 keywords,
+                                legendary_only,
                                 ..
                             },
                         ) => Some((
                             self.resolve_amount(power, controller, id, None, 0),
                             self.resolve_amount(toughness, controller, id, None, 0),
-                            keywords,
+                            if legendary_only && !host_legendary {
+                                &[]
+                            } else {
+                                keywords
+                            },
                         )),
                         _ => None,
                     })
@@ -695,6 +714,30 @@ impl Game {
                             Timing::Static,
                             Effect::GrantToAttached {
                                 cant_attack: true,
+                                ..
+                            }
+                        )
+                    )
+                })
+        })
+    }
+
+    /// Whether a live Aura attached to `host` carries a static [`Effect::GrantToAttached`] with
+    /// `cant_attack_controller = true` *and* is controlled by `defender` (the Vow cycle's
+    /// "Enchanted creature can't attack you" — scoped to this Aura's own controller, unlike
+    /// [`Self::host_cant_attack`]'s blanket ban). Read in `declare_attackers` beside the landed
+    /// vow-counter check, off the same attachment scan, so it vanishes the instant the Aura leaves.
+    pub(crate) fn host_cant_attack_controller(&self, host: ObjectId, defender: PlayerId) -> bool {
+        self.attachments(host).into_iter().any(|id| {
+            !self.is_phased_out(id)
+                && self.controller_of(id) == defender
+                && self.def_of(id).abilities.iter().any(|a| {
+                    matches!(
+                        (a.timing, a.effect),
+                        (
+                            Timing::Static,
+                            Effect::GrantToAttached {
+                                cant_attack_controller: true,
                                 ..
                             }
                         )
@@ -1166,7 +1209,7 @@ impl Game {
     /// [`ObjectId`] of the permanent carrying it (its source — needed to resolve a dynamic
     /// `power`/`toughness` [`Amount`] and to honor `self_only`): on a permanent `candidate`'s
     /// owner also owns (or, for an `all_players` anthem, any permanent at all), matching its
-    /// `subtype`/`attacking_only`/`self_only` filter (`None`/`false` matches everything, same as
+    /// `subtype`/`attacking_only`/`blocking_only`/`self_only` filter (`None`/`false` matches everything, same as
     /// the old untyped anthem). The shared scan behind [`Game::anthem_pt_bonus`] and
     /// [`Game::anthem_keywords`] — a filtered anthem has to be tested per candidate creature,
     /// unlike the old controller-wide flat bonus.
@@ -1208,6 +1251,7 @@ impl Game {
                         colors,
                         chosen_subtype,
                         attacking_only,
+                        blocking_only,
                         commander_only,
                         self_only,
                         exclude_source,
@@ -1262,6 +1306,15 @@ impl Game {
                     }
                 }
                 if attacking_only && !self.combat.attackers.contains(&candidate) {
+                    continue;
+                }
+                if blocking_only
+                    && !self
+                        .combat
+                        .blocks
+                        .iter()
+                        .any(|&(blocker, _)| blocker == candidate)
+                {
                     continue;
                 }
                 if commander_only && !self.is_commander(candidate) {
@@ -1324,6 +1377,37 @@ impl Game {
         self.functional_abilities(target).iter().any(|ability| {
             ability.timing == Timing::Static
                 && matches!(ability.effect, Effect::PreventDamageToSelfRemovingCounter)
+        })
+    }
+
+    /// Whether `target` carries a permanent combat-damage-prevention static shielding damage
+    /// dealt TO itself (CR 615 — Guard Gomazoa: "Prevent all combat damage that would be dealt
+    /// to Guard Gomazoa."; Fog Bank's "to and by" wording sets this half too). True iff `target`
+    /// has a `(Timing::Static, PreventCombatDamageStatic { to_self: true, .. })` ability of its
+    /// own — combat-only, unlike [`Game::phantom_shield_active`], which covers noncombat damage
+    /// too and removes a counter each time.
+    pub(crate) fn combat_damage_prevented_to_creature(&self, target: ObjectId) -> bool {
+        self.functional_abilities(target).iter().any(|ability| {
+            ability.timing == Timing::Static
+                && matches!(
+                    ability.effect,
+                    Effect::PreventCombatDamageStatic { to_self: true, .. }
+                )
+        })
+    }
+
+    /// Whether `source` carries a permanent combat-damage-prevention static shielding damage it
+    /// deals TO OTHERS (CR 615 — Fog Bank: "... and dealt by Fog Bank."). True iff `source` has
+    /// a `(Timing::Static, PreventCombatDamageStatic { by_self: true, .. })` ability of its own —
+    /// the sibling query to [`Game::combat_damage_prevented_to_creature`], keyed on the source
+    /// end of a combat-damage instance instead of the target end.
+    pub(crate) fn combat_damage_prevented_by_source(&self, source: ObjectId) -> bool {
+        self.functional_abilities(source).iter().any(|ability| {
+            ability.timing == Timing::Static
+                && matches!(
+                    ability.effect,
+                    Effect::PreventCombatDamageStatic { by_self: true, .. }
+                )
         })
     }
 
@@ -1684,7 +1768,7 @@ impl Game {
                 let Some(Target::Object(id)) = target else {
                     return false;
                 };
-                self.is_modified(id) && self.controller_of(id) == caster
+                self.is_modified(id, caster) && self.controller_of(id) == caster
             }
             // Advanced Reconstruction's level 3: "Spells you cast from anywhere other than your
             // hand …" — the only arm that reads the cast-from zone (CR 601).
@@ -1976,6 +2060,7 @@ mod cache_tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -1996,6 +2081,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }
@@ -2015,6 +2101,7 @@ mod cache_tests {
                 colors: &[],
                 chosen_subtype: false,
                 attacking_only: false,
+                blocking_only: false,
                 commander_only: false,
                 has_counters: false,
                 condition: None,
@@ -2058,6 +2145,7 @@ mod cache_tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -2078,6 +2166,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }
@@ -2226,6 +2315,7 @@ mod cache_tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -2244,6 +2334,7 @@ mod cache_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }
@@ -2366,6 +2457,7 @@ mod characteristic_query_tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -2384,6 +2476,7 @@ mod characteristic_query_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }
@@ -2427,6 +2520,7 @@ mod characteristic_query_tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -2445,6 +2539,7 @@ mod characteristic_query_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }
@@ -2519,6 +2614,7 @@ mod characteristic_query_tests {
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                cumulative_upkeep: None,
                 recover: None,
                 bestow: None,
                 morph: None,
@@ -2537,6 +2633,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
             },
@@ -2599,6 +2696,7 @@ mod characteristic_query_tests {
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                cumulative_upkeep: None,
                 recover: None,
                 bestow: None,
                 morph: None,
@@ -2617,6 +2715,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
             },
@@ -2677,6 +2776,7 @@ mod characteristic_query_tests {
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                cumulative_upkeep: None,
                 recover: None,
                 bestow: None,
                 morph: None,
@@ -2695,6 +2795,7 @@ mod characteristic_query_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
             },

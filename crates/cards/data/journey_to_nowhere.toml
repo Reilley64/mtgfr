@@ -1,0 +1,25 @@
+# When this enchantment enters, exile target creature.
+# When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.
+name = "Journey to Nowhere"
+id = "2bfec482-be0d-4768-84e7-1c2c74ea1373"
+default_print = "4686b51c-e02b-48c1-bafe-e8d08a5407b9"
+oracle = "When this enchantment enters, exile target creature.\nWhen this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control."
+set = "cmd"
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "enchantment"
+
+# When this enchantment enters, exile target creature.
+# When this enchantment leaves the battlefield, return the exiled card to the battlefield under
+# its owner's control.
+[[abilities]]
+timing = "etb"
+
+# exile target creature.
+[[abilities.effects]]
+type = "exile_until_source_leaves"
+target = "creature"

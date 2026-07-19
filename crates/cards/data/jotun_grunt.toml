@@ -1,0 +1,23 @@
+# Cumulative upkeep—Put two cards from a single graveyard on the bottom of their owner's library. (At the beginning of
+# your upkeep, put an age counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age
+# counter on it.)
+name = "Jotun Grunt"
+otags = ["creature-type-giant", "creature-type-soldier", "cumulative-upkeep", "graveyard-hate"]
+oracle = "Cumulative upkeep—Put two cards from a single graveyard on the bottom of their owner's library. (At the beginning of your upkeep, put an age counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age counter on it.)"
+set = "cmd"
+subtypes = ["Giant", "Soldier"]
+id = "43fbfeec-bcaf-48b8-befe-b7346fec5a3a"
+default_print = "91a2217c-8478-479b-a146-2d78f407a36f"
+
+[cost]
+generic = 1
+white = 1
+
+# Cumulative upkeep—Put two cards from a single graveyard on the bottom of their owner's library.
+[cumulative_upkeep]
+graveyard_cards = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

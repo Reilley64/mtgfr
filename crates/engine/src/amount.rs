@@ -96,6 +96,16 @@ impl Game {
                 })
                 .map(|id| self.power(id))
                 .sum(),
+            // Zedruu's "permanents you own that your opponents control" — you own it, but its
+            // controller isn't you (CR 108.3/720). A permanent you own is controlled by you or an
+            // opponent, so owner-is-you-and-controller-isn't counts each donated permanent once.
+            Amount::PermanentsYouOwnOpponentsControl => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    self.owner_of(id) == controller && self.controller_of(id) != controller
+                })
+                .count() as i32,
             Amount::IfCondition { condition, then } => {
                 if !self.condition_holds(condition, TriggerContext::of(controller)) {
                     return 0;

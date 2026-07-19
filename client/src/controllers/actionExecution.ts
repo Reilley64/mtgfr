@@ -395,6 +395,13 @@ export function useActionExecution(deps: ActionExecutionDeps) {
       void takeCastAction(plan.action, null, undefined, [], plan.picks);
       return;
     }
+    // Untargeted activations with {X} in the cost still need the X prompt; takeCastAction
+    // already owns that gate (targeted ones reach it via completeTarget) and submits the same
+    // take_action intent for everything else.
+    if (action.has_x) {
+      void takeCastAction(action, null, undefined, [], plan.picks);
+      return;
+    }
     void deps.act(buildTakeActionIntent(deps.me(), plan.actionId, null, 0, [], plan.picks));
   };
 

@@ -1,0 +1,22 @@
+# Untap all creatures and gain control of them until end of turn. They gain haste until end of turn.
+name = "Insurrection"
+id = "7f7c204f-be1a-47e4-91c6-ba6f906d9012"
+default_print = "df8a0a8c-1953-46e6-9da5-b4c20909ce1c"
+oracle = "Untap all creatures and gain control of them until end of turn. They gain haste until end of turn."
+set = "cmm"
+
+[cost]
+generic = 5
+red = 3
+
+[kind]
+type = "sorcery"
+
+# Untap all creatures and gain control of them until end of turn. They gain haste until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Untap all creatures and gain control of them until end of turn. They gain haste until end of turn.
+[[abilities.effects]]
+type = "gain_control_all_until_end_of_turn"
+filter = "creatures"

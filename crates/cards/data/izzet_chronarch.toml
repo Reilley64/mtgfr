@@ -1,0 +1,26 @@
+# When this creature enters, return target instant or sorcery card from your graveyard to your hand.
+name = "Izzet Chronarch"
+id = "1da438f3-db1c-4713-a60c-e078f31d809c"
+default_print = "29681b0d-1aed-4b50-9710-9c15f3c83c72"
+oracle = "When this creature enters, return target instant or sorcery card from your graveyard to your hand."
+set = "cmd"
+subtypes = ["Human", "Wizard"]
+
+[cost]
+generic = 3
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature enters, return target instant or sorcery card from your graveyard to your hand.
+[[abilities]]
+timing = "etb"
+
+# return target instant or sorcery card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "instant_or_sorcery" } }

@@ -45,9 +45,10 @@ pub(crate) struct CombatExtras {
     /// step (the "this turn" boundary).
     /// ponytail: "this turn" modeled as "until the next untap" — combat is always within the
     /// turn, so a combat-only shield cleared at Untap is behavior-exact (same turn-boundary idiom
-    /// `must_attack`/`pending_next_cast` use). Combat-damage-to-a-*player* only for now; damage to
-    /// creatures (Tajic), noncombat damage, per-source and N-point shields await the scope
-    /// generalization (#130 slice 3).
+    /// `must_attack`/`pending_next_cast` use). Combat-damage-to-a-*player* only — the N-point
+    /// (Inkshield) shape stays this-turn/per-player; the permanent per-source shape (Guard
+    /// Gomazoa, Fog Bank, #220) is a separate static, [`Effect::PreventCombatDamageStatic`],
+    /// scanned live off the permanent rather than stored here.
     pub combat_damage_prevention_shields: Vec<(PlayerId, CardDef)>,
     /// "Prevent all combat damage that would be dealt this turn" (Moment's Peace, #150 — the
     /// table-wide, no-token scope generalization of [`combat_damage_prevention_shields`](Self::combat_damage_prevention_shields)'s
@@ -68,28 +69,41 @@ pub(crate) struct PlayPermissions {
     /// object, its new controller, source card name) — Besmirch's steal. Read by
     /// [`Game::controller_of`](crate::Game::controller_of) and cleared per-object at cleanup by
     /// [`Event::ControlEndedUntilEndOfTurn`](crate::Event::ControlEndedUntilEndOfTurn).
-    /// ponytail: an active entry here always outranks a `ControlAttached` Aura on the same
-    /// object rather than tracking each override's timestamp (CR 800.4a says the most recent
-    /// control-changing effect wins) — correct for every pool card, since none layers both on
-    /// one permanent; revisit with a timestamp if one ever does.
-    pub control_overrides: Vec<(ObjectId, PlayerId, &'static str)>,
+    /// Each entry `(the controlled object, its new controller, source card name, the control
+    /// timestamp)` — Besmirch's steal. The timestamp is [`Game::next_control_timestamp`](crate::Game),
+    /// stamped when the entry is recorded, so [`Game::controller_of`](crate::Game::controller_of)
+    /// can pick the most recent control-changing effect (CR 800.4a) when several apply to one
+    /// permanent. Cleared per-object at cleanup by
+    /// [`Event::ControlEndedUntilEndOfTurn`](crate::Event::ControlEndedUntilEndOfTurn).
+    pub control_overrides: Vec<(ObjectId, PlayerId, &'static str, u64)>,
     /// Permanent control changes with no stated duration (CR 720 — Entrancing Melody), each
-    /// entry (the controlled object, its new controller). Unlike [`control_overrides`](Self::control_overrides),
-    /// never cleared at cleanup — [`Game::controller_of`](crate::Game::controller_of) checks
-    /// this after the until-end-of-turn entries (an active until-EOT steal still outranks it,
-    /// same no-per-entry-timestamp reasoning as `control_overrides`).
-    pub permanent_control_overrides: Vec<(ObjectId, PlayerId)>,
+    /// entry `(the controlled object, its new controller, the control timestamp)`. Unlike
+    /// [`control_overrides`](Self::control_overrides), never cleared at cleanup;
+    /// [`Game::controller_of`](crate::Game::controller_of) ranks it against the other registries
+    /// by timestamp (CR 800.4a).
+    pub permanent_control_overrides: Vec<(ObjectId, PlayerId, u64)>,
     /// Condition-scoped control changes (CR 611.2b — Rubinia Soulsinger's "for as long as you
     /// control Rubinia and Rubinia remains tapped"), each entry `(the controlled object, its new
-    /// controller, the sustaining condition)`. The first condition-scoped duration in the engine:
-    /// unlike [`control_overrides`](Self::control_overrides) (cleanup) and
+    /// controller, the sustaining condition, the control timestamp)`. Unlike
+    /// [`control_overrides`](Self::control_overrides) (cleanup) and
     /// [`permanent_control_overrides`](Self::permanent_control_overrides) (never), an entry here is
     /// dropped the moment its [`ControlCondition`] stops holding, detected as a state-based check
     /// ([`Game::check_conditioned_control_reversions`](crate::Game::check_conditioned_control_reversions))
     /// that emits [`Event::ConditionedControlEnded`](crate::Event::ConditionedControlEnded). Read
-    /// by [`Game::controller_of`](crate::Game::controller_of), same "an active entry wins"
-    /// precedence as the two registries above (no pool card layers two on one permanent).
-    pub conditioned_control_overrides: Vec<(ObjectId, PlayerId, ControlCondition)>,
+    /// by [`Game::controller_of`](crate::Game::controller_of), ranked against the other registries
+    /// by its timestamp (CR 800.4a).
+    pub conditioned_control_overrides: Vec<(ObjectId, PlayerId, ControlCondition, u64)>,
+    /// Control-changing Aura (CR 720 — [`Effect::ControlAttached`](crate::Effect::ControlAttached))
+    /// timestamps, each `(the Aura object, the control timestamp it attached at)`. The Aura path
+    /// keeps no controller entry (the controller is read live as the Aura's owner off its live
+    /// attachment in [`Game::control_aura`](crate::Game::control_aura)); this only records *when*
+    /// it took hold, so [`Game::controller_of`](crate::Game::controller_of) can rank it against the
+    /// three override registries by recency (CR 800.4a). Stamped in
+    /// [`Event::AttachedTo`](crate::Event::AttachedTo)'s control-gain branch. A stale entry for a
+    /// detached/dead Aura is harmless — it's only consulted for an Aura currently attached to the
+    /// queried host (and object ids retire on zone change, CR 400.7), the same rationale the three
+    /// override registries rely on.
+    pub aura_control_timestamps: Vec<(ObjectId, u64)>,
     /// Impulse draw (CR 118.6): each entry is `(an exiled card, the player who may play it,
     /// extended)` — the play permission granted by
     /// [`Effect::ExileTopMayPlay`](crate::Effect::ExileTopMayPlay). A plain entry (`extended =

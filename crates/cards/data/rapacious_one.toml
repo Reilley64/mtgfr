@@ -1,0 +1,50 @@
+# Trample
+# Whenever this creature deals combat damage to a player, create that many 0/1 colorless Eldrazi Spawn creature tokens.
+# They have "Sacrifice this token: Add {C}."
+name = "Rapacious One"
+id = "3af03c99-d215-477b-ba49-51f4e87907ff"
+default_print = "be25bcb7-2be6-4257-8762-2a26dc8a16ff"
+otags = ["ramp", "repeatable-creature-tokens", "triggered-ability"]
+oracle = "Trample\nWhenever this creature deals combat damage to a player, create that many 0/1 colorless Eldrazi Spawn creature tokens. They have \"Sacrifice this token: Add {C}.\""
+set = "cmd"
+subtypes = ["Eldrazi", "Drone"]
+keywords = ["trample"]
+
+[cost]
+generic = 5
+red = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 4
+
+# Whenever this creature deals combat damage to a player, create that many 0/1 colorless Eldrazi
+# Spawn creature tokens. They have "Sacrifice this token: Add {C}."
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "this"
+
+# create that many 0/1 colorless Eldrazi Spawn creature tokens.
+[[abilities.effects]]
+type = "create_token"
+count = "combat_damage_dealt"
+
+[abilities.effects.token]
+name = "Eldrazi Spawn"
+subtypes = ["Eldrazi", "Spawn"]
+
+[abilities.effects.token.kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# "Sacrifice this token: Add {C}."
+[[abilities.effects.token.abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Add {C}.
+[[abilities.effects.token.abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]

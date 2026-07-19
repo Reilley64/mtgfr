@@ -100,6 +100,35 @@ impl Game {
                     effect: *then,
                 }]
             }
+            // Scattering Stroke's win rider (CR 603.7): schedule a delayed one-shot for the
+            // controller's own next first main phase that adds {C} equal to the just-countered
+            // spell's printed mana value (captured now as last-known information — the counter has
+            // already moved the shared target spell to the graveyard). `Main1` firing is
+            // controller-scoped in `Game::fire_delayed_triggers`, so this only fires on the
+            // caster's own turn.
+            Effect::ScheduleColorlessManaForCounteredSpellNextMainPhase => {
+                let spell =
+                    expect_object_target(target, "the countered spell for the delayed mana");
+                let mana_value = self.def_of(spell).mana_value().min(u8::MAX as u32) as u8;
+                vec![Event::DelayedTriggerScheduled {
+                    controller,
+                    source,
+                    fire_at: Step::Main1,
+                    effect: Effect::add_colorless(mana_value),
+                }]
+            }
+            // Pollen Lullaby's win rider: mark every creature an opponent of the controller
+            // controls so it skips that controller's next untap step (CR "creatures your opponents
+            // control don't untap during their controllers' next untap steps"). Each mark is
+            // consumed at that permanent's controller's next untap step (see `Game::advance_step`).
+            Effect::SkipNextUntapOpponentCreatures => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    self.is_creature_on_battlefield(id) && self.controller_of(id) != controller
+                })
+                .map(|object| Event::NextUntapSkipMarked { object })
+                .collect(),
             // Arm a CR 603.7 delayed one-shot: always the ability's own controller/source (Brass
             // Infiniscope has no "someone else's spell" wrinkle) — the watch itself doesn't fire
             // until a matching cast happens, see `Game::fire_next_cast_triggers`.

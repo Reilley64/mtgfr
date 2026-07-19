@@ -197,6 +197,7 @@ impl Game {
                     card,
                     from,
                     to_top: false,
+                    second_from_top: false,
                 },
             );
         }
@@ -532,6 +533,90 @@ impl Game {
         );
     }
 
+    /// Resolve Murmurs from Beyond ([`Effect::RevealTopOpponentPicksOneToGraveyard`]): reveal the
+    /// top `count` of `controller`'s library (all public, CR 701.16; a short library reveals only
+    /// what's there, CR 120.3 "as many as possible" — an empty library reveals nothing and raises
+    /// no pause), then hand off to the shared [`Self::choose_splitting_opponent`] chooser to pick
+    /// who picks exactly one of them.
+    pub(crate) fn reveal_top_opponent_picks_one_to_graveyard(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        count: u8,
+        events: &mut Vec<Event>,
+    ) {
+        let revealed: Vec<ObjectId> = self.players[controller.0 as usize]
+            .library
+            .iter()
+            .take(count as usize)
+            .copied()
+            .collect();
+        for &card in &revealed {
+            self.push_apply(
+                events,
+                Event::RevealedTopOfLibrary {
+                    player: controller,
+                    card,
+                    def: self.def_of(card),
+                },
+            );
+        }
+        if revealed.is_empty() {
+            return; // an empty library reveals nothing — no card to choose.
+        }
+        self.choose_splitting_opponent(
+            controller,
+            source,
+            SplittingContinuation::PickOneToGraveyard { revealed },
+        );
+    }
+
+    /// Answer a [`PendingChoice::OpponentChoosesRevealedToGraveyard`] (Murmurs from Beyond):
+    /// `choice` must be one of `revealed` — the opponent must pick one (CR "An opponent chooses
+    /// one of them", no decline). The picked card is milled into `controller`'s graveyard (CR
+    /// "Put that card into your graveyard"); every other revealed card goes straight to
+    /// `controller`'s hand (CR "and the rest into your hand").
+    pub(crate) fn choose_opponent_revealed_to_graveyard(
+        &mut self,
+        _player: PlayerId,
+        choice: Option<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::OpponentChoosesRevealedToGraveyard {
+            controller,
+            revealed,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        let Some(picked) = choice.filter(|c| revealed.contains(c)) else {
+            return Err(Reject::IllegalChoice);
+        };
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        self.push_apply(
+            &mut events,
+            Event::Milled {
+                player: controller,
+                card: self.next_object_id(),
+                from: picked,
+            },
+        );
+        for from in revealed.into_iter().filter(|&id| id != picked) {
+            self.push_apply(
+                &mut events,
+                Event::SearchedToHand {
+                    player: controller,
+                    object: self.next_object_id(),
+                    from,
+                    card: self.def_of(from),
+                },
+            );
+        }
+        Ok(events)
+    }
+
     /// The shared "an opponent ..." chooser for [`Effect::OpponentSplitsExilePiles`] and
     /// [`Effect::RevealTopSplitPiles`]: with more than one opponent alive, `controller` picks
     /// which one on a [`ChoiceRequest::ChooseSplittingOpponent`]; with at most one, resume
@@ -576,6 +661,13 @@ impl Game {
             return Err(Reject::IllegalTarget);
         }
         self.finish_answer();
+        // Clash reveals both top cards as it resumes (CR 701.22a), so it needs an events sink the
+        // eventless `resume_splitting_opponent` can't offer — route it to `resume_clash` instead.
+        if then == SplittingContinuation::Clash {
+            let mut events = Vec::new();
+            self.resume_clash(opponent, controller, source, &mut events);
+            return Ok(events);
+        }
         self.resume_splitting_opponent(opponent, controller, source, then);
         Ok(Vec::new())
     }
@@ -613,7 +705,109 @@ impl Game {
                     },
                 );
             }
+            SplittingContinuation::PickOneToGraveyard { revealed } => {
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::OpponentChoosesRevealedToGraveyard {
+                        player: opponent,
+                        controller,
+                        source,
+                        revealed,
+                    },
+                );
+            }
+            // Clash resumes through `resume_clash` (it needs an events sink for the reveals), never
+            // here — `choose_splitting_opponent_answer` and `begin_clash`'s collapse both bypass this.
+            SplittingContinuation::Clash => {
+                unreachable!("clash resumes via resume_clash, not resume_splitting_opponent")
+            }
         }
+    }
+
+    /// Begin a clash (CR 701.22, [`Effect::Clash`]): the ability's controller picks a living
+    /// opponent to clash with (the shared #107 [`pending::ChoiceRequest::ChooseSplittingOpponent`]
+    /// chooser, collapsed when there's only one). Once known, [`Self::resume_clash`] reveals both
+    /// top cards, scores the clash, and pauses each player on a keep-on-top-or-bottom scry.
+    pub(crate) fn begin_clash(
+        &mut self,
+        controller: PlayerId,
+        source: ObjectId,
+        events: &mut Vec<Event>,
+    ) {
+        let legal: Vec<PlayerId> = self.living_players().filter(|&p| p != controller).collect();
+        match legal.as_slice() {
+            [] => {} // ponytail: no opponent to clash with — unreachable in a real game.
+            // One opponent: the chooser collapses, so clash immediately (events available here).
+            [only] => self.resume_clash(*only, controller, source, events),
+            _ => pending::raise(
+                self,
+                pending::ChoiceRequest::ChooseSplittingOpponent {
+                    player: controller,
+                    source,
+                    legal,
+                    then: SplittingContinuation::Clash,
+                },
+            ),
+        }
+    }
+
+    /// Resume a clash once the opponent is known (CR 701.22a–d): both `controller` and `opponent`
+    /// reveal the top card of their library (a player with an empty library reveals nothing), the
+    /// controller wins iff their card's mana value is strictly greater ("you win a clash if your
+    /// card has a higher mana value than all other cards revealed in that clash"), and each player
+    /// then takes a one-card scry to leave the card on top or bottom it (CR 701.22a) — the ability's
+    /// controller first, then the opponent (deferred via [`Game::pending_clash_scry`]).
+    pub(crate) fn resume_clash(
+        &mut self,
+        opponent: PlayerId,
+        controller: PlayerId,
+        _source: ObjectId,
+        events: &mut Vec<Event>,
+    ) {
+        let my_top = self.players[controller.0 as usize].library.first().copied();
+        let their_top = self.players[opponent.0 as usize].library.first().copied();
+        for (player, card) in [(controller, my_top), (opponent, their_top)] {
+            if let Some(card) = card {
+                self.push_apply(
+                    events,
+                    Event::RevealedTopOfLibrary {
+                        player,
+                        card,
+                        def: self.def_of(card),
+                    },
+                );
+            }
+        }
+        // "You win a clash if your card has a higher mana value than all other cards revealed."
+        // (CR 701.22d) — strictly greater; a controller who revealed nothing can't win, and an
+        // opponent who revealed nothing loses to any card the controller revealed.
+        let my_mv = my_top.map(|c| self.def_of(c).mana_value());
+        let their_mv = their_top.map(|c| self.def_of(c).mana_value());
+        self.clash_won = my_mv.is_some_and(|mine| their_mv.is_none_or(|theirs| mine > theirs));
+
+        // Each may leave the revealed card on top or put it on the bottom — a one-card scry, the
+        // ability's controller deciding first. An empty library raises no scry (`ArrangeTop` skips).
+        pending::raise(
+            self,
+            pending::ChoiceRequest::ArrangeTop {
+                player: controller,
+                count: 1,
+                to_graveyard: false,
+            },
+        );
+        if self.resolution_is_paused() {
+            self.pending_clash_scry = Some(opponent); // opponent's scry follows, once this clears
+            return;
+        }
+        // The controller had no card to arrange; go straight to the opponent's keep/bottom scry.
+        pending::raise(
+            self,
+            pending::ChoiceRequest::ArrangeTop {
+                player: opponent,
+                count: 1,
+                to_graveyard: false,
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::PartitionRevealed`] (Fact or Fiction): `pile_a` names the subset

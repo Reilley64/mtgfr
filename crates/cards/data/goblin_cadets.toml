@@ -1,0 +1,26 @@
+# Whenever this creature blocks or becomes blocked, target opponent gains control of it. (This
+# removes this creature from combat.)
+name = "Goblin Cadets"
+id = "32dc847a-d8e9-4bc5-aa73-dfe69ff330a2"
+default_print = "78f93873-5053-40c6-b79a-3c54a8005b75"
+oracle = "Whenever this creature blocks or becomes blocked, target opponent gains control of it. (This removes this creature from combat.)"
+set = "cmd"
+subtypes = ["Goblin"]
+
+[cost]
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 1
+
+# Whenever this creature blocks or becomes blocked, target opponent gains control of it.
+[[abilities]]
+timing = "blocks_or_becomes_blocked"
+
+# target opponent gains control of it
+[[abilities.effects]]
+type = "target_opponent_gains_control"
+target = "this"
+player = "opponent"

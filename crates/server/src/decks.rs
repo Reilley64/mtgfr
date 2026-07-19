@@ -230,7 +230,7 @@ mod soc_deck_tests {
         cards: Vec<DeckCardEntry>,
     }
 
-    const FIXTURES: [&str; 7] = [
+    const FIXTURES: [&str; 8] = [
         "silverquill_influence",
         "prismari_artistry",
         "witherbloom_pestilence",
@@ -238,6 +238,7 @@ mod soc_deck_tests {
         "quandrix_unlimited",
         "enchantress_rubinia",
         "deathdancer_xira",
+        "political_puppets",
     ];
 
     fn load(fixture: &str) -> DeckFixture {
@@ -318,6 +319,11 @@ mod soc_deck_tests {
     #[test]
     fn deathdancer_xira_is_a_legal_commander_deck() {
         assert_legal("deathdancer_xira");
+    }
+
+    #[test]
+    fn political_puppets_is_a_legal_commander_deck() {
+        assert_legal("political_puppets");
     }
 
     fn seed_four(first: &str) -> Game {

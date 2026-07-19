@@ -62,6 +62,33 @@ impl Game {
         self.pending_choice.is_some()
     }
 
+    /// The owner (or controller, if `to_controller`) of a [`Sequence`](Effect::Sequence)'s shared
+    /// target — an ordinary live [`Game::owner_of`]/[`Game::controller_of`] read, except when a
+    /// *preceding* step in the same Sequence already vanished that target (a token tucked by
+    /// `ShuffleTargetPermanentIntoLibrary`/`ShuffleTargetPermanentIntoLibraryThenReveal`, CR
+    /// 111.7): `object` is by then `Object::Removed`, so this falls back to
+    /// [`ResolutionFrame::vanished_permanent_owner`] recorded at that vanish. A vanished token has
+    /// no live controller distinct from its owner, so both reads collapse to the same recorded
+    /// value in that case.
+    pub(crate) fn owner_of_shared_target(&self, object: ObjectId, to_controller: bool) -> PlayerId {
+        if matches!(self.objects[object as usize], Object::Removed) {
+            let (recorded_object, owner) = self
+                .resolution_frame
+                .vanished_permanent_owner
+                .expect("a vanished shared target must have left a last-known owner behind");
+            assert_eq!(
+                recorded_object, object,
+                "the vanished-owner record is for a different object"
+            );
+            return owner;
+        }
+        if to_controller {
+            self.controller_of(object)
+        } else {
+            self.owner_of(object)
+        }
+    }
+
     /// Run an [`Effect::Sequence`]'s `steps` in order, each sharing `ctx`. A step that pauses
     /// (surveil, discard) sets `pending_choice`; the remaining steps are stashed as a
     /// [`SequenceCont`] and replayed by [`Self::resume_deferred_sequence`] once that choice is
@@ -91,6 +118,23 @@ impl Game {
     pub(crate) fn resume_deferred_sequence(&mut self, events: &mut Vec<Event>) {
         if self.resolution_is_paused() {
             return;
+        }
+        // Clash (CR 701.22): the controller's keep/bottom scry just cleared — raise the opponent's
+        // before running the ability's own tail (the deal-damage/won-clash riders), so both reveals
+        // are decided first. An opponent with an empty library raises no scry and falls straight
+        // through to the tail below.
+        if let Some(opponent) = self.pending_clash_scry.take() {
+            crate::pending::raise(
+                self,
+                crate::pending::ChoiceRequest::ArrangeTop {
+                    player: opponent,
+                    count: 1,
+                    to_graveyard: false,
+                },
+            );
+            if self.resolution_is_paused() {
+                return;
+            }
         }
         if let Some(cont) = self.pending_sequence.take() {
             self.run_sequence(cont.steps, cont.ctx, events);
@@ -149,6 +193,7 @@ mod tests {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -169,6 +214,7 @@ mod tests {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     };

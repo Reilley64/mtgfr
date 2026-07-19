@@ -1,0 +1,35 @@
+# Clash with an opponent. Lash Out deals 4 damage to target creature. If you win the clash, Lash Out
+# deals 2 damage to that creature's controller.
+name = "Lash Out"
+id = "3c1e7f0a-9b21-4d64-8f5a-1c2d3e4f5a6b"
+default_print = "4d2f8a1b-0c32-4e75-9a6b-2d3e4f5a6b7c"
+oracle = "Clash with an opponent. Lash Out deals 4 damage to target creature. If you win the clash, Lash Out deals 2 damage to that creature's controller."
+set = "dis"
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Clash with an opponent. Lash Out deals 4 damage to target creature. If you win the clash, Lash Out
+# deals 2 damage to that creature's controller.
+[[abilities]]
+timing = "spell"
+
+# Clash with an opponent.
+[[abilities.effects]]
+type = "clash"
+
+# Lash Out deals 4 damage to target creature.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 4
+target = "creature"
+
+# If you win the clash, Lash Out deals 2 damage to that creature's controller.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "won_clash" }
+then = [{ type = "deal_damage_to_target_controller", amount = 2 }]

@@ -180,6 +180,11 @@ pub enum Intent {
     },
     /// Answer a [`PendingChoice::MayYesNo`]: accept or decline an optional trigger.
     AnswerMay { player: PlayerId, yes: bool },
+    /// Answer a [`PendingChoice::MayDrawUpTo`]: `count` is how many cards to draw, any number
+    /// `0..=max` (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two cards"). An out-of-range
+    /// `count` is rejected. A distinct variant from the yes/no [`Self::AnswerMay`] because the
+    /// answer is a chosen number, not a bool.
+    ChooseDrawCount { player: PlayerId, count: u8 },
     /// Answer a [`PendingChoice::DeclineUntap`] (CR 502.2 — Rubinia Soulsinger's "you may choose
     /// not to untap"): `keep_tapped` are the offered permanents the player leaves tapped; every
     /// other offered permanent untaps.
@@ -262,6 +267,12 @@ pub enum Intent {
     /// Answer a [`PendingChoice::DiscardToHandSize`]: the `cards` this player discards from hand
     /// at cleanup to reach the hand-size limit (exactly `count` of them, chosen by the player).
     Discard {
+        player: PlayerId,
+        cards: Vec<ObjectId>,
+    },
+    /// Answer a [`PendingChoice::PutFromHandOnTop`]: `cards` is the ordered pick (exactly
+    /// `count` distinct hand cards) — first-named ends up on top of the library.
+    PutFromHandOnTop {
         player: PlayerId,
         cards: Vec<ObjectId>,
     },
@@ -485,7 +496,7 @@ impl Intent {
             }
             Intent::ReturnLandOrSacrifice { land, .. } => land.iter().copied().collect(),
             Intent::ChooseSacrifices { sacrifices, .. } => sacrifices.clone(),
-            Intent::Discard { cards, .. } => cards.clone(),
+            Intent::Discard { cards, .. } | Intent::PutFromHandOnTop { cards, .. } => cards.clone(),
             Intent::DeclineUntap { keep_tapped, .. } => keep_tapped.clone(),
             Intent::ChooseDredge { dredger, .. } => dredger.iter().copied().collect(),
             Intent::ChooseAttachHost { host, .. } => host.iter().copied().collect(),
@@ -522,6 +533,7 @@ impl Intent {
             Intent::ChooseOrder { .. }
             | Intent::ChooseTargetPlayers { .. }
             | Intent::AnswerMay { .. }
+            | Intent::ChooseDrawCount { .. }
             | Intent::PayOptionalCost { .. }
             | Intent::PayOptionalCostX { .. }
             | Intent::ChooseMode { .. }
@@ -558,6 +570,7 @@ impl Intent {
             | Intent::ChooseTargets { player, .. }
             | Intent::ChooseTargetPlayers { player, .. }
             | Intent::AnswerMay { player, .. }
+            | Intent::ChooseDrawCount { player, .. }
             | Intent::PayOptionalCost { player, .. }
             | Intent::PayOptionalCostX { player, .. }
             | Intent::AssignDamage { player, .. }
@@ -571,6 +584,7 @@ impl Intent {
             | Intent::SearchLibrary { player, .. }
             | Intent::ChooseSacrifices { player, .. }
             | Intent::Discard { player, .. }
+            | Intent::PutFromHandOnTop { player, .. }
             | Intent::PutLandFromHand { player, .. }
             | Intent::PutCreatureFromHand { player, .. }
             | Intent::CastCreatureFaceDown { player, .. }
@@ -607,6 +621,7 @@ impl Intent {
             | Intent::ChooseTargets { .. }
             | Intent::ChooseTargetPlayers { .. }
             | Intent::AnswerMay { .. }
+            | Intent::ChooseDrawCount { .. }
             | Intent::PayOptionalCost { .. }
             | Intent::PayOptionalCostX { .. }
             | Intent::AssignDamage { .. }
@@ -620,6 +635,7 @@ impl Intent {
             | Intent::SearchLibrary { .. }
             | Intent::ChooseSacrifices { .. }
             | Intent::Discard { .. }
+            | Intent::PutFromHandOnTop { .. }
             | Intent::PutLandFromHand { .. }
             | Intent::PutCreatureFromHand { .. }
             | Intent::CastCreatureFaceDown { .. }
@@ -672,6 +688,13 @@ pub enum SplittingContinuation {
     },
     /// Fact or Fiction: the chosen opponent partitions the five already-revealed cards.
     Partition { revealed: Vec<ObjectId> },
+    /// Murmurs from Beyond: the chosen opponent picks exactly one of the already-revealed cards
+    /// to send to the controller's graveyard; the rest go to the controller's hand.
+    PickOneToGraveyard { revealed: Vec<ObjectId> },
+    /// Lash Out (CR 701.22): once the opponent to clash with is known, both reveal their top card
+    /// and each takes a keep-on-top-or-bottom scry. Resumed via [`Game::resume_clash`] (which needs
+    /// an `events` sink for the reveals), not the eventless [`Game::resume_splitting_opponent`].
+    Clash,
 }
 
 /// A decision the engine is waiting on. While one is pending, only the matching
@@ -685,17 +708,30 @@ pub enum PendingChoice {
         source: ObjectId,
         effects: Vec<Effect>,
     },
-    /// `player` must choose the target for a triggered ability (`source`'s `effect`) before it
-    /// goes on the stack. Answered by [`Intent::ChooseTargets`]. `legal` lists the valid targets.
-    /// `optional` (from the effect's own [`TargetCount::min`] being 0 — Killian, Decisive
-    /// Mentor's "tap up to one target creature") lets `targets` be empty to decline: the ability
-    /// is dropped rather than placed with no target (CR "up to one" — choosing zero is legal).
+    /// `player` must choose the target(s) for a triggered (or copied — CR 707.10c) ability
+    /// (`source`'s `effect`) before it goes on the stack (CR 601.2c/603.3c). Answered by
+    /// [`Intent::ChooseTargets`]: between `count.min` and `count.max` distinct targets, drawn
+    /// from `legal` (both already clamped to `legal.len()` by [`Game::place_targeted_ability`]).
+    /// The ubiquitous single-mandatory-target ability carries `count = { min: 1, max: 1 }`;
+    /// `count.min == 0` (Killian, Decisive Mentor's "tap up to one target creature") lets
+    /// `targets` be empty to decline: the ability is dropped rather than placed with no target.
+    /// `count.max > 1` (Numot, the Devastator's "destroy up to two target lands") widens this
+    /// past one target, same range shape as
+    /// [`PendingChoice::ChooseSpellTargets`]/[`PendingChoice::ChooseAbilityTargets`]. `x`/
+    /// `activated` carry an activated ability's own chosen `{X}`/activated-ness so the assembled
+    /// ability pushes with them once answered — `0`/`false` for an ordinary triggered ability
+    /// (which carries no `{X}` of its own); Unbound Flourishing's CR 707.10c copy-retarget of a
+    /// targeted `{X}`-cost activated ability (Nin, the Pain Artist) is the one real consumer. Not
+    /// wire-mirrored — the schema projection ignores these via `..`, same as
+    /// [`PendingChoice::ChooseAbilityTargets`]'s own `x`/`spent_mana`/`activated`.
     ChooseTarget {
         player: PlayerId,
         source: ObjectId,
         effect: Effect,
         legal: Vec<Target>,
-        optional: bool,
+        count: TargetCount,
+        x: u32,
+        activated: bool,
     },
     /// `player` (the caster) must choose the targets for the multi-target `spell` on the stack
     /// (CR 601.2c): between `min` and `max` distinct targets drawn from `legal`. Answered by
@@ -718,6 +754,32 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         effect: Effect,
+    },
+    /// `player` (the resolving controller of an [`Effect::MayDrawUpTo`]) chooses how many cards to
+    /// draw — any number `0..=max` (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two
+    /// cards"). Answered by [`Intent::ChooseDrawCount`], which draws exactly the chosen number.
+    MayDrawUpTo { player: PlayerId, max: u8 },
+    /// Trade Secrets' declinable draw, after `opponent`'s mandatory two-card draw
+    /// ([`Effect::MayDrawUpToThenOpponentMayRepeat`]): `player` (the caster) chooses `0..=max`
+    /// cards to draw. Answered by [`Intent::ChooseDrawCount`] (the same wire shape as
+    /// [`MayDrawUpTo`](Self::MayDrawUpTo)); once answered, `opponent` is paused on
+    /// [`TradeSecretsRepeat`](Self::TradeSecretsRepeat) to decide whether to run the whole
+    /// process again.
+    TradeSecretsCasterDraw {
+        player: PlayerId,
+        max: u8,
+        opponent: PlayerId,
+        source: ObjectId,
+    },
+    /// Trade Secrets' repeat-or-stop pause: `player` (the target opponent, having already drawn
+    /// two and watched `caster` draw up to `max` more) may run the whole process (the mandatory
+    /// two-card draw, then the caster's declinable draw) again, or stop. Answered by
+    /// [`Intent::AnswerMay`] (reusing the yes/no wire shape — `yes` repeats, `no` stops).
+    TradeSecretsRepeat {
+        player: PlayerId,
+        caster: PlayerId,
+        max: u8,
+        source: ObjectId,
     },
     /// `player` (the active player at their untap step) may choose not to untap each of
     /// `permanents` — the permanents they control that carry [`CardDef::may_choose_not_to_untap`]
@@ -789,6 +851,21 @@ pub enum PendingChoice {
         player: PlayerId,
         source: ObjectId,
         cost: Cost,
+    },
+    /// `player` (`source`'s controller) may pay Cumulative upkeep's non-mana upkeep cost — put
+    /// `count` cards from a single graveyard (`options`, every graveyard's cards, a public zone)
+    /// on the bottom of that graveyard's owner's library — or decline and sacrifice `source`
+    /// instead (CR 702.24a — "sacrifice it unless you pay its upkeep cost for each age counter on
+    /// it"). Answered by [`Intent::ChooseSacrifices`] (reusing its "empty declines, else name the
+    /// set" multiplex, no new intent): an empty `cards` list
+    /// declines (sacrifice), the same "declining does something" polarity as
+    /// [`Self::PayEchoOrSacrifice`]; otherwise exactly `count` ids from `options` that must all
+    /// share one owner (validated on answer — CR "a single graveyard").
+    PayCumulativeUpkeepOrSacrifice {
+        player: PlayerId,
+        source: ObjectId,
+        options: Vec<ObjectId>,
+        count: u32,
     },
     /// `player` (`source`'s owner) may pay `cost` (its printed Recover cost) to return `source`
     /// from their graveyard to hand, or decline and have it exiled instead (CR 702.59a — "When a
@@ -958,6 +1035,35 @@ pub enum PendingChoice {
         min: u8,
         max: u8,
         legal: Vec<Target>,
+        /// The activation's chosen `{X}` / spent-mana multiset / activated-ness, carried so the
+        /// assembled ability pushes with them once answered. `0`/all-zero/`false` for a triggered
+        /// second-clause ability (Kinetic Ooze); the activation's own values for an activated
+        /// second-clause ability (Zedruu's donation). Not wire-mirrored — the schema projection
+        /// ignores these via `..`, same as the sibling `ChooseActivationCostTargets` internals.
+        x: u32,
+        spent_mana: [u8; 6],
+        activated: bool,
+    },
+    /// `player` (the activator) must name `count` distinct target cards from an opponent's
+    /// graveyard to pay an activated ability's own targeted exile cost (CR 601.2c/602.2b —
+    /// Spurnmage Advocate's "Exile two target cards from an opponent's graveyard: …" —
+    /// [`ActivationCost::graveyard_exile_target_count`]), raised by [`Game::activate_ability`]
+    /// once every other cost is already paid. `effect`/`target`/`x`/`spent_mana` are the
+    /// activation's own already-fixed ability — the ability's OWN (first, and only stack-bound)
+    /// target clause, unrelated to this cost's targets. Answered by [`Intent::ChooseTargets`]:
+    /// the named cards are exiled, then the fixed ability is pushed onto the stack — see
+    /// [`Game::choose_activation_cost_targets_answer`]. Distinct from
+    /// [`Self::ChooseAbilityTargets`] (a *triggered* ability's second stack-bound clause, chosen
+    /// at placement, not a cost paid at activation).
+    ChooseActivationCostTargets {
+        player: PlayerId,
+        source: ObjectId,
+        effect: Effect,
+        target: Option<Target>,
+        x: u32,
+        spent_mana: [u8; 6],
+        legal: Vec<Target>,
+        count: u8,
     },
     /// `player` (the ability's controller — always the answerer, even when `owner` is a
     /// different player) may shuffle up to `max` (`0` = unbounded) of `candidates` (cards in
@@ -1160,6 +1266,16 @@ pub enum PendingChoice {
         count: usize,
         or_one_matching: Option<CardFilter>,
     },
+    /// `player` puts exactly `count` cards from `hand` (their whole hand, kept for stable
+    /// validation) on top of their library, in an order they choose (Brainstorm's
+    /// [`Effect::PutFromHandOnTop`], "put two cards from your hand on top of your library in any
+    /// order"). Answered by [`Intent::PutFromHandOnTop`], whose ordered list is applied
+    /// first-named-on-top.
+    PutFromHandOnTop {
+        player: PlayerId,
+        hand: Vec<ObjectId>,
+        count: usize,
+    },
     /// `player` may put one of `candidates` (their hand's land cards) onto the battlefield
     /// (`tapped` if it enters tapped), or decline ("up to one" — CR 305.9 special action, an
     /// [`Effect::PutLandFromHand`] resolving). Answered by [`Intent::PutLandFromHand`].
@@ -1273,6 +1389,19 @@ pub enum PendingChoice {
     /// forms pile B. Either pile may be empty (CR "separates ... into two piles" allows a 0/5
     /// split). `controller` then picks which pile to keep on a [`Self::ChoosePileForHand`].
     PartitionRevealed {
+        player: PlayerId,
+        controller: PlayerId,
+        source: ObjectId,
+        revealed: Vec<ObjectId>,
+    },
+    /// `player` (the opponent [`Self::ChooseSplittingOpponent`] named) must choose exactly one of
+    /// `revealed` — the cards [`Effect::RevealTopOpponentPicksOneToGraveyard`] revealed off
+    /// `controller`'s library (still library-resident and public, CR 701.16 "reveal") — to send
+    /// to `controller`'s graveyard (CR "Put that card into your graveyard"); the rest go straight
+    /// to `controller`'s hand (CR "and the rest into your hand"), no further pause. Answered by
+    /// [`Intent::ChooseExiledWithCard`] (reusing its "name the chosen card" wire shape, same as
+    /// [`Self::OpponentChoosesExiledNonland`]; the pick is mandatory, so `None` is illegal here).
+    OpponentChoosesRevealedToGraveyard {
         player: PlayerId,
         controller: PlayerId,
         source: ObjectId,
@@ -1539,7 +1668,11 @@ impl PendingChoice {
             | PendingChoice::ChooseTarget { player, .. }
             | PendingChoice::ChooseSpellTargets { player, .. }
             | PendingChoice::ChooseAbilityTargets { player, .. }
+            | PendingChoice::ChooseActivationCostTargets { player, .. }
             | PendingChoice::MayYesNo { player, .. }
+            | PendingChoice::MayDrawUpTo { player, .. }
+            | PendingChoice::TradeSecretsCasterDraw { player, .. }
+            | PendingChoice::TradeSecretsRepeat { player, .. }
             | PendingChoice::DeclineUntap { player, .. }
             | PendingChoice::ChooseDredge { player, .. }
             | PendingChoice::PayCost { player, .. }
@@ -1547,6 +1680,7 @@ impl PendingChoice {
             | PendingChoice::PayOrControllerDraws { player, .. }
             | PendingChoice::ChooseCounteredSpellDestination { player, .. }
             | PendingChoice::PayEchoOrSacrifice { player, .. }
+            | PendingChoice::PayCumulativeUpkeepOrSacrifice { player, .. }
             | PendingChoice::PayRecoverOrExile { player, .. }
             | PendingChoice::SacrificeUnlessPay { player, .. }
             | PendingChoice::SacrificeUnlessReturnLand { player, .. }
@@ -1570,6 +1704,7 @@ impl PendingChoice {
             | PendingChoice::MayDiscard { player, .. }
             | PendingChoice::DiscardToHandSize { player, .. }
             | PendingChoice::DiscardCards { player, .. }
+            | PendingChoice::PutFromHandOnTop { player, .. }
             | PendingChoice::PutLandFromHand { player, .. }
             | PendingChoice::PutCreatureFromHand { player, .. }
             | PendingChoice::CastCreatureFaceDown { player, .. }
@@ -1583,6 +1718,7 @@ impl PendingChoice {
             | PendingChoice::OpponentChoosesExiledNonland { player, .. }
             | PendingChoice::ChooseSplittingOpponent { player, .. }
             | PendingChoice::PartitionRevealed { player, .. }
+            | PendingChoice::OpponentChoosesRevealedToGraveyard { player, .. }
             | PendingChoice::ChoosePileForHand { player, .. }
             | PendingChoice::ChooseExiledToCastFree { player, .. }
             | PendingChoice::RevealedCardToBattlefieldOrHand { player, .. }
@@ -1875,6 +2011,10 @@ pub enum Event {
     Tapped { object: ObjectId },
     /// A permanent became untapped (e.g. by the untap step).
     Untapped { object: ObjectId },
+    /// A permanent was removed from combat (CR 506.4 — [`Effect::RemoveFromCombat`]; Spurnmage
+    /// Advocate). Drops it as attacker and blocker, and any blocks naming it as the attacker —
+    /// the same combat-list cleanup [`Self::Regenerated`]'s CR 701.15b removal already applies.
+    RemovedFromCombat { object: ObjectId },
     /// A regeneration shield was granted to a permanent (CR 701.15b — [`Effect::RegenerateShield`]).
     /// Increments [`Permanent::regeneration_shields`].
     RegenerationShieldCreated { object: ObjectId },
@@ -2098,8 +2238,22 @@ pub enum Event {
         effect: Effect,
     },
     /// Every delayed trigger scheduled for `fire_at` fired at once (CR 603.7, drained in full the
-    /// first time a step matching `fire_at` begins after scheduling).
-    DelayedTriggersFired { fire_at: Step },
+    /// first time a step matching `fire_at` begins after scheduling). `active_player` is the player
+    /// whose step it is; only the controller-scoped `Main1` timing (Scattering Stroke's "your next
+    /// main phase") uses it, to fire and drain just that player's entries (see
+    /// [`Game::fire_delayed_triggers`]) — the other timings fire regardless of whose step it is.
+    DelayedTriggersFired {
+        fire_at: Step,
+        active_player: PlayerId,
+    },
+    /// Pollen Lullaby's win rider marked `object` to skip its controller's next untap step
+    /// (CR 603.7 continuous rider — "creatures your opponents control don't untap during their
+    /// controllers' next untap steps"). Recorded on [`Game::skip_next_untap`].
+    NextUntapSkipMarked { object: ObjectId },
+    /// `object`'s skip-next-untap mark was consumed as its controller's untap step arrived (whether
+    /// or not it was tapped), so it untaps normally on every later untap step. Removes the
+    /// [`NextUntapSkipMarked`](Self::NextUntapSkipMarked) entry.
+    NextUntapSkipConsumed { object: ObjectId },
     /// A CR 603.7 delayed *one-shot* was armed by [`Effect::ScheduleNextCastTrigger`]:
     /// `controller` will perform `then` the next time they cast a spell matching `filter` this
     /// turn. `source` is the arming ability's own source object, reused as the delayed one-shot's
@@ -2445,11 +2599,13 @@ pub enum Event {
     /// `from` was put into its owner's library as the new library card `card` — the bottom
     /// (Mistveil Plains's graveyard tuck, Chaos Warp's battlefield tuck, Quintorius, Loremaster's
     /// [`Self::CastFromExileFreeBottomsLibraryOnLeave`] redirect off the stack), or the top when
-    /// `to_top` is set (Mystic Sanctuary's).
+    /// `to_top` is set (Mystic Sanctuary's), or second from the top when `second_from_top` is set
+    /// (Whirlpool Whelm's win rider — takes precedence over `to_top`).
     TuckedToLibrary {
         card: ObjectId,
         from: ObjectId,
         to_top: bool,
+        second_from_top: bool,
     },
     /// `player`'s library was shuffled ([`Effect::ShuffleTargetCardsFromGraveyardIntoLibrary`]'s
     /// mandatory shuffle after cards enter it — CR 701.19-style). The resulting order is a hidden
@@ -2566,6 +2722,20 @@ pub enum Event {
     /// `Sacrificed` carries it.
     /// ponytail: a marker riding the graveyard move, not a new zone transition.
     Discarded {
+        card: ObjectId,
+        from: ObjectId,
+        def: CardDef,
+        player: PlayerId,
+    },
+    /// A card was put from hand onto the top of its owner's library (Brainstorm resolving,
+    /// [`Effect::PutFromHandOnTop`]): `card` is its new library-object id, `from` the hand-object
+    /// id, `player` the owner, `def` its card definition. One event per card, applied in
+    /// bottom-to-top order (the ordered pick's first name is applied last, so it ends up
+    /// literally on top). Unlike [`Self::TuckedToLibrary`] (always a public-zone origin), this
+    /// move's origin is a hidden zone — `def`/`from` are carried directly (like
+    /// [`Self::CardDrawn`]) so the redaction layer can hide the identity from every viewer but
+    /// `player`.
+    PutFromHandOnTop {
         card: ObjectId,
         from: ObjectId,
         def: CardDef,

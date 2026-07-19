@@ -1,0 +1,29 @@
+# Return target creature to its owner's hand.
+# Draw a card.
+name = "Repulse"
+id = "6f7ef1d1-c441-41ba-b7d6-6b7727ffcf04"
+default_print = "b0088059-7354-4fd5-add1-b824f5b82ac7"
+oracle = "Return target creature to its owner's hand.\nDraw a card."
+set = "cmd"
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "instant"
+
+# Return target creature to its owner's hand.
+# Draw a card.
+[[abilities]]
+timing = "spell"
+
+# Return target creature to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = "creature"
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

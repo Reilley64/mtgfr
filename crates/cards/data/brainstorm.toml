@@ -1,0 +1,26 @@
+# Draw three cards, then put two cards from your hand on top of your library in any order.
+name = "Brainstorm"
+id = "36cd2364-d113-47d1-b2c4-b088d9eb88dd"
+default_print = "b5545882-6963-4729-b2c6-fb4bdc75ffcc"
+oracle = "Draw three cards, then put two cards from your hand on top of your library in any order."
+set = "tle"
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Draw three cards, then put two cards from your hand on top of your library in any order.
+[[abilities]]
+timing = "spell"
+
+# Draw three cards
+[[abilities.effects]]
+type = "draw_cards"
+count = 3
+
+# then put two cards from your hand on top of your library in any order.
+[[abilities.effects]]
+type = "put_from_hand_on_top"
+count = 2

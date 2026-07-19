@@ -29,7 +29,9 @@ define_map_identical! {
         source,
         effect,
         legal,
-        optional,
+        count,
+        x,
+        activated,
     },
     PayOrCounter {
         player,
@@ -106,6 +108,12 @@ define_map_identical! {
         pile_b,
     },
     PartitionRevealed {
+        player,
+        controller,
+        source,
+        revealed,
+    },
+    OpponentChoosesRevealedToGraveyard {
         player,
         controller,
         source,

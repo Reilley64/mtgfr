@@ -1,0 +1,31 @@
+# Flying
+# Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you.
+# ponytail: the tax is auto-paid (pool first, then auto-tapped lands) at declare time rather than
+# offered as an explicit pay-or-decline choice — can't-afford makes the declaration illegal.
+name = "Windborn Muse"
+id = "75e09ac6-d789-4c4d-9aca-845d68f3899f"
+default_print = "7ae76409-40d7-4a54-ad58-5c67996b1a0c"
+oracle = "Flying\nCreatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."
+set = "cmd"
+subtypes = ["Spirit"]
+keywords = ["flying"]
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 3
+
+# Creatures can't attack you unless their controller pays {2} for each creature they control
+# that's attacking you.
+[[abilities]]
+timing = "static"
+
+# Creatures can't attack you unless their controller pays {2} for each creature they control
+# that's attacking you.
+[[abilities.effects]]
+type = "attack_tax"
+amount = 2

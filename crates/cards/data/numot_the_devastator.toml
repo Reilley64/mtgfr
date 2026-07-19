@@ -1,0 +1,40 @@
+# Flying
+# Whenever Numot, the Devastator deals combat damage to a player, you may pay {2}{R}. If you do,
+# destroy up to two target lands.
+name = "Numot, the Devastator"
+id = "8b2dcc45-d5da-45ae-bc67-d728f73e1bd7"
+default_print = "caeada05-2b75-49e7-ae68-e224a3e2330a"
+otags = ["combat-damage-trigger", "evasion", "land-destruction", "legendary", "spot-removal"]
+oracle = "Flying\nWhenever Numot, the Devastator deals combat damage to a player, you may pay {2}{R}. If you do, destroy up to two target lands."
+set = "soc"
+subtypes = ["Dragon"]
+legendary = true
+keywords = ["flying"]
+
+[cost]
+generic = 3
+blue = 1
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# Whenever Numot, the Devastator deals combat damage to a player, you may pay {2}{R}. If you do,
+# destroy up to two target lands.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "this"
+optional = true
+
+[abilities.cost]
+generic = 2
+red = 1
+
+# destroy up to two target lands.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "land" } }
+count = { max = 2 }

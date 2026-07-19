@@ -1,0 +1,26 @@
+# When this creature enters, exchange control of target land you control and target land an opponent controls.
+name = "Vedalken Plotter"
+id = "3f85b92d-7212-4fc7-a5e8-6350e1acfdd3"
+default_print = "85bba39e-73bd-48e5-97ce-4b4661bab71b"
+oracle = "When this creature enters, exchange control of target land you control and target land an opponent controls."
+set = "cmd"
+subtypes = ["Vedalken", "Wizard"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature enters, exchange control of target land you control and target land an opponent controls.
+[[abilities]]
+timing = "etb"
+
+# exchange control of target land you control and target land an opponent controls
+[[abilities.effects]]
+type = "exchange_control"
+first = { permanent = { types = "land", controller = "you" } }
+second = { permanent = { types = "land", controller = "opponent" } }

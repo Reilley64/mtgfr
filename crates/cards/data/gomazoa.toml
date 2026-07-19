@@ -1,0 +1,30 @@
+# Defender, flying
+# {T}: Put this creature and each creature it's blocking on top of their owners' libraries, then
+# those players shuffle.
+name = "Gomazoa"
+id = "0c82ae16-f995-4ac3-adb4-a5cc93a6e6f2"
+default_print = "4d2c0c7e-a486-45c5-92fa-f36087714ad3"
+oracle = "Defender, flying\n{T}: Put this creature and each creature it's blocking on top of their owners' libraries, then those players shuffle."
+set = "cmd"
+subtypes = ["Jellyfish"]
+keywords = ["defender", "flying"]
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 3
+
+# {T}: Put this creature and each creature it's blocking on top of their owners' libraries, then
+# those players shuffle.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Put this creature and each creature it's blocking on top of their owners' libraries, then those
+# players shuffle.
+[[abilities.effects]]
+type = "tuck_self_and_blocked_creatures"

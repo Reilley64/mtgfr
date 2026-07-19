@@ -49,6 +49,13 @@ pub enum Trigger {
     TurnedFaceUp,
     /// When this creature is declared as an attacker.
     Attacks,
+    /// Whenever this creature blocks or becomes blocked (Goblin Cadets, CR 509/CR 509.1h): fires
+    /// off [`Event::BlockerDeclared`] when this creature is named as either the blocker or the
+    /// attacker — once per creature per combat, not once per (blocker, attacker) pair, so a
+    /// multiply-blocked attacker's "becomes blocked" still fires only once. Placed directly from
+    /// [`Game::declare_blockers`] (batch-deduped, like [`Trigger::YouAttackWithCreatures`]'s
+    /// [`Game::queue_batch_attack_triggers`]), not [`Game::enqueue_triggers`]'s per-event scan.
+    BlocksOrBecomesBlocked,
     /// When this creature dies (moves from the battlefield to the graveyard, or — for a
     /// token — ceases to exist).
     Dies,
@@ -88,6 +95,18 @@ pub enum Trigger {
     /// leaves-to-graveyard watch, self-excluded like the plain creature arms. No opponent-scoped
     /// or `*IncludingThis` sibling yet — grow those from a real card (flag-don't-force).
     EnchantmentYouControlDies,
+    /// Whenever this permanent *or another nonland permanent* this permanent's controller
+    /// controls is put into a graveyard from the battlefield (Martyr's Bond: "Whenever a nonland
+    /// permanent you control is put into a graveyard...") — a permanent-type-wide, self-including
+    /// generalization of [`CreatureYouControlDiesIncludingThis`](Self::CreatureYouControlDiesIncludingThis)/
+    /// [`EnchantmentYouControlDies`](Self::EnchantmentYouControlDies): any of the four nonland
+    /// types (creature, artifact, enchantment, planeswalker), not creature-only or
+    /// enchantment-only, and it self-fires off its own last-known information like the
+    /// `*IncludingThis` creature arms. The dying permanent's own last-known card types ride along
+    /// on [`TriggerContext::dying_permanent_types`] for a payoff that reads "shares a card type
+    /// with it" (`Effect::EachPlayerSacrifices`'s `shares_type_with_dying_permanent` filter axis).
+    /// See [`Game::queue_nonland_permanent_death_watchers`].
+    NonlandPermanentYouControlDiesIncludingThis,
     /// At the beginning of the controller's upkeep step.
     Upkeep,
     /// At the beginning of *every* player's upkeep, not just the controller's — CR "at the
@@ -100,11 +119,25 @@ pub enum Trigger {
     /// regardless of whose turn it is; contrast [`EndStep`](Self::EndStep), which is scoped to
     /// the controller's own turn — the every-player twin of [`EachUpkeep`](Self::EachUpkeep).
     EachEndStep,
+    /// At the beginning of *every* player's draw step, not just the controller's — CR "at the
+    /// beginning of each player's draw step" (Howling Mine). Fires under the ability's own
+    /// controller regardless of whose turn it is, the draw-step twin of
+    /// [`EachUpkeep`](Self::EachUpkeep)/[`EachEndStep`](Self::EachEndStep) — but unlike those two,
+    /// its payoff ("**that player** draws an additional card") needs to know whose draw step this
+    /// is, not just who controls the permanent, so [`Game::queue_each_draw_step_triggers`] threads
+    /// the active player into [`TriggerContext::active_player`].
+    EachDrawStep,
     /// At the beginning of every *other* player's untap step — CR "during each other player's
     /// untap step" (Drumbellower). Fires under the ability's own controller, excluding the
     /// controller's own untap step (contrast [`EachUpkeep`](Self::EachUpkeep)/
     /// [`EachEndStep`](Self::EachEndStep), which include the controller's own).
     EachOtherPlayerUntapStep,
+    /// At the beginning of the controller's first (precombat) main phase (CR 505/508 —
+    /// Advanced Reconstruction's "At the beginning of your first main phase, …"). Fires for the
+    /// active player's own permanents only, scoped to the controller's own turn like
+    /// [`Upkeep`](Self::Upkeep). Distinct from `BeginCombat` — this is `Step::Main1`, not
+    /// `Step::BeginCombat`. Spelled `"first_main_phase"` in TOML.
+    FirstMainPhase,
     /// At the beginning of combat on the controller's turn (Leonin Vanguard). Fires for the
     /// active player's own permanents only — an "each player" variant (Combat Celebrant-style)
     /// is a distinct, unlanded trigger.
@@ -113,6 +146,11 @@ pub enum Trigger {
     EndStep,
     /// Whenever the controller gains life.
     YouGainLife,
+    /// Whenever an opponent of the controller gains life (Punishing Fire) — the opponent-scoped
+    /// twin of [`YouGainLife`](Self::YouGainLife), fired for every player other than the
+    /// gainer. Functions from the graveyard (CR 603.6e) for a card that sets
+    /// [`CardDef::functions_in_graveyard`].
+    OpponentGainsLife,
     /// Whenever the controller casts (or copies) an instant or sorcery spell.
     Magecraft,
     /// Whenever a player attacks one of the ability's controller's opponents (Breena, the
@@ -540,6 +578,11 @@ pub enum CombatDamageScope {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct TriggerContext {
     pub(crate) controller: PlayerId,
+    /// The active player, for a [`Trigger::EachDrawStep`] ability's "**that player** draws an
+    /// additional card" payoff (Howling Mine) — the player whose draw step this is, which need
+    /// not be this ability's controller. `None` for every other trigger; set by
+    /// [`Game::queue_each_draw_step_triggers`].
+    pub(crate) active_player: Option<PlayerId>,
     /// `(attacking player, attacked player)` for a `PlayerAttacksYourOpponent` trigger.
     pub(crate) attack: Option<(PlayerId, PlayerId)>,
     /// The graveyard-object id of the card just discarded, for a `YouDiscard` trigger (so its
@@ -655,6 +698,13 @@ pub(crate) struct TriggerContext {
     /// `owner_of`/`zone_of` all still resolve it after the death (following the `Moved` lineage into
     /// its new graveyard card). See [`Game::queue_death_watcher`] for where this is captured.
     pub(crate) dead_creature: Option<ObjectId>,
+    /// CR 603.10a last-known information: the dying permanent's own card types, for a
+    /// [`Trigger::NonlandPermanentYouControlDiesIncludingThis`] watch's dynamic edict payoff
+    /// (Martyr's Bond's "each opponent sacrifices a permanent that shares a card type with it").
+    /// `None` for every other trigger. Feeds `Effect::EachPlayerSacrifices`'s
+    /// `shares_type_with_dying_permanent`-marked filter via `contextualize_effect`; see
+    /// [`Game::queue_nonland_permanent_death_watchers`] for where this is captured.
+    pub(crate) dying_permanent_types: Option<TypeSet>,
     /// CR 603.10a last-known information: the graveyard-object ids of the cards that left this
     /// batch, for a [`Trigger::CardsLeaveYourGraveyard`] payoff that becomes a copy of one of them
     /// (Spirit of Resilience's "become a copy of an artifact or creature card from among those
@@ -692,6 +742,7 @@ impl TriggerContext {
     pub(crate) fn of(controller: PlayerId) -> Self {
         Self {
             controller,
+            active_player: None,
             attack: None,
             discarded: None,
             entering: None,
@@ -708,6 +759,7 @@ impl TriggerContext {
             spells_cast_before_this: None,
             source_power: None,
             dead_creature: None,
+            dying_permanent_types: None,
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,

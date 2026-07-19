@@ -95,3 +95,13 @@ export function hiddenKeywordCount(shownLen: number, painted: number, overflow: 
 export function showsSummoningSick(summoningSick: boolean, hasHaste: boolean): boolean {
   return summoningSick && !hasHaste;
 }
+
+/**
+ * A donated / stolen / exchanged permanent sits under a controller different from its owner
+ * (CR 108.3 — ownership never changes; CR 800.4a control layers do). It renders in its
+ * controller's row, so it needs an owner badge to show whose card it really is. Returns the owner
+ * seat when it differs from the controller, else null (no badge on a normally-controlled permanent).
+ */
+export function foreignOwnerSeat(owner: number, controller: number): number | null {
+  return owner === controller ? null : owner;
+}

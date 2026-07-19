@@ -1,0 +1,30 @@
+# Counter target spell. If that spell is countered this way, put it on the bottom of its owner's library instead of
+# into that player's graveyard. Put Spell Crumple on the bottom of its owner's library.
+name = "Spell Crumple"
+otags = ["counterspell-tuck", "self-replacement-effect", "single-target-instant-sorcery"]
+set = "cm2"
+id = "d4ab7848-5c37-4c6b-be29-0bb703333e5b"
+default_print = "522d6195-7660-42c0-848b-cc46e19fc4eb"
+oracle = "Counter target spell. If that spell is countered this way, put it on the bottom of its owner's library instead of into that player's graveyard. Put Spell Crumple on the bottom of its owner's library."
+
+[cost]
+generic = 1
+blue = 2
+
+[kind]
+type = "instant"
+
+# Counter target spell. If that spell is countered this way, put it on the bottom of its owner's library instead of
+# into that player's graveyard. Put Spell Crumple on the bottom of its owner's library.
+[[abilities]]
+timing = "spell"
+
+# Counter target spell. If that spell is countered this way, put it on the bottom of its owner's library instead of
+# into that player's graveyard.
+[[abilities.effects]]
+type = "counter_target_spell"
+countered_dest = "library_bottom"
+
+# Put Spell Crumple on the bottom of its owner's library.
+[[abilities.effects]]
+type = "tuck_self_to_library_bottom"

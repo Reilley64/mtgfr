@@ -28,6 +28,7 @@ impl Game {
         // already off the battlefield by now, so snapshot them from the events up front.
         let batch_deaths = self.batch_creature_deaths(events);
         self.queue_enchantment_death_watchers(events);
+        self.queue_nonland_permanent_death_watchers(events);
         for (idx, event) in events.iter().enumerate() {
             match *event {
                 // Self-referential: the source is the object the event is about. A land enters via
@@ -291,7 +292,15 @@ impl Game {
                     self.queue_graveyard_controller_triggers(active_player, Trigger::Upkeep);
                     self.queue_each_upkeep_triggers();
                     self.queue_echo_triggers(active_player);
+                    self.queue_cumulative_upkeep_triggers(active_player);
                 }
+                // Every-player, draw-step flavor: fires under its own controller regardless of
+                // whose draw step this is (Howling Mine), unlike a plain controller-scoped draw
+                // trigger — the draw-step twin of the `EachUpkeep` arm above.
+                Event::StepBegan {
+                    step: Step::Draw,
+                    active_player,
+                } => self.queue_each_draw_step_triggers(active_player),
                 // Other-player-only: fire on every battlefield permanent whose controller is
                 // NOT the player whose untap step this is (Drumbellower). The untap step itself
                 // grants no priority (CR 502), so — like the every-player flavors above — this
@@ -307,6 +316,12 @@ impl Game {
                     step: Step::Untap,
                     active_player,
                 } => self.queue_each_other_player_untap_step_triggers(active_player),
+                // "At the beginning of your first main phase" (Advanced Reconstruction): the
+                // controller's own precombat main (`Main1`), scoped to the active player like upkeep.
+                Event::StepBegan {
+                    step: Step::Main1,
+                    active_player,
+                } => self.queue_controller_triggers(active_player, Trigger::FirstMainPhase, None),
                 Event::StepBegan {
                     step: Step::BeginCombat,
                     active_player,
@@ -328,7 +343,20 @@ impl Game {
                     amount,
                     source,
                 } if amount > 0 => {
-                    self.queue_controller_triggers(player, Trigger::YouGainLife, source)
+                    self.queue_controller_triggers(player, Trigger::YouGainLife, source);
+                    // The opponent-scoped twin (Punishing Fire's "whenever an opponent gains
+                    // life"): every player other than the gainer is an opponent of that player
+                    // (CR 102.2), so fire each of their `OpponentGainsLife` abilities off the same
+                    // choke, battlefield and graveyard-functional alike (CR 603.6e).
+                    let opponents: Vec<PlayerId> =
+                        self.living_players().filter(|&p| p != player).collect();
+                    for opponent in opponents {
+                        self.queue_controller_triggers(opponent, Trigger::OpponentGainsLife, source);
+                        self.queue_graveyard_controller_triggers(
+                            opponent,
+                            Trigger::OpponentGainsLife,
+                        );
+                    }
                 }
                 // "Whenever you lose life for the first time each turn" (Intermediate
                 // Chirography's level 2). A decrease bumped `life_losses_this_turn` at apply; this
@@ -1042,6 +1070,79 @@ impl Game {
         }
     }
 
+    /// Queue `NonlandPermanentYouControlDiesIncludingThis` watch triggers for this event batch
+    /// (Martyr's Bond: "Whenever a nonland permanent you control is put into a graveyard,..."):
+    /// for each nonland permanent (creature, artifact, enchantment, or planeswalker) put into a
+    /// graveyard from the battlefield (or a token that ceased to exist), fire the ability on every
+    /// other battlefield permanent its owner controls, plus a self-fire off the dying permanent's
+    /// own last-known information (CR 603.6c/603.10 — the `*IncludingThis` self-fire convention).
+    /// The dying permanent's own last-known card types ride along on
+    /// [`TriggerContext::dying_permanent_types`] for the dynamic "shares a card type with it"
+    /// edict payoff (see `contextualize_effect`'s `fill_dying_permanent_types`). A generalized,
+    /// self-including sibling of [`queue_enchantment_death_watchers`](Self::queue_enchantment_death_watchers)
+    /// — deliberately not folded into it (that scan stays enchantment-only and self-excluded for
+    /// Starfield Mystic; this one is nonland-type-wide and self-fires).
+    /// ponytail: "you control" only, owner-based like `queue_enchantment_death_watchers` above,
+    ///   and no CR 603.6c simultaneous-death look-back across *other* nonland permanents dying in
+    ///   the same sweep (a second nonland permanent you control dying alongside this one won't see
+    ///   it) — grow those from a real card, per flag-don't-force.
+    fn queue_nonland_permanent_death_watchers(&mut self, events: &[Event]) {
+        for event in events {
+            let (dying, owner, def) = match *event {
+                Event::MovedToGraveyard { from, .. } => {
+                    // Owner left the game in this same sweep: no death to watch (matches the
+                    // guard in `enqueue_triggers`/`batch_creature_deaths`).
+                    if matches!(
+                        self.objects[self.current_id(from) as usize],
+                        Object::Removed
+                    ) {
+                        continue;
+                    }
+                    // CR 700.4 "put into a graveyard from the battlefield" — same gate as
+                    // `batch_creature_deaths`; a discard/mill/tutor arrival isn't a death.
+                    if !self
+                        .batch_trigger_scratch
+                        .permanents_put_into_graveyard_from_battlefield
+                        .contains(&from)
+                    {
+                        continue;
+                    }
+                    (from, self.owner_of(from), self.def_of(from))
+                }
+                Event::TokenCeasedToExist {
+                    token,
+                    controller,
+                    def,
+                } => (token, controller, def),
+                _ => continue,
+            };
+            if !def.kind.types().intersects(TypeSet::NONLAND) {
+                continue;
+            }
+            let ctx = TriggerContext {
+                dying_permanent_types: Some(def.kind.types()),
+                ..TriggerContext::of(owner)
+            };
+            for id in self.battlefield() {
+                if id == dying || self.owner_of(id) != owner {
+                    continue;
+                }
+                self.queue_trigger_group(
+                    ctx,
+                    id,
+                    self.def_of(id),
+                    Trigger::NonlandPermanentYouControlDiesIncludingThis,
+                );
+            }
+            self.queue_trigger_group(
+                ctx,
+                dying,
+                def,
+                Trigger::NonlandPermanentYouControlDiesIncludingThis,
+            );
+        }
+    }
+
     /// Queue a controller-scoped trigger: every permanent `player` controls whose ability
     /// matches `trigger` fires. `exclude` skips one source (used to break a life-gain self-loop).
     pub(crate) fn queue_controller_triggers(
@@ -1102,6 +1203,21 @@ impl Game {
         }
     }
 
+    /// Queue Cumulative upkeep's age-counter-then-pay-or-sacrifice choice (CR 702.24a) for every
+    /// permanent `player` controls that carries [`CardDef::cumulative_upkeep`]. Unlike
+    /// [`Self::queue_echo_triggers`] (gated on "since your last upkeep"), this fires at every one
+    /// of the controller's upkeeps with no gate — CR 702.24a's trigger condition is bare "at the
+    /// beginning of your upkeep." Controller-scoped (not owner-scoped) so a donated permanent's
+    /// cumulative upkeep follows its new controller, CR 702.24's "your."
+    pub(crate) fn queue_cumulative_upkeep_triggers(&mut self, player: PlayerId) {
+        for id in self.battlefield() {
+            if self.controller_of(id) != player || self.def_of(id).cumulative_upkeep.is_none() {
+                continue;
+            }
+            self.pending_cumulative_upkeep.push(id);
+        }
+    }
+
     /// Queue [`Trigger::Magecraft`] for `player`, threading the triggering spell's mana value `mv`
     /// through [`TriggerContext::cast_mana_value`] — same context
     /// [`queue_cast_spell_triggers`](Self::queue_cast_spell_triggers) (Magecraft's general
@@ -1145,9 +1261,10 @@ impl Game {
     /// *any* player's upkeep (CR "at the beginning of each upkeep") — unlike
     /// [`queue_controller_triggers`](Self::queue_controller_triggers), this doesn't gate on
     /// whose upkeep it is, only on the ability's own controller for the resulting effect.
-    /// ponytail: carries no active-player context — the pool's each-upkeep abilities (a Pest, a
-    ///   Saproling, a Snake) don't need to know whose upkeep triggered them. Add a
-    ///   [`TriggerContext`] active-player field if a future card's effect reads it.
+    /// ponytail: doesn't thread [`TriggerContext::active_player`] — the pool's each-upkeep
+    ///   abilities (a Pest, a Saproling, a Snake) don't need to know whose upkeep triggered them,
+    ///   unlike [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers) (Howling
+    ///   Mine). Wire it here too if a future each-upkeep effect needs it.
     pub(crate) fn queue_each_upkeep_triggers(&mut self) {
         for id in self.battlefield() {
             let controller = self.owner_of(id);
@@ -1164,8 +1281,9 @@ impl Game {
     /// *any* player's end step (CR "at the beginning of each end step") — the end-step twin of
     /// [`queue_each_upkeep_triggers`](Self::queue_each_upkeep_triggers); see its doc for the
     /// same "doesn't gate on whose step it is" shape.
-    /// ponytail: carries no active-player context, matching `queue_each_upkeep_triggers` — add a
-    ///   [`TriggerContext`] active-player field if a future card's effect reads it.
+    /// ponytail: doesn't thread [`TriggerContext::active_player`], matching
+    ///   `queue_each_upkeep_triggers` above — wire it here too if a future each-end-step effect
+    ///   needs it.
     pub(crate) fn queue_each_end_step_triggers(&mut self) {
         for id in self.battlefield() {
             let controller = self.owner_of(id);
@@ -1175,6 +1293,24 @@ impl Game {
                 self.def_of(id),
                 Trigger::EachEndStep,
             );
+        }
+    }
+
+    /// Queue every battlefield permanent's [`Trigger::EachDrawStep`] ability at the beginning of
+    /// *any* player's draw step (CR "at the beginning of each player's draw step") — the draw-step
+    /// twin of [`queue_each_upkeep_triggers`](Self::queue_each_upkeep_triggers)/
+    /// [`queue_each_end_step_triggers`](Self::queue_each_end_step_triggers), except its payoff (CR
+    /// "that player draws an additional card" — Howling Mine) needs to know whose draw step this
+    /// is, so `active_player` rides along on [`TriggerContext::active_player`] instead of being
+    /// dropped like its two every-player siblings above.
+    pub(crate) fn queue_each_draw_step_triggers(&mut self, active_player: PlayerId) {
+        for id in self.battlefield() {
+            let controller = self.owner_of(id);
+            let ctx = TriggerContext {
+                active_player: Some(active_player),
+                ..TriggerContext::of(controller)
+            };
+            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::EachDrawStep);
         }
     }
 
@@ -1211,26 +1347,40 @@ impl Game {
     /// APNAP placement path ([`Game::place_pending_triggers`]) exactly like any other triggered
     /// ability.
     pub(crate) fn fire_delayed_triggers(&mut self, events: &mut Vec<Event>) {
-        let Some(fire_at) = events.iter().find_map(|e| match e {
+        let Some((fire_at, active_player)) = events.iter().find_map(|e| match e {
             Event::StepBegan {
-                step: step @ (Step::Upkeep | Step::End | Step::EndCombat),
-                ..
-            } => Some(*step),
+                step: step @ (Step::Upkeep | Step::End | Step::EndCombat | Step::Main1),
+                active_player,
+            } => Some((*step, *active_player)),
             _ => None,
         }) else {
             return;
         };
+        // "At the beginning of your next main phase" (Scattering Stroke, CR 603.7) is scoped to the
+        // delayed trigger's own controller — it fires on that player's own `Main1`, not the next
+        // `Main1` to begin. The upkeep/end-step timings the pool otherwise schedules ("the next
+        // turn's upkeep", Arcane Denial) fire for whoever's step it is, so only `Main1` filters by
+        // controller here (and the matching drain in `apply` mirrors this).
+        let controller_scoped = fire_at == Step::Main1;
         let due: Vec<(PlayerId, ObjectId, Effect)> = self
             .delayed_triggers
             .scheduled
             .iter()
-            .filter(|&&(_, _, f, _)| f == fire_at)
+            .filter(|&&(controller, _, f, _)| {
+                f == fire_at && (!controller_scoped || controller == active_player)
+            })
             .map(|&(controller, source, _, effect)| (controller, source, effect))
             .collect();
         if due.is_empty() {
             return;
         }
-        self.push_apply(events, Event::DelayedTriggersFired { fire_at });
+        self.push_apply(
+            events,
+            Event::DelayedTriggersFired {
+                fire_at,
+                active_player,
+            },
+        );
         let trigger = match fire_at {
             Step::Upkeep => Trigger::Upkeep,
             _ => Trigger::EachEndStep,
@@ -1312,6 +1462,7 @@ impl Game {
             }
             let ctx = TriggerContext {
                 controller,
+                active_player: None,
                 attack: Some((attacking_player, attacked)),
                 discarded: None,
                 entering: None,
@@ -1328,6 +1479,7 @@ impl Game {
                 spells_cast_before_this: None,
                 source_power: None,
                 dead_creature: None,
+                dying_permanent_types: None,
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
@@ -1426,6 +1578,30 @@ impl Game {
         }
     }
 
+    /// Queue [`Trigger::BlocksOrBecomesBlocked`] (Goblin Cadets, CR 509): `blocks` is one
+    /// defending player's whole declaration, so every attacker in it was assigned by that same
+    /// player and each blocker appears at most once (this pool has no multi-block-per-creature
+    /// ability) — scanning it once, rather than firing per [`Event::BlockerDeclared`], is what
+    /// keeps a multiply-blocked attacker's "becomes blocked" to a single fire (CR 509.1h). Called
+    /// directly from [`Game::declare_blockers`], the same batch-scan idiom
+    /// [`queue_batch_attack_triggers`](Self::queue_batch_attack_triggers) uses for "two or more
+    /// attackers".
+    pub(crate) fn queue_blocks_or_becomes_blocked_triggers(
+        &mut self,
+        blocks: &[(ObjectId, ObjectId)],
+    ) {
+        let mut fired: Vec<ObjectId> = Vec::new();
+        for &(blocker, attacker) in blocks {
+            for id in [blocker, attacker] {
+                if fired.contains(&id) {
+                    continue;
+                }
+                fired.push(id);
+                self.queue_self_trigger(id, Trigger::BlocksOrBecomesBlocked);
+            }
+        }
+    }
+
     /// Queue attached-permanent attack triggers (CR 508.1, the Impetus cycle — and CR 301.5g's
     /// Equipment twin, Fractal Harness's "whenever equipped creature attacks"): the attacking
     /// `attacker_object`'s attachments (`self.attachments`, Auras *and* Equipment alike) each
@@ -1444,6 +1620,7 @@ impl Game {
         for aura in self.attachments(attacker_object) {
             let ctx = TriggerContext {
                 controller: self.controller_of(aura),
+                active_player: None,
                 attack: Some((host_controller, defender)),
                 discarded: None,
                 entering: None,
@@ -1460,6 +1637,7 @@ impl Game {
                 spells_cast_before_this: None,
                 source_power: None,
                 dead_creature: None,
+                dying_permanent_types: None,
                 cards_left_graveyard: &[],
                 left_battlefield_host: None,
                 triggering_ability: None,
@@ -1701,6 +1879,7 @@ impl Game {
     pub(crate) fn queue_discard_triggers(&mut self, player: PlayerId, discarded: ObjectId) {
         let ctx = TriggerContext {
             controller: player,
+            active_player: None,
             attack: None,
             discarded: Some(discarded),
             entering: None,
@@ -1717,6 +1896,7 @@ impl Game {
             spells_cast_before_this: None,
             source_power: None,
             dead_creature: None,
+            dying_permanent_types: None,
             cards_left_graveyard: &[],
             left_battlefield_host: None,
             triggering_ability: None,
@@ -1898,7 +2078,8 @@ impl Game {
     /// against `source` individually rather than matched against one fixed `Trigger` value.
     /// `amount` is baked onto `This`-scoped watchers' context as CR 603.10a last-known
     /// information (`ctx.combat_damage`, Venerable Warsinger's "mana value X or less … where X is
-    /// the amount of damage this creature dealt to that player") — see [`TriggerContext`].
+    /// the amount of damage this creature dealt to that player"; Rapacious One's "create that
+    /// many … Eldrazi Spawn creature tokens") — see [`TriggerContext`].
     /// ponytail: `amount` is only threaded for `who = This` (the pool's one consumer); a future
     /// `YourCreatures`/`YourTokens` amount-reading card needs a per-watcher sum, not this event's
     /// single `amount`. (CR 510, CR 111, CR 108.3)
@@ -2749,8 +2930,10 @@ impl Game {
     /// wrapper over [`Self::condition_holds`] that special-cases the source-object-based
     /// conditions `condition_holds` can't reach on its own (`TriggerContext` carries no source
     /// id) — [`Condition::ThisPermanentEnteredUntapped`] (Mystic Sanctuary),
-    /// [`Condition::SourceHasNoCountersOfKind`] (mana_bloom's upkeep self-bounce), and
-    /// [`Condition::SourceHasCounters`] (Ingenious Prodigy's upkeep may-draw).
+    /// [`Condition::SourceHasNoCountersOfKind`] (mana_bloom's upkeep self-bounce),
+    /// [`Condition::SourceHasCounters`] (Ingenious Prodigy's upkeep may-draw), and
+    /// [`Condition::SourceUntapped`] (Howling Mine's CR 603.4 *first* check — the resolution-time
+    /// second check reuses the same read via [`Effect::Conditional`]'s resolve site, see `Game::run`).
     pub(crate) fn ability_condition_holds(
         &self,
         condition: Condition,
@@ -2767,6 +2950,9 @@ impl Game {
             // Ingenious Prodigy's upkeep: "if this creature has one or more +1/+1 counters on
             // it" — source-object-based like the two conditions above.
             Condition::SourceHasCounters { at_least } => self.source_has_counters(source, at_least),
+            // Howling Mine: "if Howling Mine is untapped" — source-object-based like the three
+            // conditions above.
+            Condition::SourceUntapped => self.as_permanent(source).is_some_and(|p| !p.tapped),
             _ => self.condition_holds(condition, ctx),
         }
     }
@@ -2874,6 +3060,11 @@ impl Game {
             // Unreachable through any other `condition_holds` caller (an activation-gate use has no
             // self-evident "this permanent" to read).
             Condition::ThisPermanentEnteredUntapped => false,
+            // ponytail: source-object-based like `ThisPermanentEnteredUntapped` above — reachable
+            // through `Game::ability_condition_holds` (Howling Mine's CR 603.4 first check, at
+            // trigger placement) or `Effect::Conditional`'s resolve site (the second check), both
+            // of which intercept it before falling through here.
+            Condition::SourceUntapped => false,
             // ponytail: target-based like `ThisPermanentEnteredUntapped` above — `TriggerContext`
             // carries no target either. Reachable only through the `Effect::Conditional` resolve
             // site (`Game::run`), which intercepts it directly against the shared
@@ -2944,6 +3135,10 @@ impl Game {
                 is_prime(self.lands_controlled(ctx.controller))
             }
             Condition::DuringYourTurn => self.active_player == ctx.controller,
+            // Lash Out (CR 701.22d): the resolution-scoped won-the-clash flag a preceding
+            // `Effect::Clash` step in this same resolution set. Context-free (a plain `Game` field),
+            // so the `Effect::Conditional` resolve site reaches it straight through this arm.
+            Condition::WonClash => self.clash_won,
         }
     }
 
@@ -3205,7 +3400,7 @@ impl Game {
 
             // Place the (non-optional) ability: pause to choose a target, put it straight on the
             // stack, or drop it if it targets with no legal target (CR 603.3c — continue the loop).
-            match self.place_targeted_ability(player, source, effect, events) {
+            match self.place_targeted_ability(player, source, effect, 0, false, events) {
                 Placement::Paused => return,
                 Placement::Placed | Placement::NoLegalTarget => continue,
             }
@@ -3257,6 +3452,45 @@ impl Game {
                     player: self.owner_of(source),
                     source,
                     cost,
+                },
+            );
+            return;
+        }
+
+        // Cumulative upkeep (CR 702.24a): once Recover's queue is empty too, put an age counter
+        // on the permanent, then offer one queued pay-or-sacrifice choice at a time, scaled by
+        // its now-updated total age counter count. A source that left the battlefield since
+        // being queued is skipped, same as Echo/Recover above.
+        while let Some(source) = self.pending_cumulative_upkeep.first().copied() {
+            self.pending_cumulative_upkeep.remove(0);
+            if self.as_permanent(source).is_none() {
+                continue;
+            }
+            let cumulative_upkeep = self
+                .def_of(source)
+                .cumulative_upkeep
+                .expect("only queued for a permanent with cumulative upkeep");
+            self.push_apply(
+                events,
+                Event::KindCountersPlaced {
+                    object: source,
+                    kind: CounterKind::Age,
+                    count: 1,
+                },
+            );
+            let age_counters = self.counters_of_kind(source, CounterKind::Age);
+            let count = u32::from(cumulative_upkeep.graveyard_cards) * u32::from(age_counters);
+            let options = self
+                .living_players()
+                .flat_map(|p| self.graveyard_of(p))
+                .collect();
+            crate::pending::raise_choice(
+                self,
+                PendingChoice::PayCumulativeUpkeepOrSacrifice {
+                    player: self.controller_of(source),
+                    source,
+                    options,
+                    count,
                 },
             );
             return;
@@ -3375,40 +3609,69 @@ impl Game {
     /// Place one resolved (past its optional gate) ability. If it targets, pause on a
     /// [`PendingChoice::ChooseTarget`] ([`Placement::Paused`]) — unless there's no legal target
     /// ([`Placement::NoLegalTarget`], CR 603.3c); if it's targetless, push it onto the stack
-    /// ([`Placement::Placed`]). Shared by the trigger-placement loop and the optional accept paths.
-    ///
-    /// (No source colors: a targeted ability's source color isn't wired, so protection doesn't
-    /// filter its targets — same scoping as `legal_targets`.)
+    /// ([`Placement::Placed`]). Shared by the trigger-placement loop, the optional accept paths,
+    /// and Unbound Flourishing's CR 707.10c copy-retarget of a targeted activated ability
+    /// (`activation_x`/`activated` carry that copy's own chosen `{X}`/activated-ness onto the
+    /// eventual push — `0`/`false` for the ordinary trigger-placement caller, which carries none
+    /// of its own).
     pub(crate) fn place_targeted_ability(
         &mut self,
         player: PlayerId,
         source: ObjectId,
         effect: Effect,
+        activation_x: u32,
+        activated: bool,
         events: &mut Vec<Event>,
     ) -> Placement {
         let spec = effect.target();
         if spec == TargetSpec::None {
-            self.push_ability_group(player, source, &[(effect, None)], false, events);
+            self.push_ability_group_with_x(
+                player,
+                source,
+                &[(effect, None)],
+                activation_x,
+                [0; 6],
+                activated,
+                events,
+            );
             return Placement::Placed;
         }
-        let x = self.ability_source_x(source);
+        // The ability source's own colors (CR 702.16b — protection filters its targets); a
+        // Dies-trigger source token may already be `Object::Removed` by placement time, same
+        // guard `Game::resolve_top`'s own re-check uses.
+        let source_colors = match self.objects[source as usize] {
+            Object::Removed => [false; Color::COUNT],
+            _ => color_identity(self.def_of(source)),
+        };
+        let legality_x = self.ability_source_x(source);
         // `ThisPermanent`/`EnchantedCreature`/`ThisAurasGraveyardTarget` are a fixed reference,
         // not a real choice (CR: these abilities never say "target", or — Animate Dead — the
-        // choice already happened at cast) — resolve straight to the stack with no pause.
+        // choice already happened at cast) — settle it with no pause, but a donation-shaped
+        // effect (Goblin Cadets' "target opponent gains control of it", CR 601.2c) still carries
+        // its own independent *second* clause, so route through the same second-clause pause the
+        // general path below uses rather than placing immediately.
         if matches!(
             spec,
             TargetSpec::ThisPermanent
                 | TargetSpec::EnchantedCreature
                 | TargetSpec::ThisAurasGraveyardTarget
         ) {
-            let legal = self.legal_targets_for(spec, source, player, [false; Color::COUNT], x);
+            let legal = self.legal_targets_for(spec, source, player, source_colors, legality_x);
             let Some(&fixed) = legal.first() else {
                 return Placement::NoLegalTarget;
             };
-            self.push_ability_group(player, source, &[(effect, Some(fixed))], false, events);
-            return Placement::Placed;
+            return self.place_ability_second_clause(
+                player,
+                source,
+                effect,
+                Some(fixed),
+                activation_x,
+                [0; 6],
+                activated,
+                events,
+            );
         }
-        let legal = self.legal_targets_for(spec, source, player, [false; Color::COUNT], x);
+        let legal = self.legal_targets_for(spec, source, player, source_colors, legality_x);
         if legal.is_empty() {
             // CR 603.3c drops a *mandatory*-target ability with no legal target. "Up to one"
             // (min 0) isn't mandatory — CR 601.2c already treats choosing zero of "up to N" as a
@@ -3418,10 +3681,29 @@ impl Game {
             // tap-and-goad (every step needs the same missing target) drops outright exactly as
             // before — parking a pure no-op on the stack would only add noise.
             if effect.target_count().min == 0 && effect.has_target_independent_step() {
-                return self.place_ability_second_clause(player, source, effect, None, events);
+                return self.place_ability_second_clause(
+                    player,
+                    source,
+                    effect,
+                    None,
+                    activation_x,
+                    [0; 6],
+                    activated,
+                    events,
+                );
             }
             return Placement::NoLegalTarget;
         }
+        // Clamp `count` to how many legal targets actually exist (Numot, the Devastator's "up to
+        // two target lands" with only one land on the battlefield can only ever choose one) —
+        // the same clamp `place_ability_second_clause` applies to its own second clause's count.
+        let count = effect.target_count();
+        let n = legal.len();
+        let count = TargetCount {
+            min: (count.min as usize).min(n) as u8,
+            max: (count.max as usize).min(n) as u8,
+            ..count
+        };
         crate::pending::raise_choice(
             self,
             PendingChoice::ChooseTarget {
@@ -3429,7 +3711,9 @@ impl Game {
                 source,
                 effect,
                 legal,
-                optional: effect.target_count().min == 0,
+                count,
+                x: activation_x,
+                activated,
             },
         );
         Placement::Paused
@@ -3443,12 +3727,24 @@ impl Game {
     /// ([`Effect::reads_second_target_clause`] — Kinetic Ooze's X≥10 doubling), *not* a `Sequence`
     /// step that merely shares the one chosen target (Killian's goad). Walks the `Sequence` in
     /// printed order, honoring each intervening-if gate (CR 603.4) evaluated now at placement.
-    fn ability_second_target_clause(
+    pub(crate) fn ability_second_target_clause(
         &self,
         effect: Effect,
         source: ObjectId,
         controller: PlayerId,
     ) -> Option<(TargetSpec, TargetCount)> {
+        // Donation (Zedruu): a single, non-`Sequence` effect that itself carries two independent
+        // target clauses (CR 601.2c) — its first clause is the permanent (`Effect::target`); its
+        // second is the recipient `player`, chosen here and read at resolution off `targets_second`.
+        if let Effect::TargetOpponentGainsControl { player, .. } = effect {
+            return Some((player, TargetCount::default()));
+        }
+        // Exchange control (Vedalken Plotter / Chromeshell Crab): its first clause is the permanent
+        // "you control" (`Effect::target`); its second is the "an opponent controls" clause, chosen
+        // here and read at resolution off `targets_second` — same two-clause shape as donation.
+        if let Effect::ExchangeControl { second, .. } = effect {
+            return Some((second, TargetCount::default()));
+        }
         let Effect::Sequence { steps } = effect else {
             return None;
         };
@@ -3511,12 +3807,23 @@ impl Game {
     /// then push the assembled ability. An ability with only one target clause pushes immediately
     /// (empty `targets_second`). Pauses on a [`PendingChoice::ChooseAbilityTargets`] when the second
     /// clause is a real choice (more than one legal set); auto-fills when it's forced.
+    /// `push_x`/`push_spent_mana`/`push_activated` are threaded onto whichever ability this
+    /// finally places (an activated donation carries the activation's chosen `{X}` and spent mana
+    /// and marks itself activated; a triggered second-clause ability passes 0/all-zero/false).
+    /// ponytail: the legal-target computation still reads `ability_source_x` (Kinetic Ooze's
+    /// entered-X for an `mv_max_x` second-clause filter); no pool card is an activated second-clause
+    /// ability whose second clause filters on the activation's chosen `{X}`, so the two X's needn't
+    /// be unified here — pass `push_x` through the legal read too if one ever does.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn place_ability_second_clause(
         &mut self,
         player: PlayerId,
         source: ObjectId,
         effect: Effect,
         first: Option<Target>,
+        push_x: u32,
+        push_spent_mana: [u8; 6],
+        push_activated: bool,
         events: &mut Vec<Event>,
     ) -> Placement {
         let Some((spec, count)) = self.ability_second_target_clause(effect, source, player) else {
@@ -3526,6 +3833,9 @@ impl Game {
                 effect,
                 first,
                 TargetList::default(),
+                push_x,
+                push_spent_mana,
+                push_activated,
                 events,
             );
             return Placement::Placed;
@@ -3544,6 +3854,9 @@ impl Game {
                 effect,
                 first,
                 TargetList::from_targets(&legal),
+                push_x,
+                push_spent_mana,
+                push_activated,
                 events,
             );
             return Placement::Placed;
@@ -3558,6 +3871,9 @@ impl Game {
                 min: lo,
                 max: hi,
                 legal,
+                x: push_x,
+                spent_mana: push_spent_mana,
+                activated: push_activated,
             },
         );
         Placement::Paused
@@ -3615,10 +3931,15 @@ impl Game {
         self.priority = self.active_player;
     }
 
-    /// Put a single triggered ability on the stack carrying both its first-clause `target` and its
-    /// `targets_second` (a second independent target clause's chosen targets, CR 603.3d — Kinetic
-    /// Ooze's X≥10 doubling rider). The ubiquitous single-clause callers go through
-    /// [`push_ability_group`](Self::push_ability_group) (empty `targets_second`).
+    /// Put a single triggered *or activated* ability on the stack carrying both its first-clause
+    /// `target` and its `targets_second` (a second independent target clause's chosen targets, CR
+    /// 603.3d/601.2c — Kinetic Ooze's X≥10 doubling rider; Zedruu's donation recipient). The
+    /// ubiquitous single-clause callers go through [`push_ability_group`](Self::push_ability_group)
+    /// (empty `targets_second`). `x`/`spent_mana` are 0/all-zero for a triggered ability (which
+    /// carries no chosen `{X}`) and the activation's own values for an activated second-clause
+    /// ability; `activated` marks which (CR 112.7a — an activated donation is still counterable as
+    /// an activated ability).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn push_ability_with_targets(
         &mut self,
         controller: PlayerId,
@@ -3626,6 +3947,9 @@ impl Game {
         effect: Effect,
         target: Option<Target>,
         targets_second: TargetList,
+        x: u32,
+        spent_mana: [u8; 6],
+        activated: bool,
         events: &mut Vec<Event>,
     ) {
         self.push_apply(
@@ -3636,11 +3960,9 @@ impl Game {
                 effect,
                 target,
                 targets_second,
-                x: 0,
-                spent_mana: [0; 6],
-                // Only a triggered ability (CR 603.3d — Kinetic Ooze's second target clause) ever
-                // goes on the stack with a `targets_second`; never an activated one.
-                activated: false,
+                x,
+                spent_mana,
+                activated,
             },
         );
         self.consecutive_passes = 0;

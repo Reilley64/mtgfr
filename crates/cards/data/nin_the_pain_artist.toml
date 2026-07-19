@@ -1,0 +1,40 @@
+# {X}{U}{R}, {T}: Nin deals X damage to target creature. That creature's controller draws X cards.
+name = "Nin, the Pain Artist"
+id = "ec439630-e18b-45f6-8034-2ecbea27772f"
+default_print = "005ad65e-cf0b-48e9-a314-2ebba5a1400c"
+otags = ["activated-ability", "burn-creature", "card-draw", "x-cost-matters"]
+oracle = "{X}{U}{R}, {T}: Nin deals X damage to target creature. That creature's controller draws X cards."
+set = "c17"
+subtypes = ["Vedalken", "Wizard"]
+legendary = true
+
+[cost]
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# {X}{U}{R}, {T}: Nin deals X damage to target creature. That creature's controller draws X cards.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+[abilities.activation_cost]
+x = true
+blue = 1
+red = 1
+
+# Nin deals X damage to target creature.
+[[abilities.effects]]
+type = "deal_damage"
+amount = "x"
+target = "creature"
+
+# That creature's controller draws X cards.
+[[abilities.effects]]
+type = "target_owner_draws"
+count = "x"
+controller = true

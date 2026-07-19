@@ -155,6 +155,7 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::ChooseTargets { targets, .. } => format!("targets {targets:?}"),
         WireIntent::ChooseTargetPlayers { players, .. } => format!("target-players {players:?}"),
         WireIntent::AnswerMay { yes, .. } => format!("may {yes}"),
+        WireIntent::ChooseDrawCount { count, .. } => format!("draw-count {count}"),
         WireIntent::PayOptionalCost { pay, .. } => format!("pay {pay}"),
         WireIntent::AssignDamage { assignment, .. } => format!(
             "assign {:?}",
@@ -182,6 +183,7 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::SearchLibrary { choice, .. } => format!("search {}", opt_id(choice)),
         WireIntent::ChooseSacrifices { sacrifices, .. } => format!("sacrifice {sacrifices:?}"),
         WireIntent::Discard { cards, .. } => format!("discard {cards:?}"),
+        WireIntent::PutFromHandOnTop { cards, .. } => format!("put-from-hand-on-top {cards:?}"),
         WireIntent::DeclineUntap { keep_tapped, .. } => format!("keep-tapped {keep_tapped:?}"),
         WireIntent::ChooseDredge { dredger, .. } => format!("dredge {dredger:?}"),
         WireIntent::PutLandFromHand { choice, .. } => format!("put-land {}", opt_id(choice)),

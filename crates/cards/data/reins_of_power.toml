@@ -1,0 +1,24 @@
+# Untap all creatures you control and all creatures target opponent controls. You and that opponent each gain control of all creatures the other controls until end of turn. Those creatures gain haste until end of turn.
+name = "Reins of Power"
+id = "96381388-1e82-411c-8290-1f3e909d3b5f"
+default_print = "9b5730aa-c74a-4c74-bb1b-a133a3c353ec"
+oracle = "Untap all creatures you control and all creatures target opponent controls. You and that opponent each gain control of all creatures the other controls until end of turn. Those creatures gain haste until end of turn."
+set = "clb"
+
+[cost]
+generic = 2
+blue = 2
+
+[kind]
+type = "instant"
+
+# Untap all creatures you control and all creatures target opponent controls. You and that opponent each gain control
+# of all creatures the other controls until end of turn. Those creatures gain haste until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Untap all creatures you control and all creatures target opponent controls. You and that opponent each gain control
+# of all creatures the other controls until end of turn. Those creatures gain haste until end of turn.
+[[abilities.effects]]
+type = "exchange_all_creatures_until_end_of_turn"
+target = "opponent"

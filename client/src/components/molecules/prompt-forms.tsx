@@ -98,68 +98,83 @@ function OrderPrompt(props: { labels: string[]; onSubmit: (order: number[]) => v
   );
 }
 
-const ChooseTargetForm: Component<FormProps> = (props) => {
-  const pc = () => props.pc as Narrow<"choose_target">;
-  const hint = () => sourceHint(props.state, pc().source, pc().label);
+/**
+ * Full-screen dialog to pick one target that may be a player seat (no card art), a card, or a mix.
+ * Bojuka Bog-style single targets and donation's "target opponent" clause both use it, since
+ * choose_target skips PromptModal's panel chrome and a bare button row would never appear on screen.
+ */
+const SeatTargetPick: Component<{
+  label: string;
+  hint?: string;
+  state: VisibleState;
+  items: ReadonlyArray<ChoiceItem>;
+  onPick: (id: number, player?: number) => void;
+}> = (props) => {
   const seatLabel = (seat: number, fallback: string) => {
     const name = props.state.players.find((p) => p.player === seat)?.username?.trim();
     return name || fallback;
   };
   return (
+    <PickDialog label={props.label}>
+      <div class={PICK_COLUMN}>
+        <div class="text-snow text-title">{props.label}</div>
+        <Show when={props.hint}>
+          <div class="text-label text-mist">From {props.hint}</div>
+        </Show>
+        <div class="flex max-w-[min(90vw,1040px)] flex-wrap justify-center gap-3">
+          <For each={props.items}>
+            {(it) => (
+              <button
+                type="button"
+                aria-label={it.label}
+                onClick={() => props.onPick(it.id, it.player ?? undefined)}
+                class="relative cursor-pointer rounded-[9px] p-0 shadow-hand transition-transform duration-150 ease-out hover:-translate-y-2"
+              >
+                {/* Wrap seat in an object so Show doesn't treat seat 0 as falsy. */}
+                <Show
+                  when={it.player != null ? { seat: it.player as number } : null}
+                  fallback={
+                    <img
+                      src={imageUrlByPrint(choiceItemPrint(props.state, it))}
+                      alt={it.label}
+                      draggable={false}
+                      width={150}
+                      class="block rounded-[9px]"
+                    />
+                  }
+                >
+                  {(p) => (
+                    <div
+                      style={{ "--seat": seatColor(p().seat, 0.9) }}
+                      class="flex aspect-[150/209] w-[150px] flex-col items-center justify-center rounded-[9px] border-(--seat) border-4 bg-morph-slate font-bold text-snow text-title"
+                    >
+                      {seatLabel(p().seat, it.label)}
+                    </div>
+                  )}
+                </Show>
+              </button>
+            )}
+          </For>
+        </div>
+      </div>
+    </PickDialog>
+  );
+};
+
+const ChooseTargetForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"choose_target">;
+  const hint = () => sourceHint(props.state, pc().source, pc().label);
+  return (
     <Show
       when={chooseTargetIsCardPick(pc().items)}
       fallback={
-        // Player seats (and mixed player+object lists) need a full-screen dialog: choose_target
-        // skips PromptModal's panel chrome, so a bare button row would never appear on screen.
-        <PickDialog label={pc().label}>
-          <div class={PICK_COLUMN}>
-            <div class="text-snow text-title">{pc().label}</div>
-            <Show when={hint()}>
-              <div class="text-label text-mist">From {hint()}</div>
-            </Show>
-            <div class="flex max-w-[min(90vw,1040px)] flex-wrap justify-center gap-3">
-              <For each={pc().items}>
-                {(it) => (
-                  <button
-                    type="button"
-                    aria-label={it.label}
-                    onClick={() =>
-                      props.onAnswer({
-                        kind: "target",
-                        id: it.id,
-                        player: it.player ?? undefined,
-                      })
-                    }
-                    class="relative cursor-pointer rounded-[9px] p-0 shadow-hand transition-transform duration-150 ease-out hover:-translate-y-2"
-                  >
-                    {/* Wrap seat in an object so Show doesn't treat seat 0 as falsy. */}
-                    <Show
-                      when={it.player != null ? { seat: it.player as number } : null}
-                      fallback={
-                        <img
-                          src={imageUrlByPrint(choiceItemPrint(props.state, it))}
-                          alt={it.label}
-                          draggable={false}
-                          width={150}
-                          class="block rounded-[9px]"
-                        />
-                      }
-                    >
-                      {(p) => (
-                        <div
-                          style={{ "--seat": seatColor(p().seat, 0.9) }}
-                          class="flex aspect-[150/209] w-[150px] flex-col items-center justify-center rounded-[9px] border-(--seat) border-4 bg-morph-slate font-bold text-snow text-title"
-                        >
-                          {seatLabel(p().seat, it.label)}
-                        </div>
-                      )}
-                    </Show>
-                  </button>
-                )}
-              </For>
-            </div>
-          </div>
-        </PickDialog>
+        <SeatTargetPick
+          label={pc().label}
+          hint={hint() || undefined}
+          state={props.state}
+          items={pc().items}
+          onPick={(id, player) => props.onAnswer({ kind: "target", id, player })}
+        />
       }
     >
       <CardPickPrompt
@@ -175,10 +190,14 @@ const ChooseTargetForm: Component<FormProps> = (props) => {
   );
 };
 
+// Also drives `choose_ability_targets` (an activated/triggered ability's second target clause).
 const ChooseSpellTargetsForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"choose_spell_targets">;
   const title = () => spellTargetsTitle(pc().label, pc().min, pc().max);
   const fixed = () => pc().min === pc().max;
+  // Donation's "target opponent" clause (`choose_ability_targets`) is a single player target with no
+  // art — the multi-card picker can't render seats, so route it to the seat dialog instead.
+  const seatPick = () => pc().max <= 1 && !chooseTargetIsCardPick(pc().items);
   const hint = () =>
     fixed()
       ? undefined
@@ -186,15 +205,44 @@ const ChooseSpellTargetsForm: Component<FormProps> = (props) => {
         ? `Select at least ${pc().min} distinct target${pc().min === 1 ? "" : "s"}`
         : `Select ${pc().min}–${pc().max} distinct targets`;
   return (
+    <Show
+      when={seatPick()}
+      fallback={
+        <CardPickPrompt
+          state={props.state}
+          title={title()}
+          hint={hint()}
+          submitLabel="Choose targets"
+          items={pc().items}
+          count={fixed() ? pc().min : null}
+          minCount={fixed() ? undefined : pc().min}
+          maxCount={fixed() ? undefined : pc().max}
+          onSubmit={(ids) => props.onAnswer({ kind: "targets", ids })}
+        />
+      }
+    >
+      <SeatTargetPick
+        label={pc().label}
+        state={props.state}
+        items={pc().items}
+        onPick={(id, player) => props.onAnswer({ kind: "target", id, player })}
+      />
+    </Show>
+  );
+};
+
+// An activated ability's own targeted cost (Spurnmage Advocate's "Exile N target cards from an
+// opponent's graveyard") — pick exactly `count` cards, answered by choose_targets like the ability's
+// stack-bound targets. #218/#228 surface.
+const ChooseActivationCostTargetsForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"choose_activation_cost_targets">;
+  return (
     <CardPickPrompt
       state={props.state}
-      title={title()}
-      hint={hint()}
+      title={`Choose ${pc().count} target${pc().count === 1 ? "" : "s"} to pay the cost`}
       submitLabel="Choose targets"
       items={pc().items}
-      count={fixed() ? pc().min : null}
-      minCount={fixed() ? undefined : pc().min}
-      maxCount={fixed() ? undefined : pc().max}
+      count={pc().count}
       onSubmit={(ids) => props.onAnswer({ kind: "targets", ids })}
     />
   );
@@ -1829,6 +1877,116 @@ const ChoosePileForHandForm: Component<FormProps> = (props) => {
   );
 };
 
+// Brainstorm's put-back: pick exactly `count` hand cards in order — first-picked ends up on top
+// of the library. Discard's pick shape plus the scry-style pick-order badges.
+const PutFromHandOnTopForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"put_from_hand_on_top">;
+  return (
+    <CardPickPrompt
+      state={props.state}
+      title={`Put ${pc().count} card${pc().count === 1 ? "" : "s"} from your hand on top of your library`}
+      hint="Pick in order — the first pick ends up on top."
+      submitLabel="Put on top"
+      items={pc().items}
+      count={pc().count}
+      ordered
+      onSubmit={(cards) => props.onAnswer({ kind: "hand_on_top", cards })}
+    />
+  );
+};
+
+// Murmurs from Beyond: the opponent must pick one revealed card for the controller's graveyard
+// (the rest go to the controller's hand). Same mandatory pick-one + `choose_exiled` answer as
+// OpponentChoosesExiledNonlandForm; only the copy differs.
+const OpponentChoosesRevealedToGraveyardForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"opponent_chooses_revealed_to_graveyard">;
+  return (
+    <CardPickPrompt
+      state={props.state}
+      title={`${objectName(props.state, pc().source)}: choose a revealed card to put into the graveyard`}
+      hint="The rest go to its controller's hand."
+      submitLabel="Choose"
+      items={pc().items}
+      count={1}
+      onSubmit={(ids) => props.onAnswer({ kind: "choose_exiled", choice: ids[0] })}
+    />
+  );
+};
+
+// Cumulative upkeep paid from the graveyard (CR 702.24): pick exactly `count` cards to put on the
+// bottom of their owner's library, or decline and sacrifice the source. Same `sacrifice` answer as
+// the other card-subset picks (ChooseSacrifices multiplex; empty = sacrifice).
+const PayCumulativeUpkeepForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"pay_cumulative_upkeep_or_sacrifice">;
+  return (
+    <CardPickPrompt
+      state={props.state}
+      title={`${objectName(props.state, pc().source)}: cumulative upkeep — pay ${pc().count} card${pc().count === 1 ? "" : "s"} or sacrifice it`}
+      hint="Chosen cards go on the bottom of their owner's library."
+      submitLabel="Pay"
+      declineLabel="Sacrifice it"
+      items={pc().items}
+      count={pc().count}
+      onSubmit={(ids) => props.onAnswer({ kind: "sacrifice", ids })}
+      onDecline={() => props.onAnswer({ kind: "sacrifice", ids: [] })}
+    />
+  );
+};
+
+// "Draw up to N cards" (Arcane Denial) and Trade Secrets' caster draw share one count picker:
+// a button per count 0..=max, one click answers.
+const drawUpToForm =
+  (title: (props: FormProps) => string): Component<FormProps> =>
+  (props) => {
+    const pc = () => props.pc as Narrow<"may_draw_up_to" | "trade_secrets_caster_draw">;
+    return (
+      <div>
+        <div class={PROMPT_TITLE}>{title(props)}</div>
+        <div class={PROMPT_ROW}>
+          <For each={Array.from({ length: pc().max + 1 }, (_, n) => n)}>
+            {(n) => (
+              <Button type="button" onClick={() => props.onAnswer({ kind: "draw_count", count: n })}>
+                {n}
+              </Button>
+            )}
+          </For>
+        </div>
+      </div>
+    );
+  };
+
+const MayDrawUpToForm = drawUpToForm(
+  (props) => `Draw up to ${(props.pc as Narrow<"may_draw_up_to">).max} cards — how many?`,
+);
+const TradeSecretsCasterDrawForm = drawUpToForm(
+  (props) => `Trade Secrets: draw up to ${(props.pc as Narrow<"trade_secrets_caster_draw">).max} cards — how many?`,
+);
+
+// Trade Secrets' repeat-or-stop pause: the target opponent may run the whole draw process again.
+// Same yes/no `may` answer as MayForm; the copy names the loop.
+const TradeSecretsRepeatForm: Component<FormProps> = (props) => {
+  const pc = () => props.pc as Narrow<"trade_secrets_repeat">;
+  const caster = () => {
+    const name = props.state.players.find((pl) => pl.player === pc().caster)?.username?.trim();
+    return name || `P${pc().caster}`;
+  };
+  return (
+    <div>
+      <div class={PROMPT_TITLE}>
+        Trade Secrets: repeat? You draw two cards, then {caster()} may draw up to four again.
+      </div>
+      <div class={PROMPT_ROW}>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "may", yes: true })}>
+          Repeat
+        </Button>
+        <Button type="button" onClick={() => props.onAnswer({ kind: "may", yes: false })} variant="ghost">
+          Stop
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export const FORMS: Record<PendingChoiceView["kind"], Component<FormProps>> = {
   order_triggers: OrderForm,
   choose_target: ChooseTargetForm,
@@ -1878,6 +2036,7 @@ export const FORMS: Record<PendingChoiceView["kind"], Component<FormProps>> = {
   // A triggered ability's second target clause — same "pick min..max distinct targets" shape and
   // `choose_targets` answer as a multi-target spell (Kinetic Ooze); reuse the spell-targets form.
   choose_ability_targets: ChooseSpellTargetsForm,
+  choose_activation_cost_targets: ChooseActivationCostTargetsForm,
   distribute_top: DistributeTopForm,
   choose_trigger_modes: ChooseTriggerModesForm,
   decline_untap: DeclineUntapForm,
@@ -1892,4 +2051,10 @@ export const FORMS: Record<PendingChoiceView["kind"], Component<FormProps>> = {
   choose_splitting_opponent: ChooseTargetForm,
   partition_revealed: PartitionRevealedForm,
   choose_pile_for_hand: ChoosePileForHandForm,
+  put_from_hand_on_top: PutFromHandOnTopForm,
+  opponent_chooses_revealed_to_graveyard: OpponentChoosesRevealedToGraveyardForm,
+  pay_cumulative_upkeep_or_sacrifice: PayCumulativeUpkeepForm,
+  may_draw_up_to: MayDrawUpToForm,
+  trade_secrets_caster_draw: TradeSecretsCasterDrawForm,
+  trade_secrets_repeat: TradeSecretsRepeatForm,
 };

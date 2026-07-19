@@ -300,6 +300,47 @@ impl Game {
         Ok(events)
     }
 
+    /// Answer a [`PendingChoice::PutFromHandOnTop`] (Brainstorm's "put two cards from your hand
+    /// on top of your library in any order"): move the chosen cards to the top of the library,
+    /// preserving the chosen order. Events apply bottom-to-top — the last-named card lands first
+    /// (deepest), so the first-named card, applied last, ends up literally on top.
+    pub(crate) fn answer_put_from_hand_on_top(
+        &mut self,
+        player: PlayerId,
+        cards: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PutFromHandOnTop {
+            player: chooser,
+            hand,
+            count,
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        let distinct = cards.iter().collect::<std::collections::HashSet<_>>().len();
+        let all_in_hand = cards.iter().all(|c| hand.contains(c));
+        if player != chooser || !all_in_hand || cards.len() != count || distinct != cards.len() {
+            return Err(Reject::IllegalChoice); // invalid — the choice stays pending
+        }
+
+        self.finish_answer();
+        let mut events = Vec::new();
+        for &from in cards.iter().rev() {
+            let card = self.next_object_id();
+            let def = self.def_of(from);
+            self.push_apply(
+                &mut events,
+                Event::PutFromHandOnTop {
+                    card,
+                    from,
+                    def,
+                    player,
+                },
+            );
+        }
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::DeclineUntap`] (CR 502.2 — Rubinia Soulsinger's "you may choose
     /// not to untap"): untap every offered permanent the active player didn't keep tapped, then
     /// resume the interrupted untap step (the same step-transition resume as a cleanup discard).

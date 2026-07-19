@@ -1,0 +1,22 @@
+# Each player draws two cards.
+name = "Vision Skeins"
+id = "6d42dff5-97ec-4768-b112-84a3584d0b87"
+default_print = "92b8cffe-4466-48b0-836e-51ba5db36696"
+oracle = "Each player draws two cards."
+set = "cmd"
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Each player draws two cards.
+[[abilities]]
+timing = "spell"
+
+# Each player draws two cards.
+[[abilities.effects]]
+type = "each_player_draws"
+count = 2

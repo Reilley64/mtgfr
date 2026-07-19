@@ -1,0 +1,26 @@
+# Reveal the top three cards of your library. An opponent chooses one of them. Put that card into your graveyard and
+# the rest into your hand.
+name = "Murmurs from Beyond"
+otags = ["hand-positive", "mill", "opponent-chooses", "reveal-top-of-library"]
+set = "cmd"
+id = "1e8be8b4-f7be-49cb-b32e-d92015dea7a2"
+default_print = "d9a38381-5fce-4192-a3f4-7bba3b522ea4"
+oracle = "Reveal the top three cards of your library. An opponent chooses one of them. Put that card into your graveyard and the rest into your hand."
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "instant"
+
+# Reveal the top three cards of your library. An opponent chooses one of them. Put that card into your graveyard and
+# the rest into your hand.
+[[abilities]]
+timing = "spell"
+
+# Reveal the top three cards of your library. An opponent chooses one of them. Put that card into your graveyard and
+# the rest into your hand.
+[[abilities.effects]]
+type = "reveal_top_opponent_picks_one_to_graveyard"
+count = 3

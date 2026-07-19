@@ -1,0 +1,30 @@
+# You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets
+# for the copy.
+name = "Wild Ricochet"
+otags = ["change-target", "copy-instant", "copy-sorcery", "copy-spell"]
+set = "cmr"
+id = "8c35fd11-be45-4984-bd83-6e4f3fbc47a9"
+default_print = "8d3dddfa-9579-42d7-867b-7e37b83b3eeb"
+oracle = "You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets for the copy."
+
+[cost]
+generic = 2
+red = 2
+
+[kind]
+type = "instant"
+
+# You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets
+# for the copy.
+[[abilities]]
+timing = "spell"
+
+# You may choose new targets for target instant or sorcery spell.
+[[abilities.effects]]
+type = "change_target_of_target_spell_or_ability"
+target = "instant_or_sorcery_spell_on_stack"
+optional = true
+
+# Then copy that spell. You may choose new targets for the copy.
+[[abilities.effects]]
+type = "copy_target_spell"

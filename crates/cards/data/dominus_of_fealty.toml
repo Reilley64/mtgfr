@@ -1,0 +1,44 @@
+# Flying
+# At the beginning of your upkeep, you may gain control of target permanent until end of turn. If you do, untap it and
+# it gains haste until end of turn.
+name = "Dominus of Fealty"
+id = "f5e18b27-c5cc-4f5e-b767-4b1b43e00fd0"
+default_print = "91433559-ad01-4bde-b0c0-f9cbb3589e89"
+oracle = "Flying\nAt the beginning of your upkeep, you may gain control of target permanent until end of turn. If you do, untap it and it gains haste until end of turn."
+set = "cmd"
+subtypes = ["Spirit", "Avatar"]
+
+# Flying
+keywords = ["flying"]
+
+[cost]
+hybrid = [["blue", "red"], ["blue", "red"], ["blue", "red"], ["blue", "red"], ["blue", "red"]]
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# At the beginning of your upkeep, you may gain control of target permanent until end of turn. If you do, untap it and
+# it gains haste until end of turn.
+[[abilities]]
+timing = "upkeep"
+optional = true
+
+# gain control of target permanent until end of turn
+[[abilities.effects]]
+type = "gain_control_until_end_of_turn"
+target = { permanent = {} }
+
+# untap it
+[[abilities.effects]]
+type = "untap_target"
+target = { permanent = {} }
+
+# it gains haste until end of turn
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+keywords = ["haste"]
+target = { permanent = {} }

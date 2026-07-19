@@ -245,6 +245,13 @@ message PendingChoiceView {
     PendingChoiceViewChooseDredge choose_dredge = 56;
     PendingChoiceViewPayRecoverOrExile pay_recover_or_exile = 57;
     PendingChoiceViewPutCreatureFromHand put_creature_from_hand = 58;
+    PendingChoiceViewChooseActivationCostTargets choose_activation_cost_targets = 59;
+    PendingChoiceViewPutFromHandOnTop put_from_hand_on_top = 60;
+    PendingChoiceViewOpponentChoosesRevealedToGraveyard opponent_chooses_revealed_to_graveyard = 61;
+    PendingChoiceViewPayCumulativeUpkeepOrSacrifice pay_cumulative_upkeep_or_sacrifice = 62;
+    PendingChoiceViewMayDrawUpTo may_draw_up_to = 63;
+    PendingChoiceViewTradeSecretsCasterDraw trade_secrets_caster_draw = 64;
+    PendingChoiceViewTradeSecretsRepeat trade_secrets_repeat = 65;
   }
 }
 
@@ -258,13 +265,16 @@ message PendingChoiceViewOrderTriggers {
 
 // Legal targets to choose among. `label` is the effect being aimed; `source` is the permanent
 // or spell it comes from. `optional` ("up to one" — Killian, Decisive Mentor) lets the player
-// submit no target instead of one of `items`.
+// submit no target instead of one of `items`. `max` (Numot, the Devastator's "destroy up to two
+// target lands") is how many of `items` may be chosen at once; `1` for the ubiquitous
+// single-target case.
 message PendingChoiceViewChooseTarget {
   uint32 player = 1;
   uint32 source = 2;
   string label = 3;
   repeated ChoiceItem items = 4;
   bool optional = 5;
+  uint32 max = 6;
 }
 
 // A multi-target spell's targets to choose (CR 601.2c): between `min` and `max` distinct
@@ -296,6 +306,29 @@ message PendingChoiceViewMayYesNo {
   uint32 player = 1;
   uint32 source = 2;
   string label = 3;
+}
+
+// A may-draw-up-to count choice (Arcane Denial's "may draw up to two cards"): this player chooses
+// any number 0..=max of cards to draw. Reveals only the maximum, never hand or library contents.
+message PendingChoiceViewMayDrawUpTo {
+  uint32 player = 1;
+  uint32 max = 2;
+}
+
+// Trade Secrets' declinable draw: this player (the caster), after `opponent` drew two
+// mandatorily, chooses any number 0..=max of cards to draw.
+message PendingChoiceViewTradeSecretsCasterDraw {
+  uint32 player = 1;
+  uint32 max = 2;
+  uint32 opponent = 3;
+}
+
+// Trade Secrets' repeat-or-stop pause: this player (the target opponent) may run the whole
+// process (the mandatory two-card draw, then `caster`'s declinable draw) again, or stop.
+// Answered by the yes/no AnswerMay.
+message PendingChoiceViewTradeSecretsRepeat {
+  uint32 player = 1;
+  uint32 caster = 2;
 }
 
 // The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
@@ -330,6 +363,16 @@ message PendingChoiceViewPayRecoverOrExile {
   uint32 player = 1;
   uint32 source = 2;
   WireCost cost = 3;
+}
+
+// Pay Cumulative upkeep's non-mana upkeep cost (CR 702.24a — Jotun Grunt): put `count` of
+// `items` (every graveyard's cards, public) on the bottom of a single owner's library, or
+// decline (empty answer) and sacrifice `source` instead.
+message PendingChoiceViewPayCumulativeUpkeepOrSacrifice {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+  uint32 count = 4;
 }
 
 // Blockers to divide the attacker's damage among.
@@ -439,6 +482,18 @@ message PendingChoiceViewChooseAbilityTargets {
   repeated ChoiceItem items = 6;
 }
 
+// An activated ability's own targeted exile cost (CR 601.2c/602.2b — Spurnmage Advocate's
+// "Exile two target cards from an opponent's graveyard"), named after every other cost is
+// already paid: exactly `count` of `items` (cards in an opponent's graveyard). Answered by
+// `ChooseTargets`, like `ChooseAbilityTargets` — but a paid cost, not the ability's own
+// stack-bound target clause.
+message PendingChoiceViewChooseActivationCostTargets {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 count = 3;
+  repeated ChoiceItem items = 4;
+}
+
 // This player may sacrifice one of `items` (a permanent they control) to gain a rider effect,
 // or decline (CR 601.2f-style resolution-time optional cost).
 message PendingChoiceViewMaySacrifice {
@@ -515,6 +570,15 @@ message PendingChoiceViewMayDiscard {
 
 // This player must discard `count` cards from their hand (`items`, private to them).
 message PendingChoiceViewDiscard {
+  uint32 player = 1;
+  uint32 count = 2;
+  repeated ChoiceItem items = 3;
+}
+
+// This player must put `count` cards from their hand (`items`, private to them) on top of
+// their library, in an order they choose (Brainstorm) — unlike `PendingChoiceViewDiscard`, the
+// answer's order matters (first-named ends up on top).
+message PendingChoiceViewPutFromHandOnTop {
   uint32 player = 1;
   uint32 count = 2;
   repeated ChoiceItem items = 3;
@@ -750,6 +814,15 @@ message PendingChoiceViewPartitionRevealed {
   repeated ChoiceItem items = 3;
 }
 
+// This player (an **opponent** of the controller) must choose one of `items` (Murmurs from
+// Beyond's three revealed cards, public); the chosen card goes to the controller's graveyard,
+// the rest to the controller's hand.
+message PendingChoiceViewOpponentChoosesRevealedToGraveyard {
+  uint32 player = 1;
+  uint32 source = 2;
+  repeated ChoiceItem items = 3;
+}
+
 // This player (the controller of Fact or Fiction) picks one of the two piles
 // `PartitionRevealed` just made to put into their hand; the other is milled into their
 // graveyard.
@@ -920,6 +993,10 @@ message VisibleEvent {
     VisibleEventFlipped flipped = 123;
     VisibleEventColorSetUntilEndOfTurn color_set_until_end_of_turn = 124;
     VisibleEventCombatDamageDealtToCreature combat_damage_dealt_to_creature = 125;
+    VisibleEventRemovedFromCombat removed_from_combat = 126;
+    VisibleEventNextUntapSkipMarked next_untap_skip_marked = 127;
+    VisibleEventNextUntapSkipConsumed next_untap_skip_consumed = 128;
+    VisibleEventPutFromHandOnTop put_from_hand_on_top = 129;
   }
 }
 
@@ -982,6 +1059,16 @@ message VisibleEventColorChosen {
 // A permanent flipped (CR 712 — a Kamigawa flip card): it now uses its back face's
 // characteristics. Public battlefield status, like `PreparedChanged`.
 message VisibleEventFlipped {
+  uint32 object = 1;
+}
+
+// `object` was marked to skip its controller's next untap step (Pollen Lullaby's win rider).
+message VisibleEventNextUntapSkipMarked {
+  uint32 object = 1;
+}
+
+// `object`'s skip-next-untap mark was consumed as its controller's untap step arrived.
+message VisibleEventNextUntapSkipConsumed {
   uint32 object = 1;
 }
 
@@ -1051,6 +1138,11 @@ message VisibleEventTapped {
 }
 
 message VisibleEventUntapped {
+  uint32 object = 1;
+}
+
+// A permanent was removed from combat (CR 506.4 — `Effect::RemoveFromCombat`).
+message VisibleEventRemovedFromCombat {
   uint32 object = 1;
 }
 
@@ -1696,6 +1788,16 @@ message VisibleEventDiscarded {
   uint32 card = 1;
   uint32 from = 2;
   uint32 player = 3;
+}
+
+// `player` put a card from hand onto the top of their library (Brainstorm resolving) — a
+// hidden-zone-to-hidden-zone move, like `CardDrawn`: `from` and `def` are absent for anyone but
+// `player`.
+message VisibleEventPutFromHandOnTop {
+  uint32 player = 1;
+  uint32 card = 2;
+  optional uint32 from = 3;
+  optional string def = 4;
 }
 
 // A graveyard card was impulse-exiled face-up and `player` may play it until end of turn

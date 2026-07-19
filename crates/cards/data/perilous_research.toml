@@ -1,0 +1,28 @@
+# Draw two cards, then sacrifice a permanent.
+name = "Perilous Research"
+id = "9243b539-5f9e-4bb3-9973-3d48366aa7cc"
+default_print = "227193ff-1d76-42bc-ad4d-ecc17880a44e"
+oracle = "Draw two cards, then sacrifice a permanent."
+set = "cmd"
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Draw two cards, then sacrifice a permanent.
+[[abilities]]
+timing = "spell"
+
+# Draw two cards,
+[[abilities.effects]]
+type = "draw_cards"
+count = 2
+
+# then sacrifice a permanent.
+[[abilities.effects]]
+type = "sacrifice_own"
+filter = {}
+count = 1

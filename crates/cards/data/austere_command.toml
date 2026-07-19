@@ -1,0 +1,55 @@
+# Choose two —
+# • Destroy all artifacts.
+# • Destroy all enchantments.
+# • Destroy all creatures with mana value 3 or less.
+# • Destroy all creatures with mana value 4 or greater.
+name = "Austere Command"
+id = "09cc8709-fe10-472a-b05c-e89f3523018d"
+default_print = "a8bc7912-e201-468a-b251-140205cb741c"
+oracle = "Choose two —\n• Destroy all artifacts.\n• Destroy all enchantments.\n• Destroy all creatures with mana value 3 or less.\n• Destroy all creatures with mana value 4 or greater."
+set = "msc"
+modal = true
+choose = 2
+
+[cost]
+generic = 4
+white = 2
+
+[kind]
+type = "sorcery"
+
+# Mode 0 — "Destroy all artifacts."
+[[abilities]]
+timing = "spell"
+
+# Destroy all artifacts.
+[[abilities.effects]]
+type = "destroy_all"
+filter = { types = "artifact" }
+
+# Mode 1 — "Destroy all enchantments."
+[[abilities]]
+timing = "spell"
+
+# Destroy all enchantments.
+[[abilities.effects]]
+type = "destroy_all"
+filter = { types = "enchantment" }
+
+# Mode 2 — "Destroy all creatures with mana value 3 or less."
+[[abilities]]
+timing = "spell"
+
+# Destroy all creatures with mana value 3 or less.
+[[abilities.effects]]
+type = "destroy_all"
+filter = { types = "creature", mv_max = 3 }
+
+# Mode 3 — "Destroy all creatures with mana value 4 or greater."
+[[abilities]]
+timing = "spell"
+
+# Destroy all creatures with mana value 4 or greater.
+[[abilities.effects]]
+type = "destroy_all"
+filter = { types = "creature", mv_min = 4 }

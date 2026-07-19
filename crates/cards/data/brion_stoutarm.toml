@@ -1,0 +1,37 @@
+# Lifelink
+# {R}, {T}, Sacrifice another creature: Brion Stoutarm deals damage equal to the sacrificed creature's power to target
+# player or planeswalker.
+name = "Brion Stoutarm"
+id = "b816b3cc-ae4b-4fb7-8b1a-e01ab83459a3"
+default_print = "b097c70a-d1d6-4972-b94d-d7d8a6f443e2"
+otags = ["activated-ability", "burn-planeswalker", "burn-player", "power-matters", "repeatable-removal", "sacrifice-outlet-creature", "synergy-sacrifice"]
+oracle = "Lifelink\n{R}, {T}, Sacrifice another creature: Brion Stoutarm deals damage equal to the sacrificed creature's power to target player or planeswalker."
+set = "a25"
+subtypes = ["Giant", "Warrior"]
+legendary = true
+keywords = ["lifelink"]
+
+[cost]
+generic = 2
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# {R}, {T}, Sacrifice another creature: Brion Stoutarm deals damage equal to the sacrificed
+# creature's power to target player or planeswalker.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { red = 1 }
+sacrifice = { creature = { other = true } }
+
+# Brion Stoutarm deals damage equal to the sacrificed creature's power to target player or
+# planeswalker.
+[[abilities.effects]]
+type = "deal_damage"
+amount = "sacrificed_creature_power"
+target = "player_or_planeswalker"

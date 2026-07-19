@@ -23,10 +23,13 @@ impl Game {
             | Effect::Equip
             | Effect::GainControl { .. }
             | Effect::GainControlUntilEndOfTurn { .. }
+            | Effect::ExchangeAllCreaturesUntilEndOfTurn { .. }
+            | Effect::GainControlAllUntilEndOfTurn { .. }
             | Effect::GainControlWhile { .. }
             | Effect::GoadTarget { .. }
             | Effect::GrantSourceAbilitiesUntilEndOfTurn
             | Effect::RegenerateShield { .. }
+            | Effect::RemoveFromCombat { .. }
             | Effect::TapTarget { .. }
             | Effect::UntapAll { .. }
             | Effect::UntapTarget { .. } => {
@@ -45,8 +48,10 @@ impl Game {
             }
             // Damage family
             Effect::DamageEachCreature { .. }
+            | Effect::DamageEachPlayer { .. }
             | Effect::DealDamage { .. }
             | Effect::DealDamageToSelf { .. }
+            | Effect::DealDamageToTargetController { .. }
             | Effect::DealDamageToEnteringPermanent { .. } => {
                 self.mint_damage_family(effect, controller, source, target, x)
             }
@@ -70,7 +75,9 @@ impl Game {
             Effect::DrawCards { .. }
             | Effect::TargetPlayerDraws { .. }
             | Effect::EachPlayerDraws { .. }
-            | Effect::AttackingPlayerDraws { .. } => {
+            | Effect::AttackingPlayerDraws { .. }
+            | Effect::EachDrawStepPlayerDraws { .. }
+            | Effect::TargetOwnerDraws { .. } => {
                 self.mint_draw_family(effect, controller, source, target, x)
             }
             // Life family
@@ -79,6 +86,7 @@ impl Game {
             | Effect::DrainTarget { .. }
             | Effect::EachOpponentDrain { .. }
             | Effect::EachOpponentLosesLife { .. }
+            | Effect::EachPlayerLifeBecomesHighest
             | Effect::GainLife { .. }
             | Effect::GainLifeTargetController { .. }
             | Effect::LoseLife { .. }
@@ -109,6 +117,8 @@ impl Game {
             | Effect::GrantChannelColorlessManaThisTurn
             | Effect::GrantFlashThisTurn
             | Effect::ScheduleAtNextUpkeep { .. }
+            | Effect::ScheduleColorlessManaForCounteredSpellNextMainPhase
+            | Effect::SkipNextUntapOpponentCreatures
             | Effect::ScheduleNextCastTrigger { .. }
             | Effect::ScheduleThisTurnCombatDamageCopy => {
                 self.mint_misc_family(effect, controller, source, target, x)
@@ -161,7 +171,9 @@ impl Game {
             | Effect::ReturnObjectToHand { .. }
             | Effect::ExileGraveyardObjectGainLife { .. }
             | Effect::TuckFromGraveyard { .. }
-            | Effect::TuckPermanentIntoLibrary { .. } => {
+            | Effect::TuckPermanentIntoLibrary { .. }
+            | Effect::TuckSelfAndBlockedCreatures
+            | Effect::ShuffleTargetPermanentIntoLibrary { .. } => {
                 self.mint_zones_family(effect, controller, source, target, x)
             }
             // Static abilities are read during recompute, never resolved from the stack.
@@ -170,6 +182,7 @@ impl Game {
             | Effect::TappedForManaBonus { .. }
             | Effect::PreventNoncombatDamageToOtherCreaturesYouControl
             | Effect::PreventDamageToSelfRemovingCounter
+            | Effect::PreventCombatDamageStatic { .. }
             | Effect::TriggerDoublingStatic { .. }
             | Effect::GrantManaAbility { .. }
             | Effect::GrantToAttached { .. }
@@ -190,6 +203,9 @@ impl Game {
             | Effect::PlayFromGraveyardOncePerTurn => Vec::new(),
             // Pausing / composite — only via Game::run
             Effect::Scry { .. }
+            // Clash pauses on the opponent chooser and per-player keep/bottom scries — only via
+            // Game::run.
+            | Effect::Clash
             // Needs `&mut self` to arm the prevention shield on `Game::combat_extras` — only
             // resolves via `Game::run`.
             | Effect::PreventCombatDamageToYouCreatingTokens { .. }
@@ -210,6 +226,7 @@ impl Game {
             | Effect::CouncilsDilemmaVote { .. }
             | Effect::OpponentSplitsExilePiles
             | Effect::RevealTopSplitPiles
+            | Effect::RevealTopOpponentPicksOneToGraveyard { .. }
             | Effect::EachPlayerExilesUntilNonlandOpponentPicks
             | Effect::EachPlayerCreatesFractalFromExiledPower { .. }
             | Effect::EachOtherTokenBecomesCopyOfChosen
@@ -226,8 +243,15 @@ impl Game {
             // Needs `&mut self` to pause the targeted player on a MayYesNo — only resolves via
             // `Game::run`, never this pure path.
             | Effect::TargetPlayerMayDraw { .. }
+            // Needs `&mut self` to pause the controller on a MayDrawUpTo count choice — only
+            // resolves via `Game::run`, never this pure path.
+            | Effect::MayDrawUpTo { .. }
+            // Needs `&mut self` to pause the caster then chain to the opponent's repeat-or-stop
+            // pause (Trade Secrets) — only resolves via `Game::run`, never this pure path.
+            | Effect::MayDrawUpToThenOpponentMayRepeat { .. }
             | Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. }
             | Effect::Discard { .. }
+            | Effect::PutFromHandOnTop { .. }
             | Effect::PutLandFromHand { .. }
             | Effect::PutCreatureFromHand
             | Effect::CastCreatureFaceDown
@@ -261,6 +285,12 @@ impl Game {
             | Effect::Proliferate { .. }
             | Effect::PhaseOut
             | Effect::DoubleCountersOnTargetCreatures { .. }
+            // Reads its second target clause (`targets_second`, the recipient opponent) — only
+            // resolves via `Game::run`, never this pure `target`-only path.
+            | Effect::TargetOpponentGainsControl { .. }
+            // Reads its second target clause (`targets_second`, the "an opponent controls"
+            // permanent) — only resolves via `Game::run`, never this pure `target`-only path.
+            | Effect::ExchangeControl { .. }
             | Effect::MoveCounters { .. }
             | Effect::UntapSearchedLand
             | Effect::AttachTriggeringAuraToMintedToken { .. }
@@ -281,6 +311,7 @@ impl Game {
             // Needs `&mut self` to draw from the injected RNG — only resolves via
             // `Game::run`, never this pure path.
             | Effect::ExileRandomFromGraveyardMayPlay
+            | Effect::MustAttackRandomOpponent
             | Effect::ShuffleLibrary
             // Player-driven exile loop + a running tally across pauses — only resolves via
             // `Game::run`, never this pure path.
@@ -297,6 +328,9 @@ impl Game {
             // Needs `&mut self` to mark `Game::self_exile_time_counters` — only resolves via
             // `Game::run`, never this pure path.
             | Effect::ExileSelfWithTimeCounters { .. }
+            // Needs `&mut self` to mark `Game::self_tuck_to_library_bottom` — only resolves via
+            // `Game::run`, never this pure path.
+            | Effect::TuckSelfToLibraryBottom
             // Needs `&mut self` to mint the free copy (`Game::mint_spell_copies`) — only
             // resolves via `Game::run`, never this pure path.
             | Effect::MintFreeCopyOfExiledCard { .. }

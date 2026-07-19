@@ -1,0 +1,33 @@
+# When this artifact enters, draw a card.
+# {1}, {T}: Add one mana of any color.
+name = "Prophetic Prism"
+id = "134a9877-5cfb-4a2a-a0f0-930dce45f58b"
+default_print = "cd77a4d0-3d5c-48a5-ad91-b0861021ef8a"
+oracle = "When this artifact enters, draw a card.\n{1}, {T}: Add one mana of any color."
+set = "cmd"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# When this artifact enters, draw a card.
+[[abilities]]
+timing = "etb"
+
+# draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1
+
+# {1}, {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]

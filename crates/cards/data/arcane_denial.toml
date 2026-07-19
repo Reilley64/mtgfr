@@ -3,9 +3,6 @@
 # Arcane Denial (msc): {1}{U} Instant
 # "Counter target spell. Its controller may draw up to two cards at the beginning of the next
 #  turn's upkeep. You draw a card at the beginning of the next turn's upkeep."
-# ponytail: CR 603.7 delayed triggers (#27) + "may draw up to two" (CR 603.2c) collapse to a
-# mandatory draw two — no optional/declinable-draw machinery exists, and drawing is strictly
-# beneficial everywhere in this pool, so nothing is lost by not offering the decline.
 name = "Arcane Denial"
 id = "ab1cc360-b9de-48d9-9983-4dfe4a7d2a37"
 default_print = "5eb843ef-b223-40d0-a461-54b16d188d0e"
@@ -34,7 +31,7 @@ type = "counter_target_spell"
 [[abilities.effects]]
 type = "schedule_at_next_upkeep"
 who = "target_spell_controller"
-then = { type = "draw_cards", count = 2 }
+then = { type = "may_draw_up_to", count = 2 }
 
 # You draw a card at the beginning of the next turn's upkeep.
 [[abilities.effects]]

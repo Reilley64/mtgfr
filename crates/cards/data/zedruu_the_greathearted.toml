@@ -1,0 +1,47 @@
+# At the beginning of your upkeep, you gain X life and draw X cards, where X is the number of permanents you own that
+# your opponents control.
+# {U}{R}{W}: Target opponent gains control of target permanent you control.
+name = "Zedruu the Greathearted"
+id = "514179c0-a50b-4565-8e71-9dad256edd85"
+default_print = "e9ea2a6b-5aaf-4178-b945-f409fe83c41a"
+oracle = "At the beginning of your upkeep, you gain X life and draw X cards, where X is the number of permanents you own that your opponents control.\n{U}{R}{W}: Target opponent gains control of target permanent you control."
+set = "c16"
+subtypes = ["Minotaur", "Monk"]
+legendary = true
+
+[cost]
+generic = 1
+blue = 1
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 4
+
+# At the beginning of your upkeep, you gain X life and draw X cards, where X is the number of permanents you own that
+# your opponents control.
+[[abilities]]
+timing = "upkeep"
+
+# you gain X life ... where X is the number of permanents you own that your opponents control
+[[abilities.effects]]
+type = "gain_life"
+amount = "permanents_you_own_opponents_control"
+
+# ... and draw X cards, where X is the number of permanents you own that your opponents control
+[[abilities.effects]]
+type = "draw_cards"
+count = "permanents_you_own_opponents_control"
+
+# {U}{R}{W}: Target opponent gains control of target permanent you control.
+[[abilities]]
+timing = "activated"
+activation_cost = { blue = 1, red = 1, white = 1 }
+
+# Target opponent gains control of target permanent you control.
+[[abilities.effects]]
+type = "target_opponent_gains_control"
+target = { permanent = { controller = "you" } }
+player = "opponent"

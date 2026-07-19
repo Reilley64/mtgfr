@@ -4,7 +4,6 @@ default_print = "aa5931c8-e453-4bfd-98b2-0baf5c55f1cb"
 otags = ["cast-trigger-you", "copy-ability", "copy-instant", "copy-sorcery", "copy-spell", "intervening-if-clause", "synergy-instant", "synergy-sorcery", "unique-doubler", "x-cost-matters"]
 oracle = "Whenever you cast a permanent spell with a mana cost that contains {X}, double the value of X.\nWhenever you cast an instant or sorcery spell or activate an ability, if that spell's mana cost or that ability's activation cost contains {X}, copy that spell or ability. You may choose new targets for the copy."
 set = "soc"
-approximates = "a copied *activated* ability keeps its original targets — the \"you may choose new targets\" re-pick isn't offered for the ability half (no targeted {X}-cost activated ability exists to copy)."
 
 [cost]
 generic = 2

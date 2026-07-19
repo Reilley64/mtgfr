@@ -27,11 +27,13 @@ impl Game {
         if b.phased_out {
             return false;
         }
-        // ponytail: gated on the owner, but CR 509.1a says blockers are the defending
-        // *controller*'s creatures — they differ under a control-changing Aura. Pre-existing
-        // convention shared with ability activation; move both to `controller_of` together.
-        // Creature-ness via the CR 613.4 type layer (an animated manland can block too).
-        if !self.is_creature_on_battlefield(blocker) || b.owner != player || b.tapped {
+        // CR 509.1a: blockers are the defending *controller*'s creatures — a creature you've
+        // stolen blocks for you, not for its owner. Creature-ness via the CR 613.4 type layer
+        // (an animated manland can block too).
+        if !self.is_creature_on_battlefield(blocker)
+            || self.controller_of(blocker) != player
+            || b.tapped
+        {
             return false;
         }
         // "This creature can't block" (CR 509.1a — Bloodghast): never a legal blocker.
@@ -367,6 +369,15 @@ impl Game {
             }
         }
 
+        // Vow auras (Vow of Duty/Flight/Lightning — CR 122.1 sibling): a live attached Aura can
+        // restrict the host from attacking *that Aura's own controller*, sourced from the
+        // attachment rather than a counter. Distinct from `host_cant_attack`'s blanket ban.
+        for &(attacker, defender) in attackers {
+            if self.host_cant_attack_controller(attacker, defender) {
+                return Err(Reject::IllegalDeclaration);
+            }
+        }
+
         // Goad requirements (CR 701.38a): every goaded creature the active player controls that
         // *could* attack must be attacking, and must attack a non-goader if one is a legal
         // defender. A goaded creature that can't attack at all ("if able") is simply not required.
@@ -506,6 +517,10 @@ impl Game {
         for &(blocker, attacker) in blocks {
             self.push_apply(&mut events, Event::BlockerDeclared { blocker, attacker });
         }
+        // Goblin Cadets' "whenever this creature blocks or becomes blocked" (CR 509): scan the
+        // whole declaration once, not per `BlockerDeclared` event — a multiply-blocked attacker's
+        // "becomes blocked" fires only once, same reasoning as the batch attack-count scan below.
+        self.queue_blocks_or_becomes_blocked_triggers(blocks);
         self.combat.blocked_by.push(player); // this defender's block declaration is final
         // If an attacker is blocked by several creatures, its controller orders them.
         if let Some((attacker, blockers)) = self.next_undivided_multiblock() {
@@ -533,6 +548,19 @@ impl Game {
             }
         }
         None
+    }
+
+    /// The living attackers `blocker` is blocking, in declaration order (Gomazoa's "each creature
+    /// it's blocking" — the reverse read of [`Self::blockers_of`]).
+    pub(crate) fn attackers_blocked_by(&self, blocker: ObjectId) -> Vec<ObjectId> {
+        let alive = |a: &ObjectId| self.as_permanent(*a).is_some();
+        self.combat
+            .blocks
+            .iter()
+            .filter(|(b, _)| *b == blocker)
+            .map(|(_, a)| *a)
+            .filter(alive)
+            .collect()
     }
 
     /// The living creatures blocking `attacker`, in declaration order.
@@ -625,6 +653,12 @@ impl Game {
         if self.combat_extras.prevent_all_combat_damage_this_turn {
             return;
         }
+        // Fog Bank (CR 615, #220): a permanent "prevent all combat damage ... dealt by" static on
+        // the attacker itself cancels every bit of damage it would deal this combat — its own
+        // blocker shares below, and (since none is assigned) any trample overflow too.
+        if self.combat_damage_prevented_by_source(attacker) {
+            return;
+        }
         let deathtouch = self.has_keyword(attacker, Keyword::Deathtouch);
         let power = self.power(attacker);
 
@@ -670,6 +704,12 @@ impl Game {
             assigned += amount;
             // Protection prevents this blocker's share (CR 702.16d); it still counts as assigned.
             if self.damage_prevented_by_protection(blocker, Some(attacker)) {
+                continue;
+            }
+            // Guard Gomazoa / Fog Bank (CR 615, #220): a permanent "prevent all combat damage ...
+            // dealt to" static on the blocker itself prevents this share, same as protection
+            // above — the prevented share still counts as assigned.
+            if self.combat_damage_prevented_to_creature(blocker) {
                 continue;
             }
             // A blocking Phantom Centaur prevents this share and removes one of its own +1/+1
@@ -761,6 +801,15 @@ impl Game {
         if !combat && self.noncombat_damage_prevented_to_creature(target) {
             return;
         }
+        // Guard Gomazoa / Fog Bank (CR 615, #220): a permanent combat-damage-prevention static —
+        // either `target`'s own "dealt to" half or `source`'s own "dealt by" half. Combat-only,
+        // like the table-wide shield below (Tajic's noncombat static is checked above instead).
+        if combat
+            && (self.combat_damage_prevented_to_creature(target)
+                || self.combat_damage_prevented_by_source(source))
+        {
+            return;
+        }
         // Moment's Peace (CR 615, #150): a this-turn table-wide "prevent all combat damage"
         // shield silently cancels combat damage to a creature — same silent-prevention style as
         // the noncombat guard above (no event; nothing in the pool reads a prevented total here).
@@ -829,6 +878,13 @@ impl Game {
         // one of the shield's tokens under `player`. Consulted before the life loss so the
         // prevention wholly replaces it.
         if self.prevent_combat_damage_to_player(player, amount, source, events) {
+            return;
+        }
+        // Fog Bank (CR 615, #220): a permanent "prevent all combat damage ... dealt by" static on
+        // the attacking `source` itself — the general form Fog Bank's Defender keeps it from ever
+        // reaching (it can't attack), but the query is symmetric with `to_self`'s.
+        if self.combat_damage_prevented_by_source(source) {
+            self.push_apply(events, Event::CombatDamagePrevented { player, amount });
             return;
         }
         // Moment's Peace (CR 615, #150): the table-wide "prevent all combat damage" shield — like

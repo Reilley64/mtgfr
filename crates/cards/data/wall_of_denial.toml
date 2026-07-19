@@ -1,0 +1,19 @@
+# Defender, flying
+# Shroud (This creature can't be the target of spells or abilities.)
+name = "Wall of Denial"
+id = "9cc092f9-e8f0-40ea-847d-813b70f889db"
+default_print = "e5eecd2c-0908-44d6-9dea-eb59049a7924"
+oracle = "Defender, flying\nShroud (This creature can't be the target of spells or abilities.)"
+set = "cmd"
+subtypes = ["Wall"]
+keywords = ["defender", "flying", "shroud"]
+
+[cost]
+generic = 1
+white = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 8

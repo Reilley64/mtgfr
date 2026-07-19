@@ -16,12 +16,12 @@ use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
     Ability, ActivationCost, AdditionalCost, Amount, AmountZone, CardDef, CardFilter, CardKind,
-    CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterKind, EdictScope,
-    Effect, EnterAsCopy, EnterController, EscapeCost, FilterController, GrantedAbility,
-    HandActivatedAbility, Keyword, LandProduces, Mana, ManaPool, Parity, PermanentFilter,
-    ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost, SacrificeAdditionalCostCount,
-    SacrificeCost, SpellFilter, SpellSpeed, SpendToCastPredicate, Suspend, TargetCount, Timing,
-    TokenFilter, Trigger, TypeSet,
+    CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterKind,
+    CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy, EnterController, EscapeCost,
+    FilterController, GrantedAbility, HandActivatedAbility, Keyword, LandProduces, Mana, ManaPool,
+    Parity, PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
+    SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed, SpendToCastPredicate,
+    Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
 };
 
 // ── Interning + serde defaults (referenced by the derives in lib.rs) ────────────────
@@ -228,6 +228,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -246,6 +247,7 @@ pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, 
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         },
@@ -390,6 +392,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// without echo.
             #[serde(default)]
             echo: Option<Cost>,
+            /// Cumulative upkeep (CR 702.24) — `[cumulative_upkeep]` (`graveyard_cards = N`);
+            /// absent for a card without cumulative upkeep.
+            #[serde(default)]
+            cumulative_upkeep: Option<CumulativeUpkeepCost>,
             /// Recover (CR 702.59) — `[recover]` with the same `[cost]`-table shape as `[echo]`;
             /// absent for a card without recover.
             #[serde(default)]
@@ -464,6 +470,11 @@ impl<'de> Deserialize<'de> for CardDef {
             /// Absent for a card without one.
             #[serde(default)]
             hand_ability: Option<HandActivatedAbility>,
+            /// Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` +
+            /// `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for
+            /// a card without one.
+            #[serde(default)]
+            forecast: Option<HandActivatedAbility>,
             /// "You may choose not to untap this during your untap step" (CR 502.2 — Rubinia
             /// Soulsinger) — `may_choose_not_to_untap = true`; absent (`false`) for every ordinary
             /// permanent.
@@ -513,6 +524,7 @@ impl<'de> Deserialize<'de> for CardDef {
             cycling_sacrifice: card.cycling_sacrifice,
             flashback: card.flashback,
             echo: card.echo,
+            cumulative_upkeep: card.cumulative_upkeep,
             recover: card.recover,
             bestow: card.bestow,
             morph: card.morph,
@@ -536,6 +548,7 @@ impl<'de> Deserialize<'de> for CardDef {
             // reference can live on the `CardDef`.
             encore: card.encore.map(|cost| &*Box::leak(Box::new(cost))),
             hand_ability: card.hand_ability,
+            forecast: card.forecast,
             may_choose_not_to_untap: card.may_choose_not_to_untap,
             dredge: card.dredge,
         })
@@ -980,6 +993,7 @@ impl<'de> Deserialize<'de> for Amount {
             "sacrificed_creature_toughness",
             "commander_color_count",
             "total_power_you_control",
+            "permanents_you_own_opponents_control",
             "triggering_spell_mana_value",
             "triggering_spell_mana_spent",
             "spell_sacrifice_count",
@@ -1039,6 +1053,9 @@ impl<'de> Deserialize<'de> for Amount {
                     "sacrificed_creature_toughness" => Amount::SacrificedCreatureToughness,
                     "commander_color_count" => Amount::CommanderColorCount,
                     "total_power_you_control" => Amount::TotalPowerYouControl,
+                    "permanents_you_own_opponents_control" => {
+                        Amount::PermanentsYouOwnOpponentsControl
+                    }
                     "triggering_spell_mana_value" => Amount::TriggeringSpellManaValue,
                     "triggering_spell_mana_spent" => Amount::TriggeringSpellManaSpent,
                     "spell_sacrifice_count" => Amount::SpellSacrificeCount,
@@ -1319,11 +1336,12 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// (`"creatures"`, `"nonland"`, `"artifact"`, `"creature_or_planeswalker"`, …) — which keeps
 /// the old `destroy_all`/edict spellings working — or a full `{ … }` table with any of the
 /// composable axes (`types`, `controller`, `token`, `other`, `enchanted`, `attached_to_creature`,
-/// `enchanted_by_you`, `mv_max`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
-/// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`,
-/// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`). `noncreature` is
-/// sugar for `exclude = "creature"`; `not_color` is sugar for `color`'s negated-color arm — both
-/// fold into the same [`PermanentFilter`] fields as their general spelling (see below).
+/// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
+/// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
+/// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`, `nonlair`,
+/// `without_flying`). `noncreature` is sugar for `exclude = "creature"`; `not_color` is sugar for
+/// `color`'s negated-color arm — both fold into the same [`PermanentFilter`] fields as their
+/// general spelling (see below).
 impl<'de> Deserialize<'de> for PermanentFilter {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct FilterVisitor;
@@ -1336,6 +1354,15 @@ impl<'de> Deserialize<'de> for PermanentFilter {
             }
 
             fn visit_str<E: de::Error>(self, shorthand: &str) -> Result<PermanentFilter, E> {
+                // Martyr's Bond's dynamic edict filter ("shares a card type with it") isn't a
+                // static type set — its `types` is filled at `contextualize_effect` time from the
+                // triggering dying permanent's own last-known card types, not from this shorthand.
+                if shorthand == "shares_type_with_dying_permanent" {
+                    return Ok(PermanentFilter {
+                        shares_type_with_dying_permanent: true,
+                        ..PermanentFilter::of(TypeSet::NONE)
+                    });
+                }
                 let types = match shorthand {
                     // Plurals kept as sugar for the old mass-effect / edict spellings.
                     "creatures" | "creature" => TypeSet::CREATURE,
@@ -1372,6 +1399,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     mv_max: Option<u8>,
                     #[serde(default)]
+                    mv_min: Option<u8>,
+                    #[serde(default)]
                     mv_eq_x: bool,
                     #[serde(default)]
                     mv_max_x: bool,
@@ -1398,6 +1427,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     #[serde(default)]
                     attacking: bool,
                     #[serde(default)]
+                    attacking_you: bool,
+                    #[serde(default)]
                     power_less_than_source: bool,
                     #[serde(default)]
                     entered_this_turn: bool,
@@ -1411,6 +1442,12 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     nonlegendary: bool,
                     #[serde(default)]
                     nonlair: bool,
+                    #[serde(default)]
+                    without_flying: bool,
+                    /// Martyr's Bond's dynamic "shares a card type with it" edict gate — see the
+                    /// bare-string shorthand of the same name above.
+                    #[serde(default)]
+                    shares_type_with_dying_permanent: bool,
                 }
 
                 let t = Table::deserialize(de::value::MapAccessDeserializer::new(map))?;
@@ -1424,6 +1461,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     attached_to_creature: t.attached_to_creature,
                     enchanted_by_you: t.enchanted_by_you,
                     mv_max: t.mv_max,
+                    mv_min: t.mv_min,
                     mv_eq_x: t.mv_eq_x,
                     mv_max_x: t.mv_max_x,
                     tapped: t.tapped,
@@ -1440,12 +1478,15 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                         .unwrap_or(t.color.unwrap_or_default()),
                     modified: t.modified,
                     attacking: t.attacking,
+                    attacking_you: t.attacking_you,
                     power_less_than_source: t.power_less_than_source,
                     entered_this_turn: t.entered_this_turn,
                     nonbasic: t.nonbasic,
                     name: t.name.map(|s| &*Box::leak(s.into_boxed_str())),
                     nonlegendary: t.nonlegendary,
                     nonlair: t.nonlair,
+                    without_flying: t.without_flying,
+                    shares_type_with_dying_permanent: t.shares_type_with_dying_permanent,
                 })
             }
         }
@@ -1551,6 +1592,7 @@ enum TriggerTag {
     Etb,
     TurnedFaceUp,
     Attacks,
+    BlocksOrBecomesBlocked,
     Dies,
     CreatureDies,
     CreatureYouControlDies,
@@ -1560,13 +1602,17 @@ enum TriggerTag {
     CreatureYouControlDiesIncludingThisNontoken,
     CreatureAnOpponentControlsDies,
     EnchantmentYouControlDies,
+    NonlandPermanentYouControlDiesIncludingThis,
     Upkeep,
     EachUpkeep,
+    FirstMainPhase,
     BeginCombat,
     EndStep,
     EachEndStep,
+    EachDrawStep,
     EachOtherPlayerUntapStep,
     YouGainLife,
+    OpponentGainsLife,
     Magecraft,
     PlayerAttacksYourOpponent,
     YouAttackWithCreatures,
@@ -1688,6 +1734,10 @@ impl<'de> Deserialize<'de> for Ability {
             /// Timepiece's "Exile this artifact").
             #[serde(default)]
             exile_self: bool,
+            /// "Exile N target cards from an opponent's graveyard" as an additional cost
+            /// (Spurnmage Advocate's "Exile two target cards from an opponent's graveyard").
+            #[serde(default)]
+            graveyard_exile_target_count: u8,
             #[serde(default)]
             condition: Option<Condition>,
             #[serde(default)]
@@ -1785,6 +1835,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::Etb => Trigger::Etb,
                 TriggerTag::TurnedFaceUp => Trigger::TurnedFaceUp,
                 TriggerTag::Attacks => Trigger::Attacks,
+                TriggerTag::BlocksOrBecomesBlocked => Trigger::BlocksOrBecomesBlocked,
                 TriggerTag::Dies => Trigger::Dies,
                 TriggerTag::CreatureDies => Trigger::CreatureDies,
                 TriggerTag::CreatureYouControlDies => Trigger::CreatureYouControlDies,
@@ -1802,13 +1853,19 @@ impl<'de> Deserialize<'de> for Ability {
                     Trigger::CreatureAnOpponentControlsDies
                 }
                 TriggerTag::EnchantmentYouControlDies => Trigger::EnchantmentYouControlDies,
+                TriggerTag::NonlandPermanentYouControlDiesIncludingThis => {
+                    Trigger::NonlandPermanentYouControlDiesIncludingThis
+                }
                 TriggerTag::Upkeep => Trigger::Upkeep,
                 TriggerTag::EachUpkeep => Trigger::EachUpkeep,
+                TriggerTag::FirstMainPhase => Trigger::FirstMainPhase,
                 TriggerTag::BeginCombat => Trigger::BeginCombat,
                 TriggerTag::EndStep => Trigger::EndStep,
                 TriggerTag::EachEndStep => Trigger::EachEndStep,
+                TriggerTag::EachDrawStep => Trigger::EachDrawStep,
                 TriggerTag::EachOtherPlayerUntapStep => Trigger::EachOtherPlayerUntapStep,
                 TriggerTag::YouGainLife => Trigger::YouGainLife,
+                TriggerTag::OpponentGainsLife => Trigger::OpponentGainsLife,
                 TriggerTag::Magecraft => Trigger::Magecraft,
                 TriggerTag::PlayerAttacksYourOpponent => Trigger::PlayerAttacksYourOpponent,
                 TriggerTag::YouAttackWithCreatures => Trigger::YouAttackWithCreatures {
@@ -1909,6 +1966,7 @@ impl<'de> Deserialize<'de> for Ability {
                 mill_self: flat.mill_self,
                 discard_cost: flat.discard_cost,
                 exile_self: flat.exile_self,
+                graveyard_exile_target_count: flat.graveyard_exile_target_count,
             }),
         };
         Ok(Ability {

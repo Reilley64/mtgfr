@@ -395,13 +395,16 @@ pub enum PendingChoiceView {
     },
     /// Legal targets to choose among. `label` is the effect being aimed (e.g. "Deal 3 damage to
     /// any target"); `source` is the permanent or spell it comes from. `optional` ("up to one" —
-    /// Killian, Decisive Mentor) lets the player submit no target instead of one of `items`.
+    /// Killian, Decisive Mentor) lets the player submit no target instead of one of `items`. `max`
+    /// (CR 601.2c — Numot, the Devastator's "destroy up to two target lands") is how many of
+    /// `items` may be chosen at once; `1` for the ubiquitous single-target case.
     ChooseTarget {
         player: u8,
         source: ObjectId,
         label: String,
         items: Vec<ChoiceItem>,
         optional: bool,
+        max: u8,
     },
     /// A multi-target spell's targets to choose (CR 601.2c): between `min` and `max` distinct
     /// `items` for the `spell` on the stack. `label` is the spell's name.
@@ -431,6 +434,18 @@ pub enum PendingChoiceView {
         source: ObjectId,
         label: String,
     },
+    /// This player (the resolving controller) chooses how many cards to draw — any number `0..=max`
+    /// (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two cards"). Reveals only the maximum,
+    /// never hand or library contents.
+    MayDrawUpTo { player: u8, max: u8 },
+    /// Trade Secrets' declinable draw: this player (the caster), after `opponent` drew two
+    /// mandatorily, chooses any number `0..=max` of cards to draw. Reveals only the maximum,
+    /// never hand or library contents.
+    TradeSecretsCasterDraw { player: u8, max: u8, opponent: u8 },
+    /// Trade Secrets' repeat-or-stop pause: this player (the target opponent) may run the whole
+    /// process (the mandatory two-card draw, then `caster`'s declinable draw) again, or stop.
+    /// Answered by the yes/no `AnswerMay`.
+    TradeSecretsRepeat { player: u8, caster: u8 },
     /// This player (the active player at their untap step) may choose not to untap any of `items`
     /// — the permanents they control that "may choose not to untap" (CR 502.2 — Rubinia
     /// Soulsinger). `items` are public battlefield permanents. Answering keeps the chosen subset
@@ -484,6 +499,18 @@ pub enum PendingChoiceView {
         player: u8,
         source: ObjectId,
         cost: WireCost,
+    },
+    /// Pay Cumulative upkeep's non-mana upkeep cost (CR 702.24a — Jotun Grunt): put `count` of
+    /// `items` (every graveyard's cards, public) on the bottom of a single owner's library, or
+    /// decline (empty answer) and sacrifice `source` instead.
+    // ponytail: no client form yet — deferred to Phase 5 client catch-up, mirroring
+    // `PayRecoverOrExile`'s own precedent. Answerable today via the wire `ChooseSacrifices`
+    // intent (empty declines, else exactly `count` ids sharing one owner).
+    PayCumulativeUpkeepOrSacrifice {
+        player: u8,
+        source: ObjectId,
+        items: Vec<ChoiceItem>,
+        count: u32,
     },
     /// Pay `cost` to keep `source`, or decline and sacrifice it — a real ETB triggered ability
     /// (Rupture Spire, CR 603.3b), not Echo, though it shares `PayEchoOrSacrifice`'s shape.
@@ -586,6 +613,17 @@ pub enum PendingChoiceView {
         max: u8,
         items: Vec<ChoiceItem>,
     },
+    /// An activated ability's own targeted exile cost (CR 601.2c/602.2b — Spurnmage Advocate's
+    /// "Exile two target cards from an opponent's graveyard"), named after every other cost is
+    /// already paid: exactly `count` of `items` (cards in an opponent's graveyard). Answered by
+    /// `ChooseTargets`, like `ChooseAbilityTargets` — but a paid *cost*, not the ability's own
+    /// stack-bound target clause.
+    ChooseActivationCostTargets {
+        player: u8,
+        source: ObjectId,
+        count: u8,
+        items: Vec<ChoiceItem>,
+    },
     /// This player may sacrifice one of `items` (a permanent they control) to gain a rider
     /// effect, or decline (CR 601.2f-style resolution-time optional cost).
     MaySacrifice {
@@ -657,6 +695,14 @@ pub enum PendingChoiceView {
     },
     /// This player must discard `count` cards from their hand (`items`, private to them).
     Discard {
+        player: u8,
+        count: u32,
+        items: Vec<ChoiceItem>,
+    },
+    /// This player must put `count` cards from their hand (`items`, private to them) on top of
+    /// their library, in an order they choose (Brainstorm) — unlike [`Self::Discard`], the
+    /// answer's order matters (first-named ends up on top).
+    PutFromHandOnTop {
         player: u8,
         count: u32,
         items: Vec<ChoiceItem>,
@@ -736,6 +782,14 @@ pub enum PendingChoiceView {
     /// (Fact or Fiction's five revealed cards, public) to one of two piles: the answer names pile
     /// A's subset, the rest form pile B. Either pile may be empty.
     PartitionRevealed {
+        player: u8,
+        source: ObjectId,
+        items: Vec<ChoiceItem>,
+    },
+    /// This player (an **opponent** of the controller) must choose one of `items` (Murmurs from
+    /// Beyond's three revealed cards, public); the chosen card goes to the controller's
+    /// graveyard, the rest to the controller's hand.
+    OpponentChoosesRevealedToGraveyard {
         player: u8,
         source: ObjectId,
         items: Vec<ChoiceItem>,
@@ -842,6 +896,7 @@ impl PendingChoiceView {
             | Self::Proliferate { items, .. }
             | Self::PhaseOut { items, .. }
             | Self::ChooseAbilityTargets { items, .. }
+            | Self::ChooseActivationCostTargets { items, .. }
             | Self::MaySacrifice { items, .. }
             | Self::ChooseOwnSacrifices { items, .. }
             | Self::Devour { items, .. }
@@ -851,6 +906,7 @@ impl PendingChoiceView {
             | Self::MayReturnFromGraveyard { items, .. }
             | Self::MayDiscard { items, .. }
             | Self::Discard { items, .. }
+            | Self::PutFromHandOnTop { items, .. }
             | Self::PutLandFromHand { items, .. }
             | Self::PutCreatureFromHand { items, .. }
             | Self::ChooseDredge { items, .. }
@@ -862,9 +918,11 @@ impl PendingChoiceView {
             | Self::OpponentChoosesExiledNonland { items, .. }
             | Self::ChooseSplittingOpponent { items, .. }
             | Self::PartitionRevealed { items, .. }
+            | Self::OpponentChoosesRevealedToGraveyard { items, .. }
             | Self::ChooseExiledToCastFree { items, .. }
             | Self::ChooseCopyTarget { items, .. }
-            | Self::ChooseAttachHost { items, .. } => {
+            | Self::ChooseAttachHost { items, .. }
+            | Self::PayCumulativeUpkeepOrSacrifice { items, .. } => {
                 for item in items {
                     f(item);
                 }
@@ -878,6 +936,9 @@ impl PendingChoiceView {
             Self::RevealedCardToBattlefieldOrHand { item, .. } => f(item),
             Self::OrderTriggers { .. }
             | Self::MayYesNo { .. }
+            | Self::MayDrawUpTo { .. }
+            | Self::TradeSecretsCasterDraw { .. }
+            | Self::TradeSecretsRepeat { .. }
             | Self::PayCost { .. }
             | Self::PayOrCounter { .. }
             | Self::PayOrControllerDraws { .. }
@@ -1149,12 +1210,13 @@ mod tests {
                     player: None,
                 }],
                 optional: false,
+                max: 1,
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "choose_target", "player": 1, "source": 7,
                 "label": "Deal 1 damage to any target",
-                "items": [{"id": 4, "label": "Bear"}], "optional": false,
+                "items": [{"id": 4, "label": "Bear"}], "optional": false, "max": 1,
             }),
         );
         assert_eq!(
@@ -1169,12 +1231,13 @@ mod tests {
                     player: Some(1),
                 }],
                 optional: false,
+                max: 1,
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "choose_target", "player": 0, "source": 7,
                 "label": "Exile target player's graveyard",
-                "items": [{"id": 0, "label": "Player 2", "player": 1}], "optional": false,
+                "items": [{"id": 0, "label": "Player 2", "player": 1}], "optional": false, "max": 1,
             }),
         );
         assert_eq!(

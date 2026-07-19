@@ -184,6 +184,7 @@ pub(crate) fn project_event(
         },
         Event::Tapped { object } => VisibleEvent::Tapped { object },
         Event::Untapped { object } => VisibleEvent::Untapped { object },
+        Event::RemovedFromCombat { object } => VisibleEvent::RemovedFromCombat { object },
         Event::RegenerationShieldCreated { object } => {
             VisibleEvent::RegenerationShieldCreated { object }
         }
@@ -320,6 +321,8 @@ pub(crate) fn project_event(
             source_name: _,
         } => VisibleEvent::Goaded { object, by: by.0 },
         Event::GoadCleared { by } => VisibleEvent::GoadCleared { by: by.0 },
+        Event::NextUntapSkipMarked { object } => VisibleEvent::NextUntapSkipMarked { object },
+        Event::NextUntapSkipConsumed { object } => VisibleEvent::NextUntapSkipConsumed { object },
         Event::VowCountersPlaced { object, protected } => VisibleEvent::VowCountersPlaced {
             object,
             protected: protected.0,
@@ -413,6 +416,17 @@ pub(crate) fn project_event(
             card,
             from,
             player: player.0,
+        },
+        Event::PutFromHandOnTop {
+            card,
+            from,
+            def,
+            player,
+        } => VisibleEvent::PutFromHandOnTop {
+            player: player.0,
+            card,
+            from: redact_private(player, viewer, from),
+            def: redact_private(player, viewer, def.name.to_string()),
         },
         Event::BlockerDeclared { blocker, attacker } => {
             VisibleEvent::BlockerDeclared { blocker, attacker }
@@ -605,9 +619,17 @@ pub(crate) fn project_event(
             controller: controller.0,
         },
         Event::ReturnedToHand { card, from } => VisibleEvent::ReturnedToHand { card, from },
-        Event::TuckedToLibrary { card, from, to_top } => {
-            VisibleEvent::TuckedToLibrary { card, from, to_top }
-        }
+        Event::TuckedToLibrary {
+            card,
+            from,
+            to_top,
+            second_from_top,
+        } => VisibleEvent::TuckedToLibrary {
+            card,
+            from,
+            to_top,
+            second_from_top,
+        },
         Event::LibraryShuffled { player } => VisibleEvent::LibraryShuffled { player: player.0 },
         // A reveal is public (CR 701.30) — every viewer, including a spectator, sees it.
         Event::RevealedTopOfLibrary { player, card, def } => VisibleEvent::RevealedTopOfLibrary {

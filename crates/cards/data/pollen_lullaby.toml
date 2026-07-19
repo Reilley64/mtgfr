@@ -1,0 +1,36 @@
+# Clash with an opponent. Prevent all combat damage that would be dealt this turn. If you win the
+# clash, creatures your opponents control don't untap during their controllers' next untap steps.
+# (Each clashing player reveals the top card of their library, then puts that card on the top or
+# bottom. A player wins if their card had a higher mana value.)
+name = "Pollen Lullaby"
+id = "e907775d-bb98-4da5-828e-1ce9a8c84533"
+default_print = "2854f6d5-da36-4ebd-81b9-3a62abe93e5d"
+oracle = "Clash with an opponent. Prevent all combat damage that would be dealt this turn. If you win the clash, creatures your opponents control don't untap during their controllers' next untap steps. (Each clashing player reveals the top card of their library, then puts that card on the top or bottom. A player wins if their card had a higher mana value.)"
+set = "tsp"
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "instant"
+
+# Clash with an opponent. Prevent all combat damage that would be dealt this turn. If you win the
+# clash, creatures your opponents control don't untap during their controllers' next untap steps.
+[[abilities]]
+timing = "spell"
+
+# Clash with an opponent.
+[[abilities.effects]]
+type = "clash"
+
+# Prevent all combat damage that would be dealt this turn.
+[[abilities.effects]]
+type = "prevent_all_combat_damage_this_turn"
+
+# If you win the clash, creatures your opponents control don't untap during their controllers' next
+# untap steps.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "won_clash" }
+then = [{ type = "skip_next_untap_opponent_creatures" }]

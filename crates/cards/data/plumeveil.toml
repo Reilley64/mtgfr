@@ -1,0 +1,17 @@
+# Flash
+# Defender, flying
+name = "Plumeveil"
+id = "14fa0771-cf2b-4563-98b2-ff4ee24bce21"
+default_print = "6b2d484d-b0fd-4add-a54f-0956d7401950"
+oracle = "Flash\nDefender, flying"
+set = "cmd"
+subtypes = ["Elemental"]
+keywords = ["flash", "defender", "flying"]
+
+[cost]
+hybrid = [["white", "blue"], ["white", "blue"], ["white", "blue"]]
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

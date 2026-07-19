@@ -64,15 +64,32 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
         Intent::ChooseTargetPlayers { player, players } => {
             game.choose_target_players(player, players)
         }
-        // AnswerMay's yes/no wire shape also drives Dance with Calamity's exile-another loop.
+        // AnswerMay's yes/no wire shape also drives Dance with Calamity's exile-another loop and
+        // Trade Secrets' opponent repeat-or-stop loop.
         Intent::AnswerMay { player, yes } => {
             if matches!(
                 game.pending_choice,
                 Some(PendingChoice::DanceExileMore { .. })
             ) {
                 game.dance_exile_more(player, yes)
+            } else if matches!(
+                game.pending_choice,
+                Some(PendingChoice::TradeSecretsRepeat { .. })
+            ) {
+                game.answer_trade_secrets_repeat(player, yes)
             } else {
                 game.answer_may(player, yes)
+            }
+        }
+        // ChooseDrawCount's count-choice wire shape also drives Trade Secrets' caster draw.
+        Intent::ChooseDrawCount { player, count } => {
+            if matches!(
+                game.pending_choice,
+                Some(PendingChoice::TradeSecretsCasterDraw { .. })
+            ) {
+                game.answer_trade_secrets_caster_draw(player, count)
+            } else {
+                game.answer_may_draw_up_to(player, count)
             }
         }
         // Pay-or-counter / pay-or-sacrifice reuse PayOptionalCost's wire shape.
@@ -195,11 +212,19 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
                 Some(PendingChoice::ChooseCounterTargetForPlayer { .. })
             ) {
                 game.answer_choose_counter_target(player, sacrifices)
+            } else if matches!(
+                game.pending_choice,
+                Some(PendingChoice::PayCumulativeUpkeepOrSacrifice { .. })
+            ) {
+                game.pay_cumulative_upkeep(player, sacrifices)
             } else {
                 game.choose_sacrifices(player, sacrifices)
             }
         }
         Intent::Discard { player, cards } => game.answer_discard(player, cards),
+        Intent::PutFromHandOnTop { player, cards } => {
+            game.answer_put_from_hand_on_top(player, cards)
+        }
         Intent::DeclineUntap {
             player,
             keep_tapped,
@@ -222,6 +247,14 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             ) =>
         {
             game.choose_opponent_exiled_nonland(player, choice)
+        }
+        Intent::ChooseExiledWithCard { player, choice }
+            if matches!(
+                game.pending_choice,
+                Some(PendingChoice::OpponentChoosesRevealedToGraveyard { .. })
+            ) =>
+        {
+            game.choose_opponent_revealed_to_graveyard(player, choice)
         }
         Intent::ChooseExiledWithCard { player, choice } => {
             game.choose_exiled_with_card(player, choice)
@@ -313,18 +346,20 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
                 cards: hand.clone(),
             })
         }
+        // Forced only when there's no real choice left: an exact (non-"up to") count that
+        // already equals the whole legal set — same "take all `n`" shape
+        // `Game::place_ability_second_clause` auto-fills without even pausing.
         PendingChoice::ChooseTarget {
             player,
             legal,
-            optional,
+            count,
             ..
-        } => match (legal[..].len(), *optional) {
-            (1, false) => Some(Intent::ChooseTargets {
+        } => (count.min == count.max && count.max as usize == legal.len()).then(|| {
+            Intent::ChooseTargets {
                 player: *player,
-                targets: vec![legal[0]],
-            }),
-            _ => None,
-        },
+                targets: legal.clone(),
+            }
+        }),
         PendingChoice::OrderTriggers {
             player, effects, ..
         } => (effects.len() == 1).then(|| Intent::ChooseOrder {

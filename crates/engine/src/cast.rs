@@ -492,7 +492,7 @@ impl Game {
         // A multi-target spell now chooses its targets (CR 601.2c): auto-fill when the choice is
         // forced (a single legal set — take them all), otherwise pause on a ChooseSpellTargets.
         if let Some((spec, count)) = multi_target {
-            self.choose_spell_targets(spell_id, spec, count, player, &mut events);
+            self.choose_spell_targets(spell_id, spec, count, player, player, &mut events);
         }
         // Replicate (CR 702.108b-c): "copy it for each time you paid its replicate cost … This
         // all happens before any player has a chance to cast spells or activate abilities in
@@ -608,35 +608,58 @@ impl Game {
             .nth(clause)
     }
 
+    /// `def`'s first `Timing::Spell` ability with a target — spec and count (CR 707.10c/CR
+    /// 114.6a), single- or multi-target alike. The shared lookup [`Effect::CopyTargetSpell`]'s
+    /// copy-retarget and [`Effect::ChangeTargetOfTargetSpellOrAbility`]'s optional (Wild Ricochet)
+    /// bend both key off. `None` for a targetless spell (no retarget/copy-retarget offered). A
+    /// later independent clause (Magma Opus) is reached separately once clause 0 settles, through
+    /// [`Self::spell_target_clause`] via [`Self::advance_spell_target_clauses`].
+    pub(crate) fn spell_primary_target(&self, def: CardDef) -> Option<(TargetSpec, TargetCount)> {
+        let ability = def
+            .abilities
+            .iter()
+            .find(|a| matches!(a.timing, Timing::Spell))?;
+        let spec = ability.effect.target();
+        (spec != TargetSpec::None).then(|| (spec, ability.effect.target_count()))
+    }
+
     /// Record a just-cast multi-target spell's chosen targets (CR 601.2c), starting at its first
     /// independent target clause. Delegates to [`Self::choose_spell_target_clause`], which chains
     /// through every clause in printed order before the divided-damage/counter split runs. Reused by
-    /// `Effect::CopyTargetSpell` (in `effects.rs`) to offer the copy's CR 707.10c retarget — same
-    /// shape, just against a freshly-minted spell id instead of a just-cast one.
+    /// `Effect::CopyTargetSpell`/`ChangeTargetOfTargetSpellOrAbility` (in `effects.rs`) to offer a
+    /// copy's or a bent original's CR 707.10c/114.6a retarget — same shape, just against an
+    /// already-on-the-stack spell id instead of a just-cast one. `anchor` is whose perspective
+    /// legality is evaluated from (the bent/copied spell's own controller — CR 114.6/707.10a);
+    /// `chooser` is who actually answers the pause. The two always coincide for a fresh cast or a
+    /// copy (a copy's controller *is* the chooser), but can differ when retargeting the ORIGINAL
+    /// spell (Wild Ricochet may bend an opponent's spell without becoming its controller).
     pub(crate) fn choose_spell_targets(
         &mut self,
         spell: ObjectId,
         spec: TargetSpec,
         count: TargetCount,
-        player: PlayerId,
+        anchor: PlayerId,
+        chooser: PlayerId,
         events: &mut Vec<Event>,
     ) {
-        self.choose_spell_target_clause(spell, 0, spec, count, player, events);
+        self.choose_spell_target_clause(spell, 0, spec, count, anchor, chooser, events);
     }
 
     /// After clause `clause` of `spell` is settled, choose the next independent clause (CR 601.2c —
     /// all a spell's targets are chosen at once, in printed order) or, once none remain, run the
-    /// CR 601.2d divided-damage/counter split over the finished target sets.
+    /// CR 601.2d divided-damage/counter split over the finished target sets. See
+    /// [`Self::choose_spell_targets`] for `anchor`/`chooser`.
     pub(crate) fn advance_spell_target_clauses(
         &mut self,
         spell: ObjectId,
         clause: usize,
-        player: PlayerId,
+        anchor: PlayerId,
+        chooser: PlayerId,
         events: &mut Vec<Event>,
     ) {
         let def = self.def_of(spell);
         if let Some((spec, count)) = self.spell_target_clause(def, clause) {
-            self.choose_spell_target_clause(spell, clause, spec, count, player, events);
+            self.choose_spell_target_clause(spell, clause, spec, count, anchor, chooser, events);
             return;
         }
         self.maybe_begin_damage_division(spell, events);
@@ -648,19 +671,22 @@ impl Game {
     /// "the maximum possible number"). When that's a single forced set (take every legal target, no
     /// room to choose fewer or which), it's auto-filled here with no pause and the next clause runs;
     /// otherwise the caster answers a [`PendingChoice::ChooseSpellTargets`] carrying this `clause`.
+    /// See [`Self::choose_spell_targets`] for `anchor`/`chooser`.
+    #[allow(clippy::too_many_arguments)]
     fn choose_spell_target_clause(
         &mut self,
         spell: ObjectId,
         clause: usize,
         spec: TargetSpec,
         count: TargetCount,
-        player: PlayerId,
+        anchor: PlayerId,
+        chooser: PlayerId,
         events: &mut Vec<Event>,
     ) {
         let legal = self.legal_targets_for(
             spec,
             spell,
-            player,
+            anchor,
             color_identity(self.def_of(spell)),
             self.spell(spell).x,
         );
@@ -705,13 +731,13 @@ impl Game {
                     clause: clause as u8,
                 },
             );
-            self.advance_spell_target_clauses(spell, clause + 1, player, events);
+            self.advance_spell_target_clauses(spell, clause + 1, anchor, chooser, events);
             return;
         }
         crate::pending::raise_choice(
             self,
             PendingChoice::ChooseSpellTargets {
-                player,
+                player: chooser,
                 spell,
                 min: lo,
                 max: hi,
@@ -996,10 +1022,13 @@ impl Game {
 
     /// Activate a hand card's [`CardDef::hand_ability`] (CR 113.6/602.5e — a hand-activated,
     /// discard-this-card ability with an authored payload, e.g. Magma Opus's "{U/R}{U/R},
-    /// Discard this card: Create a Treasure token."). The general sibling of [`Game::cycle`]
-    /// for a card whose from-hand ability isn't cycling's fixed draw-1 — same skeleton
-    /// (priority, hand+owner check, pay cost, discard), an authored effect list instead of a
-    /// hardcoded draw.
+    /// Discard this card: Create a Treasure token.") or [`CardDef::forecast`] (CR 702.57 —
+    /// Skyscribing's Forecast, which *reveals* rather than discards its card and is gated to the
+    /// controller's own upkeep, once each turn). The general sibling of [`Game::cycle`] for a
+    /// card whose from-hand ability isn't cycling's fixed draw-1 — same skeleton (priority,
+    /// hand+owner check, pay cost, then discard-or-reveal), an authored effect list instead of a
+    /// hardcoded draw. No pool card has both `hand_ability` and `forecast`, so `hand_ability` (if
+    /// present) always wins; only `forecast`'s own gates apply when it's the one carried.
     pub(crate) fn activate_hand_ability(
         &mut self,
         player: PlayerId,
@@ -1016,27 +1045,65 @@ impl Game {
         if c.zone != Zone::Hand || c.owner != player {
             return Err(Reject::CannotActivate);
         }
-        let Some(ability) = c.def.hand_ability else {
-            return Err(Reject::CannotActivate);
+        let forecast = c.def.hand_ability.is_none();
+        let ability = match (c.def.hand_ability, c.def.forecast) {
+            (Some(ability), _) => ability,
+            (None, Some(ability)) => {
+                // Forecast (CR 702.57a): activated only during the controller's own upkeep, and
+                // only once each turn.
+                if self.step != Step::Upkeep || self.active_player != player {
+                    return Err(Reject::CannotActivate);
+                }
+                // ponytail: reuses the battlefield `once_each_turn` activation-cap store
+                // (`(source, ability_index)`, normally a real ability array index) with a fixed
+                // sentinel index of 0 — a hand card carries at most one `forecast`/`hand_ability`,
+                // so there's no battlefield ability index to collide with on the same object id.
+                if self
+                    .once_per_turn
+                    .activated
+                    .iter()
+                    .any(|&(o, i)| o == card && i == 0)
+                {
+                    return Err(Reject::CannotActivate);
+                }
+                ability
+            }
+            (None, None) => return Err(Reject::CannotActivate),
         };
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
-        // before the discard) and "discard this card" (the rest of the cost) — before the
-        // ability goes on the stack.
+        // before the discard/reveal) and, for `hand_ability`, "discard this card" (the rest of
+        // the cost) — before the ability goes on the stack.
         let mut events = Vec::new();
         self.settle_payment(player, ability.cost, None, None, &mut events)
             .map_err(|_| Reject::CannotActivate)?;
-        self.push_apply(
-            &mut events,
-            Event::MovedToGraveyard {
-                card: self.next_object_id(),
-                from: card,
-            },
-        );
+        if forecast {
+            // Forecast reveals rather than discards (CR 702.57) — the card stays in hand.
+            // ponytail: the reveal itself isn't a modeled event (no observer reads it — nothing
+            // downstream keys off "was this card revealed"), the same unobserved-reveal posture
+            // the check-land family (`furycalm_snarl` et al.) already takes for a hand reveal;
+            // model a real reveal event if a future card reads one. Once each turn is recorded so
+            // a repeat activation this turn rejects above.
+            self.push_apply(
+                &mut events,
+                Event::AbilityActivatedThisTurn {
+                    object: card,
+                    ability_index: 0,
+                },
+            );
+        } else {
+            self.push_apply(
+                &mut events,
+                Event::MovedToGraveyard {
+                    card: self.next_object_id(),
+                    from: card,
+                },
+            );
+        }
         // CR 113.6/602: this is an activated ability — its authored payload goes on the stack (a
         // single stack ability, `Sequence`-wrapped when it has more than one step) so a responder
         // (Azorius Guildmage) can interact with it, just like cycling's draw above. `card` is the
-        // now-discarded source, last-known information.
+        // now-discarded (or still-in-hand, revealed) source, last-known information.
         // ponytail: a hand ability's payload takes no target in the pool (Magma Opus's Treasure,
         // the landcyclers' library search); pushed with `None`. Thread a chosen target through
         // here if a targeted hand ability ever appears.
@@ -1295,10 +1362,9 @@ impl Game {
         let Some(perm) = self.as_permanent(source) else {
             return Err(Reject::CannotActivate);
         };
-        // ponytail: gated on the owner, not the controller (CR 602.2 gives the action to the
-        // controller) — the same engine-wide convention as `ability_activation_gate`; switch them
-        // together if a stolen prepared permanent must cast for its thief.
-        if perm.owner != player {
+        // CR 602.2: casting a prepared permanent's back face is its controller's action — a
+        // stolen prepared permanent casts for its thief, not its owner.
+        if self.controller_of(source) != player {
             return Err(Reject::CannotActivate);
         }
         if !perm.prepared {
@@ -1379,7 +1445,7 @@ impl Game {
             },
         );
         if let Some((spec, count)) = multi_target {
-            self.choose_spell_targets(spell, spec, count, player, &mut events);
+            self.choose_spell_targets(spell, spec, count, player, player, &mut events);
         }
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
         self.consecutive_passes = 0;
@@ -1474,7 +1540,7 @@ impl Game {
             },
         );
         if let Some((spec, count)) = multi_target {
-            self.choose_spell_targets(spell, spec, count, player, &mut events);
+            self.choose_spell_targets(spell, spec, count, player, player, &mut events);
         }
         // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
         self.consecutive_passes = 0;
@@ -1683,11 +1749,10 @@ impl Game {
         } else if perm.is_none() {
             return Err(Reject::CannotActivate);
         }
-        // ponytail: gated on the owner, but CR 602.2 gives activation to the *controller* —
-        // they differ under a control-changing Aura (Effect::ControlAttached). Pre-existing
-        // engine-wide convention (tap_for_mana, available_mana agree); switch them to
-        // `controller_of` together if stolen permanents need to activate for their thief.
-        if self.owner_of(source) != player {
+        // CR 602.2: only a permanent's *controller* may activate its abilities — a stolen
+        // permanent activates for its thief, not its owner. (A `functions_in_graveyard` card
+        // activates from its owner's graveyard, where control and ownership coincide.)
+        if self.controller_of(source) != player {
             return Err(Reject::CannotActivate);
         }
         // CR 613.1e/701 "loses all abilities": a printed activated ability is suppressed while an
@@ -1818,6 +1883,9 @@ impl Game {
         x: u32,
     ) -> Result<Vec<Event>, Reject> {
         let (ability, cost) = self.ability_activation_gate(player, object, ability_index)?;
+        // The ability's source's own colors (CR 702.16b) — Nin, the Pain Artist (a UR source)
+        // can't target a permanent with protection from red or blue.
+        let source_colors = color_identity(self.def_of(object));
         // `ThisPermanent`/`EnchantedCreature` are a fixed reference, not a real choice (CR:
         // these abilities never say "target") — the activator names no target at all, and this
         // resolves it to the ability's own source (or its attachment host) regardless of what
@@ -1827,12 +1895,18 @@ impl Game {
             spec @ (TargetSpec::ThisPermanent | TargetSpec::EnchantedCreature) => {
                 // An activated ability carries no {X} (mirrors `run`'s "abilities (CR 602, CR 113)
                 // carry no X" for `StackItem::Ability`).
-                let legal = self.legal_targets_for(spec, object, player, [false; Color::COUNT], 0);
+                let legal = self.legal_targets_for(spec, object, player, source_colors, 0);
                 match legal.first() {
                     Some(&fixed) => Some(fixed),
                     None => return Err(Reject::IllegalTarget),
                 }
             }
+            // An ordinary chosen target isn't re-validated at activation (this engine's
+            // established posture — see `deekah_grant_unblockable_lets_token_through`, which
+            // relies on an illegal target fizzling at resolution, CR 608.2b, rather than
+            // rejecting the activation outright); `Game::resolve_top`'s `target_still_legal`
+            // re-check is where protection (CR 702.16b) actually filters it, with these same
+            // `source_colors`.
             _ => target,
         };
         // A loyalty ability's change (+N / 0 / −N) is paid as a cost before the effect goes
@@ -1891,6 +1965,29 @@ impl Game {
             }
             named.push(id);
         }
+        // "Exile N target cards from an opponent's graveyard" as a targeted additional cost (CR
+        // 601.2c/602.2b — Spurnmage Advocate): at least `count` legal graveyard cards must exist
+        // to activate at all — an uncompletable targeted cost makes the whole activation illegal,
+        // same rule the `discard_cost`/`mill_self` count checks already enforce above/in the gate.
+        // The actual cards are named in a follow-up `ChooseActivationCostTargets` pause (below),
+        // once every other cost is paid — CR 601.2c's targets, unlike a plain untargeted choice.
+        let graveyard_exile_target_legal = (cost.graveyard_exile_target_count > 0).then(|| {
+            self.legal_targets_for(
+                TargetSpec::CardInGraveyard {
+                    whose: GraveyardScope::Opponents,
+                    filter: CardFilter::AnyCard,
+                },
+                object,
+                player,
+                [false; Color::COUNT],
+                0,
+            )
+        });
+        if let Some(legal) = &graveyard_exile_target_legal
+            && legal.len() < cost.graveyard_exile_target_count as usize
+        {
+            return Err(Reject::CannotActivate);
+        }
         // Read the sacrificed creature's power/toughness *before* it's sacrificed (Dina, Soul
         // Steeper's "+X/+0"; Dina, Essence Brewer's "gain X life and put X counters", X = that
         // power; Miren, the Moaning Well's "gain life equal to the sacrificed creature's
@@ -1911,8 +2008,22 @@ impl Game {
         // a no-`{X}` cost ignores `x`.
         let mut events = Vec::new();
         let exclude = cost.taps_self.then_some(object);
-        self.settle_payment(player, cost.mana.with_x(x), exclude, None, &mut events)
-            .map_err(|_| Reject::CannotActivate)?;
+        // No cast spell funds this payment, but a `SpendRestriction::HasX` credit (Elementalist's
+        // Palette's "spend only on costs that contain {X}") cares about {X} in *this* cost, not
+        // just a spell's — Nin, the Pain Artist's own `{X}{U}{R}` activation qualifies (CR 106.9).
+        let characteristics = SpellCharacteristics {
+            mana_value: 0,
+            has_x: cost.mana.x > 0,
+            is_instant_or_sorcery: false,
+        };
+        self.settle_payment(
+            player,
+            cost.mana.with_x(x),
+            exclude,
+            Some(characteristics),
+            &mut events,
+        )
+        .map_err(|_| Reject::CannotActivate)?;
         // Read what the payment actually spent right off its trailing `ManaSpent`, before any
         // later push dilutes the tail — Illusionary Mask's "the mana you spent on {X}" (CR 107.3)
         // reads this multiset when the ability resolves.
@@ -2113,6 +2224,54 @@ impl Game {
             // its tap fires no watch — no pool land is both `single_color` and a watch host; move
             // this call above that early return if one ever is.
             self.land_tapped_for_mana(object, player, &mut events);
+            return Ok(events);
+        }
+
+        // Every other cost is paid; a targeted graveyard-exile cost (Spurnmage Advocate) still
+        // needs its own targets named. Pause on a `ChooseActivationCostTargets` choice — answering
+        // it exiles them and pushes this already-fixed `(effect, target)` onto the stack, mirroring
+        // `push_ability_group_with_x` below exactly (see `Game::choose_activation_cost_targets_answer`).
+        if let Some(legal) = graveyard_exile_target_legal {
+            pending::raise_choice(
+                self,
+                PendingChoice::ChooseActivationCostTargets {
+                    player,
+                    source: object,
+                    effect,
+                    target,
+                    x,
+                    spent_mana,
+                    legal,
+                    count: cost.graveyard_exile_target_count,
+                },
+            );
+            return Ok(events);
+        }
+
+        // A two-target activated ability (Zedruu's donation, CR 601.2c): its first target (the
+        // permanent you control) rides `target` — validate it against the effect's own spec (CR
+        // 602.2b), then pause to choose the second, independent target clause (the recipient
+        // opponent) before the ability hits the stack, threading the activation's `{X}`/spent
+        // mana and `activated` through the placement.
+        if self
+            .ability_second_target_clause(effect, object, player)
+            .is_some()
+        {
+            let spec = effect.target();
+            let legal = self.legal_targets_for(spec, object, player, source_colors, x);
+            if !target.is_some_and(|t| legal.contains(&t)) {
+                return Err(Reject::IllegalTarget);
+            }
+            self.place_ability_second_clause(
+                player,
+                object,
+                effect,
+                target,
+                x,
+                spent_mana,
+                true,
+                &mut events,
+            );
             return Ok(events);
         }
 

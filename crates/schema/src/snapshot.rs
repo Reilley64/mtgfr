@@ -288,7 +288,11 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_choices: None,
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
-            has_x: false,
+            // An activation cost with {X} (Nin, the Pain Artist's {X}{U}{R}, {T}) needs the
+            // client's X prompt before the one-click take_action fires — same flag casts use.
+            has_x: game.ability_at(source, ability).is_some_and(
+                |a| matches!(a.timing, engine::Timing::Activated(cost) if cost.mana.x > 0),
+            ),
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -1573,6 +1577,26 @@ mod tests {
         );
     }
 
+    #[test]
+    fn an_activate_action_with_x_in_its_cost_carries_has_x() {
+        // Nin, the Pain Artist's {X}{U}{R}, {T}: the client must prompt for X before the
+        // one-click take_action fires (regression: has_x was hardcoded false for activations).
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let nin = game.spawn_on_battlefield(PlayerId(0), def("Nin, the Pain Artist"));
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let tapland = game.spawn_on_battlefield(PlayerId(0), def("Forest"));
+        refresh_via_mana_tap(&mut game, tapland);
+
+        let snap = snapshot(&game, PlayerId(0));
+        let activate = snap
+            .actions
+            .iter()
+            .find(|a| a.kind == "activate" && a.object == Some(nin))
+            .expect("Nin's ability is a listed activate action");
+        assert!(activate.has_x, "an {{X}} activation cost sets has_x");
+    }
+
     /// A test-only enchantment with two independent abilities sharing one trigger tag ("a
     /// creature you control dies") — exercises the wire `OrderTriggers` choice, which needs a
     /// genuine two-simultaneous-triggers source. Moldervine Reclamation used to be this fixture,
@@ -1635,6 +1659,7 @@ mod tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -1655,6 +1680,7 @@ mod tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }

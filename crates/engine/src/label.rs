@@ -39,6 +39,8 @@ fn amount_label(amount: Amount) -> String {
                 CounterKind::Time => "time",
                 CounterKind::Scream => "scream",
                 CounterKind::MinusOneMinusOne => "-1/-1",
+                CounterKind::Strife => "strife",
+                CounterKind::Age => "age",
             };
             format!("1 per {kind_name} counter on it")
         }
@@ -62,6 +64,9 @@ fn amount_label(amount: Amount) -> String {
             "the number of colors in your commander's color identity".to_string()
         }
         Amount::TotalPowerYouControl => "the total power of creatures you control".to_string(),
+        Amount::PermanentsYouOwnOpponentsControl => {
+            "the number of permanents you own that your opponents control".to_string()
+        }
         Amount::IfCondition { then, .. } => amount_label(*then),
         Amount::TriggeringSpellManaValue => "that spell's mana value".to_string(),
         Amount::TriggeringSpellManaSpent => {
@@ -373,6 +378,17 @@ impl Effect {
             Effect::GainLifeTargetController { amount } => {
                 format!("Target's controller gains {} life", amount_label(amount))
             }
+            Effect::DealDamageToTargetController { amount } => {
+                format!("Deals {} damage to that creature's controller", amount_label(amount))
+            }
+            Effect::Clash => "Clash with an opponent".to_string(),
+            Effect::ScheduleColorlessManaForCounteredSpellNextMainPhase => {
+                "Add {C} for each mana in that spell's mana cost at your next main phase".to_string()
+            }
+            Effect::SkipNextUntapOpponentCreatures => {
+                "Creatures your opponents control don't untap during their next untap steps"
+                    .to_string()
+            }
             Effect::Manifest => "Its controller manifests the top card of their library".to_string(),
             Effect::AddMana { .. } => "Add mana".to_string(),
             Effect::GrantManaAbility { filter, .. } => match filter.subtypes {
@@ -511,6 +527,7 @@ impl Effect {
                 colors,
                 chosen_subtype,
                 attacking_only,
+                blocking_only,
                 commander_only,
                 has_counters,
                 condition: _,
@@ -548,6 +565,11 @@ impl Effect {
                 };
                 let scope = if attacking_only {
                     format!("Attacking {}", scope.to_lowercase())
+                } else {
+                    scope
+                };
+                let scope = if blocking_only {
+                    format!("Blocking {}", scope.to_lowercase())
                 } else {
                     scope
                 };
@@ -617,12 +639,29 @@ impl Effect {
             Effect::CantBeAttackedBy { filter } => {
                 format!("{} can't attack you", permanent_filter_label(filter))
             }
+            Effect::MustAttackRandomOpponent => {
+                "Choose an opponent at random. This attacks that player this combat if able"
+                    .to_string()
+            }
             Effect::PreventCombatDamageToYouCreatingTokens { .. } => {
                 "Prevent all combat damage that would be dealt to you this turn, creating a token per point prevented".to_string()
             }
             Effect::PreventAllCombatDamageThisTurn => {
                 "Prevent all combat damage that would be dealt this turn".to_string()
             }
+            Effect::PreventCombatDamageStatic { to_self, by_self } => match (to_self, by_self) {
+                (true, true) => {
+                    "Prevent all combat damage that would be dealt to and dealt by this creature"
+                        .to_string()
+                }
+                (true, false) => {
+                    "Prevent all combat damage that would be dealt to this creature".to_string()
+                }
+                (false, true) => {
+                    "Prevent all combat damage that would be dealt by this creature".to_string()
+                }
+                (false, false) => "Prevent no combat damage".to_string(),
+            },
             Effect::PlaceVowCounters { .. } => "Put a vow counter on each surviving creature".to_string(),
             Effect::DestroyTarget { .. } => "Destroy target".to_string(),
             Effect::RegenerateShield { .. } => "Regenerate target".to_string(),
@@ -635,13 +674,20 @@ impl Effect {
             Effect::DamageEachCreature {
                 amount,
                 opponents_only,
+                filter,
             } => {
-                let subject = if opponents_only {
-                    "each creature your opponents control"
+                let mut subject = if opponents_only {
+                    "each creature your opponents control".to_string()
                 } else {
-                    "each creature"
+                    "each creature".to_string()
                 };
+                if filter.is_some_and(|f| f.without_flying) {
+                    subject.push_str(" without flying");
+                }
                 format!("Deal {} damage to {subject}", amount_label(amount))
+            }
+            Effect::DamageEachPlayer { amount } => {
+                format!("Deal {} damage to each player", amount_label(amount))
             }
             Effect::WeakenEachCreature {
                 power,
@@ -678,6 +724,8 @@ impl Effect {
                     CounterKind::Time => "time",
                     CounterKind::Scream => "scream",
                     CounterKind::MinusOneMinusOne => "-1/-1",
+                    CounterKind::Strife => "strife",
+                    CounterKind::Age => "age",
                 };
                 format!("Put {} {kind_name} counters", amount_label(count))
             }
@@ -726,6 +774,8 @@ impl Effect {
                     CounterKind::Time => "time",
                     CounterKind::Scream => "scream",
                     CounterKind::MinusOneMinusOne => "-1/-1",
+                    CounterKind::Strife => "strife",
+                    CounterKind::Age => "age",
                 };
                 format!("Enters with {} {kind_name} counters", amount_label(amount))
             }
@@ -885,6 +935,12 @@ impl Effect {
                  into two piles. Put one pile into your hand and the other into your graveyard"
                     .to_string()
             }
+            Effect::RevealTopOpponentPicksOneToGraveyard { count } => {
+                format!(
+                    "Reveal the top {count} cards of your library. An opponent chooses one of \
+                     them. Put that card into your graveyard and the rest into your hand"
+                )
+            }
             Effect::EachPlayerExilesUntilNonlandOpponentPicks => {
                 "Each player exiles cards from the top of their library until they exile a nonland \
                  card. An opponent chooses a nonland card exiled this way. You may cast up to two \
@@ -997,11 +1053,27 @@ impl Effect {
                  battlefield"
                     .to_string()
             }
+            Effect::ShuffleTargetPermanentIntoLibrary { .. } => {
+                "The owner of target permanent shuffles it into their library".to_string()
+            }
+            Effect::TargetOwnerDraws {
+                count,
+                controller: true,
+            } => format!("That target's controller draws {}", amount_label(count)),
+            Effect::TargetOwnerDraws {
+                count,
+                controller: false,
+            } => format!("That target's owner draws {}", amount_label(count)),
             Effect::TuckPermanentIntoLibrary { to_top: true, .. } => {
                 "Put target permanent on top of its owner's library".to_string()
             }
             Effect::TuckPermanentIntoLibrary { to_top: false, .. } => {
                 "Put target permanent on the bottom of its owner's library".to_string()
+            }
+            Effect::TuckSelfAndBlockedCreatures => {
+                "Put this creature and each creature it's blocking on top of their owners' \
+                 libraries, then those players shuffle"
+                    .to_string()
             }
             Effect::Mill { count, .. } => format!("Target player mills {}", amount_label(count)),
             Effect::ExileGraveyard => "Exile target player's graveyard".to_string(),
@@ -1015,6 +1087,15 @@ impl Effect {
             Effect::TargetPlayerMayDraw { count, .. } => {
                 format!("Target player may draw {}", amount_label(count))
             }
+            Effect::MayDrawUpTo { count } => {
+                format!("You may draw up to {}", amount_label(count))
+            }
+            Effect::MayDrawUpToThenOpponentMayRepeat { count } => {
+                format!(
+                    "You may draw up to {}, then that opponent may repeat this process",
+                    amount_label(count)
+                )
+            }
             Effect::EachOpponentDrain { amount, sum_gain } => {
                 let amount_str = amount_label(amount);
                 if sum_gain {
@@ -1025,6 +1106,10 @@ impl Effect {
             }
             Effect::EachOpponentLosesLife { amount } => {
                 format!("Each opponent loses {}", amount_label(amount))
+            }
+            Effect::EachPlayerLifeBecomesHighest => {
+                "Each player's life total becomes the highest life total among all players"
+                    .to_string()
             }
             Effect::Scry { count } => format!("Scry {}", amount_label(count)),
             Effect::Surveil { count } => format!("Surveil {count}"),
@@ -1068,6 +1153,9 @@ impl Effect {
                 target_player: true,
                 or_one_matching: Some(_),
             } => format!("Target player discards {count} unless they discard a land card"),
+            Effect::PutFromHandOnTop { count } => {
+                format!("Put {count} cards from your hand on top of your library in any order")
+            }
             Effect::PutLandFromHand { tapped } => {
                 let suffix = if tapped { " tapped" } else { "" };
                 format!("Put a land from hand onto the battlefield{suffix}")
@@ -1117,7 +1205,10 @@ impl Effect {
                 "That player or that permanent's controller may pay {} to copy this",
                 cost.mana_label()
             ),
-            Effect::ChangeTargetOfTargetSpellOrAbility { .. } => {
+            Effect::ChangeTargetOfTargetSpellOrAbility { optional: true, .. } => {
+                "You may choose new targets for target instant or sorcery spell".to_string()
+            }
+            Effect::ChangeTargetOfTargetSpellOrAbility { optional: false, .. } => {
                 "Change the target of target spell or ability with a single target".to_string()
             }
             Effect::CopyTriggeringSpell { count, .. } => {
@@ -1153,6 +1244,15 @@ impl Effect {
             } => format!(
                 "Counter target {}. If that spell is countered this way, put that card on the \
                  top or bottom of its owner's library instead of into that player's graveyard",
+                counter_target_spell_noun(filter)
+            ),
+            Effect::CounterTargetSpell {
+                unless_pays: None,
+                filter,
+                countered_dest: Some(CounteredDest::LibraryBottom),
+            } => format!(
+                "Counter target {}. If that spell is countered this way, put it on the bottom \
+                 of its owner's library instead of into that player's graveyard",
                 counter_target_spell_noun(filter)
             ),
             Effect::CounterTargetSpell {
@@ -1195,6 +1295,9 @@ impl Effect {
             }
             Effect::AttackingPlayerDraws { count, .. } => {
                 format!("The attacking player draws {count}")
+            }
+            Effect::EachDrawStepPlayerDraws { count, .. } => {
+                format!("That player draws {count}")
             }
             Effect::DealDamageToEnteringPermanent { amount, .. } => {
                 format!("Deal {amount} damage to the permanent that entered")
@@ -1303,6 +1406,7 @@ impl Effect {
             }
             Effect::TapTarget { .. } => "Tap target".to_string(),
             Effect::UntapTarget { .. } => "Untap target".to_string(),
+            Effect::RemoveFromCombat { .. } => "Remove target from combat".to_string(),
             Effect::GainControlUntilEndOfTurn { .. } => {
                 "Gain control of target creature until end of turn".to_string()
             }
@@ -1311,13 +1415,29 @@ impl Effect {
                 "Gain control of target creature for as long as you control this and it remains tapped"
                     .to_string()
             }
+            Effect::TargetOpponentGainsControl { .. } => {
+                "Target opponent gains control of target permanent you control".to_string()
+            }
+            Effect::ExchangeControl { .. } => {
+                "Exchange control of target permanent you control and target permanent an opponent controls"
+                    .to_string()
+            }
+            Effect::ExchangeAllCreaturesUntilEndOfTurn { .. } => {
+                "You and target opponent each gain control of all creatures the other controls until end of turn"
+                    .to_string()
+            }
+            Effect::GainControlAllUntilEndOfTurn { .. } => {
+                "Untap all creatures and gain control of them until end of turn".to_string()
+            }
             Effect::GrantSourceAbilitiesUntilEndOfTurn => {
                 "It gains this creature's other abilities until end of turn".to_string()
             }
             Effect::UntapAll { filter } => {
                 format!("Untap all {} you control", permanent_filter_label(filter))
             }
-            Effect::EachPlayerDraws { count } => format!("Each player draws {count}"),
+            Effect::EachPlayerDraws { count } => {
+                format!("Each player draws {}", amount_label(count))
+            }
             Effect::TargetPlayerLosesLife { amount } => {
                 format!("Target player loses {amount} life")
             }
@@ -1340,6 +1460,9 @@ impl Effect {
             Effect::MillSelf { count } => format!("Mill {}", amount_label(count)),
             Effect::ExileSelfWithTimeCounters { counters, .. } => {
                 format!("Exile this with {counters} time counters on it")
+            }
+            Effect::TuckSelfToLibraryBottom => {
+                "Put this on the bottom of its owner's library".to_string()
             }
             Effect::BecomePrepared => "Become prepared".to_string(),
             Effect::FlipSource => "Flip this permanent".to_string(),
