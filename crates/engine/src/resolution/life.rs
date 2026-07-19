@@ -142,6 +142,35 @@ impl Game {
                     })
                     .collect()
             }
+            // Arbiter of Knollridge: each player's life total becomes the highest life total
+            // among all players (CR 118.5 — a set is a gain/loss of the difference). A player
+            // already at the highest gets no event; every other living player's delta is routed
+            // through the same gain/lose choke so lifegain watchers/replacements fire correctly.
+            Effect::EachPlayerLifeBecomesHighest => {
+                let highest = self
+                    .living_players()
+                    .map(|p| self.life(p))
+                    .max()
+                    .expect("at least one living player resolves this trigger");
+                self.living_players()
+                    .filter_map(|player| {
+                        let delta = highest - self.life(player);
+                        match delta.cmp(&0) {
+                            std::cmp::Ordering::Equal => None,
+                            std::cmp::Ordering::Greater => Some(Event::LifeChanged {
+                                player,
+                                amount: self.life_gain_after_replacements(player, delta),
+                                source: Some(source),
+                            }),
+                            std::cmp::Ordering::Less => Some(Event::LifeChanged {
+                                player,
+                                amount: delta,
+                                source: Some(source),
+                            }),
+                        }
+                    })
+                    .collect()
+            }
             // Ominous Harvest: the target player loses life, with no matching gain.
             Effect::TargetPlayerLosesLife { amount } => {
                 let Some(Target::Player(player)) = target else {

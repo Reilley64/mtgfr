@@ -60,6 +60,12 @@ const ALL_KINDS: PendingChoiceView["kind"][] = [
   "choose_ability_targets",
   "divide_counters",
   "choose_dredge",
+  "put_from_hand_on_top",
+  "opponent_chooses_revealed_to_graveyard",
+  "pay_cumulative_upkeep_or_sacrifice",
+  "may_draw_up_to",
+  "trade_secrets_caster_draw",
+  "trade_secrets_repeat",
 ];
 
 describe("promptChrome", () => {

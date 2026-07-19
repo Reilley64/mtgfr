@@ -586,6 +586,7 @@ export default function Board() {
           id: c.id,
           kind: c.kind,
           controller: c.controller,
+          owner: c.owner,
           tapped: c.tapped,
           summoningSick: c.summoningSick,
           hasHaste: c.hasHaste,
@@ -652,6 +653,7 @@ export default function Board() {
               data-testid={`bf-card-${m.id}`}
               data-card-kind={m.kind}
               data-controller={m.controller}
+              data-owner={m.owner}
               data-tapped={m.tapped ? "1" : "0"}
               data-summoning-sick={m.summoningSick ? "1" : "0"}
               data-has-haste={m.hasHaste ? "1" : "0"}

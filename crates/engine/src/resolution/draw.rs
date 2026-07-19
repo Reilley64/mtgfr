@@ -24,10 +24,19 @@ impl Game {
             Effect::TargetPlayerDraws { count, .. } => {
                 self.mint_target_player_draws(controller, source, target, x, count)
             }
-            Effect::EachPlayerDraws { count } => self.mint_each_player_draws(count),
+            Effect::EachPlayerDraws { count } => {
+                self.mint_each_player_draws(controller, source, target, x, count)
+            }
             Effect::AttackingPlayerDraws { drawer, count } => {
                 self.mint_attacking_player_draws(drawer, count)
             }
+            Effect::EachDrawStepPlayerDraws { drawer, count } => {
+                self.mint_each_draw_step_player_draws(drawer, count)
+            }
+            Effect::TargetOwnerDraws {
+                count,
+                controller: to_controller,
+            } => self.mint_target_owner_draws(controller, source, target, x, count, to_controller),
             _ => unreachable!("draw family mint received a non-family effect"),
         }
     }
@@ -70,7 +79,15 @@ impl Game {
     /// Ids are minted sequentially across every player's batch in one pass — [`Game::draw_events`]
     /// can't be called once per player here since each call restarts from the same
     /// not-yet-applied `next_object_id` (see `DestroyAll`'s `next` for the same reason).
-    pub(crate) fn mint_each_player_draws(&self, count: u32) -> Vec<Event> {
+    pub(crate) fn mint_each_player_draws(
+        &self,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+        count: Amount,
+    ) -> Vec<Event> {
+        let count = self.resolve_count(count, controller, source, target, x);
         let mut next = self.next_object_id();
         let mut events = Vec::new();
         for p in self.living_players() {
@@ -101,5 +118,35 @@ impl Game {
     ) -> Vec<Event> {
         let drawer = drawer.expect("the attacking player is filled in at placement");
         self.draw_events(drawer, count)
+    }
+
+    /// Mint draw events for the player whose draw step it is
+    /// ([`Effect::EachDrawStepPlayerDraws`] — Howling Mine).
+    pub(crate) fn mint_each_draw_step_player_draws(
+        &self,
+        drawer: Option<PlayerId>,
+        count: u32,
+    ) -> Vec<Event> {
+        let drawer = drawer.expect("the active player is filled in at placement");
+        self.draw_events(drawer, count)
+    }
+
+    /// Mint draw events for the enclosing [`Sequence`](Effect::Sequence)'s shared target's owner
+    /// or controller ([`Effect::TargetOwnerDraws`] — Oblation's "then draws two cards" rider).
+    pub(crate) fn mint_target_owner_draws(
+        &self,
+        controller: PlayerId,
+        source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+        count: Amount,
+        to_controller: bool,
+    ) -> Vec<Event> {
+        let object = expect_object_target(target, "an owner/controller-draws amount");
+        let drawer = self.owner_of_shared_target(object, to_controller);
+        self.draw_events(
+            drawer,
+            self.resolve_count(count, controller, source, target, x),
+        )
     }
 }

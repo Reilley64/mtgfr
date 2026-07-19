@@ -181,9 +181,11 @@ impl Game {
         Self::affordable_from(available, cost, None)
     }
 
-    /// Whether `card` may be offered as an ActivateHandAbility action (CR 113.6/602.5e):
-    /// priority holder, in hand with a [`CardDef::hand_ability`], and its cost is affordable.
-    /// The `hand_ability` sibling of [`Self::cycle_listable`].
+    /// Whether `card` may be offered as an ActivateHandAbility action: priority holder, in hand,
+    /// with either a [`CardDef::hand_ability`] (CR 113.6/602.5e — affordable cost, no further
+    /// gate) or a [`CardDef::forecast`] (CR 702.57 — affordable cost, plus the controller's own
+    /// upkeep and once-each-turn gates [`Game::activate_hand_ability`] itself enforces). The
+    /// `hand_ability`/`forecast` sibling of [`Self::cycle_listable`].
     fn hand_ability_listable(&self, player: PlayerId, card: ObjectId, available: ManaPool) -> bool {
         if player != self.priority {
             return false;
@@ -194,9 +196,23 @@ impl Game {
         if c.zone != Zone::Hand || c.owner != player {
             return false;
         }
-        let Some(ability) = c.def.hand_ability else {
+        if let Some(ability) = c.def.hand_ability {
+            return Self::affordable_from(available, ability.cost, None);
+        }
+        let Some(ability) = c.def.forecast else {
             return false;
         };
+        if self.step != Step::Upkeep || self.active_player != player {
+            return false;
+        }
+        if self
+            .once_per_turn
+            .activated
+            .iter()
+            .any(|&(o, i)| o == card && i == 0)
+        {
+            return false;
+        }
         Self::affordable_from(available, ability.cost, None)
     }
 
@@ -628,18 +644,14 @@ impl Game {
     /// truth: the cast gate ([`Game::cast`]), auto-pass ([`Game::meaningful_actions`]), and
     /// the client's highlight set all read this same enumeration.
     pub fn legal_targets(&self, object: ObjectId, ability_index: Option<usize>) -> Vec<Target> {
-        // ponytail: a targeted *ability* passes no source colors, so protection never filters
-        // its targets — no pool ability needs it; wire the source's colors if one does.
-        let (spec, source_colors) = match ability_index {
-            None => (
-                self.required_target(self.def_of(object), None),
-                color_identity(self.def_of(object)),
-            ),
-            Some(i) => (
-                self.ability_at(object, i)
-                    .map_or(TargetSpec::None, |a| a.effect.target()),
-                [false; Color::COUNT],
-            ),
+        // An ability's source colors (CR 702.16b) are the object's own — casting and activating
+        // share the same permanent, so both branches read `color_identity` off it.
+        let source_colors = color_identity(self.def_of(object));
+        let spec = match ability_index {
+            None => self.required_target(self.def_of(object), None),
+            Some(i) => self
+                .ability_at(object, i)
+                .map_or(TargetSpec::None, |a| a.effect.target()),
         };
         // ponytail: this is the pre-cast highlight enumeration, before the caster has chosen an
         // {X} — x = 0, so a `mv_eq_x` filter (Entrancing Melody) under-highlights until the
@@ -1179,6 +1191,12 @@ impl Game {
         {
             return false;
         }
+        // Mana-value floor (Austere Command's "mana value 4 or greater").
+        if let Some(min) = filter.mv_min
+            && self.def_of(id).mana_value() < min as u32
+        {
+            return false;
+        }
         // Tapped status (Mana Geyser's "tapped land").
         if let Some(want) = filter.tapped
             && perm.tapped != want
@@ -1247,7 +1265,7 @@ impl Game {
             return false;
         }
         // "Modified" (CR 701.29 — Silkguard's hexproof rider).
-        if filter.modified && !self.is_modified(id) {
+        if filter.modified && !self.is_modified(id, you) {
             return false;
         }
         // Printed name (CR 201.2 — Leitmotif Composer's "creatures named Leitmotif Composer").
@@ -1258,6 +1276,11 @@ impl Game {
         }
         // Declared as an attacker this combat (Tajic's Mentor — "target attacking creature").
         if filter.attacking && !self.combat.attackers.contains(&id) {
+            return false;
+        }
+        // Attacking this filter's own controller (Soul Snare's "attacking you") — the attacker's
+        // declared defender must be `you`, not merely any player.
+        if filter.attacking_you && self.defender_of(id) != Some(you) {
             return false;
         }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
@@ -1282,6 +1305,10 @@ impl Game {
         {
             return false;
         }
+        // Without flying (Breath of Darigaaz's "each creature without flying").
+        if filter.without_flying && self.has_keyword(id, Keyword::Flying) {
+            return false;
+        }
         true
     }
 
@@ -1293,16 +1320,15 @@ impl Game {
             .any(|a| matches!(self.def_of(a).kind, CardKind::Aura))
     }
 
-    /// Whether `id` is "modified" (CR 701.29 / Silkguard's reminder text: "Equipment, Auras you
-    /// control, and counters are modifications") — has any counter, is enchanted by an Aura, or
-    /// is equipped.
-    /// ponytail: "Auras you control" is modeled as "any attached Aura" — every pool card that
-    /// checks `modified` is checking a permanent's own controller's board, so an opponent's
-    /// Aura-attached-by-you case doesn't arise yet; scope to the Aura's controller if one does.
-    pub(crate) fn is_modified(&self, id: ObjectId) -> bool {
+    /// Whether `id` is "modified" from `you`'s perspective (CR 701.29 / Silkguard's reminder
+    /// text: "Equipment, Auras you control, and counters are modifications") — has any counter,
+    /// is equipped, or is enchanted by an Aura *`you` control* (an opponent's Aura attached to
+    /// your creature doesn't count — the Vow cycle's donated Aura is the case that falsifies an
+    /// unscoped "any attached Aura" scan).
+    pub(crate) fn is_modified(&self, id: ObjectId, you: PlayerId) -> bool {
         self.has_any_counter(id)
             || self.attachments(id).into_iter().any(|a| {
-                matches!(self.def_of(a).kind, CardKind::Aura)
+                (matches!(self.def_of(a).kind, CardKind::Aura) && self.controller_of(a) == you)
                     || self.def_of(a).subtypes.contains(&"Equipment")
             })
     }
@@ -1356,6 +1382,7 @@ mod permanent_filter_tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -1376,6 +1403,7 @@ mod permanent_filter_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }

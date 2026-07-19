@@ -591,6 +591,17 @@ pub struct CardDef {
     /// `[hand_ability]` in TOML: `[hand_ability.cost]` (same `[cost]`-table shape as a spell's
     /// cost) plus `[[hand_ability.effects]]` (the standard effects-array shape).
     pub hand_ability: Option<HandActivatedAbility>,
+    /// Forecast (CR 702.57 — Skyscribing's "Forecast — {2}{U}, Reveal this card from your hand:
+    /// Each player draws a card."): a hand-activated ability that, unlike [`Self::hand_ability`],
+    /// *reveals* rather than discards its card — the card stays in hand — and is activatable only
+    /// during its owner's own upkeep, once each turn (CR 702.57a). Shares [`HandActivatedAbility`]'s
+    /// cost+effects shape (no card needs both `hand_ability` and `forecast`). `None` for a card
+    /// without it. `[forecast]` in TOML: `[forecast.cost]` (same `[cost]`-table shape as
+    /// `[hand_ability.cost]`) plus `[[forecast.effects]]` (the standard effects-array shape).
+    /// [`Game::activate_hand_ability`] is the shared entry point for both; it reveals-and-keeps
+    /// and gates on upkeep/once-each-turn when this field (rather than `hand_ability`) is the one
+    /// set.
+    pub forecast: Option<HandActivatedAbility>,
     /// Flashback (CR 702.34): "You may cast this card from your graveyard for its flashback cost.
     /// Then exile it." `None` for a card without flashback. `Some(cost)` makes the card castable
     /// from its owner's graveyard for `cost` (an alternative cost, CR 118.9) via [`Game::cast`];
@@ -605,6 +616,15 @@ pub struct CardDef {
     /// permanent enters, gated by [`Permanent::echo_unpaid`]. `[echo]` in TOML, the same
     /// `[cost]`-table shape as a spell's cost.
     pub echo: Option<Cost>,
+    /// Cumulative upkeep (CR 702.24 — Jotun Grunt): "At the beginning of your upkeep, put an age
+    /// counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age
+    /// counter on it." `None` for a card without cumulative upkeep. `Some(cost)` queues, at the
+    /// controller's every upkeep (unlike [`Self::echo`], with no "since your last upkeep" gate —
+    /// this fires every time), an age counter ([`CounterKind::Age`]) followed by a
+    /// [`PendingChoice::PayCumulativeUpkeepOrSacrifice`] scaled by the permanent's new total age
+    /// counter count. `[cumulative_upkeep]` in TOML, the same table shape as
+    /// [`CumulativeUpkeepCost`].
+    pub cumulative_upkeep: Option<CumulativeUpkeepCost>,
     /// Recover (CR 702.59 — Grim Harvest): "When a creature is put into your graveyard from the
     /// battlefield, you may pay {cost}. If you do, return this card from your graveyard to your
     /// hand. Otherwise, exile this card." `None` for a card without recover. `Some(cost)` queues a
@@ -1013,6 +1033,7 @@ pub fn treasure_token() -> CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::AddMana {
             mana: ManaPool {
@@ -1072,6 +1093,7 @@ pub fn treasure_token() -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -1092,6 +1114,7 @@ pub fn treasure_token() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -1135,6 +1158,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -1155,6 +1179,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -1200,6 +1225,7 @@ pub(crate) fn illusion_token() -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -1220,6 +1246,7 @@ pub(crate) fn illusion_token() -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -1599,9 +1626,10 @@ pub(crate) struct Permanent {
     /// `effective_subtypes`/`compute_effective_keywords_uncached` all short-circuit on it). The
     /// real card stays in `def` so it can be revealed by the turn-face-up special action
     /// ([`Intent::TurnFaceUp`]), which clears this flag; the wire redaction layer anonymizes it.
-    /// ponytail: the face-down 2/2 status is the shared substrate for the morph family (CR 702.37
-    /// morph / megamorph / disguise) — no morph card is in the pool, so only plain manifest is
-    /// built; a morph card would add its face-down cost + the morph keyword on top of this status.
+    /// ponytail: the face-down 2/2 status is the shared substrate for both plain manifest (CR
+    /// 701.34) and the morph family (CR 702.37) — a morph card (Willbender, Chromeshell Crab) adds
+    /// its face-down cost ([`CardDef::morph`]) + the morph keyword on top of this status. Megamorph
+    /// and disguise aren't in the pool yet; they'd layer their own extras on the same flag.
     pub(crate) face_down: bool,
     /// Whether this permanent has *flipped* (CR 712 — a Kamigawa flip card, Nezumi Graverobber →
     /// Nighteyes the Devourer): while set, its live characteristics come from its [`CardDef::back`]

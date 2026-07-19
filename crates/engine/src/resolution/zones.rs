@@ -340,6 +340,7 @@ impl Game {
                     card: self.next_object_id(),
                     from: object,
                     to_top,
+                    second_from_top: false,
                 }]
             }
             // Temporal Spring ("Put target permanent on top of its owner's library") and
@@ -347,7 +348,11 @@ impl Game {
             // library"): put a targeted battlefield permanent into its owner's library at a fixed
             // position. No shuffle — unlike its fused sibling `ShuffleTargetPermanentIntoLibraryThenReveal`
             // above, this needs no `&mut self` and stays in the pure event-building path.
-            Effect::TuckPermanentIntoLibrary { to_top, .. } => {
+            Effect::TuckPermanentIntoLibrary {
+                to_top,
+                second_from_top,
+                ..
+            } => {
                 let object = expect_object_target(target, "a permanent to tuck");
                 let owner = self.owner_of(object);
                 // CR 111.7: a token can't exist in a library — it ceases to exist instead.
@@ -362,7 +367,65 @@ impl Game {
                     card: self.next_object_id(),
                     from: object,
                     to_top,
+                    second_from_top,
                 }]
+            }
+            // Gomazoa ("Put this creature and each creature it's blocking on top of their owners'
+            // libraries, then those players shuffle."): `source` plus every attacker
+            // `attackers_blocked_by` still reports for it (empty if it's blocking nothing — CR:
+            // only Gomazoa itself is tucked then). Tuck every one first, then shuffle each
+            // distinct owner exactly once — never mid-batch, so a second tuck to an owner already
+            // shuffled doesn't land on top of a now-scrambled library while the first tuck was the
+            // only one actually randomized in.
+            Effect::TuckSelfAndBlockedCreatures => {
+                let mut objects = vec![source];
+                objects.extend(self.attackers_blocked_by(source));
+                let mut events = Vec::new();
+                let mut owners_tucked: Vec<PlayerId> = Vec::new();
+                // Minted sequentially, matching the order `apply` will push them (same pattern
+                // as `MassReturnFromGraveyard`'s mass reanimation) — a plain `next_object_id()`
+                // per iteration would repeat the same id, since nothing's applied yet to advance it.
+                let mut next_id = self.next_object_id();
+                for object in objects {
+                    // The source or a blocked attacker may have left the battlefield since this
+                    // ability was activated (destroyed in response, CR 608.2b) — skip it.
+                    let Some(permanent) = self.as_permanent(object) else {
+                        continue;
+                    };
+                    let owner = permanent.owner;
+                    // CR 111.7: a token can't exist in a library — it ceases to exist instead.
+                    if permanent.token {
+                        events.push(Event::TokenCeasedToExist {
+                            token: object,
+                            controller: owner,
+                            def: permanent.def,
+                        });
+                        continue;
+                    }
+                    events.push(Event::TuckedToLibrary {
+                        card: next_id,
+                        from: object,
+                        to_top: true,
+                        second_from_top: false,
+                    });
+                    next_id += 1;
+                    if !owners_tucked.contains(&owner) {
+                        owners_tucked.push(owner);
+                    }
+                }
+                for owner in owners_tucked {
+                    events.push(Event::LibraryShuffled { player: owner });
+                }
+                events
+            }
+            // Oblation ("The owner of target nonland permanent shuffles it into their library,
+            // then draws two cards."): the no-reveal half of `ShuffleTargetPermanentIntoLibraryThenReveal`
+            // (Chaos Warp) — a real shuffle rather than a fixed position, but nothing in *this*
+            // effect reads the post-shuffle order (Oblation's draw is a separate `TargetOwnerDraws`
+            // step later in the same `Sequence`), so it stays in the pure event-building path too.
+            Effect::ShuffleTargetPermanentIntoLibrary { .. } => {
+                let object = expect_object_target(target, "a permanent to shuffle-tuck");
+                self.shuffle_tuck_events(object)
             }
             // Replenish (Eiganjo Dynastorian's back face): every matching card in the
             // controller's own graveyard returns to the battlefield under their control, with no
@@ -456,5 +519,30 @@ impl Game {
             }
             _ => unreachable!("zones family mint received a non-family effect"),
         }
+    }
+
+    /// Shuffle a target permanent into its owner's library (CR 111.7: a token ceases to exist
+    /// instead) — the event pair shared by both Chaos Warp's fused reveal
+    /// ([`Effect::ShuffleTargetPermanentIntoLibraryThenReveal`], `effects.rs`, which needs
+    /// `&mut self` to read the post-shuffle top card) and Oblation's no-reveal sibling
+    /// ([`Effect::ShuffleTargetPermanentIntoLibrary`] above, which doesn't).
+    pub(crate) fn shuffle_tuck_events(&self, object: ObjectId) -> Vec<Event> {
+        let owner = self.owner_of(object);
+        if self.permanent(object).token {
+            return vec![Event::TokenCeasedToExist {
+                token: object,
+                controller: owner,
+                def: self.def_of(object),
+            }];
+        }
+        vec![
+            Event::TuckedToLibrary {
+                card: self.next_object_id(),
+                from: object,
+                to_top: false,
+                second_from_top: false,
+            },
+            Event::LibraryShuffled { player: owner },
+        ]
     }
 }

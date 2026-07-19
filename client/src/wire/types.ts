@@ -337,7 +337,11 @@ export type VisibleEvent =
   | { card?: string | null; from?: null | U32; kind: "card_drawn"; object: U32; player: number }
   | { by: number; kind: "sacrificed"; object: U32 }
   | { card: U32; from: U32; kind: "discarded"; player: number }
-  | { card: U32; from: U32; kind: "exiled_from_graveyard_may_play"; player: number };
+  | { card: U32; from: U32; kind: "exiled_from_graveyard_may_play"; player: number }
+  | { card: U32; def?: string | null; from?: null | U32; kind: "put_from_hand_on_top"; player: number }
+  | { kind: "next_untap_skip_marked"; object: U32 }
+  | { kind: "next_untap_skip_consumed"; object: U32 }
+  | { kind: "removed_from_combat"; object: U32 };
 export type WireModeChoice = { index: number; target?: null | WireTarget };
 export type WireSpellDamage = { amount: number; target: WireTarget };
 export type ActionView = {
@@ -426,6 +430,7 @@ export type PendingChoiceView =
       player: number;
       source: U32;
     }
+  | { count: number; items: Array<ChoiceItem>; kind: "choose_activation_cost_targets"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "may_sacrifice"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "choose_own_sacrifices"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "devour"; multiplier: number; player: number; source: U32 }
@@ -482,7 +487,13 @@ export type PendingChoiceView =
   | { kind: "choose_creature_type"; options: Array<string>; player: number; source: U32 }
   | { kind: "choose_color"; player: number; source: U32 }
   | { items: Array<ChoiceItem>; kind: "choose_copy_target"; player: number; source: U32 }
-  | { attachment: U32; items: Array<ChoiceItem>; kind: "choose_attach_host"; optional: boolean; player: number };
+  | { attachment: U32; items: Array<ChoiceItem>; kind: "choose_attach_host"; optional: boolean; player: number }
+  | { count: number; items: Array<ChoiceItem>; kind: "put_from_hand_on_top"; player: number }
+  | { items: Array<ChoiceItem>; kind: "opponent_chooses_revealed_to_graveyard"; player: number; source: U32 }
+  | { count: number; items: Array<ChoiceItem>; kind: "pay_cumulative_upkeep_or_sacrifice"; player: number; source: U32 }
+  | { kind: "may_draw_up_to"; max: number; player: number }
+  | { kind: "trade_secrets_caster_draw"; max: number; opponent: number; player: number }
+  | { caster: number; kind: "trade_secrets_repeat"; player: number };
 
 export type WireIntent =
   | {
@@ -505,11 +516,13 @@ export type WireIntent =
   | { kind: "tap_for_mana"; object: U32; player: number }
   | {
       ability_index: number;
+      discard_cost?: Array<U32>;
       kind: "activate_ability";
       object: U32;
       player: number;
       sacrifice?: Array<U32>;
       target?: null | WireTarget;
+      x?: number;
     }
   | { attackers: Array<WireAttack>; kind: "declare_attackers"; player: number }
   | { blocks: Array<WireBlock>; kind: "declare_blockers"; player: number }
@@ -537,6 +550,8 @@ export type WireIntent =
   | { choice?: null | U32; kind: "put_land_from_hand"; player: number }
   | { choice?: null | U32; kind: "put_creature_from_hand"; player: number }
   | { dredger?: null | U32; kind: "choose_dredge"; player: number }
+  | { cards: Array<U32>; kind: "put_from_hand_on_top"; player: number }
+  | { count: number; kind: "choose_draw_count"; player: number }
   | { choice?: null | U32; kind: "cast_creature_face_down"; player: number }
   | { kind: "return_land_or_sacrifice"; land?: null | U32; player: number }
   | { choice?: null | U32; kind: "choose_exiled_with_card"; player: number }

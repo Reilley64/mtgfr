@@ -1,0 +1,30 @@
+# {2}, {T}, Sacrifice this artifact: Search your library for up to two basic land cards, reveal them, put them into
+# your hand, then shuffle.
+name = "Armillary Sphere"
+id = "3963140c-da67-43e6-9514-fe9dc0a43c4d"
+default_print = "fa6d7947-2522-4baa-95ef-d720abe9f446"
+oracle = "{2}, {T}, Sacrifice this artifact: Search your library for up to two basic land cards, reveal them, put them into your hand, then shuffle."
+set = "cmd"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {2}, {T}, Sacrifice this artifact: Search your library for up to two basic land cards, reveal
+# them, put them into your hand, then shuffle.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 2
+
+# Search your library for up to two basic land cards, reveal them, put them into your hand, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "hand"
+count = 2

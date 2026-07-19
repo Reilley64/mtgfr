@@ -1,0 +1,38 @@
+# Clash with an opponent. (Each clashing player reveals the top card of their library, then puts that
+# card on the top or bottom. A player wins if their card had a higher mana value.) Put target creature
+# on top of its owner's library. If you win the clash, instead put that creature into its owner's
+# library second from the top.
+name = "Whirlpool Whelm"
+id = "3781ced1-ec24-4018-aaa8-f6dcbb1b1874"
+default_print = "9ade3faa-272b-4c28-958c-0a928a3411c5"
+oracle = "Clash with an opponent. (Each clashing player reveals the top card of their library, then puts that card on the top or bottom. A player wins if their card had a higher mana value.) Put target creature on top of its owner's library. If you win the clash, instead put that creature into its owner's library second from the top."
+set = "tsp"
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Clash with an opponent. Put target creature on top of its owner's library. If you win the clash,
+# instead put that creature into its owner's library second from the top.
+[[abilities]]
+timing = "spell"
+
+# Clash with an opponent.
+[[abilities.effects]]
+type = "clash"
+
+# If you win the clash, instead put that creature into its owner's library second from the top.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "won_clash" }
+then = [{ type = "tuck_permanent_into_library", target = { permanent = { types = "creature" } }, second_from_top = true }]
+
+# Put target creature on top of its owner's library.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "won_clash" }
+negate = true
+then = [{ type = "tuck_permanent_into_library", target = { permanent = { types = "creature" } }, to_top = true }]

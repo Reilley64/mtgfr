@@ -1,0 +1,29 @@
+# Vigilance
+# When this creature enters, each player's life total becomes the highest life total among all
+# players.
+name = "Arbiter of Knollridge"
+id = "62705a41-7c4d-4e6c-85b0-36a9d27ab5ae"
+default_print = "1fc2e7c4-5dbe-49f4-8c3f-192e7544df74"
+otags = ["life-total-set", "vigilance"]
+set = "cm2"
+subtypes = ["Giant", "Wizard"]
+oracle = "Vigilance\nWhen this creature enters, each player's life total becomes the highest life total among all players."
+keywords = ["vigilance"]
+
+[cost]
+generic = 6
+white = 1
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5
+
+# When this creature enters, each player's life total becomes the highest life total among all
+# players.
+[[abilities]]
+timing = "etb"
+
+# each player's life total becomes the highest life total among all players.
+[[abilities.effects]]
+type = "each_player_life_becomes_highest"

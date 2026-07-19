@@ -42,7 +42,9 @@ impl Game {
                         source,
                         effect: Effect::Demonstrate { spell },
                         legal,
-                        optional: false,
+                        count: TargetCount::default(),
+                        x: 0,
+                        activated: false,
                     },
                 );
             } else if let Effect::TargetPlayerMayDraw { count, .. } = effect {
@@ -77,9 +79,100 @@ impl Game {
                 // A targeted "may" (Sun Titan) pauses again to choose its target; a targetless
                 // one (Solemn's dies-draw) goes straight on the stack. NoLegalTarget = accepted
                 // but nothing to aim at, so it fizzles harmlessly.
-                self.place_targeted_ability(player, source, effect, &mut events);
+                self.place_targeted_ability(player, source, effect, 0, false, &mut events);
             }
         }
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::MayDrawUpTo`] (CR 120.4 / 601.2c — Arcane Denial's "may draw up to
+    /// two cards"): draw exactly `count` cards, any number `0..=max`. An out-of-range `count` is
+    /// rejected with the pause left live so the player can answer again.
+    pub(crate) fn answer_may_draw_up_to(
+        &mut self,
+        player: PlayerId,
+        count: u8,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::MayDrawUpTo { max, .. }) = self.pending_choice else {
+            return Err(Reject::IllegalChoice);
+        };
+        if count > max {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+        let events = self.draw_events(player, count as u32);
+        self.apply_all(&events);
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::TradeSecretsCasterDraw`]: draw exactly `count` cards (`0..=max`),
+    /// then pause `opponent` on [`PendingChoice::TradeSecretsRepeat`] to decide whether to run the
+    /// whole process again. An out-of-range `count` is rejected with the pause left live.
+    pub(crate) fn answer_trade_secrets_caster_draw(
+        &mut self,
+        player: PlayerId,
+        count: u8,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::TradeSecretsCasterDraw {
+            max,
+            opponent,
+            source,
+            ..
+        }) = self.pending_choice
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if count > max {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+        let events = self.draw_events(player, count as u32);
+        self.apply_all(&events);
+        pending::raise_choice(
+            self,
+            PendingChoice::TradeSecretsRepeat {
+                player: opponent,
+                caster: player,
+                max,
+                source,
+            },
+        );
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::TradeSecretsRepeat`]: on `yes`, `player` (the target opponent)
+    /// draws two more cards, then `caster` is paused again on
+    /// [`PendingChoice::TradeSecretsCasterDraw`] (self-rescheduling, like
+    /// [`Game::dance_exile_more`]). On `no`, the loop stops.
+    pub(crate) fn answer_trade_secrets_repeat(
+        &mut self,
+        player: PlayerId,
+        yes: bool,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::TradeSecretsRepeat {
+            caster,
+            max,
+            source,
+            ..
+        }) = self.pending_choice
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        self.finish_answer();
+        if !yes {
+            return Ok(Vec::new());
+        }
+        let events = self.draw_events(player, 2);
+        self.apply_all(&events);
+        pending::raise_choice(
+            self,
+            PendingChoice::TradeSecretsCasterDraw {
+                player: caster,
+                max,
+                opponent: player,
+                source,
+            },
+        );
         Ok(events)
     }
 
@@ -118,7 +211,7 @@ impl Game {
             self.mint_spell_copies(count, player, source, None, 0, &mut events);
         } else {
             // A targeted paid trigger pauses to choose its target; a targetless one goes on the stack.
-            self.place_targeted_ability(player, source, effect, &mut events);
+            self.place_targeted_ability(player, source, effect, 0, false, &mut events);
         }
         Ok(events)
     }
@@ -255,6 +348,7 @@ impl Game {
                 card: self.next_object_id(),
                 from: spell,
                 to_top: top,
+                second_from_top: false,
             },
         );
         Ok(events)
@@ -298,6 +392,76 @@ impl Game {
         // CR 702.31e: this upkeep is now "since your last upkeep" — echo won't ask again.
         self.permanent_mut(source).echo_unpaid = false;
         self.finish_answer();
+        Ok(events)
+    }
+
+    /// Answer a [`PendingChoice::PayCumulativeUpkeepOrSacrifice`]: an empty `cards` list
+    /// declines and sacrifices `source` (CR 702.24a), the same "declining does something"
+    /// polarity as [`Game::pay_echo`]; otherwise `cards` must be exactly `count` ids from
+    /// `options` that all share one owner (CR "a single graveyard") — each is put on the bottom
+    /// of that owner's library ([`Event::TuckedToLibrary`], the same zone move Mistveil Plains's
+    /// `Effect::TuckFromGraveyard` uses). An invalid non-empty answer (wrong count, mixed
+    /// owners, an id not offered) rejects, leaving the choice pending so the player can still
+    /// decline.
+    pub(crate) fn pay_cumulative_upkeep(
+        &mut self,
+        player: PlayerId,
+        cards: Vec<ObjectId>,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::PayCumulativeUpkeepOrSacrifice {
+            source,
+            options,
+            count,
+            ..
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+
+        if cards.is_empty() {
+            self.finish_answer();
+            let mut events = Vec::new();
+            self.run(
+                Effect::SacrificeObject {
+                    object: Some(source),
+                },
+                ResolveCtx {
+                    controller: player,
+                    source,
+                    target: None,
+                    targets_second: TargetList::default(),
+                    x: 0,
+                    spent_mana: [0; 6],
+                },
+                &mut events,
+            );
+            return Ok(events);
+        }
+
+        let distinct = cards.iter().collect::<std::collections::HashSet<_>>().len();
+        let all_offered = cards.iter().all(|c| options.contains(c));
+        let single_owner = cards
+            .windows(2)
+            .all(|w| self.owner_of(w[0]) == self.owner_of(w[1]));
+        if cards.len() != count as usize || distinct != cards.len() || !all_offered || !single_owner
+        {
+            return Err(Reject::IllegalChoice); // invalid — the choice stays pending
+        }
+
+        self.finish_answer();
+        let mut events = Vec::new();
+        for &from in &cards {
+            let card = self.next_object_id();
+            self.push_apply(
+                &mut events,
+                Event::TuckedToLibrary {
+                    card,
+                    from,
+                    to_top: false,
+                    second_from_top: false,
+                },
+            );
+        }
         Ok(events)
     }
 

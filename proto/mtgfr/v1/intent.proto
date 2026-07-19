@@ -70,6 +70,8 @@ message WireIntent {
     WireIntentCastFaceDown cast_face_down = 49;
     WireIntentChooseDredge choose_dredge = 50;
     WireIntentPutCreatureFromHand put_creature_from_hand = 51;
+    WireIntentPutFromHandOnTop put_from_hand_on_top = 52;
+    WireIntentChooseDrawCount choose_draw_count = 53;
   }
 }
 
@@ -129,6 +131,9 @@ message WireIntentActivateAbility {
   // Hand cards named to pay a "discard a card" cost (empty otherwise; must have exactly the
   // cost's `discard_cost` count of distinct entries currently in the activator's hand).
   repeated uint32 discard_cost = 6;
+  // The chosen {X} for an activation cost that contains {X} (Nin, the Pain Artist's
+  // `{X}{U}{R}, {T}`); 0 for an ability with no {X} in its cost.
+  uint32 x = 7;
 }
 
 message WireIntentDeclareAttackers {
@@ -161,6 +166,13 @@ message WireIntentChooseTargetPlayers {
 message WireIntentAnswerMay {
   uint32 player = 1;
   bool yes = 2;
+}
+
+// Answer a may-draw-up-to count choice (Arcane Denial's "may draw up to two cards"): `count`
+// is how many cards to draw, any number 0..=max.
+message WireIntentChooseDrawCount {
+  uint32 player = 1;
+  uint32 count = 2;
 }
 
 message WireIntentPayOptionalCost {
@@ -464,4 +476,11 @@ message WireIntentChooseDredge {
 message WireIntentPutCreatureFromHand {
   uint32 player = 1;
   optional uint32 choice = 2;
+}
+
+// Answer a put-from-hand-on-top choice (Brainstorm): the ordered hand-card pick — first-named
+// ends up on top of the library.
+message WireIntentPutFromHandOnTop {
+  uint32 player = 1;
+  repeated uint32 cards = 2;
 }

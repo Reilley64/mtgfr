@@ -379,6 +379,7 @@ impl Game {
                     card: self.next_object_id(),
                     from,
                     to_top: false,
+                    second_from_top: false,
                 },
             );
         }

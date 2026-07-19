@@ -42,6 +42,9 @@ pub enum Answer {
     Discard {
         cards: Vec<ObjectId>,
     },
+    PutFromHandOnTop {
+        cards: Vec<ObjectId>,
+    },
     DeclineUntap {
         keep_tapped: Vec<ObjectId>,
     },
@@ -148,6 +151,7 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
             sacrifices: ids,
         },
         Answer::Discard { cards } => WireIntent::Discard { player, cards },
+        Answer::PutFromHandOnTop { cards } => WireIntent::PutFromHandOnTop { player, cards },
         Answer::DeclineUntap { keep_tapped } => WireIntent::DeclineUntap {
             player,
             keep_tapped,
@@ -201,6 +205,9 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::ChooseSpellTargets { player, .. }
         | PendingChoiceView::ChooseTargetPlayers { player, .. }
         | PendingChoiceView::MayYesNo { player, .. }
+        | PendingChoiceView::MayDrawUpTo { player, .. }
+        | PendingChoiceView::TradeSecretsCasterDraw { player, .. }
+        | PendingChoiceView::TradeSecretsRepeat { player, .. }
         | PendingChoiceView::DeclineUntap { player, .. }
         | PendingChoiceView::ChooseDredge { player, .. }
         | PendingChoiceView::PayCost { player, .. }
@@ -208,6 +215,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::PayOrControllerDraws { player, .. }
         | PendingChoiceView::ChooseCounteredSpellDestination { player, .. }
         | PendingChoiceView::PayEchoOrSacrifice { player, .. }
+        | PendingChoiceView::PayCumulativeUpkeepOrSacrifice { player, .. }
         | PendingChoiceView::PayRecoverOrExile { player, .. }
         | PendingChoiceView::SacrificeUnlessPay { player, .. }
         | PendingChoiceView::SacrificeUnlessReturnLand { player, .. }
@@ -224,6 +232,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::Proliferate { player, .. }
         | PendingChoiceView::PhaseOut { player, .. }
         | PendingChoiceView::ChooseAbilityTargets { player, .. }
+        | PendingChoiceView::ChooseActivationCostTargets { player, .. }
         | PendingChoiceView::MaySacrifice { player, .. }
         | PendingChoiceView::ChooseOwnSacrifices { player, .. }
         | PendingChoiceView::Devour { player, .. }
@@ -233,6 +242,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::MayReturnFromGraveyard { player, .. }
         | PendingChoiceView::MayDiscard { player, .. }
         | PendingChoiceView::Discard { player, .. }
+        | PendingChoiceView::PutFromHandOnTop { player, .. }
         | PendingChoiceView::PutLandFromHand { player, .. }
         | PendingChoiceView::PutCreatureFromHand { player, .. }
         | PendingChoiceView::CastCreatureFaceDown { player, .. }
@@ -244,6 +254,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::OpponentChoosesExiledNonland { player, .. }
         | PendingChoiceView::ChooseSplittingOpponent { player, .. }
         | PendingChoiceView::PartitionRevealed { player, .. }
+        | PendingChoiceView::OpponentChoosesRevealedToGraveyard { player, .. }
         | PendingChoiceView::ChoosePileForHand { player, .. }
         | PendingChoiceView::ChooseExiledToCastFree { player, .. }
         | PendingChoiceView::RevealedCardToBattlefieldOrHand { player, .. }

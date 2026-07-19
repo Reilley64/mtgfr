@@ -1,0 +1,26 @@
+# Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you.
+# ponytail: the tax is auto-paid (pool first, then auto-tapped lands) at declare time rather than
+# offered as an explicit pay-or-decline choice — can't-afford makes the declaration illegal.
+name = "Propaganda"
+id = "ea9709b6-4c37-4d5a-b04d-cd4c42e4f9dd"
+default_print = "48f9976c-e8a2-4f5a-a2d0-aa63b27c19dc"
+oracle = "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."
+set = "cmd"
+
+[cost]
+generic = 2
+blue = 1
+
+[kind]
+type = "enchantment"
+
+# Creatures can't attack you unless their controller pays {2} for each creature they control
+# that's attacking you.
+[[abilities]]
+timing = "static"
+
+# Creatures can't attack you unless their controller pays {2} for each creature they control
+# that's attacking you.
+[[abilities.effects]]
+type = "attack_tax"
+amount = 2

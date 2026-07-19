@@ -642,6 +642,9 @@ pub struct PermanentFilter {
     /// Mana-value ceiling (Skyclave's "MV 4 or less", Culling Ritual's "MV 2 or less"); `None`
     /// doesn't gate on mana value.
     pub mv_max: Option<u8>,
+    /// Mana-value floor (Austere Command's "mana value 4 or greater", the sibling of `mv_max`);
+    /// `None` doesn't gate on mana value.
+    pub mv_min: Option<u8>,
     /// Mana value exactly equal to the casting spell's chosen `{X}` (Entrancing Melody's
     /// "creature with mana value X"). `false` (default) doesn't gate on it. Resolved against
     /// [`Game::legal_targets_for`]'s own `source` — see that method's doc.
@@ -681,6 +684,11 @@ pub struct PermanentFilter {
     /// Restrict to creatures declared as attackers this combat (Tajic's Mentor — "target
     /// *attacking* creature"). `false` (default) imposes no restriction.
     pub attacking: bool,
+    /// Restrict to creatures attacking *this filter's own controller* (Soul Snare's "creature
+    /// that's attacking you") — narrower than `attacking`, which matches an attacker no matter
+    /// who its declared defender is. Reads [`Game::defender_of`], the same declared-defender
+    /// lookup goad/attack-tax already use. `false` (default) imposes no restriction.
+    pub attacking_you: bool,
     /// Power strictly less than the filter's own source permanent's power (Mentor, CR 702.121a
     /// "lesser power"). `false` (default) imposes no restriction. Meaningless without a `source`
     /// (see [`Game::permanent_matches`]) — every filter that sets this pairs it with a targeted
@@ -715,6 +723,21 @@ pub struct PermanentFilter {
     /// `nonbasic`/`nonlegendary` above; generalize to a `subtypes_exclude` list if a second
     /// land-subtype exclusion turns up.
     pub nonlair: bool,
+    /// Excludes creatures with flying (Breath of Darigaaz's "each creature *without flying*").
+    /// `false` (default) imposes no restriction. Reads [`Game::has_keyword`].
+    /// ponytail: a single bool covers the pool's one keyword-exclusion need, same shape as
+    /// `nonbasic`/`nonlegendary`/`nonlair` above; generalize to a `without_keyword: Option<Keyword>`
+    /// if a second keyword exclusion turns up.
+    pub without_flying: bool,
+    /// Requires the permanent share at least one card type with the ability's own triggering
+    /// dying permanent's last-known card types (CR 603.10a) — a *dynamic* type gate whose type
+    /// set isn't known until the ability actually fires (Martyr's Bond's "shares a card type with
+    /// it"), unlike the static `types` field above. `false` (default) imposes no restriction.
+    /// Only meaningful behind a [`super::Trigger::NonlandPermanentYouControlDiesIncludingThis`]
+    /// watch: `contextualize_effect` resolves it by overwriting `types` with
+    /// `TriggerContext::dying_permanent_types` before [`Game::permanent_matches`] ever reads this
+    /// filter, so [`Game::permanent_matches`] itself never consults this flag.
+    pub shares_type_with_dying_permanent: bool,
 }
 
 impl PermanentFilter {
@@ -730,6 +753,7 @@ impl PermanentFilter {
             attached_to_creature: None,
             enchanted_by_you: false,
             mv_max: None,
+            mv_min: None,
             mv_eq_x: false,
             mv_max_x: false,
             tapped: None,
@@ -739,12 +763,15 @@ impl PermanentFilter {
             color: ColorFilter::Any,
             modified: false,
             attacking: false,
+            attacking_you: false,
             power_less_than_source: false,
             entered_this_turn: false,
             nonbasic: false,
             name: None,
             nonlegendary: false,
             nonlair: false,
+            without_flying: false,
+            shares_type_with_dying_permanent: false,
         }
     }
 }
@@ -807,6 +834,13 @@ pub enum TokenController {
     /// resolution, narrower [`TargetSpec::OpponentPlayer`](super::TargetSpec::OpponentPlayer)
     /// legal-target set.
     TargetOpponent,
+    /// Every player *other than* the ability's chosen Player target — the ability's own
+    /// controller included, the target excluded (Death by Dragons: "Each player other than
+    /// target player creates a 5/5 red Dragon creature token with flying." — CR 111.4). Same
+    /// [`Target::Player`] resolution and [`TargetSpec::Player`](super::TargetSpec::Player) report
+    /// as [`TargetPlayer`](Self::TargetPlayer), but the target is the one player who does *not*
+    /// get a token, not the recipient.
+    EachOtherPlayer,
 }
 
 /// Who acts when a [`Effect::ScheduleAtNextUpkeep`] delayed trigger fires (CR 603.7).

@@ -538,6 +538,28 @@ describe("layout", () => {
     expect(cards.findIndex((c) => c.id === 2)).toBeLessThan(cards.findIndex((c) => c.id === 1));
   });
 
+  it("renders a donated permanent under its controller's row, not its owner's (Zedruu, CR 800.4a)", () => {
+    // Viewer (P0) donated a bear to P1: P0 still owns it (CR 108.3) but P1 controls it, so it must
+    // render in P1's flipped creature row — not P0's — grouped by controller, badged by owner.
+    const state = mkState({
+      players: [mkPlayer({ player: 0 }), mkPlayer({ player: 1 })],
+      objects: [
+        mkObject({
+          id: 1,
+          name: "Donated Bear",
+          owner: 0,
+          controller: 1,
+          kind: { kind: "creature", power: 2, toughness: 2 },
+          power: 2,
+          toughness: 2,
+        }),
+      ],
+    });
+    const bear = layout(state, 0).find((c) => c.id === 1);
+    // P1's flipped creature row sits at y=142 (see the opponent-bear case above), NOT P0's row.
+    expect(bear).toMatchObject({ y: 142, owner: 0, controller: 1 });
+  });
+
   it("falls back to the Noncreature row when attached_to points at a missing host", () => {
     const state = mkState({
       players: [mkPlayer({ player: 0 })],

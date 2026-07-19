@@ -1,0 +1,29 @@
+# Defender (This creature can't attack.)
+# Flying
+# Prevent all combat damage that would be dealt to and dealt by this creature.
+name = "Fog Bank"
+id = "3a2bb47d-228d-499e-a34b-9e10d99e9b2c"
+default_print = "18748b1d-4161-482c-a726-8762b4c1819c"
+oracle = "Defender (This creature can't attack.)\nFlying\nPrevent all combat damage that would be dealt to and dealt by this creature."
+set = "fdn"
+subtypes = ["Wall"]
+keywords = ["defender", "flying"]
+
+[cost]
+generic = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 0
+toughness = 2
+
+# Prevent all combat damage that would be dealt to and dealt by this creature.
+[[abilities]]
+timing = "static"
+
+# Prevent all combat damage that would be dealt to and dealt by this creature.
+[[abilities.effects]]
+type = "prevent_combat_damage_static"
+to_self = true
+by_self = true

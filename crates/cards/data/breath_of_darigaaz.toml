@@ -1,0 +1,36 @@
+# Kicker {2} (You may pay an additional {2} as you cast this spell.)
+# Breath of Darigaaz deals 1 damage to each creature without flying and each player. If this
+# spell was kicked, it deals 4 damage to each creature without flying and each player instead.
+name = "Breath of Darigaaz"
+id = "1954994f-17bf-4ea5-af72-60f9bfcb6569"
+default_print = "cbb60f03-7bcf-46a3-9310-c2067d9c5396"
+otags = ["burn-creature", "burn-player", "sweeper"]
+oracle = "Kicker {2} (You may pay an additional {2} as you cast this spell.)\nBreath of Darigaaz deals 1 damage to each creature without flying and each player. If this spell was kicked, it deals 4 damage to each creature without flying and each player instead."
+set = "cm2"
+
+[cost]
+generic = 1
+red = 1
+
+[cost.additional.kicker]
+generic = 2
+
+[kind]
+type = "sorcery"
+
+# Breath of Darigaaz deals 1 damage to each creature without flying and each player. If this
+# spell was kicked, it deals 4 damage to each creature without flying and each player instead.
+[[abilities]]
+timing = "spell"
+
+# deals 1 damage to each creature without flying ... If this spell was kicked, it deals 4 damage
+# to each creature without flying ... instead.
+[[abilities.effects]]
+type = "damage_each_creature"
+amount = { if_kicked = 4, else = 1 }
+filter = { without_flying = true }
+
+# ... and each player. If this spell was kicked, it deals 4 damage ... and each player instead.
+[[abilities.effects]]
+type = "damage_each_player"
+amount = { if_kicked = 4, else = 1 }

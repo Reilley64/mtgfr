@@ -1,0 +1,48 @@
+# Equipped creature gets +2/+2.
+# As long as equipped creature is legendary, it has hexproof. (It can't be the target of spells
+# or abilities your opponents control.)
+# Equip {1}
+name = "Champion's Helm"
+id = "c01aafb8-3da5-4eb1-8731-2a223e747d63"
+default_print = "c6548a30-577a-47e7-aa6e-8f6db1f7b78e"
+otags = ["activated-ability", "gives-hexproof", "legendary", "protects-creature"]
+oracle = "Equipped creature gets +2/+2.\nAs long as equipped creature is legendary, it has hexproof. (It can't be the target of spells or abilities your opponents control.)\nEquip {1}"
+set = "cmm"
+subtypes = ["Equipment"]
+
+[cost]
+generic = 3
+
+[kind]
+type = "artifact"
+
+# Equipped creature gets +2/+2.
+[[abilities]]
+timing = "static"
+
+# Equipped creature gets +2/+2.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 2
+toughness = 2
+
+# As long as equipped creature is legendary, it has hexproof.
+[[abilities]]
+timing = "static"
+
+# As long as equipped creature is legendary, it has hexproof.
+[[abilities.effects]]
+type = "grant_to_attached"
+keywords = ["hexproof"]
+legendary_only = true
+
+# Equip {1}
+[[abilities]]
+timing = "activated"
+
+[abilities.activation_cost]
+generic = 1
+
+# Equip {1}
+[[abilities.effects]]
+type = "equip"

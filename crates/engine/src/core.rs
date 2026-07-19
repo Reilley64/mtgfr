@@ -39,13 +39,18 @@ impl Game {
             pending_trigger_groups: Vec::new(),
             pending_echo: Vec::new(),
             pending_recover: Vec::new(),
+            pending_cumulative_upkeep: Vec::new(),
             pending_choice: None,
             pending_sequence: None,
             pending_spell_finish: None,
             pending_demonstrate_opponent_copy: None,
+            pending_clash_scry: None,
+            clash_won: false,
+            skip_next_untap: Vec::new(),
             combat: CombatState::default(),
             combat_extras: state::CombatExtras::default(),
             play_permissions: state::PlayPermissions::default(),
+            next_control_timestamp: 0,
             modifier_provenance: state::ModifierProvenance::default(),
             once_per_turn: state::OncePerTurnLimits::default(),
             exile_links: state::ExileLinks::default(),
@@ -63,6 +68,7 @@ impl Game {
             pending_enter_bonus_counters: Vec::new(),
             exile_time_counters: Vec::new(),
             self_exile_time_counters: None,
+            self_tuck_to_library_bottom: false,
         }
     }
 
@@ -356,67 +362,74 @@ impl Game {
         match self.objects[id as usize] {
             Object::Card(c) => c.owner,
             Object::Spell(s) => s.controller,
-            Object::Permanent(p) => {
-                // A one-shot until-end-of-turn steal (Effect::GainControlUntilEndOfTurn,
-                // Besmirch) outranks a continuous control-changing Aura (CR 800.4a: the most
-                // recent control-changing effect wins). ponytail: `control_overrides` has no
-                // per-entry timestamp, so "an active entry wins" stands in for "most recent" —
-                // sound for the pool, since no card layers both on one permanent.
-                if let Some(&(_, controller, _)) = self
-                    .play_permissions
-                    .control_overrides
-                    .iter()
-                    .find(|&&(o, ..)| o == id)
-                {
-                    return controller;
-                }
-                // A condition-scoped steal (Effect::GainControlWhile, Rubinia Soulsinger) — same
-                // "an active entry wins" precedence. An entry stays live only while its condition
-                // holds: the moment it fails, the SBA sweep (`check_conditioned_control_reversions`)
-                // drops it, so a present entry means the steal is still in force.
-                if let Some(&(_, controller, _)) = self
-                    .play_permissions
-                    .conditioned_control_overrides
-                    .iter()
-                    .find(|&&(o, ..)| o == id)
-                {
-                    return controller;
-                }
-                // A permanent control change (Effect::GainControl, Entrancing Melody) — same
-                // "an active entry wins" precedence as the until-EOT check above.
-                if let Some(&(_, controller)) = self
-                    .play_permissions
-                    .permanent_control_overrides
-                    .iter()
-                    .find(|&&(o, _)| o == id)
-                {
-                    return controller;
-                }
-                // A control-changing Aura (Effect::ControlAttached) overrides the base owner
-                // (CR 720).
-                self.control_override(id).unwrap_or(p.owner)
-            }
+            Object::Permanent(p) => self.permanent_controller(id, p.owner),
             Object::Moved { to } => self.controller_of(to),
             Object::Removed => panic!("object {id} has left the game"),
         }
     }
 
-    /// The controller imposed on `host` by a control-changing Aura attached to it (CR 720), if
-    /// any — the Aura's own controller. Applied additively over the base owner (ADR 0003), so it
-    /// vanishes on its own when the Aura leaves the battlefield. `None` when no such Aura is
-    /// attached.
-    pub(crate) fn control_override(&self, host: ObjectId) -> Option<PlayerId> {
-        self.attachments(host).into_iter().find_map(|aura| {
-            self.def_of(aura)
-                .abilities
+    /// The controller of the permanent at `id` under CR 800.4a: when several control-changing
+    /// effects apply to one permanent, the most recent (highest-timestamp) one wins. Collects
+    /// every live control source for `id` — the three override registries plus any attached
+    /// control-changing Aura — and returns the controller of the latest, falling back to the base
+    /// `owner` when none applies. A condition-scoped entry is only present while its
+    /// [`ControlCondition`] holds (the SBA sweep drops it otherwise), so a present entry means the
+    /// steal is still in force.
+    fn permanent_controller(&self, id: ObjectId, owner: PlayerId) -> PlayerId {
+        let perms = &self.play_permissions;
+        // (timestamp, controller) of the most recent control source seen so far.
+        let mut latest: Option<(u64, PlayerId)> = None;
+        let consider = |ts: u64, controller: PlayerId, latest: &mut Option<(u64, PlayerId)>| {
+            if latest.is_none_or(|(t, _)| ts >= t) {
+                *latest = Some((ts, controller));
+            }
+        };
+        for &(o, controller, _, ts) in &perms.control_overrides {
+            if o == id {
+                consider(ts, controller, &mut latest);
+            }
+        }
+        for &(o, controller, _, ts) in &perms.conditioned_control_overrides {
+            if o == id {
+                consider(ts, controller, &mut latest);
+            }
+        }
+        for &(o, controller, ts) in &perms.permanent_control_overrides {
+            if o == id {
+                consider(ts, controller, &mut latest);
+            }
+        }
+        if let Some(aura) = self.control_aura(id) {
+            let ts = perms
+                .aura_control_timestamps
                 .iter()
-                .any(|a| {
-                    matches!(
-                        (a.timing, a.effect),
-                        (Timing::Static, Effect::ControlAttached)
-                    )
-                })
-                .then(|| self.owner_of(aura))
+                .find_map(|&(a, t)| (a == aura).then_some(t))
+                .unwrap_or(0);
+            consider(ts, self.owner_of(aura), &mut latest);
+        }
+        latest.map_or(owner, |(_, controller)| controller)
+    }
+
+    /// The next control-change timestamp (CR 800.4a), consuming it. Called as each control
+    /// override / control Aura takes hold so later steals compare newer than earlier ones.
+    pub(crate) fn stamp_control_timestamp(&mut self) -> u64 {
+        let ts = self.next_control_timestamp;
+        self.next_control_timestamp += 1;
+        ts
+    }
+
+    /// The control-changing Aura (CR 720 — [`Effect::ControlAttached`]) currently attached to
+    /// `host`, if any — the object whose owner controls `host` while it stays attached. `None`
+    /// when no such Aura is attached. Applied additively over the base owner (ADR 0003), so the
+    /// override vanishes on its own when the Aura leaves the battlefield.
+    pub(crate) fn control_aura(&self, host: ObjectId) -> Option<ObjectId> {
+        self.attachments(host).into_iter().find(|&aura| {
+            self.def_of(aura).abilities.iter().any(|a| {
+                matches!(
+                    (a.timing, a.effect),
+                    (Timing::Static, Effect::ControlAttached)
+                )
+            })
         })
     }
 

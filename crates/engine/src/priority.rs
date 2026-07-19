@@ -97,9 +97,10 @@ impl Game {
     /// `submit` sweeps state-based actions afterwards (declaring a winner if one is left) and hands
     /// priority on if the conceding player was holding it.
     ///
-    /// ponytail: the conceded player's permanents stay on the battlefield, where CR 800.4a would
-    /// remove them. That's not new — every elimination in this engine leaves them, and no pool card
-    /// yet depends on the difference. Their turns, priority, and combat are all skipped already.
+    /// The CR 800.4a elimination sweep — remove everything the leaver owns (even permanents others
+    /// control) and end every control effect that gave *them* control (stolen permanents return to
+    /// their owners) — runs in the [`Event::PlayerLost`] apply arm, so it fires for a lethal-damage
+    /// elimination just as it does for this concede.
     pub(crate) fn concede(&mut self, player: PlayerId) -> Vec<Event> {
         if self.has_lost(player) {
             return Vec::new();
@@ -143,7 +144,9 @@ impl Game {
             };
             return self.activate_ability(player, object, index, None, Vec::new(), Vec::new(), 0);
         };
-        if perm.owner != player || perm.tapped {
+        // CR 602.2/605.3: tapping a permanent for mana is its *controller*'s action — a stolen
+        // land taps for its thief, not its owner.
+        if self.controller_of(object) != player || perm.tapped {
             return Err(Reject::CannotProduceMana);
         }
 
@@ -407,10 +410,12 @@ impl Game {
             let Object::Permanent(p) = o else {
                 continue;
             };
-            if p.owner != player || p.tapped {
+            let id = idx as ObjectId;
+            // CR 602.2/605.3: a player's available mana counts the permanents they *control*, not
+            // merely own — a stolen land contributes to its thief's pool, mirroring `tap_for_mana`.
+            if self.controller_of(id) != player || p.tapped {
                 continue;
             }
-            let id = idx as ObjectId;
             // Permanents with a paid tap-for-mana ability (Fetid Heath filter, Study Hall any)
             // are counted only via the fixed-point below — adding their free mode here would
             // mark them used and hide the paid mode when duals are required.
@@ -1384,7 +1389,12 @@ impl Game {
                 // yes/no pause, and only untapped once the active player declines to keep it tapped.
                 let mut optional_untap: Vec<ObjectId> = Vec::new();
                 for id in self.controlled_battlefield(active) {
-                    if self.permanent(id).tapped {
+                    // Pollen Lullaby's win rider (CR): a permanent marked to skip its controller's
+                    // next untap step doesn't untap now — the mark is consumed here (whether or not
+                    // it was tapped), so it untaps normally on every later untap step.
+                    if self.skip_next_untap.contains(&id) {
+                        self.push_apply(events, Event::NextUntapSkipConsumed { object: id });
+                    } else if self.permanent(id).tapped {
                         if self.def_of(id).may_choose_not_to_untap {
                             optional_untap.push(id);
                         } else {
@@ -1673,6 +1683,7 @@ mod tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -1691,6 +1702,7 @@ mod tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }

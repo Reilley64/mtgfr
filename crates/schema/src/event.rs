@@ -148,6 +148,10 @@ pub enum VisibleEvent {
     Untapped {
         object: ObjectId,
     },
+    /// A permanent was removed from combat (CR 506.4 — `Effect::RemoveFromCombat`).
+    RemovedFromCombat {
+        object: ObjectId,
+    },
     /// A regeneration shield was granted to a permanent (CR 701.15b).
     RegenerationShieldCreated {
         object: ObjectId,
@@ -298,6 +302,15 @@ pub enum VisibleEvent {
     /// Every goad done by player `by` ended (the start of `by`'s turn).
     GoadCleared {
         by: u8,
+    },
+    /// `object` was marked to skip its controller's next untap step (Pollen Lullaby). Public — a
+    /// board fact, like goad.
+    NextUntapSkipMarked {
+        object: ObjectId,
+    },
+    /// `object`'s skip-next-untap mark was consumed as its controller's untap step arrived.
+    NextUntapSkipConsumed {
+        object: ObjectId,
     },
     /// A vow counter was placed on `object`, marking `protected` as the player it can't attack
     /// (Promise of Loyalty). Public — a counter placement happens openly, like the other counters.
@@ -628,6 +641,7 @@ pub enum VisibleEvent {
         card: ObjectId,
         from: ObjectId,
         to_top: bool,
+        second_from_top: bool,
     },
     /// `player`'s library was shuffled (Perpetual Timepiece's mandatory shuffle). No order
     /// information — the library is a hidden zone.
@@ -731,6 +745,15 @@ pub enum VisibleEvent {
         card: ObjectId,
         from: ObjectId,
         player: u8,
+    },
+    /// `player` put a card from hand onto the top of their library (Brainstorm resolving) — a
+    /// hidden-zone-to-hidden-zone move, like [`Self::CardDrawn`]: `from` and `card` are `None`
+    /// for anyone but `player`.
+    PutFromHandOnTop {
+        player: u8,
+        card: ObjectId,
+        from: Option<ObjectId>,
+        def: Option<String>,
     },
     /// A graveyard card was impulse-exiled face-up and `player` may play it until end of turn
     /// (Containment Construct's discard payoff, CR 601 impulse play). Public, like

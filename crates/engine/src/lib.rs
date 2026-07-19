@@ -78,6 +78,14 @@ pub struct Game {
     /// batch of deaths already recovered or exiled it — CR 702.59a's ruling that only the first of
     /// several simultaneous triggers has any effect) is silently skipped, not re-offered.
     pub(crate) pending_recover: Vec<ObjectId>,
+    /// Permanents whose cumulative upkeep (CR 702.24) age counter + pay-or-sacrifice choice is
+    /// due but not yet placed — queued at their controller's upkeep
+    /// ([`Game::queue_cumulative_upkeep_triggers`]), drained one at a time (each places an age
+    /// counter, then becomes a [`PendingChoice::PayCumulativeUpkeepOrSacrifice`]) after
+    /// [`pending_recover`](Self::pending_recover) empties in [`Game::place_pending_triggers`]. A
+    /// source that left the battlefield since being queued is skipped, same as
+    /// [`pending_echo`](Self::pending_echo).
+    pub(crate) pending_cumulative_upkeep: Vec<ObjectId>,
     /// A decision the engine is blocked on until the active chooser answers.
     pub(crate) pending_choice: Option<PendingChoice>,
     /// The steps of an [`Effect::Sequence`] still to run after the current pausing step
@@ -102,12 +110,33 @@ pub struct Game {
     /// alongside the controller's own copy's CR 707.10c retarget pause, since the two copies have
     /// different controllers and `mint_spell_copies` shares one [`resolution::ResolveCtx`] per call.
     pub(crate) pending_demonstrate_opponent_copy: Option<(PlayerId, ObjectId)>,
+    /// Clash (CR 701.22): the opponent still owed a keep-on-top-or-bottom scry after the ability's
+    /// controller has taken theirs. `None` unless a clash is mid-way between its two reveals'
+    /// keep/bottom decisions; drained by [`Game::resume_deferred_sequence`] once the controller's
+    /// scry clears, raising the opponent's — the same "wait for the current pause, then continue"
+    /// shape as [`pending_demonstrate_opponent_copy`](Self::pending_demonstrate_opponent_copy).
+    pub(crate) pending_clash_scry: Option<PlayerId>,
+    /// Whether the current resolution's [`Effect::Clash`] was won by its controller (CR 701.22d),
+    /// read by a following [`Condition::WonClash`] step. Resolution-scoped, not a persistent board
+    /// fact: each clash overwrites it and only a same-resolution `conditional` reads it, so it is
+    /// never carried meaningfully between resolutions (see [`Condition::WonClash`]).
+    pub(crate) clash_won: bool,
+    /// Permanents that skip their controller's next untap step (Pollen Lullaby's win rider —
+    /// [`Effect::SkipNextUntapOpponentCreatures`]). Each id is consumed the next time that
+    /// permanent's controller reaches their untap step (see [`Game::advance_step`]'s `Untap` arm),
+    /// whether or not it was tapped.
+    pub(crate) skip_next_untap: Vec<ObjectId>,
     /// The current combat's attackers, blocks, and orderings (empty outside combat).
     pub(crate) combat: CombatState,
     /// Goad and other combat-adjacent state lifted off `Permanent` so it stays `Copy`.
     pub(crate) combat_extras: state::CombatExtras,
     /// Active play/control permissions lifted off `Card`/`Permanent` so they stay `Copy`.
     pub(crate) play_permissions: state::PlayPermissions,
+    /// Monotonic source of control-change timestamps (CR 800.4a — "the most recent control-changing
+    /// effect wins"). Stamped onto each control override / control Aura as it takes hold and read by
+    /// [`Game::controller_of`] to rank several control effects on one permanent. Never reset, so an
+    /// earlier steal always compares older than a later one for the game's lifetime.
+    pub(crate) next_control_timestamp: u64,
     /// Sourced counter/EOT-boost batches for the Alt-inspect mod ledger.
     pub(crate) modifier_provenance: state::ModifierProvenance,
     /// Once-per-turn activation/trigger caps, reset at each untap step.
@@ -172,6 +201,12 @@ pub struct Game {
     /// than sending it to the graveyard (Rousing Refrain). Consumed (`take`) in `finish`, which
     /// always runs right after the spell's effects — only one spell resolves at a time.
     pub(crate) self_exile_time_counters: Option<u32>,
+    /// Set by an [`Effect::TuckSelfToLibraryBottom`] step while a spell resolves, so
+    /// [`Game::finish_instant_sorcery_resolution`] tucks that spell to the bottom of its owner's
+    /// library rather than sending it to the graveyard (Spell Crumple). Consumed (`take`) in
+    /// `finish`, the same one-spell-at-a-time guarantee [`Self::self_exile_time_counters`] relies
+    /// on.
+    pub(crate) self_tuck_to_library_bottom: bool,
 }
 
 impl Game {
@@ -412,20 +447,15 @@ impl Game {
                 0,
                 playable::CastPlayKind::OneClick,
             ),
-            MeaningfulAction::Activate { source, ability } => {
-                // ponytail: a one-click/take-action activation picks no `{X}` (x = 0) — no pool
-                // card has an `{X}`-cost activated ability, so the action list never offers one.
-                // Thread a chosen X through here when a card first needs it.
-                self.activate_ability(
-                    player,
-                    source,
-                    ability,
-                    target,
-                    sacrifice,
-                    discard_cost.to_vec(),
-                    0,
-                )
-            }
+            MeaningfulAction::Activate { source, ability } => self.activate_ability(
+                player,
+                source,
+                ability,
+                target,
+                sacrifice,
+                discard_cost.to_vec(),
+                x,
+            ),
             MeaningfulAction::Cycle { card } => {
                 self.cycle(player, card, sacrifice.first().copied())
             }
@@ -563,7 +593,9 @@ mod forced_action_tests {
                 count: Amount::Fixed(1),
             },
             legal: vec![Target::Object(7)],
-            optional: false,
+            count: TargetCount::default(),
+            x: 0,
+            activated: false,
         });
         assert_eq!(
             game.forced_action(),
@@ -584,7 +616,9 @@ mod forced_action_tests {
                 count: Amount::Fixed(1),
             },
             legal: vec![Target::Object(7), Target::Object(8)],
-            optional: false,
+            count: TargetCount::default(),
+            x: 0,
+            activated: false,
         });
         assert_eq!(game.forced_action(), None);
     }
@@ -601,7 +635,13 @@ mod forced_action_tests {
                 count: Amount::Fixed(1),
             },
             legal: vec![Target::Object(7)],
-            optional: true,
+            count: TargetCount {
+                min: 0,
+                max: 1,
+                ..TargetCount::default()
+            },
+            x: 0,
+            activated: false,
         });
         assert_eq!(game.forced_action(), None);
     }
@@ -742,6 +782,7 @@ mod refresh_actions_tests {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -760,6 +801,7 @@ mod refresh_actions_tests {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }
@@ -849,6 +891,7 @@ mod refresh_actions_tests {
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                cumulative_upkeep: None,
                 recover: None,
                 bestow: None,
                 morph: None,
@@ -867,6 +910,7 @@ mod refresh_actions_tests {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
             },

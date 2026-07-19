@@ -95,6 +95,7 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             target,
             sacrifice,
             discard_cost,
+            x,
         } => Intent::ActivateAbility(pb::WireIntentActivateAbility {
             player: u32::from(player),
             object,
@@ -102,6 +103,7 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             target: target.map(wire_target_to_pb),
             sacrifice,
             discard_cost,
+            x,
         }),
         WireIntent::DeclareAttackers { player, attackers } => {
             Intent::DeclareAttackers(pb::WireIntentDeclareAttackers {
@@ -137,6 +139,12 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             player: u32::from(player),
             yes,
         }),
+        WireIntent::ChooseDrawCount { player, count } => {
+            Intent::ChooseDrawCount(pb::WireIntentChooseDrawCount {
+                player: u32::from(player),
+                count: u32::from(count),
+            })
+        }
         WireIntent::PayOptionalCost { player, pay } => {
             Intent::PayOptionalCost(pb::WireIntentPayOptionalCost {
                 player: u32::from(player),
@@ -206,6 +214,12 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             player: u32::from(player),
             cards,
         }),
+        WireIntent::PutFromHandOnTop { player, cards } => {
+            Intent::PutFromHandOnTop(pb::WireIntentPutFromHandOnTop {
+                player: u32::from(player),
+                cards,
+            })
+        }
         WireIntent::PutLandFromHand { player, choice } => {
             Intent::PutLandFromHand(pb::WireIntentPutLandFromHand {
                 player: u32::from(player),
@@ -468,6 +482,7 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             target,
             sacrifice,
             discard_cost,
+            x,
         }) => WireIntent::ActivateAbility {
             player: u8_trunc(player),
             object,
@@ -475,6 +490,7 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             target: opt_wire_target_from_pb(target)?,
             sacrifice,
             discard_cost,
+            x,
         },
         Intent::DeclareAttackers(pb::WireIntentDeclareAttackers { player, attackers }) => {
             WireIntent::DeclareAttackers {
@@ -513,6 +529,12 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             player: u8_trunc(player),
             yes,
         },
+        Intent::ChooseDrawCount(pb::WireIntentChooseDrawCount { player, count }) => {
+            WireIntent::ChooseDrawCount {
+                player: u8_trunc(player),
+                count: u8_trunc(count),
+            }
+        }
         Intent::PayOptionalCost(pb::WireIntentPayOptionalCost { player, pay }) => {
             WireIntent::PayOptionalCost {
                 player: u8_trunc(player),
@@ -579,6 +601,12 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             player: u8_trunc(player),
             cards,
         },
+        Intent::PutFromHandOnTop(pb::WireIntentPutFromHandOnTop { player, cards }) => {
+            WireIntent::PutFromHandOnTop {
+                player: u8_trunc(player),
+                cards,
+            }
+        }
         Intent::PutLandFromHand(pb::WireIntentPutLandFromHand { player, choice }) => {
             WireIntent::PutLandFromHand {
                 player: u8_trunc(player),

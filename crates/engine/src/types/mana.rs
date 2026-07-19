@@ -7,13 +7,14 @@ pub struct Cost {
     pub colored: [u8; Color::COUNT],
     /// Colorless `{C}` pips — payable only by colorless mana (not by colored or "any").
     pub colorless: u8,
-    /// The number of `{X}` symbols in the cost (0 = none). CR 107.3: every `{X}` in a cost is
-    /// the same chosen value, paid once per symbol — `{X}{X}{X}` (Astral Cornucopia) pays the
-    /// chosen X three times. The count lives here; the chosen value is multiplied in and added
-    /// to [`Cost::generic`] via [`Cost::with_x`] before payment, so mana planning never has to
-    /// know about `{X}`.
-    /// ponytail: spells only — `{X}` in activated-ability costs and `{X}` on permanents (a CDA,
-    /// CR 107.3) aren't modeled; grow those from a real card that needs them.
+    /// The number of `{X}` symbols in the cost (0 = none) — a spell's cast cost or an activated
+    /// ability's activation cost alike (Nin, the Pain Artist's `{X}{U}{R}, {T}`). CR 107.3: every
+    /// `{X}` in a cost is the same chosen value, paid once per symbol — `{X}{X}{X}` (Astral
+    /// Cornucopia) pays the chosen X three times. The count lives here; the chosen value is
+    /// multiplied in and added to [`Cost::generic`] via [`Cost::with_x`] before payment, so mana
+    /// planning never has to know about `{X}`.
+    /// ponytail: `{X}` on a permanent's own characteristics (a CDA, CR 107.3) isn't modeled; grow
+    /// that from a real card that needs it.
     pub x: u8,
     /// Hybrid mana pips (CR 107.4e — `{a/b}`), one entry per symbol: each is payable by mana of
     /// color `a` *or* `b`, a dual credit touching either color, or an "any" wildcard — strictly
@@ -343,12 +344,11 @@ pub enum SpendRestriction {
     /// "Spend this mana only to cast spells with mana value N or greater or spells with `{X}`
     /// in their mana cost[s]" (Troyan, Gutsy Explorer — `N` = 5).
     ManaValueAtLeastOrHasX(u32),
-    /// "Spend this mana only on costs that contain `{X}`" (Elementalist's Palette).
-    /// ponytail: the printed text also admits an activated ability's cost with `{X}` in it, not
-    /// only spells — `allows` only sees `SpellCharacteristics` (`None` at an ability payment), so
-    /// an `{X}` *ability* cost can never be funded by this credit. No pool card has an `{X}`
-    /// activated-ability cost yet, so this is unobservable; if one lands, `allows` needs a spell
-    /// -less path fed by the ability's own `{X}` count. (CR 602, CR 601, CR 113)
+    /// "Spend this mana only on costs that contain `{X}`" (Elementalist's Palette) — a cast's
+    /// mana cost or an activated ability's own activation cost alike (Nin, the Pain Artist's
+    /// `{X}{U}{R}`, CR 106.9); `Game::activate_ability` feeds `allows` the ability's own cost's
+    /// `{X}` count (`mana_value`/`is_instant_or_sorcery` are meaningless for an ability payment,
+    /// so both stay at their default/`false`). (CR 602, CR 601, CR 113)
     HasX,
 }
 

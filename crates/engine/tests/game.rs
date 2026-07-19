@@ -355,6 +355,7 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: Some(flash_cost(2, [0; 5], NO_ADD)),
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -375,6 +376,7 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -417,6 +419,7 @@ const COMBAT_ONLY_INSTANT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -437,6 +440,7 @@ const COMBAT_ONLY_INSTANT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -517,6 +521,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
     let no_flashback = CardDef {
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -537,6 +542,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         ..FLASHBACK_DRAW
@@ -572,6 +578,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         cost: flash_cost(5, [0; 5], NO_ADD),
         flashback: Some(flash_cost(1, [0; 5], NO_ADD)),
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -587,6 +594,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         ..FLASHBACK_DRAW
@@ -643,6 +651,7 @@ fn flashback_with_pay_life_additional_cost() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         ..FLASHBACK_DRAW
@@ -1596,6 +1605,7 @@ const TWO_ETB: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -1616,6 +1626,7 @@ const TWO_ETB: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -1677,6 +1688,7 @@ const PINGER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -1697,6 +1709,7 @@ const PINGER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -1747,6 +1760,7 @@ const MAY_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -1767,6 +1781,7 @@ const MAY_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -1835,6 +1850,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -1855,6 +1871,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -1914,6 +1931,7 @@ const LOOK_DIG: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -1934,6 +1952,7 @@ const LOOK_DIG: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -1993,6 +2012,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -2013,6 +2033,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -2073,6 +2094,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -2093,6 +2115,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -2179,6 +2202,7 @@ const fn creature(
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -2199,6 +2223,7 @@ const fn creature(
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -2249,6 +2274,12 @@ const ARTIFACT_CREATURE: CardDef = CardDef {
         also: TypeSet::ARTIFACT,
     },
     ..creature("Artifact Creature", 2, 2, &[])
+};
+/// A legendary vanilla creature — Champion's Helm's "as long as equipped creature is legendary"
+/// gate needs a legendary host to trigger on.
+const LEGENDARY_CREATURE: CardDef = CardDef {
+    legendary: true,
+    ..creature("Legendary Test Creature", 2, 2, &[])
 };
 /// Bloodghast's printed "This creature can't block" static, as a keyword tag.
 const CANT_BLOCKER: CardDef = creature("Can't-Blocker", 2, 1, &[Keyword::CantBlock]);
@@ -4739,6 +4770,7 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -4759,6 +4791,7 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -4812,6 +4845,7 @@ const GRANT_FLYING: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -4832,6 +4866,7 @@ const GRANT_FLYING: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -4883,6 +4918,7 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -4903,6 +4939,7 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -4960,6 +4997,7 @@ const DESTROY: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -4980,6 +5018,7 @@ const DESTROY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5041,6 +5080,7 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5061,6 +5101,7 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5118,6 +5159,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5138,6 +5180,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5198,6 +5241,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5218,6 +5262,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5274,6 +5319,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5294,6 +5340,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5354,6 +5401,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5374,6 +5422,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5433,6 +5482,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5453,6 +5503,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5512,6 +5563,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5532,6 +5584,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5588,6 +5641,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5608,6 +5662,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5664,6 +5719,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5684,6 +5740,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5725,6 +5782,7 @@ const SHROUD_CREATURE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5745,6 +5803,7 @@ const SHROUD_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5786,6 +5845,7 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5806,6 +5866,7 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5859,6 +5920,7 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5879,6 +5941,7 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -5931,6 +5994,7 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -5951,6 +6015,7 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -6004,6 +6069,7 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -6024,6 +6090,7 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -6463,6 +6530,7 @@ const GROWTH: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -6483,6 +6551,7 @@ const GROWTH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -6558,6 +6627,7 @@ const INKLING: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -6578,6 +6648,7 @@ const INKLING: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -6634,6 +6705,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -6654,6 +6726,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -7065,6 +7138,7 @@ const X_DRAW_PERMANENT: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::DrawCards { count: Amount::X },
         optional: false,
@@ -7095,6 +7169,7 @@ const FIXED_DRAW_PERMANENT: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::DrawCards {
             count: Amount::Fixed(1),
@@ -7219,6 +7294,216 @@ fn unbound_flourishing_still_copies_x_sorcery_spell() {
         game.life(PlayerId(0)) - before,
         6,
         "the {{X}} = 3 gain-life sorcery is copied — 3 + 3 life (X isn't doubled for a sorcery)",
+    );
+}
+
+// ── Nin, the Pain Artist (c17, #223 ability-x-surface) ────────────────────────────────
+
+/// Nin, the Pain Artist: "{X}{U}{R}, {T}: Nin deals X damage to target creature. That
+/// creature's controller draws X cards." An {X}-cost targeted activated ability — the damage
+/// and the draw both scale with the same chosen X, unconditionally (no "would die" gate).
+#[test]
+fn nin_the_pain_artist_deals_x_damage_and_that_creatures_controller_draws_x_cards() {
+    let mut game = Game::new();
+    let nin = game.spawn_on_battlefield(PlayerId(0), card("Nin, the Pain Artist"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), creature("Victim", 0, 5, &[]));
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(1), &[VANILLA; 5]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: nin,
+        ability_index: 0,
+        target: Some(Target::Object(victim)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 3,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.marked_damage(victim),
+        3,
+        "Nin dealt X = 3 damage to the target creature"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(1)),
+        2,
+        "the damaged creature's controller (P1) drew X = 3 cards"
+    );
+}
+
+/// CR 702.16b: a source can't target a permanent that has protection from one of its colors.
+/// Nin is a UR source, so activating against a creature with protection from red (Flickering
+/// Ward) fizzles at resolution (CR 608.2b) — this engine's established target-illegality model
+/// (see `deekah_grant_unblockable_lets_token_through`), now sourced from the ability's own colors.
+#[test]
+fn nin_fizzles_against_a_creature_with_protection_from_red() {
+    let mut game = Game::new();
+    let nin = game.spawn_on_battlefield(PlayerId(0), card("Nin, the Pain Artist"));
+    let host = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    flickering_ward_on(&mut game, host, Color::Red);
+    game.fund_mana(PlayerId(0));
+    let library_before = game.library_size(PlayerId(1));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: nin,
+        ability_index: 0,
+        target: Some(Target::Object(host)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 1,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.marked_damage(host),
+        0,
+        "protection from red (one of Nin's colors) makes the target illegal — no damage dealt"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(1)),
+        library_before,
+        "the fizzled ability drew no card either"
+    );
+}
+
+/// Unbound Flourishing's ability half (CR 707.10): "... or activate an ability, if that
+/// ability's activation cost contains {X}, copy that ability. You may choose new targets for the
+/// copy." Nin is exactly the targeted {X}-cost activated ability that makes CR 707.10c's re-pick
+/// observable: the copy offers a fresh target choice, independent of the original's.
+#[test]
+fn nin_activated_ability_copied_by_unbound_flourishing_may_retarget_cr_707_10c() {
+    let mut game = TestGame::new();
+    game.fund_mana(PlayerId(0));
+    game.spawn_on_battlefield(PlayerId(0), card("Unbound Flourishing"));
+    let nin = game.spawn_on_battlefield(PlayerId(0), card("Nin, the Pain Artist"));
+    let original_target = game.spawn_on_battlefield(PlayerId(1), creature("Original", 0, 6, &[]));
+    let other_target = game.spawn_on_battlefield(PlayerId(1), creature("Other", 0, 6, &[]));
+    game.stack_library(PlayerId(1), &[VANILLA; 8]);
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: nin,
+        ability_index: 0,
+        target: Some(Target::Object(original_target)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 2,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Unbound's watch trigger resolves, minting the copy
+
+    let Some(PendingChoice::ChooseTarget { player, legal, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the copy's CR 707.10c retarget pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(player, PlayerId(0));
+    assert!(
+        legal.contains(&Target::Object(other_target)),
+        "the re-pick offers every legal target, not just the original's"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(other_target)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the copy resolves against the re-picked target
+    resolve_top_of_stack(&mut game); // the original activation resolves against its own target
+
+    assert_eq!(
+        game.marked_damage(other_target),
+        2,
+        "the copy dealt its X = 2 to the re-picked target"
+    );
+    assert_eq!(
+        game.marked_damage(original_target),
+        2,
+        "the original activation still dealt its X = 2 to its own (unchanged) target"
+    );
+}
+
+/// Elementalist's Palette's "Spend this mana only on costs that contain {X}" restriction (CR
+/// 106.9) recognizes an *activated ability's own* {X}, not just a spell's — Nin's "{X}{U}{R}, {T}"
+/// is exactly such a cost. Fund only the exact mana each step needs, so no unrestricted mana ever
+/// lingers in the pool to mask the restriction (mirrors `elementalists_palette_charge_mana_only_pays_x_costs`).
+#[test]
+fn elementalists_palette_restricted_mana_funds_nins_x_activation() {
+    let mut game = Game::new();
+    let palette = game.spawn_on_battlefield(PlayerId(0), card("Elementalist's Palette"));
+    let nin = game.spawn_on_battlefield(PlayerId(0), card("Nin, the Pain Artist"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), creature("Victim", 0, 5, &[]));
+
+    // Two charge counters via casting an {X} spell (Palette's own first ability).
+    tap_forests(&mut game, 1);
+    let filler = game.spawn_in_hand(PlayerId(0), X_INSTANT_FILLER);
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: filler,
+        target: None,
+        x: 1,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the cast_spell trigger places the counters
+    resolve_top_of_stack(&mut game); // the filler spell itself, clearing the stack
+    assert_eq!(game.counters_of_kind(palette, CounterKind::Charge), 2);
+
+    // Tap Palette for 2 restricted colorless — exactly Nin's X = 2 generic, no more.
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: palette,
+        ability_index: 2, // {T}: add {C} per charge counter, spend only on costs with {X}
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(game.floating_mana(PlayerId(0)), 2);
+
+    // Real {U}{R} — Nin's colored pips, funded minimally (no spare generic-payable mana).
+    let island = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: island,
+    })
+    .unwrap();
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: mountain,
+    })
+    .unwrap();
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: nin,
+        ability_index: 0,
+        target: Some(Target::Object(victim)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 2,
+    })
+    .expect("Palette's restricted {C} funds Nin's own {X} = 2 generic, the only unpaid piece");
+    assert_eq!(
+        game.floating_mana(PlayerId(0)),
+        0,
+        "the restricted colorless was fully spent on Nin's {{X}}"
     );
 }
 
@@ -7490,6 +7775,65 @@ fn tuck_permanent_token_ceases_to_exist() {
     );
 }
 
+/// Oblation: "The owner of target nonland permanent shuffles it into their library, then draws
+/// two cards." The owner (P1), not the caster (P0), both shuffles and draws. A fresh 2-card
+/// library (the pre-seeded filler plus the just-tucked target) means the owner draws *both*
+/// cards regardless of the shuffle's actual order, so this doesn't depend on the seed-0 PRNG's
+/// specific permutation — and no `RevealedTopOfLibrary`/`SearchedToBattlefield` step runs at all
+/// (unlike Chaos Warp's fused sibling), so nothing is left behind on top to reveal.
+#[test]
+fn oblation_tucks_target_and_its_owner_draws_two() {
+    let mut game = TestGame::new();
+    let filler = game.stack_library(PlayerId(1), &[card("Grizzly Bear")])[0];
+    let opponents_permanent = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let oblation = game.spawn_in_hand(PlayerId(0), card("Oblation"));
+
+    game.cast(oblation)
+        .at(Target::Object(opponents_permanent))
+        .resolve();
+
+    assert_eq!(
+        game.zone_of(opponents_permanent),
+        Zone::Hand,
+        "the tucked-then-shuffled permanent was drawn right back out by its OWNER (P1)"
+    );
+    assert_eq!(
+        game.zone_of(filler),
+        Zone::Hand,
+        "the owner drew both cards making up the post-shuffle 2-card library"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(1)),
+        0,
+        "both cards left the library on the draw — nothing stayed behind to reveal"
+    );
+}
+
+/// Oblation targeting a token (CR 111.7): a token is a legal "nonland permanent" target, but it
+/// can't exist in a library, so it ceases to exist instead of being shuffled in — the shuffle and
+/// the draw are one continuous instruction, so the owner still draws two cards even though the
+/// token itself never arrives.
+#[test]
+fn oblation_on_a_token_shuffles_nothing_but_owner_still_draws_two() {
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+    let token = game.spawn_token_on_battlefield(PlayerId(1), VANILLA);
+    let library_before = game.library_size(PlayerId(1));
+    let oblation = game.spawn_in_hand(PlayerId(0), card("Oblation"));
+
+    game.cast(oblation).at(Target::Object(token)).resolve();
+
+    assert!(
+        !game.live_object_ids().contains(&token),
+        "the token ceased to exist rather than entering a library"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(1)),
+        library_before - 2,
+        "the owner still drew two cards even though the token never actually entered the library"
+    );
+}
+
 /// A test-only sorcery "For each opponent, create a 1/1 Squirrel token." — Eccentric
 /// Pestfinder's "for each opponent, you create a..." shape, isolated (`controller =
 /// "each_opponent"`).
@@ -7685,6 +8029,108 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
     );
 }
 
+/// Death by Dragons: "Each player other than target player creates a 5/5 red Dragon creature
+/// token with flying." — `TokenController::EachOtherPlayer`: the chosen Player target is the one
+/// player who does NOT get a Dragon; every other living player (the caster included) does.
+#[test]
+fn death_by_dragons_each_other_player_gets_dragons_except_the_target() {
+    let mut game = Game::with_players(4, 0);
+    game.fund_mana(PlayerId(0));
+    let spell = game.spawn_in_hand(PlayerId(0), card("Death by Dragons"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: Some(Target::Player(PlayerId(1))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    // A 4-player table needs a pass from everyone in turn to empty the stack (see
+    // `an_each_opponent_token_effect_gives_one_token_to_every_opponent`).
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+
+    assert!(
+        battlefield_named(&game, PlayerId(1), "Dragon").is_empty(),
+        "the targeted player creates no Dragon"
+    );
+    for other in [PlayerId(0), PlayerId(2), PlayerId(3)] {
+        let dragons = battlefield_named(&game, other, "Dragon");
+        assert_eq!(
+            dragons.len(),
+            1,
+            "player {other:?} (not the target) creates exactly one Dragon"
+        );
+        assert_eq!(game.power(dragons[0]), 5);
+        assert_eq!(game.toughness(dragons[0]), 5);
+        assert!(
+            game.def_of(dragons[0]).keywords.contains(&Keyword::Flying),
+            "the Dragon token has flying"
+        );
+    }
+}
+
+/// A player already eliminated before this resolves gets no Dragon and causes no panic — the
+/// each-other-player recipient set is read off `Game::living_players`, which already drops
+/// eliminated seats.
+#[test]
+fn death_by_dragons_skips_an_already_eliminated_player() {
+    let mut game = Game::with_players(4, 0);
+    game.set_life(PlayerId(2), 0);
+    game.fund_mana(PlayerId(0));
+    let spell = game.spawn_in_hand(PlayerId(0), card("Death by Dragons"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: Some(Target::Player(PlayerId(1))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    assert!(
+        game.has_lost(PlayerId(2)),
+        "the SBA sweep eliminated P2 by the time the cast was processed (CR 704, CR 603)"
+    );
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+
+    assert!(
+        battlefield_named(&game, PlayerId(2), "Dragon").is_empty(),
+        "the eliminated player creates no Dragon"
+    );
+    assert!(
+        battlefield_named(&game, PlayerId(1), "Dragon").is_empty(),
+        "the targeted player still creates no Dragon"
+    );
+    for other in [PlayerId(0), PlayerId(3)] {
+        assert_eq!(
+            battlefield_named(&game, other, "Dragon").len(),
+            1,
+            "player {other:?} still creates one Dragon"
+        );
+    }
+}
+
 #[test]
 fn a_token_ceases_to_exist_when_it_dies() {
     let mut game = Game::new();
@@ -7795,6 +8241,7 @@ const PEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -7815,6 +8262,7 @@ const PEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -7871,6 +8319,7 @@ const MAKE_PEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -7891,6 +8340,7 @@ const MAKE_PEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -8194,6 +8644,7 @@ const HERALD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -8214,6 +8665,7 @@ const HERALD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -9075,6 +9527,75 @@ fn eriette_enchanted_creature_cant_attack_you() {
 }
 
 #[test]
+fn vow_enchanted_creature_cant_attack_its_controller_but_can_attack_others() {
+    // The Vow cycle (Vow of Duty/Flight/Lightning): "Enchanted creature ... can't attack you or
+    // planeswalkers you control." Sourced from the attachment and scoped to *the Aura's own
+    // controller* — not a blanket can't-attack, so the same creature can still attack a
+    // different opponent. P1 enchants P0's creature; P0 later attacks with it.
+    let mut game = Game::with_players(3, 0);
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA, VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA, VANILLA]);
+    game.stack_library(PlayerId(2), &[VANILLA, VANILLA, VANILLA]);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+
+    pass_until_next_turn(&mut game); // → P1's turn
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    let vow = game.spawn_in_hand(PlayerId(1), VOW_TEST);
+    fund_cast_resolve(&mut game, PlayerId(1), vow, Some(Target::Object(attacker)));
+
+    pass_until_next_turn(&mut game); // → P2's turn
+    pass_until_next_turn(&mut game); // → P0's turn
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, PlayerId(1))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "the Vow forbids attacking its own controller",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(attacker, PlayerId(2))],
+    })
+    .expect("the same enchanted creature can still attack a different opponent");
+}
+
+#[test]
+fn vow_of_duty_is_faithful() {
+    // Vow of Duty: "Enchant creature\nEnchanted creature gets +2/+2, has vigilance, and can't
+    // attack you or planeswalkers you control." P1 enchants P0's creature.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA]);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let vow = game.spawn_in_hand(PlayerId(1), card("Vow of Duty"));
+
+    pass_until_next_turn(&mut game); // → P1's turn, so P1 can cast the sorcery-speed Aura
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    fund_cast_resolve(&mut game, PlayerId(1), vow, Some(Target::Object(bear)));
+
+    assert_eq!(game.power(bear), 4, "+2/+2 from the Vow");
+    assert_eq!(game.toughness(bear), 4);
+    assert!(
+        game.has_keyword(bear, Keyword::Vigilance),
+        "the Vow grants vigilance"
+    );
+
+    pass_until_next_turn(&mut game); // → P0's turn
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(bear, PlayerId(1))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "the Vow forbids attacking its own controller",
+    );
+}
+
+#[test]
 fn menace_requires_two_blockers() {
     let mut game = Game::new();
     let menacer = game.spawn_on_battlefield(PlayerId(0), MENACER); // 3/3 menace
@@ -9103,6 +9624,184 @@ fn lifelink_gains_life_equal_to_combat_damage() {
 
     assert_eq!(game.life(PlayerId(1)), 20 - 3, "P1 took 3");
     assert_eq!(game.life(PlayerId(0)), before + 3, "lifelink gained 3");
+}
+
+/// A test-only lifelink permanent whose only activated ability deals 3 noncombat damage to a
+/// target player: "{T}: deals 3 damage to target player." Exercises lifelink (CR 702.15) on the
+/// `Effect::DealDamage` → `Target::Player` mint path, distinct from the combat path above.
+const LIFELINK_PINGER: CardDef = CardDef {
+    keywords: &[Keyword::Lifelink],
+    abilities: &[Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::DealDamage {
+            amount: Amount::Fixed(3),
+            target: TargetSpec::Player,
+            count: TargetCount {
+                min: 1,
+                max: 1,
+                x_scaled: false,
+                sacrifice_scaled: false,
+                strive_scaled: false,
+            },
+            divided: false,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("Lifelink Pinger (test)", 1, 1, &[Keyword::Lifelink])
+};
+
+#[test]
+fn lifelink_gains_life_equal_to_noncombat_damage_to_player() {
+    // Regression: `DealDamage` → `Target::Player` never called `gain_lifelink`, so a lifelink
+    // source's noncombat damage (a burn ability, not combat damage) gained its controller no
+    // life at all (CR 119.3/702.15e — lifelink triggers on ANY damage the source deals).
+    let mut game = TestGame::new();
+    let source = game.spawn_on_battlefield(PlayerId(0), LIFELINK_PINGER);
+    let index = only_activated_ability_index(&game, source);
+    let before = game.life(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: source,
+        ability_index: index,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("a free tap ability targeting a player is activatable");
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20 - 3,
+        "the target took 3 noncombat damage"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before + 3,
+        "lifelink gained 3 life from noncombat damage dealt to a player"
+    );
+}
+
+#[test]
+fn brion_stoutarm_flings_sacrificed_power_and_gains_life_via_lifelink() {
+    // Brion Stoutarm: "Lifelink. {R}, {T}, Sacrifice another creature: Brion Stoutarm deals
+    // damage equal to the sacrificed creature's power to target player or planeswalker."
+    let mut game = TestGame::new();
+    game.fund_mana(PlayerId(0));
+    let brion = game.spawn_on_battlefield(PlayerId(0), card("Brion Stoutarm"));
+    let sac = game.spawn_on_battlefield(PlayerId(0), BIG); // 4/4
+    let before = game.life(PlayerId(0));
+
+    let index = only_activated_ability_index(&game, brion);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: brion,
+        ability_index: index,
+        target: Some(Target::Player(PlayerId(1))),
+        sacrifice: vec![sac],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Brion's fling ability is activatable");
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(sac),
+        Zone::Graveyard,
+        "the 4/4 paid the sacrifice cost"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20 - 4,
+        "the target took damage equal to the sacrificed creature's power"
+    );
+    assert_eq!(
+        game.life(PlayerId(0)),
+        before + 4,
+        "lifelink gained Brion's controller that much life"
+    );
+}
+
+const LIFELINK_BLAST_EACH_PLAYER: CardDef = CardDef {
+    keywords: &[Keyword::Lifelink],
+    ..sorcery(
+        "Lifelink Blast Each Player (test)",
+        &[Ability {
+            timing: Timing::Spell,
+            effect: Effect::DamageEachPlayer {
+                amount: Amount::Fixed(2),
+            },
+            optional: false,
+            min_level: 0,
+            once_each_turn: false,
+            cost: Cost::FREE,
+            condition: None,
+        }],
+    )
+};
+
+#[test]
+fn damage_each_player_with_lifelink_gains_life_once_per_player_hit() {
+    // Regression (#217): `DamageEachPlayer` must route through the same `lifelink_gain` helper
+    // as `DealDamage`'s `Target::Player` arm — CR 702.15e: a source dealing damage to multiple
+    // players (Breath of Darigaaz's "and each player") gains life separately for each player hit,
+    // the caster's own share included.
+    let mut game = Game::with_players(4, 0);
+    let blast = game.spawn_in_hand(PlayerId(0), LIFELINK_BLAST_EACH_PLAYER);
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: blast,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("the test blast is castable");
+    resolve_whole_stack(&mut game);
+
+    for seat in 1..4 {
+        assert_eq!(
+            game.life(PlayerId(seat)),
+            20 - 2,
+            "player {seat} lost 2 to the blast"
+        );
+    }
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20 - 2 + 4 * 2,
+        "the caster lost 2 from its own share but gained 2 lifelink for each of the 4 players hit"
+    );
 }
 
 #[test]
@@ -9986,6 +10685,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 mill_self: 0,
                 discard_cost: 0,
                 exile_self: false,
+                graveyard_exile_target_count: 0,
             },
             mana: ManaPool {
                 colored: [0, 0, 0, 0, 1],
@@ -10046,6 +10746,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         functions_in_graveyard: false,
@@ -10059,6 +10760,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enchant: None,
         enchant_graveyard: false,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -10100,6 +10802,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         functions_in_graveyard: false,
@@ -10113,6 +10816,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enchant: None,
         enchant_graveyard: false,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -11394,6 +12098,7 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -11414,6 +12119,7 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -12623,6 +13329,7 @@ const ANTHEM_LORD: CardDef = CardDef {
             colors: &[],
             chosen_subtype: false,
             attacking_only: false,
+            blocking_only: false,
             commander_only: false,
             has_counters: false,
             condition: None,
@@ -12639,6 +13346,7 @@ const ANTHEM_LORD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -12659,6 +13367,7 @@ const ANTHEM_LORD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -13273,6 +13982,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -13293,6 +14003,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         },
@@ -13447,6 +14158,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
                 mill_self: 0,
                 discard_cost: 0,
                 exile_self: false,
+                graveyard_exile_target_count: 0,
             }),
             effect: Effect::DrawCards {
                 count: Amount::Fixed(1),
@@ -13462,6 +14174,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -13482,6 +14195,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -13519,6 +14233,7 @@ const TEST_FOOD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -13539,6 +14254,7 @@ const TEST_FOOD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -13597,6 +14313,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::GainLife {
             amount: Amount::Fixed(1),
@@ -13611,6 +14328,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -13631,6 +14349,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -13659,6 +14378,7 @@ const TEST_SAC_A_CREATURE: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::GainLife {
             amount: Amount::Fixed(1),
@@ -13779,6 +14499,7 @@ const TEST_NONTOKEN_COUNTER: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::GainLife {
             amount: Amount::NontokenCreaturesEnteredThisTurn,
@@ -14290,6 +15011,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
                 colors: &[Color::Red],
                 chosen_subtype: false,
                 attacking_only: false,
+                blocking_only: false,
                 commander_only: false,
                 has_counters: false,
                 condition: None,
@@ -14315,6 +15037,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
                 colors: &[Color::White],
                 chosen_subtype: false,
                 attacking_only: false,
+                blocking_only: false,
                 commander_only: false,
                 has_counters: false,
                 condition: None,
@@ -16852,6 +17575,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -16872,6 +17596,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -17177,6 +17902,48 @@ fn identity_mana_monocolor_commander() {
 }
 
 #[test]
+fn three_color_commander_grants_color_specific_identity_mana() {
+    // Re-audit fold-in: a 3+-color commander identity (CR 903.4) now resolves to a genuine
+    // Mana::OfColors restricted-set credit, not the Mana::Any fallback — Command Tower taps for
+    // one of the commander's colors, never an arbitrary one. Ruhan of the Fomori is {1}{U}{R}{W}.
+    let mut game = Game::new();
+    game.designate_commander(PlayerId(0), card("Ruhan of the Fomori"));
+    let tower = game.spawn_on_battlefield(PlayerId(0), card("Command Tower"));
+
+    let events = game
+        .submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: tower,
+        })
+        .unwrap();
+
+    let mask = events
+        .iter()
+        .find_map(|e| match e {
+            Event::ManaAdded {
+                mana: Mana::OfColors(mask),
+                amount: 1,
+                ..
+            } => Some(*mask),
+            _ => None,
+        })
+        .expect("Command Tower yields a restricted-set credit for a 3-color identity, not Any");
+
+    for color in [Color::White, Color::Blue, Color::Red] {
+        assert!(
+            mask & (1 << color.index()) != 0,
+            "{color:?} is in the WUR identity mask"
+        );
+    }
+    for color in [Color::Black, Color::Green] {
+        assert!(
+            mask & (1 << color.index()) == 0,
+            "{color:?} is outside the WUR identity mask"
+        );
+    }
+}
+
+#[test]
 fn command_tower_produces_no_mana_without_a_commander() {
     // No commander designated: the identity is all-false (CR 903.4 doesn't apply), so the
     // tap still legally happens but adds nothing to the pool.
@@ -17439,6 +18206,7 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -17459,6 +18227,7 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -17519,6 +18288,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -17539,6 +18309,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -17777,6 +18548,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::AddMana {
             mana: ManaPool::of(Mana::Colorless, 1),
@@ -17830,6 +18602,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -17850,6 +18623,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -18093,6 +18867,7 @@ const DIES_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -18113,6 +18888,7 @@ const DIES_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -18439,6 +19215,113 @@ fn starfield_mystic_grows_when_your_enchantment_dies() {
 }
 
 #[test]
+fn martyrs_bond_forces_each_opponent_to_sacrifice_a_shared_card_type_permanent() {
+    // Martyr's Bond (cmd): "Whenever this enchantment or another nonland permanent you control is
+    // put into a graveyard from the battlefield, each opponent sacrifices a permanent of their
+    // choice that shares a card type with it." Millikin (an artifact creature) dying shares both
+    // the artifact and creature types — P1's plain artifact (no creature type) still qualifies
+    // (artifact overlaps), but P2 controlling only a land shares no card type at all and can't be
+    // forced.
+    let mut game = TestGame {
+        game: Game::with_players(3, 0),
+    };
+    game.spawn_on_battlefield(PlayerId(0), card("Martyr's Bond"));
+    let millikin = game.spawn_on_battlefield(PlayerId(0), card("Millikin")); // 0/1 artifact creature
+    let opp_artifact = game.spawn_on_battlefield(PlayerId(1), HISTORIC_TEST_ARTIFACT);
+    let opp_land = game.spawn_on_battlefield(PlayerId(2), card("Forest"));
+
+    // A 3-player pod needs every player to pass in succession (not the 2-player-only
+    // `resolve_top_of_stack`) to resolve first the destroy spell and then the watch trigger it
+    // queues, pausing once the edict itself raises a per-opponent choice.
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY_ANY_PERMANENT);
+    game.cast(destroy).at(Target::Object(millikin)).submit();
+    while game.pending_choice().is_none() && !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+    assert_eq!(game.zone_of(millikin), Zone::Graveyard, "Millikin died");
+
+    let Some(PendingChoice::SacrificeEdict {
+        player: PlayerId(1),
+        options,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "P1's artifact shares a card type with the dying artifact creature — forced to \
+             choose, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        options,
+        vec![opp_artifact],
+        "only P1's shared-type permanent is a legal sacrifice"
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![opp_artifact],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(opp_artifact),
+        Zone::Graveyard,
+        "the opponent's shared-type artifact was sacrificed"
+    );
+    assert_eq!(
+        game.zone_of(opp_land),
+        Zone::Battlefield,
+        "an opponent with only a land shares no card type with the dying artifact creature — \
+         not forced to sacrifice anything"
+    );
+    assert!(
+        game.pending_choice().is_none(),
+        "P2 has nothing matching the shared-type filter, so the edict skips them entirely"
+    );
+}
+
+#[test]
+fn martyrs_bond_watches_any_nonland_permanent_dying_not_creatures_only() {
+    // The same watch generalized beyond creature-only: a plain (noncreature) artifact dying still
+    // fires it — proving the scan is nonland-permanent-wide, not the usual `*IncludingThis`
+    // creature-only shape.
+    let mut game = TestGame::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Martyr's Bond"));
+    let artifact = game.spawn_on_battlefield(PlayerId(0), HISTORIC_TEST_ARTIFACT);
+    let opp_artifact = game.spawn_on_battlefield(PlayerId(1), HISTORIC_TEST_ARTIFACT);
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY_ANY_PERMANENT);
+    game.cast(destroy).at(Target::Object(artifact)).resolve();
+    assert_eq!(game.zone_of(artifact), Zone::Graveyard, "the artifact died");
+    resolve_top_of_stack(&mut game); // the watch trigger resolves → the edict pauses
+
+    let Some(PendingChoice::SacrificeEdict {
+        player: PlayerId(1),
+        options,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "a plain (noncreature) artifact dying still fires the nonland-wide watch, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(options, vec![opp_artifact]);
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![opp_artifact],
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(opp_artifact),
+        Zone::Graveyard,
+        "the opponent's shared-type artifact was sacrificed"
+    );
+}
+
+#[test]
 fn blood_artist_and_zulaport_both_fire_from_one_of_your_creatures_dying() {
     // One controller with both payoffs: a single death of their creature queues two triggers
     // (Blood Artist's targeted drain + Zulaport's each-opponent drain), exercising the
@@ -18566,6 +19449,7 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -18586,6 +19470,7 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -18677,6 +19562,7 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -18697,6 +19583,7 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -18816,6 +19703,7 @@ const CREATURE_MV3: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -18836,6 +19724,7 @@ const CREATURE_MV3: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -18955,6 +19844,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -18975,6 +19865,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -19528,6 +20419,7 @@ const UPKEEP_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -19548,6 +20440,7 @@ const UPKEEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -19621,6 +20514,7 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -19641,6 +20535,7 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -19661,6 +20556,7 @@ const BATTLEFIELD_UPKEEP_RETURN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
     ..GRAVEYARD_UPKEEP_RETURN
@@ -19864,6 +20760,136 @@ fn nether_traitor_declining_the_cost_leaves_it_in_the_graveyard() {
 }
 
 #[test]
+fn punishing_fire_returns_from_graveyard_when_an_opponent_gains_life() {
+    // Punishing Fire (cmd), from the real TOML: "Punishing Fire deals 2 damage to any target.
+    // Whenever an opponent gains life, you may pay {R}. If you do, return this card from your
+    // graveyard to your hand." Cast it, let it hit the graveyard, then have an opponent gain
+    // life to prove the graveyard-functioning opponent-lifegain watch (CR 603.6e).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let fire = game.spawn_in_hand(PlayerId(0), card("Punishing Fire"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    // Rolling forward a whole turn draws each player a card; keep both libraries stocked so
+    // nobody decks out along the way (CR 104.3c).
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: fire,
+        target: Some(Target::Object(bear)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Punishing Fire deals 2 damage, then hits the graveyard.
+    assert_eq!(
+        game.zone_of(fire),
+        Zone::Graveyard,
+        "Punishing Fire resolved to the graveyard"
+    );
+
+    // Roll forward to the opponent's own main phase so they can cast the life-gainer.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    // An opponent (not Punishing Fire's controller) gains life.
+    let gainer = game.spawn_in_hand(PlayerId(1), GAIN_LIFE_ETB);
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: gainer,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Creature enters.
+    resolve_top_of_stack(&mut game); // ETB resolves: +3 life -> Punishing Fire's graveyard trigger.
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayCost {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "an opponent's lifegain raises Punishing Fire's pay-{{R}}-or-decline choice; got {:?}",
+        game.pending_choice(),
+    );
+    game.fund_mana(PlayerId(0)); // the pool emptied crossing steps; refund for the {R} cost.
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Resolve the paid trigger.
+
+    assert_eq!(
+        game.zone_of(fire),
+        Zone::Hand,
+        "paying {{R}} returned Punishing Fire from the graveyard to its controller's hand",
+    );
+}
+
+#[test]
+fn punishing_fire_does_not_trigger_when_its_controller_gains_life() {
+    // The trigger is "whenever an OPPONENT gains life" — Punishing Fire's own controller gaining
+    // life is not an opponent gaining life, so it must not fire (scope check).
+    let mut game = Game::new();
+    let fire = game.spawn_in_graveyard(PlayerId(0), card("Punishing Fire"));
+
+    let gainer = game.spawn_in_hand(PlayerId(0), GAIN_LIFE_ETB);
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: gainer,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Creature enters.
+    resolve_top_of_stack(&mut game); // ETB resolves: +3 life, but Punishing Fire's controller is the gainer.
+
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "Punishing Fire's controller gaining life is not an opponent gaining life; got {:?}",
+        game.pending_choice(),
+    );
+    assert_eq!(
+        game.zone_of(fire),
+        Zone::Graveyard,
+        "Punishing Fire stayed in the graveyard: its own controller gaining life doesn't trigger it",
+    );
+}
+
+#[test]
 fn teachers_pest_activates_from_the_graveyard_to_return_tapped() {
     // Teacher's Pest (sos): "{B}{G}: Return this card from your graveyard to the battlefield
     // tapped." An activated ability functioning from the graveyard (CR 112.6/603.6e).
@@ -20040,6 +21066,7 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -20060,6 +21087,7 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -20154,6 +21182,7 @@ const END_STEP_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -20174,6 +21203,7 @@ const END_STEP_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -20240,6 +21270,7 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -20260,6 +21291,7 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -20358,6 +21390,7 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -20378,6 +21411,7 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -20425,6 +21459,7 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -20445,6 +21480,7 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -20482,6 +21518,74 @@ fn a_you_gain_life_trigger_fires_when_the_controller_gains_life() {
         game.zone_of(lib[0]),
         Zone::Hand,
         "the life-gain trigger drew a card"
+    );
+}
+
+#[test]
+fn arbiter_sets_each_player_life_to_highest_cr_118_5() {
+    // Arbiter of Knollridge: "When this creature enters, each player's life total becomes the
+    // highest life total among all players." CR 118.5 models the set as a gain/loss of the
+    // difference, so P1 (20 -> 40) and P2 (15 -> 40) each *gain* life through the ordinary
+    // choke — proven here by P1's lifegain watcher firing — while P3 (30 -> 40) also gains, and
+    // P0, already at the highest (40), gets no event at all.
+    let mut game = Game::with_players(4, 0);
+    game.set_life(PlayerId(0), 40);
+    game.set_life(PlayerId(1), 20);
+    game.set_life(PlayerId(2), 15);
+    game.set_life(PlayerId(3), 30);
+
+    // P1 controls a "whenever you gain life, draw a card" watcher — it must fire off the
+    // routed gain, not a raw life-total write.
+    game.spawn_on_battlefield(PlayerId(1), LIFE_GAIN_DRAW);
+    let lib1 = game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+    // P0 (already at the highest) controls the same watcher — its zero delta must NOT be a
+    // "gain" at all, so this must stay unfired.
+    game.spawn_on_battlefield(PlayerId(0), LIFE_GAIN_DRAW);
+    let lib0 = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+
+    game.fund_mana(PlayerId(0));
+    let arbiter = game.spawn_in_hand(PlayerId(0), card("Arbiter of Knollridge"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: arbiter,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Arbiter of Knollridge is castable");
+    // Drain the stack fully (a 4-player table needs all 4 to pass in succession per item, not
+    // just 2): Arbiter resolves, its ETB trigger resolves the life-total set, then P1's
+    // lifegain watcher's own triggered draw resolves last.
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        40,
+        "already at the highest — no change"
+    );
+    assert_eq!(game.life(PlayerId(1)), 40, "gained up to the highest");
+    assert_eq!(game.life(PlayerId(2)), 40, "gained up to the highest");
+    assert_eq!(game.life(PlayerId(3)), 40, "gained up to the highest");
+    assert_eq!(
+        game.zone_of(lib1[0]),
+        Zone::Hand,
+        "P1's lifegain watcher fired off the routed gain, proving it isn't a raw life write"
+    );
+    assert_eq!(
+        game.zone_of(lib0[0]),
+        Zone::Library,
+        "P0's own watcher never fires — a zero delta isn't a life change (CR 118.5)"
     );
 }
 
@@ -20533,6 +21637,7 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -20553,6 +21658,7 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -21018,6 +22124,7 @@ const INSTANT_FILLER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -21038,6 +22145,7 @@ const INSTANT_FILLER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -21093,6 +22201,7 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -21113,6 +22222,7 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -21202,6 +22312,7 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -21222,6 +22333,7 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -21314,6 +22426,7 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -21334,6 +22447,7 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -21371,6 +22485,7 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -21391,6 +22506,7 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -21786,6 +22902,7 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -21806,6 +22923,7 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -22210,6 +23328,120 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
 }
 
 #[test]
+fn a_countered_copy_of_a_spell_ceases_to_exist() {
+    // CR 707.10a: a spell that's a copy ceases to exist rather than going to a graveyard when
+    // it would otherwise land in one — true whether it leaves the stack by resolving (already
+    // covered by `a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card`) or, this
+    // test, by being countered. P0 casts Lightning Bolt at P1; P1 copies it with Twincast; P0
+    // counters the COPY (not the original) — no graveyard object for the copy, and the
+    // original is unaffected and still resolves.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let twincast = game.spawn_in_hand(PlayerId(1), card("Twincast"));
+    let counter = game.spawn_in_hand(PlayerId(0), COUNTER);
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bolt,
+        target: Some(Target::Player(PlayerId(1))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("bolt is castable");
+    let bolt_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: twincast,
+        target: Some(Target::Object(bolt_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("P1 can copy P0's bolt");
+
+    resolve_top_of_stack(&mut game); // Twincast resolves, minting the copy, pausing on retarget
+    let copy = top_spell(&game);
+    assert_ne!(copy, bolt_on_stack, "the copy is a distinct stack object");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(1),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .expect("re-choosing the same target is a legal retarget");
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: counter,
+        target: Some(Target::Object(copy)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("the copy is a legal counter target");
+    let events = resolve_top_of_stack_events(&mut game); // the counter resolves, countering the copy
+
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::SpellCeasedToExist { spell } if *spell == copy)),
+        "a countered copy ceases to exist (CR 707.10a), got {events:?}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::MovedToGraveyard { from, .. } if *from == copy)),
+        "a countered copy must never go to a graveyard, got {events:?}"
+    );
+    assert!(
+        !game.live_object_ids().contains(&copy),
+        "the countered copy has left the game entirely, not lingering in some zone"
+    );
+
+    resolve_whole_stack(&mut game); // the original bolt, uncontested
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20 - 3,
+        "only the original bolt's damage landed — the copy never resolved"
+    );
+    let graveyard_cards = game
+        .live_object_ids()
+        .into_iter()
+        .filter(|&id| game.zone_of(id) == Zone::Graveyard)
+        .count();
+    assert_eq!(
+        graveyard_cards, 3,
+        "the bolt, Twincast, and Counter each land in a graveyard; the countered copy left none"
+    );
+}
+
+#[test]
 fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
     // Archmage-style magecraft ("cast OR copy an instant/sorcery, draw a card"). Casting Bolt
     // fires it once, casting Twincast fires it again, and the copy Twincast makes fires it a
@@ -22325,6 +23557,7 @@ const COUNTER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -22345,6 +23578,7 @@ const COUNTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -22968,6 +24202,290 @@ fn hinder_countering_flashback_spell_exiles_it() {
     );
 }
 
+// ── Spell Crumple's forced counter destination + self-tuck rider (CR 701.5b) ────────
+
+#[test]
+fn spell_crumple_counters_a_spell_to_the_bottom_of_its_owners_library() {
+    // Spell Crumple: "Counter target spell. If that spell is countered this way, put it on the
+    // bottom of its owner's library instead of into that player's graveyard. Put Spell Crumple on
+    // the bottom of its owner's library." Unlike Hinder, there's no top/bottom choice — always
+    // the bottom — and Spell Crumple itself joins the countered spell there.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    game.stack_library(PlayerId(1), &[card("Forest")]);
+
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let crumple = game.spawn_in_hand(PlayerId(1), card("Spell Crumple"));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bear,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Grizzly Bear is castable");
+    let bear_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: crumple,
+        target: Some(Target::Object(bear_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Spell Crumple can target the bear on the stack");
+    let crumple_on_stack = top_spell(&game);
+
+    resolve_top_of_stack(&mut game); // Spell Crumple resolves: counters the bear, then self-tucks.
+
+    assert!(
+        game.pending_choice().is_none(),
+        "the destination is forced — no top/bottom pause like Hinder's"
+    );
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Library,
+        "the countered bear went to its owner's library, not the graveyard"
+    );
+    assert_eq!(
+        game.zone_of(crumple_on_stack),
+        Zone::Library,
+        "Spell Crumple put itself into its owner's library too, not the graveyard"
+    );
+
+    // Each owner's pre-seeded Forest is drawn first — proving both tucks landed on the bottom.
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Library,
+        "the bear is still below the pre-seeded Forest"
+    );
+    game.draw_card(PlayerId(0));
+    assert_eq!(
+        game.zone_of(bear_on_stack),
+        Zone::Hand,
+        "the countered bear was on the bottom of its owner's library"
+    );
+
+    game.draw_card(PlayerId(1));
+    assert_eq!(
+        game.zone_of(crumple_on_stack),
+        Zone::Library,
+        "Spell Crumple is still below the pre-seeded Forest"
+    );
+    game.draw_card(PlayerId(1));
+    assert_eq!(
+        game.zone_of(crumple_on_stack),
+        Zone::Hand,
+        "Spell Crumple put itself on the bottom of its owner's library"
+    );
+}
+
+#[test]
+fn spell_crumple_countering_a_copy_makes_it_cease_to_exist_cr_707_10a() {
+    // CR 707.10a: a spell that's a copy ceases to exist rather than reaching any zone when
+    // countered — Spell Crumple's forced library-bottom destination must not apply to a copy
+    // target, while Spell Crumple itself (not a copy) still self-tucks as usual.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+
+    let filler = game.spawn_in_hand(PlayerId(0), X_INSTANT_FILLER);
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: filler,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    let filler_on_stack = top_spell(&game);
+
+    let fluster = game.spawn_in_hand(PlayerId(1), card("Flusterstorm"));
+    let crumple = game.spawn_in_hand(PlayerId(0), card("Spell Crumple"));
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: fluster,
+        target: Some(Target::Object(filler_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Flusterstorm can target the still-on-stack instant");
+
+    resolve_top_of_stack(&mut game); // the storm trigger resolves, minting 1 copy, pausing on retarget
+    let copy = top_spell(&game);
+    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the storm copy's retarget pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(filler_on_stack)),
+        "the untouched instant is still a legal retarget"
+    );
+    game.submit(Intent::ChooseTargets {
+        player,
+        targets: vec![Target::Object(filler_on_stack)],
+    })
+    .expect("re-choosing the same target is a legal retarget");
+
+    // Spell Crumple counters the storm COPY of Flusterstorm itself, still on the stack.
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: crumple,
+        target: Some(Target::Object(copy)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("the storm copy is a legal counter target");
+    let crumple_on_stack = top_spell(&game);
+    let events = resolve_top_of_stack_events(&mut game); // Spell Crumple resolves, countering the copy.
+
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::SpellCeasedToExist { spell } if *spell == copy)),
+        "the countered storm copy ceases to exist (CR 707.10a), got {events:?}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::TuckedToLibrary { from, .. } if *from == copy)),
+        "the countered storm copy must never tuck into a library, got {events:?}"
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::TuckedToLibrary { from, .. } if *from == crumple_on_stack)),
+        "Spell Crumple still put itself on the bottom of its owner's library, got {events:?}"
+    );
+    assert_eq!(
+        game.zone_of(crumple_on_stack),
+        Zone::Library,
+        "Spell Crumple tucked itself even though the target it countered was a copy"
+    );
+}
+
+#[test]
+fn a_copy_of_spell_crumple_ceasing_to_exist_does_not_leak_its_self_tuck_onto_the_next_spell() {
+    // A copy of Spell Crumple runs its "Put Spell Crumple on the bottom of its owner's library"
+    // rider (setting the self-tuck mark), then ceases to exist (CR 707.10a) rather than reaching
+    // any library. That mark must not survive into the next spell's resolution: here the original
+    // Spell Crumple, whose only target the copy already countered, fizzles (CR 608.2b) and must go
+    // to the graveyard — not be tucked to the bottom of its owner's library by the copy's stale mark.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    // A pre-seeded library card so a stray tuck (leaked mark) would land the fizzled Crumple below it.
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+
+    let throwaway = game.spawn_in_hand(PlayerId(0), X_INSTANT_FILLER);
+    let crumple = game.spawn_in_hand(PlayerId(0), card("Spell Crumple"));
+    let twincast = game.spawn_in_hand(PlayerId(0), card("Twincast"));
+
+    // Stack (bottom → top): throwaway, Spell Crumple (targets throwaway), Twincast (copies Crumple).
+    game.submit(cast_intent(PlayerId(0), throwaway, None))
+        .expect("the filler instant is castable");
+    let throwaway_on_stack = top_spell(&game);
+    game.submit(cast_intent(
+        PlayerId(0),
+        crumple,
+        Some(Target::Object(throwaway_on_stack)),
+    ))
+    .expect("Spell Crumple can target the filler on the stack");
+    let crumple_on_stack = top_spell(&game);
+    game.submit(cast_intent(
+        PlayerId(0),
+        twincast,
+        Some(Target::Object(crumple_on_stack)),
+    ))
+    .expect("Twincast can copy the instant Spell Crumple");
+
+    resolve_top_of_stack(&mut game); // Twincast resolves: mints a Spell Crumple copy, pausing to retarget.
+    let Some(PendingChoice::ChooseSpellTargets { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the copy's retarget pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::ChooseTargets {
+        player,
+        targets: vec![Target::Object(throwaway_on_stack)],
+    })
+    .expect("the copy can counter the throwaway spell");
+
+    // The copy resolves: counters the throwaway (→ its owner's library), sets the self-tuck mark,
+    // then ceases to exist without ever reaching a library.
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(throwaway_on_stack),
+        Zone::Library,
+        "the copy countered the throwaway to the bottom of its owner's library"
+    );
+
+    // The original Spell Crumple resolves with its only target already gone — it fizzles.
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(crumple_on_stack),
+        Zone::Graveyard,
+        "a fizzled Spell Crumple goes to the graveyard — the copy's self-tuck mark must not leak onto it"
+    );
+}
+
 // ── Echo (CR 702.31, karmic_guide) ───────────────────────────────────────────────────
 // "At the beginning of your upkeep, if this came under your control since the beginning of
 // your last upkeep, sacrifice it unless you pay its echo cost."
@@ -23176,6 +24694,166 @@ fn echo_label_renders_colored_pips() {
         Effect::SacrificeSelfUnlessPay { cost }.label(),
         "Sacrifice this unless you pay {2}{R}"
     );
+}
+
+// ── Cumulative upkeep (CR 702.24, jotun_grunt) ──────────────────────────────────────
+
+#[test]
+fn jotun_grunt_cumulative_upkeep_adds_age_counter_and_scales_cost() {
+    let mut game = Game::new();
+    let grunt = game.spawn_on_battlefield(PlayerId(0), card("Jotun Grunt"));
+    // Libraries so neither player decks out crossing into P0's next upkeep.
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    let gy1 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let gy2 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+
+    // Turn 1 started in Main1 (its upkeep already passed) — roll to P0's *next* upkeep.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+
+    assert_eq!(
+        game.counters_of_kind(grunt, CounterKind::Age),
+        1,
+        "one age counter is placed at the first upkeep"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayCumulativeUpkeepOrSacrifice {
+                player: PlayerId(0),
+                source,
+                count: 2,
+                ..
+            }) if source == grunt
+        ),
+        "cumulative upkeep pauses on a pay-or-sacrifice choice scaled to 2 cards (1 age counter × 2)"
+    );
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![gy1, gy2],
+    })
+    .expect("paying with 2 cards from a single graveyard is legal");
+
+    assert_eq!(
+        game.zone_of(gy1),
+        Zone::Library,
+        "a paid card leaves the graveyard for the bottom of its owner's library"
+    );
+    assert_eq!(game.zone_of(gy2), Zone::Library);
+    assert_eq!(
+        game.zone_of(grunt),
+        Zone::Battlefield,
+        "paying the upkeep cost keeps the permanent"
+    );
+
+    // Second upkeep: two age counters, so the cost scales to 4 cards.
+    let gy3 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let gy4 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let gy5 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let gy6 = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+
+    pass_until_next_turn(&mut game); // → P1's turn
+    pass_until_next_turn(&mut game); // → P0's turn, parked at its next upkeep
+
+    assert_eq!(game.active_player(), PlayerId(0));
+    assert_eq!(game.current_step(), Step::Upkeep);
+    assert_eq!(
+        game.counters_of_kind(grunt, CounterKind::Age),
+        2,
+        "a second age counter is placed at the second upkeep"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayCumulativeUpkeepOrSacrifice { count: 4, .. })
+        ),
+        "the cost scales to 4 cards (2 age counters × 2)"
+    );
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![gy3, gy4, gy5, gy6],
+    })
+    .expect("paying with 4 cards from a single graveyard is legal");
+
+    assert_eq!(game.zone_of(gy3), Zone::Library);
+    assert_eq!(game.zone_of(gy6), Zone::Library);
+    assert_eq!(game.zone_of(grunt), Zone::Battlefield);
+}
+
+#[test]
+fn jotun_grunt_sacrificed_when_upkeep_cost_unpaid() {
+    let mut game = Game::new();
+    let grunt = game.spawn_on_battlefield(PlayerId(0), card("Jotun Grunt"));
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+
+    let events = game
+        .submit(Intent::ChooseSacrifices {
+            player: PlayerId(0),
+            sacrifices: vec![],
+        })
+        .expect("declining (an empty answer) is legal");
+
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::TuckedToLibrary { .. })),
+        "declining pays nothing"
+    );
+    assert_eq!(
+        game.zone_of(grunt),
+        Zone::Graveyard,
+        "declining the upkeep cost sacrifices Jotun Grunt"
+    );
+}
+
+#[test]
+fn jotun_grunt_upkeep_cards_go_to_bottom_of_owners_library() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Jotun Grunt"));
+    // Reaching P0's *next* upkeep crosses all of P1's own turn 2 first (including P1's normal
+    // draw step), so P1's library needs a second filler surviving on top of the paid cards —
+    // drawing it after the tuck proves the paid cards landed on the *bottom*, not the top.
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    // The payment comes from P1's graveyard (an opponent's), not the controller's own.
+    let opp1 = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+    let opp2 = game.spawn_in_graveyard(PlayerId(1), card("Grizzly Bear"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![opp1, opp2],
+    })
+    .expect("a single graveyard may belong to any player, not just the controller");
+
+    assert_eq!(
+        game.owner_of(opp1),
+        PlayerId(1),
+        "the cards go to the bottom of *their owner's* library, not the payer's"
+    );
+    assert_eq!(game.zone_of(opp1), Zone::Library);
+    assert_eq!(game.zone_of(opp2), Zone::Library);
+
+    // P1's pre-seeded filler card is drawn first — proving the paid cards landed on the bottom.
+    game.draw_card(PlayerId(1));
+    assert_eq!(
+        game.zone_of(opp1),
+        Zone::Library,
+        "still in the library after drawing the card stacked above it"
+    );
+    assert_eq!(game.zone_of(opp2), Zone::Library);
 }
 
 #[test]
@@ -23659,7 +25337,18 @@ fn arcane_denial_counters_then_schedules_both_draws() {
     advance_until(&mut game, |g| {
         g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
     });
-    resolve_whole_stack(&mut game); // both delayed draws resolve.
+    // Drain both delayed draws; P0's is a declinable up-to-two (CR 601.2c) — P0 takes the full two.
+    let mut saw_up_to_two = false;
+    while !game.stack().is_empty() {
+        resolve_top_of_stack(&mut game);
+        if let Some(PendingChoice::MayDrawUpTo { player, max }) = game.pending_choice() {
+            assert_eq!((player, max), (PlayerId(0), 2));
+            saw_up_to_two = true;
+            game.submit(Intent::ChooseDrawCount { player, count: 2 })
+                .unwrap();
+        }
+    }
+    assert!(saw_up_to_two, "P0's up-to-two count pause was offered");
 
     assert_eq!(
         hand_ids(&game, PlayerId(0)).len(),
@@ -23679,6 +25368,393 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         game.zone_of(p1_lib[0]),
         Zone::Hand,
         "P1 drew its stacked card"
+    );
+}
+
+#[test]
+fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
+    // Arcane Denial's countered-spell rider is "may draw up to two cards" (CR 601.2c) — a
+    // declinable count, not a forced draw two. P0's bolt is countered; at the next upkeep P0
+    // chooses to draw only ONE of the two offered.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Lightning Bolt"));
+    let denial = game.spawn_in_hand(PlayerId(1), card("Arcane Denial"));
+    let p0_lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear")]);
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bolt,
+        target: Some(Target::Player(PlayerId(1))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Lightning Bolt is castable");
+    let bolt_on_stack = top_spell(&game);
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: denial,
+        target: Some(Target::Object(bolt_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Arcane Denial can counter the bolt");
+    resolve_top_of_stack(&mut game); // counters the bolt, schedules both delayed draws.
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    // Drain both delayed draws; P0's is the up-to-two pause — P0 chooses to draw only one.
+    let mut saw_up_to_two = false;
+    while !game.stack().is_empty() {
+        resolve_top_of_stack(&mut game);
+        if let Some(PendingChoice::MayDrawUpTo { player, max }) = game.pending_choice() {
+            assert_eq!((player, max), (PlayerId(0), 2));
+            saw_up_to_two = true;
+            game.submit(Intent::ChooseDrawCount { player, count: 1 })
+                .unwrap();
+        }
+    }
+    assert!(saw_up_to_two, "P0's up-to-two count pause was offered");
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        1,
+        "P0 chose to draw only one of the up-to-two offered"
+    );
+    assert_eq!(
+        game.zone_of(p0_lib[0]),
+        Zone::Hand,
+        "P0 drew the top card of the two"
+    );
+    assert_eq!(
+        game.zone_of(p0_lib[1]),
+        Zone::Library,
+        "the second offered card stayed in the library"
+    );
+}
+
+// `Effect::MayDrawUpTo` is a CR 120.4 / 601.2c declinable draw: its controller chooses any number
+// 0..=N of cards to draw (Arcane Denial's "may draw up to two cards"). Resolution pauses that
+// controller on a `PendingChoice::MayDrawUpTo` count choice, clamped to `0..=max`.
+
+/// A test-only free instant: "At the beginning of the next upkeep, you may draw up to two cards."
+/// Isolates the declinable-draw count pause from Arcane Denial's counter half.
+const SCHEDULE_MAY_DRAW_UP_TO_TWO: CardDef = sorcery(
+    "Schedule May Draw Up To Two (test)",
+    &[spell_ability(Effect::ScheduleAtNextUpkeep {
+        who: DelayController::You,
+        then: &Effect::MayDrawUpTo {
+            count: Amount::Fixed(2),
+        },
+        fire_at: Step::Upkeep,
+    })],
+);
+
+/// Roll a just-cast [`SCHEDULE_MAY_DRAW_UP_TO_TWO`] to its next-upkeep firing and resolve the
+/// delayed trigger, leaving the game paused on P0's `MayDrawUpTo` count choice (max 2).
+fn reach_may_draw_up_to_pause(game: &mut Game) {
+    advance_until(game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(game); // the delayed trigger resolves: pauses on the count choice.
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayDrawUpTo {
+                player: PlayerId(0),
+                max: 2,
+            })
+        ),
+        "expected P0's up-to-two count pause, got {:?}",
+        game.pending_choice()
+    );
+}
+
+#[test]
+fn may_draw_up_to_lets_the_player_draw_fewer_than_the_maximum() {
+    let mut game = TestGame::new();
+    let spell = game.spawn_in_hand(PlayerId(0), SCHEDULE_MAY_DRAW_UP_TO_TWO);
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    game.cast(spell).resolve();
+    reach_may_draw_up_to_pause(&mut game);
+
+    game.submit(Intent::ChooseDrawCount {
+        player: PlayerId(0),
+        count: 1,
+    })
+    .expect("choosing 1 of up-to-2 is legal");
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        1,
+        "the player drew exactly the chosen 1, not the maximum 2"
+    );
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Hand,
+        "the top card was the one drawn"
+    );
+    assert_eq!(
+        game.zone_of(lib[1]),
+        Zone::Library,
+        "the second card stayed in the library — only one was drawn"
+    );
+}
+
+#[test]
+fn may_draw_up_to_zero_draws_nothing() {
+    let mut game = TestGame::new();
+    let spell = game.spawn_in_hand(PlayerId(0), SCHEDULE_MAY_DRAW_UP_TO_TWO);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    game.cast(spell).resolve();
+    reach_may_draw_up_to_pause(&mut game);
+
+    game.submit(Intent::ChooseDrawCount {
+        player: PlayerId(0),
+        count: 0,
+    })
+    .expect("choosing 0 (declining) is legal");
+
+    assert!(
+        hand_ids(&game, PlayerId(0)).is_empty(),
+        "choosing 0 drew nothing"
+    );
+    assert!(
+        game.pending_choice().is_none(),
+        "the pause cleared — the game can proceed"
+    );
+}
+
+#[test]
+fn may_draw_up_to_rejects_an_over_draw() {
+    let mut game = TestGame::new();
+    let spell = game.spawn_in_hand(PlayerId(0), SCHEDULE_MAY_DRAW_UP_TO_TWO);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    game.cast(spell).resolve();
+    reach_may_draw_up_to_pause(&mut game);
+
+    // Answering 3 against a max of 2 is out of `0..=max` — rejected, pause stays live.
+    assert!(
+        game.submit(Intent::ChooseDrawCount {
+            player: PlayerId(0),
+            count: 3,
+        })
+        .is_err(),
+        "an over-draw (3 > max 2) is rejected"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayDrawUpTo {
+                player: PlayerId(0),
+                max: 2,
+            })
+        ),
+        "the count pause is still live after the rejected over-draw"
+    );
+
+    // The player can still answer legally afterwards.
+    game.submit(Intent::ChooseDrawCount {
+        player: PlayerId(0),
+        count: 2,
+    })
+    .expect("the maximum is legal");
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        2,
+        "drew the full maximum"
+    );
+}
+
+// Trade Secrets (cmd): "Target opponent draws two cards, then you draw up to four cards. That
+// opponent may repeat this process as many times as they choose." The target opponent's two-card
+// draw is mandatory and immediate; the caster's "up to four" is a declinable count pause
+// (`PendingChoice::TradeSecretsCasterDraw`), after which the *target opponent* is paused on
+// `PendingChoice::TradeSecretsRepeat` to decide whether to run the whole process again.
+
+#[test]
+fn trade_secrets_target_opponent_draws_two_then_caster_may_draw_up_to_four() {
+    let mut game = TestGame::new();
+    let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 4]);
+
+    game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
+
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        2,
+        "the target opponent's two-card draw is mandatory and immediate"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::TradeSecretsCasterDraw {
+                player: PlayerId(0),
+                max: 4,
+                opponent: PlayerId(1),
+                ..
+            })
+        ),
+        "the caster is paused on the up-to-four count choice, got {:?}",
+        game.pending_choice()
+    );
+}
+
+#[test]
+fn trade_secrets_opponent_repeats_the_process_until_they_decline() {
+    let mut game = TestGame::new();
+    let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 4]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 4]);
+
+    game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
+
+    // Iteration 1: opponent already drew 2 (mandatory, asserted above). Caster draws 3 of the
+    // up-to-4.
+    game.submit(Intent::ChooseDrawCount {
+        player: PlayerId(0),
+        count: 3,
+    })
+    .expect("choosing 3 of up-to-4 is legal");
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        3,
+        "caster drew exactly the chosen 3"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::TradeSecretsRepeat {
+                player: PlayerId(1),
+                caster: PlayerId(0),
+                max: 4,
+                ..
+            })
+        ),
+        "the target opponent is paused on the repeat choice, got {:?}",
+        game.pending_choice()
+    );
+
+    // Opponent repeats: the whole process runs again.
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: true,
+    })
+    .expect("the target opponent may repeat");
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        4,
+        "opponent drew two more on the repeat"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::TradeSecretsCasterDraw {
+                player: PlayerId(0),
+                max: 4,
+                opponent: PlayerId(1),
+                ..
+            })
+        ),
+        "the caster is paused again on the up-to-four count choice"
+    );
+
+    game.submit(Intent::ChooseDrawCount {
+        player: PlayerId(0),
+        count: 1,
+    })
+    .expect("choosing 1 of up-to-4 is legal");
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        4,
+        "caster drew 3 then 1 across the two iterations"
+    );
+
+    // Opponent declines the second repeat — the loop stops and resolution completes.
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: false,
+    })
+    .expect("the target opponent may decline");
+    assert!(
+        game.pending_choice().is_none(),
+        "declining the repeat clears the pause"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(1)).len(),
+        4,
+        "no further draws after declining"
+    );
+}
+
+#[test]
+fn trade_secrets_only_the_target_opponent_may_answer_the_repeat() {
+    let mut game = TestGame::new();
+    let spell = game.spawn_in_hand(PlayerId(0), card("Trade Secrets"));
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 2]);
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"); 4]);
+
+    game.cast(spell).at(Target::Player(PlayerId(1))).resolve();
+    game.submit(Intent::ChooseDrawCount {
+        player: PlayerId(0),
+        count: 0,
+    })
+    .expect("declining the up-to-four draw is legal");
+    assert!(matches!(
+        game.pending_choice(),
+        Some(PendingChoice::TradeSecretsRepeat {
+            player: PlayerId(1),
+            ..
+        })
+    ));
+
+    let rejected = game.submit(Intent::AnswerMay {
+        player: PlayerId(2),
+        yes: true,
+    });
+    assert!(
+        rejected.is_err(),
+        "only the target opponent may answer the repeat choice"
+    );
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::TradeSecretsRepeat {
+                player: PlayerId(1),
+                ..
+            })
+        ),
+        "the pause is still live after the rejected wrong-player answer"
     );
 }
 
@@ -24473,7 +26549,9 @@ const FLIGHT: CardDef = CardDef {
             granted_ability: None,
             cant_attack: false,
             cant_block: false,
+            cant_attack_controller: false,
             activated_abilities: None,
+            legendary_only: false,
         },
         optional: false,
         min_level: 0,
@@ -24485,6 +26563,7 @@ const FLIGHT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -24505,6 +26584,7 @@ const FLIGHT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -24531,6 +26611,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
         mill_self: 0,
         discard_cost: 0,
         exile_self: false,
+        graveyard_exile_target_count: 0,
     },
     effects: &[Effect::PumpSelfUntilEndOfTurn {
         power: Amount::Fixed(2),
@@ -24554,7 +26635,37 @@ const FALLEN_IDEAL_TEST: CardDef = CardDef {
             granted_ability: Some(&FALLEN_IDEAL_GRANT),
             cant_attack: false,
             cant_block: false,
+            cant_attack_controller: false,
             activated_abilities: None,
+            legendary_only: false,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..FLIGHT
+};
+
+/// A test-only Aura shaped like the Vow cycle: "Enchanted creature can't attack you" — scoped
+/// to this Aura's own controller, not a blanket ban.
+const VOW_TEST: CardDef = CardDef {
+    name: "Vow (test)",
+    abilities: &[Ability {
+        timing: Timing::Static,
+        effect: Effect::GrantToAttached {
+            power: Amount::Fixed(0),
+            toughness: Amount::Fixed(0),
+            keywords: &[],
+            goad: false,
+            protection_from_chosen_color: false,
+            granted_ability: None,
+            cant_attack: false,
+            cant_block: false,
+            cant_attack_controller: true,
+            activated_abilities: None,
+            legendary_only: false,
         },
         optional: false,
         min_level: 0,
@@ -24608,6 +26719,7 @@ const MUTATION: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -24628,6 +26740,7 @@ const MUTATION: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -24718,6 +26831,7 @@ const ANGEL_ANTHEM: CardDef = CardDef {
             colors: &[],
             chosen_subtype: false,
             attacking_only: false,
+            blocking_only: false,
             commander_only: false,
             has_counters: false,
             condition: None,
@@ -24889,6 +27003,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
                 mill_self: 0,
                 discard_cost: 0,
                 exile_self: false,
+                graveyard_exile_target_count: 0,
             }),
             effect: Effect::GainLife {
                 amount: Amount::Fixed(1),
@@ -24904,6 +27019,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -24924,6 +27040,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -25721,6 +27838,58 @@ fn equip_moves_the_equipment_from_one_creature_to_another() {
 }
 
 #[test]
+fn champions_helm_grants_hexproof_only_while_equipped_creature_is_legendary() {
+    // "Equipped creature gets +2/+2. As long as equipped creature is legendary, it has
+    // hexproof." The +2/+2 is unconditional; the hexproof gate flips live off the host's own
+    // legendary status, not off anything the Equipment itself carries.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2, nonlegendary
+    let legend = game.spawn_on_battlefield(PlayerId(0), LEGENDARY_CREATURE); // 2/2, legendary
+    let helm = game.spawn_on_battlefield(PlayerId(0), card("Champion's Helm"));
+    game.fund_mana(PlayerId(0));
+
+    let equip = |game: &mut Game, host| {
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: helm,
+            ability_index: 2, // 0/1 are the two static grants; 2 is Equip {1}.
+            target: Some(Target::Object(host)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .expect("Equip is a legal sorcery-speed activation on a creature you control");
+        resolve_top_of_stack(game);
+    };
+
+    equip(&mut game, bear);
+    assert_eq!(
+        (game.power(bear), game.toughness(bear)),
+        (4, 4),
+        "+2/+2 always applies"
+    );
+    assert!(
+        !game.has_keyword(bear, Keyword::Hexproof),
+        "the equipped creature isn't legendary, so no hexproof"
+    );
+
+    equip(&mut game, legend);
+    assert_eq!(
+        (game.power(legend), game.toughness(legend)),
+        (4, 4),
+        "+2/+2 still applies once moved"
+    );
+    assert!(
+        game.has_keyword(legend, Keyword::Hexproof),
+        "the equipped creature is legendary, so it has hexproof"
+    );
+    assert!(
+        !game.has_keyword(bear, Keyword::Hexproof),
+        "the Helm moved off the bear, which never had hexproof anyway"
+    );
+}
+
+#[test]
 fn shielded_by_faith_reattaches_to_the_next_entering_creature() {
     // Shielded by Faith: "Enchanted creature has indestructible. Whenever a creature enters, (CR 702.12)
     // you may attach this Aura to that creature." Accepting moves the Aura — and with it the
@@ -26491,6 +28660,7 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -26511,6 +28681,7 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -26575,6 +28746,7 @@ const PLAIN_AURA: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -26595,6 +28767,7 @@ const PLAIN_AURA: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -27978,6 +30151,7 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -27998,6 +30172,7 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -28766,6 +30941,7 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -28786,6 +30962,7 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -29858,6 +32035,7 @@ const RELIC_SHAPED_TARGET_EXILE: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::TargetPlayerExilesFromGraveyard {
             target: TargetSpec::Player,
@@ -30539,13 +32717,10 @@ fn primal_might_pumped_creature_fights_chosen_enemy() {
     resolve_top_of_stack(&mut game);
 
     assert_eq!(game.power(bear), 4, "2 + 2 while the pump is active");
-    let Some(PendingChoice::ChooseTarget {
-        legal, optional, ..
-    }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { legal, count, .. }) = game.pending_choice() else {
         panic!("expected the resolution-time enemy pick to pause");
     };
-    assert!(optional, "\"up to one\" — the enemy pick is declinable");
+    assert_eq!(count.min, 0, "\"up to one\" — the enemy pick is declinable");
     assert_eq!(legal, &[Target::Object(orc)]);
 
     game.submit(Intent::ChooseTargets {
@@ -31980,6 +34155,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -32000,6 +34176,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -32617,6 +34794,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -32637,6 +34815,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -32739,6 +34918,7 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -32759,6 +34939,7 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -32992,6 +35173,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -33012,6 +35194,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -33178,6 +35361,7 @@ const REPLENISH: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -33198,6 +35382,7 @@ const REPLENISH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -33304,6 +35489,7 @@ const MASS_RETURN_ALL_CREATURES: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -33324,6 +35510,7 @@ const MASS_RETURN_ALL_CREATURES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -35995,6 +38182,68 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
     .expect("declaring each pair against its own required opponent is legal");
 }
 
+// ── Choose an opponent at random, must attack (CR 508.1a — Ruhan of the Fomori) ──────
+
+#[test]
+fn ruhan_attacks_a_random_opponent_each_combat() {
+    // "At the beginning of combat on your turn, choose an opponent at random. Ruhan attacks that
+    // player this combat if able." The opponent is picked by the injected RNG, then enforced the
+    // same must-attack way Furygale Flocking's tokens are (CR 508.1a "if able").
+    let mut chosen_by_seed = std::collections::HashSet::new();
+    for seed in 0..8 {
+        let mut game = Game::with_players(4, seed);
+        let ruhan = game.spawn_on_battlefield(PlayerId(0), card("Ruhan of the Fomori"));
+        advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+        let required = game.required_attacks(PlayerId(0));
+        assert_eq!(
+            required,
+            vec![(ruhan, required[0].1)],
+            "Ruhan is the sole must-attack requirement, seed {seed}"
+        );
+        let target = required[0].1;
+        assert!(
+            [PlayerId(1), PlayerId(2), PlayerId(3)].contains(&target),
+            "the chosen opponent is a living opponent, seed {seed}"
+        );
+        chosen_by_seed.insert(target);
+
+        // Declaring no attack at all is illegal — Ruhan must attack if able.
+        assert_eq!(
+            game.submit(Intent::DeclareAttackers {
+                player: PlayerId(0),
+                attackers: vec![],
+            }),
+            Err(Reject::IllegalDeclaration),
+            "Ruhan must attack if able, seed {seed}"
+        );
+        // Attacking a different, non-chosen opponent is also illegal.
+        let wrong = [PlayerId(1), PlayerId(2), PlayerId(3)]
+            .into_iter()
+            .find(|&p| p != target)
+            .unwrap();
+        assert_eq!(
+            game.submit(Intent::DeclareAttackers {
+                player: PlayerId(0),
+                attackers: vec![(ruhan, wrong)],
+            }),
+            Err(Reject::IllegalDeclaration),
+            "Ruhan must attack the chosen opponent specifically, seed {seed}"
+        );
+        // Attacking the chosen opponent is legal.
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(ruhan, target)],
+        })
+        .expect("attacking the randomly chosen opponent is legal");
+    }
+
+    assert!(
+        chosen_by_seed.len() > 1,
+        "different seeds pick different opponents: {chosen_by_seed:?}"
+    );
+}
+
 // ── Vow counters (CR 122.1 — Promise of Loyalty) ─────────────────────────────────────
 
 /// Cast Promise of Loyalty for P0 in a 3-player game where P0/P1/P2 each control two creatures.
@@ -36772,6 +39021,7 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -36792,6 +39042,7 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -36868,6 +39119,7 @@ const RUBINIA: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::GainControlWhile {
             target: TargetSpec::Creature,
@@ -37129,6 +39381,7 @@ const MELODY: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -37149,6 +39402,7 @@ const MELODY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -37193,6 +39447,1148 @@ fn gain_control_is_permanent_unlike_gain_control_until_end_of_turn() {
         PlayerId(0),
         "unlike GainControlUntilEndOfTurn, a permanent steal does not revert at cleanup"
     );
+}
+
+// ── CR 800.4a control-effect timestamp precedence + CR 602.2/509.1a controller gates ────────
+
+/// A test proxy for a permanent control steal that grabs *any* permanent (land, mana rock,
+/// creature), so one card exercises CR 800.4a timestamp precedence and the CR 602.2/509.1a
+/// controller gates on a stolen non-creature.
+const STEAL_PERMANENT: CardDef = CardDef {
+    name: "Steal Permanent (test)",
+    abilities: &[Ability {
+        timing: Timing::Spell,
+        effect: Effect::GainControl {
+            target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::NONE)),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..STEAL_UNTIL_EOT
+};
+
+#[test]
+fn a_later_permanent_steal_outranks_an_earlier_one_cr_800_4a() {
+    // CR 800.4a: when several control-changing effects apply to one permanent, the most recent
+    // wins. Two permanent steals of one creature by different players — the later steal controls
+    // it, not whichever was recorded first.
+    let mut game = Game::with_players(3, 0);
+    for s in 0..3 {
+        game.stack_library(PlayerId(s), &[VANILLA; 8]);
+    }
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    let first = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(0),
+        3,
+        first,
+        Some(Target::Object(creature)),
+    );
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "P0's steal is the only control effect so far"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(2) && g.current_step() == Step::Main1
+    });
+    let second = game.spawn_in_hand(PlayerId(2), STEAL_PERMANENT);
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(2),
+        3,
+        second,
+        Some(Target::Object(creature)),
+    );
+
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(2),
+        "the most recent control-changing effect wins (CR 800.4a), not the first recorded",
+    );
+}
+
+#[test]
+fn an_until_eot_steal_layered_over_a_permanent_steal_reverts_to_the_permanent_controller() {
+    // A permanent steal (P0), then a later until-end-of-turn steal (P2) of the same creature: the
+    // until-EOT steal wins while it lasts (CR 800.4a); when it ends at cleanup, control reverts to
+    // the earlier permanent steal's controller (P0), never to the owner (P1).
+    let mut game = Game::with_players(3, 0);
+    for s in 0..3 {
+        game.stack_library(PlayerId(s), &[VANILLA; 12]);
+    }
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    let permanent = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(0),
+        3,
+        permanent,
+        Some(Target::Object(creature)),
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(2) && g.current_step() == Step::Main1
+    });
+    let until_eot = game.spawn_in_hand(PlayerId(2), STEAL_UNTIL_EOT);
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(2),
+        3,
+        until_eot,
+        Some(Target::Object(creature)),
+    );
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(2),
+        "the later until-EOT steal outranks the earlier permanent steal (CR 800.4a)"
+    );
+
+    advance_until(&mut game, |g| g.active_player() == PlayerId(0));
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "after the until-EOT steal ends, control reverts to the permanent steal, not the owner",
+    );
+}
+
+#[test]
+fn a_stolen_creature_blocks_for_its_thief_not_its_owner_cr_509_1a() {
+    // CR 509.1a: blockers are the *defending controller's* creatures. A stolen creature blocks for
+    // its thief; its owner can't declare it as a blocker even while being attacked themselves.
+    let mut game = Game::with_players(3, 0);
+    for s in 0..3 {
+        game.stack_library(PlayerId(s), &[VANILLA; 12]);
+    }
+    let stolen = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(0),
+        3,
+        steal,
+        Some(Target::Object(stolen)),
+    );
+    assert_eq!(game.controller_of(stolen), PlayerId(0));
+
+    let atk_p0 = game.spawn_on_battlefield(PlayerId(2), VANILLA);
+    let atk_p1 = game.spawn_on_battlefield(PlayerId(2), VANILLA);
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(2) && g.current_step() == Step::DeclareAttackers
+    });
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(2),
+        attackers: vec![(atk_p0, PlayerId(0)), (atk_p1, PlayerId(1))],
+    })
+    .expect("P2 swings one attacker at each opponent");
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
+
+    assert_eq!(
+        game.submit(Intent::DeclareBlockers {
+            player: PlayerId(1),
+            blocks: vec![(stolen, atk_p1)],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "the owner can't block with a creature it no longer controls (CR 509.1a)",
+    );
+    game.submit(Intent::DeclareBlockers {
+        player: PlayerId(0),
+        blocks: vec![(stolen, atk_p0)],
+    })
+    .expect("the thief blocks with the stolen creature (CR 509.1a)");
+}
+
+#[test]
+fn a_stolen_land_taps_for_mana_for_its_thief_not_its_owner_cr_602_2() {
+    // CR 602.2/605.3: tapping a permanent for mana is its controller's action. P0 steals two of
+    // P1's Forests, taps one for green, and P1 can't tap the other (still untapped).
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA; 10]);
+    game.stack_library(PlayerId(1), &[VANILLA; 10]);
+    let for_thief = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let for_owner = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let steal_a = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve(&mut game, steal_a, Some(Target::Object(for_thief)));
+    let steal_b = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve(&mut game, steal_b, Some(Target::Object(for_owner)));
+
+    let before = game.mana_in_pool(PlayerId(0), Color::Green);
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: for_thief,
+    })
+    .expect("the thief taps the stolen land for mana");
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        before + 1,
+        "tapping the stolen Forest adds green to the thief's pool"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    assert_eq!(
+        game.submit(Intent::TapForMana {
+            player: PlayerId(1),
+            object: for_owner,
+        }),
+        Err(Reject::CannotProduceMana),
+        "the owner can't tap a land it no longer controls (CR 602.2)",
+    );
+}
+
+#[test]
+fn a_stolen_permanents_activated_ability_belongs_to_its_thief_cr_602_2() {
+    // CR 602.2: only a permanent's controller may activate its abilities. P0 steals two of P1's
+    // Sol Rings, activates one, and P1 can't activate the other (still under P0's control).
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA; 10]);
+    game.stack_library(PlayerId(1), &[VANILLA; 10]);
+    let for_thief = game.spawn_on_battlefield(PlayerId(1), card("Sol Ring"));
+    let for_owner = game.spawn_on_battlefield(PlayerId(1), card("Sol Ring"));
+    let steal_a = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve(&mut game, steal_a, Some(Target::Object(for_thief)));
+    let steal_b = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve(&mut game, steal_b, Some(Target::Object(for_owner)));
+
+    let idx = only_activated_ability_index(&game, for_thief);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: for_thief,
+        ability_index: idx,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("the thief activates the stolen Sol Ring");
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    let idx = only_activated_ability_index(&game, for_owner);
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(1),
+            object: for_owner,
+            ability_index: idx,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "the owner can't activate a permanent it no longer controls (CR 602.2)",
+    );
+}
+
+#[test]
+fn dominus_of_fealty_steals_a_permanent_for_its_thief_until_end_of_turn() {
+    // Dominus of Fealty: "At the beginning of your upkeep, you may gain control of target permanent
+    // until end of turn. If you do, untap it and it gains haste until end of turn." The stolen
+    // permanent is untapped, usable by the thief (slice 1's gate flips), and reverts at cleanup.
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA; 12]);
+    game.stack_library(PlayerId(1), &[VANILLA; 12]);
+    game.spawn_on_battlefield(PlayerId(0), card("Dominus of Fealty"));
+    let prize = game.spawn_on_battlefield(PlayerId(1), card("Sol Ring"));
+    game.tap(prize); // Dominus untaps it as it steals it.
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    // The optional trigger first offers the "you may", then (on yes) chooses its target permanent.
+    let Some(PendingChoice::MayYesNo {
+        player: PlayerId(0),
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "Dominus's optional upkeep trigger pauses on its 'you may', got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "accepting the may pauses to choose the target permanent, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(legal.contains(&Target::Object(prize)));
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(prize)],
+    })
+    .unwrap();
+    if !game.stack().is_empty() {
+        resolve_top_of_stack(&mut game);
+    }
+
+    assert_eq!(
+        game.controller_of(prize),
+        PlayerId(0),
+        "Dominus's controller gains control until end of turn"
+    );
+    assert!(!game.is_tapped(prize), "the steal untaps the permanent");
+    // Slice 1's activation gate: the thief can now activate the stolen Sol Ring.
+    let idx = only_activated_ability_index(&game, prize);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: prize,
+        ability_index: idx,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("the thief activates the just-stolen Sol Ring");
+
+    pass_until_next_turn(&mut game); // crosses P0's cleanup, ending the until-EOT steal
+    assert_eq!(
+        game.controller_of(prize),
+        PlayerId(1),
+        "control reverts to the owner at cleanup (CR 514.2)"
+    );
+}
+
+/// P0 activates Zedruu's donation ("{U}{R}{W}: Target opponent gains control of target permanent
+/// you control") on `gift`, handing control to `opponent`, and resolves it. Zedruu's mana is
+/// auto-tapped from lands already on P0's battlefield.
+fn zedruu_donate(game: &mut Game, zedruu: ObjectId, gift: ObjectId, opponent: PlayerId) {
+    let idx = only_activated_ability_index(game, zedruu);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: zedruu,
+        ability_index: idx,
+        target: Some(Target::Object(gift)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Zedruu activates its donation on a permanent it controls");
+    // The donation's second, independent target clause (CR 601.2c): the target opponent.
+    let Some(PendingChoice::ChooseAbilityTargets { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "donation pauses to choose the target opponent, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(legal.contains(&Target::Player(opponent)));
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(opponent)],
+    })
+    .unwrap();
+    // Four-player table: the donation resolves once everyone passes in turn (not just two passes).
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+}
+
+#[test]
+fn zedruu_donates_a_permanent_and_target_opponent_controls_it_cr_800_4a() {
+    // Zedruu the Greathearted: "{U}{R}{W}: Target opponent gains control of target permanent you
+    // control." P0 donates a Sol Ring it controls to P1; control moves to P1 through slice-1's
+    // timestamped permanent-control layer, while ownership stays with P0 (CR 108.3), and the new
+    // controller can activate it (CR 602.2 — slice-1's gate flip). Four players, so "target
+    // opponent" is a genuine choice (three opponents) that pauses on the second target clause.
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 12]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let gift = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    zedruu_donate(&mut game, zedruu, gift, PlayerId(1));
+
+    assert_eq!(
+        game.controller_of(gift),
+        PlayerId(1),
+        "the target opponent gains control of the donated permanent"
+    );
+    assert_eq!(
+        game.owner_of(gift),
+        PlayerId(0),
+        "ownership stays with the donor (CR 108.3)"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    let idx = only_activated_ability_index(&game, gift);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: gift,
+        ability_index: idx,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("the new controller activates the donated Sol Ring (CR 602.2)");
+}
+
+#[test]
+fn zedruu_upkeep_draws_and_gains_life_per_owned_permanent_an_opponent_controls() {
+    // Zedruu: "At the beginning of your upkeep, you gain X life and draw X cards, where X is the
+    // number of permanents you own that your opponents control." After donating two permanents to
+    // P1, X = 2: P0 gains 2 life and draws 2. A permanent P0 still controls does not count, and a
+    // permanent controlled by one opponent counts once (not once per opponent).
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 24]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let gift_a = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
+    let gift_b = game.spawn_on_battlefield(PlayerId(0), card("Sol Ring"));
+    game.spawn_on_battlefield(PlayerId(0), VANILLA); // kept — must not count.
+    for _ in 0..2 {
+        game.spawn_on_battlefield(PlayerId(0), card("Island"));
+        game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+        game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    }
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    zedruu_donate(&mut game, zedruu, gift_a, PlayerId(1));
+    zedruu_donate(&mut game, zedruu, gift_b, PlayerId(1));
+
+    // Advance to P0's next upkeep; the mandatory trigger sits on the stack, unresolved.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    let life_before = game.life(PlayerId(0));
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+
+    assert_eq!(
+        game.life(PlayerId(0)) - life_before,
+        2,
+        "P0 gains 1 life per owned permanent an opponent controls"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len() - hand_before,
+        2,
+        "P0 draws 1 card per owned permanent an opponent controls (not once per opponent)"
+    );
+}
+
+#[test]
+fn zedruu_donates_a_permanent_it_controls_but_does_not_own_cr_720() {
+    // The donation's first clause is "target permanent you control" — control, not ownership,
+    // gates it (CR 720). P0 steals a Sol Ring P1 owns, then donates that borrowed permanent to P2:
+    // it's a legal first target (P0 controls it), and after the donation P2 controls it while P1
+    // still owns it. A permanent P0 owns but no longer controls is NOT a legal donation target.
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 12]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let borrowed = game.spawn_on_battlefield(PlayerId(1), card("Sol Ring"));
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve(&mut game, steal, Some(Target::Object(borrowed)));
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+    assert_eq!(game.controller_of(borrowed), PlayerId(0));
+    assert_eq!(game.owner_of(borrowed), PlayerId(1));
+    for _ in 0..2 {
+        game.spawn_on_battlefield(PlayerId(0), card("Island"));
+        game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+        game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    }
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    // A permanent P0 owns but doesn't control (Zedruu itself is fine; use a donated-away proxy):
+    // the borrowed Sol Ring, which P0 controls, is a legal first target.
+    let idx = only_activated_ability_index(&game, zedruu);
+    zedruu_donate(&mut game, zedruu, borrowed, PlayerId(2));
+    assert_eq!(
+        game.controller_of(borrowed),
+        PlayerId(2),
+        "the donee controls the borrowed permanent"
+    );
+    assert_eq!(
+        game.owner_of(borrowed),
+        PlayerId(1),
+        "the original owner is unchanged by the donation (CR 108.3)"
+    );
+    // The permanent P0 no longer controls (now P2's) is not a legal first target for P0.
+    assert_eq!(
+        game.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: zedruu,
+            ability_index: idx,
+            target: Some(Target::Object(borrowed)),
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        Err(Reject::IllegalTarget),
+        "P0 can't donate a permanent it no longer controls"
+    );
+}
+
+#[test]
+fn vedalken_plotter_exchanges_control_of_two_lands_cr_800_4a() {
+    // Vedalken Plotter: "When this creature enters, exchange control of target land you control
+    // and target land an opponent controls." P0's Island and P1's Forest swap controllers; each
+    // land keeps its owner (CR 108.3), and each new controller can tap the swapped land for mana
+    // (slice-1's controller gate, CR 602.2).
+    let mut game = TestGame::new();
+    let your_land = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    let opp_land = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let plotter = game.spawn_in_hand(PlayerId(0), card("Vedalken Plotter"));
+
+    game.cast(plotter).resolve(); // enters; the ETB pauses on the "you control" land clause
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "Vedalken's ETB pauses to choose the land you control, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(your_land)),
+        "your own land is the first ('you control') clause's legal target"
+    );
+    assert!(
+        !legal.contains(&Target::Object(opp_land)),
+        "an opponent's land is not a legal first ('you control') target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(your_land)],
+    })
+    .unwrap();
+    // The second ("an opponent controls") clause is forced to P1's only land — it auto-fills.
+    resolve_top_of_stack(&mut game); // the exchange ability resolves
+
+    assert_eq!(
+        game.controller_of(your_land),
+        PlayerId(1),
+        "your land is now controlled by the opponent"
+    );
+    assert_eq!(
+        game.controller_of(opp_land),
+        PlayerId(0),
+        "the opponent's land is now controlled by you"
+    );
+    assert_eq!(
+        game.owner_of(your_land),
+        PlayerId(0),
+        "ownership is untouched by the exchange (CR 108.3)"
+    );
+    assert_eq!(
+        game.owner_of(opp_land),
+        PlayerId(1),
+        "ownership is untouched by the exchange (CR 108.3)"
+    );
+
+    // Slice-1's mana gate (CR 602.2): P0 taps the Forest it gained; it can't tap the Island it lost.
+    let green_before = game.mana_in_pool(PlayerId(0), Color::Green);
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: opp_land,
+    })
+    .expect("P0 taps the land it just gained control of");
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        green_before + 1,
+        "the swapped Forest taps for green into its new controller's pool"
+    );
+    assert_eq!(
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: your_land,
+        }),
+        Err(Reject::CannotProduceMana),
+        "P0 can't tap the Island it no longer controls (CR 602.2)"
+    );
+}
+
+/// Cast Vedalken Plotter from `caster`'s hand ({2}{U}, auto-funded) and drive its enters-the-
+/// battlefield exchange to swap control of `your_land` (its "you control" clause) and `opp_land`
+/// (its "an opponent controls" clause). Resolves the creature and the exchange around the table.
+fn cast_vedalken_and_exchange(
+    game: &mut Game,
+    caster: PlayerId,
+    plotter: ObjectId,
+    your_land: ObjectId,
+    opp_land: ObjectId,
+) {
+    game.fund_mana(caster);
+    game.submit(Intent::Cast {
+        player: caster,
+        object: plotter,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("cast Vedalken Plotter");
+    // Resolve the creature spell around the table; its ETB then pauses on the first land clause.
+    while game.pending_choice().is_none() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+    game.submit(Intent::ChooseTargets {
+        player: caster,
+        targets: vec![Target::Object(your_land)],
+    })
+    .unwrap();
+    // The "an opponent controls" clause: chosen if it's a real choice, else already auto-filled.
+    if matches!(
+        game.pending_choice(),
+        Some(PendingChoice::ChooseAbilityTargets { .. })
+    ) {
+        game.submit(Intent::ChooseTargets {
+            player: caster,
+            targets: vec![Target::Object(opp_land)],
+        })
+        .unwrap();
+    }
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+}
+
+#[test]
+fn an_exchange_layered_over_a_donation_reverts_correctly_cr_800_4a() {
+    // Zedruu donates a Forest P0 owns to P1 (a permanent-control override, timestamp T1). P0 then
+    // casts Vedalken Plotter and exchanges its own Island with that donated Forest (now "an opponent
+    // controls"): the exchange writes fresh timestamps (> T1), so the Forest's controller is the
+    // exchange's result (P0 again), not the donation's (P1) — CR 800.4a "most recent wins". Its
+    // owner never moved (CR 108.3).
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 16]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let donated = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let your_land = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    // Zedruu's {U}{R}{W} activation auto-taps these.
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    zedruu_donate(&mut game, zedruu, donated, PlayerId(1));
+    assert_eq!(
+        game.controller_of(donated),
+        PlayerId(1),
+        "the donation hands control of the Forest to P1 (CR 720)"
+    );
+
+    let plotter = game.spawn_in_hand(PlayerId(0), card("Vedalken Plotter"));
+    cast_vedalken_and_exchange(&mut game, PlayerId(0), plotter, your_land, donated);
+
+    assert_eq!(
+        game.controller_of(donated),
+        PlayerId(0),
+        "the exchange (most recent, CR 800.4a) outranks the earlier donation"
+    );
+    assert_eq!(
+        game.controller_of(your_land),
+        PlayerId(1),
+        "P0's Island went to P1 in the swap"
+    );
+    assert_eq!(
+        game.owner_of(donated),
+        PlayerId(0),
+        "ownership never moved through the donation or the exchange (CR 108.3)"
+    );
+}
+
+#[test]
+fn chromeshell_crab_turned_face_up_may_exchange_a_creature_you_control_with_an_opponents() {
+    // Chromeshell Crab: "When this creature is turned face up, you may exchange control of target
+    // creature you control and target creature an opponent controls." Cast face down ({3}), turned
+    // up for its {4}{U} morph cost, its trigger swaps P0's creature for P1's.
+    let mut game = TestGame::new();
+    let your_creature = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let opp_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let crab = game.spawn_in_hand(PlayerId(0), card("Chromeshell Crab"));
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: crab,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let perm = game.current_id(crab);
+    assert!(game.is_face_down(perm), "the crab entered face down");
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::TurnFaceUp {
+        player: PlayerId(0),
+        permanent: perm,
+    })
+    .unwrap();
+    assert!(!game.is_face_down(perm), "the crab is now face up");
+
+    let Some(PendingChoice::MayYesNo {
+        player: PlayerId(0),
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "the turned-face-up trigger pauses on its 'you may', got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "accepting pauses to choose a creature you control, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(legal.contains(&Target::Object(your_creature)));
+    assert!(
+        !legal.contains(&Target::Object(opp_creature)),
+        "an opponent's creature is not a legal 'you control' first target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(your_creature)],
+    })
+    .unwrap();
+    // The "an opponent controls" clause is forced to P1's only creature — it auto-fills.
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.controller_of(your_creature),
+        PlayerId(1),
+        "your creature is now the opponent's"
+    );
+    assert_eq!(
+        game.controller_of(opp_creature),
+        PlayerId(0),
+        "the opponent's creature is now yours"
+    );
+    assert_eq!(
+        game.owner_of(your_creature),
+        PlayerId(0),
+        "ownership is untouched (CR 108.3)"
+    );
+    assert_eq!(
+        game.owner_of(opp_creature),
+        PlayerId(1),
+        "ownership is untouched (CR 108.3)"
+    );
+}
+
+#[test]
+fn chromeshell_crab_declining_its_may_leaves_control_unchanged() {
+    // The turned-face-up trigger is a "you may" (CR 603.5): declining it exchanges nothing.
+    let mut game = TestGame::new();
+    let your_creature = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let opp_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let crab = game.spawn_in_hand(PlayerId(0), card("Chromeshell Crab"));
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::CastFaceDown {
+        player: PlayerId(0),
+        card: crab,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let perm = game.current_id(crab);
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::TurnFaceUp {
+        player: PlayerId(0),
+        permanent: perm,
+    })
+    .unwrap();
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: false,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.controller_of(your_creature),
+        PlayerId(0),
+        "declining the may leaves your creature yours"
+    );
+    assert_eq!(
+        game.controller_of(opp_creature),
+        PlayerId(1),
+        "declining the may leaves the opponent's creature theirs"
+    );
+}
+
+#[test]
+fn reins_of_power_swaps_all_creatures_between_two_players_until_eot_cr_800_4a() {
+    // Reins of Power: "Untap all creatures you control and all creatures target opponent controls.
+    // You and that opponent each gain control of all creatures the other controls until end of turn.
+    // Those creatures gain haste until end of turn." P0 controls A, B; P1 controls C, D. After the
+    // swap A, B are P1's and C, D are P0's — all untapped, all hasted, ownership untouched (CR
+    // 108.3) — and control reverts to the original controllers at cleanup (CR 514.2).
+    let mut game = TestGame::new();
+    let a = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let b = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let c = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let d = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    for creature in [a, b, c, d] {
+        game.tap(creature); // so the untap clauses are observable
+    }
+    let reins = game.spawn_in_hand(PlayerId(0), card("Reins of Power"));
+    game.cast(reins).at(Target::Player(PlayerId(1))).resolve();
+
+    for (creature, thief) in [
+        (a, PlayerId(1)),
+        (b, PlayerId(1)),
+        (c, PlayerId(0)),
+        (d, PlayerId(0)),
+    ] {
+        assert_eq!(
+            game.controller_of(creature),
+            thief,
+            "each creature is now controlled by the other player (CR 800.4a)"
+        );
+        assert!(
+            !game.is_tapped(creature),
+            "every swapped creature is untapped"
+        );
+        assert!(
+            game.has_keyword(creature, Keyword::Haste),
+            "every swapped creature gains haste until end of turn"
+        );
+    }
+    assert_eq!(
+        game.owner_of(a),
+        PlayerId(0),
+        "ownership is untouched by the swap (CR 108.3)"
+    );
+    assert_eq!(
+        game.owner_of(c),
+        PlayerId(1),
+        "ownership is untouched by the swap (CR 108.3)"
+    );
+
+    pass_until_next_turn(&mut game);
+    for (creature, owner) in [
+        (a, PlayerId(0)),
+        (b, PlayerId(0)),
+        (c, PlayerId(1)),
+        (d, PlayerId(1)),
+    ] {
+        assert_eq!(
+            game.controller_of(creature),
+            owner,
+            "the until-EOT swap ends at cleanup and control reverts (CR 514.2)"
+        );
+    }
+}
+
+#[test]
+fn reins_mass_steal_layered_over_a_donation_reverts_to_the_donated_controller_cr_800_4a() {
+    // P0 donates a creature it owns to P1 (a permanent-control override). P0 then casts Reins
+    // targeting P1: the mass until-EOT steal is freshly timestamped (> the donation), so during the
+    // turn P0 (the Reins controller) wins (CR 800.4a "most recent wins"). At cleanup the until-EOT
+    // swap ends and control reverts to the DONATED-TO controller (P1), never to the owner (P0).
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 16]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let donated = game.spawn_on_battlefield(PlayerId(0), VANILLA); // a creature P0 owns
+    // Zedruu's {U}{R}{W} activation auto-taps these.
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    zedruu_donate(&mut game, zedruu, donated, PlayerId(1));
+    assert_eq!(
+        game.controller_of(donated),
+        PlayerId(1),
+        "the donation hands control of the creature to P1 (CR 720)"
+    );
+
+    let reins = game.spawn_in_hand(PlayerId(0), card("Reins of Power"));
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(0),
+        4,
+        reins,
+        Some(Target::Player(PlayerId(1))),
+    );
+    assert_eq!(
+        game.controller_of(donated),
+        PlayerId(0),
+        "the mass until-EOT steal (most recent, CR 800.4a) outranks the earlier donation this turn"
+    );
+
+    advance_until(&mut game, |g| g.active_player() == PlayerId(1));
+    assert_eq!(
+        game.controller_of(donated),
+        PlayerId(1),
+        "at cleanup the swap ends and control reverts to the donated-to controller, not the owner"
+    );
+    assert_eq!(
+        game.owner_of(donated),
+        PlayerId(0),
+        "ownership never moved through the donation or the swap (CR 108.3)"
+    );
+}
+
+#[test]
+fn a_stolen_creature_from_reins_can_attack_for_its_thief() {
+    // A creature swapped to P0 by Reins gains haste, so it can attack for its new controller the
+    // same turn (CR 702.10b haste + slice-1's combat gate, CR 508.1a — attackers are the active
+    // player's creatures).
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA; 10]);
+    game.stack_library(PlayerId(1), &[VANILLA; 10]);
+    let stolen = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let reins = game.spawn_in_hand(PlayerId(0), card("Reins of Power"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    cast_and_resolve(&mut game, reins, Some(Target::Player(PlayerId(1))));
+    assert_eq!(
+        game.controller_of(stolen),
+        PlayerId(0),
+        "Reins hands P1's creature to P0 until end of turn"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(stolen, PlayerId(1))],
+    })
+    .expect("the hasted, swapped creature attacks for its new controller");
+}
+
+#[test]
+fn when_a_player_leaves_permanents_they_own_under_others_control_leave_and_their_control_effects_end_cr_800_4a()
+ {
+    // CR 800.4a: when a player leaves the game, everything they OWN leaves with them (even a
+    // permanent someone else controls), and any effect giving THEM control of an object ends. P0
+    // donates a creature it owns to P1 (via Zedruu) and steals one of P1's; when P0 concedes, the
+    // donated creature leaves the battlefield with P0, and the stolen creature returns to P1.
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 16]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let donated = game.spawn_on_battlefield(PlayerId(0), VANILLA); // owned by P0
+    let stolen = game.spawn_on_battlefield(PlayerId(1), VANILLA); // owned by P1
+    // Zedruu's {U}{R}{W} activation auto-taps these.
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    zedruu_donate(&mut game, zedruu, donated, PlayerId(1));
+    assert_eq!(game.controller_of(donated), PlayerId(1));
+
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(0),
+        4,
+        steal,
+        Some(Target::Object(stolen)),
+    );
+    assert_eq!(game.controller_of(stolen), PlayerId(0));
+
+    game.submit(Intent::Concede {
+        player: PlayerId(0),
+    })
+    .unwrap();
+
+    assert!(
+        !game.live_object_ids().contains(&donated),
+        "the donated creature P0 owns leaves the battlefield with P0 (CR 800.4a)"
+    );
+    assert_eq!(
+        game.controller_of(stolen),
+        PlayerId(1),
+        "the control effect giving P0 the stolen creature ends — it returns to its owner (CR 800.4a)"
+    );
+}
+
+#[test]
+fn insurrection_steals_all_creatures_until_eot_with_haste_cr_800_4a() {
+    // Insurrection: "Untap all creatures and gain control of them until end of turn. They gain
+    // haste until end of turn." Unlike Reins (a two-player swap), this is one-sided and untargeted
+    // — EVERY creature of ANY controller (including the caster's own) is affected. P0 casts it; P1,
+    // P2, P3 each control a creature, and P0 controls one too. All four end up controlled by P0,
+    // untapped, and hasted; control reverts to the original controllers at cleanup (CR 514.2).
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 16]);
+    }
+    let mine = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let p1 = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let p2 = game.spawn_on_battlefield(PlayerId(2), VANILLA);
+    let p3 = game.spawn_on_battlefield(PlayerId(3), VANILLA);
+    for creature in [mine, p1, p2, p3] {
+        game.tap(creature); // so the untap clause is observable
+    }
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    let insurrection = game.spawn_in_hand(PlayerId(0), card("Insurrection"));
+    cast_and_resolve_seated(&mut game, PlayerId(0), 4, insurrection, None);
+
+    for creature in [mine, p1, p2, p3] {
+        assert_eq!(
+            game.controller_of(creature),
+            PlayerId(0),
+            "every creature, any controller, is now controlled by the caster (CR 800.4a)"
+        );
+        assert!(!game.is_tapped(creature), "every creature is untapped");
+        assert!(
+            game.has_keyword(creature, Keyword::Haste),
+            "every creature gains haste until end of turn"
+        );
+    }
+
+    advance_until(&mut game, |g| g.active_player() == PlayerId(1));
+    for (creature, owner) in [
+        (mine, PlayerId(0)),
+        (p1, PlayerId(1)),
+        (p2, PlayerId(2)),
+        (p3, PlayerId(3)),
+    ] {
+        assert_eq!(
+            game.controller_of(creature),
+            owner,
+            "the until-EOT steal ends at cleanup and control reverts (CR 514.2)"
+        );
+    }
+}
+
+#[test]
+fn insurrection_layered_over_a_donation_reverts_to_the_donated_controller_cr_800_4a() {
+    // P0 donates a creature it owns to P1 (a permanent-control override). P0 then casts
+    // Insurrection: the mass until-EOT steal is freshly timestamped (> the donation), so during the
+    // turn P0 (Insurrection's controller) wins (CR 800.4a "most recent wins"). At cleanup the
+    // until-EOT steal ends and control reverts to the DONATED-TO controller (P1), never to the
+    // owner (P0).
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 16]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let donated = game.spawn_on_battlefield(PlayerId(0), VANILLA); // a creature P0 owns
+    // Zedruu's {U}{R}{W} activation auto-taps these.
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    zedruu_donate(&mut game, zedruu, donated, PlayerId(1));
+    assert_eq!(
+        game.controller_of(donated),
+        PlayerId(1),
+        "the donation hands control of the creature to P1 (CR 720)"
+    );
+
+    let insurrection = game.spawn_in_hand(PlayerId(0), card("Insurrection"));
+    cast_and_resolve_seated(&mut game, PlayerId(0), 4, insurrection, None);
+    assert_eq!(
+        game.controller_of(donated),
+        PlayerId(0),
+        "the mass until-EOT steal (most recent, CR 800.4a) outranks the earlier donation this turn"
+    );
+
+    advance_until(&mut game, |g| g.active_player() == PlayerId(1));
+    assert_eq!(
+        game.controller_of(donated),
+        PlayerId(1),
+        "at cleanup the steal ends and control reverts to the donated-to controller, not the owner"
+    );
+    assert_eq!(
+        game.owner_of(donated),
+        PlayerId(0),
+        "ownership never moved through the donation or the steal (CR 108.3)"
+    );
+}
+
+#[test]
+fn a_stolen_creature_from_insurrection_can_attack_for_its_thief() {
+    // A creature swapped to P0 by Insurrection gains haste, so it can attack for its new
+    // controller the same turn (CR 702.10b haste + slice-1's combat gate, CR 508.1a — attackers are
+    // the active player's creatures).
+    let mut game = Game::with_players(2, 0);
+    game.stack_library(PlayerId(0), &[VANILLA; 10]);
+    game.stack_library(PlayerId(1), &[VANILLA; 10]);
+    let stolen = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let insurrection = game.spawn_in_hand(PlayerId(0), card("Insurrection"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    cast_and_resolve(&mut game, insurrection, None);
+    assert_eq!(
+        game.controller_of(stolen),
+        PlayerId(0),
+        "Insurrection hands P1's creature to P0 until end of turn"
+    );
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(stolen, PlayerId(1))],
+    })
+    .expect("the hasted, stolen creature attacks for its new controller");
 }
 
 #[test]
@@ -37249,11 +40645,7 @@ fn kinetic_ooze_etb_destroys_up_to_one_artifact_of_mana_value_x_or_less() {
     resolve_top_of_stack(&mut game); // Kinetic Ooze enters with 4 +1/+1 counters; its ETB pauses.
 
     let legal = match game.pending_choice() {
-        Some(PendingChoice::ChooseTarget {
-            optional: true,
-            legal,
-            ..
-        }) => legal,
+        Some(PendingChoice::ChooseTarget { count, legal, .. }) if count.min == 0 => legal,
         other => panic!("expected an optional ChooseTarget pause, got {other:?}"),
     };
     assert!(
@@ -37809,6 +41201,7 @@ const CHOOSE_TWO: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -37829,6 +41222,7 @@ const CHOOSE_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -38135,6 +41529,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -38155,6 +41550,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -38502,6 +41898,7 @@ const FIGHT_SPELL: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -38522,6 +41919,7 @@ const FIGHT_SPELL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -39781,6 +43179,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -39801,6 +43200,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -40135,6 +43535,7 @@ static PACK_A_PUNCH: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -40155,6 +43556,7 @@ static PACK_A_PUNCH: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -40208,6 +43610,7 @@ static KIROL: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -40222,6 +43625,7 @@ static KIROL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
     functions_in_graveyard: false,
@@ -40484,6 +43888,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -40504,6 +43909,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -40549,6 +43955,7 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -40569,6 +43976,7 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -40637,6 +44045,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -40657,6 +44066,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -40701,6 +44111,7 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -40721,6 +44132,7 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -41324,6 +44736,7 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -41344,6 +44757,7 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -41399,6 +44813,7 @@ static DIRGUR_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -41413,6 +44828,7 @@ static DIRGUR_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
     functions_in_graveyard: false,
@@ -41815,6 +45231,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -41835,6 +45252,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     };
@@ -42648,6 +46066,7 @@ const fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect,
         optional: false,
@@ -42691,6 +46110,7 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -42711,6 +46131,7 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -43991,6 +47412,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -44011,6 +47433,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -46259,6 +49682,7 @@ const MASS_SHOCK: CardDef = CardDef {
         effect: Effect::DamageEachCreature {
             amount: Amount::Fixed(2),
             opponents_only: false,
+            filter: None,
         },
         optional: false,
         min_level: 0,
@@ -46270,6 +49694,7 @@ const MASS_SHOCK: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -46290,6 +49715,7 @@ const MASS_SHOCK: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -46339,6 +49765,7 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -46359,6 +49786,7 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -46502,6 +49930,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -46522,6 +49951,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -47035,6 +50465,113 @@ fn dynamic_mass_damage_scales_with_the_creature_count() {
 }
 
 #[test]
+fn breath_of_darigaaz_unkicked_deals_one_to_nonfliers_and_each_player() {
+    // Breath of Darigaaz unkicked: "deals 1 damage to each creature without flying and each
+    // player." A flier is exempt (`without_flying` filter axis), a nonflier takes 1 (survives at
+    // 2 toughness), and every player — the ability's own caster included — loses 1 life (no
+    // opponent-only carve-out, unlike `each_opponent_loses_life`).
+    let mut game = Game::with_players(4, 0);
+    let flier = game.spawn_on_battlefield(PlayerId(1), card("Drumbellower")); // 2/1 flying
+    let bear = game.spawn_on_battlefield(PlayerId(2), card("Grizzly Bear")); // 2/2, no flying
+    let breath = game.spawn_in_hand(PlayerId(0), card("Breath of Darigaaz"));
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: breath,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Breath of Darigaaz is castable unkicked");
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(game.marked_damage(flier), 0, "flying exempts Drumbellower");
+    assert_eq!(
+        game.zone_of(flier),
+        Zone::Battlefield,
+        "the flier survives untouched"
+    );
+    assert_eq!(
+        game.marked_damage(game.current_id(bear)),
+        1,
+        "the nonflier takes 1"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(bear)),
+        Zone::Battlefield,
+        "…and survives at 2 toughness"
+    );
+    for seat in 0..4 {
+        assert_eq!(
+            game.life(PlayerId(seat)),
+            20 - 1,
+            "player {seat} (the caster included) lost 1 life"
+        );
+    }
+}
+
+#[test]
+fn breath_of_darigaaz_kicked_deals_four_to_nonfliers_and_each_player() {
+    // Kicked: "it deals 4 damage to each creature without flying and each player instead." The
+    // flier is still exempt; the 2/2 nonflier now dies, and every player loses 4.
+    let mut game = Game::with_players(4, 0);
+    let flier = game.spawn_on_battlefield(PlayerId(1), card("Drumbellower")); // 2/1 flying
+    let bear = game.spawn_on_battlefield(PlayerId(2), card("Grizzly Bear")); // 2/2, no flying
+    let breath = game.spawn_in_hand(PlayerId(0), card("Breath of Darigaaz"));
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: breath,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: true,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Breath of Darigaaz is castable kicked");
+    resolve_whole_stack(&mut game);
+
+    assert_eq!(
+        game.marked_damage(flier),
+        0,
+        "flying still exempts Drumbellower"
+    );
+    assert_eq!(
+        game.zone_of(flier),
+        Zone::Battlefield,
+        "the flier survives untouched"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(bear)),
+        Zone::Graveyard,
+        "4 damage kills the 2/2 nonflier"
+    );
+    for seat in 0..4 {
+        assert_eq!(
+            game.life(PlayerId(seat)),
+            20 - 4,
+            "player {seat} (the caster included) lost 4 life when kicked"
+        );
+    }
+}
+
+#[test]
 fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
     // Fracture ("destroy target artifact, enchantment, or planeswalker") sees the artifact but not
     // a creature; aiming it at the creature is rejected, and it destroys the artifact.
@@ -47145,6 +50682,7 @@ const MAKE_TREASURES: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -47165,6 +50703,7 @@ const MAKE_TREASURES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -47357,6 +50896,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -47377,6 +50917,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -47424,6 +50965,7 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -47444,6 +50986,7 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -47564,6 +51107,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -47584,6 +51128,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -47743,6 +51288,7 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -47763,6 +51309,7 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -47829,6 +51376,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -47849,6 +51397,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -48106,6 +51655,7 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -48126,6 +51676,7 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -48187,6 +51738,7 @@ const ROOTHA_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -48207,6 +51759,7 @@ const ROOTHA_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -48385,6 +51938,7 @@ const RIONYA_TEST: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -48405,6 +51959,7 @@ const RIONYA_TEST: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -48615,6 +52170,7 @@ const IMPULSE: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::ExileTopMayPlay {
             count: Amount::Fixed(1),
@@ -48630,6 +52186,7 @@ const IMPULSE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -48650,6 +52207,7 @@ const IMPULSE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -48820,6 +52378,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::ExileRandomFromGraveyardMayPlay,
         optional: false,
@@ -48832,6 +52391,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -48852,6 +52412,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -48919,37 +52480,40 @@ fn exile_random_from_graveyard_may_play_picks_a_graveyard_card_deterministically
 
 #[test]
 fn advanced_reconstruction_mills_then_exiles_a_graveyard_card_at_random_to_play() {
-    // The real pool card's base ability: "At the beginning of your first main phase [upkeep
-    // stands in], mill a card, then exile a card from your graveyard at random. You may play
-    // the exiled card this turn."
+    // The real pool card's base ability: "At the beginning of your first main phase, mill a card,
+    // then exile a card from your graveyard at random. You may play the exiled card this turn."
     let mut game = Game::with_seed(7);
     game.spawn_on_battlefield(PlayerId(0), card("Advanced Reconstruction"));
-    // Forest on top (milled first); two Grizzly Bear behind it so P0 doesn't deck out.
-    let forest = game.stack_library(
-        PlayerId(0),
-        &[card("Forest"), card("Grizzly Bear"), card("Grizzly Bear")],
-    )[0];
-    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 2]);
+    // A deck of Forests, deep enough to absorb the draw step that now precedes the Main1 trigger.
+    game.stack_library(PlayerId(0), &[card("Forest"); 6]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"); 4]);
 
-    advance_until(&mut game, |g| {
-        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
-    });
-    resolve_top_of_stack(&mut game); // mills the Forest, then exiles it at random and grants play
+    // The trigger fires at P0's first main phase (Main1), not upkeep — roll to P0's next turn's
+    // Main1 (the game already opens in P0's Main1, before the enchantment was on the battlefield).
+    advance_to_next_main1(&mut game, PlayerId(0));
+    let events = resolve_top_of_stack_events(&mut game); // mills a card, then exiles it to play
+    let milled = events
+        .iter()
+        .find_map(|e| match e {
+            Event::Milled { card, .. } => Some(*card),
+            _ => None,
+        })
+        .expect("the base ability mills a card at the first main phase");
 
-    let forest = game.current_id(forest);
+    // The only graveyard card (the just-milled one) is the random pick, exiled face-up to play.
+    // Exiling mints a fresh object id, so follow the redirect to the current exile object.
+    let playable = game.current_id(milled);
     assert_eq!(
-        game.zone_of(forest),
+        game.zone_of(playable),
         Zone::Exile,
-        "the milled card was exiled face-up (the only graveyard card, so the random pick is it)"
+        "the milled card was exiled face-up and is playable this turn"
     );
-
-    advance_until(&mut game, |g| g.current_step() == Step::Main1); // sorcery-speed timing
     game.submit(Intent::PlayLand {
         player: PlayerId(0),
-        object: forest,
+        object: playable,
     })
     .expect("the exiled card is playable from exile this turn");
-    assert_eq!(game.zone_of(forest), Zone::Battlefield);
+    assert_eq!(game.zone_of(playable), Zone::Battlefield);
 }
 
 #[test]
@@ -49099,6 +52663,7 @@ const MODAL_DRAGON: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -49119,6 +52684,7 @@ const MODAL_DRAGON: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -50616,6 +54182,7 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -50636,6 +54203,7 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -50715,6 +54283,7 @@ macro_rules! amount_spell {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -50735,6 +54304,7 @@ macro_rules! amount_spell {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }
@@ -50798,30 +54368,8 @@ const PER_CREATURE_TREASURES: CardDef = amount_spell!(
     Effect::CreateTreasure {
         count: Amount::PerPermanentMatching {
             filter: PermanentFilter {
-                types: TypeSet::CREATURE,
-                subtypes: &[],
                 controller: FilterController::You,
-                token: TokenFilter::Any,
-                other: false,
-                enchanted: None,
-                attached_to_creature: None,
-                enchanted_by_you: false,
-                mv_max: None,
-                mv_eq_x: false,
-                mv_max_x: false,
-                tapped: None,
-                power_max: None,
-                power_parity: None,
-                exclude: TypeSet::NONE,
-                color: ColorFilter::Any,
-                modified: false,
-                attacking: false,
-                power_less_than_source: false,
-                entered_this_turn: false,
-                nonbasic: false,
-                name: None,
-                nonlegendary: false,
-                nonlair: false,
+                ..PermanentFilter::of(TypeSet::CREATURE)
             },
             zone: AmountZone::Battlefield,
         },
@@ -50910,6 +54458,7 @@ macro_rules! hydra_with_etb {
             cycling_sacrifice: SacrificeCost::None,
             flashback: None,
             echo: None,
+            cumulative_upkeep: None,
             recover: None,
             bestow: None,
             morph: None,
@@ -50930,6 +54479,7 @@ macro_rules! hydra_with_etb {
             enter_as_copy: None,
             encore: None,
             hand_ability: None,
+            forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
         }
@@ -51796,6 +55346,7 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -51816,6 +55367,7 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -52072,6 +55624,102 @@ fn compulsive_research_no_land_collapses() {
         1,
         "discarded two, one draw remains"
     );
+}
+
+// Brainstorm: "Draw three cards, then put two cards from your hand on top of your library in
+// any order." — the hand-rebuild mirror of `Discard`'s partial-hand card-pick pause, with an
+// ordered answer instead of an unordered one.
+#[test]
+fn brainstorm_puts_two_hand_cards_on_top_of_library_in_order() {
+    let mut game = TestGame::new();
+    let brainstorm = game.spawn_in_hand(PlayerId(0), card("Brainstorm"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Shock"), card("Forest"), card("Mountain")],
+    );
+
+    game.cast(brainstorm).resolve();
+
+    // The three draws happened, then the effect paused on an ordered card-pick choice over the
+    // whole hand (Brainstorm's dork, the just-drawn cards, and the hand card from before).
+    let drawn: Vec<ObjectId> = lib.iter().map(|&id| game.current_id(id)).collect();
+    let mut hand = hand_ids(&game, PlayerId(0));
+    hand.sort();
+    let mut expected_hand = vec![bear];
+    expected_hand.extend(&drawn);
+    expected_hand.sort();
+    assert_eq!(hand, expected_hand, "drew three cards before the pause");
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PutFromHandOnTop {
+                player: PlayerId(0),
+                count: 2,
+                ..
+            })
+        ),
+        "the put-back clause surfaces as an ordered card-pick choice, got {:?}",
+        game.pending_choice(),
+    );
+
+    // Name Bear first, Shock second: Bear should end up on top, Shock second from the top.
+    game.submit(Intent::PutFromHandOnTop {
+        player: PlayerId(0),
+        cards: vec![bear, drawn[0]],
+    })
+    .expect("naming two hand cards in order is legal");
+
+    assert_eq!(game.pending_choice(), None, "the pause is resolved");
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        2,
+        "3 drawn + 1 starting - 2 put back = 2 (pre-cast hand of 1 + 1 net draw)"
+    );
+    let new_top = game.current_id(bear);
+    let new_second = game.current_id(drawn[0]);
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(0)),
+        new_top,
+        "first-named card (Bear) ended up on top of the library"
+    );
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(0)),
+        new_second,
+        "second-named card (Shock) ended up second from the top"
+    );
+}
+
+// Fewer cards in hand than the effect's count clamps to naming the whole hand (mirrors
+// `Effect::Discard`'s clamp) — Brainstorm resolving with only 1 card left after the draws
+// forces "put 1 card back", not 2.
+#[test]
+fn brainstorm_clamps_to_hand_size_when_hand_is_smaller_than_count() {
+    let mut game = TestGame::new();
+    let brainstorm = game.spawn_in_hand(PlayerId(0), card("Brainstorm"));
+    let lib = game.stack_library(PlayerId(0), &[card("Shock")]);
+
+    game.cast(brainstorm).resolve();
+
+    // Only one card was in the library to draw — the whole (post-draw) hand is a single card.
+    let drawn = game.current_id(lib[0]);
+    assert_eq!(hand_ids(&game, PlayerId(0)), vec![drawn]);
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::PutFromHandOnTop {
+            player: PlayerId(0),
+            hand: vec![drawn],
+            count: 1,
+        }),
+        "count clamps to the 1-card hand, not the printed 2"
+    );
+
+    game.submit(Intent::PutFromHandOnTop {
+        player: PlayerId(0),
+        cards: vec![drawn],
+    })
+    .expect("naming the whole (1-card) hand is legal");
+    assert!(hand_ids(&game, PlayerId(0)).is_empty());
 }
 
 // Prismari Charm mode 0's shape: "surveil 2, then draw a card" — the draw is deferred past
@@ -52944,7 +56592,7 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
 
     assert!(matches!(
         game.pending_choice(),
-        Some(PendingChoice::ChooseTarget { optional: true, .. })
+        Some(PendingChoice::ChooseTarget { count, .. }) if count.min == 0
     ));
     game.submit(Intent::ChooseTargets {
         player: PlayerId(0),
@@ -52994,7 +56642,7 @@ fn killian_decisive_mentor_tap_and_goad_target_is_declinable() {
 
     assert!(matches!(
         game.pending_choice(),
-        Some(PendingChoice::ChooseTarget { optional: true, .. })
+        Some(PendingChoice::ChooseTarget { count, .. }) if count.min == 0
     ));
     game.submit(Intent::ChooseTargets {
         player: PlayerId(0),
@@ -53544,6 +57192,135 @@ fn storm_copies_survive_countered_original() {
         hand_ids(&game, PlayerId(0)).len(),
         1,
         "the copy still returned a creature card even though the original was countered"
+    );
+}
+
+#[test]
+fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
+    // Flusterstorm: "Counter target instant or sorcery spell unless its controller pays {1}.
+    // Storm (When you cast this spell, copy it for each spell cast before it this turn. You may
+    // choose new targets for the copies.)" End-to-end fidelity check for CR 707.10a on a real
+    // pool card whose storm copy meets a counterspell — Flusterstorm both mints copies and
+    // counters spells, so a countered copy is routine (not the theoretical case it used to be).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.fund_mana(PlayerId(1));
+
+    // A prior instant this turn gives Flusterstorm a storm count of 1 — and, still unresolved
+    // on the stack, doubles as its legal "instant or sorcery" target.
+    let filler = game.spawn_in_hand(PlayerId(0), X_INSTANT_FILLER);
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: filler,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    let filler_on_stack = top_spell(&game);
+
+    let fluster = game.spawn_in_hand(PlayerId(1), card("Flusterstorm"));
+    let counter = game.spawn_in_hand(PlayerId(0), COUNTER);
+
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: fluster,
+        target: Some(Target::Object(filler_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Flusterstorm can target the still-on-stack instant");
+
+    resolve_top_of_stack(&mut game); // the storm trigger resolves, minting 1 copy, pausing on retarget
+    let copy = top_spell(&game);
+    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the storm copy's retarget pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(filler_on_stack)),
+        "the untouched instant is still a legal retarget"
+    );
+    game.submit(Intent::ChooseTargets {
+        player,
+        targets: vec![Target::Object(filler_on_stack)],
+    })
+    .expect("re-choosing the same target is a legal retarget");
+
+    // Counter the storm COPY of Flusterstorm itself, while it's still on the stack above the
+    // original and the filler it targets — a copy meeting a counterspell, the case #213 fixes.
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: counter,
+        target: Some(Target::Object(copy)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("the storm copy is a legal counter target");
+    let events = resolve_top_of_stack_events(&mut game); // the counter resolves, countering the copy
+
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::SpellCeasedToExist { spell } if *spell == copy)),
+        "the countered storm copy ceases to exist (CR 707.10a), got {events:?}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::MovedToGraveyard { from, .. } if *from == copy)),
+        "the countered storm copy must never go to a graveyard, got {events:?}"
+    );
+
+    // The original Flusterstorm still resolves normally against the filler instant: its
+    // controller (P0) declines to pay {1}, so the filler — a real, non-copy spell — is
+    // countered straight to its owner's graveyard, same as any hard counter.
+    resolve_top_of_stack(&mut game); // Flusterstorm's own trigger cleanup, if any, plus its resolution reaching PayOrCounter
+    let Some(PendingChoice::PayOrCounter { player, spell, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the filler's PayOrCounter pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(spell, filler_on_stack);
+    game.submit(Intent::PayOptionalCost { player, pay: false })
+        .unwrap();
+
+    assert_eq!(
+        game.zone_of(filler_on_stack),
+        Zone::Graveyard,
+        "the filler instant, a real spell (not a copy), is countered to its owner's graveyard"
     );
 }
 
@@ -54546,6 +58323,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                 mill_self: 0,
                 discard_cost: 0,
                 exile_self: false,
+                graveyard_exile_target_count: 0,
             }),
             effect: Effect::DestroyTarget {
                 target: TargetSpec::ArtifactEnchantmentOrPlaneswalker,
@@ -54569,6 +58347,7 @@ const TEST_STEELBANE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -54589,6 +58368,7 @@ const TEST_STEELBANE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -54872,6 +58652,7 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -54892,6 +58673,7 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -54967,6 +58749,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 cycling_sacrifice: SacrificeCost::None,
                 flashback: None,
                 echo: None,
+                cumulative_upkeep: None,
                 recover: None,
                 bestow: None,
                 morph: None,
@@ -54987,6 +58770,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 enter_as_copy: None,
                 encore: None,
                 hand_ability: None,
+                forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
             },
@@ -55009,6 +58793,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -55029,6 +58814,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -55085,6 +58871,7 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -55105,6 +58892,7 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -55683,6 +59471,7 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -55703,6 +59492,7 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     }
@@ -56121,6 +59911,7 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -56141,6 +59932,7 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -57478,6 +61270,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
             colors: &[],
             chosen_subtype: false,
             attacking_only: false,
+            blocking_only: false,
             commander_only: false,
             has_counters: false,
             condition: None,
@@ -57494,6 +61287,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -57514,6 +61308,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -57603,6 +61398,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -57623,6 +61419,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -57683,6 +61480,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -57703,6 +61501,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -58461,6 +62260,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -58481,6 +62281,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -58580,6 +62381,54 @@ fn modified_includes_equipped_and_aura_enchanted_creatures() {
     assert!(
         !game.has_keyword(bare, Keyword::Hexproof),
         "a bare creature stays untouched"
+    );
+}
+
+#[test]
+fn modified_excludes_a_creature_enchanted_by_an_opponents_aura() {
+    // CR 701.29 / Silkguard's reminder text: "Equipment, Auras you control, and counters are
+    // modifications" — only an Aura *you* control counts. An opponent's Aura attached to your
+    // own creature (the Vow cycle's donated-Aura shape) doesn't make it "modified" from your
+    // perspective, even though the host is enchanted.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(1), &[VANILLA]);
+    let enchanted_by_opponent = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let shield = game.spawn_in_hand(PlayerId(1), card("Shielded by Faith"));
+    pass_until_next_turn(&mut game); // → P1's turn, so P1 can cast the sorcery-speed Aura
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    fund_cast_resolve(
+        &mut game,
+        PlayerId(1),
+        shield,
+        Some(Target::Object(enchanted_by_opponent)),
+    );
+    game.submit(Intent::PassPriority {
+        player: PlayerId(1),
+    })
+    .expect("P1 passes priority back to P0 after casting the Aura");
+
+    let spell = game.spawn_in_hand(PlayerId(0), MASS_HEXPROOF_TO_MODIFIED);
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("an instant is castable on the opponent's turn");
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        !game.has_keyword(enchanted_by_opponent, Keyword::Hexproof),
+        "an opponent's Aura doesn't make your own creature \"modified\" from your perspective"
     );
 }
 
@@ -60032,6 +63881,7 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -60052,6 +63902,7 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -61531,6 +65382,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         cycling_sacrifice: SacrificeCost::None,
         flashback: None,
         echo: None,
+        cumulative_upkeep: None,
         recover: None,
         bestow: None,
         morph: None,
@@ -61551,6 +65403,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         enter_as_copy: None,
         encore: None,
         hand_ability: None,
+        forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
     };
@@ -62442,6 +66295,7 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -62462,6 +66316,7 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -62705,6 +66560,7 @@ const SACRIFICE_A_CREATURE_OUTLET: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::GainLife {
             amount: Amount::Fixed(1),
@@ -62978,6 +66834,7 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -62998,6 +66855,7 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -64159,10 +68017,7 @@ fn renegade_bull_attack_exiles_graveyard_instant_and_grants_free_cast() {
 
     attack_with(&mut game, vec![bull]);
 
-    let Some(PendingChoice::ChooseTarget {
-        legal, optional, ..
-    }) = game.pending_choice()
-    else {
+    let Some(PendingChoice::ChooseTarget { legal, count, .. }) = game.pending_choice() else {
         panic!(
             "Renegade Bull's attack trigger pauses to choose a graveyard target, got {:?}",
             game.pending_choice()
@@ -64173,7 +68028,7 @@ fn renegade_bull_attack_exiles_graveyard_instant_and_grants_free_cast() {
         vec![Target::Object(big_score)],
         "Big Score is the only instant or sorcery in the graveyard"
     );
-    assert!(optional, "\"up to one target\" is a declinable choice");
+    assert_eq!(count.min, 0, "\"up to one target\" is a declinable choice");
     game.submit(Intent::ChooseTargets {
         player: PlayerId(0),
         targets: vec![Target::Object(big_score)],
@@ -66759,6 +70614,7 @@ const fn level_up_ability(level: u8) -> Ability {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::LevelUp { level },
         optional: false,
@@ -66827,6 +70683,7 @@ const TEST_CLASS: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -66847,6 +70704,7 @@ const TEST_CLASS: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -66871,6 +70729,7 @@ const TEST_LOSE_1_LIFE: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::LoseLife {
             amount: Amount::Fixed(1),
@@ -67304,6 +71163,7 @@ const TEST_MODIFIED_DEATH_WATCHER: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::GainLife {
             amount: Amount::Fixed(1),
@@ -67926,6 +71786,7 @@ const SCREAM_EXILE_RETURN_CREATURES: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -67946,6 +71807,7 @@ const SCREAM_EXILE_RETURN_CREATURES: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -68591,6 +72453,7 @@ const WILLBENDER_RETARGET: Ability = Ability {
     timing: Timing::Triggered(Trigger::TurnedFaceUp),
     effect: Effect::ChangeTargetOfTargetSpellOrAbility {
         target: TargetSpec::SingleTargetSpellOnStack,
+        optional: false,
     },
     optional: false,
     min_level: 0,
@@ -68821,6 +72684,354 @@ fn willbender_card_is_faithful() {
     })
     .unwrap();
     assert_eq!(game.spell_target(bolt), Some(Target::Object(bystander)));
+}
+
+// --- Wild Ricochet (cmr, CR 114.6a / 707.10c — "You may choose new targets for target instant or
+// sorcery spell. Then copy that spell. You may choose new targets for the copy.") ---
+
+/// A multi-target burn spell (CR 601.2c — "deal 1 damage to each of up to two target creatures"),
+/// the spell Wild Ricochet bends and copies.
+const MULTI_BOLT: CardDef = CardDef {
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    abilities: &[Ability {
+        timing: Timing::Spell,
+        effect: Effect::DealDamage {
+            amount: Amount::Fixed(1),
+            target: TargetSpec::Creature,
+            count: TargetCount {
+                min: 0,
+                max: 2,
+                x_scaled: false,
+                sacrifice_scaled: false,
+                strive_scaled: false,
+            },
+            divided: false,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("Test Multi Bolt", 0, 0, &[])
+};
+
+/// Wild Ricochet's own body: "You may choose new targets for target instant or sorcery spell.
+/// Then copy that spell. You may choose new targets for the copy." Both steps share the one
+/// target chosen at cast (the bent spell) — the `optional` retarget writes back the FULL target
+/// set before `copy_target_spell` mints its own independent copy of it.
+const WILD_RICOCHET_RETARGET: Ability = Ability {
+    timing: Timing::Spell,
+    effect: Effect::Sequence {
+        steps: &[
+            Effect::ChangeTargetOfTargetSpellOrAbility {
+                target: TargetSpec::InstantOrSorcerySpellOnStack,
+                optional: true,
+            },
+            Effect::CopyTargetSpell,
+        ],
+    },
+    optional: false,
+    min_level: 0,
+    once_each_turn: false,
+    condition: None,
+    cost: Cost::FREE,
+};
+
+/// A synthetic Wild Ricochet: a free instant with the retarget-then-copy body above.
+const WILD_RICOCHET: CardDef = CardDef {
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    abilities: &[WILD_RICOCHET_RETARGET],
+    ..creature("Test Wild Ricochet", 0, 0, &[])
+};
+
+/// Wild Ricochet's core: retargeting a multi-target spell rewrites its FULL target set (not just
+/// a single slot), and the copy it mints afterward gets its own, independently-chosen targets.
+#[test]
+fn wild_ricochet_may_retarget_a_multi_target_spell_then_copies_with_new_targets() {
+    let mut game = TestGame::new();
+    let creatures = spawn_n_vanilla(&mut game, PlayerId(1), 4);
+    let (a, b, c, d) = (creatures[0], creatures[1], creatures[2], creatures[3]);
+
+    let bolt_card = game.spawn_in_hand(PlayerId(0), MULTI_BOLT);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bolt_card,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("castable with an empty stack");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(a), Target::Object(b)],
+    })
+    .expect("two distinct legal targets, within the {0,2} range");
+    let bolt = game.current_id(bolt_card);
+
+    let wr = game.spawn_in_hand(PlayerId(0), WILD_RICOCHET);
+    game.cast(wr).at(Target::Object(bolt)).submit();
+    resolve_top_of_stack(&mut game);
+
+    // The retarget pause reaches the whole target set, and — CR 114.6a, unlike Willbender's
+    // must-differ bend — still offers the bolt's own current targets as legal choices.
+    let Some(PendingChoice::ChooseSpellTargets {
+        player,
+        spell,
+        legal,
+        min,
+        max,
+        clause,
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the retarget pause over the bolt's full target set; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(spell, bolt);
+    assert_eq!(
+        player,
+        PlayerId(0),
+        "Wild Ricochet's own controller chooses"
+    );
+    assert_eq!(clause, 0);
+    assert_eq!((min, max), (0, 2));
+    for creature in [a, b, c, d] {
+        assert!(
+            legal.contains(&Target::Object(creature)),
+            "every legal creature is offered, including the bolt's current targets"
+        );
+    }
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(c), Target::Object(d)],
+    })
+    .expect("two distinct legal targets, within the {0,2} range");
+
+    // The retarget's own auto-fill/pause chain finishes and the sequence resumes into
+    // `copy_target_spell`, which mints an independent copy and offers its own retarget.
+    let Some(PendingChoice::ChooseSpellTargets {
+        spell: copy,
+        legal: copy_legal,
+        min: copy_min,
+        max: copy_max,
+        clause: copy_clause,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the copy's own independent retarget pause; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_ne!(copy, bolt, "the copy is a distinct stack object");
+    assert_eq!(copy_clause, 0);
+    assert_eq!((copy_min, copy_max), (0, 2));
+    for creature in [a, b, c, d] {
+        assert!(copy_legal.contains(&Target::Object(creature)));
+    }
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(a)],
+    })
+    .expect("one legal target, within the {0,2} range");
+
+    // The copy resolves first (CR 707.10a — above the original), then the retargeted original.
+    advance_until(&mut game, |g| g.stack().is_empty());
+
+    assert_eq!(
+        game.marked_damage(a),
+        1,
+        "the copy hit its own independently-chosen target"
+    );
+    assert_eq!(
+        game.marked_damage(b),
+        0,
+        "no longer targeted after the original was fully retargeted"
+    );
+    assert_eq!(
+        game.marked_damage(c),
+        1,
+        "the retargeted original hit its new target"
+    );
+    assert_eq!(
+        game.marked_damage(d),
+        1,
+        "the retargeted original hit its other new target"
+    );
+}
+
+/// CR 114.6a: "you may choose new targets" never requires the new target(s) differ from the
+/// old — re-picking the bolt's current targets is a legal way to decline, and the independent
+/// copy still gets its own retarget afterward.
+#[test]
+fn wild_ricochet_declining_retarget_leaves_original_targets() {
+    let mut game = TestGame::new();
+    let creatures = spawn_n_vanilla(&mut game, PlayerId(1), 3);
+    let (a, b, c) = (creatures[0], creatures[1], creatures[2]);
+
+    let bolt_card = game.spawn_in_hand(PlayerId(0), MULTI_BOLT);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bolt_card,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("castable with an empty stack");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(a), Target::Object(b)],
+    })
+    .expect("two distinct legal targets, within the {0,2} range");
+    let bolt = game.current_id(bolt_card);
+
+    let wr = game.spawn_in_hand(PlayerId(0), WILD_RICOCHET);
+    game.cast(wr).at(Target::Object(bolt)).submit();
+    resolve_top_of_stack(&mut game);
+
+    // Decline by re-picking the exact same targets — a legal answer, unlike Willbender's
+    // must-differ bend, which would exclude them from `legal` entirely.
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(a), Target::Object(b)],
+    })
+    .expect("re-picking the current targets is a legal decline");
+
+    let Some(PendingChoice::ChooseSpellTargets { spell: copy, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the copy's own independent retarget pause; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_ne!(copy, bolt);
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(c)],
+    })
+    .expect("one legal target, within the {0,2} range");
+
+    advance_until(&mut game, |g| g.stack().is_empty());
+
+    assert_eq!(
+        game.marked_damage(a),
+        1,
+        "original still hits its unchanged target"
+    );
+    assert_eq!(
+        game.marked_damage(b),
+        1,
+        "original still hits its other unchanged target"
+    );
+    assert_eq!(
+        game.marked_damage(c),
+        1,
+        "the independently-retargeted copy hit its own new target"
+    );
+}
+
+/// The authored `wild_ricochet.toml`: cast for {2}{R}{R}, retargets a multi-target spell, and
+/// copies it.
+#[test]
+fn wild_ricochet_card_is_faithful() {
+    let mut game = TestGame::new();
+    let creatures = spawn_n_vanilla(&mut game, PlayerId(1), 3);
+    let (a, b, c) = (creatures[0], creatures[1], creatures[2]);
+
+    let bolt_card = game.spawn_in_hand(PlayerId(0), MULTI_BOLT);
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bolt_card,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("castable with an empty stack");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(a), Target::Object(b)],
+    })
+    .expect("two distinct legal targets, within the {0,2} range");
+    let bolt = game.current_id(bolt_card);
+
+    let wr = game.spawn_in_hand(PlayerId(0), card("Wild Ricochet"));
+    game.cast(wr).at(Target::Object(bolt)).submit();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::ChooseSpellTargets { spell, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the retarget pause; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(spell, bolt);
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(c)],
+    })
+    .expect("one legal target, within the {0,2} range");
+
+    let Some(PendingChoice::ChooseSpellTargets { spell: copy, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the copy's own retarget pause; got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_ne!(copy, bolt);
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(a), Target::Object(b)],
+    })
+    .expect("two distinct legal targets, within the {0,2} range");
+
+    advance_until(&mut game, |g| g.stack().is_empty());
+    assert_eq!(
+        game.marked_damage(c),
+        1,
+        "the retargeted original hit its new target"
+    );
+    assert_eq!(
+        game.marked_damage(a),
+        1,
+        "the copy hit its own independently-chosen target"
+    );
+    assert_eq!(
+        game.marked_damage(b),
+        1,
+        "the copy hit its other independently-chosen target"
+    );
 }
 
 // --- Illusionary Mask (lea, CR 708.2 — {X}: cast a hand creature whose mana cost the mana spent
@@ -71438,6 +75649,7 @@ const OPPONENT_DAMAGE_WATCHER: CardDef = CardDef {
                 mill_self: 0,
                 discard_cost: 0,
                 exile_self: false,
+                graveyard_exile_target_count: 0,
             }),
             effect: Effect::DealDamage {
                 amount: Amount::Fixed(1),
@@ -74511,6 +78723,7 @@ const MAY_DRAW_UPKEEP: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -74531,6 +78744,7 @@ const MAY_DRAW_UPKEEP: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -75263,6 +79477,7 @@ const TEST_MINUS_ONE_COUNTER_CREATURE: CardDef = CardDef {
                 mill_self: 0,
                 discard_cost: 0,
                 exile_self: false,
+                graveyard_exile_target_count: 0,
             }),
             effect: Effect::DestroyTarget {
                 target: TargetSpec::Permanent(PermanentFilter::of(
@@ -75476,6 +79691,7 @@ const DRAW_ONE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -75496,6 +79712,7 @@ const DRAW_ONE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -75537,6 +79754,7 @@ const DRAW_THREE: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -75557,6 +79775,7 @@ const DRAW_THREE: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -75595,6 +79814,7 @@ const DREDGER_3: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -75615,6 +79835,7 @@ const DREDGER_3: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: Some(3),
 };
@@ -75666,6 +79887,7 @@ const DIES_FODDER: CardDef = CardDef {
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
     echo: None,
+    cumulative_upkeep: None,
     recover: None,
     bestow: None,
     morph: None,
@@ -75686,6 +79908,7 @@ const DIES_FODDER: CardDef = CardDef {
     enter_as_copy: None,
     encore: None,
     hand_ability: None,
+    forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
 };
@@ -76296,6 +80519,7 @@ static FLIPPER_FRONT: CardDef = CardDef {
             mill_self: 0,
             discard_cost: 0,
             exile_self: false,
+            graveyard_exile_target_count: 0,
         }),
         effect: Effect::FlipSource,
         optional: false,
@@ -76793,5 +81017,2102 @@ fn animate_dead_rewritten_enchant_holds_it_to_the_reanimated_creature() {
         game.zone_of(bear),
         Zone::Battlefield,
         "the host is untouched"
+    );
+}
+
+// ── Political Puppets pure-authoring pass: Armillary Sphere, karoos, mana rocks, ────────
+// Evolving Wilds, Prophetic Prism ─────────────────────────────────────────────────────────
+
+#[test]
+fn boros_and_izzet_karoos_enter_tapped_bounce_a_land_and_tap_for_their_colors() {
+    // "This land enters tapped. When this land enters, return a land you control to its
+    // owner's hand. {T}: Add {R}{W}." (Izzet Boilerworks: "{T}: Add {U}{R}.")
+    for (name, a, b) in [
+        ("Boros Garrison", Color::Red, Color::White),
+        ("Izzet Boilerworks", Color::Blue, Color::Red),
+    ] {
+        let mut game = Game::new();
+        let plains = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+        let karoo = game.spawn_in_hand(PlayerId(0), card(name));
+        let events = game
+            .submit(Intent::PlayLand {
+                player: PlayerId(0),
+                object: karoo,
+            })
+            .unwrap();
+        let perm = land_permanent(&events);
+        assert!(game.is_tapped(perm), "{name} enters tapped");
+
+        let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+            panic!(
+                "{name}: the enters trigger pauses on the mandatory bounce, got {:?}",
+                game.pending_choice()
+            );
+        };
+        assert!(
+            legal.contains(&Target::Object(plains)),
+            "{name}: another land is a legal bounce"
+        );
+        game.submit(Intent::ChooseTargets {
+            player: PlayerId(0),
+            targets: vec![Target::Object(plains)],
+        })
+        .unwrap();
+        resolve_top_of_stack(&mut game);
+        assert_eq!(
+            game.zone_of(plains),
+            Zone::Hand,
+            "{name} bounced the Plains"
+        );
+
+        // "{T}: Add {A}{B}." is two mana — one of each color — not a dual choice.
+        pass_until_next_turn(&mut game);
+        pass_until_next_turn(&mut game); // untap at P0's own turn
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: perm,
+        })
+        .unwrap();
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), a),
+            1,
+            "{name} adds one {a:?}"
+        );
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), b),
+            1,
+            "{name} adds one {b:?}"
+        );
+        assert_eq!(
+            game.floating_mana(PlayerId(0)),
+            2,
+            "{name} adds exactly two mana"
+        );
+    }
+}
+
+#[test]
+fn evolving_wilds_fetches_a_tapped_basic() {
+    // Evolving Wilds: "{T}, Sacrifice this land: Search your library for a basic land card,
+    // put it onto the battlefield tapped, then shuffle."
+    let mut game = Game::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Forest")]);
+    let wilds = game.spawn_on_battlefield(PlayerId(0), card("Evolving Wilds"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: wilds,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(wilds),
+        Zone::Graveyard,
+        "Evolving Wilds is sacrificed as a cost"
+    );
+
+    resolve_top_of_stack(&mut game); // the search ability resolves → pause on the search
+    let Some(PendingChoice::SearchLibrary { matches, .. }) = game.pending_choice() else {
+        panic!(
+            "Evolving Wilds pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        matches,
+        vec![lib[1]],
+        "only the basic Forest matches — a creature card is not a basic land"
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[1]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[1]), Zone::Battlefield);
+    assert!(
+        game.is_tapped(game.current_id(lib[1])),
+        "the fetched basic enters tapped"
+    );
+}
+
+#[test]
+fn darksteel_ingot_taps_for_any_color_and_survives_destruction() {
+    // Darksteel Ingot: "Indestructible" + "{T}: Add one mana of any color."
+    let mut game = TestGame::new();
+    let ingot = game.spawn_on_battlefield(PlayerId(0), card("Darksteel Ingot"));
+
+    let before = game.floating_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: ingot,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.floating_mana(PlayerId(0)) - before,
+        1,
+        "one mana of any color"
+    );
+    assert!(game.is_tapped(ingot));
+
+    // "Effects that say \"destroy\" don't destroy this artifact." — Dismantling Blow fails.
+    let blow = game.spawn_in_hand(PlayerId(0), card("Dismantling Blow"));
+    game.cast(blow).at(Target::Object(ingot)).resolve();
+    assert_eq!(
+        game.zone_of(ingot),
+        Zone::Battlefield,
+        "an indestructible artifact survives a destroy effect"
+    );
+}
+
+#[test]
+fn dreamstone_hedron_taps_for_three_colorless_and_sacrifices_for_three_cards() {
+    // Dreamstone Hedron: "{T}: Add {C}{C}{C}." — one tap, three colorless.
+    let mut game = Game::new();
+    let hedron = game.spawn_on_battlefield(PlayerId(0), card("Dreamstone Hedron"));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: hedron,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        3,
+        "one tap adds {{C}}{{C}}{{C}}"
+    );
+
+    // "{3}, {T}, Sacrifice this artifact: Draw three cards." — on an untapped Hedron.
+    let mut game = Game::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Forest"), card("Forest"), card("Forest")],
+    );
+    let hedron = game.spawn_on_battlefield(PlayerId(0), card("Dreamstone Hedron"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: hedron,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(hedron),
+        Zone::Graveyard,
+        "the Hedron is sacrificed as a cost"
+    );
+    resolve_top_of_stack(&mut game);
+    assert!(
+        lib.iter().all(|&id| game.zone_of(id) == Zone::Hand),
+        "the cash-out draws three cards"
+    );
+}
+
+#[test]
+fn prophetic_prism_draws_on_entry_and_filters_a_mana_into_any_color() {
+    // Prophetic Prism: "When this artifact enters, draw a card."
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let prism = game.spawn_in_hand(PlayerId(0), card("Prophetic Prism"));
+    game.cast(prism).resolve();
+    resolve_top_of_stack(&mut game); // the ETB draw trigger
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Hand,
+        "the enters trigger drew a card"
+    );
+
+    // "{1}, {T}: Add one mana of any color." — a Forest's {G} in, an any-color credit out,
+    // paying Shock's {R}.
+    let mut game = Game::new();
+    let prism = game.spawn_on_battlefield(PlayerId(0), card("Prophetic Prism"));
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let victim = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
+
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: prism,
+        ability_index: 1, // 0 = the enters draw trigger, 1 = the tap ability
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert!(game.is_tapped(prism));
+    game.submit(cast_intent(
+        PlayerId(0),
+        shock,
+        Some(Target::Object(victim)),
+    ))
+    .expect("the Prism's any-color mana pays Shock's {R}");
+}
+
+#[test]
+fn armillary_sphere_fetches_up_to_two_basics_to_hand() {
+    // Armillary Sphere: "{2}, {T}, Sacrifice this artifact: Search your library for up to two
+    // basic land cards, reveal them, put them into your hand, then shuffle."
+    let mut game = Game::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[card("Forest"), card("Grizzly Bear"), card("Swamp")],
+    );
+    let sphere = game.spawn_on_battlefield(PlayerId(0), card("Armillary Sphere"));
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: sphere,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(sphere),
+        Zone::Graveyard,
+        "the Sphere is sacrificed as a cost"
+    );
+
+    resolve_top_of_stack(&mut game); // the ability resolves → pause on the search
+    let Some(PendingChoice::SearchLibrary {
+        matches,
+        dest,
+        remaining,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "Armillary Sphere pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        matches,
+        vec![lib[0], lib[2]],
+        "up to two basics are offered; a creature card never matches"
+    );
+    assert_eq!(dest, SearchDest::Hand, "the basics go to hand, not play");
+    assert_eq!(remaining, 2, "\"up to two\"");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[0]),
+    })
+    .unwrap();
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[2]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the Forest is in hand");
+    assert_eq!(game.zone_of(lib[2]), Zone::Hand, "the Swamp is in hand");
+}
+
+// ── Political Puppets pure-authoring wave B: False Prophet, walls, pillow-fort ───────────
+
+#[test]
+fn false_prophet_dies_and_exiles_all_creatures() {
+    // False Prophet: "When this creature dies, exile all creatures." — a symmetric exile
+    // sweep from the graveyard trigger, hitting every player's creatures.
+    let mut game = TestGame::new();
+    let prophet = game.spawn_on_battlefield(PlayerId(0), card("False Prophet"));
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let opp_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+    game.cast(destroy).at(Target::Object(prophet)).resolve();
+    assert_eq!(game.zone_of(prophet), Zone::Graveyard, "the prophet died");
+
+    resolve_top_of_stack(&mut game); // the dies trigger resolves
+    assert_eq!(
+        game.zone_of(own_bear),
+        Zone::Exile,
+        "its controller's creatures are exiled too"
+    );
+    assert_eq!(
+        game.zone_of(opp_bear),
+        Zone::Exile,
+        "an opponent's creature is exiled"
+    );
+}
+
+#[test]
+fn plumeveil_flashes_in_on_an_opponents_turn() {
+    // Plumeveil: "Flash" — a non-active player holding priority can cast it (CR 702.8a).
+    let mut game = Game::new();
+    let plumeveil = game.spawn_in_hand(PlayerId(1), card("Plumeveil"));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: plumeveil,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Flash lets Plumeveil be cast on the active player's turn");
+    let events = resolve_top_of_stack_events(&mut game);
+    let permanent = events
+        .iter()
+        .find_map(|e| match e {
+            Event::PermanentEntered { permanent, .. } => Some(*permanent),
+            _ => None,
+        })
+        .expect("Plumeveil resolved onto the battlefield");
+    assert_eq!(game.zone_of(permanent), Zone::Battlefield);
+}
+
+#[test]
+fn defender_walls_cannot_be_declared_as_attackers() {
+    // "Defender" (CR 702.3c): Plumeveil, Wall of Denial, and Wall of Omens can't attack.
+    for name in ["Plumeveil", "Wall of Denial", "Wall of Omens"] {
+        let mut game = Game::with_players(2, 0);
+        let wall = game.spawn_on_battlefield(PlayerId(0), card(name));
+        advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+        assert_eq!(
+            game.submit(Intent::DeclareAttackers {
+                player: PlayerId(0),
+                attackers: vec![(wall, PlayerId(1))],
+            }),
+            Err(Reject::IllegalDeclaration),
+            "{name} has defender and can't attack",
+        );
+    }
+}
+
+#[test]
+fn wall_of_denial_shroud_rejects_all_targeting() {
+    // Wall of Denial: "Shroud" — can't be the target of spells or abilities, its own
+    // controller's included (CR 702.18).
+    let mut game = Game::new();
+    let wall = game.spawn_on_battlefield(PlayerId(0), card("Wall of Denial"));
+    let own_destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+    let opponents_destroy = game.spawn_in_hand(PlayerId(1), DESTROY);
+
+    assert!(
+        !game
+            .legal_targets(own_destroy, None)
+            .contains(&Target::Object(wall)),
+        "shroud blocks even its own controller's targeted spells",
+    );
+    assert!(
+        !game
+            .legal_targets(opponents_destroy, None)
+            .contains(&Target::Object(wall)),
+        "shroud blocks an opponent's targeted spells",
+    );
+}
+
+#[test]
+fn wall_of_omens_enters_and_draws_a_card() {
+    // Wall of Omens: "When this creature enters, draw a card."
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let wall = game.spawn_in_hand(PlayerId(0), card("Wall of Omens"));
+
+    game.cast(wall).resolve();
+    resolve_top_of_stack(&mut game); // the enters trigger resolves
+    assert_eq!(
+        game.zone_of(lib[0]),
+        Zone::Hand,
+        "the enters trigger drew a card"
+    );
+}
+
+#[test]
+fn windborn_muse_and_propaganda_tax_each_attacker() {
+    // Windborn Muse / Propaganda: "Creatures can't attack you unless their controller pays {2}
+    // for each creature they control that's attacking you." — Ghostly Prison's tax on a
+    // creature body and the blue enchantment.
+    for name in ["Windborn Muse", "Propaganda"] {
+        let mut game = Game::with_players(2, 0);
+        let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+        game.spawn_on_battlefield(PlayerId(1), card(name));
+        advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+        assert_eq!(
+            game.submit(Intent::DeclareAttackers {
+                player: PlayerId(0),
+                attackers: vec![(attacker, PlayerId(1))],
+            }),
+            Err(Reject::IllegalDeclaration),
+            "{name}: can't attack its controller without paying the {{2}} tax",
+        );
+
+        float_green(&mut game, PlayerId(0), 2);
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(attacker, PlayerId(1))],
+        })
+        .unwrap_or_else(|e| panic!("{name}: paying {{2}} makes the attack legal, got {e:?}"));
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), Color::Green),
+            0,
+            "{name}: the {{2}} tax drained the floating mana",
+        );
+    }
+}
+
+// ── Political Puppets pure-authoring wave C: blue draw suite + Journey to Nowhere ────────
+
+#[test]
+fn izzet_chronarch_etb_returns_an_instant_or_sorcery_from_your_graveyard() {
+    // Izzet Chronarch: "When this creature enters, return target instant or sorcery card from
+    // your graveyard to your hand." — mandatory, and only instants/sorceries in YOUR graveyard
+    // are legal.
+    let mut game = TestGame::new();
+    let own_instant = game.spawn_in_graveyard(PlayerId(0), card("Shock"));
+    let own_creature_card = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let opponents_instant = game.spawn_in_graveyard(PlayerId(1), card("Shock"));
+    let chronarch = game.spawn_in_hand(PlayerId(0), card("Izzet Chronarch"));
+
+    game.cast(chronarch).resolve(); // enters; the ETB trigger pauses to target
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ETB return pauses to target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(own_instant)),
+        "an instant in your graveyard is a legal target"
+    );
+    assert!(
+        !legal.contains(&Target::Object(own_creature_card)),
+        "a creature card is not an instant or sorcery card"
+    );
+    assert!(
+        !legal.contains(&Target::Object(opponents_instant)),
+        "\"your graveyard\" excludes an opponent's graveyard"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(own_instant)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(own_instant),
+        Zone::Hand,
+        "the chosen instant returned to hand"
+    );
+}
+
+#[test]
+fn journey_to_nowhere_exiles_a_creature_until_it_leaves() {
+    // Journey to Nowhere: "When this enchantment enters, exile target creature. / When this
+    // enchantment leaves the battlefield, return the exiled card to the battlefield under its
+    // owner's control." — the linked O-Ring pair (CR 603.6e), creature targets only.
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let rock = game.spawn_on_battlefield(PlayerId(1), card("Mind Stone"));
+    let journey_card = game.spawn_in_hand(PlayerId(0), card("Journey to Nowhere"));
+
+    game.cast(journey_card).resolve();
+    let journey = battlefield_named(&game, PlayerId(0), "Journey to Nowhere")[0];
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ETB exile pauses to target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(legal.contains(&Target::Object(bear)));
+    assert!(
+        !legal.contains(&Target::Object(rock)),
+        "\"target creature\" excludes a noncreature permanent"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.zone_of(bear), Zone::Exile, "the creature was exiled");
+
+    let fracture = game.spawn_in_hand(PlayerId(0), card("Fracture"));
+    game.cast(fracture).at(Target::Object(journey)).resolve();
+    assert_eq!(game.zone_of(journey), Zone::Graveyard);
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "the exiled card returned when Journey to Nowhere left (CR 603.6e)"
+    );
+    assert_eq!(
+        game.controller_of(bear),
+        PlayerId(1),
+        "it returns under its owner's control"
+    );
+}
+
+#[test]
+fn perilous_research_draws_two_then_its_caster_sacrifices_a_permanent() {
+    // Perilous Research: "Draw two cards, then sacrifice a permanent." — any permanent type is
+    // a candidate (the classic artifact-fodder trick), and the sacrifice is the caster's own
+    // choice (CR 701.16a), not a target.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+    let own_bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let own_land = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let opponents_bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let research = game.spawn_in_hand(PlayerId(0), card("Perilous Research"));
+
+    game.cast(research).resolve();
+    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "first card drawn");
+    assert_eq!(game.zone_of(lib[1]), Zone::Hand, "second card drawn");
+
+    let Some(PendingChoice::ChooseOwnSacrifices { options, count, .. }) = game.pending_choice()
+    else {
+        panic!(
+            "\"then sacrifice a permanent\" pauses on the caster's own pick, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(count, 1);
+    assert!(options.contains(&own_bear), "a creature is a candidate");
+    assert!(
+        options.contains(&own_land),
+        "\"a permanent\" includes lands"
+    );
+    assert!(
+        !options.contains(&opponents_bear),
+        "only the caster's own permanents are candidates"
+    );
+
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(0),
+        sacrifices: vec![own_land],
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(own_land),
+        Zone::Graveyard,
+        "the pick was sacrificed"
+    );
+    assert_eq!(game.zone_of(own_bear), Zone::Battlefield);
+}
+
+#[test]
+fn repulse_bounces_a_creature_and_draws_a_card() {
+    // Repulse: "Return target creature to its owner's hand. / Draw a card." — the bounce and
+    // the cantrip resolve as one spell.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let repulse = game.spawn_in_hand(PlayerId(0), card("Repulse"));
+
+    game.cast(repulse).at(Target::Object(bear)).resolve();
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the creature returned to its owner's hand"
+    );
+    assert_eq!(game.zone_of(lib[0]), Zone::Hand, "the caster drew a card");
+}
+
+#[test]
+fn vision_skeins_each_player_draws_two_cards() {
+    // Vision Skeins: "Each player draws two cards." — the caster and the opponent both draw.
+    let mut game = TestGame::new();
+    let own_lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+    let opp_lib = game.stack_library(PlayerId(1), &[card("Island"), card("Island")]);
+    let skeins = game.spawn_in_hand(PlayerId(0), card("Vision Skeins"));
+
+    game.cast(skeins).resolve();
+    for drawn in own_lib.iter().chain(opp_lib.iter()) {
+        assert_eq!(game.zone_of(*drawn), Zone::Hand, "every player drew two");
+    }
+}
+
+#[test]
+fn skyscribing_cast_each_player_draws_x() {
+    // Skyscribing ({X}{U}{U}) — "Each player draws X cards." Cast for X=2: every player draws 2.
+    let mut game = TestGame::new();
+    let own_lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+    let opp_lib = game.stack_library(PlayerId(1), &[card("Island"), card("Island")]);
+    let skyscribing = game.spawn_in_hand(PlayerId(0), card("Skyscribing"));
+
+    game.cast(skyscribing).x(2).resolve();
+
+    for drawn in own_lib.iter().chain(opp_lib.iter()) {
+        assert_eq!(
+            game.zone_of(*drawn),
+            Zone::Hand,
+            "every player drew X=2 cards"
+        );
+    }
+}
+
+#[test]
+fn skyscribing_forecast_each_player_draws_a_card_only_during_your_upkeep_once_per_turn() {
+    // Skyscribing's Forecast — "{2}{U}, Reveal this card from your hand: Each player draws a
+    // card. (Activate only during your upkeep and only once each turn.)"
+    let mut game = Game::new();
+    let skyscribing = game.spawn_in_hand(PlayerId(0), card("Skyscribing"));
+    // A throwaway card so P1 survives their own natural draw step while passing through their
+    // turn below — Forecast's own draw target is stacked fresh afterward.
+    game.stack_library(PlayerId(1), &[card("Mountain")]);
+
+    // Illegal outside your own upkeep (still turn 1's Main1).
+    game.fund_mana(PlayerId(0));
+    assert_eq!(
+        game.submit(Intent::ActivateHandAbility {
+            player: PlayerId(0),
+            card: skyscribing,
+        }),
+        Err(Reject::CannotActivate),
+        "Forecast activates only during your own upkeep",
+    );
+
+    pass_until_next_turn(&mut game); // → P1's turn (P1 draws its own throwaway card here)
+    pass_until_next_turn(&mut game); // → P0's turn, parked at its next upkeep (before P0 draws)
+    assert_eq!(game.active_player(), PlayerId(0));
+    assert_eq!(game.current_step(), Step::Upkeep);
+
+    // Stacked now (not before the turn passes above) so neither player's own draw step consumes
+    // the card meant for Forecast's draw.
+    let own_lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let opp_lib = game.stack_library(PlayerId(1), &[card("Island")]);
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: skyscribing,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(skyscribing),
+        Zone::Hand,
+        "Forecast reveals and keeps the card, unlike hand_ability's discard",
+    );
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(own_lib[0]),
+        Zone::Hand,
+        "the caster drew off Forecast"
+    );
+    assert_eq!(
+        game.zone_of(opp_lib[0]),
+        Zone::Hand,
+        "the opponent drew off Forecast too"
+    );
+
+    // "Only once each turn" (CR 702.57a) — a second activation the same upkeep is illegal.
+    game.fund_mana(PlayerId(0));
+    assert_eq!(
+        game.submit(Intent::ActivateHandAbility {
+            player: PlayerId(0),
+            card: skyscribing,
+        }),
+        Err(Reject::CannotActivate),
+        "Forecast activates only once each turn",
+    );
+}
+
+// ── Permanent-filter axes: `mv_min` / `attacking_you` (#205) ───────────────────────────
+
+/// Austere Command: "Destroy all creatures with mana value 4 or greater" (one of its four
+/// modes) — the `mv_min` filter axis, sibling of the landed `mv_max`. Choosing that mode
+/// alongside the harmless "destroy all artifacts" mode (no artifacts on board) isolates it:
+/// only the mana-value-4-or-greater creature dies, the mana-value-3 creature survives.
+#[test]
+fn austere_command_destroys_mv4_or_greater() {
+    let mut game = TestGame::new();
+    let mv3 = game.spawn_on_battlefield(PlayerId(1), CREATURE_MV3);
+    let mv4 = game.spawn_on_battlefield(PlayerId(1), CREATURE_MV4);
+    let command = game.spawn_in_hand(PlayerId(0), card("Austere Command"));
+
+    game.cast(command).mode(0, None).mode(3, None).resolve();
+
+    assert_eq!(
+        game.zone_of(mv4),
+        Zone::Graveyard,
+        "mana value 4 meets the mv_min = 4 floor for the \"4 or greater\" mode"
+    );
+    assert_eq!(
+        game.zone_of(mv3),
+        Zone::Battlefield,
+        "mana value 3 is under the \"4 or greater\" mode's floor — the mv_max = 3 mode wasn't chosen"
+    );
+}
+
+/// Soul Snare: "Exile target creature that's attacking you" — the `attacking_you` filter axis.
+/// A creature attacking a *different* player is not a legal target, even though plain
+/// `attacking = true` would wrongly accept it.
+#[test]
+fn soul_snare_only_hits_attacker_of_its_controller() {
+    let mut game = Game::with_players(3, 0);
+    let snare = game.spawn_on_battlefield(PlayerId(1), card("Soul Snare"));
+    let attacks_snare_controller = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let attacks_someone_else = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![
+            (attacks_snare_controller, PlayerId(1)),
+            (attacks_someone_else, PlayerId(2)),
+        ],
+    })
+    .unwrap();
+
+    let legal = game.legal_targets(snare, Some(0));
+
+    assert!(
+        legal.contains(&Target::Object(attacks_snare_controller)),
+        "a creature attacking Soul Snare's own controller is a legal target"
+    );
+    assert!(
+        !legal.contains(&Target::Object(attacks_someone_else)),
+        "a creature attacking a different player is not — `attacking_you` restricts to \
+         attackers whose declared defender is Soul Snare's controller"
+    );
+}
+
+// ── Triggered-ability up-to-N target count (CR 601.2c, #218 multi-target-abilities) ───
+
+#[test]
+fn numot_destroys_up_to_two_lands_on_combat_damage() {
+    // Numot, the Devastator (soc): "Whenever Numot, the Devastator deals combat damage to a
+    // player, you may pay {2}{R}. If you do, destroy up to two target lands." Paying and
+    // choosing both offered lands destroys both.
+    let mut game = Game::new();
+    let numot = game.spawn_on_battlefield(PlayerId(0), card("Numot, the Devastator"));
+    let land1 = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let land2 = game.spawn_on_battlefield(PlayerId(1), card("Island"));
+
+    attack_with(&mut game, vec![numot]);
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    // Mana empties at each step's end (CR 500.4), so fund right before paying, not before combat.
+    game.fund_mana(PlayerId(0));
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::PayCost {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the \"you may pay\" trigger pauses for a pay-or-decline before targeting; got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChooseTarget { legal, count, .. }) = game.pending_choice() else {
+        panic!("paying pauses to choose the destroy's up-to-two land targets");
+    };
+    assert_eq!(count.min, 0, "\"up to two\" is fully declinable");
+    assert_eq!(count.max, 2, "\"up to two\" widens past a single target");
+    assert!(legal.contains(&Target::Object(land1)));
+    assert!(legal.contains(&Target::Object(land2)));
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(land1), Target::Object(land2)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(land1),
+        Zone::Graveyard,
+        "both chosen lands are destroyed"
+    );
+    assert_eq!(
+        game.zone_of(land2),
+        Zone::Graveyard,
+        "both chosen lands are destroyed"
+    );
+}
+
+#[test]
+fn numot_choosing_zero_lands_is_legal() {
+    // CR 601.2c: "up to two" is fully declinable — choosing none is a legal answer once the
+    // cost is paid, and the ability (every step needs the missing target) drops outright.
+    let mut game = Game::new();
+    let numot = game.spawn_on_battlefield(PlayerId(0), card("Numot, the Devastator"));
+    let land = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+
+    attack_with(&mut game, vec![numot]);
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![],
+    })
+    .expect("choosing zero of \"up to two\" is a legal decline");
+
+    assert_eq!(
+        game.zone_of(land),
+        Zone::Battlefield,
+        "declining destroys nothing"
+    );
+    assert!(
+        game.stack().is_empty(),
+        "no ability was placed to resolve — every step needed the declined target"
+    );
+}
+
+// ── Activated-ability independent second target clause (CR 601.2c, #218) ──────────────
+
+#[test]
+fn spurnmage_advocate_two_target_clauses() {
+    // Spurnmage Advocate (soc): "{T}, Exile two target cards from an opponent's graveyard:
+    // Remove target attacking or blocking creature from combat and tap it." Two independent
+    // target clauses on one activated ability: the graveyard-exile cost's two cards, and the
+    // ability's own attacking-creature target.
+    let mut game = Game::new();
+    let advocate = game.spawn_on_battlefield(PlayerId(0), card("Spurnmage Advocate"));
+    let gy1 = game.spawn_in_graveyard(PlayerId(1), VANILLA);
+    let gy2 = game.spawn_in_graveyard(PlayerId(1), VANILLA);
+
+    // Player 1 attacks player 0 with a creature Spurnmage Advocate will remove from combat.
+    // A library card so player 1's second-turn draw step doesn't deck them out.
+    game.stack_library(PlayerId(1), &[VANILLA]);
+    pass_until_next_turn(&mut game);
+    let attacker = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![(attacker, PlayerId(0))],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.priority_holder() == PlayerId(0));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: advocate,
+        ability_index: 0,
+        target: Some(Target::Object(attacker)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+
+    let Some(PendingChoice::ChooseActivationCostTargets { legal, count, .. }) =
+        game.pending_choice()
+    else {
+        panic!("activating pauses to name the graveyard-exile cost's two targets");
+    };
+    assert_eq!(count, 2, "the cost exiles exactly two cards");
+    assert!(legal.contains(&Target::Object(gy1)));
+    assert!(legal.contains(&Target::Object(gy2)));
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(gy1), Target::Object(gy2)],
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(gy1), Zone::Exile, "the cost exiled both cards");
+    assert_eq!(game.zone_of(gy2), Zone::Exile, "the cost exiled both cards");
+    assert!(
+        game.attackers().contains(&attacker),
+        "the ability is still on the stack — the creature hasn't resolved off combat yet"
+    );
+
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        !game.attackers().contains(&attacker),
+        "the ability resolved: the attacker is removed from combat"
+    );
+    assert!(
+        game.is_tapped(attacker),
+        "the ability resolved: the attacker is tapped"
+    );
+}
+
+// --- Clash (CR 701.22) + Lash Out ---------------------------------------------------------------
+
+/// Cast Lash Out (P0) at `creature`, rigging P0's clash top to `my_top` and P1's to `their_top`,
+/// then keep both revealed cards on top. Returns the events from the final answer (the
+/// deal-damage tail). Two-player game: the clash's opponent chooser collapses to P1.
+fn cast_lash_out_keep_tops(
+    game: &mut Game,
+    creature: ObjectId,
+    my_top: CardDef,
+    their_top: CardDef,
+) -> Vec<Event> {
+    let mine = game.stack_library(PlayerId(0), &[my_top, card("Forest")]);
+    let theirs = game.stack_library(PlayerId(1), &[their_top, card("Forest")]);
+    let lash = game.spawn_in_hand(PlayerId(0), card("Lash Out"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: lash,
+        target: Some(Target::Object(creature)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Lash Out is castable");
+    resolve_top_of_stack(game); // resolves the clash step → pauses on P0's keep/bottom scry
+
+    // P0 (the ability's controller) keeps its revealed card on top.
+    let Some(PendingChoice::ArrangeTop { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected P0's clash keep/bottom scry, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        player,
+        PlayerId(0),
+        "the ability's controller decides first"
+    );
+    game.submit(Intent::ArrangeTop {
+        player: PlayerId(0),
+        top: vec![mine[0]],
+        bottom: vec![],
+    })
+    .unwrap();
+
+    // Then the clashed opponent keeps its revealed card on top.
+    let Some(PendingChoice::ArrangeTop { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected P1's clash keep/bottom scry, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(player, PlayerId(1), "the clashed opponent decides next");
+    let events = game
+        .submit(Intent::ArrangeTop {
+            player: PlayerId(1),
+            top: vec![theirs[0]],
+            bottom: vec![],
+        })
+        .unwrap();
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "the clash and its riders resolve"
+    );
+    events
+}
+
+#[test]
+fn clash_controller_wins_on_higher_mana_value() {
+    // Lash Out (di): "Clash with an opponent. Lash Out deals 4 damage to target creature. If you
+    // win the clash, Lash Out deals 2 damage to that creature's controller." P0's Serra Angel
+    // (MV 5) beats P1's Grizzly Bear (MV 2), so the win rider fires.
+    let mut game = Game::new();
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
+    let before = game.life(PlayerId(1));
+
+    let events = cast_lash_out_keep_tops(
+        &mut game,
+        creature,
+        card("Serra Angel"),
+        card("Grizzly Bear"),
+    );
+
+    assert_eq!(
+        damage_marked(&events, creature),
+        4,
+        "4 damage to the target creature"
+    );
+    assert_eq!(
+        before - game.life(PlayerId(1)),
+        2,
+        "winning the clash deals 2 to the creature's controller",
+    );
+}
+
+#[test]
+fn clash_tie_does_not_win() {
+    // Equal mana values (Grizzly Bear vs Grizzly Bear, MV 2 each) is not "strictly greater": no
+    // win, so the controller takes no rider damage.
+    let mut game = Game::new();
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
+    let before = game.life(PlayerId(1));
+
+    let events = cast_lash_out_keep_tops(
+        &mut game,
+        creature,
+        card("Grizzly Bear"),
+        card("Grizzly Bear"),
+    );
+
+    assert_eq!(
+        damage_marked(&events, creature),
+        4,
+        "the creature still takes 4"
+    );
+    assert_eq!(
+        before - game.life(PlayerId(1)),
+        0,
+        "a tie is not a win — no rider damage"
+    );
+}
+
+#[test]
+fn clash_lower_mana_value_does_not_win() {
+    // P0's Forest (MV 0) loses to P1's Grizzly Bear (MV 2): only the 4 to the creature lands.
+    let mut game = Game::new();
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
+    let before = game.life(PlayerId(1));
+
+    let events = cast_lash_out_keep_tops(&mut game, creature, card("Forest"), card("Grizzly Bear"));
+
+    assert_eq!(
+        damage_marked(&events, creature),
+        4,
+        "the creature still takes 4"
+    );
+    assert_eq!(
+        before - game.life(PlayerId(1)),
+        0,
+        "losing the clash deals no rider damage"
+    );
+}
+
+#[test]
+fn clash_keep_or_bottom_moves_the_revealed_card() {
+    // Both clashers may leave the revealed card on top or bottom it. P0 bottoms; P1 keeps.
+    let mut game = Game::new();
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel"));
+    let mine = game.stack_library(PlayerId(0), &[card("Serra Angel"), card("Island")]);
+    let theirs = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Island")]);
+    let lash = game.spawn_in_hand(PlayerId(0), card("Lash Out"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: lash,
+        target: Some(Target::Object(creature)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    // P0 bottoms its revealed Serra Angel.
+    assert!(
+        matches!(game.pending_choice(), Some(PendingChoice::ArrangeTop { player, .. }) if player == PlayerId(0))
+    );
+    game.submit(Intent::ArrangeTop {
+        player: PlayerId(0),
+        top: vec![],
+        bottom: vec![mine[0]],
+    })
+    .unwrap();
+
+    // P1 keeps its revealed Grizzly Bear on top.
+    assert!(
+        matches!(game.pending_choice(), Some(PendingChoice::ArrangeTop { player, .. }) if player == PlayerId(1))
+    );
+    game.submit(Intent::ArrangeTop {
+        player: PlayerId(1),
+        top: vec![theirs[0]],
+        bottom: vec![],
+    })
+    .unwrap();
+
+    // P0 bottomed its card: the Island underneath is now on top.
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(0)),
+        mine[1],
+        "P0's revealed card went to the bottom"
+    );
+    // P1 kept its card on top.
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(1)),
+        theirs[0],
+        "P1's revealed card stayed on top"
+    );
+}
+
+// --- Clash riders: Scattering Stroke / Pollen Lullaby / Whirlpool Whelm (#230 slice 2) ----------
+
+/// Answer both clash keep-on-top scries (P0's, then the clashed opponent P1's), keeping each
+/// player's revealed top card on top. Returns the events from the second answer (the ability's
+/// deal/schedule/tuck tail). Mirrors `cast_lash_out_keep_tops`'s inline answers.
+fn answer_clash_keep_both_tops(
+    game: &mut Game,
+    my_top: ObjectId,
+    their_top: ObjectId,
+) -> Vec<Event> {
+    let Some(PendingChoice::ArrangeTop { player, .. }) = game.pending_choice() else {
+        panic!("expected P0's clash scry, got {:?}", game.pending_choice());
+    };
+    assert_eq!(player, PlayerId(0), "the controller decides first");
+    game.submit(Intent::ArrangeTop {
+        player: PlayerId(0),
+        top: vec![my_top],
+        bottom: vec![],
+    })
+    .unwrap();
+    let Some(PendingChoice::ArrangeTop { player, .. }) = game.pending_choice() else {
+        panic!("expected P1's clash scry, got {:?}", game.pending_choice());
+    };
+    assert_eq!(player, PlayerId(1), "the clashed opponent decides next");
+    game.submit(Intent::ArrangeTop {
+        player: PlayerId(1),
+        top: vec![their_top],
+        bottom: vec![],
+    })
+    .unwrap()
+}
+
+/// Advance to the beginning of the active player `who`'s next `Main1`, stopping with any
+/// delayed trigger just placed on the stack (before it resolves).
+fn advance_to_next_main1(game: &mut Game, who: PlayerId) {
+    // First leave the current turn (we may already be in `who`'s Main1), then roll to `who`'s next.
+    pass_until_next_turn(game);
+    advance_until(game, |g| {
+        g.active_player() == who && g.current_step() == Step::Main1
+    });
+}
+
+#[test]
+fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
+    // Scattering Stroke (all): "Clash with an opponent. Counter target spell. If you win the clash,
+    // at the beginning of your next main phase, add {C} for each 1 mana in that spell's mana cost."
+    // P0 counters a Grizzly Bear (MV 2); winning the clash schedules {C}{C} for P0's next main.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bear,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Grizzly Bear is castable");
+    let bear_on_stack = top_spell(&game);
+
+    // Rig P0's clash top above P1's so the controller wins.
+    let mine = game.stack_library(PlayerId(0), &[card("Serra Angel"), card("Forest")]);
+    let theirs = game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+    let scatter = game.spawn_in_hand(PlayerId(0), card("Scattering Stroke"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: scatter,
+        target: Some(Target::Object(bear_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Scattering Stroke is castable");
+    resolve_top_of_stack(&mut game); // clash step → pauses on P0's scry
+    answer_clash_keep_both_tops(&mut game, mine[0], theirs[0]);
+
+    // The bear is countered (in P0's graveyard).
+    assert!(
+        game.live_object_ids().into_iter().any(|id| {
+            game.zone_of(id) == Zone::Graveyard && game.def_of(id).name == "Grizzly Bear"
+        }),
+        "the target spell was countered"
+    );
+
+    // The {C} arrives at P0's next main phase (not now) — any funded mana has emptied over the
+    // intervening steps, so the pool holds exactly the rider's colorless.
+    advance_to_next_main1(&mut game, PlayerId(0));
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        0,
+        "no delayed mana until the trigger resolves"
+    );
+    resolve_top_of_stack(&mut game); // resolve the delayed {C}×MV trigger
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        2,
+        "colorless for each of Grizzly Bear's 2 mana value at the next main phase"
+    );
+}
+
+#[test]
+fn scattering_stroke_loss_counters_but_schedules_no_mana() {
+    // Losing the clash (P0's Forest MV 0 under P1's Grizzly Bear MV 2) still counters the spell, but
+    // the delayed-mana rider never fires.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bear,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    let bear_on_stack = top_spell(&game);
+    let mine = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+    let theirs = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Forest")]);
+    let scatter = game.spawn_in_hand(PlayerId(0), card("Scattering Stroke"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: scatter,
+        target: Some(Target::Object(bear_on_stack)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    answer_clash_keep_both_tops(&mut game, mine[0], theirs[0]);
+
+    assert!(
+        game.live_object_ids().into_iter().any(|id| {
+            game.zone_of(id) == Zone::Graveyard && game.def_of(id).name == "Grizzly Bear"
+        }),
+        "losing the clash still counters the spell"
+    );
+    advance_to_next_main1(&mut game, PlayerId(0));
+    assert_eq!(
+        game.colorless_in_pool(PlayerId(0)),
+        0,
+        "no delayed mana when the clash is lost"
+    );
+}
+
+#[test]
+fn pollen_lullaby_win_keeps_opponents_creatures_tapped_through_their_untap() {
+    // Pollen Lullaby (tsp): "Clash with an opponent. Prevent all combat damage that would be dealt
+    // this turn. If you win the clash, creatures your opponents control don't untap during their
+    // controllers' next untap steps." P1's tapped Grizzly Bear stays tapped through P1's untap step.
+    let mut game = Game::new();
+    let opp_creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.tap(opp_creature);
+    assert!(game.is_tapped(opp_creature));
+
+    let mine = game.stack_library(PlayerId(0), &[card("Serra Angel"), card("Forest")]);
+    let theirs = game.stack_library(PlayerId(1), &[card("Forest"), card("Forest")]);
+    let pollen = game.spawn_in_hand(PlayerId(0), card("Pollen Lullaby"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: pollen,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Pollen Lullaby is castable");
+    resolve_top_of_stack(&mut game);
+    answer_clash_keep_both_tops(&mut game, mine[0], theirs[0]);
+
+    // Roll into P1's untap step: the marked creature does not untap.
+    advance_until(&mut game, |g| g.active_player() == PlayerId(1));
+    assert!(
+        game.is_tapped(opp_creature),
+        "won-clash rider keeps the opponent's creature tapped through its next untap step"
+    );
+
+    // On P1's following untap step the mark is spent, so it untaps normally.
+    advance_to_next_main1(&mut game, PlayerId(1));
+    assert!(
+        !game.is_tapped(opp_creature),
+        "the skip is one-shot — the creature untaps at the untap step after that"
+    );
+}
+
+#[test]
+fn whirlpool_whelm_loss_puts_creature_on_top_win_second_from_top() {
+    // Whirlpool Whelm (tsp): "Put target creature on top of its owner's library. If you win the
+    // clash, instead put that creature into its owner's library second from the top."
+    // Loss branch: the creature lands on top (drawn first).
+    let mut game = Game::new();
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    // P1's library has a known top card; the tucked creature must sit relative to it.
+    let lib = game.stack_library(PlayerId(1), &[card("Island"), card("Forest")]);
+    let mine = game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+
+    let whelm = game.spawn_in_hand(PlayerId(0), card("Whirlpool Whelm"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: whelm,
+        target: Some(Target::Object(creature)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .expect("Whirlpool Whelm is castable");
+    resolve_top_of_stack(&mut game);
+    // P0's Forest (MV 0) ties P1's Island (MV 0) — a tie is not a win, so the default (on-top)
+    // placement runs. Tucking mints a fresh library-card id, captured off the event.
+    let events = answer_clash_keep_both_tops(&mut game, mine[0], lib[0]);
+    let tucked = events
+        .iter()
+        .find_map(|e| match e {
+            Event::TuckedToLibrary { card, .. } => Some(*card),
+            _ => None,
+        })
+        .expect("the creature was tucked into the library");
+
+    // Lost clash → the creature is on top, drawn before the Island.
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(1)),
+        tucked,
+        "a lost clash puts the creature on top of its owner's library"
+    );
+}
+
+#[test]
+fn whirlpool_whelm_win_puts_creature_second_from_top() {
+    let mut game = Game::new();
+    let creature = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let lib = game.stack_library(PlayerId(1), &[card("Forest"), card("Swamp")]);
+    // Rig P0's clash top above P1's so the controller wins.
+    let mine = game.stack_library(PlayerId(0), &[card("Serra Angel"), card("Forest")]);
+
+    let whelm = game.spawn_in_hand(PlayerId(0), card("Whirlpool Whelm"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: whelm,
+        target: Some(Target::Object(creature)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let events = answer_clash_keep_both_tops(&mut game, mine[0], lib[0]);
+    let tucked = events
+        .iter()
+        .find_map(|e| match e {
+            Event::TuckedToLibrary { card, .. } => Some(*card),
+            _ => None,
+        })
+        .expect("the creature was tucked into the library");
+
+    // Won clash → the creature is second from the top: the kept Forest is drawn first, then it.
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(1)),
+        lib[0],
+        "the library's original top card is still drawn first"
+    );
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(1)),
+        tucked,
+        "a won clash puts the creature second from the top"
+    );
+}
+
+// Guard Gomazoa / Fog Bank (CR 615, #220): a permanent combat-damage-prevention static, unlike
+// the turn-scoped Moment's Peace / Inkshield shields above — it lives on the card itself and
+// never expires. Guard Gomazoa only shields itself ("dealt to Guard Gomazoa"); Fog Bank's wider
+// "to and by" wording also silences the damage it deals back.
+
+#[test]
+fn guard_gomazoa_prevents_combat_damage_dealt_to_it() {
+    let mut g = TestGame::new();
+    let attacker = g.spawn_on_battlefield(PlayerId(0), creature("Attacker 3/3", 3, 3, &[]));
+    let gomazoa = g.spawn_on_battlefield(PlayerId(1), card("Guard Gomazoa"));
+
+    attack_with(&mut g, vec![attacker]);
+    block_with(&mut g, vec![(gomazoa, attacker)]).unwrap();
+    advance_until(&mut g, |g| g.current_step() == Step::EndCombat);
+
+    let gomazoa = g.current_id(gomazoa);
+    let attacker = g.current_id(attacker);
+    assert_eq!(
+        g.marked_damage(gomazoa),
+        0,
+        "Guard Gomazoa's static prevents all combat damage dealt to it"
+    );
+    assert_eq!(
+        g.zone_of(gomazoa),
+        Zone::Battlefield,
+        "Guard Gomazoa survives the prevented hit"
+    );
+    assert_eq!(
+        g.marked_damage(attacker),
+        1,
+        "Guard Gomazoa still deals its own combat damage back — only damage TO it is prevented"
+    );
+}
+
+#[test]
+fn fog_bank_prevents_combat_damage_to_and_by_it() {
+    // Fog Bank's printed power is 0, so its "dealt by" half would look prevented either way —
+    // pump it to 2 power first so that half of the shield has real damage to actually silence.
+    let mut game = Game::new();
+    let big_attacker = game.spawn_on_battlefield(PlayerId(0), creature("Attacker 5/5", 5, 5, &[]));
+    // 2/4s, not 2/2s: each survives its mutual 2 damage, so `marked_damage` still reads it back
+    // at EndCombat instead of the pair having already died to the toughness SBA.
+    let other_attacker =
+        game.spawn_on_battlefield(PlayerId(0), creature("Attacker 2/4", 2, 4, &[]));
+    let fog_bank = game.spawn_on_battlefield(PlayerId(1), card("Fog Bank"));
+    let other_blocker = game.spawn_on_battlefield(PlayerId(1), creature("Blocker 2/4", 2, 4, &[]));
+    let pump = game.spawn_in_hand(PlayerId(0), PUMP_POWER_PLUS_2);
+    fund_cast_resolve(&mut game, PlayerId(0), pump, Some(Target::Object(fog_bank)));
+
+    attack_with(&mut game, vec![big_attacker, other_attacker]);
+    block_with(
+        &mut game,
+        vec![(fog_bank, big_attacker), (other_blocker, other_attacker)],
+    )
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    let fog_bank = game.current_id(fog_bank);
+    let big_attacker = game.current_id(big_attacker);
+    assert_eq!(
+        game.marked_damage(fog_bank),
+        0,
+        "Fog Bank's static prevents all combat damage dealt to it"
+    );
+    assert_eq!(
+        game.zone_of(fog_bank),
+        Zone::Battlefield,
+        "Fog Bank survives the prevented hit"
+    );
+    assert_eq!(
+        game.marked_damage(big_attacker),
+        0,
+        "Fog Bank's static also prevents the (pumped, 2 power) combat damage it deals back"
+    );
+
+    // A non-Fog-Bank block elsewhere in the same combat is untouched — the static is scoped to
+    // Fog Bank's own two sides, not a table-wide prevention.
+    let other_attacker = game.current_id(other_attacker);
+    let other_blocker = game.current_id(other_blocker);
+    assert_eq!(
+        game.marked_damage(other_attacker),
+        2,
+        "an ordinary block elsewhere in combat still deals damage normally"
+    );
+    assert_eq!(
+        game.marked_damage(other_blocker),
+        2,
+        "an ordinary block elsewhere in combat still takes damage normally"
+    );
+}
+
+/// A test-only static "Blocking creatures you control get +1/+0" anthem — isolates the
+/// `blocking_only` axis from `attacking_only` (Crescendo of War's own card test exercises both
+/// axes together via the real card; this one isolates the negative case: a bystander that's
+/// neither attacking nor blocking).
+const BLOCKING_ANTHEM_LORD: CardDef = CardDef {
+    name: "Test Blocking Anthem",
+    id: "",
+    default_print: "",
+    kind: CardKind::Enchantment,
+    abilities: &[Ability {
+        timing: Timing::Static,
+        effect: Effect::AnthemStatic {
+            power: Amount::Fixed(1),
+            toughness: Amount::Fixed(0),
+            self_only: false,
+            exclude_source: false,
+            tokens_only: false,
+            keywords: &[],
+            subtypes: &[],
+            colors: &[],
+            chosen_subtype: false,
+            attacking_only: false,
+            blocking_only: true,
+            commander_only: false,
+            has_counters: false,
+            condition: None,
+            from_graveyard: false,
+            all_players: false,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("unused", 0, 0, &[])
+};
+
+#[test]
+fn blocking_only_anthem_does_not_pump_a_non_blocking_creature() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), BLOCKING_ANTHEM_LORD);
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let bystander = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(blocker, attacker)]).unwrap();
+
+    assert_eq!(
+        game.power(blocker),
+        2 + 1,
+        "a blocking creature you control gets the blocking_only anthem's +1/+0"
+    );
+    assert_eq!(
+        game.power(bystander),
+        2,
+        "a creature that's neither attacking nor blocking gets no bonus from a blocking_only anthem"
+    );
+}
+
+#[test]
+fn strife_counters_accumulate_each_upkeep_and_pump_attackers_and_blockers() {
+    // Crescendo of War (cmd): "At the beginning of each upkeep, put a strife counter on this
+    // enchantment. Attacking creatures get +1/+0 for each strife counter on this enchantment.
+    // Blocking creatures you control get +1/+0 for each strife counter on this enchantment."
+    // Controlled by P1 (the defender) so the asymmetry is observable: the attacking clause has
+    // no "you control" (any attacker qualifies, including P0's), the blocking clause does (only
+    // P1's own blocker qualifies).
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Crescendo of War"));
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    // Two turns' worth of draws elapse before combat — stock both libraries so neither player
+    // loses to an empty draw along the way (CR 104.3c).
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+    game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Grizzly Bear")]);
+
+    // Roll through P1's upkeep, then P0's upkeep (turn 3) — two strife counters total.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game);
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(blocker, attacker)]).unwrap();
+
+    assert_eq!(
+        game.power(attacker),
+        2 + 2,
+        "attacking creature gets +1/+0 per strife counter, even though it isn't controlled by \
+         Crescendo of War's controller"
+    );
+    assert_eq!(
+        game.toughness(attacker),
+        2,
+        "the attacking anthem is power-only, +1/+0"
+    );
+    assert_eq!(
+        game.power(blocker),
+        2 + 2,
+        "blocking creature you (Crescendo of War's controller) control gets +1/+0 per strife \
+         counter"
+    );
+    assert_eq!(
+        game.toughness(blocker),
+        2,
+        "the blocking anthem is power-only, +1/+0"
+    );
+}
+
+#[test]
+fn murmurs_from_beyond_opponent_picks_one_to_graveyard_rest_to_hand() {
+    // Murmurs from Beyond: "Reveal the top three cards of your library. An opponent chooses
+    // one of them. Put that card into your graveyard and the rest into your hand."
+    let mut game = TestGame::new();
+    let revealed = game.stack_library(
+        PlayerId(0),
+        &[card("Grizzly Bear"), card("Forest"), card("Grizzly Bear")],
+    );
+    let murmurs = game.spawn_in_hand(PlayerId(0), card("Murmurs from Beyond"));
+    game.cast(murmurs).resolve();
+
+    // Only one opponent (P1) — the "which opponent" chooser collapses straight to the pick.
+    let Some(PendingChoice::OpponentChoosesRevealedToGraveyard {
+        player,
+        controller,
+        revealed: paused_revealed,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the opponent-chooses-revealed-to-graveyard pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(player, PlayerId(1), "the opponent, not the caster, picks");
+    assert_eq!(controller, PlayerId(0));
+    assert_eq!(
+        paused_revealed, revealed,
+        "all three revealed cards are offered"
+    );
+
+    game.submit(Intent::ChooseExiledWithCard {
+        player: PlayerId(1),
+        choice: Some(revealed[1]),
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(revealed[1]),
+        Zone::Graveyard,
+        "the chosen card goes to the caster's graveyard"
+    );
+    assert_eq!(game.owner_of(revealed[1]), PlayerId(0));
+    for &id in &[revealed[0], revealed[2]] {
+        assert_eq!(
+            game.zone_of(id),
+            Zone::Hand,
+            "the rest go to the caster's hand"
+        );
+        assert_eq!(game.owner_of(id), PlayerId(0));
+    }
+}
+
+#[test]
+fn murmurs_from_beyond_with_fewer_than_three_cards() {
+    // CR 120.3 "as many as possible" — a one-card library reveals only that one; the opponent's
+    // pick still goes to the graveyard, and the hand is unaffected (nothing left to route there).
+    let mut game = TestGame::new();
+    let revealed = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let murmurs = game.spawn_in_hand(PlayerId(0), card("Murmurs from Beyond"));
+    game.cast(murmurs).resolve();
+
+    let Some(PendingChoice::OpponentChoosesRevealedToGraveyard {
+        revealed: paused_revealed,
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!(
+            "expected the opponent-chooses-revealed-to-graveyard pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(paused_revealed, revealed);
+
+    game.submit(Intent::ChooseExiledWithCard {
+        player: PlayerId(1),
+        choice: Some(revealed[0]),
+    })
+    .unwrap();
+
+    assert_eq!(game.zone_of(revealed[0]), Zone::Graveyard);
+    assert_eq!(game.owner_of(revealed[0]), PlayerId(0));
+}
+
+// ── Increment #209: `Amount::CombatDamageDealt` fills on a `who = "this"` combat-damage-to-a- ──
+// player trigger placement, not only the `zero_base_power` batch timing. ───────────────────────
+
+#[test]
+fn rapacious_one_deals_combat_damage_and_creates_that_many_eldrazi_spawn() {
+    // Rapacious One (roe): "Trample. Whenever this creature deals combat damage to a player,
+    // create that many 0/1 colorless Eldrazi Spawn creature tokens. They have 'Sacrifice this
+    // token: Add {C}.'" Unblocked, its printed 5 power deals 5 combat damage, so five tokens.
+    let mut game = Game::new();
+    let rapacious = game.spawn_on_battlefield(PlayerId(0), card("Rapacious One")); // 5/4 trample
+    attack_with(&mut game, vec![rapacious]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    let spawns = battlefield_named(&game, PlayerId(0), "Eldrazi Spawn");
+    assert_eq!(
+        spawns.len(),
+        5,
+        "5 damage dealt creates that many 0/1 Eldrazi Spawn tokens, not a fixed count"
+    );
+    for &spawn in &spawns {
+        assert_eq!(
+            (game.power(spawn), game.toughness(spawn)),
+            (0, 1),
+            "each Spawn is a 0/1"
+        );
+    }
+
+    // "Sacrifice this token: Add {C}." — a mana ability, resolves at once (CR 605, CR 113).
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: spawns[0],
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_pool(PlayerId(0)).colorless,
+        1,
+        "the granted sacrifice ability adds one colorless mana"
+    );
+    assert!(
+        !game.live_object_ids().contains(&spawns[0]),
+        "the sacrificed Spawn token ceased to exist"
+    );
+}
+
+// ── Increment #219: `each_draw_step` trigger + `Condition::SourceUntapped` intervening-if, ──
+// with a CR 603.4 resolution-time second check. ─────────────────────────────────────────────
+
+#[test]
+fn howling_mine_untapped_each_player_draws_an_extra_card_at_their_draw_step() {
+    // Howling Mine: "At the beginning of each player's draw step, if this artifact is untapped,
+    // that player draws an additional card." Player 0 controls it; player 1's draw step (the
+    // first non-skipped draw of the game, CR 103.8a) still fires it for "that player" — player 1.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Howling Mine"));
+    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
+    });
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "Howling Mine's each-draw-step trigger fires while it's untapped"
+    );
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(library[0]),
+        Zone::Hand,
+        "the draw step's own turn-based-action draw"
+    );
+    assert_eq!(
+        game.zone_of(library[1]),
+        Zone::Hand,
+        "Howling Mine drew the active player (not its own controller) an additional card"
+    );
+}
+
+#[test]
+fn howling_mine_tapped_grants_no_extra_draw() {
+    // "if this artifact is untapped" (CR 603.4 intervening-if, first check): a tapped Howling
+    // Mine never even triggers.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Howling Mine"));
+    game.tap(mine);
+    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
+    });
+
+    assert!(
+        game.stack().is_empty(),
+        "a tapped Howling Mine's intervening-if fails at trigger placement"
+    );
+    assert_eq!(
+        game.zone_of(library[0]),
+        Zone::Hand,
+        "the draw step's own turn-based-action draw still happens"
+    );
+    assert_eq!(
+        game.zone_of(library[1]),
+        Zone::Library,
+        "no additional card drawn while Howling Mine is tapped"
+    );
+}
+
+#[test]
+fn howling_mine_tapped_in_response_grants_no_draw_cr_603_4() {
+    // CR 603.4's *second* check: Howling Mine triggers while untapped (the deck can tap it in
+    // response — Magma Opus's instant-speed "tap two target permanents") but is tapped before
+    // the trigger resolves, so the additional draw is suppressed.
+    let mut game = Game::new();
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Howling Mine"));
+    let library = game.stack_library(PlayerId(1), &[card("Grizzly Bear"), card("Shock")]);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Draw
+    });
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "Howling Mine triggered while it was still untapped"
+    );
+
+    game.tap(mine);
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        game.stack().is_empty(),
+        "the ability left the stack (and did nothing)"
+    );
+    assert_eq!(
+        game.zone_of(library[0]),
+        Zone::Hand,
+        "the draw step's own turn-based-action draw still happens"
+    );
+    assert_eq!(
+        game.zone_of(library[1]),
+        Zone::Library,
+        "the resolution-time re-check suppressed the additional draw"
+    );
+}
+
+// Gomazoa / Goblin Cadets (CR 509, #221): a block-assignment read ("each creature it's blocking",
+// the reverse of `blockers_of`) feeding a multi-owner tuck+shuffle loop, and a new self-referential
+// "blocks or becomes blocked" trigger.
+
+#[test]
+fn gomazoa_tucks_itself_and_each_creature_it_is_blocking() {
+    let mut game = Game::new();
+    let attacker_a = game.spawn_on_battlefield(PlayerId(0), creature("Attacker A", 1, 1, &[]));
+    let attacker_b = game.spawn_on_battlefield(PlayerId(0), creature("Attacker B", 1, 1, &[]));
+    let gomazoa = game.spawn_on_battlefield(PlayerId(1), card("Gomazoa"));
+
+    attack_with(&mut game, vec![attacker_a, attacker_b]);
+    block_with(
+        &mut game,
+        vec![(gomazoa, attacker_a), (gomazoa, attacker_b)],
+    )
+    .unwrap();
+
+    // P0 (active, holds priority after the block declaration) passes so P1 can act.
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    let idx = only_activated_ability_index(&game, gomazoa);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: gomazoa,
+        ability_index: idx,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Gomazoa activates its tap ability during declare blockers");
+    game.submit(Intent::PassPriority {
+        player: game.priority_holder(),
+    })
+    .unwrap();
+    let events = game
+        .submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+
+    let tucked: Vec<ObjectId> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::TuckedToLibrary { from, .. } => Some(*from),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        tucked.len(),
+        3,
+        "Gomazoa plus both attackers it's blocking are tucked"
+    );
+    for object in [gomazoa, attacker_a, attacker_b] {
+        assert!(tucked.contains(&object), "{object:?} was tucked");
+        assert_eq!(
+            game.zone_of(object),
+            Zone::Library,
+            "{object:?} left the battlefield for its owner's library"
+        );
+    }
+    let shuffled: Vec<PlayerId> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::LibraryShuffled { player } => Some(*player),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        shuffled,
+        vec![PlayerId(1), PlayerId(0)],
+        "each owner (P1 owns Gomazoa, P0 owns both attackers) shuffles exactly once, not once per tucked card"
+    );
+}
+
+#[test]
+fn gomazoa_tucks_only_itself_when_blocking_nothing() {
+    // The ruling: "If Gomazoa isn't blocking a creature at the time its ability resolves, only
+    // Gomazoa is put on top of its owner's library, and only that player shuffles." Also proves
+    // the real oracle carries no declare-blockers-only restriction — activated here at instant
+    // speed outside of combat entirely.
+    let mut game = Game::new();
+    let gomazoa = game.spawn_on_battlefield(PlayerId(0), card("Gomazoa"));
+
+    let idx = only_activated_ability_index(&game, gomazoa);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: gomazoa,
+        ability_index: idx,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Gomazoa's tap ability isn't restricted to the declare blockers step");
+    let events = {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap()
+    };
+
+    let tucked: Vec<ObjectId> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::TuckedToLibrary { from, .. } => Some(*from),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(tucked, vec![gomazoa], "only Gomazoa itself is tucked");
+    let shuffled: Vec<PlayerId> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::LibraryShuffled { player } => Some(*player),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(shuffled, vec![PlayerId(0)], "only Gomazoa's owner shuffles");
+}
+
+#[test]
+fn goblin_cadets_blocks_or_becomes_blocked_trigger_fires() {
+    let mut game = Game::new();
+    let attacker = game.spawn_on_battlefield(PlayerId(0), creature("Attacker 3/3", 3, 3, &[]));
+    let cadets = game.spawn_on_battlefield(PlayerId(1), card("Goblin Cadets"));
+
+    attack_with(&mut game, vec![attacker]);
+    block_with(&mut game, vec![(cadets, attacker)]).unwrap();
+
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "blocking fires Goblin Cadets' trigger onto the stack"
+    );
+}
+
+#[test]
+fn goblin_cadets_donates_itself_to_target_opponent_when_it_becomes_blocked() {
+    let mut game = Game::new();
+    let cadets = game.spawn_on_battlefield(PlayerId(0), card("Goblin Cadets"));
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    attack_with(&mut game, vec![cadets]);
+    block_with(&mut game, vec![(blocker, cadets)]).unwrap();
+    // Two-player table: "target opponent" has exactly one legal choice, so it's forced with no
+    // pause — the donation resolves once both players pass.
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.controller_of(cadets),
+        PlayerId(1),
+        "target opponent gains control of Goblin Cadets"
+    );
+    assert!(
+        !game.blocks().iter().any(|&(_, a)| a == cadets),
+        "CR 506.4c: the control change removes it from combat"
     );
 }

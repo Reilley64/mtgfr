@@ -153,6 +153,10 @@ pub enum WireIntent {
         /// hand). See [`engine::Intent::ActivateAbility`].
         #[serde(default)]
         discard_cost: Vec<ObjectId>,
+        /// The chosen `{X}` for an activation cost that contains `{X}` (Nin, the Pain Artist's
+        /// `{X}{U}{R}, {T}`); 0 for an ability with no `{X}` in its cost.
+        #[serde(default)]
+        x: u32,
     },
     DeclareAttackers {
         player: u8,
@@ -180,6 +184,12 @@ pub enum WireIntent {
     AnswerMay {
         player: u8,
         yes: bool,
+    },
+    /// Answer a may-draw-up-to count choice (Arcane Denial's "may draw up to two cards"): `count`
+    /// is how many cards to draw, any number `0..=max`. See [`engine::Intent::ChooseDrawCount`].
+    ChooseDrawCount {
+        player: u8,
+        count: u8,
     },
     PayOptionalCost {
         player: u8,
@@ -241,6 +251,12 @@ pub enum WireIntent {
     },
     /// Answer a cleanup discard: the cards this player discards to reach the hand-size limit.
     Discard {
+        player: u8,
+        cards: Vec<ObjectId>,
+    },
+    /// Answer a [`crate::dto::PendingChoiceView::PutFromHandOnTop`]: the ordered hand-card pick
+    /// (Brainstorm) — first-named ends up on top of the library.
+    PutFromHandOnTop {
         player: u8,
         cards: Vec<ObjectId>,
     },
@@ -526,6 +542,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             target,
             sacrifice,
             discard_cost,
+            x,
             ..
         } => ActivateAbility {
             player,
@@ -534,6 +551,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             target,
             sacrifice,
             discard_cost,
+            x,
         },
         DeclareAttackers { attackers, .. } => DeclareAttackers { player, attackers },
         DeclareBlockers { blocks, .. } => DeclareBlockers { player, blocks },
@@ -541,6 +559,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ChooseTargets { targets, .. } => ChooseTargets { player, targets },
         ChooseTargetPlayers { players, .. } => ChooseTargetPlayers { player, players },
         AnswerMay { yes, .. } => AnswerMay { player, yes },
+        ChooseDrawCount { count, .. } => ChooseDrawCount { player, count },
         PayOptionalCost { pay, .. } => PayOptionalCost { player, pay },
         AssignDamage { assignment, .. } => AssignDamage { player, assignment },
         DivideSpellDamage { assignment, .. } => DivideSpellDamage { player, assignment },
@@ -553,6 +572,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         SearchLibrary { choice, .. } => SearchLibrary { player, choice },
         ChooseSacrifices { sacrifices, .. } => ChooseSacrifices { player, sacrifices },
         Discard { cards, .. } => Discard { player, cards },
+        PutFromHandOnTop { cards, .. } => PutFromHandOnTop { player, cards },
         DeclineUntap { keep_tapped, .. } => DeclineUntap {
             player,
             keep_tapped,
@@ -701,6 +721,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             target,
             sacrifice,
             discard_cost,
+            x,
         } => Intent::ActivateAbility {
             player: PlayerId(player),
             object,
@@ -708,10 +729,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             target: target.map(WireTarget::to_engine),
             sacrifice,
             discard_cost,
-            // ponytail: no pool card has an `{X}`-cost activated ability, so the wire intent
-            // carries no chosen X yet — default to 0. Add an `x` to `WireIntent::ActivateAbility`
-            // (and regenerate the OpenAPI client) when a real card first needs one.
-            x: 0,
+            x,
         },
         WireIntent::DeclareAttackers { player, attackers } => Intent::DeclareAttackers {
             player: PlayerId(player),
@@ -742,6 +760,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         WireIntent::AnswerMay { player, yes } => Intent::AnswerMay {
             player: PlayerId(player),
             yes,
+        },
+        WireIntent::ChooseDrawCount { player, count } => Intent::ChooseDrawCount {
+            player: PlayerId(player),
+            count,
         },
         WireIntent::PayOptionalCost { player, pay } => Intent::PayOptionalCost {
             player: PlayerId(player),
@@ -798,6 +820,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             sacrifices,
         },
         WireIntent::Discard { player, cards } => Intent::Discard {
+            player: PlayerId(player),
+            cards,
+        },
+        WireIntent::PutFromHandOnTop { player, cards } => Intent::PutFromHandOnTop {
             player: PlayerId(player),
             cards,
         },

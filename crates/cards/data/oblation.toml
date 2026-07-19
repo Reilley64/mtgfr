@@ -1,0 +1,27 @@
+# The owner of target nonland permanent shuffles it into their library, then draws two cards.
+name = "Oblation"
+id = "860e744d-899c-43c7-84bb-d52c69d2f45a"
+default_print = "dcfdea72-4736-4442-987b-173f6885528a"
+oracle = "The owner of target nonland permanent shuffles it into their library, then draws two cards."
+set = "c21"
+
+[cost]
+generic = 2
+white = 1
+
+[kind]
+type = "instant"
+
+# The owner of target nonland permanent shuffles it into their library, then draws two cards.
+[[abilities]]
+timing = "spell"
+
+# The owner of target nonland permanent shuffles it into their library
+[[abilities.effects]]
+type = "shuffle_target_permanent_into_library"
+target = { permanent = "nonland" }
+
+# then draws two cards.
+[[abilities.effects]]
+type = "target_owner_draws"
+count = 2

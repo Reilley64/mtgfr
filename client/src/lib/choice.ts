@@ -65,7 +65,9 @@ export type AnswerInput =
   | { kind: "top_or_bottom"; top: boolean } // choose_countered_spell_destination
   | { kind: "return_land"; land: number | null } // sacrifice_unless_return_land (null = sacrifice)
   | { kind: "cast_face_down_choice"; choice: number | null } // cast_creature_face_down (null = decline)
-  | { kind: "dredge"; dredger: number | null }; // choose_dredge (null = draw normally)
+  | { kind: "dredge"; dredger: number | null } // choose_dredge (null = draw normally)
+  | { kind: "hand_on_top"; cards: number[] } // put_from_hand_on_top (pick order = top-down order)
+  | { kind: "draw_count"; count: number }; // may_draw_up_to / trade_secrets_caster_draw (0..=max)
 
 /** Map a pending choice and the player's answer to the wire intent that answers it. `pc` supplies
  * the answering `player`; the intent shape follows from the answer's tag. `discriminatorsExhaustive`
@@ -126,6 +128,8 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
       return_land: (a) => ({ kind: "return_land_or_sacrifice", player, land: a.land }),
       cast_face_down_choice: (a) => ({ kind: "cast_creature_face_down", player, choice: a.choice }),
       dredge: (a) => ({ kind: "choose_dredge", player, dredger: a.dredger }),
+      hand_on_top: (a) => ({ kind: "put_from_hand_on_top", player, cards: a.cards }),
+      draw_count: (a) => ({ kind: "choose_draw_count", player, count: a.count }),
     }),
   );
 }

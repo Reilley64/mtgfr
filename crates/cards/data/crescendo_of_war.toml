@@ -1,0 +1,47 @@
+# At the beginning of each upkeep, put a strife counter on this enchantment.
+# Attacking creatures get +1/+0 for each strife counter on this enchantment.
+# Blocking creatures you control get +1/+0 for each strife counter on this enchantment.
+name = "Crescendo of War"
+id = "3c6a8ad8-9b40-4136-9cfd-2b4cf9a9d900"
+default_print = "ab4e8458-58b1-4218-9923-7f1aa393ff7d"
+oracle = "At the beginning of each upkeep, put a strife counter on this enchantment.\nAttacking creatures get +1/+0 for each strife counter on this enchantment.\nBlocking creatures you control get +1/+0 for each strife counter on this enchantment."
+set = "cmd"
+
+[cost]
+generic = 3
+white = 1
+
+[kind]
+type = "enchantment"
+
+# At the beginning of each upkeep, put a strife counter on this enchantment.
+[[abilities]]
+timing = "each_upkeep"
+
+# put a strife counter on this enchantment.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"
+kind = "strife"
+
+# Attacking creatures get +1/+0 for each strife counter on this enchantment.
+[[abilities]]
+timing = "static"
+
+# Attacking creatures get +1/+0 for each strife counter on this enchantment.
+[[abilities.effects]]
+type = "anthem_static"
+power = { per_counter_of_kind = "strife" }
+attacking_only = true
+all_players = true
+
+# Blocking creatures you control get +1/+0 for each strife counter on this enchantment.
+[[abilities]]
+timing = "static"
+
+# Blocking creatures you control get +1/+0 for each strife counter on this enchantment.
+[[abilities.effects]]
+type = "anthem_static"
+power = { per_counter_of_kind = "strife" }
+blocking_only = true

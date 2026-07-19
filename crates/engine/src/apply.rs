@@ -241,7 +241,7 @@ impl Game {
         self.play_permissions
             .conditioned_control_overrides
             .iter()
-            .filter(|&&(_, thief, condition)| !self.control_condition_holds(thief, condition))
+            .filter(|&&(_, thief, condition, _)| !self.control_condition_holds(thief, condition))
             .map(|&(object, ..)| Event::ConditionedControlEnded { object })
             .collect()
     }
@@ -924,14 +924,10 @@ impl Game {
                 p.tapped = true;
                 p.marked_damage = 0;
                 p.deathtouched = false;
-                // Remove the regenerated creature from combat (CR 701.15b) — drop it as attacker
-                // and blocker, and any blocks naming it as the attacker.
-                self.combat.attackers.retain(|&a| a != object);
-                self.combat.attack_targets.retain(|&(a, _)| a != object);
-                self.combat
-                    .blocks
-                    .retain(|&(b, a)| b != object && a != object);
+                // Remove the regenerated creature from combat (CR 701.15b).
+                self.remove_from_combat(object);
             }
+            Event::RemovedFromCombat { object } => self.remove_from_combat(object),
             Event::RegenerationShieldsExpired { object } => {
                 self.permanent_mut(object).regeneration_shields = 0;
             }
@@ -1008,6 +1004,15 @@ impl Game {
                     });
                     if grants_control {
                         self.permanent_mut(host).summoning_sick = true;
+                        // CR 800.4a: record when this control Aura took hold so
+                        // `controller_of` can rank it against a registry steal on the same host.
+                        let ts = self.stamp_control_timestamp();
+                        self.play_permissions
+                            .aura_control_timestamps
+                            .retain(|&(a, _)| a != object);
+                        self.play_permissions
+                            .aura_control_timestamps
+                            .push((object, ts));
                     }
                 }
             }
@@ -1128,9 +1133,12 @@ impl Game {
                 controller,
                 source_name,
             } => {
+                let ts = self.stamp_control_timestamp();
                 self.play_permissions
                     .control_overrides
-                    .push((object, controller, source_name));
+                    .push((object, controller, source_name, ts));
+                // CR 506.4c: any time a permanent's controller changes, it's removed from combat.
+                self.remove_from_combat(object);
             }
             Event::ControlEndedUntilEndOfTurn { object } => self
                 .play_permissions
@@ -1141,18 +1149,25 @@ impl Game {
             }
             Event::GrantedAbilitiesEnded => self.abilities_granted_until_eot.clear(),
             Event::ControlGained { object, controller } => {
+                let ts = self.stamp_control_timestamp();
                 self.play_permissions
                     .permanent_control_overrides
-                    .push((object, controller));
+                    .push((object, controller, ts));
+                // CR 506.4c: any time a permanent's controller changes, it's removed from combat
+                // (Goblin Cadets' reminder text — "(This removes this creature from combat.)").
+                self.remove_from_combat(object);
             }
             Event::ConditionedControlGained {
                 object,
                 controller,
                 condition,
             } => {
+                let ts = self.stamp_control_timestamp();
                 self.play_permissions
                     .conditioned_control_overrides
-                    .push((object, controller, condition));
+                    .push((object, controller, condition, ts));
+                // CR 506.4c: any time a permanent's controller changes, it's removed from combat.
+                self.remove_from_combat(object);
             }
             Event::ConditionedControlEnded { object } => self
                 .play_permissions
@@ -1207,10 +1222,19 @@ impl Game {
                 .delayed_triggers
                 .scheduled
                 .push((controller, source, fire_at, effect)),
-            Event::DelayedTriggersFired { fire_at } => self
-                .delayed_triggers
-                .scheduled
-                .retain(|&(_, _, f, _)| f != fire_at),
+            Event::DelayedTriggersFired {
+                fire_at,
+                active_player,
+            } => self.delayed_triggers.scheduled.retain(|&(c, _, f, _)| {
+                // Mirror `fire_delayed_triggers`'s `due` filter: `Main1` is controller-scoped
+                // (only the active player's entries fired, so only those are drained); every other
+                // timing fired regardless of whose step it is.
+                !(f == fire_at && (fire_at != Step::Main1 || c == active_player))
+            }),
+            Event::NextUntapSkipMarked { object } => self.skip_next_untap.push(object),
+            Event::NextUntapSkipConsumed { object } => {
+                self.skip_next_untap.retain(|&id| id != object)
+            }
             Event::NextCastTriggerArmed {
                 controller,
                 source,
@@ -1583,7 +1607,7 @@ impl Game {
                     // CR 700.4/701.29 last-known information: a token ceasing to exist is a
                     // "died" too — read `is_modified` before `Object::Removed` below erases its
                     // attachments/counters. Feeds `Condition::ModifiedCreatureDiedThisTurn`.
-                    if self.is_modified(token) {
+                    if self.is_modified(token, controller) {
                         self.players[controller.0 as usize].modified_creature_died_this_turn = true;
                     }
                 }
@@ -1595,6 +1619,10 @@ impl Game {
                     .permanents_left_battlefield
                     .push((token, self.attached_to(token)));
                 self.clear_modifier_provenance(token);
+                // Resolution-scoped last-known owner (see `ResolutionFrame::vanished_permanent_owner`)
+                // for a later same-`Sequence` step (Oblation's `target_owner_draws` rider) that
+                // would otherwise panic reading `owner_of` a now-`Object::Removed` id.
+                self.resolution_frame.vanished_permanent_owner = Some((token, controller));
                 self.objects[token as usize] = Object::Removed;
             }
             Event::DamageMarked { object, amount, .. } => {
@@ -1672,8 +1700,8 @@ impl Game {
                     // (Intermediate Chirography's Level 3 morbid-of-modified end step). Keyed by
                     // controller ("died under *your* control", CR 700.4) — the sibling
                     // `creatures_died_this_turn` tally uses `dead_controller` too, not owner.
-                    if self.is_modified(from) {
-                        let controller = self.controller_of(from);
+                    let controller = self.controller_of(from);
+                    if self.is_modified(from, controller) {
                         self.players[controller.0 as usize].modified_creature_died_this_turn = true;
                     }
                 }
@@ -1883,7 +1911,12 @@ impl Game {
                 assert_eq!(id, card);
                 self.remove_spell_from_stack(from);
             }
-            Event::TuckedToLibrary { card, from, to_top } => {
+            Event::TuckedToLibrary {
+                card,
+                from,
+                to_top,
+                second_from_top,
+            } => {
                 let def = self.def_of(from);
                 let owner = self.owner_of(from);
                 let commander = self.is_commander(from);
@@ -1907,7 +1940,12 @@ impl Game {
                 );
                 assert_eq!(id, card);
                 let library = &mut self.players[owner.0 as usize].library;
-                if to_top {
+                if second_from_top {
+                    // Second from the top (Whirlpool Whelm's win rider): under the current top
+                    // card. A library with fewer than one card lands it on top (CR 120 "as close
+                    // as possible").
+                    library.insert(1.min(library.len()), id);
+                } else if to_top {
                     // Top of the library: index 0 is the top, drawn first.
                     library.insert(0, id);
                 } else {
@@ -2030,9 +2068,9 @@ impl Game {
             }
             Event::PlayerLost { player } => {
                 self.players[player.0 as usize].lost = true;
-                // CR 800.4a: everything the departing player owns leaves the game. This pool
-                // has no control-changing effects, so nothing they merely control-but-not-own
-                // needs handing back.
+                // CR 800.4a: everything the departing player owns leaves the game — including a
+                // permanent they own but someone else controls (a donation they made stays owned by
+                // them, so it leaves too).
                 for slot in self.objects.iter_mut() {
                     let owned = match slot {
                         Object::Card(c) => c.owner == player,
@@ -2044,6 +2082,19 @@ impl Game {
                         *slot = Object::Removed;
                     }
                 }
+                // CR 800.4a: any effect that gives the departing player control of an object also
+                // ends — a permanent they stole returns to its owner (or the next-highest control
+                // source). Drop every override whose new controller is the leaving player, across
+                // all three registries; a control-changing Aura they own already left above.
+                self.play_permissions
+                    .control_overrides
+                    .retain(|&(_, controller, ..)| controller != player);
+                self.play_permissions
+                    .permanent_control_overrides
+                    .retain(|&(_, controller, ..)| controller != player);
+                self.play_permissions
+                    .conditioned_control_overrides
+                    .retain(|&(_, controller, ..)| controller != player);
                 // Drop any now-removed objects off the stack and out of combat (disjoint
                 // field borrows: the closure reads `objects`, retain mutates other fields).
                 let objects = &self.objects;
@@ -2068,6 +2119,8 @@ impl Game {
                     .retain(|g| g.controller != player);
                 self.pending_echo.retain(|&source| !removed(source));
                 self.pending_recover.retain(|&source| !removed(source));
+                self.pending_cumulative_upkeep
+                    .retain(|&source| !removed(source));
                 if self
                     .pending_choice
                     .as_ref()
@@ -2147,6 +2200,26 @@ impl Game {
                 library.retain(|&o| o != card);
                 library.push(card);
             }
+            Event::PutFromHandOnTop {
+                card,
+                from,
+                def,
+                player,
+            } => {
+                let commander = self.is_commander(from);
+                let id = self.create_object(
+                    Some(from),
+                    Object::Card(Card {
+                        def,
+                        owner: player,
+                        zone: Zone::Library,
+                        commander,
+                        face_down: false,
+                    }),
+                );
+                assert_eq!(id, card);
+                self.players[player.0 as usize].library.insert(0, id);
+            }
         }
     }
 
@@ -2167,5 +2240,19 @@ impl Game {
     /// How many players are still in the game (haven't lost).
     pub(crate) fn living_player_count(&self) -> u8 {
         self.players.iter().filter(|p| !p.lost).count() as u8
+    }
+
+    /// Drop `object` from the current combat's attacker and blocker lists (CR 506.4) — shared by
+    /// [`Event::Regenerated`]'s CR 701.15b removal, [`Event::RemovedFromCombat`]
+    /// ([`Effect::RemoveFromCombat`] — Spurnmage Advocate), and every control-change event
+    /// ([`Event::ControlGained`]/[`Event::ControlGainedUntilEndOfTurn`]/
+    /// [`Event::ConditionedControlGained`] — CR 506.4c, Goblin Cadets' "(This removes this
+    /// creature from combat.)").
+    fn remove_from_combat(&mut self, object: ObjectId) {
+        self.combat.attackers.retain(|&a| a != object);
+        self.combat.attack_targets.retain(|&(a, _)| a != object);
+        self.combat
+            .blocks
+            .retain(|&(b, a)| b != object && a != object);
     }
 }

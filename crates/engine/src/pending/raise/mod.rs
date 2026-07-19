@@ -24,7 +24,9 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         effect: crate::Effect,
         legal: Vec<crate::Target>,
-        optional: bool,
+        count: crate::TargetCount,
+        x: u32,
+        activated: bool,
     },
     PayOrCounter {
         player: crate::PlayerId,
@@ -113,6 +115,8 @@ pub(crate) enum ChoiceRequest {
         count: u32,
         or_one_matching: Option<crate::CardFilter>,
     },
+    /// [`Effect::PutFromHandOnTop`] — empty (or zero-count) hand skips.
+    PutFromHandOnTop { player: crate::PlayerId, count: u32 },
     /// [`Effect::SacrificeSelfUnlessPay`] — always pauses.
     SacrificeUnlessPay {
         player: crate::PlayerId,
@@ -308,6 +312,13 @@ pub(crate) enum ChoiceRequest {
         source: crate::ObjectId,
         revealed: Vec<crate::ObjectId>,
     },
+    /// Opponent picks one revealed card to graveyard, rest to hand (Murmurs from Beyond).
+    OpponentChoosesRevealedToGraveyard {
+        player: crate::PlayerId,
+        controller: crate::PlayerId,
+        source: crate::ObjectId,
+        revealed: Vec<crate::ObjectId>,
+    },
     /// Controller picks which Fact-or-Fiction pile goes to hand.
     ChoosePileForHand {
         player: crate::PlayerId,
@@ -375,6 +386,9 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             count,
             or_one_matching,
         } => optional::discard(game, player, count, or_one_matching),
+        ChoiceRequest::PutFromHandOnTop { player, count } => {
+            optional::put_from_hand_on_top(game, player, count)
+        }
         ChoiceRequest::SacrificeUnlessReturnLand {
             player,
             source,
@@ -537,6 +551,7 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
         | ChoiceRequest::DanceExileMore { .. }
         | ChoiceRequest::OpponentChoosesPile { .. }
         | ChoiceRequest::PartitionRevealed { .. }
+        | ChoiceRequest::OpponentChoosesRevealedToGraveyard { .. }
         | ChoiceRequest::ChoosePileForHand { .. }
         | ChoiceRequest::RevealedCardToBattlefieldOrHand { .. } => {
             unreachable!("identity ChoiceRequest variants handled by map_identical")

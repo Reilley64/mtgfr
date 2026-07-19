@@ -177,12 +177,14 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             label,
             items,
             optional,
+            max,
         } => Choice::ChooseTarget(pb::PendingChoiceViewChooseTarget {
             player: u32::from(player),
             source,
             label,
             items: choice_items_to_pb(items),
             optional,
+            max: u32::from(max),
         }),
         PendingChoiceView::ChooseSpellTargets {
             player,
@@ -223,6 +225,27 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             label,
         }),
+        PendingChoiceView::MayDrawUpTo { player, max } => {
+            Choice::MayDrawUpTo(pb::PendingChoiceViewMayDrawUpTo {
+                player: u32::from(player),
+                max: u32::from(max),
+            })
+        }
+        PendingChoiceView::TradeSecretsCasterDraw {
+            player,
+            max,
+            opponent,
+        } => Choice::TradeSecretsCasterDraw(pb::PendingChoiceViewTradeSecretsCasterDraw {
+            player: u32::from(player),
+            max: u32::from(max),
+            opponent: u32::from(opponent),
+        }),
+        PendingChoiceView::TradeSecretsRepeat { player, caster } => {
+            Choice::TradeSecretsRepeat(pb::PendingChoiceViewTradeSecretsRepeat {
+                player: u32::from(player),
+                caster: u32::from(caster),
+            })
+        }
         PendingChoiceView::PayCost {
             player,
             source,
@@ -261,6 +284,19 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             cost: Some(wire_cost_to_pb(cost)),
         }),
+        PendingChoiceView::PayCumulativeUpkeepOrSacrifice {
+            player,
+            source,
+            items,
+            count,
+        } => Choice::PayCumulativeUpkeepOrSacrifice(
+            pb::PendingChoiceViewPayCumulativeUpkeepOrSacrifice {
+                player: u32::from(player),
+                source,
+                items: choice_items_to_pb(items),
+                count,
+            },
+        ),
         PendingChoiceView::AssignCombatDamage {
             player,
             source,
@@ -387,6 +423,19 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             max: u32::from(max),
             items: choice_items_to_pb(items),
         }),
+        PendingChoiceView::ChooseActivationCostTargets {
+            player,
+            source,
+            count,
+            items,
+        } => {
+            Choice::ChooseActivationCostTargets(pb::PendingChoiceViewChooseActivationCostTargets {
+                player: u32::from(player),
+                source,
+                count: u32::from(count),
+                items: choice_items_to_pb(items),
+            })
+        }
         PendingChoiceView::MaySacrifice {
             player,
             source,
@@ -474,6 +523,15 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             count,
             items,
         } => Choice::Discard(pb::PendingChoiceViewDiscard {
+            player: u32::from(player),
+            count,
+            items: choice_items_to_pb(items),
+        }),
+        PendingChoiceView::PutFromHandOnTop {
+            player,
+            count,
+            items,
+        } => Choice::PutFromHandOnTop(pb::PendingChoiceViewPutFromHandOnTop {
             player: u32::from(player),
             count,
             items: choice_items_to_pb(items),
@@ -710,6 +768,17 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             items: choice_items_to_pb(items),
         }),
+        PendingChoiceView::OpponentChoosesRevealedToGraveyard {
+            player,
+            source,
+            items,
+        } => Choice::OpponentChoosesRevealedToGraveyard(
+            pb::PendingChoiceViewOpponentChoosesRevealedToGraveyard {
+                player: u32::from(player),
+                source,
+                items: choice_items_to_pb(items),
+            },
+        ),
         PendingChoiceView::ChoosePileForHand {
             player,
             source,
@@ -834,6 +903,9 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
         }),
         VisibleEvent::Tapped { object } => Event::Tapped(pb::VisibleEventTapped { object }),
         VisibleEvent::Untapped { object } => Event::Untapped(pb::VisibleEventUntapped { object }),
+        VisibleEvent::RemovedFromCombat { object } => {
+            Event::RemovedFromCombat(pb::VisibleEventRemovedFromCombat { object })
+        }
         VisibleEvent::RegenerationShieldCreated { object } => {
             Event::RegenerationShieldCreated(pb::VisibleEventRegenerationShieldCreated { object })
         }
@@ -952,6 +1024,12 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
         }),
         VisibleEvent::GoadCleared { by } => {
             Event::GoadCleared(pb::VisibleEventGoadCleared { by: u32::from(by) })
+        }
+        VisibleEvent::NextUntapSkipMarked { object } => {
+            Event::NextUntapSkipMarked(pb::VisibleEventNextUntapSkipMarked { object })
+        }
+        VisibleEvent::NextUntapSkipConsumed { object } => {
+            Event::NextUntapSkipConsumed(pb::VisibleEventNextUntapSkipConsumed { object })
         }
         VisibleEvent::VowCountersPlaced { object, protected } => {
             Event::VowCountersPlaced(pb::VisibleEventVowCountersPlaced {
@@ -1274,9 +1352,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
         VisibleEvent::ReturnedToHand { card, from } => {
             Event::ReturnedToHand(pb::VisibleEventReturnedToHand { card, from })
         }
-        VisibleEvent::TuckedToLibrary { card, from, to_top } => {
-            Event::TuckedToLibrary(pb::VisibleEventTuckedToLibrary { card, from, to_top })
-        }
+        // `second_from_top` (Whirlpool Whelm) isn't carried on the wire: the library is a hidden
+        // zone, so its exact insertion index is unobservable to the client — the animation only
+        // shows the card entering the library. Add a proto field if a client ever needs it.
+        VisibleEvent::TuckedToLibrary {
+            card,
+            from,
+            to_top,
+            second_from_top: _,
+        } => Event::TuckedToLibrary(pb::VisibleEventTuckedToLibrary { card, from, to_top }),
         VisibleEvent::LibraryShuffled { player } => {
             Event::LibraryShuffled(pb::VisibleEventLibraryShuffled {
                 player: u32::from(player),
@@ -1387,6 +1471,17 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
                 player: u32::from(player),
             })
         }
+        VisibleEvent::PutFromHandOnTop {
+            player,
+            card,
+            from,
+            def,
+        } => Event::PutFromHandOnTop(pb::VisibleEventPutFromHandOnTop {
+            player: u32::from(player),
+            card,
+            from,
+            def,
+        }),
         VisibleEvent::ExiledFromGraveyardMayPlay { player, card, from } => {
             Event::ExiledFromGraveyardMayPlay(pb::VisibleEventExiledFromGraveyardMayPlay {
                 player: u32::from(player),
@@ -1564,6 +1659,7 @@ mod tests {
                     player: None,
                 }],
                 optional: false,
+                max: 1,
             }),
             actions: vec![ActionView {
                 id: 42,

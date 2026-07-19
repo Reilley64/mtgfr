@@ -62,6 +62,10 @@ impl Game {
                 let object = expect_object_target(target, "untap");
                 vec![Event::Untapped { object }]
             }
+            Effect::RemoveFromCombat { .. } => {
+                let object = expect_object_target(target, "remove from combat");
+                vec![Event::RemovedFromCombat { object }]
+            }
             Effect::GainControlUntilEndOfTurn { .. } => {
                 let object = expect_object_target(target, "a steal");
                 vec![Event::ControlGainedUntilEndOfTurn {
@@ -73,6 +77,95 @@ impl Game {
             Effect::GainControl { .. } => {
                 let object = expect_object_target(target, "a permanent control change");
                 vec![Event::ControlGained { object, controller }]
+            }
+            // Reins of Power (CR 720): the mass, two-player until-EOT control exchange. `target` is
+            // the opponent player. Snapshot both creature sets BEFORE writing any swap (so the first
+            // steal can't feed the second — CR 800.4a), untap them all, swap each to the OTHER
+            // player (each `ControlGainedUntilEndOfTurn` is freshly timestamped at apply, so it
+            // outranks any earlier steal/donation), and grant haste. Ownership is untouched.
+            Effect::ExchangeAllCreaturesUntilEndOfTurn { .. } => {
+                let Some(Target::Player(opponent)) = target else {
+                    return Vec::new();
+                };
+                let creatures = |who: PlayerId| -> Vec<ObjectId> {
+                    self.battlefield()
+                        .into_iter()
+                        .filter(|&id| {
+                            self.is_creature_on_battlefield(id) && self.controller_of(id) == who
+                        })
+                        .collect()
+                };
+                let yours = creatures(controller);
+                let theirs = creatures(opponent);
+                let mut events = Vec::new();
+                // "Untap all creatures you control and all creatures target opponent controls."
+                for &object in yours.iter().chain(theirs.iter()) {
+                    events.push(Event::Untapped { object });
+                }
+                // "You and that opponent each gain control of all creatures the other controls until
+                // end of turn."
+                for &object in &yours {
+                    events.push(Event::ControlGainedUntilEndOfTurn {
+                        object,
+                        controller: opponent,
+                        source_name,
+                    });
+                }
+                for &object in &theirs {
+                    events.push(Event::ControlGainedUntilEndOfTurn {
+                        object,
+                        controller,
+                        source_name,
+                    });
+                }
+                // "Those creatures gain haste until end of turn."
+                for &object in yours.iter().chain(theirs.iter()) {
+                    events.push(Event::TempBoost {
+                        object,
+                        power: 0,
+                        toughness: 0,
+                        keywords: &[Keyword::Haste],
+                        source_name,
+                    });
+                }
+                events
+            }
+            // Insurrection (CR 720): the mass, one-sided, all-creatures-of-any-controller twin of
+            // `GainControlUntilEndOfTurn`. `filter` is evaluated against every creature on the
+            // battlefield regardless of controller, including the caster's own (no `you`/`opponent`
+            // scoping, unlike `UntapAll` below). Snapshot the matching set BEFORE minting any event,
+            // untap them all, hand each to the caster (freshly timestamped so it outranks any
+            // earlier steal/donation — CR 800.4a), and grant haste. Ownership is untouched.
+            Effect::GainControlAllUntilEndOfTurn { filter } => {
+                let creatures: Vec<ObjectId> = self
+                    .battlefield()
+                    .into_iter()
+                    .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
+                    .collect();
+                let mut events = Vec::new();
+                // "Untap all creatures ..."
+                for &object in &creatures {
+                    events.push(Event::Untapped { object });
+                }
+                // "... and gain control of them until end of turn."
+                for &object in &creatures {
+                    events.push(Event::ControlGainedUntilEndOfTurn {
+                        object,
+                        controller,
+                        source_name,
+                    });
+                }
+                // "They gain haste until end of turn."
+                for &object in &creatures {
+                    events.push(Event::TempBoost {
+                        object,
+                        power: 0,
+                        toughness: 0,
+                        keywords: &[Keyword::Haste],
+                        source_name,
+                    });
+                }
+                events
             }
             Effect::GainControlWhile {
                 while_source_tapped,

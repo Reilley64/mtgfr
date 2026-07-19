@@ -1,0 +1,37 @@
+# {T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking
+# creature from combat and tap it.
+name = "Spurnmage Advocate"
+id = "1a2b3c4d-5e6f-4708-9091-a2b3c4d5e6f7"
+default_print = "2b3c4d5e-6f70-4819-90a2-b3c4d5e6f708"
+otags = ["activated-ability", "graveyard-hate", "removal-tempo"]
+oracle = "{T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking creature from combat and tap it."
+set = "soc"
+subtypes = ["Human", "Cleric"]
+
+[cost]
+generic = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# {T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking
+# creature from combat and tap it.
+# ponytail: only "attacking" is modeled — no `blocking` filter axis exists yet on `PermanentFilter`
+# (see `Effect::RemoveFromCombat`'s own doc); widen with one if a card needs a blocking target too.
+[[abilities]]
+timing = "activated"
+taps_self = true
+graveyard_exile_target_count = 2
+
+# Remove target attacking or blocking creature from combat
+[[abilities.effects]]
+type = "remove_from_combat"
+target = { permanent = { types = "creature", attacking = true } }
+
+# and tap it.
+[[abilities.effects]]
+type = "tap_target"
+target = { permanent = { types = "creature", attacking = true } }

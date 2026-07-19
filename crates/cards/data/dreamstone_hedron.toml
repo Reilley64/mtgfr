@@ -1,0 +1,37 @@
+# {T}: Add {C}{C}{C}.
+# {3}, {T}, Sacrifice this artifact: Draw three cards.
+name = "Dreamstone Hedron"
+id = "0e2575be-c596-4c8c-bf07-7941ca065721"
+default_print = "ba98ab5e-cd66-4d2a-8f7e-42ed6bc51810"
+oracle = "{T}: Add {C}{C}{C}.\n{3}, {T}, Sacrifice this artifact: Draw three cards."
+set = "cmd"
+
+[cost]
+generic = 6
+
+[kind]
+type = "artifact"
+
+# {T}: Add {C}{C}{C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}{C}{C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless", "colorless", "colorless"]
+
+# {3}, {T}, Sacrifice this artifact: Draw three cards.
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[abilities.activation_cost]
+generic = 3
+
+# Draw three cards.
+[[abilities.effects]]
+type = "draw_cards"
+count = 3

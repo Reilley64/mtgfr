@@ -1,0 +1,40 @@
+# Punishing Fire deals 2 damage to any target.
+# Whenever an opponent gains life, you may pay {R}. If you do, return this card from your graveyard to your hand.
+name = "Punishing Fire"
+id = "1890ef1b-38e5-432d-b040-f33cea7814e7"
+default_print = "b381d3c4-b318-4dff-a214-8a16a3872107"
+otags = ["burn-any", "lifegain-matters", "regrowth-self", "trigger-from-graveyard"]
+oracle = "Punishing Fire deals 2 damage to any target.\nWhenever an opponent gains life, you may pay {R}. If you do, return this card from your graveyard to your hand."
+set = "cmd"
+# CR 603.6e — the opponent-lifegain recursion trigger functions from the graveyard.
+functions_in_graveyard = true
+
+[cost]
+generic = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Punishing Fire deals 2 damage to any target.
+[[abilities]]
+timing = "spell"
+
+# Punishing Fire deals 2 damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 2
+target = "any"
+
+# Whenever an opponent gains life, you may pay {R}. If you do, return this card from your
+# graveyard to your hand.
+[[abilities]]
+timing = "opponent_gains_life"
+optional = true
+
+[abilities.cost]
+red = 1
+
+# return this card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_this_to_hand"

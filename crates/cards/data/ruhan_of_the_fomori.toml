@@ -1,0 +1,29 @@
+# At the beginning of combat on your turn, choose an opponent at random. Ruhan attacks that player this combat if able.
+name = "Ruhan of the Fomori"
+id = "82d109ea-3421-46eb-9bbf-f7f28b548ea6"
+default_print = "2ebe58a3-ba3f-451e-b834-30e71f071861"
+otags = ["combat-trigger", "legendary", "must-attack", "random-effect"]
+oracle = "At the beginning of combat on your turn, choose an opponent at random. Ruhan attacks that player this combat if able."
+set = "sld"
+subtypes = ["Giant", "Warrior"]
+legendary = true
+
+[cost]
+generic = 1
+blue = 1
+red = 1
+white = 1
+
+[kind]
+type = "creature"
+power = 7
+toughness = 7
+
+# At the beginning of combat on your turn, choose an opponent at random. Ruhan attacks that
+# player this combat if able.
+[[abilities]]
+timing = "begin_combat"
+
+# choose an opponent at random. Ruhan attacks that player this combat if able.
+[[abilities.effects]]
+type = "must_attack_random_opponent"

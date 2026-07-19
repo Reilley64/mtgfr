@@ -20,12 +20,10 @@ red = 1
 [kind]
 type = "enchantment"
 
-# Level 1 (base): "At the beginning of your first main phase, mill a card, then exile a card from
-# your graveyard at random. You may play the exiled card this turn."
-# ponytail: approximated as an upkeep trigger (upkeep stands in for first main phase — no
-# first-main-phase-only trigger timing).
+# At the beginning of your first main phase, mill a card, then exile a card from your graveyard at
+# random. You may play the exiled card this turn.
 [[abilities]]
-timing = "upkeep"
+timing = "first_main_phase"
 
 # mill a card,
 [[abilities.effects]]

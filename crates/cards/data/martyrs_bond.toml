@@ -1,0 +1,26 @@
+# Whenever this enchantment or another nonland permanent you control is put into a graveyard from the battlefield, each
+# opponent sacrifices a permanent of their choice that shares a card type with it.
+name = "Martyr's Bond"
+id = "7de8ffa5-f6e5-4987-b3f8-6d6fc83f8fa8"
+default_print = "2ff99e85-bfb7-4c8c-a8e1-3b0618ffe479"
+oracle = "Whenever this enchantment or another nonland permanent you control is put into a graveyard from the battlefield, each opponent sacrifices a permanent of their choice that shares a card type with it."
+set = "cmd"
+
+[cost]
+generic = 4
+white = 2
+
+[kind]
+type = "enchantment"
+
+# Whenever this enchantment or another nonland permanent you control is put into a graveyard from
+# the battlefield, each opponent sacrifices a permanent of their choice that shares a card type
+# with it.
+[[abilities]]
+timing = "nonland_permanent_you_control_dies_including_this"
+
+# each opponent sacrifices a permanent of their choice that shares a card type with it.
+[[abilities.effects]]
+type = "each_player_sacrifices"
+scope = "each_opponent"
+filter = "shares_type_with_dying_permanent"

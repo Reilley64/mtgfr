@@ -1,0 +1,25 @@
+# When this creature dies, exile all creatures.
+name = "False Prophet"
+id = "87c44c23-f209-494a-ab66-c9f5cf7bb4ea"
+default_print = "f41a43ba-1867-4ce3-97fe-5ae67d3f36c3"
+oracle = "When this creature dies, exile all creatures."
+set = "cmd"
+subtypes = ["Human", "Cleric"]
+
+[cost]
+generic = 2
+white = 2
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# When this creature dies, exile all creatures.
+[[abilities]]
+timing = "dies"
+
+# exile all creatures.
+[[abilities.effects]]
+type = "exile_all"
+filter = "creatures"

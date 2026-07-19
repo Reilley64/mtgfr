@@ -1,0 +1,24 @@
+# Indestructible (Effects that say "destroy" don't destroy this artifact.)
+# {T}: Add one mana of any color.
+name = "Darksteel Ingot"
+id = "a2529491-7389-4cfa-92d2-145eda779603"
+default_print = "a2ed37db-613a-48fa-874b-16ef00580d41"
+oracle = "Indestructible (Effects that say \"destroy\" don't destroy this artifact.)\n{T}: Add one mana of any color."
+set = "cmd"
+keywords = ["indestructible"]
+
+[cost]
+generic = 3
+
+[kind]
+type = "artifact"
+
+# {T}: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]

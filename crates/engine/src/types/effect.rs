@@ -2,12 +2,11 @@ use super::*;
 #[cfg(feature = "card-dsl")]
 use crate::de;
 
-/// A numeric quantity in an effect: a fixed number, the casting spell's chosen `{X}`, or a
-/// value derived from game state (a board/graveyard count, a permanent's power, a turn tally).
-/// Every amount resolves through [`Game::resolve_amount`] / [`Game::resolve_count`] — even the
-/// trivial `Fixed`/`X` — so a new derived variant is a single match arm with no separate pure path.
-/// ponytail: only spells choose an `x`; a triggered/activated ability resolves its amounts with
-/// `x = 0` (see [`Game::run`]), so no separate "ability X" concept is needed. (CR 602, CR 403.5, CR 601)
+/// A numeric quantity in an effect: a fixed number, the casting spell's (or activated ability's)
+/// chosen `{X}`, or a value derived from game state (a board/graveyard count, a permanent's
+/// power, a turn tally). Every amount resolves through [`Game::resolve_amount`] /
+/// [`Game::resolve_count`] — even the trivial `Fixed`/`X` — so a new derived variant is a single
+/// match arm with no separate pure path. (CR 602, CR 403.5, CR 601)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Amount {
     /// A fixed quantity written on the card.
@@ -87,6 +86,13 @@ pub enum Amount {
     /// The total power of creatures the effect's controller controls (Volcanic Salvo's "total
     /// power of creatures you control").
     TotalPowerYouControl,
+    /// The number of battlefield permanents the effect's controller *owns* but does not control —
+    /// i.e. that an opponent controls (Zedruu the Greathearted's "the number of permanents you own
+    /// that your opponents control"). Compares [`Game::owner_of`] against [`Game::controller_of`];
+    /// a permanent you own can only be controlled by you or an opponent (no teams), so
+    /// owner-is-you-but-controller-isn't is exactly "an opponent controls it," counted once
+    /// regardless of how many opponents there are.
+    PermanentsYouOwnOpponentsControl,
     /// `then` if `condition` holds for the effect's controller, else 0 (Mortality Spear's
     /// "costs {2} less to cast if you gained life this turn" — a conditional cost reduction).
     /// `then` is `&'static` (leaked, like other card-data slices) to keep [`Amount`] `Copy`.
@@ -235,14 +241,17 @@ pub enum Amount {
     /// `CardKind` directly instead, touching no `TypeSet` bit (several search-library filters rely
     /// on instants/sorceries having an empty `TypeSet` to stay excluded from "permanent" matches).
     InstantOrSorceryCardsInYourGraveyard,
-    /// The summed combat damage a
+    /// The combat damage just dealt to a player, from either of two `DealsCombatDamageToPlayer`-
+    /// family placements: the summed damage a
     /// [`Trigger::ZeroBasePowerCreaturesYouControlDealCombatDamage`] watch's whole batch of
-    /// base-power-0 attackers just dealt one defending player (Primo, the Unbounded's "Put a
-    /// number of +1/+1 counters on it equal to the damage dealt"). A placeholder, like
+    /// base-power-0 attackers dealt (Primo, the Unbounded's "Put a number of +1/+1 counters on it
+    /// equal to the damage dealt"), or the damage a single `who = "this"`
+    /// [`Trigger::DealsCombatDamageToPlayer`] source dealt on its own (Rapacious One's "create
+    /// that many 0/1 … Eldrazi Spawn creature tokens"). A placeholder, like
     /// [`SacrificedCreaturePower`](Self::SacrificedCreaturePower) above:
-    /// [`fill_combat_damage`] rewrites it to [`Fixed`](Self::Fixed) with the batch's summed
-    /// damage when the watch's ability is placed on the stack — resolving this variant directly
-    /// never happens (see [`Game::resolve_amount`]'s fallback).
+    /// [`fill_combat_damage`] rewrites it to [`Fixed`](Self::Fixed) with the dealt damage when
+    /// the watch's ability is placed on the stack — resolving this variant directly never
+    /// happens (see [`Game::resolve_amount`]'s fallback).
     CombatDamageDealt,
     /// The amount of damage — combat or noncombat alike — the enchanted host of a
     /// [`Trigger::EnchantedCreatureDealsDamage`] watch just dealt (CR 609.7, Armadillo Cloak:
@@ -407,6 +416,39 @@ pub enum Effect {
     /// target, so it must run *before* a step that removes the target from the battlefield if
     /// `amount` reads a battlefield-only characteristic like [`Amount::TargetPower`].
     GainLifeTargetController { amount: Amount },
+    /// Lash Out's win rider ("Lash Out deals 2 damage to that creature's controller"): real
+    /// damage (CR 120.1) to the *target creature's controller*, not the ability's own controller.
+    /// The damage-to-a-player twin of [`GainLifeTargetController`](Self::GainLifeTargetController)
+    /// — no target field of its own; it reads the enclosing [`Sequence`](Self::Sequence)'s shared
+    /// target creature's controller via [`Game::controller_of`](crate::Game::controller_of), so it
+    /// runs after the `deal_damage` step it rides behind (the creature is still on the battlefield
+    /// when its controller is read — 4 damage may kill it, but `controller_of` follows
+    /// `Object::Moved` regardless).
+    DealDamageToTargetController { amount: Amount },
+    /// Oblation's "then draws two cards" rider — the drawer is the enclosing
+    /// [`Sequence`](Self::Sequence)'s shared target's *owner* (`controller = false`, default) —
+    /// no target field of its own, read via [`Game::owner_of`](crate::Game::owner_of) like
+    /// [`GainLifeTargetController`](Self::GainLifeTargetController). Runs after the preceding tuck
+    /// step ([`ShuffleTargetPermanentIntoLibrary`](Self::ShuffleTargetPermanentIntoLibrary)) so it
+    /// draws from the already-shuffled library. `controller = true` scopes the draw to the
+    /// target's *controller* instead (via [`Game::controller_of`](crate::Game::controller_of)) —
+    /// the general who-draws axis Nin, the Pain Artist's damage-draw rider reuses with an
+    /// [`Amount::X`] count. `count` is an [`Amount`] for that same reuse.
+    TargetOwnerDraws {
+        count: Amount,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        controller: bool,
+    },
+    /// Clash with an opponent (CR 701.22): the ability's controller picks an opponent (the shared
+    /// [`PendingChoice::ChooseSplittingOpponent`](crate::PendingChoice::ChooseSplittingOpponent)
+    /// chooser, collapsed when there's only one), then both reveal the top card of their library
+    /// and each may leave it on top or put it on the bottom (a one-card scry each, reusing
+    /// [`PendingChoice::ArrangeTop`](crate::PendingChoice::ArrangeTop)). The controller wins iff
+    /// their revealed card's mana value is strictly greater than the opponent's ("you win a clash
+    /// if your card has a higher mana value than all other cards revealed in that clash"), recorded
+    /// on the resolution-scoped [`Game::clash_won`](crate::Game) flag read by a following
+    /// [`Condition::WonClash`](crate::Condition) step. No target of its own.
+    Clash,
     /// Manifest the top card of a player's library (CR 701.34 — Reality Shift's rider): that
     /// player puts their top card onto the battlefield face down as a 2/2 creature (a
     /// [`Permanent::face_down`] permanent). No target field of its own — the subject player is the
@@ -738,6 +780,12 @@ pub enum Effect {
         /// "Attacking creatures you control").
         #[cfg_attr(feature = "card-dsl", serde(default))]
         attacking_only: bool,
+        /// Restrict the anthem to creatures currently blocking (Crescendo of War's "Blocking
+        /// creatures you control get +1/+0"), the sibling of `attacking_only`. Checked against
+        /// [`CombatState::blocks`](crate::types::stack::CombatState::blocks) — any candidate
+        /// that's a blocker for some attacker, regardless of which attacker.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        blocking_only: bool,
         /// Restrict the anthem to the controller's commander(s) (Guardian Augmenter's
         /// "Commander creatures you control get +2/+2").
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -924,6 +972,16 @@ pub enum Effect {
     /// clause is unobservable while attack targets are always a `PlayerId` (planeswalker defenders
     /// aren't modeled); wire the clause through when they land.
     CantBeAttackedBy { filter: PermanentFilter },
+    /// "Choose an opponent at random. ~ attacks that player this combat if able." (Ruhan of the
+    /// Fomori, CR 508.1a "if able"): picks a living opponent of the ability's controller uniformly
+    /// via the injected RNG ([`Game::next_u64`]) and records a this-turn
+    /// [`Event::MustAttackDeclared`](crate::types::stack::Event::MustAttackDeclared) naming the
+    /// ability's own source as the required attacker — read back by [`Game::declare_attackers`]'s
+    /// `must_attack` loop, the same requirement [`CreateToken::must_attack_defender`](Self::CreateToken::must_attack_defender)
+    /// populates for a token. Fieldless: always the ability's own source, never a chosen target. A
+    /// no-op if the controller has no living opponents (only possible in a 1-player test rig; CR
+    /// 800.4a's "no opponents" case never arises in a real game).
+    MustAttackRandomOpponent,
     /// "Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented
     /// this way, create a [`token`](Self::PreventCombatDamageToYouCreatingTokens::token)."
     /// (Inkshield, CR 615.) No target — the shield always protects the ability's own controller
@@ -946,6 +1004,28 @@ pub enum Effect {
     /// ([`Game::deal_creature_damage`](crate::Game::deal_creature_damage),
     /// [`Game::damage_player`](crate::Game::damage_player)); it mints nothing.
     PreventAllCombatDamageThisTurn,
+    /// A continuous static prevention, permanent-scoped rather than this-turn (CR 615 — Guard
+    /// Gomazoa: "Prevent all combat damage that would be dealt to Guard Gomazoa."; Fog Bank:
+    /// "... to and dealt by Fog Bank."). Unlike [`PreventAllCombatDamageThisTurn`](Self::PreventAllCombatDamageThisTurn)'s
+    /// this-turn flag or [`PreventCombatDamageToYouCreatingTokens`](Self::PreventCombatDamageToYouCreatingTokens)'s
+    /// per-player shield, this never expires and is scoped to the permanent that carries it — the
+    /// combat-only, per-permanent sibling of [`PreventDamageToSelfRemovingCounter`](Self::PreventDamageToSelfRemovingCounter).
+    /// A durationless permanent static, never resolved off the stack — scanned by
+    /// [`Game::combat_damage_prevented_to_creature`] (the `to_self` half) and
+    /// [`Game::combat_damage_prevented_by_source`] (the `by_self` half) at the three
+    /// combat-damage chokes ([`Game::deal_creature_damage`](crate::Game::deal_creature_damage),
+    /// [`Game::assign_attacker_damage`](crate::Game::assign_attacker_damage),
+    /// [`Game::damage_player`](crate::Game::damage_player)).
+    PreventCombatDamageStatic {
+        /// Combat damage that would be dealt TO the permanent carrying this static is prevented
+        /// (Guard Gomazoa's "to Guard Gomazoa"; Fog Bank's "to ... Fog Bank").
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        to_self: bool,
+        /// Combat damage that would be dealt BY the permanent carrying this static is prevented
+        /// (Fog Bank's "and dealt by Fog Bank"). Guard Gomazoa never sets this.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        by_self: bool,
+    },
     /// Place a vow counter on each battlefield creature matching `filter`, marking the ability's
     /// controller as the player it "can't attack … for as long as it has a vow counter on it"
     /// (Promise of Loyalty's rider, run as the sacrifice edict's `then`). Emits an
@@ -995,12 +1075,25 @@ pub enum Effect {
     /// Reaction = a board-derived count). Damage is marked, then an SBA sweep clears the dead.
     /// `opponents_only` scopes the sweep to creatures controlled by opponents of the ability's
     /// controller (Volcanic Torrent's "each creature ... your opponents control"), the same axis
-    /// as [`WeakenEachCreature`](Self::WeakenEachCreature)'s `opponents_only`.
+    /// as [`WeakenEachCreature`](Self::WeakenEachCreature)'s `opponents_only`. `filter` narrows
+    /// which creatures the sweep hits beyond "is a creature" (Breath of Darigaaz's "each creature
+    /// *without flying*" — `PermanentFilter { without_flying: true, .. }`); `None` (the default)
+    /// preserves every existing consumer's "every creature" sweep.
     DamageEachCreature {
         amount: Amount,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         opponents_only: bool,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        filter: Option<PermanentFilter>,
     },
+    /// Deal `amount` damage to every player, the ability's own controller included (Breath of
+    /// Darigaaz's "... and each player"). Real damage — routed through the same
+    /// [`Game::mint_damage_family`] player-damage events ([`Event::LifeChanged`] +
+    /// [`Event::DamageDealtToPlayer`]) as [`DealDamage`](Self::DealDamage)'s
+    /// [`Target::Player`](super::Target::Player) arm, so lifelink/prevention/replacements apply
+    /// (CR 702.15e: a source dealing damage to multiple players gains life separately for each).
+    /// Takes no target.
+    DamageEachPlayer { amount: Amount },
     /// Each creature on the battlefield gets -`power`/-`toughness` until end of turn (Toxic
     /// Deluge = -X/-X). A creature reduced to 0-or-less toughness dies to the next SBA; survivors
     /// recover at cleanup like any until-end-of-turn boost. `opponents_only` scopes the sweep to
@@ -1380,12 +1473,35 @@ pub enum Effect {
         /// [`Self::cant_attack`], read live by [`Game::can_block`] via [`Game::host_cant_block`].
         #[cfg_attr(feature = "card-dsl", serde(default))]
         cant_block: bool,
+        /// The Vow cycle's "Enchanted creature ... can't attack you or planeswalkers you
+        /// control" — a restriction scoped to *this Aura's own controller*, distinct from
+        /// [`Self::cant_attack`]'s blanket ban. Read live in `declare_attackers` beside the
+        /// landed vow-counter (`Permanent::vow_protected`) check, off the same attachment scan,
+        /// so it vanishes the instant the Aura leaves.
+        /// ponytail: only "can't attack you" is enforced; "or planeswalkers you control" is
+        /// unobservable while every attack target is a `PlayerId` (no planeswalker permanent
+        /// exists in the pool) — wire it through when planeswalker defenders land.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        cant_attack_controller: bool,
         /// Faith's Fetters'/Prison Term's "its activated abilities can't be activated[, unless
         /// they're mana abilities]" (CR 605): read live by [`Game::ability_activation_gate`] via
         /// [`Game::host_activated_ability_restriction`], so it lifts the instant the Aura leaves.
         /// `None` for a `GrantToAttached` that doesn't restrict activated abilities at all.
         #[cfg_attr(feature = "card-dsl", serde(default))]
         activated_abilities: Option<AbilityRestriction>,
+        /// Champion's Helm's "As long as equipped creature is legendary, it has hexproof":
+        /// restricts `keywords` (only `keywords`, not `power`/`toughness`/the other axes above) to
+        /// while the host itself is legendary, read live off the host's own `CardDef::legendary`
+        /// at keyword recompute — the host-object twin of [`Effect::AnthemStatic::condition`],
+        /// which can't be reused here because [`Condition`]/[`Game::condition_holds`] only see the
+        /// controller-scoped facts on a [`TriggerContext`], not an arbitrary object's own
+        /// characteristics. `false` (default) grants `keywords` unconditionally, same as every
+        /// `grant_to_attached` before this axis existed.
+        /// ponytail: a single "host is legendary" bool, not a general host-object condition axis —
+        /// grow into a real `Condition` variant carrying the host id if a second host-based gate
+        /// (not just legendary) turns up in the pool.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        legendary_only: bool,
     },
     /// A static ability on an Aura: while it is attached, its host's *base* power/toughness
     /// becomes this fixed value (Darksteel Mutation's "base power and toughness 0/1"). Read
@@ -1457,6 +1573,69 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         while_source_tapped: bool,
     },
+    /// Donation (CR 720 — Zedruu the Greathearted's "Target opponent gains control of target
+    /// permanent you control"): a permanent-control change like [`GainControl`](Self::GainControl),
+    /// but the new controller is a *second, independent* target — the chosen `player` — instead of
+    /// the ability's own controller. Two target clauses (CR 601.2c): `target` is the permanent (its
+    /// [`Effect::target`], a "permanent you control" filter chosen at activation); `player` is the
+    /// recipient clause, chosen next via [`Game::place_ability_second_clause`] and read at
+    /// resolution off [`StackItem::Ability::targets_second`](crate::StackItem). Resolves by minting
+    /// [`Event::ControlGained`](crate::Event) for the permanent with the chosen player as
+    /// controller — the same persistent [`Game::permanent_control_overrides`] layer `GainControl`
+    /// writes, freshly timestamped, so ownership is untouched (CR 108.3: the donor still owns it).
+    TargetOpponentGainsControl {
+        target: TargetSpec,
+        /// The recipient clause — "target opponent" ([`TargetSpec::OpponentPlayer`]).
+        player: TargetSpec,
+    },
+    /// Exchange control of two permanents (CR 720 — Vedalken Plotter's "exchange control of target
+    /// land you control and target land an opponent controls", Chromeshell Crab's "exchange control
+    /// of target creature you control and target creature an opponent controls"): each permanent's
+    /// controller becomes the *other's* prior controller. Two independent target clauses (CR
+    /// 601.2c): `first` is the ability's own [`Effect::target`] (a "you control" filter), chosen
+    /// first; `second` is the "an opponent controls" clause, chosen next via
+    /// [`Game::place_ability_second_clause`] and read at resolution off
+    /// [`StackItem::Ability::targets_second`](crate::StackItem). The two filters are disjoint (you
+    /// vs an opponent), so the same permanent can never satisfy both (CR 601.2c). Resolves by
+    /// minting two [`Event::ControlGained`](crate::Event) — one per permanent, each carrying the
+    /// *other's* prior [`Game::controller_of`] and a fresh [`Game::next_control_timestamp`] stamp,
+    /// so the swap is authoritative over any earlier steal (CR 800.4a "most recent wins"). Ownership
+    /// is untouched (CR 108.3). Both permanents must still be on the battlefield to swap (CR 608.2b
+    /// — an exchange needs both).
+    ExchangeControl {
+        first: TargetSpec,
+        /// The second permanent clause — the "an opponent controls" target, swapped with `first`.
+        second: TargetSpec,
+    },
+    /// A mass, two-player until-end-of-turn control exchange (CR 720 — Reins of Power: "Untap all
+    /// creatures you control and all creatures target opponent controls. You and that opponent each
+    /// gain control of all creatures the other controls until end of turn. Those creatures gain
+    /// haste until end of turn."). The mass, two-sided twin of
+    /// [`GainControlUntilEndOfTurn`](Self::GainControlUntilEndOfTurn): `target` is the "target
+    /// opponent" ([`TargetSpec::OpponentPlayer`]), the ability's own single target. Resolves by
+    /// snapshotting both creature sets — every creature the ability's controller controls, every
+    /// creature the opponent controls — *before* any swap (so the first steal doesn't feed the
+    /// second, CR 800.4a), untapping all of them, then minting an until-EOT
+    /// [`Event::ControlGainedUntilEndOfTurn`](crate::Event) per creature to the *other* player
+    /// (freshly timestamped, so the swap outranks any earlier steal/donation and reverts at cleanup,
+    /// CR 514.2, to whoever the next-highest source names — not necessarily the owner). Both sets are
+    /// granted [`Keyword::Haste`] via until-EOT [`Event::TempBoost`](crate::Event). Ownership is
+    /// untouched (CR 108.3).
+    ExchangeAllCreaturesUntilEndOfTurn { target: TargetSpec },
+    /// A mass, one-sided, all-creatures-of-any-controller until-end-of-turn control steal (CR 720 —
+    /// Insurrection: "Untap all creatures and gain control of them until end of turn. They gain
+    /// haste until end of turn."). Untargeted — unlike
+    /// [`ExchangeAllCreaturesUntilEndOfTurn`](Self::ExchangeAllCreaturesUntilEndOfTurn)'s two-player
+    /// swap, `filter` (`creature` for Insurrection) is evaluated against every creature on the
+    /// battlefield regardless of controller, including the caster's own. Resolves by snapshotting
+    /// every matching creature, untapping each, then minting an until-EOT
+    /// [`Event::ControlGainedUntilEndOfTurn`](crate::Event) per creature to the ability's controller
+    /// (freshly timestamped, so the steal outranks any earlier steal/donation and reverts at
+    /// cleanup, CR 514.2, to whoever the next-highest source names — a mass steal layered over a
+    /// donated permanent reverts to the donated-to controller, not the owner, CR 800.4a). Every
+    /// matching creature is granted [`Keyword::Haste`] via until-EOT [`Event::TempBoost`](crate::Event).
+    /// Ownership is untouched (CR 108.3).
+    GainControlAllUntilEndOfTurn { filter: PermanentFilter },
     /// Equipment's Equip ability (CR 702.6): attach this Equipment to the target creature its
     /// controller controls, detaching it from any prior creature. Sorcery-speed.
     Equip,
@@ -1750,6 +1929,20 @@ pub enum Effect {
     /// library-resident, so this is the real zone change, not a second move). Takes no target;
     /// only resolves via [`Game::run`] (needs the real library order and pauses).
     RevealTopSplitPiles,
+    /// Murmurs from Beyond: "Reveal the top three cards of your library. An opponent chooses one
+    /// of them. Put that card into your graveyard and the rest into your hand." Reveals the top
+    /// `count` (all public, CR 701.16 "reveal"; a short library reveals only what's there, CR
+    /// 120.3 "as many as possible"), then hands off to [`Game::choose_splitting_opponent`] — the
+    /// same "an opponent" chooser [`RevealTopSplitPiles`](Self::RevealTopSplitPiles) uses. The
+    /// chosen opponent picks exactly one revealed card
+    /// ([`PendingChoice::OpponentChoosesRevealedToGraveyard`](crate::PendingChoice::OpponentChoosesRevealedToGraveyard)
+    /// — mandatory, no decline); that card is milled ([`Event::Milled`](crate::Event::Milled),
+    /// same library-to-graveyard event `RevealTopSplitPiles` uses) and the rest go straight to
+    /// the controller's hand, with no further controller-side choice (unlike Fact or Fiction's
+    /// pile split, there's only ever one destination for the un-chosen cards). An empty library
+    /// reveals nothing and raises no pause. Takes no target; only resolves via [`Game::run`]
+    /// (needs the real library order and pauses).
+    RevealTopOpponentPicksOneToGraveyard { count: u8 },
     /// Plargg and Nassari's upkeep trigger: each player (APNAP order) exiles cards from the top of
     /// their own library until they exile a nonland card (all face-up, public), an **opponent**
     /// chooses one of the nonland cards exiled this way (pausing on a
@@ -1997,6 +2190,23 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         opponent: bool,
     },
+    /// The effect's own controller may draw *up to* `count` cards — a CR 120.4 / 601.2c declinable
+    /// draw where the player chooses any number `0..=count` (Arcane Denial's "may draw up to two
+    /// cards"). Unlike [`TargetPlayerMayDraw`](Self::TargetPlayerMayDraw) (a targeted player, bare
+    /// yes/no) and [`DrawCards`](Self::DrawCards) (mandatory, no pause), resolution pauses the
+    /// resolving controller on a [`PendingChoice::MayDrawUpTo`](crate::PendingChoice::MayDrawUpTo)
+    /// count choice, then draws exactly the chosen number. No target — the controller is context.
+    MayDrawUpTo { count: Amount },
+    /// Trade Secrets' declinable draw, following a preceding [`TargetPlayerDraws`](Self::TargetPlayerDraws)
+    /// step's mandatory "target opponent draws two cards" (both steps share one
+    /// [`Effect::Sequence`] target — CR 601.2c, one target for the whole ability): the resolving
+    /// controller (caster) chooses `0..=count` cards to draw (CR 120.4), pausing on
+    /// [`PendingChoice::TradeSecretsCasterDraw`](crate::PendingChoice::TradeSecretsCasterDraw);
+    /// once answered, the *same target opponent* is paused on
+    /// [`PendingChoice::TradeSecretsRepeat`](crate::PendingChoice::TradeSecretsRepeat) to decide
+    /// whether to run the whole two-step process again. Uses [`TargetSpec::OpponentPlayer`] (the
+    /// Sequence's shared target — this step never resolves without a preceding targeted step).
+    MayDrawUpToThenOpponentMayRepeat { count: Amount },
     /// Exile every card in the target player's graveyard (CR 406 zone move) — Bojuka Bog's ETB,
     /// Remorseful Cleric's sacrifice ability. Fieldless: the target is intrinsic, like
     /// [`CounterTargetSpell`](Self::CounterTargetSpell). Uses [`TargetSpec::Player`].
@@ -2027,6 +2237,14 @@ pub enum Effect {
     /// lifegain-less sibling of [`EachOpponentDrain`](Self::EachOpponentDrain): a controller
     /// gain would re-trigger a "whenever you gain life" ability into a loop. No target.
     EachOpponentLosesLife { amount: Amount },
+    /// "Each player's life total becomes the highest life total among all players" (Arbiter of
+    /// Knollridge). CR 118.5: setting a life total to N is a gain or loss of the difference —
+    /// for every living player, `highest - their_current` is routed through the ordinary
+    /// gain/lose choke ([`Game::mint_life_family`]) so lifegain watchers/replacements
+    /// (`YouGainLife`, `OpponentGainsLife`) fire exactly as they would for a real gain, and a
+    /// player already at the highest total gets no event (a zero delta isn't a life change,
+    /// CR 118.5). Fieldless — the highest total is read live at resolution. No target.
+    EachPlayerLifeBecomesHighest,
     /// Return the targeted graveyard card(s) to their owner's hand (Raise Dead). The `target`
     /// scopes which graveyards are legal (typically your own). `count` is the same
     /// [`TargetCount`] multi-target surface [`ReturnToHand`](Self::ReturnToHand)'s `count` is: the
@@ -2125,10 +2343,20 @@ pub enum Effect {
     /// path (it needs the actual post-shuffle library order, not just a list of events to apply
     /// later — see [`Effect::ExileRandomFromGraveyardMayPlay`] for the same needs-`&mut self`
     /// shape).
-    /// ponytail: one cohesive effect for the whole sentence, not split into a separate tuck +
-    /// reveal-until-1; Chaos Warp is the only pool card that needs this exact shape today — split
-    /// it only when a second card wants just the tuck half.
     ShuffleTargetPermanentIntoLibraryThenReveal { target: TargetSpec },
+    /// Oblation: "The owner of target nonland permanent shuffles it into their library, then
+    /// draws two cards." The no-reveal half of
+    /// [`ShuffleTargetPermanentIntoLibraryThenReveal`](Self::ShuffleTargetPermanentIntoLibraryThenReveal)'s
+    /// fused sentence, split out once a second card needed just the shuffle-tuck without the
+    /// deploy-off-the-top rider — the real shuffle (unlike
+    /// [`TuckPermanentIntoLibrary`](Self::TuckPermanentIntoLibrary)'s fixed top/bottom placement)
+    /// still needs no `&mut self` special-casing here because nothing downstream in *this* effect
+    /// reads the post-shuffle order (Oblation's own "then draws two cards" is a separate
+    /// [`TargetOwnerDraws`](Self::TargetOwnerDraws) step later in the same
+    /// [`Sequence`](Self::Sequence), which reads the library live once this step's events have
+    /// already applied) — so this resolves through the ordinary pure mint path. A token target
+    /// ceases to exist instead of entering a library (CR 111.7), same as its fused sibling.
+    ShuffleTargetPermanentIntoLibrary { target: TargetSpec },
     /// Put the targeted battlefield permanent into its owner's library at a fixed position — no
     /// shuffle, no reveal (the standalone half of
     /// [`ShuffleTargetPermanentIntoLibraryThenReveal`](Self::ShuffleTargetPermanentIntoLibraryThenReveal)'s
@@ -2136,11 +2364,27 @@ pub enum Effect {
     /// top (Temporal Spring's "Put target permanent on top of its owner's library") or the
     /// bottom (Condemn's "Put target attacking creature on the bottom of its owner's library").
     /// A token ceases to exist instead (CR 111.7) — same rule its fused sibling already covers.
+    /// `second_from_top` places the permanent just under the top card instead (Whirlpool Whelm's
+    /// win rider — "put that creature into its owner's library second from the top"); it takes
+    /// precedence over `to_top`, and lands on top of a library with fewer than one card
+    /// (CR 120-style "as close as possible").
     TuckPermanentIntoLibrary {
         target: TargetSpec,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         to_top: bool,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        second_from_top: bool,
     },
+    /// Gomazoa's tap ability: "Put this creature and each creature it's blocking on top of their
+    /// owners' libraries, then those players shuffle." No chosen target — `source` plus every
+    /// attacker [`Game::attackers_blocked_by`] currently reports for it (empty if it's blocking
+    /// nothing, CR: only Gomazoa itself is tucked then). Each still-battlefield object is tucked
+    /// to the top of its owner's library (a token ceases to exist instead, CR 111.7, the same
+    /// shortcut [`TuckPermanentIntoLibrary`](Self::TuckPermanentIntoLibrary) takes); every owner
+    /// who had a real card tucked shuffles exactly once, after all of that owner's tucks are
+    /// queued (CR 701.19-style mandatory shuffle) — never mid-batch, so an owner tucked twice
+    /// doesn't have their first tuck's position scrambled before the second lands.
+    TuckSelfAndBlockedCreatures,
     /// Scry `count` (CR 701.42): the controller looks at the top `count` cards of their library,
     /// then puts any number of them on the bottom (in any order) and the rest back on top (in any
     /// order). Pauses on a [`PendingChoice::ArrangeTop`] rather than resolving to a fixed result.
@@ -2364,6 +2608,16 @@ pub enum Effect {
         drawer: Option<PlayerId>,
         count: u32,
     },
+    /// Howling Mine's payoff: "that player draws an additional card" — the player whose draw
+    /// step it is (context), not this permanent's controller. The `drawer` is filled in from the
+    /// triggering context ([`TriggerContext::active_player`]) when the ability is placed; it is
+    /// `None` in a card template — mirrors [`AttackingPlayerDraws`](Self::AttackingPlayerDraws)'s
+    /// shape.
+    EachDrawStepPlayerDraws {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        drawer: Option<PlayerId>,
+        count: u32,
+    },
     /// Marauding Raptor: "Whenever another creature you control enters, this creature deals 2
     /// damage to it. If a Dinosaur is dealt damage this way, this creature gets +2/+0 until end
     /// of turn." Damage is aimed at the permanent that just entered (context), not a chosen
@@ -2539,9 +2793,22 @@ pub enum Effect {
     /// ([`PendingChoice::ChooseSpellTargets`] → [`Event::SpellTargetsChosen`]).
     /// ponytail: CR's "or ability" half isn't modeled — stack abilities have no object identity to
     /// target in this engine (see [`TargetSpec::SingleTargetSpellOnStack`]); spells only.
+    ///
+    /// `optional` (Wild Ricochet, CR 114.6a's plain "you may choose new targets for target instant
+    /// or sorcery spell", vs Willbender's mandatory "must change if able" above): `true` keeps the
+    /// bent spell's current target(s) in `legal` (re-picking them is how a player declines — no
+    /// must-differ filter) and reaches every one of the bent spell's own independent target clauses
+    /// (not just a single forced slot), reusing the same clause-chaining machinery a fresh cast or
+    /// [`CopyTargetSpell`](Self::CopyTargetSpell)'s own copy-retarget already runs. This ability's
+    /// own controller chooses; legality is still evaluated from the bent spell's own controller's
+    /// perspective (retargeting never changes whose "you" the spell's own text refers to) — same
+    /// split Willbender's mandatory path below already keeps. `false` (default) is Willbender's
+    /// unchanged single-target-only, must-differ, single-clause bend.
     ChangeTargetOfTargetSpellOrAbility {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         target: TargetSpec,
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        optional: bool,
     },
     /// A delayed one-shot's copy payoff (CR 603.7/707.10 — Thunderclap Drake's "when you next
     /// cast an instant or sorcery spell this turn, copy it for each time you've cast your
@@ -2607,11 +2874,10 @@ pub enum Effect {
     /// fires (from [`TriggerContext::triggering_ability`]) — `None` in a card template. Guard-
     /// returns with no copy if the triggering ability already left the stack (countered in
     /// response, CR 603.4/707.10c); ordinarily the watch's trigger sits directly above it
-    /// (CR 603.3b), so it's still there.
-    /// ponytail: `may_choose_new_targets` (CR 707.10c) mints the copy keeping the original's
-    /// targets — the "you may choose new targets" re-pick isn't offered for the ability half. No
-    /// pool card is a *targeted* `{X}`-cost activated ability, so Unbound never copies one whose
-    /// target could be re-chosen; add a copy-scoped retarget pause when such a card ships.
+    /// (CR 603.3b), so it's still there. `may_choose_new_targets = true` (CR 707.10c) offers a
+    /// real re-pick via [`Game::place_targeted_ability`] when the copied ability actually targets
+    /// (Nin, the Pain Artist's "target creature"); `false`, or a targetless copy, keeps the
+    /// original's target(s) unchanged (CR 707.10c's declined case).
     /// ponytail: single-consumer primitive (only Unbound Flourishing copies an ability today) —
     /// the source disambiguation ("the topmost stack ability with this source") is exact while
     /// that holds; key copies by a real ability-instance id if a second consumer needs it.
@@ -2663,13 +2929,14 @@ pub enum Effect {
     /// spell", Quandrix Command's "target artifact or enchantment spell"); defaults to
     /// [`SpellFilter::AllSpells`], the classic "counter target spell".
     ///
-    /// `countered_dest`, when set, is Hinder's destination rider (CR 701.5b — "if that spell is
+    /// `countered_dest`, when set, is a destination rider (CR 701.5b — "if that spell is
     /// countered this way, put that card [somewhere] instead of into that player's graveyard"):
-    /// resolution pauses this ability's controller on a
+    /// [`CounteredDest::LibraryTopOrBottom`] (Hinder) pauses this ability's controller on a
     /// [`PendingChoice::ChooseCounteredSpellDestination`] top/bottom pick before the countered
-    /// card moves. `None` (the common case) is the ordinary counter straight to the graveyard.
-    /// Never combined with `unless_pays` in the pool today — the "unless" branch's `PayOrCounter`
-    /// pause always resolves through the ordinary [`Game::counter_spell`], not this rider.
+    /// card moves; [`CounteredDest::LibraryBottom`] (Spell Crumple) forces the bottom with no
+    /// pause. `None` (the common case) is the ordinary counter straight to the graveyard. Never
+    /// combined with `unless_pays` in the pool today — the "unless" branch's `PayOrCounter` pause
+    /// always resolves through the ordinary [`Game::counter_spell`], not this rider.
     CounterTargetSpell {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         unless_pays: Option<Amount>,
@@ -2735,6 +3002,33 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         fire_at: Step,
     },
+    /// Scattering Stroke's win rider (CR 603.7): schedule a delayed one-shot for the controller's
+    /// next first main phase that adds {C} equal to the shared target spell's mana value ("at the
+    /// beginning of your next main phase, add {C} for each 1 mana in that spell's mana cost"). Reads
+    /// the enclosing [`Sequence`](Self::Sequence)'s shared target — the just-countered spell — whose
+    /// mana value is captured NOW as last-known information (CR 603.10a; by the time this resolves
+    /// the counter has already moved it to the graveyard) and baked into the scheduled
+    /// [`AddMana`](Self::AddMana). Takes no target of its own, like Lash Out's
+    /// [`DealDamageToTargetController`](Self::DealDamageToTargetController) rider. The delayed trigger
+    /// is controller-scoped (fires on the controller's own `Main1`, not the next `Main1` to begin —
+    /// see [`Game::fire_delayed_triggers`]).
+    /// ponytail: uses the spell's PRINTED mana value (`CardDef::mana_value`), so an {X} spell's
+    /// chosen X counts as 0 here — faithful for every non-X spell (the only ones the pool counters
+    /// this way); capture the on-stack X (CR 202.3b) if an X-spell ever needs it.
+    /// ponytail: "your next main phase" is approximated as your next precombat main (`Main1`) — a
+    /// Scattering Stroke cast during your own precombat main waits until your next turn rather than
+    /// firing in that turn's postcombat main; unobservable for the pool (it's cast reactively on an
+    /// opponent's spell).
+    ScheduleColorlessManaForCounteredSpellNextMainPhase,
+    /// Pollen Lullaby's win rider (CR 604/702-style continuous effect): "creatures your opponents
+    /// control don't untap during their controllers' next untap steps." Marks each creature an
+    /// opponent of the controller controls right now; each mark is consumed the next time that
+    /// permanent's controller reaches their untap step (see [`Game::advance_step`]'s `Untap` arm),
+    /// whether or not it was tapped. Takes no target — every current opponent creature is affected.
+    /// ponytail: the mark rides the specific permanents present at resolution, keyed on the
+    /// controller they have when their untap step arrives; a creature whose control changes before
+    /// then is an unmodeled edge no pool card reaches.
+    SkipNextUntapOpponentCreatures,
     /// Arm a CR 603.7 delayed *one-shot* triggered ability that fires the next time its
     /// controller casts a spell matching `filter` **this turn** (Brass Infiniscope's "When you
     /// next cast a spell with {X} in its mana cost this turn, you draw a card and gain half X
@@ -3015,6 +3309,13 @@ pub enum Effect {
         #[cfg_attr(feature = "card-dsl", serde(default))]
         or_one_matching: Option<CardFilter>,
     },
+    /// The ability's controller puts `count` cards from their hand on top of their library, in an
+    /// order of their choosing (Brainstorm's "put two cards from your hand on top of your library
+    /// in any order"). Fewer than `count` in hand names the whole hand (the [`Discard`](Self::Discard)
+    /// clamp); an empty hand is a no-op. Pauses on a [`PendingChoice::PutFromHandOnTop`]; the
+    /// answer is an ordered list, first-named ending up literally on top (CR 401.1's "top of a
+    /// library" order is the last one placed there).
+    PutFromHandOnTop { count: u32 },
     /// The ability's controller may put a land card from their hand onto the battlefield (CR
     /// 305.9 — a "put onto the battlefield" effect, not "play a land"), tapped iff `tapped`
     /// (Eureka Moment; Zimone, Quandrix Prodigy's first activated ability). Pauses on a
@@ -3054,12 +3355,9 @@ pub enum Effect {
     /// target creature [and goad it]"; Magma Opus's "tap two target permanents" (a
     /// `Timing::Spell` ability, `count = {2, 2}`). Tapping an already-tapped permanent is a
     /// legal no-op. `count` is the same [`TargetCount`] multi-target surface as
-    /// [`ReturnToHand`](Self::ReturnToHand)'s.
-    /// ponytail: `count` only widens the cast-time multi-target pipeline
-    /// ([`Game::choose_spell_targets`], `Timing::Spell` only) — a *triggered* ability's target
-    /// (Killian's ETB) still goes through the single-target `ChooseTarget` path, which never
-    /// reads `count`, so "up to one" there stays mandatory until triggered abilities grow their
-    /// own optional/up-to-N targeting. (CR 701.38, CR 601.2c, CR 601)
+    /// [`ReturnToHand`](Self::ReturnToHand)'s — read on a *triggered* ability's own count-aware
+    /// `Game::place_targeted_ability`/`PendingChoice::ChooseTarget` path too, not just a spell's
+    /// cast-time multi-target pipeline. (CR 701.38, CR 601.2c, CR 601)
     TapTarget {
         target: TargetSpec,
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -3068,14 +3366,24 @@ pub enum Effect {
     /// Untap the target permanent (CR 701.21) — Besmirch's "untap that creature" rider. The tap
     /// state already exists; this just exposes the mutation as an effect.
     UntapTarget { target: TargetSpec },
+    /// Remove the target permanent from combat (CR 506.4) — Spurnmage Advocate's "Remove target
+    /// attacking or blocking creature from combat and tap it" (paired with a following
+    /// [`TapTarget`](Self::TapTarget) step sharing the same target). Drops it from the attacker
+    /// and blocker lists the same way [`Event::Regenerated`]'s CR 701.15b removal already does.
+    /// ponytail: `target` is authored `{ permanent = { types = "creature", attacking = true } }` —
+    /// no `blocking` filter axis exists yet, so a *blocking* (not attacking) creature isn't a
+    /// legal choice; widen `PermanentFilter` with a `blocking` axis if a card needs it.
+    RemoveFromCombat { target: TargetSpec },
     /// Untap every battlefield permanent the ability's controller controls matching `filter`
     /// (Beledros Witherbloom's "Pay 10 life: Untap all lands you control"). No target — same
     /// implicit "you control" scoping as [`PumpCreaturesYouControlUntilEndOfTurn`](Self::PumpCreaturesYouControlUntilEndOfTurn).
     UntapAll { filter: PermanentFilter },
     /// Every player draws `count` cards (Faerie Mastermind's "{3}{U}: Each player draws a
-    /// card"). No target; unlike [`DrawCards`](Self::DrawCards) (controller only) or
-    /// [`TargetPlayerDraws`](Self::TargetPlayerDraws) (one chosen player), this hits the whole table.
-    EachPlayerDraws { count: u32 },
+    /// card"; Skyscribing's spell mode, "Each player draws X cards"). No target; unlike
+    /// [`DrawCards`](Self::DrawCards) (controller only) or [`TargetPlayerDraws`](Self::TargetPlayerDraws)
+    /// (one chosen player), this hits the whole table. `count` is an [`Amount`] so a spell cast
+    /// for `{X}` can read [`Amount::X`] the same way [`DrawCards`](Self::DrawCards) does.
+    EachPlayerDraws { count: Amount },
     /// The target player loses `amount` life, with no matching gain (Ominous Harvest's "target
     /// player ... loses 1 life"). The controller-drain/each-opponent shapes already cover the
     /// other life-loss flavors; this is the plain single-target one. Uses [`TargetSpec::Player`].
@@ -3205,6 +3513,14 @@ pub enum Effect {
         )]
         on_expiry: &'static [Effect],
     },
+    /// "Then put [this card] on the bottom of its owner's library" (Spell Crumple's own
+    /// resolution rider, CR 701.5b-adjacent — not a counter destination, since this is the
+    /// caster's own spell, not the countered one): marks the resolving spell (see
+    /// [`Game::self_tuck_to_library_bottom`](crate::Game)) so
+    /// [`Game::finish_instant_sorcery_resolution`] sends it to the bottom of its owner's library
+    /// instead of the graveyard once every effect step has run — the self-referential sibling of
+    /// [`ExileSelfWithTimeCounters`](Self::ExileSelfWithTimeCounters) above.
+    TuckSelfToLibraryBottom,
     /// Run `steps` in order as one resolution, sharing this ability's target and `{X}` (Faithless
     /// Looting's "draw two cards, then discard two cards" is one ability, not two). A single-effect
     /// ability is the one-element case (the `effect = …` TOML form is sugar for `effects = […]`).
@@ -3335,6 +3651,23 @@ pub enum Effect {
 }
 
 impl Effect {
+    /// A plain "add `amount` {C}" mana ability, built at runtime so a delayed trigger can bake in a
+    /// count known only at schedule time (Scattering Stroke's {C}-per-mana-value rider). Every other
+    /// [`AddMana`](Self::AddMana) field takes its ordinary card default.
+    pub(crate) fn add_colorless(amount: u8) -> Effect {
+        Effect::AddMana {
+            mana: ManaPool::of(Mana::Colorless, amount),
+            identity: 0,
+            opponent_colors: 0,
+            repeat: Amount::Fixed(1),
+            restriction: None,
+            single_color: false,
+            track_provenance: false,
+            target: TargetSpec::None,
+            persist_until_end_of_turn: false,
+        }
+    }
+
     /// What this effect targets (most effects target nothing).
     pub(crate) fn target(self) -> TargetSpec {
         match self {
@@ -3359,17 +3692,24 @@ impl Effect {
             | Effect::CreateTokenCopy { target, .. }
             | Effect::TapTarget { target, .. }
             | Effect::UntapTarget { target }
+            | Effect::RemoveFromCombat { target }
             | Effect::GainControlUntilEndOfTurn { target }
+            | Effect::ExchangeAllCreaturesUntilEndOfTurn { target }
             | Effect::GainControl { target }
             | Effect::GainControlWhile { target, .. }
+            | Effect::TargetOpponentGainsControl { target, .. }
             | Effect::ShuffleTargetPermanentIntoLibraryThenReveal { target }
+            | Effect::ShuffleTargetPermanentIntoLibrary { target }
             | Effect::TuckPermanentIntoLibrary { target, .. }
             | Effect::RegenerateShield { target }
             | Effect::AttachMintedAuraToTarget { target }
             | Effect::BecomeCopyOfTargetCreatureGainingMyriad { target }
-            | Effect::ChangeTargetOfTargetSpellOrAbility { target }
+            | Effect::ChangeTargetOfTargetSpellOrAbility { target, .. }
             | Effect::DestroyTarget { target, .. } => target,
             Effect::ReturnToHand { target, .. } => target,
+            // The first target clause is the ability's own target; the second is chosen separately
+            // (see `Game::ability_second_target_clause`) and read off `targets_second`.
+            Effect::ExchangeControl { first, .. } => first,
             // A sequence shares one target: the first step that needs one supplies it.
             Effect::Sequence { steps } => steps
                 .iter()
@@ -3452,6 +3792,7 @@ impl Effect {
             | Effect::RevealTopAndDrainMutual
             | Effect::TargetPlayerGainsLife { opponent: true, .. }
             | Effect::TargetPlayerMayDraw { opponent: true, .. }
+            | Effect::MayDrawUpToThenOpponentMayRepeat { .. }
             | Effect::CreateToken {
                 controller: TokenController::TargetOpponent,
                 ..
@@ -3474,6 +3815,10 @@ impl Effect {
                 controller: TokenController::TargetPlayer,
                 ..
             }
+            | Effect::CreateToken {
+                controller: TokenController::EachOtherPlayer,
+                ..
+            }
             | Effect::PutCountersEach {
                 target_player: true,
                 ..
@@ -3492,6 +3837,7 @@ impl Effect {
             // opponent"); every ordinary mana source defaults to `TargetSpec::None`.
             Effect::AddMana { target, .. } => target,
             Effect::DrawCards { .. }
+            | Effect::MayDrawUpTo { .. }
             | Effect::GainLife { .. }
             | Effect::CreateToken { .. }
             | Effect::CreateTreasure {
@@ -3518,6 +3864,7 @@ impl Effect {
             | Effect::SetAttachedTypes { .. }
             | Effect::EachOpponentDrain { .. }
             | Effect::EachOpponentLosesLife { .. }
+            | Effect::EachPlayerLifeBecomesHighest
             | Effect::Scry { .. }
             | Effect::Surveil { .. }
             | Effect::LookAtTop { .. }
@@ -3547,6 +3894,7 @@ impl Effect {
                 ..
             }
             | Effect::DamageEachCreature { .. }
+            | Effect::DamageEachPlayer { .. }
             | Effect::WeakenEachCreature { .. }
             | Effect::PumpCreaturesYouControlUntilEndOfTurn { .. }
             | Effect::GrantKeywordsToPermanentsYouControlUntilEndOfTurn { .. }
@@ -3562,6 +3910,7 @@ impl Effect {
             | Effect::CouncilsDilemmaVote { .. }
             | Effect::OpponentSplitsExilePiles
             | Effect::RevealTopSplitPiles
+            | Effect::RevealTopOpponentPicksOneToGraveyard { .. }
             | Effect::EachPlayerExilesUntilNonlandOpponentPicks
             | Effect::EachPlayerCreatesFractalFromExiledPower { .. }
             | Effect::EachOtherTokenBecomesCopyOfChosen
@@ -3579,8 +3928,10 @@ impl Effect {
             }
             | Effect::PutLandFromHand { .. }
             | Effect::PutCreatureFromHand
+            | Effect::PutFromHandOnTop { .. }
             | Effect::CastCreatureFaceDown
             | Effect::UntapAll { .. }
+            | Effect::GainControlAllUntilEndOfTurn { .. }
             | Effect::EachPlayerDraws { .. }
             | Effect::SacrificeOwn { .. }
             | Effect::DefendingPlayerSacrifices { .. }
@@ -3593,6 +3944,7 @@ impl Effect {
             | Effect::ExileGraveyardObjectGainLife { .. }
             | Effect::MillSelf { .. }
             | Effect::ExileSelfWithTimeCounters { .. }
+            | Effect::TuckSelfToLibraryBottom
             | Effect::ExileRandomFromGraveyardMayPlay
             | Effect::AnthemStatic { .. }
             | Effect::KeywordAnthemStatic { .. }
@@ -3600,10 +3952,13 @@ impl Effect {
             | Effect::TriggerDoublingStatic { .. }
             | Effect::GrantManaAbility { .. }
             | Effect::ScheduleAtNextUpkeep { .. }
+            | Effect::ScheduleColorlessManaForCounteredSpellNextMainPhase
+            | Effect::SkipNextUntapOpponentCreatures
             | Effect::ScheduleNextCastTrigger { .. }
             | Effect::AttackerLosesLifeYouGain { .. }
             | Effect::AttackerLosesLifeYouDraw { .. }
             | Effect::AttackingPlayerDraws { .. }
+            | Effect::EachDrawStepPlayerDraws { .. }
             | Effect::DealDamageToEnteringPermanent { .. }
             | Effect::ReanimateDyingEnchantedCreature { .. }
             | Effect::ExileDeadCreatureCreateCopyWithSubtype { .. }
@@ -3615,6 +3970,8 @@ impl Effect {
             | Effect::AttackTax { .. }
             | Effect::CounterScaledAttackTax
             | Effect::CantBeAttackedBy { .. }
+            // Always names the ability's own source as the required attacker — no chosen target.
+            | Effect::MustAttackRandomOpponent
             | Effect::PreventCombatDamageToYouCreatingTokens { .. }
             | Effect::PreventAllCombatDamageThisTurn
             | Effect::PlaceVowCounters { .. }
@@ -3622,6 +3979,14 @@ impl Effect {
             | Effect::DealDamageToSelf { .. }
             // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target.
             | Effect::GainLifeTargetController { .. }
+            // Reads the enclosing `Sequence`'s shared target creature's controller; no target of
+            // its own (Lash Out's win rider).
+            | Effect::DealDamageToTargetController { .. }
+            // A no-target-of-its-own step: reads the enclosing `Sequence`'s shared target's owner
+            // or controller (Oblation's "then draws two cards" rider).
+            | Effect::TargetOwnerDraws { .. }
+            // Clash picks its opponent at resolution (CR 701.22), not via a cast/activation target.
+            | Effect::Clash
             // A no-target-of-its-own step: manifests the enclosing `Sequence`'s shared target's
             // controller's top card (see the variant doc).
             | Effect::Manifest
@@ -3684,6 +4049,7 @@ impl Effect {
             | Effect::PlayFromGraveyardOncePerTurn
             | Effect::PreventNoncombatDamageToOtherCreaturesYouControl
             | Effect::PreventDamageToSelfRemovingCounter
+            | Effect::PreventCombatDamageStatic { .. }
             // Redoubled Stormsinger enumerates matching tokens internally — no chosen target.
             | Effect::SetBasePtCreaturesYouControlUntilEndOfTurn { .. }
             // A self-animation always affects the ability's own source (Restless Spire), no target.
@@ -3696,7 +4062,9 @@ impl Effect {
             | Effect::ReturnExiledCardToOwnersGraveyard { .. }
             // Both ETB sacrifice-unless arms always act on their own source — no chosen target.
             | Effect::SacrificeSelfUnlessPay { .. }
-            | Effect::SacrificeSelfUnlessReturnLand { .. } => TargetSpec::None,
+            | Effect::SacrificeSelfUnlessReturnLand { .. }
+            // Gomazoa enumerates its own blocked creatures internally — no chosen target.
+            | Effect::TuckSelfAndBlockedCreatures => TargetSpec::None,
         }
     }
 
@@ -3820,6 +4188,10 @@ pub enum CounteredDest {
     /// "Put that card on the top or bottom of its owner's library" — the countering ability's
     /// controller picks, via a [`PendingChoice::ChooseCounteredSpellDestination`] pause.
     LibraryTopOrBottom,
+    /// "Put it on the bottom of its owner's library instead of into that player's graveyard"
+    /// (Spell Crumple) — forced, unlike [`LibraryTopOrBottom`](Self::LibraryTopOrBottom); no
+    /// pause, straight to the bottom.
+    LibraryBottom,
 }
 
 /// A sacrifice requirement in an ability's activation cost (CR 118.9 — sacrifice as a cost).
@@ -3896,6 +4268,14 @@ pub enum CounterKind {
     /// pay with a +1/+1 counter. [`Game::pt_layers`] reads this slot to subtract 1/1 per counter,
     /// mirroring `plus_counters`' own P/T contribution.
     MinusOneMinusOne,
+    /// A strife counter (CR 122.1 — Crescendo of War): placed on the source itself at each
+    /// upkeep, read back by an [`AnthemStatic`](Effect::AnthemStatic)'s
+    /// `power: Amount::PerCounterOfKindOnSource` for both its attacking and blocking clauses.
+    Strife,
+    /// An age counter (CR 122.1, CR 702.24a — cumulative upkeep, Jotun Grunt): placed on the
+    /// source itself at its controller's upkeep, one more each time, scaling
+    /// [`CardDef::cumulative_upkeep`](super::CardDef::cumulative_upkeep)'s pay-or-sacrifice cost.
+    Age,
 }
 
 impl CounterKind {
@@ -3905,7 +4285,7 @@ impl CounterKind {
     /// `Vec`/`HashMap`. Grow this (and add the matching variant) when a future card needs
     /// another named kind, or swap to a leaked `&'static [(CounterKind, u8)]`
     /// slice if the kind set ever needs to be open-ended.
-    pub(crate) const COUNT: usize = 7;
+    pub(crate) const COUNT: usize = 9;
 
     /// Every kind, for enumerating "each kind present" (proliferate, move/remove-all-counters).
     pub(crate) const ALL: [CounterKind; Self::COUNT] = [
@@ -3916,7 +4296,24 @@ impl CounterKind {
         CounterKind::Time,
         CounterKind::Scream,
         CounterKind::MinusOneMinusOne,
+        CounterKind::Strife,
+        CounterKind::Age,
     ];
+}
+
+/// [`CardDef::cumulative_upkeep`](super::CardDef::cumulative_upkeep)'s upkeep cost (CR 702.24):
+/// paid once per age counter already on the permanent (including the one just placed this
+/// upkeep) or the permanent is sacrificed.
+/// ponytail: the pool's one non-mana cumulative-upkeep shape (Jotun Grunt's "put two cards from
+/// a single graveyard on the bottom of their owner's library") — CR 702.24's upkeep cost may be
+/// any cost at all; grow a `Mana(Cost)` sibling when a future card needs a mana-paid cumulative
+/// upkeep instead.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "card-dsl", derive(serde::Deserialize))]
+pub struct CumulativeUpkeepCost {
+    /// Cards from a single graveyard put on the bottom of their owner's library, per age
+    /// counter (Jotun Grunt: 2).
+    pub graveyard_cards: u8,
 }
 
 /// The Pacifism-family "activated abilities can't be activated" restriction an
@@ -4082,6 +4479,15 @@ pub struct ActivationCost {
     /// `return_self`, this never gates activation on its own (the source is always payable) and
     /// self-limits future activations by taking the permanent off the battlefield.
     pub exile_self: bool,
+    /// "Exile N target cards from an opponent's graveyard" as an additional cost (CR 601.2c/
+    /// 602.2b — Spurnmage Advocate's "Exile two target cards from an opponent's graveyard:
+    /// …"). Unlike `sacrifice`/`discard_cost`'s untargeted choices, CR 601.2c treats these as
+    /// real targets: the activator names them in [`Intent::ActivateAbility`]'s `target_second`
+    /// (the ability's independent *second* target clause, alongside its own stack `target`),
+    /// validated distinct/legal/all-from-one-opponent's-graveyard and exiled immediately in
+    /// [`Game::activate_ability`] — before the ability (with its own single `target`) goes on
+    /// the stack. `0` (the default) for every other pool cost.
+    pub graveyard_exile_target_count: u8,
 }
 
 /// An intervening-if condition on a triggered ability (CR 603.4): checked once, *when the
@@ -4216,6 +4622,16 @@ pub enum Condition {
     /// `TriggerContext` carries no source id, so `Game::queue_trigger_group` special-cases it
     /// directly against its own `source` parameter rather than through `condition_holds`.
     ThisPermanentEnteredUntapped,
+    /// "if [this permanent] is untapped" (Howling Mine's intervening-if) — whether the ability's own
+    /// source permanent is untapped *right now*, re-read live rather than snapshotted once like
+    /// [`ThisPermanentEnteredUntapped`](Self::ThisPermanentEnteredUntapped) (which asks how the
+    /// permanent entered, not its current state). Source-object-based, same shape as
+    /// [`SourceHasCounters`](Self::SourceHasCounters): usable both as an `[abilities.condition]`
+    /// intervening-if (checked at trigger placement, [`Game::ability_condition_holds`]) *and*
+    /// nested in an [`Effect::Conditional`] (checked fresh at resolution) — CR 603.4 requires
+    /// *both* checks, and the pool falsifies skipping the second (Magma Opus's instant-speed "tap
+    /// two target permanents" can tap the source in response, after it triggered untapped).
+    SourceUntapped,
     /// "if that spell's mana value is `at_least` or greater" (Prismari Pianist's "if that
     /// spell's mana value is 5 or greater, create three of those tokens instead") — a
     /// `Trigger::CastSpell` (magecraft) intervening-if, read off `TriggerContext::cast_mana_value`.
@@ -4301,6 +4717,12 @@ pub enum Condition {
     /// `ctx.controller`, re-evaluated live like every other static-anthem gate here — flips off
     /// the instant the turn passes to someone else, not just at cleanup.
     DuringYourTurn,
+    /// "If you win the clash" (Lash Out — CR 701.22d): reads the resolution-scoped
+    /// [`Game::clash_won`](crate::Game) flag a preceding [`Effect::Clash`](crate::Effect::Clash)
+    /// step in the same resolution just set. Not a persistent board fact — it lives only for the
+    /// rest of the current resolution, and is only ever read by a `conditional` step that follows
+    /// a clash in the same ability, so a stale value from an earlier resolution can never be read.
+    WonClash,
     /// "Then if there are no cards in that player's graveyard" (Nezumi Graverobber's flip gate —
     /// CR 608.2, evaluated as the ability resolves, after the same ability's exile step already
     /// emptied — or didn't — the targeted card's owner's graveyard). Target-based like
@@ -4481,6 +4903,14 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
         Some(dead) => fill_dead_creature(effect, dead),
         None => effect,
     };
+    // A `NonlandPermanentYouControlDiesIncludingThis` watch's dynamic edict payoff (Martyr's
+    // Bond's "shares a card type with it") needs the dying permanent's own last-known card types
+    // baked into its `EachPlayerSacrifices` filter — guarded separately for the same reason as
+    // the look-backs above.
+    let effect = match ctx.dying_permanent_types {
+        Some(types) => fill_dying_permanent_types(effect, types),
+        None => effect,
+    };
     // A `CardsLeaveYourGraveyard` payoff that becomes a copy of one of those cards (Spirit of
     // Resilience) needs the batch's card ids baked in — guarded separately for the same reason as
     // the look-backs above. `&[]` for every other trigger, so this is a no-op elsewhere.
@@ -4514,6 +4944,12 @@ pub(crate) fn contextualize_effect(effect: Effect, ctx: TriggerContext) -> Effec
     // `triggering_spell` above.
     let effect = match ctx.triggering_caster {
         Some(caster) => fill_triggering_caster(effect, caster),
+        None => effect,
+    };
+    // Howling Mine: `EachDrawStepPlayerDraws`'s drawer is the active player whose draw step this
+    // is (context), not this ability's controller — CR "that player draws an additional card".
+    let effect = match ctx.active_player {
+        Some(active_player) => fill_each_draw_step_drawer(effect, active_player),
         None => effect,
     };
     match (effect, ctx.attack) {
@@ -4730,6 +5166,39 @@ fn fill_dead_creature(effect: Effect, dead: ObjectId) -> Effect {
     }
 }
 
+/// Rewrite an `EachPlayerSacrifices` edict's `shares_type_with_dying_permanent`-marked filter to
+/// the dying permanent's own last-known card types (CR 603.10a — Martyr's Bond's "shares a card
+/// type with it"), replacing its authored (empty) `types` with the resolved set. Mirrors
+/// [`fill_dead_creature`] above, one effect variant only (flag-don't-force: no other pool card
+/// reads this context field yet).
+fn fill_dying_permanent_types(effect: Effect, types: TypeSet) -> Effect {
+    match effect {
+        Effect::EachPlayerSacrifices {
+            filter,
+            scope,
+            keep_one,
+            life_loss,
+            then,
+        } if filter.shares_type_with_dying_permanent => Effect::EachPlayerSacrifices {
+            filter: PermanentFilter { types, ..filter },
+            scope,
+            keep_one,
+            life_loss,
+            then,
+        },
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|&step| fill_dying_permanent_types(step, types))
+                .collect();
+            Effect::Sequence {
+                steps: Box::leak(filled.into_boxed_slice()),
+            }
+        }
+        other => other,
+    }
+}
+
 /// Rewrite a [`TriggerContext::cards_left_graveyard`]-reading effect placeholder to the batch's
 /// card ids: [`Effect::PutCounterThenMayBecomeCopyOfCardFromList`] (Spirit of Resilience, off
 /// [`Trigger::CardsLeaveYourGraveyard`]) — mirrors [`fill_dead_creature`] above. `cards` is the
@@ -4856,6 +5325,45 @@ fn fill_triggering_caster(effect: Effect, caster: PlayerId) -> Effect {
                 .collect();
             Effect::Sequence {
                 steps: Box::leak(filled.into_boxed_slice()),
+            }
+        }
+        other => other,
+    }
+}
+
+/// Rewrite a [`TriggerContext::active_player`]-reading effect placeholder to the player whose
+/// draw step it is: [`Effect::EachDrawStepPlayerDraws`] (Howling Mine's "that player draws an
+/// additional card") — mirrors [`fill_triggering_caster`] above. Recurses into
+/// [`Effect::Conditional`]'s `then` (not just `Sequence`, unlike its siblings) so Howling Mine's
+/// CR 603.4 resolution-time re-check wrapper still gets its nested draw filled.
+fn fill_each_draw_step_drawer(effect: Effect, active_player: PlayerId) -> Effect {
+    match effect {
+        Effect::EachDrawStepPlayerDraws { count, .. } => Effect::EachDrawStepPlayerDraws {
+            drawer: Some(active_player),
+            count,
+        },
+        Effect::Sequence { steps } => {
+            let filled: Vec<Effect> = steps
+                .iter()
+                .map(|&step| fill_each_draw_step_drawer(step, active_player))
+                .collect();
+            Effect::Sequence {
+                steps: Box::leak(filled.into_boxed_slice()),
+            }
+        }
+        Effect::Conditional {
+            condition,
+            then,
+            negate,
+        } => {
+            let filled: Vec<Effect> = then
+                .iter()
+                .map(|&step| fill_each_draw_step_drawer(step, active_player))
+                .collect();
+            Effect::Conditional {
+                condition,
+                then: Box::leak(filled.into_boxed_slice()),
+                negate,
             }
         }
         other => other,
@@ -5071,9 +5579,11 @@ fn fill_cast_x(effect: Effect, x: u32) -> Effect {
 /// [`CardFilter::CreatureWithManaValueAtMost`] bounded by the damage the source just dealt
 /// (Venerable Warsinger's "mana value X or less … where X is the amount of damage this creature
 /// dealt to that player") — CR 510.2/603.10a last-known information, locked in when the trigger
-/// goes on the stack, same shape as [`fill_dying_source_amounts`] above. Recurses into a
-/// [`Effect::Sequence`] so a multi-step ability shares the one damage amount across every step,
-/// mirroring [`fill_entering_permanent`]; every other effect passes through unchanged.
+/// goes on the stack, same shape as [`fill_dying_source_amounts`] above. Every other effect
+/// (including `Amount::CombatDamageDealt` itself — Primo, the Unbounded's minted Fractal's
+/// `enters_with` counter count, and Rapacious One's `count` of minted Eldrazi Spawn) is handled
+/// by the generic [`map_effect_amounts`] walker, which also covers the [`Effect::Sequence`]
+/// recursion so a multi-step ability shares the one damage amount across every step.
 fn fill_combat_damage(effect: Effect, damage: i32) -> Effect {
     match effect {
         Effect::ReanimateToBattlefield {
@@ -5092,30 +5602,6 @@ fn fill_combat_damage(effect: Effect, damage: i32) -> Effect {
             finality,
             becomes,
         },
-        // Primo, the Unbounded's "Put a number of +1/+1 counters on it equal to the damage
-        // dealt": only `enters_with` (the minted Fractal's counter count) is a placeholder here —
-        // every other `CreateToken` field passes through unchanged.
-        Effect::CreateToken {
-            enters_with: Amount::CombatDamageDealt,
-            token,
-            count,
-            controller,
-            set_base_pt,
-            exile_at_next_end_step,
-            enters_tapped_and_attacking,
-            attacking_context,
-            must_attack_defender,
-        } => Effect::CreateToken {
-            token,
-            count,
-            controller,
-            enters_with: Amount::Fixed(damage.max(0)),
-            set_base_pt,
-            exile_at_next_end_step,
-            enters_tapped_and_attacking,
-            attacking_context,
-            must_attack_defender,
-        },
         Effect::Sequence { steps } => {
             let filled: Vec<Effect> = steps
                 .iter()
@@ -5125,7 +5611,10 @@ fn fill_combat_damage(effect: Effect, damage: i32) -> Effect {
                 steps: Box::leak(filled.into_boxed_slice()),
             }
         }
-        other => other,
+        other => map_effect_amounts(other, &|amount| match amount {
+            Amount::CombatDamageDealt => Amount::Fixed(damage.max(0)),
+            other => other,
+        }),
     }
 }
 
@@ -5191,6 +5680,19 @@ pub(crate) fn contextualize_sacrifice_effect(effect: Effect, power: i32, toughne
         },
         Effect::GainLife { amount } => Effect::GainLife {
             amount: fill(amount),
+        },
+        // Brion Stoutarm: "deals damage equal to the sacrificed creature's power to target
+        // player or planeswalker" — the sac-power/toughness fill applies to damage amounts too.
+        Effect::DealDamage {
+            amount,
+            target,
+            count,
+            divided,
+        } => Effect::DealDamage {
+            amount: fill(amount),
+            target,
+            count,
+            divided,
         },
         Effect::PutCounters {
             count,

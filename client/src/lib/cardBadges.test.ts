@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { abilityGlyph, hiddenKeywordCount, keywordBadges, showsSummoningSick } from "~/lib/cardBadges";
+import {
+  abilityGlyph,
+  foreignOwnerSeat,
+  hiddenKeywordCount,
+  keywordBadges,
+  showsSummoningSick,
+} from "~/lib/cardBadges";
 
 describe("keywordBadges", () => {
   it("orders combat keywords and drops unknowns", () => {
@@ -58,5 +64,18 @@ describe("showsSummoningSick", () => {
     expect(showsSummoningSick(true, false)).toBe(true);
     expect(showsSummoningSick(true, true)).toBe(false);
     expect(showsSummoningSick(false, false)).toBe(false);
+  });
+});
+
+describe("foreignOwnerSeat", () => {
+  it("badges the owner when it controls-differs (Zedruu donation, CR 108.3)", () => {
+    // P0 owns the permanent, P1 now controls it — the badge names P0.
+    expect(foreignOwnerSeat(0, 1)).toBe(0);
+    expect(foreignOwnerSeat(2, 3)).toBe(2);
+  });
+
+  it("shows no badge for a normally-controlled permanent", () => {
+    expect(foreignOwnerSeat(0, 0)).toBeNull();
+    expect(foreignOwnerSeat(3, 3)).toBeNull();
   });
 });

@@ -102,14 +102,15 @@ impl<'a> ChoiceCtx<'a> {
                 source,
                 effect,
                 legal,
-                optional,
+                count,
                 ..
             } => PendingChoiceView::ChooseTarget {
                 player: player.0,
                 source,
                 label: effect.label(),
                 items: self.label_targets(legal),
-                optional,
+                optional: count.min == 0,
+                max: count.max,
             },
             engine::PendingChoice::ChooseSpellTargets {
                 player,
@@ -149,6 +150,26 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 label: effect.label(),
+            },
+            engine::PendingChoice::MayDrawUpTo { player, max } => PendingChoiceView::MayDrawUpTo {
+                player: player.0,
+                max,
+            },
+            engine::PendingChoice::TradeSecretsCasterDraw {
+                player,
+                max,
+                opponent,
+                ..
+            } => PendingChoiceView::TradeSecretsCasterDraw {
+                player: player.0,
+                max,
+                opponent: opponent.0,
+            },
+            engine::PendingChoice::TradeSecretsRepeat {
+                player, caster, ..
+            } => PendingChoiceView::TradeSecretsRepeat {
+                player: player.0,
+                caster: caster.0,
             },
             engine::PendingChoice::PayCost {
                 player,
@@ -202,6 +223,17 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 source,
                 cost: wire_cost(cost),
+            },
+            engine::PendingChoice::PayCumulativeUpkeepOrSacrifice {
+                player,
+                source,
+                options,
+                count,
+            } => PendingChoiceView::PayCumulativeUpkeepOrSacrifice {
+                player: player.0,
+                source,
+                items: self.label_items(options),
+                count,
             },
             engine::PendingChoice::SacrificeUnlessPay {
                 player,
@@ -374,6 +406,18 @@ impl<'a> ChoiceCtx<'a> {
                 max,
                 items: self.label_targets(legal),
             },
+            engine::PendingChoice::ChooseActivationCostTargets {
+                player,
+                source,
+                legal,
+                count,
+                ..
+            } => PendingChoiceView::ChooseActivationCostTargets {
+                player: player.0,
+                source,
+                count,
+                items: self.label_targets(legal),
+            },
             engine::PendingChoice::MaySacrifice {
                 player,
                 source,
@@ -485,6 +529,15 @@ impl<'a> ChoiceCtx<'a> {
                 count,
                 ..
             } => PendingChoiceView::Discard {
+                player: player.0,
+                count: count as u32,
+                items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
+            },
+            engine::PendingChoice::PutFromHandOnTop {
+                player,
+                hand,
+                count,
+            } => PendingChoiceView::PutFromHandOnTop {
                 player: player.0,
                 count: count as u32,
                 items: private_items(player, self.viewer, hand, |ids| self.label_items(ids)),
@@ -601,6 +654,16 @@ impl<'a> ChoiceCtx<'a> {
                 revealed,
                 ..
             } => PendingChoiceView::PartitionRevealed {
+                player: player.0,
+                source,
+                items: self.label_items(revealed),
+            },
+            engine::PendingChoice::OpponentChoosesRevealedToGraveyard {
+                player,
+                source,
+                revealed,
+                ..
+            } => PendingChoiceView::OpponentChoosesRevealedToGraveyard {
                 player: player.0,
                 source,
                 items: self.label_items(revealed),
@@ -801,7 +864,9 @@ mod coverage_tests {
                     source,
                     effect: draw_effect(),
                     legal: vec![Target::Object(blocker)],
-                    optional: false,
+                    count: engine::TargetCount::default(),
+                    x: 0,
+                    activated: false,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseTarget { .. }),
             ),

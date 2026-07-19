@@ -1,0 +1,37 @@
+# Counter target instant or sorcery spell unless its controller pays {1}.
+# Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
+# the copies.)
+name = "Flusterstorm"
+id = "86bf58f2-7f25-4e10-b797-25e0e8e67769"
+default_print = "f900eeb7-7c45-44bc-ad3a-0bbe594ecf50"
+otags = ["cast-trigger-self", "copy-self", "counterspell-soft", "single-target-instant-sorcery", "storm-like"]
+oracle = "Counter target instant or sorcery spell unless its controller pays {1}.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)"
+set = "ima"
+
+[cost]
+blue = 1
+
+[kind]
+type = "instant"
+
+# Counter target instant or sorcery spell unless its controller pays {1}.
+[[abilities]]
+timing = "spell"
+
+# Counter target instant or sorcery spell unless its controller pays {1}.
+[[abilities.effects]]
+type = "counter_target_spell"
+unless_pays = 1
+filter = "instant_or_sorcery"
+
+# Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
+# the copies.)
+[[abilities]]
+timing = "when_you_cast_this"
+
+# copy it for each spell cast before it this turn. You may choose new targets for the copies.
+[[abilities.effects]]
+type = "copy_triggering_spell"
+count = "spells_cast_before_this_this_turn"
+may_choose_new_targets = true
+last_known_information = true

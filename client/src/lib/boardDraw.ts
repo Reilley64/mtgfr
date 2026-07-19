@@ -2,7 +2,14 @@
 
 import { AVATAR_R, CARD_H, CARD_W, type RenderCard, STEP, seatBand, seatColor, ZONE } from "~/layout";
 import { type Camera, worldToScreen } from "~/lib/camera";
-import { abilityGlyph, hiddenKeywordCount, keywordBadges, showsSummoningSick, TAP_GLYPH } from "~/lib/cardBadges";
+import {
+  abilityGlyph,
+  foreignOwnerSeat,
+  hiddenKeywordCount,
+  keywordBadges,
+  showsSummoningSick,
+  TAP_GLYPH,
+} from "~/lib/cardBadges";
 import type { CardFlight } from "~/lib/cardFlight";
 import type { ImageCache } from "~/lib/imageCache";
 import { LETHAL_COMMANDER_DAMAGE, worstCommanderDamage } from "~/lib/outcome";
@@ -740,6 +747,19 @@ function drawStatusBadges(
     // Nudge down if prepared chip occupies the top-right.
     const dy = card.prepared ? 14 * zoom : 0;
     dot(ctx, cx, cy + dy, 4 * zoom, "#e9b84a");
+  }
+
+  // Owner badge: a permanent controlled by someone other than its owner (donated / stolen /
+  // exchanged, CR 108.3) renders in its controller's row — a bar down its left edge in the owner's
+  // seat colour marks whose card it really is. ponytail: encodes the owner by seat colour only, no
+  // player name; upgrade to a labelled chip if colour alone proves ambiguous at a crowded table.
+  if (card.zone === ZONE.Battlefield) {
+    const ownerSeat = foreignOwnerSeat(card.owner, card.controller);
+    if (ownerSeat != null) {
+      ctx.fillStyle = seatColor(ownerSeat, 0.95);
+      roundRect(ctx, x + zoom, y + pad, 4 * zoom, card.h * zoom - 2 * pad, 2 * zoom);
+      ctx.fill();
+    }
   }
 
   // Keyword icons along the left rail (below sick badge), Arena-style — battlefield only.

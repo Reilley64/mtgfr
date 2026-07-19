@@ -76,7 +76,8 @@ impl Game {
             ..
         }) = self.pending_choice.clone()
         {
-            return self.choose_spell_targets_answer(spell, clause, min, max, &legal, targets);
+            return self
+                .choose_spell_targets_answer(player, spell, clause, min, max, &legal, targets);
         }
         if let Some(PendingChoice::ChooseSplittingOpponent {
             player: controller,
@@ -95,29 +96,50 @@ impl Game {
             min,
             max,
             legal,
+            x,
+            spent_mana,
+            activated,
         }) = self.pending_choice.clone()
         {
             return self.choose_ability_targets_answer(
-                player, chooser, source, effect, first, min, max, &legal, targets,
+                player, chooser, source, effect, first, min, max, &legal, x, spent_mana, activated,
+                targets,
+            );
+        }
+        if let Some(PendingChoice::ChooseActivationCostTargets {
+            player: activator,
+            source,
+            effect,
+            target,
+            x,
+            spent_mana,
+            legal,
+            count,
+        }) = self.pending_choice.clone()
+        {
+            return self.choose_activation_cost_targets_answer(
+                player, activator, source, effect, target, x, spent_mana, &legal, count, targets,
             );
         }
         let Some(PendingChoice::ChooseTarget {
             source,
             effect,
             legal,
-            optional,
+            count,
+            x: activation_x,
+            activated,
             ..
         }) = self.pending_choice.clone()
         else {
             return Err(Reject::IllegalChoice);
         };
-        // "Up to one" (`optional`): an empty answer declines. CR 601.2c treats choosing zero of
-        // "up to one" as a complete, legal choice, so the ability still goes on the stack with no
+        // "Up to N" (`count.min == 0`): an empty answer declines. CR 601.2c treats choosing zero
+        // of "up to N" as a complete, legal choice, so the ability still goes on the stack with no
         // target chosen — but only when that accomplishes something
         // (`Effect::has_target_independent_step`, e.g. Kinetic Ooze's X-threshold riders, which
         // don't need the declined destroy target). An ability whose every step needs that same
         // target (Killian's tap-and-goad) drops outright, same as before.
-        if targets.is_empty() && optional {
+        if targets.is_empty() && count.min == 0 {
             self.finish_answer();
             if !effect.has_target_independent_step() {
                 return Ok(Vec::new());
@@ -125,18 +147,55 @@ impl Game {
             let mut events = Vec::new();
             // The first clause was declined; a second target clause (Kinetic Ooze's X≥10 doubling)
             // is still chosen at placement (CR 603.3d) before the ability goes on the stack.
-            self.place_ability_second_clause(player, source, effect, None, &mut events);
+            self.place_ability_second_clause(
+                player,
+                source,
+                effect,
+                None,
+                activation_x,
+                [0; 6],
+                activated,
+                &mut events,
+            );
             return Ok(events);
         }
-        let [target] = targets[..] else {
+        // Between `count.min` and `count.max` distinct targets, all drawn from `legal` (CR
+        // 601.2c) — the same multi-target validation `choose_ability_targets_answer`/
+        // `choose_spell_targets_answer` apply to their own counted choices.
+        if !(count.min as usize..=count.max as usize).contains(&targets.len()) {
             return Err(Reject::IllegalChoice);
-        };
-        if !legal.contains(&target) {
-            return Err(Reject::IllegalTarget);
+        }
+        for (i, t) in targets.iter().enumerate() {
+            if targets[..i].contains(t) || !legal.contains(t) {
+                return Err(Reject::IllegalTarget);
+            }
         }
 
         self.finish_answer();
         let mut events = Vec::new();
+        let [target] = targets[..] else {
+            // More than one target chosen for the ability's own (first) clause (CR 601.2c —
+            // Numot, the Devastator's "destroy up to two target lands"): push one ability
+            // instance per target, each independently re-checked for legality at its own
+            // resolution (CR 608.2b) — the triggered-ability twin of how a multi-target *spell*
+            // is decomposed (`multi_target_steps`).
+            // ponytail: N separate `StackItem::Ability` entries rather than one ability holding a
+            // `TargetList` for this (first) clause — fine while nothing in the pool "counters
+            // target ability" against a multi-target trigger; give the primary clause a real
+            // `TargetList` (like `targets_second` already is) if one ever does.
+            let abilities: Vec<(Effect, Option<Target>)> =
+                targets.iter().map(|&t| (effect, Some(t))).collect();
+            self.push_ability_group_with_x(
+                player,
+                source,
+                &abilities,
+                activation_x,
+                [0; 6],
+                activated,
+                &mut events,
+            );
+            return Ok(events);
+        };
         // A fight's second creature (see `Effect::Fight`) is chosen mid-resolution, not placed
         // as a new ability — apply the mutual damage directly instead of going back on the stack.
         if let Effect::Fight { enemy, .. } = effect {
@@ -168,7 +227,16 @@ impl Game {
         } else {
             // The first clause's target is chosen; a second target clause (Kinetic Ooze's X≥10
             // doubling) is chosen next at placement (CR 603.3d) before the ability hits the stack.
-            self.place_ability_second_clause(player, source, effect, Some(target), &mut events);
+            self.place_ability_second_clause(
+                player,
+                source,
+                effect,
+                Some(target),
+                activation_x,
+                [0; 6],
+                activated,
+                &mut events,
+            );
         }
         Ok(events)
     }
@@ -290,6 +358,9 @@ impl Game {
         min: u8,
         max: u8,
         legal: &[Target],
+        x: u32,
+        spent_mana: [u8; 6],
+        activated: bool,
         targets: Vec<Target>,
     ) -> Result<Vec<Event>, Reject> {
         if player != chooser || !(min as usize..=max as usize).contains(&targets.len()) {
@@ -309,6 +380,71 @@ impl Game {
             effect,
             first,
             TargetList::from_targets(&targets),
+            x,
+            spent_mana,
+            activated,
+            &mut events,
+        );
+        Ok(events)
+    }
+
+    /// Validate and pay a [`PendingChoice::ChooseActivationCostTargets`] answer (Spurnmage
+    /// Advocate's targeted graveyard-exile cost, CR 601.2c/602.2b): exactly `count` distinct legal
+    /// targets, all from the *same* opponent's graveyard (CR: "an opponent's graveyard" is one
+    /// opponent, not a mix). Exiles them, then pushes the activation's already-fixed
+    /// `(effect, target)` onto the stack — the same shape [`Game::activate_ability`]'s ordinary
+    /// (no-second-cost) path pushes directly.
+    #[allow(clippy::too_many_arguments)]
+    fn choose_activation_cost_targets_answer(
+        &mut self,
+        player: PlayerId,
+        activator: PlayerId,
+        source: ObjectId,
+        effect: Effect,
+        target: Option<Target>,
+        x: u32,
+        spent_mana: [u8; 6],
+        legal: &[Target],
+        count: u8,
+        chosen: Vec<Target>,
+    ) -> Result<Vec<Event>, Reject> {
+        if player != activator || chosen.len() != count as usize {
+            return Err(Reject::IllegalChoice);
+        }
+        // Distinct, legal, and all owned by the same graveyard's owner (CR 601.2c's "an
+        // opponent's graveyard" names one opponent, not any mix of opponents).
+        let mut owner = None;
+        for (i, &t) in chosen.iter().enumerate() {
+            if chosen[..i].contains(&t) || !legal.contains(&t) {
+                return Err(Reject::IllegalTarget);
+            }
+            let Some(id) = t.object_id() else {
+                return Err(Reject::IllegalTarget);
+            };
+            let card_owner = self.owner_of(id);
+            if *owner.get_or_insert(card_owner) != card_owner {
+                return Err(Reject::IllegalTarget);
+            }
+        }
+        self.finish_answer();
+        let mut events = Vec::new();
+        for &t in &chosen {
+            let card = expect_object_target(Some(t), "a graveyard-exile activation cost target");
+            self.push_apply(
+                &mut events,
+                Event::MovedToExile {
+                    card: self.next_object_id(),
+                    from: card,
+                },
+            );
+        }
+        self.push_ability_group_with_x(
+            player,
+            source,
+            &[(effect, target)],
+            x,
+            spent_mana,
+            true,
             &mut events,
         );
         Ok(events)
@@ -316,9 +452,14 @@ impl Game {
 
     /// Validate and record a multi-target spell's chosen targets (CR 601.2c): between `min` and
     /// `max` of them, all distinct, all drawn from `legal`. Writes them onto the spell via
-    /// [`Event::SpellTargetsChosen`]; rejects (leaving the choice pending) otherwise.
+    /// [`Event::SpellTargetsChosen`]; rejects (leaving the choice pending) otherwise. `chooser` is
+    /// the player who just answered — chains into the next independent clause (if any) as the same
+    /// chooser, legality still anchored on the spell's own controller (see
+    /// [`Game::choose_spell_targets`]'s `anchor`/`chooser` doc).
+    #[allow(clippy::too_many_arguments)]
     fn choose_spell_targets_answer(
         &mut self,
+        chooser: PlayerId,
         spell: ObjectId,
         clause: u8,
         min: u8,
@@ -335,7 +476,7 @@ impl Game {
                 return Err(Reject::IllegalTarget);
             }
         }
-        let player = self.spell(spell).controller;
+        let anchor = self.spell(spell).controller;
         self.finish_answer();
         let mut events = Vec::new();
         self.push_apply(
@@ -347,7 +488,7 @@ impl Game {
             },
         );
         // Chain into the next independent target clause, if any, before the CR 601.2d split runs.
-        self.advance_spell_target_clauses(spell, clause as usize + 1, player, &mut events);
+        self.advance_spell_target_clauses(spell, clause as usize + 1, anchor, chooser, &mut events);
         Ok(events)
     }
 }

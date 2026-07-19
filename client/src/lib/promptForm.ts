@@ -36,10 +36,14 @@ const FULLSCREEN_KINDS: ReadonlySet<PendingChoiceView["kind"]> = new Set([
   "choose_copy_target",
   "choose_counter_target_for_player",
   "choose_ability_targets",
+  "choose_activation_cost_targets",
   "choose_target_players",
   "distribute_top",
   "choose_trigger_modes",
   "choose_dredge",
+  "put_from_hand_on_top",
+  "opponent_chooses_revealed_to_graveyard",
+  "pay_cumulative_upkeep_or_sacrifice",
 ]);
 
 /** Chrome for a pending Choice view kind. */

@@ -83,6 +83,19 @@ impl Game {
                             };
                             vec![(player, flattened_defender)]
                         }
+                        // Death by Dragons: "Each player other than target player creates a..." —
+                        // the chosen Player target is the one player excluded, not the recipient.
+                        TokenController::EachOtherPlayer => {
+                            let Some(Target::Player(excluded)) = target else {
+                                panic!(
+                                    "a token's each-other-player recipient set resolves with a chosen player target"
+                                );
+                            };
+                            self.living_players()
+                                .filter(|&p| p != excluded)
+                                .map(|p| (p, flattened_defender))
+                                .collect()
+                        }
                     },
                 };
                 // "…create an X/X … token …, where X is …" (Manaform Hellkite): bake the

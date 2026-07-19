@@ -2012,3 +2012,13 @@ per-card exotics.
 5. **`multi-target-adoption` (#73) + `graveyard-card-filters-2` (#69)** — 24 cards across the charms/removal suite; both are adoption passes over landed L-machinery (`TargetCount`, `CardInGraveyard`).
 
 (Strategic mention: start **#126 type-change-layers slice 1** — the behavior-preserving layer-entry migration — in parallel with the waves above. It's the longest-lead-time item in the backlog, five later increments lean on it, and slice 1 carries no card-visible risk.)
+
+---
+
+## Political Puppets deck increments (2026-07-18)
+
+Increments #203-#231 live in [docs/fidelity/political-puppets-increments.md](fidelity/political-puppets-increments.md)
+(global numbering continues after #202 in the Deathdancer file). Deck report:
+[docs/fidelity/political-puppets.md](fidelity/political-puppets.md) (Archidekt 2209176 — commander
+Zedruu the Greathearted). The control-donation/exchange centerpiece is #228, an XL staged in five
+slices.
