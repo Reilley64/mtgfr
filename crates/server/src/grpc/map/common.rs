@@ -136,6 +136,7 @@ pub fn wire_cost_to_pb(cost: WireCost) -> pb::WireCost {
         generic: u32::from(cost.generic),
         colored: u8s(cost.colored),
         has_x: cost.has_x,
+        x_symbols: u32::from(cost.x_symbols),
     }
 }
 
@@ -144,6 +145,7 @@ pub fn wire_cost_from_pb(cost: pb::WireCost) -> WireCost {
         generic: u8_trunc(cost.generic),
         colored: colored5(&cost.colored),
         has_x: cost.has_x,
+        x_symbols: u8_trunc(cost.x_symbols),
     }
 }
 
@@ -283,13 +285,17 @@ mod tests {
             generic: 3,
             colored: vec![1, 2],
             has_x: true,
+            x_symbols: 2,
         };
-        assert_eq!(wire_cost_from_pb(pb).colored, [1, 2, 0, 0, 0]);
+        let wire = wire_cost_from_pb(pb);
+        assert_eq!(wire.colored, [1, 2, 0, 0, 0]);
+        assert_eq!(wire.x_symbols, 2);
 
         let pb_long = pb::WireCost {
             generic: 0,
             colored: vec![1, 2, 3, 4, 5, 6, 7],
             has_x: false,
+            x_symbols: 0,
         };
         assert_eq!(wire_cost_from_pb(pb_long).colored, [1, 2, 3, 4, 5]);
     }

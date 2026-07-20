@@ -1616,6 +1616,7 @@ mod tests {
                     generic: 1,
                     colored: [0, 0, 0, 0, 1],
                     has_x: false,
+                    x_symbols: 0,
                 },
                 needs_target: false,
                 tapped: false,
