@@ -370,4 +370,105 @@ describe("useCardFlights", () => {
     expect(api.flights().some((f) => f.id === 11)).toBe(false);
     dispose();
   });
+
+  it("does not respawn a from-stack ghost after settle while resolve provenance is still live", () => {
+    // Live repro (KCWEZF / Elvish Mystic): from-stack flies to the battlefield, settles and is
+    // removed, then absorb re-runs (cards() churn) while fromStack still lists the permanent —
+    // because settle cleared spawnedFromStack — and spawns a new actor parked at the stack aim.
+    const frames: FrameRequestCallback[] = [];
+    let now = 0;
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      frames.push(cb);
+      return frames.length;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+
+    const mystic = {
+      id: 60,
+      name: "Elvish Mystic",
+      print: "mystic-print",
+      x: 200,
+      y: 200,
+      w: 96,
+      h: 134,
+      zone: 2,
+      owner: 0,
+      controller: 0,
+      kind: "creature",
+      tapped: false,
+      prepared: false,
+      faceDown: false,
+    } as RenderCard;
+
+    let dispose!: () => void;
+    let api!: ReturnType<typeof useCardFlights>;
+    const [fromStack, setFromStack] = createSignal(new Set<number>());
+    const [fromStackExit] = createSignal(new Set<number>());
+    const [zoneMoves, setZoneMoves] = createSignal(new Map<number, number>());
+    const [stackEntrances, setStackEntrances] = createSignal(
+      new Map<number, { from: number; controller: number }>(),
+    );
+    const [cards, setCards] = createSignal<RenderCard[]>([]);
+    const [stackLength, setStackLength] = createSignal(0);
+    const [stackSourceIds, setStackSourceIds] = createSignal(new Set<number>());
+    const [objectIds, setObjectIds] = createSignal(new Set([9]));
+    const [landPlays] = createSignal(new Map<number, number>());
+
+    createRoot((d) => {
+      dispose = d;
+      const size = () => ({ x: 800, y: 600 });
+      api = useCardFlights({
+        camera: () => fitCamera(size(), 2, 128),
+        size,
+        cards,
+        stackLength,
+        stackSourceIds,
+        objectIds,
+        landPlays,
+        fromStack,
+        fromStackExit,
+        stackEntrances,
+        zoneMoves,
+        reducedMotion: () => false,
+        onTick: () => {},
+      });
+    });
+
+    api.spawnFromHand({
+      cardId: 9,
+      print: "mystic-print",
+      name: "Elvish Mystic",
+      screen: { x: 100, y: 500 },
+      kind: "stack",
+    });
+    setObjectIds(new Set([42]));
+    setStackEntrances(new Map([[42, { from: 9, controller: 0 }]]));
+    setStackLength(1);
+    setStackSourceIds(new Set([42]));
+
+    batch(() => {
+      setStackEntrances(new Map());
+      setStackLength(0);
+      setStackSourceIds(new Set());
+      setObjectIds(new Set([60]));
+      setCards([mystic]);
+      setZoneMoves(new Map([[60, 42]]));
+      setFromStack(new Set([60]));
+    });
+    expect(api.flights().some((f) => f.id === 60 && f.kind === "from-stack")).toBe(true);
+
+    for (let i = 0; i < 90; i++) {
+      const cb = frames.shift();
+      if (!cb) break;
+      now += 16;
+      cb(now);
+    }
+    expect(api.flights().some((f) => f.kind === "from-stack" || f.kind === "stack")).toBe(false);
+
+    // Provenance still live (next delta has not cleared it). Layout churn re-runs absorb.
+    setCards([{ ...mystic, x: 201 }]);
+
+    expect(api.flights().some((f) => f.kind === "from-stack" || f.kind === "stack")).toBe(false);
+    dispose();
+  });
 });
