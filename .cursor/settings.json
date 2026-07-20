@@ -3,6 +3,9 @@
     "cloudflare": {
       "enabled": true
     },
+    "cursor-team-kit": {
+      "enabled": true
+    },
     "grafana-assistant": {
       "enabled": true
     }
