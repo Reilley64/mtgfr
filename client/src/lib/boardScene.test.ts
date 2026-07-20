@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CARD_H, CARD_W, type RenderCard, ZONE } from "~/layout";
 import { ATTACK_STROKE, SELECT_STROKE, TARGET_STROKE } from "~/lib/boardPaintPrims";
-import { buildBoardScene, type BuildBoardSceneInput } from "~/lib/boardScene";
+import { type BuildBoardSceneInput, buildBoardScene } from "~/lib/boardScene";
 import type { CardFlight } from "~/lib/cardFlight";
 
 const cam = { panX: 0, panY: 0, zoom: 1 };

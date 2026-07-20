@@ -240,8 +240,8 @@ export function StackOverlay(props: {
                     left: "0",
                     ...(delta()
                       ? {
-                          "--stack-from-dx": `${delta()!.dx}px`,
-                          "--stack-from-dy": `${delta()!.dy}px`,
+                          "--stack-from-dx": `${delta()?.dx ?? 0}px`,
+                          "--stack-from-dy": `${delta()?.dy ?? 0}px`,
                         }
                       : {}),
                   },
@@ -454,8 +454,8 @@ export function StackOverlay(props: {
                       "z-index": String(item.row),
                       ...(delta()
                         ? {
-                            "--stack-from-dx": `${delta()!.dx}px`,
-                            "--stack-from-dy": `${delta()!.dy}px`,
+                            "--stack-from-dx": `${delta()?.dx ?? 0}px`,
+                            "--stack-from-dy": `${delta()?.dy ?? 0}px`,
                           }
                         : {}),
                     },
