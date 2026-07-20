@@ -47,7 +47,7 @@ const LEGEND_ITEMS: { color: string; shape: "dot" | "badge" | "outline"; label: 
 ];
 
 export function LegendPanel(props: { onClose: () => void }) {
-  // Top-left, under the '?' toggle — keeps the bottom-right free for Pass / Next / yield.
+  // Top-left, under the '?' toggle — keeps the bottom-right free for Resolve / Next / yield.
   return (
     <Hud class="fixed top-12 left-md z-21 w-[240px]">
       <div class="mb-sm flex items-center justify-between gap-sm">

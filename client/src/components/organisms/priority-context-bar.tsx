@@ -1,4 +1,4 @@
-// Priority context bar: Next / Pass / yields (always bottom-right, above stack z).
+// Priority context bar: Next / Resolve card / Resolve stack / turn yield (always bottom-right, above stack z).
 
 import { Show } from "solid-js";
 import { Button } from "~/components/atoms";
@@ -44,17 +44,17 @@ export function PriorityContextBar(props: {
         </Show>
         <Show when={props.chrome.pass}>
           <Button type="button" data-testid="board-pass" onClick={props.onPass} variant="game">
-            Pass
+            Resolve card
           </Button>
         </Show>
         <Show when={props.chrome.stackYieldArm}>
           <Button type="button" data-testid="board-stack-yield" onClick={props.onArmStackYield} variant="game-quiet">
-            Auto-pass stack
+            Resolve stack
           </Button>
         </Show>
         <Show when={props.chrome.stackYieldArmed}>
           <Button type="button" data-testid="board-stack-yield-armed" disabled variant="game-yielded">
-            Auto-pass stack
+            Resolve stack
           </Button>
         </Show>
         {/* Arena-style pass-turn rocker: icon + sliding switch, not a form checkbox. */}
