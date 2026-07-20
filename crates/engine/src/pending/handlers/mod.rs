@@ -2,8 +2,7 @@
 //!
 //! Split by family (mirrors `raise/`) so raise + answer locality can deepen together.
 //! External seam remains [`super::answer`] / [`super::forced`] / [`super::raise`].
-//!
-//! Deferred: optional `ChoiceHandler` table keyed by [`PendingChoice`] discriminant.
+//! Answer / forced routing is the choice-discriminant table in [`super::dispatch`].
 
 mod combat;
 mod common;
