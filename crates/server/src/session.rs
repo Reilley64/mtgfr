@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use crate::decks::Table;
+use crate::table::Table;
 use crate::{AppState, lock};
 use engine::{Event, Game, Intent, PendingChoice, PlayerId, Reject};
 use tokio::time::Instant;
@@ -294,12 +294,12 @@ pub fn settle_after_apply(
         // C3: the engine panicked mid-submit — the game is in an unknown state. Drop the
         // whole table so the poison can't spread and the players can start a clean one.
         Disposition::Panicked => {
-            reg.tables.remove(table_id);
+            reg.remove(table_id);
             eprintln!("quarantined table {table_id} after an engine panic");
         }
         // M3: the game is over — evict it (and its broadcast buffer of cloned games).
         Disposition::GameOver => {
-            reg.tables.remove(table_id);
+            reg.remove(table_id);
         }
         Disposition::Live { stack_held: true } => {
             schedule_stack_resolution(state.clone(), table_id.to_string(), seq);
@@ -336,7 +336,7 @@ fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
     tokio::spawn(async move {
         {
             let mut reg = lock(&state.reg);
-            if let Some(table) = reg.tables.get_mut(&table_id) {
+            if let Some(table) = reg.get_mut(&table_id) {
                 let now = Instant::now();
                 table.chrome.begin_hold(seq, now);
             }
@@ -344,7 +344,7 @@ fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
         loop {
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             let mut reg = lock(&state.reg);
-            let Some(table) = reg.tables.get_mut(&table_id) else {
+            let Some(table) = reg.get_mut(&table_id) else {
                 return;
             };
             if table.seq != seq {
@@ -1375,13 +1375,13 @@ mod tests {
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
         let seq = table.seq;
-        lock(&state.reg).tables.insert("hold".to_string(), table);
+        assert!(lock(&state.reg).try_insert("hold".to_string(), table));
 
         schedule_stack_resolution(state.clone(), "hold".to_string(), seq);
         tokio::time::sleep(STACK_HOLD * 2).await;
 
         let reg = lock(&state.reg);
-        let game = reg.tables.get("hold").unwrap().game.as_ref().unwrap();
+        let game = reg.get("hold").unwrap().game.as_ref().unwrap();
         assert_eq!(game.zone_of(bear), engine::Zone::Battlefield);
     }
 
@@ -1393,13 +1393,13 @@ mod tests {
         assert!(held(disp));
         let stale_seq = table.seq;
         table.seq += 1;
-        lock(&state.reg).tables.insert("stale".to_string(), table);
+        assert!(lock(&state.reg).try_insert("stale".to_string(), table));
 
         schedule_stack_resolution(state.clone(), "stale".to_string(), stale_seq);
         tokio::time::sleep(STACK_HOLD * 2).await;
 
         let reg = lock(&state.reg);
-        let game = reg.tables.get("stale").unwrap().game.as_ref().unwrap();
+        let game = reg.get("stale").unwrap().game.as_ref().unwrap();
         assert_eq!(game.zone_of(bear), engine::Zone::Stack);
     }
 
@@ -1410,14 +1410,14 @@ mod tests {
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
         let seq = table.seq;
-        lock(&state.reg).tables.insert("dwell".to_string(), table);
+        assert!(lock(&state.reg).try_insert("dwell".to_string(), table));
 
         schedule_stack_resolution(state.clone(), "dwell".to_string(), seq);
         // Let the hold start stamp land.
         tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         {
             let mut reg = lock(&state.reg);
-            let table = reg.tables.get_mut("dwell").unwrap();
+            let table = reg.get_mut("dwell").unwrap();
             let dwell = TableSession::new(table).set_dwell(PlayerId(1), true);
             assert!(dwell.accepted);
             assert!(table.stack_hold_remaining_ms() > STACK_HOLD.as_millis() as u32);
@@ -1426,7 +1426,7 @@ mod tests {
         tokio::time::sleep(STACK_HOLD).await;
         {
             let reg = lock(&state.reg);
-            let game = reg.tables.get("dwell").unwrap().game.as_ref().unwrap();
+            let game = reg.get("dwell").unwrap().game.as_ref().unwrap();
             assert_eq!(
                 game.zone_of(bear),
                 engine::Zone::Stack,
@@ -1436,7 +1436,7 @@ mod tests {
 
         tokio::time::sleep(STACK_HOLD_DWELL_EXTRA).await;
         let reg = lock(&state.reg);
-        let game = reg.tables.get("dwell").unwrap().game.as_ref().unwrap();
+        let game = reg.get("dwell").unwrap().game.as_ref().unwrap();
         assert_eq!(
             game.zone_of(bear),
             engine::Zone::Battlefield,
@@ -1482,11 +1482,11 @@ mod tests {
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
             0,
         ));
-        lock(&state.reg).tables.insert("take".to_string(), table);
+        assert!(lock(&state.reg).try_insert("take".to_string(), table));
 
         let action = {
             let reg = lock(&state.reg);
-            let game = reg.tables.get("take").unwrap().game.as_ref().unwrap();
+            let game = reg.get("take").unwrap().game.as_ref().unwrap();
             game.legal_actions()
                 .iter()
                 .find(|a| a.player == PlayerId(0))
@@ -1534,14 +1534,14 @@ mod tests {
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
             0,
         ));
-        lock(&state.reg).tables.insert("y".to_string(), table);
+        assert!(lock(&state.reg).try_insert("y".to_string(), table));
 
         let ack = set_yield_core(&state, as_user(&state, "p1@x.c").await.0.id, "y", true).await;
         assert!(ack.accepted);
 
         let ack = set_yield_core(&state, as_user(&state, "p0@x.c").await.0.id, "y", true).await;
         assert!(ack.accepted);
-        assert!(lock(&state.reg).tables.contains_key("y"));
+        assert!(lock(&state.reg).get("y").is_some());
     }
 
     #[tokio::test]
@@ -1555,7 +1555,7 @@ mod tests {
         let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
         game.set_life(PlayerId(1), 0);
         table.game = Some(game);
-        lock(&state.reg).tables.insert("over".to_string(), table);
+        assert!(lock(&state.reg).try_insert("over".to_string(), table));
 
         let ack = submit_intent_core(
             &state,
@@ -1569,7 +1569,7 @@ mod tests {
         )
         .await;
         assert!(ack.accepted);
-        assert!(!lock(&state.reg).tables.contains_key("over"));
+        assert!(lock(&state.reg).get("over").is_none());
     }
 
     #[test]
@@ -1634,9 +1634,7 @@ mod tests {
         let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
         table.game = Some(game);
-        lock(&state.reg)
-            .tables
-            .insert("eyes-escape".to_string(), table);
+        assert!(lock(&state.reg).try_insert("eyes-escape".to_string(), table));
 
         let missing = submit_intent_core(
             &state,
@@ -1687,13 +1685,7 @@ mod tests {
         assert!(ack.accepted, "escape with exile + target: {ack:?}");
 
         let reg = lock(&state.reg);
-        let game = reg
-            .tables
-            .get("eyes-escape")
-            .unwrap()
-            .game
-            .as_ref()
-            .unwrap();
+        let game = reg.get("eyes-escape").unwrap().game.as_ref().unwrap();
         assert_eq!(game.zone_of(eyes), Zone::Stack);
         for &fid in &fodder {
             assert_eq!(game.zone_of(fid), Zone::Exile);

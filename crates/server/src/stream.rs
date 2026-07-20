@@ -12,7 +12,8 @@ use schema::{
 use tokio::sync::broadcast;
 
 use crate::AppState;
-use crate::decks::{Broadcast, Seat};
+use crate::session::Broadcast;
+use crate::table::Seat;
 
 /// Map Table-owned policy into the schema DTO that finishes a [`schema::VisibleState`].
 pub fn view_extras(
@@ -63,7 +64,7 @@ pub fn subscribe(
     user_id: i64,
 ) -> Result<TableSubscription, StatusCode> {
     let mut reg = crate::lock(&state.reg);
-    let Some(table) = reg.tables.get_mut(table_id) else {
+    let Some(table) = reg.get_mut(table_id) else {
         return Err(StatusCode::NOT_FOUND);
     };
     if table.game.is_none() {
@@ -91,7 +92,7 @@ pub fn subscribe(
 
 /// Table → [`ViewExtras`] for the opening snapshot (and for tests that build frames from a live
 /// table). Hold remaining is computed from chrome; seats/prints come from the table shell.
-pub fn table_view_extras(table: &crate::decks::Table) -> ViewExtras {
+pub fn table_view_extras(table: &crate::Table) -> ViewExtras {
     view_extras(
         table.chrome.yields(),
         table.chrome.turn_yields(),

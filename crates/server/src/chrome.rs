@@ -1,6 +1,6 @@
 //! Live-table priority chrome (ADR 0007 / 0026 / 0027 / 0029): yields, stack hold, and dwell.
 //!
-//! Owned by [`crate::decks::Table`] as `chrome`; mutate only via [`crate::session::TableSession`]
+//! Owned by [`crate::Table`] as `chrome`; mutate only via [`crate::session::TableSession`]
 //! (or the `pub(crate)` accessors below used by the hold timer). gRPC adapters never poke chrome.
 
 /// Live-table priority chrome knobs. Fields are private — see module docs.
