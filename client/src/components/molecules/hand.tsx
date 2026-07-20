@@ -41,7 +41,7 @@ export const HAND_VISIBLE_H = 100;
 /** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
 export const HAND_STRIP_H = HAND_VISIBLE_H;
 /** Room above each face for cast-cost pips (reserved band outside the card). */
-const HAND_PIP_ROW_H = 22;
+const HAND_PIP_ROW_H = 28;
 
 /** MTGA fan: left/right tilt out; centre rises toward the board (edges sit lower). */
 function fanTransform(index: number, count: number): string {
@@ -63,7 +63,7 @@ const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
  * filter-composited glyph can never read as a hollow outline on the felt.
  */
 function CostPip(props: { ms: string; code: string; sizePx?: number }) {
-  const size = props.sizePx ?? 14;
+  const size = props.sizePx ?? 12;
   return (
     <span
       class="inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)]"
@@ -289,7 +289,7 @@ export default function Hand(props: {
               style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
               aria-hidden="true"
             >
-              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 15 : 13} />}</For>
+              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 14 : 12} />}</For>
             </div>
           </Show>
           <div class="relative h-(--card-h) origin-bottom rounded-game">
