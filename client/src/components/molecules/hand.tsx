@@ -41,7 +41,7 @@ export const HAND_VISIBLE_H = 100;
 /** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
 export const HAND_STRIP_H = HAND_VISIBLE_H;
 /** Room above each face for cast-cost pips (they sit outside the card, not on the art). */
-const HAND_PIP_ROW_H = 20;
+const HAND_PIP_ROW_H = 22;
 
 /** MTGA fan: left/right tilt out; centre rises toward the board (edges sit lower). */
 function fanTransform(index: number, count: number): string {
@@ -279,44 +279,46 @@ export default function Hand(props: {
           raised() ? "h-(--card-h) w-[112px]" : "h-(--visible) w-(--peek)",
         )}
       >
-        {/* Cast-cost pips sit *above* the face (Arena), right-aligned to the printed mana corner. */}
-        <Show when={pips().length > 0}>
-          <div
-            data-testid="hand-cost-pips"
-            class="pointer-events-none absolute right-0 bottom-full z-20 mb-1.5 flex justify-end gap-px"
-            aria-hidden="true"
-          >
-            <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 15 : 13} />}</For>
-          </div>
-        </Show>
-        {/* Full face, top-aligned: hangs past the screen edge at rest (no mid-card clip). */}
-        <div class="absolute top-0 right-0 h-(--card-h) w-[112px] origin-bottom rounded-game">
-          <img
-            src={imageUrlByPrint(p.print)}
-            alt={p.name}
-            draggable={false}
-            onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
-            onPointerMove={() => {
-              setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
-              setHoverAction(p.action);
-            }}
-            onPointerLeave={() => {
-              if (hover() === p.name) setHoverCard(null);
-              if (!drag()) setHoverAction(null);
-            }}
-            class={cn(
-              CARD_FACE,
-              "cursor-default touch-none shadow-hand transition-[filter] duration-[80ms] ease-state",
-              p.action && "cursor-grab hover:brightness-110",
-              barZoneAura(p.zone),
-              dimmedness(p),
-            )}
-          />
-          <Show when={p.caption}>
-            <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
-              {p.caption}
+        {/* Face + pips share a 112px column (right-aligned in the peek slot). Pips sit above
+            the face top — Arena cast disks, not overlaid on the printed art. */}
+        <div class="absolute top-0 right-0 w-[112px]">
+          <Show when={pips().length > 0}>
+            <div
+              data-testid="hand-cost-pips"
+              class="pointer-events-none absolute right-0 bottom-full z-20 mb-2 flex justify-end gap-px"
+              aria-hidden="true"
+            >
+              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 15 : 13} />}</For>
             </div>
           </Show>
+          <div class="h-(--card-h) origin-bottom rounded-game">
+            <img
+              src={imageUrlByPrint(p.print)}
+              alt={p.name}
+              draggable={false}
+              onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
+              onPointerMove={() => {
+                setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
+                setHoverAction(p.action);
+              }}
+              onPointerLeave={() => {
+                if (hover() === p.name) setHoverCard(null);
+                if (!drag()) setHoverAction(null);
+              }}
+              class={cn(
+                CARD_FACE,
+                "cursor-default touch-none shadow-hand transition-[filter] duration-[80ms] ease-state",
+                p.action && "cursor-grab hover:brightness-110",
+                barZoneAura(p.zone),
+                dimmedness(p),
+              )}
+            />
+            <Show when={p.caption}>
+              <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
+                {p.caption}
+              </div>
+            </Show>
+          </div>
         </div>
       </div>
     );
@@ -422,7 +424,7 @@ export default function Hand(props: {
               />
               <Show when={ghostPips().length > 0}>
                 <div
-                  class="pointer-events-none absolute right-0 bottom-full mb-1.5 flex justify-end gap-px"
+                  class="pointer-events-none absolute right-0 bottom-full mb-2 flex justify-end gap-px"
                   aria-hidden="true"
                 >
                   <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
