@@ -17,9 +17,8 @@ import type { ActionView, VisibleState, WireTarget } from "~/wire/types";
 export type TargetMode =
   /** Takes no target — submit the action as-is. */
   | { kind: "none" }
-  /** Wants a target but none is legal right now. Only an activated ability reaches this: the cast
-   * gate won't offer a spell with no legal target, but `meaningful_actions` offers abilities
-   * without checking (see `ActionView.targets`). */
+  /** Wants a target but none is legal right now. Casts and activations are normally not listed
+   * without a legal target; this is a defensive fallback if an action still arrives empty. */
   | { kind: "impossible" }
   /** Point at the board: `objects` are the legal battlefield permanents, `players` the legal seats. */
   | { kind: "arrow"; objects: ReadonlySet<number>; players: ReadonlySet<number> }
