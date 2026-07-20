@@ -32,6 +32,7 @@ mod pump;
 mod resolve_misc;
 mod resume;
 mod reveal;
+mod sequence_steps;
 mod tokens;
 mod zones;
 
