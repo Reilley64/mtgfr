@@ -7164,6 +7164,36 @@ fn max_payable_x_for_blaze_respects_red_pip() {
     );
 }
 
+#[test]
+fn max_payable_x_for_free_cast_returns_zero() {
+    let game = Game::new();
+
+    assert_eq!(
+        game.max_payable_x(PlayerId(0), None, |_| Cost::FREE),
+        0,
+        "a mana-free cost that does not change with X has no payable upper bound",
+    );
+}
+
+#[test]
+fn max_payable_x_for_pay_life_x_returns_life() {
+    let mut game = Game::new();
+    game.set_life(PlayerId(0), 17);
+    let cost_at = |_: u32| Cost {
+        additional: AdditionalCost {
+            pay_life_x: true,
+            ..NO_ADD
+        },
+        ..Cost::FREE
+    };
+
+    assert_eq!(
+        game.max_payable_x(PlayerId(0), None, cost_at),
+        17,
+        "pay_life_x with no mana cost caps X at the caster's life total",
+    );
+}
+
 /// A test permanent whose only activated ability has {X} in its activation cost: "{X}: Draw X
 /// cards." The minimal fixture for the ability half of Unbound Flourishing's second trigger
 /// (CR 707.10 — copy an activated ability whose cost contains {X}).
