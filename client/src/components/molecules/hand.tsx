@@ -1,12 +1,13 @@
 // The bottom action bar as a DOM overlay on the canvas board. It is driven by the viewer's
-// legal-action list (`game.state.actions`): the Hand and Command sections show every card in
+// legal-action list (`game.state.actions`): the Command and Hand sections show every card in
 // those zones (a card with a play action is draggable, an actionless one dims — the commander is
 // always on show while it sits in the command zone), and the Graveyard / Exile sections show
 // one card per action there. Battlefield activates live on the selection radial, not in this bar.
-// Zone groups follow Arena: gap + aura colour, no section captions. Hand tiles are a dense fan
-// (right-edge peek at rest — mana corner visible) with cast-cost pips on the top-right; hover
-// expands the full card. Centre of the fan rises toward the board. Faces tuck under the screen
-// edge at rest (viewport clips them — no mid-card overflow cut).
+// Zone order left→right: command → hand → graveyard → exile. Zone groups follow Arena: gap +
+// aura colour, no section captions. Hand tiles are a dense fan (right-edge peek at rest — mana
+// corner visible) with cast-cost pips on the top-right; hover expands the full card. Centre of
+// the fan rises toward the board. Faces tuck under the screen edge at rest (viewport clips them
+// — no mid-card overflow cut).
 // Every playable card is physically dragged — a ghost follows the cursor — and on release the
 // Board takes the action by its id (drag above the play threshold → take_action; back in the bar
 // → snap back). Combat declarations are NOT cards here; they keep the board's existing
@@ -16,6 +17,7 @@ import { createMemo, createSignal, For, type JSX, onCleanup, Show } from "solid-
 import { CardArt } from "~/components/atoms";
 import { ZONE } from "~/layout";
 import { type BarZone, barZoneAura, byObject, bySection, handExtras } from "~/lib/actions";
+import { HAND_FACE_W } from "~/lib/cardFlight";
 import { cn } from "~/lib/cn";
 import { costPipPlate, costPips } from "~/lib/costPips";
 import { game } from "~/store";
@@ -27,17 +29,21 @@ export interface ActionDrop {
   y: number;
 }
 
-/** Face width — peek/overlap tuned so neighbours hide most of the card (Arena denser fan). */
-export const HAND_CARD_W = 112;
+/**
+ * Face width — Arena-scale (~stack overlay size) so hand/command/graveyard/exile tiles
+ * read as real cards, not chrome thumbnails. Every bar tile uses this same locked box.
+ * Sourced from `HAND_FACE_W` so flight scale can't drift.
+ */
+export const HAND_CARD_W = HAND_FACE_W;
 /** Visible strip width at rest — right edge of the face (mana-cost corner), Arena-style. */
-export const HAND_CARD_PEEK = 40;
+export const HAND_CARD_PEEK = 64;
 export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
-const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
+export const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 /**
  * How much of each tucked card sticks into the viewport at rest. The rest hangs past the
  * bottom edge so the *screen* clips the face (Arena), not an overflow:hidden mid-card cut.
  */
-export const HAND_VISIBLE_H = 100;
+export const HAND_VISIBLE_H = 130;
 /** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
 export const HAND_STRIP_H = HAND_VISIBLE_H;
 /** Room above each face for cast-cost pips (reserved band outside the card). */
@@ -47,7 +53,7 @@ const HAND_PIP_ROW_H = 28;
 function fanTransform(index: number, count: number): string {
   const off = index - (count - 1) / 2;
   const angle = Math.max(-10, Math.min(10, off * 2.5));
-  const rise = Math.max(0, 12 - off * off * 1.1);
+  const rise = Math.max(0, 14 - off * off * 1.2);
   return `rotate(${angle}deg) translateY(${-rise}px)`;
 }
 
@@ -55,7 +61,8 @@ function fanTransform(index: number, count: number): string {
  * Matches the on-screen tuck + pip row above the faces. */
 export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 12;
 
-const CARD_FACE = cn("block w-[112px] rounded-game");
+/** Locked width+height so every face is identical regardless of art intrinsic size. */
+const CARD_FACE = cn("block h-(--card-h) w-(--card-w) rounded-game object-cover");
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
 
 /**
@@ -269,6 +276,7 @@ export default function Hand(props: {
           "--fan": p.fan,
           "--peek": `${HAND_CARD_PEEK}px`,
           "--visible": `${HAND_VISIBLE_H}px`,
+          "--card-w": `${HAND_CARD_W}px`,
           "--card-h": `${HAND_CARD_H}px`,
           "z-index": stackZ(),
         }}
@@ -280,9 +288,9 @@ export default function Hand(props: {
           raised() ? "h-(--card-h)" : "h-(--visible)",
         )}
       >
-        {/* Face + pips share a 112px column (right-aligned in the peek slot). Pips live in a
+        {/* Face + pips share a fixed column (right-aligned in the peek slot). Pips live in a
             reserved band *above* the face top — Arena cast disks, not overlaid on the art. */}
-        <div class="absolute top-0 right-0 w-[112px]">
+        <div class="absolute top-0 right-0 w-(--card-w)">
           <Show when={pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
@@ -290,7 +298,7 @@ export default function Hand(props: {
               style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
               aria-hidden="true"
             >
-              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 14 : 12} />}</For>
+              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 16 : 14} />}</For>
             </div>
           </Show>
           <div class="relative h-(--card-h) origin-bottom rounded-game">
@@ -333,6 +341,32 @@ export default function Hand(props: {
         style={{ "--bar-h": `${HAND_BAR_H}px` }}
         class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-xl overflow-visible px-md"
       >
+        <Show when={commandCards().length > 0}>
+          <Section name="Command">
+            <For each={commandCards()}>
+              {(card, i) => {
+                const action = () => commandActionByObject().get(card.id) ?? null;
+                return (
+                  <BarCard
+                    name={card.name}
+                    print={card.print ?? ""}
+                    cardId={card.card_id || undefined}
+                    objectId={card.id}
+                    objectKind={card.kind.kind}
+                    manaCost={card.mana_cost}
+                    action={action()}
+                    dimmed={!action() || slotDimmed(card.id)}
+                    caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
+                    fan={fanTransform(i(), commandCards().length)}
+                    zone="command"
+                    index={i()}
+                    count={commandCards().length}
+                  />
+                );
+              }}
+            </For>
+          </Section>
+        </Show>
         <Section name="Hand">
           <For each={handSlots()}>
             {(slot, i) => {
@@ -381,32 +415,6 @@ export default function Hand(props: {
             }}
           </For>
         </Section>
-        <Show when={commandCards().length > 0}>
-          <Section name="Command">
-            <For each={commandCards()}>
-              {(card, i) => {
-                const action = () => commandActionByObject().get(card.id) ?? null;
-                return (
-                  <BarCard
-                    name={card.name}
-                    print={card.print ?? ""}
-                    cardId={card.card_id || undefined}
-                    objectId={card.id}
-                    objectKind={card.kind.kind}
-                    manaCost={card.mana_cost}
-                    action={action()}
-                    dimmed={!action() || slotDimmed(card.id)}
-                    caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
-                    fan={fanTransform(i(), commandCards().length)}
-                    zone="command"
-                    index={i()}
-                    count={commandCards().length}
-                  />
-                );
-              }}
-            </For>
-          </Section>
-        </Show>
         <ZoneSection zone="graveyard" actions={grouped().graveyard} name={(a) => a.label} />
         <ZoneSection zone="exile" actions={grouped().exile} name={(a) => a.label} />
       </div>
@@ -415,7 +423,12 @@ export default function Hand(props: {
           const ghostPips = () => costPips(d().manaCost, { showZero: d().kind != null && d().kind !== "land" });
           return (
             <div
-              style={{ "--x": `${d().x}px`, "--y": `${d().y}px` }}
+              style={{
+                "--x": `${d().x}px`,
+                "--y": `${d().y}px`,
+                "--card-w": `${HAND_CARD_W}px`,
+                "--card-h": `${HAND_CARD_H}px`,
+              }}
               class="pointer-events-none fixed top-(--y) left-(--x) z-20 -translate-x-1/2 -translate-y-1/2"
             >
               <CardArt
@@ -430,7 +443,7 @@ export default function Hand(props: {
                   style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
                   aria-hidden="true"
                 >
-                  <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
+                  <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={17} />}</For>
                 </div>
               </Show>
             </div>
