@@ -29,6 +29,7 @@ mod pause_hand;
 mod pause_look;
 mod pause_may;
 mod pump;
+mod resolve_misc;
 mod resume;
 mod reveal;
 mod tokens;

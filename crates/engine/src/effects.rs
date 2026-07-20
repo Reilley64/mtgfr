@@ -810,10 +810,8 @@ impl Game {
             Effect::RevealUntilExileCastFree { filter } => {
                 self.reveal_until_exile_cast_free(controller, source, filter, events)
             }
-            // Creative Technique's "Shuffle your library, then reveal…" lead-in step.
-            Effect::ShuffleLibrary => {
-                self.push_apply(events, Event::LibraryShuffled { player: controller })
-            }
+            // ShuffleLibrary — see `resolution/resolve_misc.rs`.
+            Effect::ShuffleLibrary => self.run_misc_choreo(effect, ctx, events),
             // Dance with Calamity: the player-driven exile-until-stop loop, then a free cast of any
             // number of the exiled cards if the tally stayed under budget. Pauses on a
             // DanceExileMore choice.
@@ -955,48 +953,9 @@ impl Game {
             Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. } => {
                 self.run_exile_cast_pause(effect, ctx)
             }
-            // Chaos Warp: the target's owner shuffles it into their library, then reveals the
-            // new top card and — if it's a permanent card — puts it onto the battlefield under
-            // the owner (not necessarily this effect's controller). Deterministic (the shuffle's
-            // PRNG is the only randomness) but needs the *actual* post-shuffle order, so this
-            // runs here rather than through `execute_effect`'s pure event-building path.
+            // Chaos Warp — see `resolution/zones.rs::resolve_shuffle_then_reveal`.
             Effect::ShuffleTargetPermanentIntoLibraryThenReveal { .. } => {
-                let object = expect_object_target(target, "a permanent to tuck");
-                let owner = self.owner_of(object);
-                // CR 111.7: a token can't exist in a library — it ceases to exist instead, with
-                // no shuffle and no reveal. `shuffle_tuck_events` is the same tuck-then-shuffle
-                // pair Oblation's no-reveal sibling mints (`resolution/zones.rs`).
-                let was_token = self.permanent(object).token;
-                for event in self.shuffle_tuck_events(object) {
-                    self.push_apply(events, event);
-                }
-                if was_token {
-                    return;
-                }
-                // CR 120.3: an empty library reveals nothing — a clean no-op.
-                let Some(&card) = self.players[owner.0 as usize].library.first() else {
-                    return;
-                };
-                let def = self.def_of(card);
-                self.push_apply(
-                    events,
-                    Event::RevealedTopOfLibrary {
-                        player: owner,
-                        card,
-                        def,
-                    },
-                );
-                if CardFilter::Permanent.matches(def) {
-                    self.push_apply(
-                        events,
-                        Event::SearchedToBattlefield {
-                            permanent: self.next_object_id(),
-                            from: card,
-                            controller: owner,
-                            tapped: false,
-                        },
-                    );
-                }
+                self.resolve_shuffle_then_reveal(target, events)
             }
             // CounterTargetSpell unless-pays / destination — counter-spell peel
             // (`resolution/pause_counter_spell`).
@@ -1529,34 +1488,9 @@ impl Game {
                     self.run_sequence(then, ctx, events);
                 }
             }
-            // Marauding Raptor: deal the damage (unchanged via `execute_effect`), then — CR "if a
-            // Dinosaur is dealt damage this way, this creature gets +2/+0 until end of turn" —
-            // run `then` only if the entering permanent's subtypes intersect `then_if_subtype`
-            // AND the damage actually landed (a `DamageMarked` event was produced — none means a
-            // protection/prevention shield stopped it, CR 119.3 "is dealt damage").
-            Effect::DealDamageToEnteringPermanent {
-                entering,
-                then_if_subtype,
-                then,
-                ..
-            } => {
-                let evs = self.execute_effect(effect, controller, source, target, x);
-                let damage_landed = evs.iter().any(|e| matches!(e, Event::DamageMarked { .. }));
-                self.apply_all(&evs);
-                events.extend(evs);
-                if !damage_landed {
-                    return;
-                }
-                let entering = entering.expect("the entering permanent is filled in at placement");
-                let is_matching_subtype = self
-                    .def_of(entering)
-                    .subtypes
-                    .iter()
-                    .any(|s| then_if_subtype.contains(s));
-                if !is_matching_subtype {
-                    return;
-                }
-                self.run_sequence(then, ctx, events);
+            // Marauding Raptor — see `resolution/damage.rs::resolve_deal_damage_to_entering`.
+            Effect::DealDamageToEnteringPermanent { .. } => {
+                self.resolve_deal_damage_to_entering(effect, ctx, events)
             }
             // Untap the permanent this same resolution's own search step already put onto the
             // battlefield (Fabled Passage's "then … untap that land") — reads it back from the
@@ -1804,162 +1738,29 @@ impl Game {
             Effect::MillSelf { count } => {
                 self.resolve_mill_self(count, controller, source, target, x, events)
             }
-            // "Exile [this card] with N time counters on it" (Rousing Refrain): mark the resolving
-            // spell so `finish_instant_sorcery_resolution` sends it to exile with time counters
-            // instead of the graveyard (the resolving spell, `source`, is the card exiled).
-            Effect::ExileSelfWithTimeCounters { counters, .. } => {
-                self.self_exile_time_counters = Some(counters);
+            // Rousing Refrain / Spell Crumple self-move riders — see
+            // `resolution/resolve_misc.rs`.
+            Effect::ExileSelfWithTimeCounters { .. } | Effect::TuckSelfToLibraryBottom => {
+                self.run_misc_choreo(effect, ctx, events)
             }
-            // "Then put [this card] on the bottom of its owner's library" (Spell Crumple): mark
-            // the resolving spell so `finish_instant_sorcery_resolution` sends it to the bottom
-            // of its owner's library instead of the graveyard (`source`, the resolving spell
-            // itself, is the card tucked).
-            Effect::TuckSelfToLibraryBottom => {
-                self.self_tuck_to_library_bottom = true;
+            // Oversimplify — see `resolution/resolve_misc.rs`.
+            Effect::EachPlayerCreatesFractalFromExiledPower { .. } => {
+                self.run_misc_choreo(effect, ctx, events)
             }
-            // "Each player creates a 0/0 green and blue Fractal creature token and puts a number
-            // of +1/+1 counters on it equal to the total power of creatures they controlled that
-            // were exiled this way." (Oversimplify): mint one `token` per living player in APNAP
-            // order, applying each mint before computing its counters — `counters_after_replacements`
-            // reads the token's controller off game state, mirroring `CreateToken`'s `enters_with`
-            // below. No player choice, so this resolves in one pass, never pausing.
-            Effect::EachPlayerCreatesFractalFromExiledPower { token } => {
-                for player in self.apnap_order() {
-                    let minted = self.next_object_id();
-                    self.push_apply(
-                        events,
-                        Event::TokenCreated {
-                            token: minted,
-                            controller: player,
-                            def: token,
-                            creator: source,
-                        },
-                    );
-                    let power: i32 = self
-                        .resolution_frame
-                        .power_exiled_this_way
-                        .iter()
-                        .filter(|snap| snap.controller == player)
-                        .map(|snap| snap.power)
-                        .sum();
-                    let n = self.counters_after_replacements(minted, power);
-                    if n > 0 {
-                        self.push_apply(
-                            events,
-                            Event::CountersPlaced {
-                                object: minted,
-                                count: n,
-                                source_name: self.def_of(source).name,
-                            },
-                        );
-                    }
-                }
+            // Wheel of Fortune — see `resolution/resolve_misc.rs`.
+            Effect::EachPlayerDiscardsHandThenDraws { .. } => {
+                self.run_misc_choreo(effect, ctx, events)
             }
-            // "Each player discards their hand, then draws seven cards." (Wheel of Fortune):
-            // loop APNAP order, each living player discarding their whole hand (`discard_ids` —
-            // no choice, so no `PendingChoice`, unlike a partial-hand `Effect::Discard`) then
-            // drawing `count`.
-            Effect::EachPlayerDiscardsHandThenDraws { count } => {
-                let n = self.resolve_count(count, controller, source, target, x);
-                for player in self.apnap_order() {
-                    let hand = self.hand_of(player);
-                    self.discard_ids(&hand, player, events);
-                    for event in self.draw_events(player, n) {
-                        self.push_apply(events, event);
-                    }
-                }
-            }
-            // Mint the token(s) (unchanged batch via `execute_effect`), then — "Put X +1/+1
-            // counters on it" (Deekah's Magecraft Fractal) — place `enters_with` counters on each
-            // minted token, routed through the same doubler/Hardened-Scales replacement pipeline
-            // as a spell's own `EntersWithCounters` (`Game::resolve_spell`'s enters-with path).
-            // `counters_after_replacements` reads the token's controller off game state, so the
-            // mint must already be applied — mirrors `resolve_spell` applying `PermanentEntered`
-            // before reading its counters.
-            Effect::CreateToken { enters_with, .. } => {
-                let evs = self.execute_effect(effect, controller, source, target, x);
-                self.apply_all(&evs);
-                let minted: Vec<ObjectId> = evs
-                    .iter()
-                    .filter_map(|e| match e {
-                        Event::TokenCreated { token, .. } => Some(*token),
-                        _ => None,
-                    })
-                    .collect();
-                events.extend(evs);
-                let n_raw = self.resolve_amount(enters_with, controller, source, target, x);
-                if n_raw > 0 {
-                    for id in minted {
-                        let n = self.counters_after_replacements(id, n_raw);
-                        if n > 0 {
-                            self.push_apply(
-                                events,
-                                Event::CountersPlaced {
-                                    object: id,
-                                    count: n,
-                                    source_name: self.def_of(source).name,
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-            // Advanced Reconstruction's base ability: "exile a card from your graveyard at
-            // random. You may play the exiled card this turn." The card is picked by the
-            // injected RNG here (needs `&mut self`, unlike `ExileFromGraveyardMayPlay`'s
-            // trigger-supplied card), then reuses that same event/permission plumbing.
-            Effect::ExileRandomFromGraveyardMayPlay => {
-                let graveyard = self.graveyard_cards(controller);
-                // CR 701.19a: if there's nothing to exile, this is a no-op.
-                if graveyard.is_empty() {
-                    return;
-                }
-                let idx = (self.next_u64() % graveyard.len() as u64) as usize;
-                let from = graveyard[idx];
-                self.push_apply(
-                    events,
-                    Event::ExiledFromGraveyardMayPlay {
-                        player: controller,
-                        card: self.next_object_id(),
-                        from,
-                    },
-                );
-            }
-            // Ruhan of the Fomori's base ability: "Choose an opponent at random. ~ attacks that
-            // player this combat if able." The opponent is picked by the injected RNG here (needs
-            // `&mut self`), then reuses the same `must_attack` requirement plumbing a token's
-            // `must_attack_defender` uses.
-            Effect::MustAttackRandomOpponent => {
-                let opponents: Vec<PlayerId> =
-                    self.living_players().filter(|&p| p != controller).collect();
-                // CR 800.4a: no living opponents (a solitaire test rig) — nothing to choose.
-                if opponents.is_empty() {
-                    return;
-                }
-                let idx = (self.next_u64() % opponents.len() as u64) as usize;
-                self.push_apply(
-                    events,
-                    Event::MustAttackDeclared {
-                        object: source,
-                        defender: opponents[idx],
-                    },
-                );
-            }
-            // Inkshield (CR 615): arm a this-turn combat-damage prevention shield protecting the
-            // ability's controller ("dealt to *you*"), carrying the Inkling profile minted per
-            // point prevented. The tokens are created at the prevention itself (in `damage_player`),
-            // not here — at resolution no combat damage has been prevented yet. Runtime
-            // orchestration state (like the delayed combat-damage watches), not an event.
-            Effect::PreventCombatDamageToYouCreatingTokens { token } => self
-                .combat_extras
-                .combat_damage_prevention_shields
-                .push((controller, token)),
-            // Moment's Peace (#150): arm the this-turn table-wide combat-damage shield — every
-            // player's combat damage, not just this ability's controller's, and no token mint.
-            // Runtime orchestration state (like Inkshield's shield above), not an event.
-            Effect::PreventAllCombatDamageThisTurn => {
-                self.combat_extras.prevent_all_combat_damage_this_turn = true;
-            }
+            // `CreateToken`'s `enters_with` choreography — see
+            // `resolution/tokens.rs::resolve_create_token`.
+            Effect::CreateToken { .. } => self.resolve_create_token(effect, ctx, events),
+            // Advanced Reconstruction — see `resolution/resolve_misc.rs`.
+            Effect::ExileRandomFromGraveyardMayPlay => self.run_misc_choreo(effect, ctx, events),
+            // Ruhan of the Fomori — see `resolution/resolve_misc.rs`.
+            Effect::MustAttackRandomOpponent => self.run_misc_choreo(effect, ctx, events),
+            // Inkshield / Moment's Peace — see `resolution/resolve_misc.rs`.
+            Effect::PreventCombatDamageToYouCreatingTokens { .. }
+            | Effect::PreventAllCombatDamageThisTurn => self.run_misc_choreo(effect, ctx, events),
             // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
             // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
             // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters
