@@ -6,7 +6,7 @@ import { cn } from "~/lib/cn";
  */
 export function turnYieldRockerClass(yielded: boolean): string {
   return cn(
-    "flex h-[42px] items-center rounded-game border border-white/12 bg-forest-hud px-3",
+    "flex h-[42px] items-center rounded-game border border-white/12 bg-forest-hud px-md",
     "transition-colors duration-150 ease-state",
     yielded && "border-yielded/50",
   );

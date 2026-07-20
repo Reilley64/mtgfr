@@ -36,7 +36,7 @@ function fanTransform(index: number, count: number): string {
 export const HAND_BAR_H = 128;
 
 // A card face, in the bar and as the drag ghost. The bar card overlaps its left neighbour.
-const CARD_FACE = cn("block w-[112px] rounded-[9px]");
+const CARD_FACE = cn("block w-[112px] rounded-game");
 
 export default function Hand(props: {
   viewer: number;
@@ -193,7 +193,9 @@ export default function Hand(props: {
       }}
       style={{ "--fan": p.fan }}
       // `transition-transform` re-settles the fan smoothly when a card leaves the row.
-      class="pointer-events-auto relative origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)]"
+      // first:ml-0 cancels the overlap on the lead card so the fan stays optically centered
+      // under the section label (otherwise every tile, including the first, shifts left).
+      class="pointer-events-auto relative -ml-6 origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)] first:ml-0"
     >
       <img
         src={imageUrlByPrint(p.print)}
@@ -210,13 +212,13 @@ export default function Hand(props: {
         }}
         class={cn(
           CARD_FACE,
-          "-ml-6 cursor-default touch-none shadow-hand transition-transform duration-[80ms]",
-          p.action && "cursor-grab",
+          "cursor-default touch-none shadow-hand transition-[transform,filter] duration-[80ms] ease-state",
+          p.action && "cursor-grab hover:brightness-110",
           dimmedness(p),
         )}
       />
       <Show when={p.caption}>
-        <div class="pointer-events-none absolute right-0 bottom-2 -left-6 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
+        <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
           {p.caption}
         </div>
       </Show>
@@ -228,7 +230,7 @@ export default function Hand(props: {
       <div
         data-testid="hand-bar"
         style={{ "--bar-h": `${HAND_BAR_H}px` }}
-        class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-lg px-3 pb-2"
+        class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-lg px-md pb-sm"
       >
         <Section label="Hand">
           <For each={handSlots()}>
@@ -359,9 +361,16 @@ function actionCaption(kind: string): string | undefined {
 // that visually splits it from the section to its left.
 function Section(props: { label: string; divider?: boolean; children: JSX.Element }) {
   return (
-    <div class={cn("flex flex-col items-center justify-end gap-1", props.divider && "border-white/14 border-l pl-lg")}>
+    <div
+      class={cn(
+        "flex flex-col items-center justify-end gap-xs",
+        // Hairline separator — glass edge, not a second seat hue (seat hues = identity only).
+        props.divider && "border-white/14 border-l pl-lg",
+      )}
+    >
       <div class="flex items-end">{props.children}</div>
-      <div class="pointer-events-none font-semibold text-lichen text-micro uppercase tracking-[0.09em]">
+      {/* chip (not micro): zone labels must read from across the room (DESIGN principle 3). */}
+      <div class="pointer-events-none font-semibold text-chip text-seafoam uppercase tracking-[0.08em]">
         {props.label}
       </div>
     </div>

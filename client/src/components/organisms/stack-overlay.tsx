@@ -181,7 +181,7 @@ export function StackOverlay(props: {
       onMouseEnter={() => hoverEntry(opts.row, opts.imageName, { cardId: opts.cardId, print: opts.print })}
       style={opts.style}
       class={cn(
-        "absolute rounded-game shadow-[0_4px_14px_rgb(0_0_0/0.55)]",
+        "absolute rounded-game shadow-hand",
         opts.returning ? "animate-stack-return" : opts.entranceDelta ? "animate-stack-in" : null,
         opts.staged && "ring-(--target) ring-2",
         opts.isTop && holdMs() > 0 && stackHover() && "shadow-[0_0_16px_rgba(255,215,106,0.4)]",
