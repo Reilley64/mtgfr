@@ -201,6 +201,7 @@ export default function Hand(props: {
       return zoneWord ? `${base} (${zoneWord})` : base;
     };
     const pips = () => costPips(p.manaCost, { showZero: p.objectKind != null && p.objectKind !== "land" });
+    const [raised, setRaised] = createSignal(false);
     return (
       // Not a <button>: `onDown` drops the card on pointerup, so a native button's click would fire
       // `onDrop` a second time. The div carries the full button contract instead — tabIndex, role,
@@ -225,6 +226,8 @@ export default function Hand(props: {
           e.preventDefault(); // Space must not scroll the page
           activate(p.action);
         }}
+        onPointerEnter={() => setRaised(true)}
+        onPointerLeave={() => setRaised(false)}
         style={{
           "--fan": p.fan,
           "--overlap": `${HAND_CARD_OVERLAP}px`,
@@ -233,14 +236,17 @@ export default function Hand(props: {
         }}
         // Dense Arena fan: heavy negative margin; first:ml-0 keeps the group optically centered.
         // Hover raises z so the expanded face paints above neighbours.
-        class="group/card pointer-events-auto relative -ml-(--overlap) origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)] first:ml-0 hover:z-30"
+        class={cn(
+          "pointer-events-auto relative -ml-(--overlap) origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)] first:ml-0",
+          raised() && "z-30",
+        )}
       >
-        {/* Clip to a top strip at rest; hover expands upward (origin-bottom) so the cursor stays on the tile. */}
+        {/* Clip to a top strip at rest; expand upward on hover (pointer handlers, not CSS :hover —
+            transform/fan ancestors made group-hover unreliable). */}
         <div
           class={cn(
-            "relative w-[112px] origin-bottom overflow-hidden rounded-t-game",
-            "h-(--strip-h) transition-[height,border-radius] duration-150 ease-state",
-            "group-hover/card:h-(--card-h) group-hover/card:overflow-visible group-hover/card:rounded-game",
+            "relative w-[112px] origin-bottom transition-[height,border-radius] duration-150 ease-state",
+            raised() ? "h-(--card-h) overflow-visible rounded-game" : "h-(--strip-h) overflow-hidden rounded-t-game",
           )}
         >
           <img
