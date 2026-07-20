@@ -3,10 +3,10 @@
 # on top of its owner's library. If you win the clash, instead put that creature into its owner's
 # library second from the top.
 name = "Whirlpool Whelm"
-id = "3781ced1-ec24-4018-aaa8-f6dcbb1b1874"
-default_print = "9ade3faa-272b-4c28-958c-0a928a3411c5"
+id = "7f527852-bf7d-43a3-be0b-784c73ed88aa"
+default_print = "2ae39210-1556-41cc-a362-209fc4c3c032"
 oracle = "Clash with an opponent. (Each clashing player reveals the top card of their library, then puts that card on the top or bottom. A player wins if their card had a higher mana value.) Put target creature on top of its owner's library. If you win the clash, instead put that creature into its owner's library second from the top."
-set = "tsp"
+set = "cmd"
 
 [cost]
 generic = 1

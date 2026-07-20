@@ -1,11 +1,11 @@
 # {T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking
 # creature from combat and tap it.
 name = "Spurnmage Advocate"
-id = "1a2b3c4d-5e6f-4708-9091-a2b3c4d5e6f7"
-default_print = "2b3c4d5e-6f70-4819-90a2-b3c4d5e6f708"
+id = "0477b923-9f32-4e7f-ac08-c715cca819a4"
+default_print = "9c014b89-895c-432f-94f5-cda2dfac57e4"
 otags = ["activated-ability", "graveyard-hate", "removal-tempo"]
 oracle = "{T}, Exile two target cards from an opponent's graveyard: Remove target attacking or blocking creature from combat and tap it."
-set = "soc"
+set = "cmd"
 subtypes = ["Human", "Cleric"]
 
 [cost]

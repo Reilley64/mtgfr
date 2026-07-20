@@ -3,10 +3,10 @@
 # (Each clashing player reveals the top card of their library, then puts that card on the top or
 # bottom. A player wins if their card had a higher mana value.)
 name = "Pollen Lullaby"
-id = "e907775d-bb98-4da5-828e-1ce9a8c84533"
-default_print = "2854f6d5-da36-4ebd-81b9-3a62abe93e5d"
+id = "1f64d70d-ea38-4419-be91-8b68aab3401e"
+default_print = "5d033d41-2b64-4b9b-98d2-d32bb21f080f"
 oracle = "Clash with an opponent. Prevent all combat damage that would be dealt this turn. If you win the clash, creatures your opponents control don't untap during their controllers' next untap steps. (Each clashing player reveals the top card of their library, then puts that card on the top or bottom. A player wins if their card had a higher mana value.)"
-set = "tsp"
+set = "cmd"
 
 [cost]
 generic = 2
