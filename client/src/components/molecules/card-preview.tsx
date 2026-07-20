@@ -9,7 +9,7 @@ import * as Option from "effect/Option";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
-import { Button } from "~/components/atoms";
+import { Button, CardArt } from "~/components/atoms";
 import { cn } from "~/lib/cn";
 import {
   type InspectFace,
@@ -22,7 +22,6 @@ import {
 } from "~/lib/inspect";
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { splitOracleText } from "~/lib/oracleText";
-import { imageUrlByPrint } from "~/lib/scryfall";
 import type { CatalogCard, ModifierSourceView } from "~/wire/types";
 
 // Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
@@ -148,8 +147,8 @@ export function HoverPreview(props: { id: string | null; print?: string | null; 
             flipped() && "flex-row-reverse",
           )}
         >
-          <img
-            src={imageUrlByPrint(print())}
+          <CardArt
+            print={print()}
             alt={card()?.name ?? ""}
             style={{ "--w": `${W}px` }}
             class="w-(--w) flex-none rounded-[14px] shadow-table"
@@ -291,8 +290,10 @@ export function InspectDock(props: {
                 />
               }
             >
-              <img
-                src={imageUrlByPrint(artPrint(), "large", face())}
+              <CardArt
+                print={artPrint()}
+                size="large"
+                face={face()}
                 alt={displayName()}
                 style={{ "--w": `${W}px` }}
                 class="w-(--w) flex-none rounded-[14px] shadow-table"

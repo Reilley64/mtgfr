@@ -7,6 +7,7 @@
 
 import { useAtomMount, useAtomSet, useAtomValue } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
+import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Button } from "~/components/atoms";
@@ -40,8 +41,10 @@ import {
 import { boardStatusSummary } from "~/lib/boardStatus";
 import { worldToScreen } from "~/lib/camera";
 import { cn } from "~/lib/cn";
-import { ImageCache } from "~/lib/imageCache";
+import { preloadDecksIntoCache } from "~/lib/deckImagePreload";
+import { sharedImageCache } from "~/lib/imageCache";
 import { resolveClick } from "~/lib/interaction";
+import * as lobbyClient from "~/lib/lobbyClient";
 import { projectManaTrays } from "~/lib/manaTrayProject";
 import { type Outcome, outcome } from "~/lib/outcome";
 import { playerLabel } from "~/lib/players";
@@ -78,7 +81,7 @@ export default function Board() {
   const playerCount = createMemo(() => game.state?.players.length ?? 4);
   const opponents = () => (game.state?.players ?? []).map((p) => p.player).filter((s) => s !== me());
   const [tick, setTick] = createSignal(0);
-  const cache = new ImageCache(() => setTick((t) => t + 1));
+  const cache = sharedImageCache;
   // Mana ability glyphs paint via canvas fillText — redraw once the face settles (ok or fail).
   void document.fonts.load("14px Mana").then(
     () => setTick((t) => t + 1),
@@ -342,6 +345,16 @@ export default function Board() {
     resetGame(); // M4: a fresh Board mount is a new table — drop the last game's state/seq/log
     // The delta stream runs off `useAtomMount(gameStreamFamily(...))` above; its frames fold into
     // the store, its status flips `connected`, and its terminal errors set the reject line.
+
+    const unsubCache = cache.subscribe(() => setTick((t) => t + 1));
+    onCleanup(unsubCache);
+
+    // Warm every seated deck's art (owned decks + public precons). Library search then hits cache.
+    void lobbyClient.lobbyState(tableId()).then((view) => {
+      if (!view) return;
+      const ids = view.seats.flatMap((s) => (s.deck_id != null ? [s.deck_id] : []));
+      Effect.runFork(preloadDecksIntoCache(ids, cache));
+    });
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;

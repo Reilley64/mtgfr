@@ -26,7 +26,7 @@ import {
   untrack,
 } from "solid-js";
 import { createStore, produce } from "solid-js/store";
-import { Button, Felt, Field } from "~/components/atoms";
+import { Button, CardArt, Felt, Field } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client } from "~/effect/client";
@@ -35,7 +35,7 @@ import { cn } from "~/lib/cn";
 import { commanderPrintForRow, formatReleasedAt, reconcileEntries } from "~/lib/deckBuilderPrint";
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { openModalWhenReady } from "~/lib/modalDialog";
-import { imageUrlByPrint, searchPrints } from "~/lib/scryfall";
+import { searchPrints } from "~/lib/scryfall";
 import type { CatalogCard, DeckCardEntry, SaveDeckRequest } from "~/wire/types";
 
 const BASICS = new Set(["Plains", "Island", "Swamp", "Mountain", "Forest"]);
@@ -504,7 +504,7 @@ function DeckBuilderSignedIn() {
                 onMouseLeave={() => setHover(null)}
                 class={cn(POOL_CARD, commander.id && offIdentity(c) && "opacity-40")}
               >
-                <img src={imageUrlByPrint(printFor(c))} alt={c.name} loading="lazy" class={CARD_ART} />
+                <CardArt print={printFor(c)} alt={c.name} loading="lazy" class={CARD_ART} />
                 <span class="text-center leading-[1.1]">
                   {c.legendary ? "★ " : ""}
                   {c.name}
@@ -592,8 +592,8 @@ function DeckBuilderSignedIn() {
             onMouseLeave={() => setHover(null)}
             class="flex w-full cursor-pointer items-center gap-sm rounded-control border border-vine bg-glass-dim px-sm py-xs text-left"
           >
-            <img
-              src={imageUrlByPrint(commander.print)}
+            <CardArt
+              print={commander.print}
               alt={known[commander.id]?.name ?? commander.id}
               class="aspect-[0.72] w-10 rounded-focus object-cover"
             />
@@ -638,8 +638,8 @@ function DeckBuilderSignedIn() {
                 }}
                 class={DECK_ROW}
               >
-                <img
-                  src={imageUrlByPrint(row.print)}
+                <CardArt
+                  print={row.print}
                   alt=""
                   aria-hidden
                   class="aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"
@@ -793,7 +793,7 @@ function PrintPicker(props: { oracleId: string; onPick: (printId: string) => voi
             <For each={prints() ?? []}>
               {(p) => (
                 <button type="button" onClick={() => props.onPick(p.id)} class={PRINT_TILE}>
-                  <img src={imageUrlByPrint(p.id)} alt={`${p.set_name} #${p.collector_number}`} class={CARD_ART} />
+                  <CardArt print={p.id} alt={`${p.set_name} #${p.collector_number}`} class={CARD_ART} />
                   <div class="flex w-full flex-wrap items-center justify-center gap-1">
                     <span class={PRINT_BADGE} title={p.set_name}>
                       {p.set.toUpperCase()}

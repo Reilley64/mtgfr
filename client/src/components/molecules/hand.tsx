@@ -9,10 +9,10 @@
 // drag-to-avatar UI.
 
 import { createMemo, createSignal, For, type JSX, onCleanup, Show } from "solid-js";
+import { CardArt } from "~/components/atoms";
 import { ZONE } from "~/layout";
 import { byObject, bySection, handExtras } from "~/lib/actions";
 import { cn } from "~/lib/cn";
-import { imageUrlByPrint } from "~/lib/scryfall";
 import { game } from "~/store";
 import type { ActionView, ObjectView } from "~/wire/types";
 
@@ -195,8 +195,8 @@ export default function Hand(props: {
       // `transition-transform` re-settles the fan smoothly when a card leaves the row.
       class="pointer-events-auto relative origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)]"
     >
-      <img
-        src={imageUrlByPrint(p.print)}
+      <CardArt
+        print={p.print}
         alt={p.name}
         draggable={false}
         onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, e)}
@@ -297,8 +297,8 @@ export default function Hand(props: {
       </div>
       <Show when={drag()}>
         {(d) => (
-          <img
-            src={imageUrlByPrint(d().print)}
+          <CardArt
+            print={d().print}
             alt={d().name}
             draggable={false}
             style={{ "--x": `${d().x}px`, "--y": `${d().y}px` }}

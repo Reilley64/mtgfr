@@ -2,13 +2,12 @@
 
 import * as Match from "effect/Match";
 import { createEffect, For, Show } from "solid-js";
-import { Button, Hud, Modal } from "~/components/atoms";
+import { Button, CardArt, Hud, Modal } from "~/components/atoms";
 import { HAND_BAR_H } from "~/components/molecules/hand";
 import { PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
 import { cn } from "~/lib/cn";
 import type { Outcome } from "~/lib/outcome";
 import { playerLabel } from "~/lib/players";
-import { imageUrlByPrint } from "~/lib/scryfall";
 import { game } from "~/store";
 import type { ObjectView } from "~/wire/types";
 
@@ -119,7 +118,7 @@ export function PileOverlay(props: { cards: ObjectView[]; onClose: () => void })
         <div class={PROMPT_TITLE}>Pile ({props.cards.length})</div>
         <div class="flex flex-wrap gap-xs">
           <For each={props.cards}>
-            {(c) => <img src={imageUrlByPrint(c.print ?? "")} alt={c.name} width={90} class="rounded-md" />}
+            {(c) => <CardArt print={c.print ?? ""} alt={c.name} width={90} class="rounded-md" />}
           </For>
         </div>
         <div class={cn(PROMPT_ROW, "mt-sm")}>
