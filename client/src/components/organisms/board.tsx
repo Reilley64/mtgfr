@@ -181,6 +181,7 @@ export default function Board() {
     cards,
     stackLength: () => game.state?.stack.length ?? 0,
     stackSourceIds: () => new Set((game.state?.stack ?? []).map((s) => s.source)),
+    objectIds: () => new Set((game.state?.objects ?? []).map((o) => o.id)),
     landPlays: () => provenance().landPlayFrom,
     fromStack: () => provenance().resolvedFromStack,
     fromStackExit: () => provenance().leftStackToPile,

@@ -23,6 +23,8 @@ export type CardFlightsDeps = {
   stackLength: Accessor<number>;
   /** Live stack object source ids — used to GC orphan `kind:"stack"` flights. */
   stackSourceIds: Accessor<ReadonlySet<number>>;
+  /** All visible object ids — hand-keyed flights stay only while the hand card still exists. */
+  objectIds: Accessor<ReadonlySet<number>>;
   landPlays: Accessor<Map<number, number>>;
   fromStack: Accessor<Set<number>>;
   fromStackExit: Accessor<Set<number>>;
@@ -238,6 +240,15 @@ export function useCardFlights(deps: CardFlightsDeps) {
           stackFlight = next.get(id);
         }
       }
+      // stackEntrances never rebound: flight still keyed by the consumed hand id.
+      if (stackFlight?.kind !== "stack") {
+        for (const [fid, f] of next) {
+          if (f.kind !== "stack" || f.fromCardId !== fid) continue;
+          next = rebindFlightId(next, fid, id);
+          stackFlight = next.get(id);
+          break;
+        }
+      }
       if (stackFlight?.kind === "stack") {
         next = new Map(next);
         next.set(
@@ -286,9 +297,12 @@ export function useCardFlights(deps: CardFlightsDeps) {
 
   // If absorb misses the one delta that carries fromStack/zoneMoves, kind:"stack" flights are
   // retargeted at the stack aim forever (refresh clears them). Drop or promote orphans whose
-  // ids are no longer on the live stack — keep pre-rebind hand flights (fromCardId === id).
+  // ids are no longer on the live stack. Hand-keyed flights (fromCardId === id) stay only while
+  // the hand object still exists or stackEntrances can still rebind them.
   createEffect(() => {
     const sources = deps.stackSourceIds();
+    const objects = deps.objectIds();
+    const ents = deps.stackEntrances();
     const moves = deps.zoneMoves();
     const cards = deps.cards();
     const cam = deps.camera();
@@ -301,8 +315,47 @@ export function useCardFlights(deps: CardFlightsDeps) {
     for (const [id, f] of [...next]) {
       if (f.kind !== "stack") continue;
       if (sources.has(id)) continue;
-      // Hand→stack flight before spell_cast rebind — not on the stack yet.
-      if (f.fromCardId === id) continue;
+
+      // Still keyed by hand id — try late hand→spell rebind, else keep only while hand exists.
+      if (f.fromCardId === id) {
+        let spellId: number | undefined;
+        for (const [spell, meta] of ents) {
+          if (meta.from === id) {
+            spellId = spell;
+            break;
+          }
+        }
+        if (spellId != null) {
+          next = rebindFlightId(next, id, spellId);
+          const rebound = next.get(spellId);
+          if (rebound) {
+            const len = Math.max(1, deps.stackLength());
+            const peek = stackPeekFor(len, deps.size().y, STACK_VERTICAL_RESERVED);
+            const to = stackAimOrigin(deps.size().x, deps.size().y, len, peek);
+            next = new Map(next);
+            next.set(
+              spellId,
+              retargetFlight({ ...rebound, kind: "stack" }, { x: to.x, y: to.y, scale: stackFlightScale(cam.zoom) }),
+            );
+            changed = true;
+          }
+          continue;
+        }
+        if (objects.has(id)) continue;
+        // No object snapshot yet (boot / tests) — don't invent a disappearance.
+        if (objects.size === 0) continue;
+        // Hand object consumed and never rebound — drop the ghost (same end as refresh).
+        next = new Map(next);
+        next.delete(id);
+        spawnedFromStack.delete(id);
+        setHandHidden((h) => {
+          const n = new Set(h);
+          n.delete(id);
+          return n;
+        });
+        changed = true;
+        continue;
+      }
 
       const permanentId = spellToPermanent.get(id);
       const card = permanentId != null ? cards.find((c) => c.id === permanentId) : undefined;
