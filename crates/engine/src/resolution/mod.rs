@@ -5,7 +5,8 @@
 //! Primary: CR 608. External seam: [`Game::run`] (in `effects`) is the sole Effect→board verb —
 //! callers never choose mint vs pause. Internals here: [`SequenceCont`] / resume, [`ResolutionFrame`],
 //! pure mint dispatcher ([`mint`]) + families ([`draw`], [`damage`], [`life`], …), and pause peels
-//! ([`pause_arrange`]). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! ([`pause_arrange`], [`pause_look`], [`pause_hand`], [`pause_may`], [`pause_choose`],
+//! [`pause_exile_cast`]). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
 
 mod control;
 mod counters;
@@ -19,6 +20,11 @@ mod mill;
 mod mint;
 mod misc;
 mod pause_arrange;
+mod pause_choose;
+mod pause_exile_cast;
+mod pause_hand;
+mod pause_look;
+mod pause_may;
 mod pump;
 mod resume;
 mod reveal;

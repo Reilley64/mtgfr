@@ -767,7 +767,7 @@ impl Game {
             target,
             targets_second,
             x,
-            spent_mana,
+            spent_mana: _,
         } = ctx;
         // A targeted step with no chosen target only reaches resolution via an "up to one"
         // ability placed with no target (declined, or none legal — CR 601.2c/603.3c, see
@@ -790,31 +790,10 @@ impl Game {
             // Clash (CR 701.22): pick an opponent, both reveal + scry-1 their top, score the clash.
             // Pauses on the shared opponent chooser and/or the two keep/bottom scries.
             Effect::Clash => self.begin_clash(controller, source, events),
-            // Look at the top N, select up to `up_to` matching cards into `dest`, rest to `rest`
-            // (Quandrix Apprentice). Pauses on a SelectFromTop choice.
-            Effect::LookAtTop {
-                count,
-                filter,
-                up_to,
-                min,
-                dest,
-                dest_tapped,
-                rest,
-                mv_budget,
-            } => pending::raise(
-                self,
-                pending::ChoiceRequest::SelectFromTop {
-                    player: controller,
-                    count,
-                    filter,
-                    up_to,
-                    min,
-                    dest,
-                    dest_tapped,
-                    rest,
-                    mv_budget,
-                },
-            ),
+            // LookAtTop / DistributeTop / SearchLibrary — look pause peel (`resolution/pause_look`).
+            Effect::LookAtTop { .. }
+            | Effect::DistributeTop { .. }
+            | Effect::SearchLibrary { .. } => self.run_look_pause(effect, ctx),
             // Exile the top N face-up, pause on a choose-up-to-one over the matching cards to
             // grant free-cast permission, then bottom the rest (Herald of Amity's ETB dig).
             // Pauses on a ChooseExiledDigToCastFree choice.
@@ -845,54 +824,6 @@ impl Game {
             // rest in random order. Pauses on a ChooseExiledDigToCastFree choice (reused from the
             // dig) when a hit is found.
             Effect::Cascade { mana_value } => self.cascade(controller, source, mana_value, events),
-            // Look at the top N, route one card each to hand / bottom / exile-may-play
-            // (Expressive Iteration). Pauses on a DistributeTop choice.
-            Effect::DistributeTop {
-                count,
-                to_hand,
-                to_bottom,
-                to_exile_may_play,
-            } => pending::raise(
-                self,
-                pending::ChoiceRequest::DistributeTop {
-                    player: controller,
-                    count,
-                    to_hand,
-                    to_bottom,
-                    to_exile_may_play,
-                },
-            ),
-            // A library search (fetchlands / tutors) pauses on a SearchLibrary choice. Usually
-            // the ability's own controller searches; Path to Exile/Assassin's Trophy hand the
-            // search to the exiled/destroyed permanent's controller instead (CR 701.19 doesn't
-            // require the searcher to be the ability's controller).
-            Effect::SearchLibrary {
-                filter,
-                to_zone,
-                tapped,
-                searcher,
-                count,
-                overflow,
-            } => {
-                let searching_player = match searcher {
-                    SearchScope::You => controller,
-                    SearchScope::TargetController => self.controller_of(expect_object_target(
-                        target,
-                        "a search effect's target-controller",
-                    )),
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::SearchLibrary {
-                        player: searching_player,
-                        filter,
-                        dest: to_zone,
-                        tapped,
-                        count,
-                        overflow,
-                    },
-                )
-            }
             // A multi-player sacrifice edict (Deadly Brew, Promise of Loyalty) pauses per
             // affected player.
             Effect::EachPlayerSacrifices {
@@ -1031,17 +962,16 @@ impl Game {
                     },
                 )
             }
-            // A resolution-time optional sacrifice (Witherbloom Charm mode 0) pauses on a
-            // MaySacrifice choice; declining runs nothing.
-            Effect::MaySacrifice { filter, then } => pending::raise(
-                self,
-                pending::ChoiceRequest::MaySacrifice {
-                    player: controller,
-                    source,
-                    filter,
-                    then,
-                },
-            ),
+            // MaySacrifice / MayReturnFromGraveyard / MayDiscard / MayDraw* /
+            // SacrificeSelfUnlessPay — may pause peel (`resolution/pause_may`).
+            Effect::MaySacrifice { .. }
+            | Effect::MayReturnFromGraveyard { .. }
+            | Effect::MayDiscard { .. }
+            | Effect::MayDrawUnlessPays { .. }
+            | Effect::TargetPlayerMayDraw { .. }
+            | Effect::MayDrawUpTo { .. }
+            | Effect::MayDrawUpToThenOpponentMayRepeat { .. }
+            | Effect::SacrificeSelfUnlessPay { .. } => self.run_may_pause(effect, ctx),
             // A forced sacrifice the affected player directs (Lotus Field's ETB "sacrifice two
             // lands", Smothering Abomination's upkeep "sacrifice a creature") pauses on a
             // ChooseOwnSacrifices choice; with count-or-fewer legal permanents it resolves
@@ -1080,62 +1010,15 @@ impl Game {
                     self.sacrifice_ids(&options, defender, events);
                 }
             }
-            // A resolution-time optional graveyard return (Deadly Brew's rider) pauses on a
-            // MayReturnFromGraveyard choice; declining runs nothing. "If you sacrificed a
-            // permanent this way" (Deadly Brew) gates the whole rider on the edict's own
-            // controller having actually sacrificed — unmet, it's the same "runs nothing" as
-            // declining, no pause at all.
-            Effect::MayReturnFromGraveyard {
-                filter,
-                if_you_sacrificed_this_way,
-            } => {
-                if if_you_sacrificed_this_way
-                    && !self.resolution_frame.sacrificed_by_edict_controller
-                {
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayReturnFromGraveyard {
-                        player: controller,
-                        source,
-                        filter,
-                    },
-                )
-            }
-            // A resolution-time optional discard (Quintorius, History Chaser's +1) pauses on a
-            // MayDiscard choice; declining runs nothing.
-            Effect::MayDiscard { then } => pending::raise(
-                self,
-                pending::ChoiceRequest::MayDiscard {
-                    player: controller,
-                    source,
-                    then,
-                },
-            ),
-            // Proliferate (CR 701.27) pauses on a Proliferate choice over every counter-bearing
-            // permanent; `times` (Expansion Algorithm's {X}) may re-pause after this iteration.
-            Effect::Proliferate { times } => {
-                let n = self.resolve_count(times, controller, source, target, x);
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::Proliferate {
-                        player: controller,
-                        source,
-                        remaining: n as u8,
-                    },
-                );
-            }
-            // Guardian of Faith's ETB (CR 702.26): pause to choose any number of the *other*
-            // creatures its controller controls to phase out. Nothing to choose with no other
-            // creature — skip past (like Proliferate's empty board).
-            Effect::PhaseOut => pending::raise(
-                self,
-                pending::ChoiceRequest::PhaseOut {
-                    player: controller,
-                    source,
-                },
-            ),
+            // ChooseCreatureType / ChooseColor / SetOwnColorUntilEndOfTurn / ChooseOne /
+            // Demonstrate / Proliferate / PhaseOut — choose pause peel (`resolution/pause_choose`).
+            Effect::ChooseCreatureType
+            | Effect::ChooseColor
+            | Effect::SetOwnColorUntilEndOfTurn
+            | Effect::ChooseOne { .. }
+            | Effect::Demonstrate { .. }
+            | Effect::Proliferate { .. }
+            | Effect::PhaseOut => self.run_choose_pause(effect, ctx),
             // Kinetic Ooze's X≥10 rider (CR 601.2c/603.3d): double the +1/+1 counters on each of the
             // "other target creatures" chosen at placement (read from this ability's second target
             // clause). A target that has left the battlefield since is skipped (CR 608.2b).
@@ -1273,29 +1156,10 @@ impl Game {
                     },
                 );
             }
-            // Perpetual Timepiece ("Shuffle any number of target cards from your graveyard into
-            // your library", `target_player = false`) and Quandrix Command mode 3 ("Target
-            // player shuffles up to three target cards from their graveyard into their
-            // library", `target_player = true`) both pause on a ShuffleFromGraveyard choice —
-            // the graveyard owner is the ability's controller or the targeted player.
-            Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, target_player } => {
-                let owner = if target_player {
-                    let Some(Target::Player(player)) = target else {
-                        panic!("target-player shuffle resolves with a chosen player target");
-                    };
-                    player
-                } else {
-                    controller
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ShuffleFromGraveyard {
-                        answerer: controller,
-                        owner,
-                        source,
-                        max,
-                    },
-                )
+            // Perpetual Timepiece / Quandrix Command mode 3 — exile-cast pause peel
+            // (`resolution/pause_exile_cast`).
+            Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. } => {
+                self.run_exile_cast_pause(effect, ctx)
             }
             // Chaos Warp: the target's owner shuffles it into their library, then reveals the
             // new top card and — if it's a permanent card — puts it onto the battlefield under
@@ -1363,75 +1227,6 @@ impl Game {
                             ..Cost::FREE
                         },
                         spell: original,
-                    },
-                );
-            }
-            // Rhystic Study's "you may draw a card unless that player pays {1}": pause the
-            // ability's own controller on whether they want to draw at all (the card's ruling —
-            // declining is quiet, no pay window is ever offered). Only a "yes" here raises the
-            // triggering opponent's own pay-or-let-it-happen pause (`Game::answer_may`).
-            Effect::MayDrawUnlessPays { cost, caster } => {
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayYesNo {
-                        player: controller,
-                        source,
-                        effect: Effect::MayDrawUnlessPays { cost, caster },
-                    },
-                );
-            }
-            // Questing Phelddagrif's blue rider: "Target opponent may draw a card." Unlike
-            // `MayDrawUnlessPays` above, the *targeted* player answers (no pay window rides
-            // behind it) — see `Game::answer_may`.
-            Effect::TargetPlayerMayDraw { count, opponent } => {
-                let Some(Target::Player(player)) = target else {
-                    panic!("target-player-may-draw resolves with a chosen player target");
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayYesNo {
-                        player,
-                        source,
-                        effect: Effect::TargetPlayerMayDraw { count, opponent },
-                    },
-                );
-            }
-            // Arcane Denial's countered-spell rider: "Its controller may draw up to two cards"
-            // (CR 120.4 / 601.2c). Pause the resolving controller on a count choice `0..=max`;
-            // the answer (`Game::answer_may_draw_up_to`) draws exactly the chosen number.
-            Effect::MayDrawUpTo { count } => {
-                let max = self
-                    .resolve_count(count, controller, source, None, 0)
-                    .min(u8::MAX as u32) as u8;
-                pending::raise_choice(
-                    self,
-                    PendingChoice::MayDrawUpTo {
-                        player: controller,
-                        max,
-                    },
-                );
-            }
-            // Trade Secrets: "target opponent draws two cards, then you draw up to four cards"
-            // (CR 120.4 / 601.2c). The mandatory opponent draw is a preceding `TargetPlayerDraws`
-            // step sharing this Sequence's target; this step pauses the caster on a count choice
-            // `0..=count` (`Game::answer_trade_secrets_caster_draw` chains to the opponent's
-            // repeat-or-stop pause once answered).
-            Effect::MayDrawUpToThenOpponentMayRepeat { count } => {
-                let Some(Target::Player(opponent)) = target else {
-                    panic!(
-                        "may-draw-up-to-then-opponent-may-repeat resolves with a chosen opponent target"
-                    );
-                };
-                let max = self
-                    .resolve_count(count, controller, source, None, 0)
-                    .min(u8::MAX as u32) as u8;
-                pending::raise_choice(
-                    self,
-                    PendingChoice::TradeSecretsCasterDraw {
-                        player: controller,
-                        max,
-                        opponent,
-                        source,
                     },
                 );
             }
@@ -1510,56 +1305,6 @@ impl Game {
                 };
                 self.apply_all(&evs);
                 events.extend(evs);
-            }
-            // Patchwork Banner's "As this artifact enters, choose a creature type": pause on a
-            // ChooseCreatureType for the controller, over the pool's known creature types.
-            Effect::ChooseCreatureType => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseCreatureType {
-                    player: controller,
-                    source,
-                    options: CREATURE_TYPES,
-                },
-            ),
-            // Flickering Ward's "As this Aura enters, choose a color": pause on a ChooseColor for (CR 702.21, CR 303.4)
-            // the controller over the fixed five colors.
-            Effect::ChooseColor => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseColor {
-                    player: controller,
-                    source,
-                    until_end_of_turn: false,
-                },
-            ),
-            // Wild Mongrel's "...and becomes the color of your choice until end of turn": the same (CR 613.3c)
-            // ChooseColor picker as `ChooseColor` above, but the answer sets an until-end-of-turn
-            // color-SET instead of the indefinite `chosen_color`.
-            Effect::SetOwnColorUntilEndOfTurn => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseColor {
-                    player: controller,
-                    source,
-                    until_end_of_turn: true,
-                },
-            ),
-            // "Choose one —" on a triggered ability (CR 700.2): pause on a ChooseMode for the
-            // controller. The chosen mode resolves later through this same pipeline (see
-            // `answer_choose_mode`), carrying this ability's `source`/`target`/`x` context so a
-            // mode that needs them still has them. An empty mode list is a defensive no-op.
-            Effect::ChooseOne { modes } => {
-                if modes.is_empty() {
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseMode {
-                        player: controller,
-                        source,
-                        target,
-                        x,
-                        modes,
-                    },
-                );
             }
             // Fight (CR 701.12): `target` is already the opponent's creature (chosen at cast);
             // pause on a ChooseTarget for the controller's own creature (mirrors
@@ -2015,23 +1760,6 @@ impl Game {
                     events,
                 );
             }
-            // Demonstrate (CR 702.147a): "you may copy it" — a real, respondable trigger above
-            // the cast spell (`spell` baked in at placement, see `CardDef::demonstrate`). The
-            // spell may have been countered in response before this trigger resolved (CR 707.10c
-            // guard, same shape as `CopyTriggeringSpell`'s above): nothing left to copy.
-            Effect::Demonstrate { spell } => {
-                if !matches!(self.objects[spell as usize], Object::Spell(_)) {
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayYesNo {
-                        player: controller,
-                        source,
-                        effect: Effect::Demonstrate { spell },
-                    },
-                );
-            }
             // Opal Palace's spend-to-cast rider: the commander spell (baked in as
             // `triggering_spell` when the `SpendManaToCast` trigger fired) is still on the stack, so
             // record the additional-counter count keyed by its id for `resolve_spell` to place as it
@@ -2101,80 +1829,12 @@ impl Game {
                 };
                 self.mint_spell_copies(Amount::Fixed(1), controller, card, None, 0, events);
             }
-            // A discard pauses on a card-pick choice (the discarding player chooses which to
-            // pitch): the ability's controller, or a chosen target player (Prismari Command).
-            Effect::Discard {
-                count,
-                target_player,
-                or_one_matching,
-            } => {
-                let discarder = if target_player {
-                    let Some(Target::Player(player)) = target else {
-                        panic!("target-player discard resolves with a chosen player target");
-                    };
-                    player
-                } else {
-                    controller
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::Discard {
-                        player: discarder,
-                        count,
-                        or_one_matching,
-                    },
-                )
-            }
-            // Brainstorm's "put two cards from your hand on top of your library in any order"
-            // pauses on an ordered card-pick choice over the controller's own hand.
-            Effect::PutFromHandOnTop { count } => pending::raise(
-                self,
-                pending::ChoiceRequest::PutFromHandOnTop {
-                    player: controller,
-                    count,
-                },
-            ),
-            // "You may put a land from hand onto the battlefield" pauses on a card-pick choice
-            // (up to one hand land, or decline).
-            Effect::PutLandFromHand { tapped } => pending::raise(
-                self,
-                pending::ChoiceRequest::PutLandFromHand {
-                    player: controller,
-                    tapped,
-                },
-            ),
-            // Cauldron Dance's "You may put a creature card from your hand onto the
-            // battlefield" pauses on the creature sibling of `PutLandFromHand`'s card-pick
-            // choice (up to one hand creature, or decline). `source` is threaded through so the
-            // answer can later schedule the end-step sacrifice against this same ability.
-            Effect::PutCreatureFromHand => pending::raise(
-                self,
-                pending::ChoiceRequest::PutCreatureFromHand {
-                    player: controller,
-                    source,
-                },
-            ),
-            // Illusionary Mask's "you may cast a creature card in hand … face down as a 2/2"
-            // pauses on a card-pick choice over the hand creatures whose mana cost the mana
-            // spent on this ability's `{X}` could pay (`ctx.spent_mana`, CR 107.3).
-            Effect::CastCreatureFaceDown => pending::raise(
-                self,
-                pending::ChoiceRequest::CastCreatureFaceDown {
-                    player: controller,
-                    spent_mana,
-                },
-            ),
-            // Rupture Spire's own ETB trigger: "sacrifice it unless you pay {1}." Pauses on the
-            // same pay-or-sacrifice shape Echo's `PayEchoOrSacrifice` uses, under its own variant
-            // (this is a real triggered ability, not Echo — CR 603.3b, not CR 702.31).
-            Effect::SacrificeSelfUnlessPay { cost } => pending::raise(
-                self,
-                pending::ChoiceRequest::SacrificeUnlessPay {
-                    player: controller,
-                    source,
-                    cost,
-                },
-            ),
+            // Discard / PutFromHand* / CastCreatureFaceDown — hand pause peel (`resolution/pause_hand`).
+            Effect::Discard { .. }
+            | Effect::PutFromHandOnTop { .. }
+            | Effect::PutLandFromHand { .. }
+            | Effect::PutCreatureFromHand
+            | Effect::CastCreatureFaceDown => self.run_hand_pause(effect, ctx),
             // Treva's Ruins' own ETB trigger: "sacrifice it unless you return a non-Lair land you
             // control." Pauses on a candidate-land pick (or sacrifices outright with none).
             Effect::SacrificeSelfUnlessReturnLand { filter } => {
@@ -2203,25 +1863,11 @@ impl Game {
                     );
                 }
             }
-            // "Put a card exiled with this" pauses on a card-pick choice over this source's
-            // exiled-with pile (up to one, or decline).
-            Effect::CashOutExiledWithThis => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseExiledWithCard {
-                    player: controller,
-                    source,
-                },
-            ),
-            // Quintorius's activated ability pauses on a card-pick choice over this source's (CR 602, CR 113)
-            // linked exile pile, granting the free-cast permission for the chosen card instead
-            // of cashing it out.
-            Effect::CastExiledWithThisFree => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseExiledWithCardToCast {
-                    player: controller,
-                    source,
-                },
-            ),
+            // CashOutExiledWithThis / CastExiledWithThisFree — exile-cast pause peel
+            // (`resolution/pause_exile_cast`).
+            Effect::CashOutExiledWithThis | Effect::CastExiledWithThisFree => {
+                self.run_exile_cast_pause(effect, ctx)
+            }
             // A sequence runs its steps in order, sharing this target/{X}; a pausing step defers
             // the rest until answered.
             Effect::Sequence { steps } => self.run_sequence(steps, ctx, events),
