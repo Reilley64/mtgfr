@@ -4,11 +4,15 @@
 //!
 //! Primary: CR 608. External seam: [`Game::run`] (in `effects`) is the sole Effect→board verb —
 //! callers never choose mint vs pause. Internals here: [`SequenceCont`] / resume, [`ResolutionFrame`],
-//! pure mint dispatcher ([`mint`]) + families ([`draw`], [`damage`], [`life`], …), and pause peels
+//! pure mint dispatcher ([`mint`]) + families ([`draw`], [`damage`], [`life`], …), pause peels
 //! ([`pause_arrange`], [`pause_look`], [`pause_hand`], [`pause_may`], [`pause_choose`],
-//! [`pause_exile_cast`], [`pause_edict`], [`pause_fight`], [`pause_counter_spell`]). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! [`pause_exile_cast`], [`pause_edict`], [`pause_fight`], [`pause_counter_spell`]), and mut-needing
+//! resolve choreography ([`copy`], [`sequence_steps`], [`resolve_misc`]) — the arms that read
+//! prior events, mint new stack objects, or arm runtime scratch beyond a pure `mint_*` batch.
+//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
 
 mod control;
+mod copy;
 mod counters;
 mod damage;
 mod destroy;

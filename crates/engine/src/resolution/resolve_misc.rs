@@ -149,6 +149,65 @@ impl Game {
             Effect::TuckSelfToLibraryBottom => {
                 self.self_tuck_to_library_bottom = true;
             }
+            // Opal Palace's spend-to-cast rider: the commander spell (baked in as
+            // `triggering_spell` when the `SpendManaToCast` trigger fired) is still on the stack, so
+            // record the additional-counter count keyed by its id for `resolve_spell` to place as it
+            // enters. Guard-return if that spell already left the stack (countered in response, CR
+            // 603.4) — nothing to enter, so nothing to record.
+            Effect::CommanderEntersWithBonusCounters {
+                triggering_spell,
+                count,
+            } => {
+                let Some(spell) = triggering_spell else {
+                    return;
+                };
+                if !matches!(self.objects[spell as usize], Object::Spell(_)) {
+                    return;
+                }
+                let n = self.resolve_count(count, controller, source, target, x);
+                if n == 0 {
+                    return;
+                }
+                self.pending_enter_bonus_counters.push((spell, n));
+            }
+            // Renegade Bull's attack trigger: "exile up to one target instant or sorcery card
+            // from your graveyard and copy it. You may cast the copy without paying its mana
+            // cost." "Up to one": no chosen target (declined, or none legal — CR 603.3c already
+            // drops the ability before this runs) is a no-op. Exile the chosen card, then grant
+            // the free-cast permission (CR 118.5) for it — the same `CastFromExileFreePermissionGranted`
+            // plumbing `CastExiledWithThisFree` (Quintorius) grants — so the controller can
+            // genuinely *cast* it (CR 601) at their next opportunity, firing real "whenever you
+            // cast" watchers off it (including this card's own first ability above).
+            Effect::ExileTargetGraveyardSpellCastFree { .. } => {
+                let Some(object) = target.and_then(Target::object_id) else {
+                    return;
+                };
+                let exiled = self.next_object_id();
+                let move_event = self.exile_or_command(object, exiled);
+                self.push_apply(events, move_event);
+                self.push_apply(
+                    events,
+                    Event::CastFromExileFreePermissionGranted {
+                        card: exiled,
+                        player: controller,
+                    },
+                );
+            }
+            // Surge to Victory: "Exile target instant or sorcery card from your graveyard."
+            // Mandatory single target (unlike Renegade Bull's "up to one" above), so a legal
+            // target is guaranteed by the time this runs (CR 608.2b already fizzled the whole
+            // ability otherwise). Snapshot the exiled card's id + mana value for the following
+            // team-pump (`Amount::ExiledCardManaValueThisWay`) and combat-damage-copy arm
+            // (`ScheduleThisTurnCombatDamageCopy`) steps sharing this resolution's `Sequence`.
+            Effect::ExileTargetGraveyardCardRecordManaValue { .. } => {
+                let object =
+                    expect_object_target(target, "exile target graveyard card, record mana value");
+                let mana_value = self.def_of(object).mana_value();
+                let exiled = self.next_object_id();
+                let move_event = self.exile_or_command(object, exiled);
+                self.push_apply(events, move_event);
+                self.resolution_frame.surge_exiled_card = Some((exiled, mana_value));
+            }
             _ => unreachable!("misc resolution choreo received a non-family effect"),
         }
     }
