@@ -15,8 +15,9 @@ ADR 0007 deliberately omits empty-stack instants from `has_meaningful_action` (s
 - **Arm:** active seat sets `turn_yield` (existing `SetTurnYield` / `turn_yielded`). UI label **End Turn** (toggle off cancels).
 - **Advance:** `auto_advance` skips the end-turning seat; other seats still play. Empty-stack instant-speed casts on other seats stop the walk (ADR 0007 carve-out above).
 - **Clear** (in addition to 0029’s own-intent / attacked / Untap-as-active rules):
-  - At the turn boundary (`Cleanup` → next `Untap`): clear the seat whose turn just ended, so End Turn does not morph into until-my-turn.
+  - On `Cleanup` for the ending active seat (so a discard-to-hand-size pause cannot leave End Turn armed into the next turn).
   - When another seat submits a non-`PassPriority` intent: clear the **active** seat’s yield so they can respond.
+  - End Turn response windows override the responder’s until-my-turn for that priority seat only.
 - **Not** a new wire RPC or engine intent — server chrome only, same as 0029.
 - Unconditional pass-turn (Arena Shift+Enter) is out of scope.
 

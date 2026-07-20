@@ -458,7 +458,8 @@ fn auto_advance(
             && game.stack_is_empty()
             && game.has_empty_stack_instant_play(holder);
         let skip = yields[holder.0 as usize]
-            || turn_yields[holder.0 as usize]
+            // End Turn response windows override the responder's until-my-turn (ADR 0037).
+            || (turn_yields[holder.0 as usize] && !can_respond)
             || (!game.has_meaningful_action(holder) && !can_respond);
         if !skip {
             break;
@@ -481,27 +482,22 @@ fn auto_advance(
 
 fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) {
     use engine::Step;
-    let mut cleanup_active: Option<PlayerId> = None;
     for e in events {
         match e {
+            // ADR 0037: End Turn ends with the turn. Clear on Cleanup itself so a discard-to-
+            // hand-size pause (Untap deferred to a later batch) cannot leave the flag armed.
             Event::StepBegan {
                 step: Step::Cleanup,
                 active_player,
             } => {
-                cleanup_active = Some(*active_player);
+                turn_yields[active_player.0 as usize] = false;
             }
             // ADR 0029: your own turn starts — stop yielding through it.
-            // ADR 0037: End Turn armed while active must clear at the turn boundary (Cleanup →
-            // next Untap) so it does not morph into until-my-turn.
             Event::StepBegan {
                 step: Step::Untap,
                 active_player,
             } => {
                 turn_yields[active_player.0 as usize] = false;
-                if let Some(prev) = cleanup_active {
-                    turn_yields[prev.0 as usize] = false;
-                }
-                cleanup_active = None;
             }
             // Only the seat that was attacked cancels turn yield (not every yielded seat
             // at the table) — so they can respond and declare blockers.
@@ -1373,6 +1369,73 @@ mod tests {
         assert!(
             !table.chrome.turn_yields()[0],
             "opponent action cancels end turn so the active seat can respond"
+        );
+    }
+
+    /// End Turn response windows must open even when the responder already armed until-my-turn.
+    #[test]
+    fn end_turn_stops_for_turn_yielded_opponent_with_an_instant() {
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        let _bear = game.spawn_on_battlefield(PlayerId(0), bear());
+        game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+        let _shock = game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
+        table.game = Some(game);
+
+        assert!(
+            TableSession::new(&mut table)
+                .set_turn_yield(PlayerId(1), true)
+                .0
+                .accepted,
+            "P1 arms until-my-turn before P0 ends"
+        );
+        assert!(table.chrome.turn_yields()[1]);
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        assert_eq!(
+            table.game.as_ref().unwrap().priority_holder(),
+            PlayerId(1),
+            "until-my-turn must not skip an End Turn response window"
+        );
+        assert!(
+            table.chrome.turn_yields()[0],
+            "P0's end turn stays armed until P1 acts or the turn ends"
+        );
+    }
+
+    /// Cleanup discard pauses the turn boundary mid-batch — End Turn must still clear.
+    #[test]
+    fn end_turn_clears_when_cleanup_pauses_on_discard() {
+        let plains = || cards::get_by_name("Plains").expect("Plains in pool");
+        let mut table = Table::empty();
+        table.game = Some(engine::Game::new());
+
+        // Reach End with an empty hand, then overfill so Cleanup must pause on discard.
+        advance_table_to_step(&mut table, engine::Step::End);
+        {
+            let game = table.game.as_mut().unwrap();
+            for _ in 0..8 {
+                game.spawn_in_hand(PlayerId(0), plains());
+            }
+        }
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert!(
+            matches!(
+                game.pending_choice(),
+                Some(engine::PendingChoice::DiscardToHandSize { .. })
+            ),
+            "cleanup must pause on discard-to-hand-size"
+        );
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "end turn must clear on Cleanup even when Untap is deferred"
         );
     }
 
