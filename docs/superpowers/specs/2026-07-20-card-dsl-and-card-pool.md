@@ -1,7 +1,7 @@
 # Card DSL and Card Pool
 
 **Status:** Current (as of 2026-07-20)
-**Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/de.rs`, `src/types.rs` — `CardDef`, `Ability`, `Effect`, `Timing`), `decklists/*.md`
+**Module:** `crates/cards` (`data/*.toml`, `data/tokens/*.toml`), `crates/engine` (`src/de.rs`, `src/types.rs` — `CardDef`, `Ability`, `Effect`, `Timing`), `docs/decklists/*.md`
 
 ---
 
@@ -15,7 +15,7 @@ Card behavior in Magic is vast and varied. Encoding it per-card in engine code w
 
 Each card is a TOML file in `crates/cards/data/` that deserializes into a `CardDef` struct in `crates/engine`. `CardDef` is `Copy` and `&'static` — all ability slices are interned at load time. Card behavior is expressed as `Ability { timing, effect }` pairs; the `Effect` enum is the vocabulary. The DSL grows **only when a real card demands it** (card-dsl-and-card-pool spec). Gaps are flagged via the `approximates` field and `# ponytail:` comments rather than forced approximations. Token profiles live in `data/tokens/` and are referenced by Scryfall oracle id from creating cards.
 
-Thirty-five token profiles and 618 deckable card TOMLs are present as of 2026-07-20. Eight precon decklists live in `decklists/*.md` (the five Secrets of Strixhaven decks and three additional non-SoC lists).
+Thirty-five token profiles and 618 deckable card TOMLs are present as of 2026-07-20. Eight precon decklists live in `docs/decklists/*.md` (the five Secrets of Strixhaven decks and three additional non-SoC lists).
 
 ---
 
@@ -149,7 +149,7 @@ Token profiles live in `data/tokens/*.toml`. They are full `CardDef` instances w
 
 ### Precon decklists and card pool scope
 
-Eight decklists live in `decklists/*.md`:
+Eight decklists live in `docs/decklists/*.md`:
 
 - Five Secrets of Strixhaven (`soc`) Commander precons: Witherbloom Pestilence, Silverquill Influence, Quandrix Unlimited, Prismari Artistry, Lorehold Spirit.
 - Three additional lists: Political Puppets, Enchantress Rubinia, Deathdancer Xira.
@@ -181,7 +181,7 @@ These are the **first faithful target** (card-dsl-and-card-pool spec): every car
 
 - **Card TOML tests**: the `cards` crate's tests deserialize a sample of known cards and assert `CardDef` fields match expected values (correct cost pips, correct ability count, correct effect type).
 - **Inline `CardDef` in engine tests**: the engine's own unit and integration tests construct `CardDef` values directly (no TOML parsing) using struct literal syntax, keeping tests self-contained and avoiding the `card-dsl` feature.
-- **Fidelity regression tests**: for each card in `decklists/*.md`, a CI test verifies the card TOML is present and parses without error. Presence of `approximates` is tracked but not a failure.
+- **Fidelity regression tests**: for each card in `docs/decklists/*.md`, a CI test verifies the card TOML is present and parses without error. Presence of `approximates` is tracked but not a failure.
 - **Effect roundtrip test**: for each `Effect` variant, at least one card TOML in the pool should exercise it (verified by the fidelity audit tooling).
 - **Token profile tests**: `install_token_defs` is called with the full token set; `token_def(id)` returns the correct profile for known ids.
 - The `.agents/skills/card-dsl/SKILL.md` and `DSL_REFERENCE.md` are the authoring guide for card authors; the skill specifies the full field reference and non-negotiable discipline.

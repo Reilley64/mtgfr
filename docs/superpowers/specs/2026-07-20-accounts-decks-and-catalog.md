@@ -142,7 +142,7 @@ Precon names are:
 
 `is_precon(id)` returns `true` for `id < 0`. Edit and delete of a precon id returns a 422.
 Precon decklists are the same source of truth as the Phase 5.5 legality fixtures
-(`fixtures/decks/*.json`, generated from `decklists/*.md`).
+(`fixtures/decks/*.json`, generated from `docs/decklists/*.md`).
 
 ### Card catalog (`catalog_search.rs`, `Cards` gRPC service)
 
