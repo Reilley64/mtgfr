@@ -3,7 +3,6 @@
 import * as Match from "effect/Match";
 import { createEffect, For, Show } from "solid-js";
 import { Button, CardArt, Hud, Modal } from "~/components/atoms";
-import { HAND_BAR_H } from "~/components/molecules/hand";
 import { PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
 import { cn } from "~/lib/cn";
 import type { Outcome } from "~/lib/outcome";
@@ -83,14 +82,14 @@ export function LogPanel() {
         ref={panel}
         role="log"
         aria-live="polite"
-        style={{ "--b": `${HAND_BAR_H + 10}px` }}
-        class="fixed bottom-(--b) left-[72px] z-10 max-h-[150px] w-[300px] overflow-y-auto"
+        data-testid="board-log"
+        class="max-h-[150px] w-[min(300px,46vw)] overflow-y-auto"
       >
         <For each={lines()}>
           {(l) => (
             <div class={cn("text-caption", l.auto ? "flex items-start gap-xs text-snow-mint" : "text-mist")}>
               <Show when={l.auto}>
-                <span class="mt-px shrink-0 rounded-full bg-auto-moss px-[5px] py-px font-bold text-micro text-snow-mint tracking-[0.06em]">
+                <span class="mt-px shrink-0 rounded-full bg-auto-moss px-xs py-px font-bold text-micro text-snow-mint tracking-[0.06em]">
                   AUTO
                 </span>
               </Show>

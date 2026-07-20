@@ -285,9 +285,9 @@ pub struct ActionView {
     pub needs_target: bool,
     /// The targets legal for this action right now (`Game::legal_targets`), so the client
     /// highlights the real set instead of reimplementing `TargetSpec`. Empty when the action
-    /// takes no target — and also, for an activated ability, when it wants one but none is
-    /// legal (unlike a cast, an ability is offered without checking that), which is why
-    /// `needs_target` stays a separate fact rather than `!targets.is_empty()`.
+    /// takes no target — or when it wants one but none is legal (casts and activations are not
+    /// listed in that case; `needs_target` stays a separate fact so the client can still tell
+    /// "no target required" from "target required but empty" if an action slips through).
     #[serde(default)]
     pub targets: Vec<WireTarget>,
     /// Set when this is a cast of a modal spell ("choose one —"). A modal spell's targets travel

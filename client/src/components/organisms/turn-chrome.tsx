@@ -48,12 +48,15 @@ export function TurnBanner(props: { me: number; state: VisibleState }) {
       data-active-player={String(s().active_player)}
       data-priority={String(s().priority)}
       data-stack-len={String(s().stack.length)}
-      class="fixed top-[10px] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-[5px] shadow-hud"
+      class="fixed top-md left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-xs shadow-hud"
     >
-      <div data-testid="board-turn-label" class={cn("font-bold text-turn-ember", yourTurn() && "text-turn-mint")}>
+      <div
+        data-testid="board-turn-label"
+        class={cn("font-bold text-label text-turn-ember", yourTurn() && "text-turn-mint")}
+      >
         {yourTurn() ? "Your turn" : `${playerLabel(s().players, s().active_player)}'s turn`}
       </div>
-      <div class="flex gap-1">
+      <div class="flex gap-xs">
         <For each={PHASES}>
           {(band, i) => {
             const state = () => (i() < current() ? "past" : i() === current() ? "now" : "future");
@@ -61,7 +64,7 @@ export function TurnBanner(props: { me: number; state: VisibleState }) {
               <div class={phaseSegment(state(), yourTurn())}>
                 {band.name}
                 <Show when={i() === current() && stepDetail()}>
-                  {(d) => <div class="mt-px text-micro opacity-85">{d()}</div>}
+                  {(d) => <div class="mt-px text-micro text-snow-mint/85">{d()}</div>}
                 </Show>
               </div>
             );
@@ -98,10 +101,18 @@ function PriorityWatch(props: { me: number; state: VisibleState }) {
 
   const yours = () => holder() === props.me;
   return (
-    <div class={cn("font-semibold text-caption", HEAT_INK[heatOf(elapsed())], yours() && "text-turn-mint")}>
+    <div
+      class={cn(
+        "font-semibold text-caption tracking-[0.01em]",
+        HEAT_INK[heatOf(elapsed())],
+        yours() && "text-turn-mint",
+      )}
+    >
       {yours() ? "You have priority" : `Waiting on ${playerLabel(props.state.players, holder())}`}
       {/* Suppressed below 10s — a 1s "· 1s" flicker reads as noise, not signal. */}
-      <Show when={elapsed() >= 10}> · {elapsed()}s</Show>
+      <Show when={elapsed() >= 10}>
+        <span class="text-fog"> · {elapsed()}s</span>
+      </Show>
     </div>
   );
 }
@@ -113,7 +124,7 @@ function PriorityWatch(props: { me: number; state: VisibleState }) {
 function phaseSegment(state: "past" | "now" | "future", yourTurn: boolean): string {
   return cn(
     // Fixed equal width — sized for the longest step detail ("First Strike Damage" at text-micro).
-    "w-[7.5rem] rounded-control border border-transparent px-md py-1 text-center font-semibold text-caption",
+    "w-[7.5rem] rounded-control border border-transparent px-md py-xs text-center font-semibold text-caption",
     "bg-tapped-out/60 text-phase-fern", // future: the resting band
     state === "past" && "bg-quiet-hover text-snow-mint",
     state === "now" && "text-snow-mint",

@@ -17,7 +17,7 @@ export const BLOCK_STROKE: Stroke = { color: "#66FF99", dash: [10, 6] };
 export const TARGET_STROKE: Stroke = { color: TARGET_COLOR, dash: [2, 6] };
 export const SELECT_STROKE: Stroke = { color: "#FFD76A", dash: [] };
 export const CARD_OUTLINE = "#1a1a1a";
-/** Black veil over non-activatable permanents — matches hand `opacity-55` (≈45% black). */
+/** Black veil over non-activatable permanents — ~same weight as hand `brightness-[0.55]`. */
 export const DIM_CARD_VEIL = 0.45;
 
 export function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
