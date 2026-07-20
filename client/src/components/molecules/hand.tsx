@@ -305,14 +305,16 @@ export default function Hand(props: {
               draggable={false}
               class={cn(
                 CARD_FACE,
-                "touch-none shadow-hand transition-[filter] duration-[80ms] ease-state",
+                // Paint only — default `auto` on <img> would re-enable hits under a
+                // pointer-events-none ancestor and steal the right neighbor's left peek.
+                "pointer-events-none touch-none shadow-hand transition-[filter] duration-[80ms] ease-state",
                 p.action && raised() && "brightness-110",
                 barZoneAura(p.zone),
                 dimmedness(p),
               )}
             />
             <Show when={p.caption}>
-              <div class="absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
+              <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
                 {p.caption}
               </div>
             </Show>
