@@ -401,7 +401,7 @@ describe("usePlayMotion", () => {
     } as RenderCard;
 
     let dispose!: () => void;
-    let api!: ReturnType<typeof useCardFlights>;
+    let api!: ReturnType<typeof usePlayMotion>;
     const [fromStack, setFromStack] = createSignal(new Set<number>());
     const [fromStackExit] = createSignal(new Set<number>());
     const [zoneMoves, setZoneMoves] = createSignal(new Map<number, number>());
@@ -417,7 +417,7 @@ describe("usePlayMotion", () => {
     createRoot((d) => {
       dispose = d;
       const size = () => ({ x: 800, y: 600 });
-      api = useCardFlights({
+      api = usePlayMotion({
         camera: () => fitCamera(size(), 2, 128),
         size,
         cards,
