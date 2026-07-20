@@ -16,6 +16,7 @@ import { cn } from "~/lib/cn";
 import { lobbyIsHost } from "~/lib/lobby";
 import * as lobbyClient from "~/lib/lobbyClient";
 import type { LobbyView } from "~/lib/lobbyTypes";
+import { unlockPriorityAudio } from "~/lib/prioritySound";
 import { lobbyPollFamily, startLobbyPoll } from "~/lobbyPoll";
 import { parseTableCode, setTableUrl } from "~/net";
 
@@ -164,6 +165,8 @@ export default function Lobby(props: { onStarted: () => void }) {
   const onReady = async (ready: boolean) => {
     const t = table();
     if (!t) return;
+    // User gesture: unlock Web Audio so the in-game priority chime can play later.
+    unlockPriorityAudio();
     applyOrFail(await readyUp({ table_id: t, ready }));
   };
   const onStart = async () => {

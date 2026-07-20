@@ -766,16 +766,15 @@ export default function Board() {
               >
                 Concede
               </Button>
-              {/* The '?' legend toggle, parked just above the horizontal context bar. */}
+              {/* The '?' legend toggle — top-left so it doesn't stack on Pass / Next / yield. */}
               <Button
                 type="button"
                 aria-label="Board legend"
                 aria-expanded={legendOpen()}
                 onClick={() => setLegendOpen((o) => !o)}
-                style={{ "--b": `${HAND_BAR_H + 58}px` }}
                 variant="ghost"
                 hitQuiet
-                class="fixed right-[10px] bottom-(--b) z-25 px-[11px] py-[5px]"
+                class="fixed top-3 left-3 z-25 px-[11px] py-[5px]"
               >
                 ?
               </Button>
