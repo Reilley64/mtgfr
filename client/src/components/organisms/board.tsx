@@ -335,6 +335,12 @@ export default function Board() {
       pendingAttackers: primaryAction().kind === "confirm-attackers" && attackers().length > 0,
     }),
   );
+  // End Turn cannot stay armed in windows where the arm control is hidden (ADR 0037 cancel).
+  createEffect((wasClearing?: boolean) => {
+    const clear = boardChrome().clearEndTurn;
+    if (clear && !wasClearing) setTurnYield(false);
+    return clear;
+  });
   // Won, lost, or still in it. An eliminated player's intents are rejected by the server, so their
   // hand and controls come down with them — they keep the board to watch the rest of the game.
   const result = createMemo<Outcome>(() => outcome(game.state?.players ?? [], game.state?.viewer ?? SPECTATOR_VIEWER));

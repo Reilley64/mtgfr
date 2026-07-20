@@ -216,6 +216,25 @@ describe("stackChrome", () => {
     ).toBe(true);
   });
 
+  it("clears armed End Turn when entering states where End Turn cannot be armed", () => {
+    // Stack resolve chrome while End Turn was armed → Board should disarm (not orphan cancel).
+    expect(stackChrome({ ...base, turnYielded: true }).clearEndTurn).toBe(true);
+    expect(
+      stackChrome({
+        ...base,
+        stackLen: 0,
+        turnYielded: true,
+        pendingAttackers: true,
+      }).clearEndTurn,
+    ).toBe(true);
+    // Still armed and End Turn is offerable — leave it alone.
+    expect(stackChrome({ ...base, stackLen: 0, turnYielded: true }).clearEndTurn).toBe(false);
+    // Until-my-turn (not active) must not clear — same flag, different chrome.
+    expect(stackChrome({ ...base, viewer: 0, active: 1, turnYielded: true }).clearEndTurn).toBe(false);
+    // Not armed — nothing to clear.
+    expect(stackChrome(base).clearEndTurn).toBe(false);
+  });
+
   it("binds Space to primary on an empty stack, ignore for spectators", () => {
     expect(stackChrome({ ...base, stackLen: 0 }).space).toBe("primary");
     expect(stackChrome({ ...base, stackLen: 0, spectating: true }).space).toBe("ignore");
@@ -292,10 +311,12 @@ describe("boardChromeFromState", () => {
         priority: 0,
         can_act: true,
         stack: [],
+        turn_yielded: true,
       }),
       { staged: false, manaSources: [], pendingAttackers: true },
     );
     expect(chrome.showEndTurn).toBe(false);
+    expect(chrome.clearEndTurn).toBe(true);
   });
 
   it("treats SPECTATOR_VIEWER as spectating (Space ignore) without a Board spectating() pick", () => {

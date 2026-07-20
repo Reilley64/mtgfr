@@ -179,6 +179,11 @@ export type StackChrome = {
    */
   showEndTurn: boolean;
   /**
+   * Armed End Turn must disarm when chrome would hide the arm control (stack resolve / pending
+   * Attack). Board POSTs SetTurnYield(false). Never for until-my-turn (not active).
+   */
+  clearEndTurn: boolean;
+  /**
    * Show the priority-bar primary (Next / Declare / …). Hidden when the stack owns Resolve card and
    * the primary action is itself a bare pass (duplicate affordance).
    */
@@ -209,6 +214,23 @@ export function showEndTurnControl(opts: {
   if (opts.stackResolveChrome) return false;
   if (opts.pendingAttackers) return false;
   return true;
+}
+
+/**
+ * Armed End Turn should disarm when the seat enters a window where End Turn cannot be armed.
+ * Does not clear until-my-turn (active !== viewer).
+ */
+export function clearEndTurnControl(opts: {
+  spectating: boolean;
+  viewer: number;
+  active: number;
+  turnYielded: boolean;
+  stackResolveChrome: boolean;
+  pendingAttackers: boolean;
+}): boolean {
+  if (!opts.turnYielded || opts.spectating) return false;
+  if (opts.active !== opts.viewer) return false;
+  return opts.stackResolveChrome || opts.pendingAttackers;
 }
 
 /**
@@ -244,6 +266,13 @@ export function stackChrome(input: StackChromeInput): StackChrome {
   const hideControlsPass = input.stackLen > 0;
   const space = spaceBinding(input);
   const stackResolveChrome = pass || stackYieldArm || stackYieldArmed;
+  const endTurnOpts = {
+    spectating: input.spectating,
+    viewer: input.viewer,
+    active: input.active,
+    stackResolveChrome,
+    pendingAttackers: input.pendingAttackers,
+  };
   return {
     pass,
     stackYieldArm,
@@ -256,13 +285,8 @@ export function stackChrome(input: StackChromeInput): StackChrome {
     space,
     showTurnYield: showTurnYieldControl(input),
     turnYielded: input.turnYielded,
-    showEndTurn: showEndTurnControl({
-      spectating: input.spectating,
-      viewer: input.viewer,
-      active: input.active,
-      stackResolveChrome,
-      pendingAttackers: input.pendingAttackers,
-    }),
+    showEndTurn: showEndTurnControl(endTurnOpts),
+    clearEndTurn: clearEndTurnControl({ ...endTurnOpts, turnYielded: input.turnYielded }),
     showPrimary: (primaryKind) => !(hideControlsPass && primaryKind === "pass"),
   };
 }
