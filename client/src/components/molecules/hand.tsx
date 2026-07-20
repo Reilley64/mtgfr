@@ -4,11 +4,12 @@
 // always on show while it sits in the command zone), and the Graveyard / Exile sections show
 // one card per action there. Battlefield activates live on the selection radial, not in this bar.
 // Zone order left→right: command → hand → graveyard → exile. Zone groups follow Arena: gap +
-// aura colour, no section captions. Hand tiles are a dense fan (right-edge peek at rest — mana
-// corner visible) with cast-cost pips on the top-right; hover expands the full card. Hits stay
-// on the peek strip only (`~/lib/handBarHit`) so a raised face's left overhang cannot steal the
-// left neighbor. Centre of the fan rises toward the board. Faces tuck under the screen edge at
-// rest (viewport clips them — no mid-card overflow cut).
+// aura colour, no section captions. Hand tiles are a dense fan (faces hang left of a peek-wide
+// slot) with cast-cost pips on the top-right; hover raises the full card. Arena stacking: left
+// lowest, right highest, so resting cards show a left-edge name strip. Hits stay on that left
+// peek only (`~/lib/handBarHit`) so a raised face cannot steal a neighbor. Centre of the fan
+// rises toward the board. Faces tuck under the screen edge at rest (viewport clips them —
+// no mid-card overflow cut).
 // Every playable card is physically dragged — a ghost follows the cursor — and on release the
 // Board takes the action by its id (drag above the play threshold → take_action; back in the bar
 // → snap back). Combat declarations are NOT cards here; they keep the board's existing
@@ -37,7 +38,7 @@ export interface ActionDrop {
  * Sourced from `HAND_FACE_W` so flight scale can't drift.
  */
 export const HAND_CARD_W = HAND_FACE_W;
-/** Visible strip width at rest — right edge of the face (mana-cost corner), Arena-style. */
+/** Visible strip width at rest — left edge of the face (card name), Arena-style. */
 export const HAND_CARD_PEEK = HAND_BAR_PEEK;
 export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
 export const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
@@ -233,7 +234,7 @@ export default function Hand(props: {
     caption?: string;
     fan?: string;
     zone: BarZone;
-    /** Slot index in the section — earlier cards stack above so the right peek stays visible. */
+    /** Slot index in the section — later (right) cards stack above for Arena name peeks. */
     index: number;
     count: number;
   }) => {
@@ -245,50 +246,25 @@ export default function Hand(props: {
     };
     const pips = () => costPips(p.manaCost, { showZero: p.objectKind != null && p.objectKind !== "land" });
     const [raised, setRaised] = createSignal(false);
-    // Earlier tiles paint above later ones so each right-peek (mana corner) stays on top of the
-    // next card's overhang — Arena denser hand, not left-edge peeks.
-    const stackZ = () => (raised() ? 30 : p.count - p.index);
+    // Arena: left lowest, right highest — resting fans show left-edge name strips.
+    const stackZ = () => (raised() ? 30 : p.index + 1);
+    const onHitEnter = () => {
+      setRaised(true);
+      setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
+      setHoverAction(p.action);
+    };
+    const onHitMove = () => {
+      setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
+      setHoverAction(p.action);
+    };
+    const onHitLeave = () => {
+      setRaised(false);
+      if (hover() === p.name) setHoverCard(null);
+      if (!drag()) setHoverAction(null);
+    };
     return (
-      // Not a <button>: `onDown` drops the card on pointerup, so a native button's click would fire
-      // `onDrop` a second time. The div carries the full button contract instead — tabIndex, role,
-      // aria-label and Enter/Space — but all four are conditional on `p.action` together, and Biome
-      // can't see that they move as a set.
-      // biome-ignore lint/a11y/noStaticElementInteractions: keyboard-operable exactly when actionable
-      // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label is set iff role is "button"
+      // Layout slot only — interactive hit strip is the left peek on the face (below).
       <div
-        tabIndex={p.action ? 0 : undefined}
-        role={p.action ? "button" : undefined}
-        data-testid={p.objectId != null ? `hand-card-${p.objectId}` : undefined}
-        data-action-kind={p.action?.kind ?? undefined}
-        data-action-id={p.action != null ? String(p.action.id) : undefined}
-        data-needs-target={p.action?.needs_target ? "1" : "0"}
-        data-has-player-target={p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"}
-        data-has-object-target={p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"}
-        data-object-kind={p.objectKind}
-        data-bar-zone={p.zone}
-        aria-label={ariaName()}
-        onKeyDown={(e) => {
-          if (!p.action || (e.key !== "Enter" && e.key !== " ")) return;
-          e.preventDefault(); // Space must not scroll the page
-          activate(p.action);
-        }}
-        // Hits stay on this peek-wide box only (`hitHandBarSlot`). The full face hangs left
-        // with pointer-events-none so a raised card cannot steal the left neighbor's peek.
-        onPointerEnter={() => {
-          setRaised(true);
-          setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
-          setHoverAction(p.action);
-        }}
-        onPointerMove={() => {
-          setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
-          setHoverAction(p.action);
-        }}
-        onPointerLeave={() => {
-          setRaised(false);
-          if (hover() === p.name) setHoverCard(null);
-          if (!drag()) setHoverAction(null);
-        }}
-        onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
         style={{
           "--fan": p.fan,
           "--peek": `${HAND_CARD_PEEK}px`,
@@ -298,17 +274,16 @@ export default function Hand(props: {
           "z-index": stackZ(),
         }}
         // Flex footprint stays peek-wide always. Growing width on raise shifted the
-        // right-aligned face out from under the cursor → enter/leave thrash (worst on the left).
-        // The face hangs left of the peek; raise only lifts height / z.
+        // right-aligned face out from under the cursor → enter/leave thrash.
+        // The face hangs left of the peek; raise only lifts height / z. Layout box is
+        // pointer-events-none — hits live on the left peek strip of the face.
         class={cn(
-          "pointer-events-auto relative w-(--peek) origin-bottom transition-[height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
-          p.action ? "cursor-grab" : "cursor-default",
+          "pointer-events-none relative w-(--peek) origin-bottom transition-[height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
           raised() ? "h-(--card-h)" : "h-(--visible)",
         )}
       >
         {/* Face + pips share a fixed column (right-aligned in the peek slot). Pips live in a
-            reserved band *above* the face top — Arena cast disks, not overlaid on the art.
-            pointer-events-none: paint only; the peek slot above owns all hits. */}
+            reserved band *above* the face top — Arena cast disks, not overlaid on the art. */}
         <div class="pointer-events-none absolute top-0 right-0 w-(--card-w)">
           <Show when={pips().length > 0}>
             <div
@@ -320,7 +295,10 @@ export default function Hand(props: {
               <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 16 : 14} />}</For>
             </div>
           </Show>
-          <div class="relative h-(--card-h) origin-bottom rounded-game">
+          <div
+            class="relative h-(--card-h) origin-bottom rounded-game"
+            data-testid={p.objectId != null ? `hand-card-${p.objectId}` : undefined}
+          >
             <CardArt
               print={p.print}
               alt={p.name}
@@ -338,6 +316,36 @@ export default function Hand(props: {
                 {p.caption}
               </div>
             </Show>
+            {/* Left-peek hit target — matches the visible name strip under right-on-top stacking
+                (`hitHandBarSlot`). Full face stays paint-only so a raise cannot steal neighbors.
+                Not a <button>: onDown drops on pointerup, so a native button click would double-fire. */}
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard-operable exactly when actionable */}
+            {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label is set iff role is "button" */}
+            <div
+              tabIndex={p.action ? 0 : undefined}
+              role={p.action ? "button" : undefined}
+              data-action-kind={p.action?.kind ?? undefined}
+              data-action-id={p.action != null ? String(p.action.id) : undefined}
+              data-needs-target={p.action?.needs_target ? "1" : "0"}
+              data-has-player-target={p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"}
+              data-has-object-target={p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"}
+              data-object-kind={p.objectKind}
+              data-bar-zone={p.zone}
+              aria-label={ariaName()}
+              onKeyDown={(e) => {
+                if (!p.action || (e.key !== "Enter" && e.key !== " ")) return;
+                e.preventDefault(); // Space must not scroll the page
+                activate(p.action);
+              }}
+              onPointerEnter={onHitEnter}
+              onPointerMove={onHitMove}
+              onPointerLeave={onHitLeave}
+              onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
+              class={cn(
+                "pointer-events-auto absolute top-0 left-0 h-full w-(--peek)",
+                p.action ? "cursor-grab" : "cursor-default",
+              )}
+            />
           </div>
         </div>
       </div>
