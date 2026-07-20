@@ -411,7 +411,7 @@ describe("useCardFlights", () => {
     const [cards, setCards] = createSignal<RenderCard[]>([]);
     const [stackLength, setStackLength] = createSignal(0);
     const [stackSourceIds, setStackSourceIds] = createSignal(new Set<number>());
-    const [objectIds, setObjectIds] = createSignal(new Set([9]));
+    const [objectIds, setObjectIds] = createSignal(new Set<number>([9]));
     const [landPlays] = createSignal(new Map<number, number>());
 
     createRoot((d) => {
@@ -449,7 +449,7 @@ describe("useCardFlights", () => {
     batch(() => {
       setStackEntrances(new Map());
       setStackLength(0);
-      setStackSourceIds(new Set());
+      setStackSourceIds(new Set<number>());
       setObjectIds(new Set([60]));
       setCards([mystic]);
       setZoneMoves(new Map([[60, 42]]));
