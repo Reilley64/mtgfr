@@ -9,7 +9,8 @@ pub struct ChromeState {
     /// Per-seat "don't care" yields: a yielded seat is auto-passed while the stack is
     /// non-empty. Cleared whenever the stack empties.
     yields: [bool; 4],
-    /// Per-seat turn yield (ADR 0029): auto-pass until that seat's turn / until they act.
+    /// Per-seat turn yield (ADR 0029 / 0037): auto-pass until that seat's turn / until they act,
+    /// or End Turn while they are active.
     turn_yields: [bool; 4],
     /// Active stack-hold (uncontested resolve pause): seq + when the hold started
     /// (`tokio::time::Instant` so hold timers honor the test paused clock).

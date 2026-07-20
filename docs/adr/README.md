@@ -40,3 +40,4 @@ Point-in-time decisions. Follow status + related links; ignore superseded parts.
 | [0034](0034-self-hosted-lgtm-faro-otel.md) | Self-hosted LGTM + Faro + OTEL (Alloy) | Current |
 | [0035](0035-canvas-flight-layer.md) | Canvas flight layer (pos+scale) for continuous play motion | Current |
 | [0036](0036-sparse-synthesized-table-audio.md) | Sparse synthesized attention + table-feel audio (no music/files/VO) | Current |
+| [0037](0037-end-turn.md) | End Turn (Arena pass-the-turn) via turn yield while active | Current |

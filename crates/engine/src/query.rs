@@ -15,6 +15,29 @@ impl Game {
         !self.meaningful_actions(player).is_empty()
     }
 
+    /// Whether `player` has an instant-speed cast they could take on an empty stack right now.
+    /// Broader than [`Game::has_meaningful_action`] (ADR 0007 omits empty-stack instants so the
+    /// table does not halt for every removal in hand). Used by server End Turn chrome (ADR 0037)
+    /// so opponents still get priority windows while the active seat auto-passes their turn.
+    pub fn has_empty_stack_instant_play(&self, player: PlayerId) -> bool {
+        if self.players[player.0 as usize].lost {
+            return false;
+        }
+        for (id, o) in self.objects.iter().enumerate() {
+            let id = id as ObjectId;
+            let Object::Card(c) = o else {
+                continue;
+            };
+            if matches!(c.def.kind, CardKind::Land { .. }) {
+                continue;
+            }
+            if self.cast_respond_listable(player, id).is_some() {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Every *meaningful action* `player` may take right now — the plays worth stopping
     /// priority for (ADR 0007): a land drop, a castable spell, an activatable non-mana
     /// ability, or a combat declaration. Auto-pass ([`Game::has_meaningful_action`]) and

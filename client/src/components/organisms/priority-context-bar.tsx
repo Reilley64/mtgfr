@@ -1,4 +1,4 @@
-// Priority context bar: Next / Resolve card / Resolve stack / turn yield (always bottom-right, above stack z).
+// Priority context bar: Next / Resolve card / Resolve stack / End Turn / turn yield (always bottom-right, above stack z).
 
 import { Show } from "solid-js";
 import { Button } from "~/components/atoms";
@@ -40,6 +40,18 @@ export function PriorityContextBar(props: {
             class={props.action.kind !== "pass" ? "shadow-glow" : undefined}
           >
             {props.action.label}
+          </Button>
+        </Show>
+        <Show when={props.chrome.showEndTurn}>
+          <Button
+            type="button"
+            data-testid="board-end-turn"
+            aria-pressed={props.chrome.turnYielded}
+            title={props.chrome.turnYielded ? "Cancel end turn" : "End turn (Enter)"}
+            onClick={() => props.onTurnYield(!props.chrome.turnYielded)}
+            variant={props.chrome.turnYielded ? "game-yielded" : "game-quiet"}
+          >
+            {props.chrome.turnYielded ? "Ending turn…" : "End Turn"}
           </Button>
         </Show>
         <Show when={props.chrome.pass}>

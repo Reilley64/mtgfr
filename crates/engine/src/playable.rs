@@ -38,11 +38,21 @@ pub(crate) enum CastPlayKind {
     /// enough legal targets (including at least `modal_choose` playable modes); no priority; no
     /// cost picks.
     List,
+    /// Like [`CastPlayKind::List`], but empty-stack instants count — used by
+    /// [`Game::has_empty_stack_instant_play`] for Arena End Turn opponent windows (ADR 0037).
+    RespondList,
     /// [`Intent::TakeAction`]: validates target/modes/`x` and chosen discard / graveyard-exile
     /// picks the same way as [`CastPlayKind::Full`].
     OneClick,
     /// [`Intent::Cast`]: full validation including discard and graveyard-exile payments.
     Full,
+}
+
+impl CastPlayKind {
+    /// Enumeration paths (meaningful-actions / End Turn response) — no priority, no cost picks.
+    fn is_enumeration(self) -> bool {
+        matches!(self, Self::List | Self::RespondList)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -64,6 +74,20 @@ impl Game {
     /// Requires a completable target set (or enough playable modes for a modal); prices with
     /// `x = 0` and no delve count.
     pub(crate) fn cast_listable(&self, player: PlayerId, object: ObjectId) -> Option<Zone> {
+        self.cast_listable_kind(player, object, CastPlayKind::List)
+    }
+
+    /// Like [`Game::cast_listable`], but empty-stack instants count (End Turn response windows).
+    pub(crate) fn cast_respond_listable(&self, player: PlayerId, object: ObjectId) -> Option<Zone> {
+        self.cast_listable_kind(player, object, CastPlayKind::RespondList)
+    }
+
+    fn cast_listable_kind(
+        &self,
+        player: PlayerId,
+        object: ObjectId,
+        kind: CastPlayKind,
+    ) -> Option<Zone> {
         self.validate_cast(
             player,
             object,
@@ -80,7 +104,7 @@ impl Game {
                 strive_count: 0,
                 replicate_count: 0,
             },
-            CastPlayKind::List,
+            kind,
         )
         .ok()
         .map(|v| v.zone)
@@ -103,7 +127,7 @@ impl Game {
         let Some(zone) = self.playable_zone(object, player) else {
             return Err(Reject::NotCastable);
         };
-        if kind != CastPlayKind::List && player != self.priority {
+        if !kind.is_enumeration() && player != self.priority {
             return Err(Reject::NotYourPriority);
         }
         if !self.cast_timing_ok(player, object, card.def, kind) {
@@ -129,7 +153,7 @@ impl Game {
             if inputs.target.is_some() {
                 return Err(Reject::IllegalMode);
             }
-            if kind == CastPlayKind::List {
+            if kind.is_enumeration() {
                 Modes::default()
             } else {
                 self.validate_modes(object, card.def, inputs.modes, player, x)?;
@@ -151,7 +175,7 @@ impl Game {
             if inputs.target.is_some() || !inputs.modes.is_empty() {
                 return Err(Reject::IllegalTarget);
             }
-            if kind != CastPlayKind::List {
+            if !kind.is_enumeration() {
                 let n = self
                     .legal_targets_for(spec, object, player, color_identity(card.def), x)
                     .len();
@@ -176,7 +200,7 @@ impl Game {
             if !inputs.modes.is_empty() {
                 return Err(Reject::IllegalMode);
             }
-            if kind != CastPlayKind::List
+            if !kind.is_enumeration()
                 && !self.targets_are_legal(object, card.def, inputs.target, player, None, x)
             {
                 return Err(Reject::IllegalTarget);
@@ -200,7 +224,7 @@ impl Game {
             inputs.replicate_count,
         );
 
-        if kind == CastPlayKind::List {
+        if kind.is_enumeration() {
             if !self.cast_affordable_list(player, object, card.def, zone) {
                 return Err(Reject::CannotPayCost);
             }
@@ -265,12 +289,17 @@ impl Game {
             || self.players[player.0 as usize].flash_permission_this_turn
             || self.may_cast_from_exile_free(object, player);
         if as_instant {
-            if kind == CastPlayKind::List {
-                return sorcery_ok
-                    || !self.stack.is_empty()
-                    || self.in_attack_response_window(player);
+            match kind {
+                CastPlayKind::List => {
+                    return sorcery_ok
+                        || !self.stack.is_empty()
+                        || self.in_attack_response_window(player);
+                }
+                // End Turn opponent windows (ADR 0037) and execute paths: instants are always on.
+                CastPlayKind::RespondList | CastPlayKind::OneClick | CastPlayKind::Full => {
+                    return true;
+                }
             }
-            return true;
         }
         sorcery_ok
     }
