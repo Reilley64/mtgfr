@@ -40,6 +40,8 @@ const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 export const HAND_VISIBLE_H = 100;
 /** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
 export const HAND_STRIP_H = HAND_VISIBLE_H;
+/** Room above each face for cast-cost pips (they sit outside the card, not on the art). */
+const HAND_PIP_ROW_H = 18;
 
 /** MTGA fan: left/right tilt out; centre rises toward the board (edges sit lower). */
 function fanTransform(index: number, count: number): string {
@@ -50,8 +52,8 @@ function fanTransform(index: number, count: number): string {
 }
 
 /** Height of the bottom action bar; the Board uses it to place the play threshold.
- * Matches the on-screen tuck (plus fan rise), not the full card height. */
-export const HAND_BAR_H = HAND_VISIBLE_H + 20;
+ * Matches the on-screen tuck + pip row above the faces. */
+export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 12;
 
 const CARD_FACE = cn("block w-[112px] rounded-game");
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
@@ -277,6 +279,16 @@ export default function Hand(props: {
           raised() ? "h-(--card-h) w-[112px]" : "h-(--visible) w-(--peek)",
         )}
       >
+        {/* Cast-cost pips sit *above* the face (Arena), right-aligned to the printed mana corner. */}
+        <Show when={pips().length > 0}>
+          <div
+            data-testid="hand-cost-pips"
+            class="pointer-events-none absolute right-0 bottom-full z-20 mb-0.5 flex justify-end gap-px"
+            aria-hidden="true"
+          >
+            <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 15 : 13} />}</For>
+          </div>
+        </Show>
         {/* Full face, top-aligned: hangs past the screen edge at rest (no mid-card clip). */}
         <div class="absolute top-0 right-0 h-(--card-h) w-[112px] origin-bottom rounded-game">
           <img
@@ -300,15 +312,6 @@ export default function Hand(props: {
               dimmedness(p),
             )}
           />
-          <Show when={pips().length > 0}>
-            <div
-              data-testid="hand-cost-pips"
-              class="pointer-events-none absolute top-1 right-1 left-1 z-10 flex justify-end gap-px"
-              aria-hidden="true"
-            >
-              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 15 : 13} />}</For>
-            </div>
-          </Show>
           <Show when={p.caption}>
             <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
               {p.caption}
@@ -419,7 +422,7 @@ export default function Hand(props: {
               />
               <Show when={ghostPips().length > 0}>
                 <div
-                  class="pointer-events-none absolute top-1 right-1 left-1 flex justify-end gap-px"
+                  class="pointer-events-none absolute right-0 bottom-full mb-0.5 flex justify-end gap-px"
                   aria-hidden="true"
                 >
                   <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
