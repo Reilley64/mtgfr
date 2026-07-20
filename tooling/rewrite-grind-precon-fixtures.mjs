@@ -1,7 +1,8 @@
 // Rewrite fidelity-grind precon fixtures from Archidekt print UUIDs.
 // Unlike rewrite-precon-fixtures.mjs (SoC — prefers set:soc), this stamps each
 // line's `print` from Archidekt `card.uid` so Commander 2011 / MO theme decks
-// keep their precon art (cmd / td0), not CardDef.default_print.
+// keep their precon art (cmd / td0). Pool TOMLs keep Scryfall's preferred
+// default_print (`/cards/named`); this script does not touch TOMLs.
 //
 //   node tooling/rewrite-grind-precon-fixtures.mjs
 //

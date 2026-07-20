@@ -139,8 +139,9 @@ mod tests {
         }
     }
 
-    /// Grind-deck fixtures stamp Archidekt print UUIDs (cmd / td0), not CardDef::default_print.
-    /// Regression for Political Puppets shipping a placeholder print for Pollen Lullaby.
+    /// Grind-deck fixtures stamp Archidekt print UUIDs (cmd / td0), not CardDef::default_print
+    /// (Scryfall preferred / `/cards/named`). Regression for Political Puppets shipping a
+    /// placeholder print for Pollen Lullaby.
     #[test]
     fn grind_precons_use_archidekt_prints() {
         let pollen_oracle = "1f64d70d-ea38-4419-be91-8b68aab3401e";
