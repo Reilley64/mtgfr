@@ -27,17 +27,20 @@ export interface ActionDrop {
   y: number;
 }
 
-/** Face width — peek/overlap tuned so neighbours hide most of the card (Arena denser fan). */
-export const HAND_CARD_W = 112;
+/**
+ * Face width — Arena-scale (~stack overlay size) so hand/command/graveyard/exile tiles
+ * read as real cards, not chrome thumbnails. Every bar tile uses this same locked box.
+ */
+export const HAND_CARD_W = 180;
 /** Visible strip width at rest — right edge of the face (mana-cost corner), Arena-style. */
-export const HAND_CARD_PEEK = 40;
+export const HAND_CARD_PEEK = 64;
 export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
-const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
+export const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 /**
  * How much of each tucked card sticks into the viewport at rest. The rest hangs past the
  * bottom edge so the *screen* clips the face (Arena), not an overflow:hidden mid-card cut.
  */
-export const HAND_VISIBLE_H = 100;
+export const HAND_VISIBLE_H = 130;
 /** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
 export const HAND_STRIP_H = HAND_VISIBLE_H;
 /** Room above each face for cast-cost pips (reserved band outside the card). */
@@ -47,7 +50,7 @@ const HAND_PIP_ROW_H = 28;
 function fanTransform(index: number, count: number): string {
   const off = index - (count - 1) / 2;
   const angle = Math.max(-10, Math.min(10, off * 2.5));
-  const rise = Math.max(0, 12 - off * off * 1.1);
+  const rise = Math.max(0, 14 - off * off * 1.2);
   return `rotate(${angle}deg) translateY(${-rise}px)`;
 }
 
@@ -55,7 +58,8 @@ function fanTransform(index: number, count: number): string {
  * Matches the on-screen tuck + pip row above the faces. */
 export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 12;
 
-const CARD_FACE = cn("block w-[112px] rounded-game");
+/** Locked width+height so every face is identical regardless of art intrinsic size. */
+const CARD_FACE = cn("block h-(--card-h) w-(--card-w) rounded-game object-cover");
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
 
 /**
@@ -269,6 +273,7 @@ export default function Hand(props: {
           "--fan": p.fan,
           "--peek": `${HAND_CARD_PEEK}px`,
           "--visible": `${HAND_VISIBLE_H}px`,
+          "--card-w": `${HAND_CARD_W}px`,
           "--card-h": `${HAND_CARD_H}px`,
           "z-index": stackZ(),
         }}
@@ -280,9 +285,9 @@ export default function Hand(props: {
           raised() ? "h-(--card-h)" : "h-(--visible)",
         )}
       >
-        {/* Face + pips share a 112px column (right-aligned in the peek slot). Pips live in a
+        {/* Face + pips share a fixed column (right-aligned in the peek slot). Pips live in a
             reserved band *above* the face top — Arena cast disks, not overlaid on the art. */}
-        <div class="absolute top-0 right-0 w-[112px]">
+        <div class="absolute top-0 right-0 w-(--card-w)">
           <Show when={pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
@@ -290,7 +295,7 @@ export default function Hand(props: {
               style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
               aria-hidden="true"
             >
-              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 14 : 12} />}</For>
+              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 16 : 14} />}</For>
             </div>
           </Show>
           <div class="relative h-(--card-h) origin-bottom rounded-game">
@@ -415,7 +420,12 @@ export default function Hand(props: {
           const ghostPips = () => costPips(d().manaCost, { showZero: d().kind != null && d().kind !== "land" });
           return (
             <div
-              style={{ "--x": `${d().x}px`, "--y": `${d().y}px` }}
+              style={{
+                "--x": `${d().x}px`,
+                "--y": `${d().y}px`,
+                "--card-w": `${HAND_CARD_W}px`,
+                "--card-h": `${HAND_CARD_H}px`,
+              }}
               class="pointer-events-none fixed top-(--y) left-(--x) z-20 -translate-x-1/2 -translate-y-1/2"
             >
               <CardArt
@@ -430,7 +440,7 @@ export default function Hand(props: {
                   style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
                   aria-hidden="true"
                 >
-                  <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
+                  <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={17} />}</For>
                 </div>
               </Show>
             </div>

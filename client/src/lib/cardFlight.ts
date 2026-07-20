@@ -5,8 +5,8 @@
 import { CARD_W } from "~/layout";
 import { STACK_CARD_W } from "~/lib/boardDraw";
 
-/** Hand bar card face width (px) — must match `hand.tsx` CARD_FACE. */
-export const HAND_FACE_W = 112;
+/** Hand bar card face width (px) — must match `hand.tsx` `HAND_CARD_W` / stack face. */
+export const HAND_FACE_W = 180;
 
 /** Exponential time constant — shared feel with board position tweens. */
 const TAU_MS = 75;
