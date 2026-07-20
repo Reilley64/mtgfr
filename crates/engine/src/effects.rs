@@ -274,10 +274,10 @@ impl Game {
                 // A resolution-time optional rider on this spell's own ability (Sevinne's
                 // Reclamation's "you may copy this spell") paused mid-resolution — leave this
                 // spell as a live `Object::Spell` on the stack until that choice is answered
-                // (`Game::pending_spell_finish`), rather than moving it to its post-resolution
+                // (`Game::resume.spell_finish`), rather than moving it to its post-resolution
                 // zone out from under its own still-open decision.
                 if self.resolution_is_paused() {
-                    self.pending_spell_finish = Some(object);
+                    self.resume.spell_finish = Some(object);
                     return;
                 }
                 self.finish_instant_sorcery_resolution(object, events);
@@ -483,7 +483,7 @@ impl Game {
     /// an [`Effect::TuckSelfToLibraryBottom`] step marked it (Spell Crumple), else the graveyard.
     /// Split out of
     /// [`Self::resolve_spell`] so [`Game::resume_deferred_sequence`] can also call it once a
-    /// [`Game::pending_spell_finish`] pause clears.
+    /// [`ResumeState::spell_finish`] pause clears.
     pub(crate) fn finish_instant_sorcery_resolution(
         &mut self,
         object: ObjectId,

@@ -46,7 +46,7 @@ function zoneToConst(zone: ZonePileKind): typeof ZONE.Library | typeof ZONE.Grav
 export function seedEntrances(anim: Positions, targets: readonly RenderCard[], opts: EntranceSeedOpts): void {
   for (const c of targets) {
     if (anim.has(c.id)) continue;
-    // Own play / stack resolve: ADR 0035 canvas flight owns the motion — park the tween at the
+    // Own play / stack resolve: PlayMotion (ADR 0035) owns the motion — park the tween at the
     // layout slot so settle doesn't ENTER_RISE or compete with a second glide.
     if (opts.playEntrances.has(c.id) || opts.fromStack.has(c.id) || opts.fromStackExit.has(c.id)) {
       anim.set(c.id, { x: c.x, y: c.y });

@@ -516,7 +516,7 @@ describe("useTableSurface", () => {
     }
   });
 
-  it("binds landPlays to pending play origins before seeding entrances", () => {
+  it("parks PlayMotion-owned ids at layout instead of ENTER_RISE", () => {
     const existing = logical(1, 100, 100);
     const land = logical(3, 400, 400);
     vi.stubGlobal(
@@ -526,16 +526,12 @@ describe("useTableSurface", () => {
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
     let dispose!: () => void;
     let setCards!: (cs: RenderCard[]) => void;
-    let setLands!: (m: Map<number, number>) => void;
     let surface!: ReturnType<typeof useTableSurface>;
     try {
-      // Mount outside the updates under test — Solid defers effects while still inside createRoot.
       createRoot((d) => {
         dispose = d;
         const [cards, sc] = createSignal<RenderCard[]>([existing]);
-        const [lands, sl] = createSignal(new Map<number, number>());
         setCards = sc;
-        setLands = sl;
         surface = useTableSurface({
           me: () => 0,
           playerCount: () => 2,
@@ -543,17 +539,11 @@ describe("useTableSurface", () => {
           handBarH: 210,
           initialSize: { x: 800, y: 600 },
           reducedMotion: () => false,
-          landPlays: lands,
+          flightOwnedIds: () => new Set([3]),
         });
       });
-      expect(surface.drawnCards().find((c) => c.id === 1)?.x).toBe(100);
-
-      surface.notePlayOrigin(9, { x: 12, y: 34 });
-      // Unbatched updates: land provenance must not consume the origin before the permanent exists.
-      setLands(new Map([[3, 9]]));
       setCards([existing, land]);
-
-      // ADR 0035: parks at layout; flight layer uses the noted origin for the visual path.
+      // ADR 0035: PlayMotion owns drop→slot; TableSurface parks at layout via skipIds.
       expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(expect.objectContaining({ id: 3, x: 400, y: 400 }));
       dispose();
     } finally {
