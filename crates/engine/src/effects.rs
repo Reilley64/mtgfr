@@ -1,7 +1,9 @@
 //! Stack resolution payoffs — applying effects when spells and abilities resolve.
 //!
-//! Primary: CR 608 (resolving spells and abilities). Deferred / gaps: see
-//! `docs/FIDELITY_BACKLOG.md`.
+//! Primary: CR 608 (resolving spells and abilities). Owns stack entry
+//! (`resolve_top` / `resolve_spell` / enter / finish) and a **thin** [`Game::run`]
+//! dispatcher; Effect bodies live in [`crate::resolution`] (mint families, pause
+//! peels, resolve choreography). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
 
 use crate::*;
 
