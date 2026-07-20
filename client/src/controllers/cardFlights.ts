@@ -241,12 +241,18 @@ export function useCardFlights(deps: CardFlightsDeps) {
         }
       }
       // stackEntrances never rebound: flight still keyed by the consumed hand id.
+      // Prefer print/name match when several unrebound hand→stack flights are in flight.
       if (stackFlight?.kind !== "stack") {
-        for (const [fid, f] of next) {
-          if (f.kind !== "stack" || f.fromCardId !== fid) continue;
-          next = rebindFlightId(next, fid, id);
+        const handKeyed = [...next].filter(([fid, f]) => f.kind === "stack" && f.fromCardId === fid);
+        let pick = handKeyed.length === 1 ? handKeyed[0] : undefined;
+        if (!pick && card) {
+          pick = handKeyed.find(
+            ([, f]) => (card.print !== "" && f.print === card.print) || (card.name !== "" && f.name === card.name),
+          );
+        }
+        if (pick) {
+          next = rebindFlightId(next, pick[0], id);
           stackFlight = next.get(id);
-          break;
         }
       }
       if (stackFlight?.kind === "stack") {
@@ -298,12 +304,14 @@ export function useCardFlights(deps: CardFlightsDeps) {
   // If absorb misses the one delta that carries fromStack/zoneMoves, kind:"stack" flights are
   // retargeted at the stack aim forever (refresh clears them). Drop or promote orphans whose
   // ids are no longer on the live stack. Hand-keyed flights (fromCardId === id) stay only while
-  // the hand object still exists or stackEntrances can still rebind them.
+  // the hand object still exists, stackEntrances can still rebind them, or fromStack absorb
+  // still has a pending resolve this flush (do not race-delete before absorb runs).
   createEffect(() => {
     const sources = deps.stackSourceIds();
     const objects = deps.objectIds();
     const ents = deps.stackEntrances();
     const moves = deps.zoneMoves();
+    const pendingResolve = deps.fromStack().size > 0 || deps.fromStackExit().size > 0;
     const cards = deps.cards();
     const cam = deps.camera();
     let next = flights();
@@ -344,6 +352,8 @@ export function useCardFlights(deps: CardFlightsDeps) {
         if (objects.has(id)) continue;
         // No object snapshot yet (boot / tests) — don't invent a disappearance.
         if (objects.size === 0) continue;
+        // fromStack absorb may still need this flight in the same flush.
+        if (pendingResolve) continue;
         // Hand object consumed and never rebound — drop the ghost (same end as refresh).
         next = new Map(next);
         next.delete(id);

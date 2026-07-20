@@ -1,4 +1,4 @@
-import { createRoot, createSignal } from "solid-js";
+import { batch, createRoot, createSignal } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useCardFlights } from "~/controllers/cardFlights";
 import type { RenderCard } from "~/layout";
@@ -318,6 +318,56 @@ describe("useCardFlights", () => {
     setStackSourceIds(new Set<number>());
 
     expect(api.flights().some((f) => f.kind === "stack")).toBe(false);
+    dispose();
+  });
+
+  it("matches unrebound hand→stack absorb by print/name when multiple casts are in flight", () => {
+    const signet = {
+      id: 60,
+      name: "Arcane Signet",
+      print: "signet-print",
+      x: 200,
+      y: 200,
+      w: 96,
+      h: 134,
+      zone: 2,
+      owner: 0,
+      controller: 0,
+      kind: "artifact",
+      tapped: false,
+      prepared: false,
+      faceDown: false,
+    } as RenderCard;
+    const { api, dispose, setFromStack, setStackLength, setStackSourceIds, setCards, setZoneMoves, setObjectIds } =
+      mountFlights({ objectIds: new Set([9, 11]) });
+    // Insertion order: Bear first, Signet second — naive "first match" would steal Bear.
+    api.spawnFromHand({
+      cardId: 9,
+      print: "bear-print",
+      name: "Bear",
+      screen: { x: 100, y: 500 },
+      kind: "stack",
+    });
+    api.spawnFromHand({
+      cardId: 11,
+      print: "signet-print",
+      name: "Arcane Signet",
+      screen: { x: 120, y: 500 },
+      kind: "stack",
+    });
+
+    batch(() => {
+      setObjectIds(new Set([60, 9])); // Signet hand (11) consumed; Bear hand (9) still mid-cast
+      setCards([signet]);
+      setStackLength(0);
+      setStackSourceIds(new Set<number>());
+      setZoneMoves(new Map([[60, 42]]));
+      setFromStack(new Set([60]));
+    });
+
+    expect(api.flights().some((f) => f.id === 60 && f.kind === "from-stack")).toBe(true);
+    expect(api.flights().some((f) => f.id === 9 && f.kind === "stack")).toBe(true);
+    expect(api.flights().some((f) => f.id === 11)).toBe(false);
     dispose();
   });
 });
