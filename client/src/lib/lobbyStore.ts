@@ -228,6 +228,7 @@ export function toLobbyView(snap: LobbySnapshot, userId: number | null, error?: 
       claimed: !!s,
       username: s?.username ?? null,
       deck_name: s?.deckName ?? null,
+      deck_id: s?.deckId ?? null,
       ready: s?.ready ?? false,
       is_host: !!s && s.userId === snap.hostUserId,
       is_you: you === i,

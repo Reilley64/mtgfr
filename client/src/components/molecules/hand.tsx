@@ -13,11 +13,11 @@
 // drag-to-avatar UI.
 
 import { createMemo, createSignal, For, type JSX, onCleanup, Show } from "solid-js";
+import { CardArt } from "~/components/atoms";
 import { ZONE } from "~/layout";
 import { type BarZone, barZoneAura, byObject, bySection, handExtras } from "~/lib/actions";
 import { cn } from "~/lib/cn";
 import { costPipPlate, costPips } from "~/lib/costPips";
-import { imageUrlByPrint } from "~/lib/scryfall";
 import { game } from "~/store";
 import type { ActionView, ObjectView, WireCost } from "~/wire/types";
 
@@ -294,8 +294,8 @@ export default function Hand(props: {
             </div>
           </Show>
           <div class="relative h-(--card-h) origin-bottom rounded-game">
-            <img
-              src={imageUrlByPrint(p.print)}
+            <CardArt
+              print={p.print}
               alt={p.name}
               draggable={false}
               onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
@@ -418,8 +418,8 @@ export default function Hand(props: {
               style={{ "--x": `${d().x}px`, "--y": `${d().y}px` }}
               class="pointer-events-none fixed top-(--y) left-(--x) z-20 -translate-x-1/2 -translate-y-1/2"
             >
-              <img
-                src={imageUrlByPrint(d().print)}
+              <CardArt
+                print={d().print}
                 alt={d().name}
                 draggable={false}
                 class={cn(CARD_FACE, "drop-shadow-drag")}

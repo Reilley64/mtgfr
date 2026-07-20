@@ -3,6 +3,8 @@ export type SeatView = {
   claimed: boolean;
   username: string | null;
   deck_name: string | null;
+  /** Present when claimed — used to warm card art (prints are not zone-secret). */
+  deck_id: number | null;
   ready: boolean;
   is_host: boolean;
   is_you: boolean;

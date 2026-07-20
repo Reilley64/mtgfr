@@ -101,18 +101,26 @@ describe("toLobbyView", () => {
     expect(view.started).toBe(false);
     expect(view.error).toBeNull();
     expect(view.seats).toHaveLength(4);
-    expect(view.seats[0]).toMatchObject({ claimed: true, username: "host", is_host: true, is_you: false });
+    expect(view.seats[0]).toMatchObject({
+      claimed: true,
+      username: "host",
+      is_host: true,
+      is_you: false,
+      deck_id: 1,
+    });
     expect(view.seats[1]).toMatchObject({
       claimed: true,
       username: "guest",
       is_host: false,
       is_you: true,
       ready: false,
+      deck_id: 1,
     });
     expect(view.seats[2]).toMatchObject({
       claimed: false,
       username: null,
       deck_name: null,
+      deck_id: null,
       is_host: false,
       is_you: false,
     });
