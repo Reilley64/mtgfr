@@ -1,6 +1,7 @@
 import { type JSX, type ParentProps, splitProps } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { cn } from "~/lib/cn";
+import { AppVersion } from "./app-version";
 
 type DivProps = ParentProps & JSX.HTMLAttributes<HTMLDivElement>;
 
@@ -64,7 +65,7 @@ export function ListRow(props: DivProps) {
   );
 }
 
-/** Page shell — The One Felt Rule. Forest Floor only. */
+/** Page shell — The One Felt Rule. Forest Floor only. Carries the API version badge. */
 export function Felt(props: ShellProps) {
   const [local, rest] = splitProps(props, ["as", "class", "children"]);
   return (
@@ -74,6 +75,7 @@ export function Felt(props: ShellProps) {
       class={cn("bg-forest-floor font-sans text-body text-snow", local.class)}
     >
       {local.children}
+      <AppVersion />
     </Dynamic>
   );
 }

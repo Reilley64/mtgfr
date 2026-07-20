@@ -76,12 +76,6 @@ export default function Lobby(props: { onStarted: () => void }) {
   const [code, setCode] = createSignal(""); // the table code typed on the Join path
   const [error, setError] = createSignal<string | null>(null);
   const [copied, setCopied] = createSignal(false); // "Copy code" feedback flip
-  const [apiTag, setApiTag] = createSignal<string | null>(null);
-  createEffect(() => {
-    void lobbyClient.apiVersion().then((v) => {
-      if (v?.version) setApiTag(v.version);
-    });
-  });
   // Only rendered when the Clipboard API is unavailable/denied — a readonly input the guest can
   // select-and-Ctrl+C by hand, in place of the one-click copy.
   const [clipboardFallback, setClipboardFallback] = createSignal(false);
@@ -229,7 +223,6 @@ export default function Lobby(props: { onStarted: () => void }) {
         <span class="text-label text-lichen">
           Bring: <b>{pickedDeck()?.name ?? "your deck"}</b>
         </span>
-        <Show when={apiTag()}>{(v) => <span class="text-label text-lichen/70">API {v()}</span>}</Show>
       </div>
       <div class="flex items-center gap-sm">
         <Button type="button" data-testid="lobby-host" onClick={onHost}>
