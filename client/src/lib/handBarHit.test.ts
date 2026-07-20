@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { HAND_FACE_W } from "~/lib/cardFlight";
-import { HAND_BAR_PEEK, type HandBarPeekSlot, handBarFaceLeft, hitHandBarSlot } from "~/lib/handBarHit";
+import {
+  HAND_BAR_PEEK,
+  type HandBarPeekSlot,
+  handBarFaceLeft,
+  handBarHitWidth,
+  hitHandBarSlot,
+} from "~/lib/handBarHit";
 
 const PEEK = HAND_BAR_PEEK;
 const FACE = HAND_FACE_W;
@@ -13,7 +19,7 @@ const TWO: HandBarPeekSlot[] = [
 ];
 
 /**
- * Pre-fix / wrong model: a raised card's entire face wins at z-top.
+ * Pre-fix / wrong model: a raised non-rightmost card's entire face wins at z-top.
  * With Arena right-on-top stacking that steals the *right* neighbor's left peek.
  */
 function hitHandBarSlotFullFaceWhenRaised(
@@ -43,37 +49,53 @@ describe("handBarFaceLeft", () => {
   });
 });
 
-describe("hitHandBarSlot", () => {
-  it("returns null when the pointer misses every left peek", () => {
-    expect(hitHandBarSlot(TWO[0].faceLeft - 1, TWO, PEEK)).toBeNull();
-    expect(hitHandBarSlot(TWO[1].faceLeft + PEEK + 1, TWO, PEEK)).toBeNull();
+describe("handBarHitWidth", () => {
+  it("uses the left peek for buried cards and the full face for the rightmost", () => {
+    expect(handBarHitWidth(0, 3, PEEK, FACE)).toBe(PEEK);
+    expect(handBarHitWidth(1, 3, PEEK, FACE)).toBe(PEEK);
+    expect(handBarHitWidth(2, 3, PEEK, FACE)).toBe(FACE);
   });
 
-  it("hits adjacent left peeks (visible name strips under right-on-top stacking)", () => {
+  it("uses the full face for a single-card section (commander)", () => {
+    expect(handBarHitWidth(0, 1, PEEK, FACE)).toBe(FACE);
+  });
+});
+
+describe("hitHandBarSlot", () => {
+  it("returns null when the pointer misses every hit region", () => {
+    expect(hitHandBarSlot(TWO[0].faceLeft - 1, TWO, PEEK, FACE)).toBeNull();
+    expect(hitHandBarSlot(TWO[1].faceLeft + FACE + 1, TWO, PEEK, FACE)).toBeNull();
+  });
+
+  it("hits adjacent left peeks on buried cards", () => {
     expect(TWO[1].faceLeft).toBe(TWO[0].faceLeft + PEEK);
-    expect(hitHandBarSlot(TWO[0].faceLeft, TWO, PEEK)).toBe(0);
-    expect(hitHandBarSlot(TWO[0].faceLeft + PEEK - 1, TWO, PEEK)).toBe(0);
-    expect(hitHandBarSlot(TWO[1].faceLeft, TWO, PEEK)).toBe(1);
-    expect(hitHandBarSlot(TWO[1].faceLeft + PEEK - 1, TWO, PEEK)).toBe(1);
+    expect(hitHandBarSlot(TWO[0].faceLeft, TWO, PEEK, FACE)).toBe(0);
+    expect(hitHandBarSlot(TWO[0].faceLeft + PEEK - 1, TWO, PEEK, FACE)).toBe(0);
+    expect(hitHandBarSlot(TWO[1].faceLeft, TWO, PEEK, FACE)).toBe(1);
+  });
+
+  it("hits the full face of the rightmost card, including its right half", () => {
+    const onRightHalf = TWO[1].faceLeft + PEEK + 20;
+    expect(onRightHalf).toBeLessThan(TWO[1].faceLeft + FACE);
+    expect(hitHandBarSlot(onRightHalf, TWO, PEEK, FACE)).toBe(1);
   });
 
   it("keeps the left neighbor reachable while the right card is raised", () => {
-    // Left peeks sit outside the raised right face to its left — full-face also preserves this.
     const overLeftPeek = TWO[0].faceLeft + 10;
-    expect(hitHandBarSlot(overLeftPeek, TWO, PEEK)).toBe(0);
+    expect(hitHandBarSlot(overLeftPeek, TWO, PEEK, FACE)).toBe(0);
     expect(hitHandBarSlotFullFaceWhenRaised(overLeftPeek, TWO, PEEK, FACE, 1)).toBe(0);
   });
 
   it("keeps the right neighbor reachable while the left card is raised", () => {
     // Raised left face overhangs the right card's left peek — full-face steals; peek-only does not.
     const overRightPeek = TWO[1].faceLeft + 10;
-    expect(hitHandBarSlot(overRightPeek, TWO, PEEK)).toBe(1);
+    expect(hitHandBarSlot(overRightPeek, TWO, PEEK, FACE)).toBe(1);
     expect(hitHandBarSlotFullFaceWhenRaised(overRightPeek, TWO, PEEK, FACE, 0)).toBe(0);
   });
 
-  it("still hits the raised card on its own left peek", () => {
-    const onRaisedPeek = TWO[1].faceLeft + 10;
-    expect(hitHandBarSlot(onRaisedPeek, TWO, PEEK)).toBe(1);
-    expect(hitHandBarSlotFullFaceWhenRaised(onRaisedPeek, TWO, PEEK, FACE, 1)).toBe(1);
+  it("still hits the raised rightmost card across its full face", () => {
+    const onRaisedRight = TWO[1].faceLeft + PEEK + 30;
+    expect(hitHandBarSlot(onRaisedRight, TWO, PEEK, FACE)).toBe(1);
+    expect(hitHandBarSlotFullFaceWhenRaised(onRaisedRight, TWO, PEEK, FACE, 1)).toBe(1);
   });
 });
