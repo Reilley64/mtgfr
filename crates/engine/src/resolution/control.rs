@@ -209,4 +209,83 @@ impl Game {
             _ => unreachable!("control family mint received a non-family effect"),
         }
     }
+
+    /// Donation (Zedruu, CR 720): `target` is the donated permanent (first clause);
+    /// `targets_second` holds the recipient opponent (second clause, chosen at placement).
+    /// Mint the permanent-control change with that player as the new controller — the same
+    /// freshly-timestamped `permanent_control_overrides` write `GainControl` uses
+    /// (apply.rs), leaving ownership with the donor (CR 108.3). A target that has left the
+    /// battlefield since is skipped (CR 608.2b); with no chosen recipient the donation does
+    /// nothing.
+    pub(crate) fn resolve_target_opponent_gains_control(
+        &mut self,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            target,
+            targets_second,
+            ..
+        } = ctx;
+        let Some(object) = target.and_then(Target::object_id) else {
+            return;
+        };
+        if self.as_permanent(object).is_none() {
+            return;
+        }
+        let Some(Target::Player(recipient)) = targets_second.iter().next() else {
+            return;
+        };
+        self.push_apply(
+            events,
+            Event::ControlGained {
+                object,
+                controller: recipient,
+            },
+        );
+    }
+
+    /// Exchange control (Vedalken Plotter / Chromeshell Crab, CR 720): `target` is the first
+    /// permanent (its "you control" clause); `targets_second` holds the second (its "an
+    /// opponent controls" clause, chosen at placement). Swap their controllers — each new
+    /// controller is the OTHER's prior `controller_of`, minted as two freshly-timestamped
+    /// `ControlGained` events (CR 800.4a: the swap outranks any earlier steal), leaving
+    /// ownership untouched (CR 108.3). Both must still be on the battlefield — an exchange
+    /// needs both, so a target that has left since (CR 608.2b) cancels the whole swap.
+    pub(crate) fn resolve_exchange_control(
+        &mut self,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            target,
+            targets_second,
+            ..
+        } = ctx;
+        let Some(first) = target.and_then(Target::object_id) else {
+            return;
+        };
+        let Some(Target::Object(second)) = targets_second.iter().next() else {
+            return;
+        };
+        if self.as_permanent(first).is_none() || self.as_permanent(second).is_none() {
+            return;
+        }
+        let first_controller = self.controller_of(first);
+        let second_controller = self.controller_of(second);
+        self.push_apply(
+            events,
+            Event::ControlGained {
+                object: first,
+                controller: second_controller,
+            },
+        );
+        self.push_apply(
+            events,
+            Event::ControlGained {
+                object: second,
+                controller: first_controller,
+            },
+        );
+    }
 }

@@ -733,25 +733,6 @@ impl Game {
             .contains(&chosen)
     }
 
-    /// The shared core of "double `object`'s +1/+1 counters" (CR 614): as many more as it
-    /// already has, through the same replaceable-step pipeline [`Effect::PutCounters`] uses.
-    /// `None` when doubling is a no-op — zero counters, or a replacement effect zeroes the
-    /// result out — the same "no event for a no-op doubling" rule
-    /// [`Effect::DoubleCounters`] and [`Effect::DoubleCountersOnAttachedCreature`] both follow.
-    pub(crate) fn doubled_counters_event(
-        &self,
-        object: ObjectId,
-        source_name: &'static str,
-    ) -> Option<Event> {
-        let current = self.permanent(object).plus_counters;
-        let n = self.counters_after_replacements(object, current);
-        (n > 0).then_some(Event::CountersPlaced {
-            object,
-            count: n,
-            source_name,
-        })
-    }
-
     /// Resolve one effect — the sole call-site verb for Effect → board mutation (ADR 0004).
     /// A pausing effect sets `pending_choice` (via [`pending::raise`] / dig-loop helpers); every other effect
     /// mints events, applies them, and appends to `events`. Callers never choose between a
@@ -765,7 +746,7 @@ impl Game {
             controller,
             source,
             target,
-            targets_second,
+            targets_second: _,
             x,
             spent_mana: _,
         } = ctx;
@@ -873,81 +854,16 @@ impl Game {
             | Effect::Demonstrate { .. }
             | Effect::Proliferate { .. }
             | Effect::PhaseOut => self.run_choose_pause(effect, ctx),
-            // Kinetic Ooze's X≥10 rider (CR 601.2c/603.3d): double the +1/+1 counters on each of the
-            // "other target creatures" chosen at placement (read from this ability's second target
-            // clause). A target that has left the battlefield since is skipped (CR 608.2b).
+            // Kinetic Ooze — see `resolution/counters.rs::resolve_double_counters_on_target_creatures`.
             Effect::DoubleCountersOnTargetCreatures { .. } => {
-                let source_name = self.source_name_of(source);
-                for chosen in targets_second.iter() {
-                    let Some(object) = chosen.object_id() else {
-                        continue;
-                    };
-                    if self.as_permanent(object).is_none() {
-                        continue;
-                    }
-                    if let Some(event) = self.doubled_counters_event(object, source_name) {
-                        self.push_apply(events, event);
-                    }
-                }
+                self.resolve_double_counters_on_target_creatures(ctx, events)
             }
-            // Donation (Zedruu, CR 720): `target` is the donated permanent (first clause);
-            // `targets_second` holds the recipient opponent (second clause, chosen at placement).
-            // Mint the permanent-control change with that player as the new controller — the same
-            // freshly-timestamped `permanent_control_overrides` write `GainControl` uses (apply.rs),
-            // leaving ownership with the donor (CR 108.3). A target that has left the battlefield
-            // since is skipped (CR 608.2b); with no chosen recipient the donation does nothing.
+            // Donation — see `resolution/control.rs::resolve_target_opponent_gains_control`.
             Effect::TargetOpponentGainsControl { .. } => {
-                let Some(object) = target.and_then(Target::object_id) else {
-                    return;
-                };
-                if self.as_permanent(object).is_none() {
-                    return;
-                }
-                let Some(Target::Player(recipient)) = targets_second.iter().next() else {
-                    return;
-                };
-                self.push_apply(
-                    events,
-                    Event::ControlGained {
-                        object,
-                        controller: recipient,
-                    },
-                );
+                self.resolve_target_opponent_gains_control(ctx, events)
             }
-            // Exchange control (Vedalken Plotter / Chromeshell Crab, CR 720): `target` is the first
-            // permanent (its "you control" clause); `targets_second` holds the second (its "an
-            // opponent controls" clause, chosen at placement). Swap their controllers — each new
-            // controller is the OTHER's prior `controller_of`, minted as two freshly-timestamped
-            // `ControlGained` events (CR 800.4a: the swap outranks any earlier steal), leaving
-            // ownership untouched (CR 108.3). Both must still be on the battlefield — an exchange
-            // needs both, so a target that has left since (CR 608.2b) cancels the whole swap.
-            Effect::ExchangeControl { .. } => {
-                let Some(first) = target.and_then(Target::object_id) else {
-                    return;
-                };
-                let Some(Target::Object(second)) = targets_second.iter().next() else {
-                    return;
-                };
-                if self.as_permanent(first).is_none() || self.as_permanent(second).is_none() {
-                    return;
-                }
-                let first_controller = self.controller_of(first);
-                let second_controller = self.controller_of(second);
-                self.push_apply(
-                    events,
-                    Event::ControlGained {
-                        object: first,
-                        controller: second_controller,
-                    },
-                );
-                self.push_apply(
-                    events,
-                    Event::ControlGained {
-                        object: second,
-                        controller: first_controller,
-                    },
-                );
-            }
+            // Exchange control — see `resolution/control.rs::resolve_exchange_control`.
+            Effect::ExchangeControl { .. } => self.resolve_exchange_control(ctx, events),
             // Perpetual Timepiece / Quandrix Command mode 3 — exile-cast pause peel
             // (`resolution/pause_exile_cast`).
             Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. } => {
@@ -1634,17 +1550,10 @@ impl Game {
                     },
                 );
             }
-            // Fractal Harness's attack trigger: double the +1/+1 counters on the creature this
-            // Equipment is attached to (CR 614) — a no-target sibling of `DoubleCounters` pinned
-            // to `source`'s own `attached_to` instead of a chosen target. An unattached Equipment
-            // (unequipped, or between equip targets) has nothing to double (guard-return).
+            // Fractal Harness — see
+            // `resolution/counters.rs::resolve_double_counters_on_attached_creature`.
             Effect::DoubleCountersOnAttachedCreature => {
-                let Some(object) = self.permanent(source).attached_to else {
-                    return;
-                };
-                if let Some(event) = self.doubled_counters_event(object, self.def_of(source).name) {
-                    self.push_apply(events, event);
-                }
+                self.resolve_double_counters_on_attached_creature(ctx, events)
             }
             // Gift of Immortality: schedule the delayed return of this Aura (CR 603.7), attached
             // to the creature this same resolution's preceding `ReanimateDyingEnchantedCreature`
