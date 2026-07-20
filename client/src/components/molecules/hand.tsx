@@ -40,8 +40,8 @@ const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 export const HAND_VISIBLE_H = 100;
 /** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
 export const HAND_STRIP_H = HAND_VISIBLE_H;
-/** Room above each face for cast-cost pips (they sit outside the card, not on the art). */
-const HAND_PIP_ROW_H = 22;
+/** Room above each face for cast-cost pips (reserved band outside the card). */
+const HAND_PIP_ROW_H = 20;
 
 /** MTGA fan: left/right tilt out; centre rises toward the board (edges sit lower). */
 function fanTransform(index: number, count: number): string {
@@ -279,19 +279,20 @@ export default function Hand(props: {
           raised() ? "h-(--card-h) w-[112px]" : "h-(--visible) w-(--peek)",
         )}
       >
-        {/* Face + pips share a 112px column (right-aligned in the peek slot). Pips sit above
-            the face top — Arena cast disks, not overlaid on the printed art. */}
+        {/* Face + pips share a 112px column (right-aligned in the peek slot). Pips live in a
+            reserved band *above* the face top — Arena cast disks, not overlaid on the art. */}
         <div class="absolute top-0 right-0 w-[112px]">
           <Show when={pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
-              class="pointer-events-none absolute right-0 bottom-full z-20 mb-2 flex justify-end gap-px"
+              class="pointer-events-none absolute right-0 left-0 z-20 flex items-end justify-end gap-px"
+              style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
               aria-hidden="true"
             >
               <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 15 : 13} />}</For>
             </div>
           </Show>
-          <div class="h-(--card-h) origin-bottom rounded-game">
+          <div class="relative h-(--card-h) origin-bottom rounded-game">
             <img
               src={imageUrlByPrint(p.print)}
               alt={p.name}
@@ -424,7 +425,8 @@ export default function Hand(props: {
               />
               <Show when={ghostPips().length > 0}>
                 <div
-                  class="pointer-events-none absolute right-0 bottom-full mb-2 flex justify-end gap-px"
+                  class="pointer-events-none absolute right-0 left-0 flex items-end justify-end gap-px"
+                  style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
                   aria-hidden="true"
                 >
                   <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
