@@ -5,9 +5,10 @@
 // one card per action there. Battlefield activates live on the selection radial, not in this bar.
 // Zone order left→right: command → hand → graveyard → exile. Zone groups follow Arena: gap +
 // aura colour, no section captions. Hand tiles are a dense fan (right-edge peek at rest — mana
-// corner visible) with cast-cost pips on the top-right; hover expands the full card. Centre of
-// the fan rises toward the board. Faces tuck under the screen edge at rest (viewport clips them
-// — no mid-card overflow cut).
+// corner visible) with cast-cost pips on the top-right; hover expands the full card. Hits stay
+// on the peek strip only (`~/lib/handBarHit`) so a raised face's left overhang cannot steal the
+// left neighbor. Centre of the fan rises toward the board. Faces tuck under the screen edge at
+// rest (viewport clips them — no mid-card overflow cut).
 // Every playable card is physically dragged — a ghost follows the cursor — and on release the
 // Board takes the action by its id (drag above the play threshold → take_action; back in the bar
 // → snap back). Combat declarations are NOT cards here; they keep the board's existing
@@ -20,6 +21,7 @@ import { type BarZone, barZoneAura, byObject, bySection, handExtras } from "~/li
 import { HAND_FACE_W } from "~/lib/cardFlight";
 import { cn } from "~/lib/cn";
 import { costPipPlate, costPips } from "~/lib/costPips";
+import { HAND_BAR_PEEK } from "~/lib/handBarHit";
 import { game } from "~/store";
 import type { ActionView, ObjectView, WireCost } from "~/wire/types";
 
@@ -36,7 +38,7 @@ export interface ActionDrop {
  */
 export const HAND_CARD_W = HAND_FACE_W;
 /** Visible strip width at rest — right edge of the face (mana-cost corner), Arena-style. */
-export const HAND_CARD_PEEK = 64;
+export const HAND_CARD_PEEK = HAND_BAR_PEEK;
 export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
 export const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 /**
@@ -270,8 +272,23 @@ export default function Hand(props: {
           e.preventDefault(); // Space must not scroll the page
           activate(p.action);
         }}
-        onPointerEnter={() => setRaised(true)}
-        onPointerLeave={() => setRaised(false)}
+        // Hits stay on this peek-wide box only (`hitHandBarSlot`). The full face hangs left
+        // with pointer-events-none so a raised card cannot steal the left neighbor's peek.
+        onPointerEnter={() => {
+          setRaised(true);
+          setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
+          setHoverAction(p.action);
+        }}
+        onPointerMove={() => {
+          setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
+          setHoverAction(p.action);
+        }}
+        onPointerLeave={() => {
+          setRaised(false);
+          if (hover() === p.name) setHoverCard(null);
+          if (!drag()) setHoverAction(null);
+        }}
+        onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
         style={{
           "--fan": p.fan,
           "--peek": `${HAND_CARD_PEEK}px`,
@@ -285,16 +302,18 @@ export default function Hand(props: {
         // The face hangs left of the peek; raise only lifts height / z.
         class={cn(
           "pointer-events-auto relative w-(--peek) origin-bottom transition-[height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
+          p.action ? "cursor-grab" : "cursor-default",
           raised() ? "h-(--card-h)" : "h-(--visible)",
         )}
       >
         {/* Face + pips share a fixed column (right-aligned in the peek slot). Pips live in a
-            reserved band *above* the face top — Arena cast disks, not overlaid on the art. */}
-        <div class="absolute top-0 right-0 w-(--card-w)">
+            reserved band *above* the face top — Arena cast disks, not overlaid on the art.
+            pointer-events-none: paint only; the peek slot above owns all hits. */}
+        <div class="pointer-events-none absolute top-0 right-0 w-(--card-w)">
           <Show when={pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
-              class="pointer-events-none absolute right-0 left-0 z-20 flex items-start justify-end gap-px pt-0.5"
+              class="absolute right-0 left-0 z-20 flex items-start justify-end gap-px pt-0.5"
               style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
               aria-hidden="true"
             >
@@ -306,25 +325,16 @@ export default function Hand(props: {
               print={p.print}
               alt={p.name}
               draggable={false}
-              onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
-              onPointerMove={() => {
-                setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
-                setHoverAction(p.action);
-              }}
-              onPointerLeave={() => {
-                if (hover() === p.name) setHoverCard(null);
-                if (!drag()) setHoverAction(null);
-              }}
               class={cn(
                 CARD_FACE,
-                "cursor-default touch-none shadow-hand transition-[filter] duration-[80ms] ease-state",
-                p.action && "cursor-grab hover:brightness-110",
+                "touch-none shadow-hand transition-[filter] duration-[80ms] ease-state",
+                p.action && raised() && "brightness-110",
                 barZoneAura(p.zone),
                 dimmedness(p),
               )}
             />
             <Show when={p.caption}>
-              <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
+              <div class="absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
                 {p.caption}
               </div>
             </Show>
@@ -431,12 +441,7 @@ export default function Hand(props: {
               }}
               class="pointer-events-none fixed top-(--y) left-(--x) z-20 -translate-x-1/2 -translate-y-1/2"
             >
-              <CardArt
-                print={d().print}
-                alt={d().name}
-                draggable={false}
-                class={cn(CARD_FACE, "drop-shadow-drag")}
-              />
+              <CardArt print={d().print} alt={d().name} draggable={false} class={cn(CARD_FACE, "drop-shadow-drag")} />
               <Show when={ghostPips().length > 0}>
                 <div
                   class="pointer-events-none absolute right-0 left-0 flex items-start justify-end gap-px pt-0.5"
