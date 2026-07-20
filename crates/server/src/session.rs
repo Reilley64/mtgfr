@@ -1,4 +1,4 @@
-//! Live Table chrome (ADR 0007 / 0026 / 0027 / 0029): intent submission, yield / dwell,
+//! Live Table chrome (ADR 0007 / 0026 / 0027 / 0029 / 0037): intent submission, yield / dwell,
 //! auto-advance, stack-hold scheduling, and delta packaging. Chrome knobs live on
 //! [`crate::chrome::ChromeState`]; only [`TableSession`] mutates them. gRPC adapters call the
 //! chrome verbs and get [`ApplyResult`] / [`DwellResult`] — [`Disposition`] stays crate-private
@@ -183,12 +183,21 @@ impl<'a> TableSession<'a> {
             let mut events = match intent {
                 Some(intent) => {
                     let player = intent.actor();
+                    let substantive = !matches!(intent, Intent::PassPriority { .. });
                     let more = game.submit(intent)?;
                     // Untap / being-attacked may appear on the player intent itself — clear
                     // before auto_advance (ADR 0029).
                     clear_turn_yields_from_events(turn_yields, &more);
                     if clear_turn_yield_on_intent {
                         turn_yields[player.0 as usize] = false;
+                        // Arena End Turn (ADR 0037): another player's cast/activate cancels the
+                        // active seat's end-turn yield so they can respond.
+                        if substantive {
+                            let active = game.active_player();
+                            if active != player {
+                                turn_yields[active.0 as usize] = false;
+                            }
+                        }
                     }
                     more
                 }
@@ -438,9 +447,19 @@ fn auto_advance(
         // Attacked seats list empty-stack instants as meaningful (engine attack-response
         // window) so has_meaningful_action already stops them when they can respond;
         // helpless defenders auto-pass through to blockers.
+        //
+        // Arena End Turn (ADR 0037): while the active seat has turn yield armed, other seats
+        // with empty-stack instant-speed plays still receive priority windows — ADR 0007 would
+        // otherwise skip them and opponents could never respond during an end-turn walk.
+        let active = game.active_player();
+        let end_turn = turn_yields[active.0 as usize];
+        let can_respond = end_turn
+            && holder != active
+            && game.stack_is_empty()
+            && game.has_empty_stack_instant_play(holder);
         let skip = yields[holder.0 as usize]
             || turn_yields[holder.0 as usize]
-            || !game.has_meaningful_action(holder);
+            || (!game.has_meaningful_action(holder) && !can_respond);
         if !skip {
             break;
         }
@@ -462,14 +481,27 @@ fn auto_advance(
 
 fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) {
     use engine::Step;
+    let mut cleanup_active: Option<PlayerId> = None;
     for e in events {
         match e {
+            Event::StepBegan {
+                step: Step::Cleanup,
+                active_player,
+            } => {
+                cleanup_active = Some(*active_player);
+            }
             // ADR 0029: your own turn starts — stop yielding through it.
+            // ADR 0037: End Turn armed while active must clear at the turn boundary (Cleanup →
+            // next Untap) so it does not morph into until-my-turn.
             Event::StepBegan {
                 step: Step::Untap,
                 active_player,
             } => {
                 turn_yields[active_player.0 as usize] = false;
+                if let Some(prev) = cleanup_active {
+                    turn_yields[prev.0 as usize] = false;
+                }
+                cleanup_active = None;
             }
             // Only the seat that was attacked cancels turn yield (not every yielded seat
             // at the table) — so they can respond and declare blockers.
@@ -1260,6 +1292,87 @@ mod tests {
             game.meaningful_actions(PlayerId(1))
                 .contains(&MeaningfulAction::DeclareBlockers),
             "P1 still owes a declare-blockers decision"
+        );
+    }
+
+    /// Arena End Turn (ADR 0037): active player arms turn yield → auto-pass through remaining
+    /// steps until the next player's turn, while opponents still receive priority windows.
+    #[test]
+    fn end_turn_advances_to_next_player_through_phase_windows() {
+        let mut table = Table::empty();
+        let game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        assert_eq!(game.active_player(), PlayerId(0));
+        assert_eq!(game.current_step(), engine::Step::Main1);
+        table.game = Some(game);
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.active_player(),
+            PlayerId(1),
+            "end turn hands the turn to the next player"
+        );
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "end turn must clear at the turn boundary (not morph into until-my-turn)"
+        );
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(1),
+            "next player keeps priority on their turn"
+        );
+    }
+
+    /// Arena End Turn: if another player casts/activates, stop so the end-turner can respond.
+    #[test]
+    fn end_turn_clears_when_another_player_acts() {
+        use engine::{Intent, Target};
+
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        let bear_id = game.spawn_on_battlefield(PlayerId(0), bear());
+        game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+        let shock = game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
+        table.game = Some(game);
+
+        assert_eq!(table.game.as_ref().unwrap().priority_holder(), PlayerId(0));
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        // End turn should stop when P1 can act (Shock in hand with Mountain).
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(1),
+            "opponent with a playable instant still gets a priority window"
+        );
+        assert!(
+            table.chrome.turn_yields()[0],
+            "end turn stays armed until the opponent actually acts"
+        );
+
+        let (result, _) = TableSession::new(&mut table).submit(Intent::Cast {
+            player: PlayerId(1),
+            object: shock,
+            target: Some(Target::Object(bear_id)),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+        });
+        assert!(result.accepted, "P1 casts Shock: {:?}", result.reason);
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "opponent action cancels end turn so the active seat can respond"
         );
     }
 

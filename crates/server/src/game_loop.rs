@@ -165,8 +165,9 @@ pub(crate) async fn set_yield_core(
 }
 
 /// Mark (or clear) a seat's turn yield: auto-pass until that seat's next turn, or until they
-/// take an intentional action (ADR 0029). Independent of stack yield. Called by the gRPC
-/// `Game.SetTurnYield` service.
+/// take an intentional action (ADR 0029). While that seat is active, the same flag is Arena
+/// End Turn (ADR 0037). Independent of stack yield. Called by the gRPC `Game.SetTurnYield`
+/// service.
 pub(crate) async fn set_turn_yield_core(
     state: &AppState,
     user_id: i64,

@@ -393,15 +393,21 @@ export default function Board() {
         e.preventDefault();
         tryPinInspect();
       }
-      // Space/Enter = primary context bar when the stack is empty; on the stack, one-shot
-      // pass_priority while you can act (Next is hidden — stack yield is the standing opt-out).
-      if (
-        (e.key === " " || e.key === "Enter") &&
-        !inspectPin() &&
-        !promptOpen() &&
-        yours() &&
-        !isInteractiveControl(e.target)
-      ) {
+      // Space = one priority pass (Next / Resolve card). Enter = End Turn while active (ADR 0037).
+      if (e.key === "Enter" && !inspectPin() && !promptOpen() && !isInteractiveControl(e.target)) {
+        const chrome = boardChrome();
+        if (chrome.showEndTurn) {
+          e.preventDefault();
+          setTurnYield(!chrome.turnYielded);
+          return;
+        }
+        if (chrome.showTurnYield) {
+          e.preventDefault();
+          setTurnYield(!chrome.turnYielded);
+          return;
+        }
+      }
+      if (e.key === " " && !inspectPin() && !promptOpen() && yours() && !isInteractiveControl(e.target)) {
         e.preventDefault(); // Space must not scroll the page
         const binding = boardChrome().space;
         if (binding === "pass_priority") {

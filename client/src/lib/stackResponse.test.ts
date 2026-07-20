@@ -181,6 +181,12 @@ describe("stackChrome", () => {
     expect(stackChrome({ ...base, turnYielded: true }).turnYielded).toBe(true);
   });
 
+  it("shows End Turn only when you are the active player (not spectating)", () => {
+    expect(stackChrome({ ...base, viewer: 0, active: 0 }).showEndTurn).toBe(true);
+    expect(stackChrome({ ...base, viewer: 0, active: 1 }).showEndTurn).toBe(false);
+    expect(stackChrome({ ...base, viewer: 0, active: 0, spectating: true }).showEndTurn).toBe(false);
+  });
+
   it("binds Space to primary on an empty stack, ignore for spectators", () => {
     expect(stackChrome({ ...base, stackLen: 0 }).space).toBe("primary");
     expect(stackChrome({ ...base, stackLen: 0, spectating: true }).space).toBe("ignore");
