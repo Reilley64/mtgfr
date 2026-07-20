@@ -101,4 +101,3 @@ function phaseSegment(state: "past" | "now" | "future", yourTurn: boolean): stri
     state === "now" && !yourTurn && "border-phase-ember bg-phase-ember/90",
   );
 }
-

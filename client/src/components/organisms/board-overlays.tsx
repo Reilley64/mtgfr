@@ -131,4 +131,3 @@ export function PileOverlay(props: { cards: ObjectView[]; onClose: () => void })
     </div>
   );
 }
-

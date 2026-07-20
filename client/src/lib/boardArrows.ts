@@ -43,13 +43,7 @@ export function pruneArrowBorn(born: Map<string, number>, seen: ReadonlySet<stri
   }
 }
 
-export function arrowBetweenWithProgress(
-  ctx: CanvasRenderingContext2D,
-  a: Vec,
-  b: Vec,
-  stroke: Stroke,
-  t: number,
-) {
+export function arrowBetweenWithProgress(ctx: CanvasRenderingContext2D, a: Vec, b: Vec, stroke: Stroke, t: number) {
   const mx = (a.x + b.x) / 2;
   const my = (a.y + b.y) / 2;
   const dx = b.x - a.x;

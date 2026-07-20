@@ -2,7 +2,7 @@
 // Orchestration is {@link buildBoardScene} + {@link paintBoardScene}; this module
 // keeps `DrawCtx` / `draw()` for the Board paint loop and re-exports.
 
-import { type RenderCard } from "~/layout";
+import type { RenderCard } from "~/layout";
 import { type ArrowAnimState, emptyArrowAnimState } from "~/lib/boardArrows";
 import type { Vec } from "~/lib/boardPaintPrims";
 import { buildBoardScene, paintBoardScene } from "~/lib/boardScene";
@@ -11,6 +11,9 @@ import type { CardFlight } from "~/lib/cardFlight";
 import type { ImageCache } from "~/lib/imageCache";
 import type { VisibleState, WireAttack, WireBlock } from "~/wire/types";
 
+export { ARROW_DRAW_MS, type ArrowAnimState, arrowDrawProgress, emptyArrowAnimState } from "~/lib/boardArrows";
+export { RESPONSE_COLOR, TARGET_COLOR } from "~/lib/boardPaintPrims";
+export { type BoardScene, type BuildBoardSceneInput, buildBoardScene, paintBoardScene } from "~/lib/boardScene";
 export type { StackPresentation } from "~/lib/stackLayout";
 export {
   STACK_ANCHOR_FROM_RIGHT,
@@ -32,10 +35,6 @@ export {
   stackStripPeek,
   stagingAimFrom,
 } from "~/lib/stackLayout";
-
-export { ARROW_DRAW_MS, arrowDrawProgress, emptyArrowAnimState, type ArrowAnimState } from "~/lib/boardArrows";
-export { RESPONSE_COLOR, TARGET_COLOR } from "~/lib/boardPaintPrims";
-export { buildBoardScene, paintBoardScene, type BoardScene, type BuildBoardSceneInput } from "~/lib/boardScene";
 
 export interface DrawCtx {
   cam: Camera;

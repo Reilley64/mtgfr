@@ -1,12 +1,7 @@
 // Retained board scene: pure build decisions, dumb pixel painter.
 
 import { AVATAR_R, type RenderCard, STEP, seatBand, seatColor } from "~/layout";
-import {
-  type ArrowAnimState,
-  arrowBetweenWithProgress,
-  arrowProgressFor,
-  pruneArrowBorn,
-} from "~/lib/boardArrows";
+import { type ArrowAnimState, arrowBetweenWithProgress, arrowProgressFor, pruneArrowBorn } from "~/lib/boardArrows";
 import { drawAvatar, ringAvatar } from "~/lib/boardAvatarPaint";
 import { drawCard, drawFlightCard } from "~/lib/boardCardPaint";
 import { drawFelt } from "~/lib/boardFelt";
@@ -15,8 +10,8 @@ import {
   BLOCK_STROKE,
   roundRect,
   SELECT_STROKE,
-  TARGET_STROKE,
   type Stroke,
+  TARGET_STROKE,
   type Vec,
 } from "~/lib/boardPaintPrims";
 import { type Camera, worldToScreen } from "~/lib/camera";

@@ -804,9 +804,11 @@ export default function Board() {
                 // Return keyframes end at translate(dx,dy) — delta from stack rest to hand.
                 return stackInFromDelta(to, from);
               })()}
-              showPileStaged={
-                arrowAiming() && !(stackStagedCard() != null && cardFlights.hideCardIds().has(stackStagedCard()!.id))
-              }
+              showPileStaged={(() => {
+                const staged = stackStagedCard();
+                if (!arrowAiming() || staged == null) return false;
+                return !cardFlights.hideCardIds().has(staged.id);
+              })()}
               hideFaceIds={cardFlights.hideCardIds()}
               allowDwell={boardChrome().allowDwell}
               viewportW={size().x}

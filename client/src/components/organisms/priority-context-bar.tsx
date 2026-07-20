@@ -100,4 +100,3 @@ export function PriorityContextBar(props: {
     </div>
   );
 }
-

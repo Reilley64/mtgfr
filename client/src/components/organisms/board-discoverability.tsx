@@ -82,4 +82,3 @@ function legendSwatch(shape: "dot" | "badge" | "outline") {
   if (shape === "badge") return `${base} rounded-focus border border-morph-slate bg-(--c)`;
   return `${base} rounded-focus border-2 border-(--c)`;
 }
-
