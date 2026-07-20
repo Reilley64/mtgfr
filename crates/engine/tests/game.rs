@@ -10273,6 +10273,49 @@ fn a_summoning_sick_creature_cannot_use_a_tap_ability() {
 }
 
 #[test]
+fn a_freshly_cast_noncreature_artifact_is_not_summoning_sick() {
+    // CR 302.6: summoning sickness only restricts creatures. A noncreature permanent (Armillary
+    // Sphere) may pay {T} the turn it enters — and must not report as summoning-sick on the wire
+    // (the client paints the Arena sick badge from that bit).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let sphere = game.spawn_in_hand(PlayerId(0), card("Armillary Sphere"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: sphere,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let sphere = game.current_id(sphere);
+
+    assert!(
+        !game.is_summoning_sick(sphere),
+        "a noncreature artifact is not summoning sick the turn it enters"
+    );
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: sphere,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Armillary Sphere may tap the turn it enters");
+}
+
+#[test]
 fn the_untap_step_clears_summoning_sickness() {
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));

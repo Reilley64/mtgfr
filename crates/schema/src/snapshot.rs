@@ -1763,6 +1763,40 @@ mod tests {
     }
 
     #[test]
+    fn a_snapshot_does_not_mark_a_fresh_noncreature_as_summoning_sick() {
+        // CR 302.6 is creature-only. The client paints the Arena sick badge from ObjectView
+        // .summoning_sick — a freshly cast Armillary Sphere must not flip that bit.
+        let mut game = Game::new();
+        game.fund_mana(PlayerId(0));
+        let sphere = game.spawn_in_hand(PlayerId(0), def("Armillary Sphere"));
+        game.submit(engine::Intent::Cast {
+            player: PlayerId(0),
+            object: sphere,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+        })
+        .unwrap();
+        resolve_top_of_stack(&mut game);
+        let sphere = game.current_id(sphere);
+
+        let snap = snapshot(&game, PlayerId(0));
+        let obj = snap.objects.iter().find(|o| o.id == sphere).unwrap();
+        assert!(
+            !obj.summoning_sick,
+            "Armillary Sphere must not show the summoning-sick badge"
+        );
+    }
+
+    #[test]
     fn a_snapshot_carries_effective_keywords_for_arena_style_badges() {
         // Base keywords (Serra Angel) and granted keywords (Lightning Greaves → host) both land
         // on ObjectView so the canvas can paint Arena-style ability badges without a catalog lookup.
