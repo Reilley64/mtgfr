@@ -1762,9 +1762,11 @@ restriction and its own `[[abilities]]`) minted attached to a target via
   token = "60fe4897-6760-4c5a-8074-c92bd64df52b"  # data/tokens/dragon.toml
   ```
 
-**Treasure tokens** are engine-provided (`engine::treasure_token`: a colorless artifact token with
-"{T}, Sacrifice this artifact: Add one mana of any color"). Make them with `create_treasure`
-(§6) — no token profile needed:
+**Treasure tokens** live in `data/tokens/treasure.toml` like every other token profile.
+`create_treasure` (§6) is sugar that mints that profile (via `engine::treasure_token()`, which
+resolves the installed registry after cards load). Prefer `create_treasure` over a bare
+`create_token` + Treasure id when the card says "create a Treasure token" — it also carries
+`target_player` / `tapped` knobs:
 ```toml
 [[abilities.effects]]
 type = "create_treasure"

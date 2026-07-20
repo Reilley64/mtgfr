@@ -104,8 +104,8 @@ fn load_token_defs(dir: &Path) {
         if by_id_owned.insert(def.id.to_string(), def).is_some() {
             panic!("{}: duplicate token id {}", path.display(), def.id);
         }
-        let id: &'static str = Box::leak(def.id.to_string().into_boxed_str());
-        engine_map.insert(id, def);
+        // `def.id` is already leaked/`'static` from CardDef deserialize.
+        engine_map.insert(def.id, def);
     }
 
     TOKEN_POOL
@@ -193,7 +193,7 @@ mod tests {
             .count();
         assert!(
             toml_files >= 30,
-            "expected ~34 token profiles, got {toml_files}"
+            "expected ~35 token profiles, got {toml_files}"
         );
         assert_eq!(token_registry().len(), toml_files);
         for id in token_registry().keys() {
@@ -202,6 +202,25 @@ mod tests {
                 "token {id} must not be in the deckable registry"
             );
         }
+    }
+
+    #[test]
+    fn treasure_token_resolves_from_token_registry_after_load() {
+        let _ = registry();
+        let from_registry =
+            get_token(engine::TREASURE_ORACLE_ID).expect("treasure.toml in token_registry");
+        let from_helper = engine::treasure_token();
+        assert_eq!(from_helper.id, from_registry.id);
+        assert_eq!(from_helper.default_print, from_registry.default_print);
+        assert_eq!(from_helper.name, "Treasure");
+        assert_eq!(from_helper.kind, CardKind::Artifact);
+        assert_eq!(from_helper.subtypes, &["Treasure"]);
+        // Same ability shape: {T}, sac → add {any}.
+        assert_eq!(from_helper.abilities.len(), from_registry.abilities.len());
+        assert_eq!(
+            from_helper.abilities[0].timing,
+            from_registry.abilities[0].timing
+        );
     }
 
     #[test]

@@ -1012,14 +1012,27 @@ pub(crate) fn fresh_token(def: CardDef, controller: PlayerId) -> Permanent {
     }
 }
 
+/// Scryfall oracle id for the canonical Treasure token (`cards/data/tokens/treasure.toml`).
+pub const TREASURE_ORACLE_ID: &str = "3c549374-6c37-42e0-8d88-a8555d46732d";
+
 /// The canonical Treasure token (CR: Treasure): a colorless artifact token with
 /// "{T}, Sacrifice this artifact: Add one mana of any color." Every "create a Treasure" path
-/// mints from this one definition. The `any` mana it adds is a wildcard that pays any single
-/// colored pip or generic (see [`Mana::Any`]). Carries the "Treasure" subtype so a
-/// [`PermanentFilter`] can pick Treasures out from any other artifact (Goldspan Dragon's
-/// "Treasures you control" grant, #57). Stamps a Scryfall token Printing so battlefield art
-/// resolves (ADR 0031).
+/// mints from this one definition. Prefers the profile installed from
+/// `data/tokens/treasure.toml` (via [`crate::token_def`]) when the cards crate has loaded;
+/// otherwise falls back to a builtin matching that file so engine-only tests still work.
+/// The `any` mana it adds is a wildcard that pays any single colored pip or generic (see
+/// [`Mana::Any`]). Carries the "Treasure" subtype so a [`PermanentFilter`] can pick Treasures
+/// out from any other artifact (Goldspan Dragon's "Treasures you control" grant, #57).
 pub fn treasure_token() -> CardDef {
+    #[cfg(feature = "card-dsl")]
+    if let Some(def) = crate::token_def(TREASURE_ORACLE_ID) {
+        return def;
+    }
+    treasure_token_builtin()
+}
+
+/// Builtin Treasure profile — keep in lockstep with `cards/data/tokens/treasure.toml`.
+fn treasure_token_builtin() -> CardDef {
     const ABILITIES: &[Ability] = &[Ability {
         timing: Timing::Activated(ActivationCost {
             taps_self: true,
@@ -1067,7 +1080,7 @@ pub fn treasure_token() -> CardDef {
     }];
     CardDef {
         name: "Treasure",
-        id: "3c549374-6c37-42e0-8d88-a8555d46732d",
+        id: TREASURE_ORACLE_ID,
         default_print: "b4f61b5e-9c53-40b1-b93e-3ffa351ff052",
         cost: Cost::FREE,
         kind: CardKind::Artifact,
