@@ -377,4 +377,55 @@ impl Game {
             _ => unreachable!("tokens family mint received a non-family effect"),
         }
     }
+
+    /// [`Effect::CreateToken`]'s `enters_with` choreography: mint the token(s) (unchanged
+    /// batch via `execute_effect`), then — "Put X +1/+1 counters on it" (Deekah's Magecraft
+    /// Fractal) — place `enters_with` counters on each minted token, routed through the same
+    /// doubler/Hardened-Scales replacement pipeline as a spell's own `EntersWithCounters`
+    /// (`Game::resolve_spell`'s enters-with path). `counters_after_replacements` reads the
+    /// token's controller off game state, so the mint must already be applied — mirrors
+    /// `resolve_spell` applying `PermanentEntered` before reading its counters.
+    pub(crate) fn resolve_create_token(
+        &mut self,
+        effect: Effect,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            controller,
+            source,
+            target,
+            x,
+            ..
+        } = ctx;
+        let Effect::CreateToken { enters_with, .. } = effect else {
+            unreachable!("resolve_create_token received a non-family effect")
+        };
+        let evs = self.execute_effect(effect, controller, source, target, x);
+        self.apply_all(&evs);
+        let minted: Vec<ObjectId> = evs
+            .iter()
+            .filter_map(|e| match e {
+                Event::TokenCreated { token, .. } => Some(*token),
+                _ => None,
+            })
+            .collect();
+        events.extend(evs);
+        let n_raw = self.resolve_amount(enters_with, controller, source, target, x);
+        if n_raw > 0 {
+            for id in minted {
+                let n = self.counters_after_replacements(id, n_raw);
+                if n > 0 {
+                    self.push_apply(
+                        events,
+                        Event::CountersPlaced {
+                            object: id,
+                            count: n,
+                            source_name: self.def_of(source).name,
+                        },
+                    );
+                }
+            }
+        }
+    }
 }

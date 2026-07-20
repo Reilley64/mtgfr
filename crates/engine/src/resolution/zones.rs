@@ -521,10 +521,60 @@ impl Game {
         }
     }
 
+    /// Chaos Warp's fused reveal ([`Effect::ShuffleTargetPermanentIntoLibraryThenReveal`]):
+    /// the target's owner shuffles it into their library, then reveals the new top card and —
+    /// if it's a permanent card — puts it onto the battlefield under the owner (not
+    /// necessarily this effect's controller). Deterministic (the shuffle's PRNG is the only
+    /// randomness) but needs the *actual* post-shuffle order, so this runs here rather than
+    /// through `execute_effect`'s pure event-building path.
+    pub(crate) fn resolve_shuffle_then_reveal(
+        &mut self,
+        target: Option<Target>,
+        events: &mut Vec<Event>,
+    ) {
+        let object = expect_object_target(target, "a permanent to tuck");
+        let owner = self.owner_of(object);
+        // CR 111.7: a token can't exist in a library — it ceases to exist instead, with
+        // no shuffle and no reveal. `shuffle_tuck_events` is the same tuck-then-shuffle
+        // pair Oblation's no-reveal sibling mints (`resolution/zones.rs`).
+        let was_token = self.permanent(object).token;
+        for event in self.shuffle_tuck_events(object) {
+            self.push_apply(events, event);
+        }
+        if was_token {
+            return;
+        }
+        // CR 120.3: an empty library reveals nothing — a clean no-op.
+        let Some(&card) = self.players[owner.0 as usize].library.first() else {
+            return;
+        };
+        let def = self.def_of(card);
+        self.push_apply(
+            events,
+            Event::RevealedTopOfLibrary {
+                player: owner,
+                card,
+                def,
+            },
+        );
+        if CardFilter::Permanent.matches(def) {
+            self.push_apply(
+                events,
+                Event::SearchedToBattlefield {
+                    permanent: self.next_object_id(),
+                    from: card,
+                    controller: owner,
+                    tapped: false,
+                },
+            );
+        }
+    }
+
     /// Shuffle a target permanent into its owner's library (CR 111.7: a token ceases to exist
     /// instead) — the event pair shared by both Chaos Warp's fused reveal
-    /// ([`Effect::ShuffleTargetPermanentIntoLibraryThenReveal`], `effects.rs`, which needs
-    /// `&mut self` to read the post-shuffle top card) and Oblation's no-reveal sibling
+    /// ([`Effect::ShuffleTargetPermanentIntoLibraryThenReveal`], via
+    /// [`Self::resolve_shuffle_then_reveal`], which needs `&mut self` to read the
+    /// post-shuffle top card) and Oblation's no-reveal sibling
     /// ([`Effect::ShuffleTargetPermanentIntoLibrary`] above, which doesn't).
     pub(crate) fn shuffle_tuck_events(&self, object: ObjectId) -> Vec<Event> {
         let owner = self.owner_of(object);

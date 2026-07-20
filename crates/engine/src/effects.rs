@@ -1,7 +1,9 @@
 //! Stack resolution payoffs — applying effects when spells and abilities resolve.
 //!
-//! Primary: CR 608 (resolving spells and abilities). Deferred / gaps: see
-//! `docs/FIDELITY_BACKLOG.md`.
+//! Primary: CR 608 (resolving spells and abilities). Owns stack entry
+//! (`resolve_top` / `resolve_spell` / enter / finish) and a **thin** [`Game::run`]
+//! dispatcher; Effect bodies live in [`crate::resolution`] (mint families, pause
+//! peels, resolve choreography). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
 
 use crate::*;
 
@@ -631,61 +633,6 @@ impl Game {
         matches!(self.objects[object as usize], Object::Spell(s) if s.copy)
     }
 
-    /// Counter `spell` (CR 701.5a): move it from the stack to its owner's graveyard, so it never
-    /// resolves. A no-op if `spell` already left the stack (CR 608.2b) — a response emptied that
-    /// stack slot (countered/resolved) before this counter could act. Shared by the unconditional
-    /// [`Effect::CounterTargetSpell`] arm and the [`PendingChoice::PayOrCounter`] decline handler.
-    pub(crate) fn counter_spell(&self, spell: ObjectId) -> Vec<Event> {
-        if !matches!(self.objects[spell as usize], Object::Spell(_)) {
-            return Vec::new();
-        }
-        // CR 701.5g: "this spell can't be countered" — the counter fizzles and the spell
-        // stays on the stack, unaffected.
-        if self.def_of(spell).uncounterable {
-            return Vec::new();
-        }
-        // CR 707.10a: a countered spell that's a copy ceases to exist rather than going to any
-        // graveyard (mirrors `finish_instant_sorcery_resolution`'s own copy guard for the
-        // resolving case) — checked first since it preempts every other "where does it go"
-        // branch below (flashback/escape exile, Quintorius's tuck, the plain graveyard).
-        if self.is_copy_object(spell) {
-            return vec![Event::SpellCeasedToExist { spell }];
-        }
-        // CR 702.34e/CR 702.19d: a flashback or escape spell exiles "as it leaves the stack" —
-        // countered is one such departure, same as resolving (see
-        // `finish_instant_sorcery_resolution`'s twin check). Checked before the Quintorius rider
-        // below: a flashback/escape spell never reaches a graveyard in the first place, so
-        // Quintorius's "would be put into a graveyard" redirect doesn't apply to it either.
-        let countered = self.spell(spell);
-        if countered.flashback || countered.escape {
-            return vec![Event::MovedToExile {
-                card: self.next_object_id(),
-                from: spell,
-            }];
-        }
-        // Quintorius, Loremaster's CR 614.6 rider (see `finish_instant_sorcery_resolution`'s
-        // twin check) — "would be put into a graveyard" covers the countered case too. `&self`
-        // can't drain the flag here; it lingers until the unconditional cleanup clear, and a
-        // countered spell can't also resolve, so it never double-matches.
-        if self
-            .play_permissions
-            .stack_object_bottoms_library_on_leave
-            .iter()
-            .any(|&flagged| self.current_id(flagged) == spell)
-        {
-            return vec![Event::TuckedToLibrary {
-                card: self.next_object_id(),
-                from: spell,
-                to_top: false,
-                second_from_top: false,
-            }];
-        }
-        vec![Event::MovedToGraveyard {
-            card: self.next_object_id(),
-            from: spell,
-        }]
-    }
-
     /// The live current id of a "return this" ability's own source — or `None` if it has left
     /// every zone that effect's pool consumers actually fire from (CR 603.6e / 400.7: a
     /// return-this effect only acts on the object in the zone the ability expects; if it left
@@ -733,25 +680,6 @@ impl Game {
             .contains(&chosen)
     }
 
-    /// The shared core of "double `object`'s +1/+1 counters" (CR 614): as many more as it
-    /// already has, through the same replaceable-step pipeline [`Effect::PutCounters`] uses.
-    /// `None` when doubling is a no-op — zero counters, or a replacement effect zeroes the
-    /// result out — the same "no event for a no-op doubling" rule
-    /// [`Effect::DoubleCounters`] and [`Effect::DoubleCountersOnAttachedCreature`] both follow.
-    pub(crate) fn doubled_counters_event(
-        &self,
-        object: ObjectId,
-        source_name: &'static str,
-    ) -> Option<Event> {
-        let current = self.permanent(object).plus_counters;
-        let n = self.counters_after_replacements(object, current);
-        (n > 0).then_some(Event::CountersPlaced {
-            object,
-            count: n,
-            source_name,
-        })
-    }
-
     /// Resolve one effect — the sole call-site verb for Effect → board mutation (ADR 0004).
     /// A pausing effect sets `pending_choice` (via [`pending::raise`] / dig-loop helpers); every other effect
     /// mints events, applies them, and appends to `events`. Callers never choose between a
@@ -765,9 +693,9 @@ impl Game {
             controller,
             source,
             target,
-            targets_second,
+            targets_second: _,
             x,
-            spent_mana,
+            spent_mana: _,
         } = ctx;
         // A targeted step with no chosen target only reaches resolution via an "up to one"
         // ability placed with no target (declined, or none legal — CR 601.2c/603.3c, see
@@ -790,31 +718,10 @@ impl Game {
             // Clash (CR 701.22): pick an opponent, both reveal + scry-1 their top, score the clash.
             // Pauses on the shared opponent chooser and/or the two keep/bottom scries.
             Effect::Clash => self.begin_clash(controller, source, events),
-            // Look at the top N, select up to `up_to` matching cards into `dest`, rest to `rest`
-            // (Quandrix Apprentice). Pauses on a SelectFromTop choice.
-            Effect::LookAtTop {
-                count,
-                filter,
-                up_to,
-                min,
-                dest,
-                dest_tapped,
-                rest,
-                mv_budget,
-            } => pending::raise(
-                self,
-                pending::ChoiceRequest::SelectFromTop {
-                    player: controller,
-                    count,
-                    filter,
-                    up_to,
-                    min,
-                    dest,
-                    dest_tapped,
-                    rest,
-                    mv_budget,
-                },
-            ),
+            // LookAtTop / DistributeTop / SearchLibrary — look pause peel (`resolution/pause_look`).
+            Effect::LookAtTop { .. }
+            | Effect::DistributeTop { .. }
+            | Effect::SearchLibrary { .. } => self.run_look_pause(effect, ctx),
             // Exile the top N face-up, pause on a choose-up-to-one over the matching cards to
             // grant free-cast permission, then bottom the rest (Herald of Amity's ETB dig).
             // Pauses on a ChooseExiledDigToCastFree choice.
@@ -831,10 +738,8 @@ impl Game {
             Effect::RevealUntilExileCastFree { filter } => {
                 self.reveal_until_exile_cast_free(controller, source, filter, events)
             }
-            // Creative Technique's "Shuffle your library, then reveal…" lead-in step.
-            Effect::ShuffleLibrary => {
-                self.push_apply(events, Event::LibraryShuffled { player: controller })
-            }
+            // ShuffleLibrary — see `resolution/resolve_misc.rs`.
+            Effect::ShuffleLibrary => self.run_misc_choreo(effect, ctx, events),
             // Dance with Calamity: the player-driven exile-until-stop loop, then a free cast of any
             // number of the exiled cards if the tally stayed under budget. Pauses on a
             // DanceExileMore choice.
@@ -845,138 +750,19 @@ impl Game {
             // rest in random order. Pauses on a ChooseExiledDigToCastFree choice (reused from the
             // dig) when a hit is found.
             Effect::Cascade { mana_value } => self.cascade(controller, source, mana_value, events),
-            // Look at the top N, route one card each to hand / bottom / exile-may-play
-            // (Expressive Iteration). Pauses on a DistributeTop choice.
-            Effect::DistributeTop {
-                count,
-                to_hand,
-                to_bottom,
-                to_exile_may_play,
-            } => pending::raise(
-                self,
-                pending::ChoiceRequest::DistributeTop {
-                    player: controller,
-                    count,
-                    to_hand,
-                    to_bottom,
-                    to_exile_may_play,
-                },
-            ),
-            // A library search (fetchlands / tutors) pauses on a SearchLibrary choice. Usually
-            // the ability's own controller searches; Path to Exile/Assassin's Trophy hand the
-            // search to the exiled/destroyed permanent's controller instead (CR 701.19 doesn't
-            // require the searcher to be the ability's controller).
-            Effect::SearchLibrary {
-                filter,
-                to_zone,
-                tapped,
-                searcher,
-                count,
-                overflow,
-            } => {
-                let searching_player = match searcher {
-                    SearchScope::You => controller,
-                    SearchScope::TargetController => self.controller_of(expect_object_target(
-                        target,
-                        "a search effect's target-controller",
-                    )),
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::SearchLibrary {
-                        player: searching_player,
-                        filter,
-                        dest: to_zone,
-                        tapped,
-                        count,
-                        overflow,
-                    },
-                )
-            }
-            // A multi-player sacrifice edict (Deadly Brew, Promise of Loyalty) pauses per
-            // affected player.
-            Effect::EachPlayerSacrifices {
-                scope,
-                keep_one,
-                filter,
-                life_loss,
-                then,
-            } => self.sacrifice_edict(
-                scope, keep_one, filter, life_loss, then, controller, source, events,
-            ),
-            // A multi-player graveyard-exile fan-out (Augusta) pauses per affected player; its
-            // reflexive counter payoff rides in the enclosing `Sequence`, resumed once all answer.
-            // ponytail: this "when you do" is CR 603.3b's separate reflexive trigger, modeled here
-            // as a same-resolution sequenced payoff (no response window). `Effect::ReflexiveTrigger`
-            // is the real-stack-object primitive; migrate to it when Augusta's "you do" condition
-            // (its own exile fan-out, not a token creation) is threadable through it.
-            Effect::EachPlayerExilesFromGraveyard => {
-                self.resolution_frame.nonland_cards_exiled_this_way = 0;
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::NextGraveyardExile {
-                        remaining: self.apnap_order(),
-                        source,
-                    },
-                )
-            }
-            // Relic of Progenitus: "Target player exiles a card from their graveyard." The one-
-            // player special case of the fan-out above — no `follow_up`, no payoff.
-            Effect::TargetPlayerExilesFromGraveyard { .. } => {
-                let Some(Target::Player(player)) = target else {
-                    panic!(
-                        "target player exiles from graveyard resolves with a chosen player target"
-                    );
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::NextGraveyardExile {
-                        remaining: vec![player],
-                        source,
-                    },
-                )
-            }
-            // The caster-directed keep-one-of-each-type sweep (Tragic Arrogance): for each player,
-            // the caster picks up to one nonland permanent of each type to keep; the rest are
-            // sacrificed. Pauses per player on a CasterKeepPermanents choice answered by the caster.
-            Effect::CasterKeepsOneOfEachTypePerPlayer => pending::raise(
-                self,
-                pending::ChoiceRequest::NextCasterKeep {
-                    remaining: self.apnap_order(),
-                    caster: controller,
-                    source,
-                },
-            ),
-            // Nils' end step: for each player, its controller puts a +1/+1 counter on up to one
-            // creature that player controls. Pauses per player on a ChooseCounterTargetForPlayer.
-            Effect::EachPlayerControllerChoosesCounterTarget => pending::raise(
-                self,
-                pending::ChoiceRequest::NextCounterTarget {
-                    remaining: self.apnap_order(),
-                    chooser: controller,
-                    source,
-                },
-            ),
-            // Council's dilemma (Fateful Tempest): a per-player vote round pauses each seat on a
-            // CastVote choice; the tally-scaled payoff rides in the enclosing `Sequence`, resumed
-            // once every player has voted (the same deferred-tail path as the graveyard fan-out).
-            Effect::CouncilsDilemmaVote { options } => {
-                self.resolution_frame.council_past_votes = 0;
-                self.resolution_frame.council_present_votes = 0;
-                let n = self.players.len();
-                let start = controller.0 as usize;
-                let remaining: Vec<PlayerId> = (0..n)
-                    .map(|i| PlayerId(((start + i) % n) as u8))
-                    .filter(|&p| !self.players[p.0 as usize].lost)
-                    .collect();
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::NextVote {
-                        remaining,
-                        source,
-                        options,
-                    },
-                )
+            // Edict / fan-out pauses — edict pause peel (`resolution/pause_edict`).
+            Effect::EachPlayerSacrifices { .. }
+            | Effect::EachPlayerExilesFromGraveyard
+            | Effect::TargetPlayerExilesFromGraveyard { .. }
+            | Effect::CasterKeepsOneOfEachTypePerPlayer
+            | Effect::EachPlayerControllerChoosesCounterTarget
+            | Effect::CouncilsDilemmaVote { .. }
+            | Effect::EachOtherTokenBecomesCopyOfChosen
+            | Effect::PutCounterThenMayBecomeCopyOfCardFromList { .. }
+            | Effect::SacrificeOwn { .. }
+            | Effect::DefendingPlayerSacrifices { .. }
+            | Effect::SacrificeSelfUnlessReturnLand { .. } => {
+                self.run_edict_pause(effect, ctx, events)
             }
             // Abstract Performance: split the top eight into two piles, an opponent picks one,
             // pausing on an OpponentChoosesPile choice.
@@ -996,1232 +782,86 @@ impl Game {
             Effect::EachPlayerExilesUntilNonlandOpponentPicks => {
                 self.each_player_exiles_until_nonland(controller, source, events)
             }
-            // Brudiclad: "you may choose a token you control; if you do, each other token you
-            // control becomes a copy of that token." Pauses on a ChooseTokenToCopy choice; with no
-            // token to choose there's nothing to convert (guarded like MaySacrifice).
-            Effect::EachOtherTokenBecomesCopyOfChosen => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseTokenToCopy {
-                    player: controller,
-                    source,
-                },
-            ),
-            // Spirit of Resilience: "put a +1/+1 counter on this creature, then you may have this
-            // creature become a copy of an artifact or creature card from among those cards until
-            // end of turn." Places the counter, then pauses on a ChooseCopyCardFromList choice
-            // over the artifact/creature cards that left; no copyable card means no pause.
-            Effect::PutCounterThenMayBecomeCopyOfCardFromList { cards } => {
-                let count = self.counters_after_replacements(source, 1);
-                if count > 0 {
-                    self.push_apply(
-                        events,
-                        Event::CountersPlaced {
-                            object: source,
-                            count,
-                            source_name: self.source_name_of(source),
-                        },
-                    );
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseCopyCardFromList {
-                        player: controller,
-                        source,
-                        cards,
-                    },
-                )
-            }
-            // A resolution-time optional sacrifice (Witherbloom Charm mode 0) pauses on a
-            // MaySacrifice choice; declining runs nothing.
-            Effect::MaySacrifice { filter, then } => pending::raise(
-                self,
-                pending::ChoiceRequest::MaySacrifice {
-                    player: controller,
-                    source,
-                    filter,
-                    then,
-                },
-            ),
-            // A forced sacrifice the affected player directs (Lotus Field's ETB "sacrifice two
-            // lands", Smothering Abomination's upkeep "sacrifice a creature") pauses on a
-            // ChooseOwnSacrifices choice; with count-or-fewer legal permanents it resolves
-            // immediately instead (CR 700.2's "as many as possible").
-            Effect::SacrificeOwn { filter, count } => {
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseOwnSacrifices {
-                        player: controller,
-                        source,
-                        filter,
-                        count,
-                    },
-                );
-                if !self.resolution_is_paused() {
-                    let options = self.edict_options(controller, filter);
-                    self.sacrifice_ids(&options, controller, events);
-                }
-            }
-            // Annihilator N (Eldrazi Conscription): the defending player, not the controller,
-            // directs the forced sacrifice — same ChooseOwnSacrifices machinery, any permanent.
-            Effect::DefendingPlayerSacrifices { count, defender } => {
-                let defender = defender.expect("filled from attack context when placed");
-                let filter = PermanentFilter::default();
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseOwnSacrifices {
-                        player: defender,
-                        source,
-                        filter,
-                        count: count as u32,
-                    },
-                );
-                if !self.resolution_is_paused() {
-                    let options = self.edict_options(defender, filter);
-                    self.sacrifice_ids(&options, defender, events);
-                }
-            }
-            // A resolution-time optional graveyard return (Deadly Brew's rider) pauses on a
-            // MayReturnFromGraveyard choice; declining runs nothing. "If you sacrificed a
-            // permanent this way" (Deadly Brew) gates the whole rider on the edict's own
-            // controller having actually sacrificed — unmet, it's the same "runs nothing" as
-            // declining, no pause at all.
-            Effect::MayReturnFromGraveyard {
-                filter,
-                if_you_sacrificed_this_way,
-            } => {
-                if if_you_sacrificed_this_way
-                    && !self.resolution_frame.sacrificed_by_edict_controller
-                {
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayReturnFromGraveyard {
-                        player: controller,
-                        source,
-                        filter,
-                    },
-                )
-            }
-            // A resolution-time optional discard (Quintorius, History Chaser's +1) pauses on a
-            // MayDiscard choice; declining runs nothing.
-            Effect::MayDiscard { then } => pending::raise(
-                self,
-                pending::ChoiceRequest::MayDiscard {
-                    player: controller,
-                    source,
-                    then,
-                },
-            ),
-            // Proliferate (CR 701.27) pauses on a Proliferate choice over every counter-bearing
-            // permanent; `times` (Expansion Algorithm's {X}) may re-pause after this iteration.
-            Effect::Proliferate { times } => {
-                let n = self.resolve_count(times, controller, source, target, x);
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::Proliferate {
-                        player: controller,
-                        source,
-                        remaining: n as u8,
-                    },
-                );
-            }
-            // Guardian of Faith's ETB (CR 702.26): pause to choose any number of the *other*
-            // creatures its controller controls to phase out. Nothing to choose with no other
-            // creature — skip past (like Proliferate's empty board).
-            Effect::PhaseOut => pending::raise(
-                self,
-                pending::ChoiceRequest::PhaseOut {
-                    player: controller,
-                    source,
-                },
-            ),
-            // Kinetic Ooze's X≥10 rider (CR 601.2c/603.3d): double the +1/+1 counters on each of the
-            // "other target creatures" chosen at placement (read from this ability's second target
-            // clause). A target that has left the battlefield since is skipped (CR 608.2b).
+            // MaySacrifice / MayReturnFromGraveyard / MayDiscard / MayDraw* /
+            // SacrificeSelfUnlessPay — may pause peel (`resolution/pause_may`).
+            Effect::MaySacrifice { .. }
+            | Effect::MayReturnFromGraveyard { .. }
+            | Effect::MayDiscard { .. }
+            | Effect::MayDrawUnlessPays { .. }
+            | Effect::TargetPlayerMayDraw { .. }
+            | Effect::MayDrawUpTo { .. }
+            | Effect::MayDrawUpToThenOpponentMayRepeat { .. }
+            | Effect::SacrificeSelfUnlessPay { .. } => self.run_may_pause(effect, ctx),
+            // ChooseCreatureType / ChooseColor / SetOwnColorUntilEndOfTurn / ChooseOne /
+            // Demonstrate / Proliferate / PhaseOut — choose pause peel (`resolution/pause_choose`).
+            Effect::ChooseCreatureType
+            | Effect::ChooseColor
+            | Effect::SetOwnColorUntilEndOfTurn
+            | Effect::ChooseOne { .. }
+            | Effect::Demonstrate { .. }
+            | Effect::Proliferate { .. }
+            | Effect::PhaseOut => self.run_choose_pause(effect, ctx),
+            // Kinetic Ooze — see `resolution/counters.rs::resolve_double_counters_on_target_creatures`.
             Effect::DoubleCountersOnTargetCreatures { .. } => {
-                let source_name = self.source_name_of(source);
-                for chosen in targets_second.iter() {
-                    let Some(object) = chosen.object_id() else {
-                        continue;
-                    };
-                    if self.as_permanent(object).is_none() {
-                        continue;
-                    }
-                    if let Some(event) = self.doubled_counters_event(object, source_name) {
-                        self.push_apply(events, event);
-                    }
-                }
+                self.resolve_double_counters_on_target_creatures(ctx, events)
             }
-            // Donation (Zedruu, CR 720): `target` is the donated permanent (first clause);
-            // `targets_second` holds the recipient opponent (second clause, chosen at placement).
-            // Mint the permanent-control change with that player as the new controller — the same
-            // freshly-timestamped `permanent_control_overrides` write `GainControl` uses (apply.rs),
-            // leaving ownership with the donor (CR 108.3). A target that has left the battlefield
-            // since is skipped (CR 608.2b); with no chosen recipient the donation does nothing.
+            // Donation — see `resolution/control.rs::resolve_target_opponent_gains_control`.
             Effect::TargetOpponentGainsControl { .. } => {
-                let Some(object) = target.and_then(Target::object_id) else {
-                    return;
-                };
-                if self.as_permanent(object).is_none() {
-                    return;
-                }
-                let Some(Target::Player(recipient)) = targets_second.iter().next() else {
-                    return;
-                };
-                self.push_apply(
-                    events,
-                    Event::ControlGained {
-                        object,
-                        controller: recipient,
-                    },
-                );
+                self.resolve_target_opponent_gains_control(ctx, events)
             }
-            // Exchange control (Vedalken Plotter / Chromeshell Crab, CR 720): `target` is the first
-            // permanent (its "you control" clause); `targets_second` holds the second (its "an
-            // opponent controls" clause, chosen at placement). Swap their controllers — each new
-            // controller is the OTHER's prior `controller_of`, minted as two freshly-timestamped
-            // `ControlGained` events (CR 800.4a: the swap outranks any earlier steal), leaving
-            // ownership untouched (CR 108.3). Both must still be on the battlefield — an exchange
-            // needs both, so a target that has left since (CR 608.2b) cancels the whole swap.
-            Effect::ExchangeControl { .. } => {
-                let Some(first) = target.and_then(Target::object_id) else {
-                    return;
-                };
-                let Some(Target::Object(second)) = targets_second.iter().next() else {
-                    return;
-                };
-                if self.as_permanent(first).is_none() || self.as_permanent(second).is_none() {
-                    return;
-                }
-                let first_controller = self.controller_of(first);
-                let second_controller = self.controller_of(second);
-                self.push_apply(
-                    events,
-                    Event::ControlGained {
-                        object: first,
-                        controller: second_controller,
-                    },
-                );
-                self.push_apply(
-                    events,
-                    Event::ControlGained {
-                        object: second,
-                        controller: first_controller,
-                    },
-                );
+            // Exchange control — see `resolution/control.rs::resolve_exchange_control`.
+            Effect::ExchangeControl { .. } => self.resolve_exchange_control(ctx, events),
+            // Perpetual Timepiece / Quandrix Command mode 3 — exile-cast pause peel
+            // (`resolution/pause_exile_cast`).
+            Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. } => {
+                self.run_exile_cast_pause(effect, ctx)
             }
-            // Move all counters of a kind (Nexus Mentality / Forgotten Ancient): `target` is
-            // already resolved (the moved-from permanent); pause on a ChooseTarget for the
-            // second permanent, mirroring `Fight`'s cast/resolution split.
-            Effect::MoveCounters {
-                to_filter,
-                all_kinds,
-                distributed,
-                ..
-            } => {
-                let from = expect_object_target(target, "a move-counters effect's source");
-                let legal: Vec<ObjectId> = self
-                    .legal_targets_for(
-                        TargetSpec::Permanent(to_filter),
-                        source,
-                        controller,
-                        [false; Color::COUNT],
-                        x,
-                    )
-                    .into_iter()
-                    .filter_map(|t| (t != Target::Object(from)).then_some(t.object_id()?))
-                    .collect();
-                if legal.is_empty() {
-                    return;
-                }
-                // Forgotten Ancient's "distributed as you choose among any number of target
-                // creatures" (CR 601.2d): pause on a target→amount map capped at `from`'s live
-                // +1/+1 count, rather than choosing one destination for the whole pile.
-                if distributed {
-                    let cap = self.permanent(from).plus_counters;
-                    if cap <= 0 {
-                        return; // nothing to move — "any number" tops out at zero.
-                    }
-                    crate::pending::raise_choice(
-                        self,
-                        PendingChoice::DivideMovedCounters {
-                            player: controller,
-                            from,
-                            legal,
-                            cap,
-                        },
-                    );
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseTarget {
-                        player: controller,
-                        source,
-                        effect: Effect::MoveCounters {
-                            target: TargetSpec::None,
-                            to_filter,
-                            all_kinds,
-                            distributed,
-                            from: Some(Target::Object(from)),
-                        },
-                        legal: legal.into_iter().map(Target::Object).collect(),
-                        count: TargetCount::default(),
-                        x: 0,
-                        activated: false,
-                    },
-                );
-            }
-            // Perpetual Timepiece ("Shuffle any number of target cards from your graveyard into
-            // your library", `target_player = false`) and Quandrix Command mode 3 ("Target
-            // player shuffles up to three target cards from their graveyard into their
-            // library", `target_player = true`) both pause on a ShuffleFromGraveyard choice —
-            // the graveyard owner is the ability's controller or the targeted player.
-            Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, target_player } => {
-                let owner = if target_player {
-                    let Some(Target::Player(player)) = target else {
-                        panic!("target-player shuffle resolves with a chosen player target");
-                    };
-                    player
-                } else {
-                    controller
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ShuffleFromGraveyard {
-                        answerer: controller,
-                        owner,
-                        source,
-                        max,
-                    },
-                )
-            }
-            // Chaos Warp: the target's owner shuffles it into their library, then reveals the
-            // new top card and — if it's a permanent card — puts it onto the battlefield under
-            // the owner (not necessarily this effect's controller). Deterministic (the shuffle's
-            // PRNG is the only randomness) but needs the *actual* post-shuffle order, so this
-            // runs here rather than through `execute_effect`'s pure event-building path.
+            // Chaos Warp — see `resolution/zones.rs::resolve_shuffle_then_reveal`.
             Effect::ShuffleTargetPermanentIntoLibraryThenReveal { .. } => {
-                let object = expect_object_target(target, "a permanent to tuck");
-                let owner = self.owner_of(object);
-                // CR 111.7: a token can't exist in a library — it ceases to exist instead, with
-                // no shuffle and no reveal. `shuffle_tuck_events` is the same tuck-then-shuffle
-                // pair Oblation's no-reveal sibling mints (`resolution/zones.rs`).
-                let was_token = self.permanent(object).token;
-                for event in self.shuffle_tuck_events(object) {
-                    self.push_apply(events, event);
-                }
-                if was_token {
-                    return;
-                }
-                // CR 120.3: an empty library reveals nothing — a clean no-op.
-                let Some(&card) = self.players[owner.0 as usize].library.first() else {
-                    return;
-                };
-                let def = self.def_of(card);
-                self.push_apply(
-                    events,
-                    Event::RevealedTopOfLibrary {
-                        player: owner,
-                        card,
-                        def,
-                    },
-                );
-                if CardFilter::Permanent.matches(def) {
-                    self.push_apply(
-                        events,
-                        Event::SearchedToBattlefield {
-                            permanent: self.next_object_id(),
-                            from: card,
-                            controller: owner,
-                            tapped: false,
-                        },
-                    );
-                }
+                self.resolve_shuffle_then_reveal(target, events)
             }
-            // "Counter target spell unless its controller pays {N}" (CR 701.5c-style): pause on
-            // a PayOrCounter choice for the *target spell's* controller instead of countering
-            // outright. `unless_pays: None` falls through to the catch-all's unconditional counter.
+            // CounterTargetSpell unless-pays / destination — counter-spell peel
+            // (`resolution/pause_counter_spell`).
             Effect::CounterTargetSpell {
-                unless_pays: Some(amount),
+                unless_pays: Some(_),
                 ..
-            } => {
-                let original = expect_object_target(target, "a spell to counter");
-                // If the target already left the stack (countered/resolved in response), there's
-                // nothing to hold hostage — same no-op as the unconditional counter (CR 608.2b).
-                if !matches!(self.objects[original as usize], Object::Spell(_)) {
-                    return;
-                }
-                let generic = self.resolve_count(amount, controller, source, target, x);
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::PayOrCounter {
-                        player: self.controller_of(original),
-                        cost: Cost {
-                            generic: generic as u8,
-                            ..Cost::FREE
-                        },
-                        spell: original,
-                    },
-                );
             }
-            // Rhystic Study's "you may draw a card unless that player pays {1}": pause the
-            // ability's own controller on whether they want to draw at all (the card's ruling —
-            // declining is quiet, no pay window is ever offered). Only a "yes" here raises the
-            // triggering opponent's own pay-or-let-it-happen pause (`Game::answer_may`).
-            Effect::MayDrawUnlessPays { cost, caster } => {
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayYesNo {
-                        player: controller,
-                        source,
-                        effect: Effect::MayDrawUnlessPays { cost, caster },
-                    },
-                );
-            }
-            // Questing Phelddagrif's blue rider: "Target opponent may draw a card." Unlike
-            // `MayDrawUnlessPays` above, the *targeted* player answers (no pay window rides
-            // behind it) — see `Game::answer_may`.
-            Effect::TargetPlayerMayDraw { count, opponent } => {
-                let Some(Target::Player(player)) = target else {
-                    panic!("target-player-may-draw resolves with a chosen player target");
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayYesNo {
-                        player,
-                        source,
-                        effect: Effect::TargetPlayerMayDraw { count, opponent },
-                    },
-                );
-            }
-            // Arcane Denial's countered-spell rider: "Its controller may draw up to two cards"
-            // (CR 120.4 / 601.2c). Pause the resolving controller on a count choice `0..=max`;
-            // the answer (`Game::answer_may_draw_up_to`) draws exactly the chosen number.
-            Effect::MayDrawUpTo { count } => {
-                let max = self
-                    .resolve_count(count, controller, source, None, 0)
-                    .min(u8::MAX as u32) as u8;
-                pending::raise_choice(
-                    self,
-                    PendingChoice::MayDrawUpTo {
-                        player: controller,
-                        max,
-                    },
-                );
-            }
-            // Trade Secrets: "target opponent draws two cards, then you draw up to four cards"
-            // (CR 120.4 / 601.2c). The mandatory opponent draw is a preceding `TargetPlayerDraws`
-            // step sharing this Sequence's target; this step pauses the caster on a count choice
-            // `0..=count` (`Game::answer_trade_secrets_caster_draw` chains to the opponent's
-            // repeat-or-stop pause once answered).
-            Effect::MayDrawUpToThenOpponentMayRepeat { count } => {
-                let Some(Target::Player(opponent)) = target else {
-                    panic!(
-                        "may-draw-up-to-then-opponent-may-repeat resolves with a chosen opponent target"
-                    );
-                };
-                let max = self
-                    .resolve_count(count, controller, source, None, 0)
-                    .min(u8::MAX as u32) as u8;
-                pending::raise_choice(
-                    self,
-                    PendingChoice::TradeSecretsCasterDraw {
-                        player: controller,
-                        max,
-                        opponent,
-                        source,
-                    },
-                );
-            }
-            // Hinder's destination rider (CR 701.5b — `countered_dest`): pause this ability's
-            // controller on a top/bottom pick before the countered card moves, unless it's not
-            // going to a graveyard anyway — already left the stack / uncounterable (CR 608.2b /
-            // 701.5g), or exiles instead (flashback/escape, CR 702.34e/702.19d; Quintorius's CR
-            // 614.6 bottom-library redirect) — those cases fall through to the ordinary
-            // `counter_spell`, which has nothing left for this rider to redirect.
-            Effect::CounterTargetSpell {
+            | Effect::CounterTargetSpell {
                 unless_pays: None,
-                countered_dest: Some(CounteredDest::LibraryTopOrBottom),
+                countered_dest: Some(_),
                 ..
-            } => {
-                let original = expect_object_target(target, "a spell to counter");
-                let is_spell = matches!(self.objects[original as usize], Object::Spell(_));
-                let goes_to_graveyard = is_spell
-                    && !self.def_of(original).uncounterable
-                    && !self.spell(original).flashback
-                    && !self.spell(original).escape
-                    && !self
-                        .play_permissions
-                        .stack_object_bottoms_library_on_leave
-                        .iter()
-                        .any(|&flagged| self.current_id(flagged) == original);
-                if !goes_to_graveyard {
-                    let evs = self.counter_spell(original);
-                    self.apply_all(&evs);
-                    events.extend(evs);
-                    return;
-                }
-                pending::raise_choice(
-                    self,
-                    PendingChoice::ChooseCounteredSpellDestination {
-                        player: controller,
-                        spell: original,
-                    },
-                );
+            } => self.run_counter_spell(effect, ctx, events),
+            // Fight / MoveCounters — fight pause peel (`resolution/pause_fight`).
+            Effect::Fight { .. } | Effect::MoveCounters { .. } => self.run_fight_pause(effect, ctx),
+            // Copy-family choreography — see `resolution/copy.rs::run_copy`.
+            Effect::CopyTargetSpell
+            | Effect::CopyThisSpell { .. }
+            | Effect::RetargetSpellCopy { .. }
+            | Effect::MayPayToCopyThis { .. }
+            | Effect::ChangeTargetOfTargetSpellOrAbility { .. }
+            | Effect::CopyTriggeringSpell { .. }
+            | Effect::CopyTriggeringSpellForEachOtherCreatureYouControl { .. }
+            | Effect::CopyTriggeringAbility { .. } => self.run_copy(effect, ctx, events),
+            // Opal Palace / Renegade Bull / Surge to Victory record-mana-value — see
+            // `resolution/resolve_misc.rs`.
+            Effect::CommanderEntersWithBonusCounters { .. }
+            | Effect::ExileTargetGraveyardSpellCastFree { .. }
+            | Effect::ExileTargetGraveyardCardRecordManaValue { .. } => {
+                self.run_misc_choreo(effect, ctx, events)
             }
-            // Spell Crumple's destination rider (CR 701.5b — `countered_dest`): the same "would
-            // it actually reach a graveyard" gate as the `LibraryTopOrBottom` arm above, but
-            // forced straight to the bottom — no player choice, so no pause. Unlike that arm
-            // (whose pause answer never checks this), a copy (CR 707.10a) ceases to exist here
-            // rather than tucking — reusing `Game::is_copy_object`, the #213 copy guard.
-            Effect::CounterTargetSpell {
-                unless_pays: None,
-                countered_dest: Some(CounteredDest::LibraryBottom),
-                ..
-            } => {
-                let original = expect_object_target(target, "a spell to counter");
-                let is_spell = matches!(self.objects[original as usize], Object::Spell(_));
-                let goes_to_graveyard = is_spell
-                    && !self.def_of(original).uncounterable
-                    && !self.spell(original).flashback
-                    && !self.spell(original).escape
-                    && !self
-                        .play_permissions
-                        .stack_object_bottoms_library_on_leave
-                        .iter()
-                        .any(|&flagged| self.current_id(flagged) == original);
-                if !goes_to_graveyard {
-                    let evs = self.counter_spell(original);
-                    self.apply_all(&evs);
-                    events.extend(evs);
-                    return;
-                }
-                let evs = if self.is_copy_object(original) {
-                    vec![Event::SpellCeasedToExist { spell: original }]
-                } else {
-                    vec![Event::TuckedToLibrary {
-                        card: self.next_object_id(),
-                        from: original,
-                        to_top: false,
-                        second_from_top: false,
-                    }]
-                };
-                self.apply_all(&evs);
-                events.extend(evs);
+            // Surge to Victory's mint-free-copy step — see `resolution/copy.rs::run_copy`.
+            Effect::MintFreeCopyOfExiledCard { .. } => self.run_copy(effect, ctx, events),
+            // Discard / PutFromHand* / CastCreatureFaceDown — hand pause peel (`resolution/pause_hand`).
+            Effect::Discard { .. }
+            | Effect::PutFromHandOnTop { .. }
+            | Effect::PutLandFromHand { .. }
+            | Effect::PutCreatureFromHand
+            | Effect::CastCreatureFaceDown => self.run_hand_pause(effect, ctx),
+            // CashOutExiledWithThis / CastExiledWithThisFree — exile-cast pause peel
+            // (`resolution/pause_exile_cast`).
+            Effect::CashOutExiledWithThis | Effect::CastExiledWithThisFree => {
+                self.run_exile_cast_pause(effect, ctx)
             }
-            // Patchwork Banner's "As this artifact enters, choose a creature type": pause on a
-            // ChooseCreatureType for the controller, over the pool's known creature types.
-            Effect::ChooseCreatureType => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseCreatureType {
-                    player: controller,
-                    source,
-                    options: CREATURE_TYPES,
-                },
-            ),
-            // Flickering Ward's "As this Aura enters, choose a color": pause on a ChooseColor for (CR 702.21, CR 303.4)
-            // the controller over the fixed five colors.
-            Effect::ChooseColor => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseColor {
-                    player: controller,
-                    source,
-                    until_end_of_turn: false,
-                },
-            ),
-            // Wild Mongrel's "...and becomes the color of your choice until end of turn": the same (CR 613.3c)
-            // ChooseColor picker as `ChooseColor` above, but the answer sets an until-end-of-turn
-            // color-SET instead of the indefinite `chosen_color`.
-            Effect::SetOwnColorUntilEndOfTurn => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseColor {
-                    player: controller,
-                    source,
-                    until_end_of_turn: true,
-                },
-            ),
-            // "Choose one —" on a triggered ability (CR 700.2): pause on a ChooseMode for the
-            // controller. The chosen mode resolves later through this same pipeline (see
-            // `answer_choose_mode`), carrying this ability's `source`/`target`/`x` context so a
-            // mode that needs them still has them. An empty mode list is a defensive no-op.
-            Effect::ChooseOne { modes } => {
-                if modes.is_empty() {
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseMode {
-                        player: controller,
-                        source,
-                        target,
-                        x,
-                        modes,
-                    },
-                );
-            }
-            // Fight (CR 701.12): `target` is already the opponent's creature (chosen at cast);
-            // pause on a ChooseTarget for the controller's own creature (mirrors
-            // `place_targeted_ability`). No legal creature you control: the fight fizzles
-            // (CR 601.2c — no damage, no pause) rather than picking an illegal target.
-            Effect::Fight {
-                ally_is_shared_target: false,
-                ..
-            } => {
-                let legal = self.legal_targets_for(
-                    TargetSpec::CreatureYouControl,
-                    source,
-                    controller,
-                    [false; Color::COUNT],
-                    x,
-                );
-                if legal.is_empty() {
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseTarget {
-                        player: controller,
-                        source,
-                        effect: Effect::Fight {
-                            enemy: target,
-                            ally_is_shared_target: false,
-                        },
-                        legal,
-                        count: TargetCount::default(),
-                        x: 0,
-                        activated: false,
-                    },
-                );
-            }
-            // Primal Might's mirror shape (CR 701.12): `target` is already the ally (the pumped
-            // creature you control, chosen at cast by a preceding Sequence step); pause on an
-            // *optional* ChooseTarget for the enemy ("fights up to one target creature you don't
-            // control"). Guard-returns with no pause if the ally has since left the battlefield
-            // or stopped being a creature (CR 608.2b — a fizzled shared target) or there's no
-            // legal enemy — the pump still stands either way.
-            Effect::Fight {
-                ally_is_shared_target: true,
-                ..
-            } => {
-                let ally = expect_object_target(target, "primal might's pumped ally");
-                if !self.is_creature_on_battlefield(ally) {
-                    return;
-                }
-                let legal = self.legal_targets_for(
-                    TargetSpec::Permanent(PermanentFilter {
-                        controller: FilterController::Opponent,
-                        ..PermanentFilter::of(TypeSet::CREATURE)
-                    }),
-                    source,
-                    controller,
-                    [false; Color::COUNT],
-                    x,
-                );
-                if legal.is_empty() {
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::ChooseTarget {
-                        player: controller,
-                        source,
-                        effect: Effect::Fight {
-                            enemy: Some(Target::Object(ally)),
-                            ally_is_shared_target: false,
-                        },
-                        legal,
-                        count: TargetCount {
-                            min: 0,
-                            max: 1,
-                            ..TargetCount::default()
-                        },
-                        x: 0,
-                        activated: false,
-                    },
-                );
-            }
-            // Twincast: put a copy of the target spell on the stack under this controller, then
-            // offer CR 707.10c's "you may choose new targets for the copy" — same
-            // `choose_spell_targets` machinery a multi-target spell uses at cast (auto-fills a
-            // single legal target, else pauses on `ChooseSpellTargets`), just run here because
-            // the copy doesn't exist until this event applies.
-            Effect::CopyTargetSpell => {
-                let original = expect_object_target(target, "a spell copy");
-                // CR 707.10: if the target spell has left the stack (countered/resolved), the copy
-                // effect does nothing.
-                if !matches!(self.objects[original as usize], Object::Spell(_)) {
-                    return;
-                }
-                let original_def = self.def_of(original);
-                let copy = self.next_object_id();
-                self.push_apply(
-                    events,
-                    Event::SpellCopied {
-                        copy,
-                        original,
-                        controller,
-                    },
-                );
-                // The copy's target spec/count come from the original's own primary spell effect
-                // (the copy shares the same `def`) — the same lookup
-                // `ChangeTargetOfTargetSpellOrAbility`'s optional (Wild Ricochet) bend shares.
-                let Some((spec, count)) = self.spell_primary_target(original_def) else {
-                    return;
-                };
-                // The copy's own controller both chooses and anchors legality — a fresh copy's
-                // "you" is its new controller (CR 707.10a), unlike retargeting the ORIGINAL spell
-                // (whose own controller never changes).
-                self.choose_spell_targets(copy, spec, count, controller, controller, events);
-            }
-            // Storm/Gravestorm-style rider: mint `count` copies of *this* resolving spell
-            // (`source`, not a chosen target). CR 706.9's "when you cast this spell" trigger
-            // never re-fires for an uncast copy — guard that here rather than modeling a real
-            // cast trigger, since this rider runs as one of the spell's own resolution effects.
-            Effect::CopyThisSpell {
-                count,
-                cast_from_graveyard_only,
-                optional,
-            } => {
-                if self.spell(source).copy {
-                    return;
-                }
-                // "If this spell was cast from a graveyard" (Sevinne's Reclamation's flashback (CR 702.34, CR 403.5, CR 601)
-                // rider) — the mint never happens for an ordinary cast.
-                if cast_from_graveyard_only && !self.spell(source).flashback {
-                    return;
-                }
-                // "You may copy this spell": pause for a yes/no before minting (mirrors
-                // `MaySacrifice`/`MayReturnFromGraveyard`'s resolution-time "declining runs
-                // nothing" shape); the mandatory storm/Gravestorm case (`optional = false`) skips
-                // straight to the mint below. `answer_may` mints inline on acceptance rather than
-                // placing a new triggered ability — this rider is part of `source`'s own (CR 603, CR 113)
-                // resolution, not a separate stack object.
-                if optional {
-                    pending::raise(
-                        self,
-                        pending::ChoiceRequest::MayYesNo {
-                            player: controller,
-                            source,
-                            effect: Effect::CopyThisSpell {
-                                count,
-                                cast_from_graveyard_only: false,
-                                optional: false,
-                            },
-                        },
-                    );
-                    return;
-                }
-                self.mint_spell_copies(count, controller, source, target, x, events);
-            }
-            // Internal continuation step for `CopyThisSpell` above — never authored in a card
-            // TOML (`copy` is a runtime-minted object id, meaningless in a template). Offers the
-            // same CR 707.10c retarget choice `CopyTargetSpell` offers, for one already-minted
-            // copy. `required_target` (not a bare `Timing::Spell` ability scan) so a copied
-            // permanent spell — an Aura's "enchant creature" is a cast-target requirement, not a
-            // spell-timed effect (CR 303.4a/601.2c) — gets a real retarget spec too (Changing
-            // Loyalty's Replicate copies, CR 702.108b/707.10a).
-            Effect::RetargetSpellCopy { copy } => {
-                let def = self.def_of(copy);
-                let spec = self.required_target(def, None);
-                if spec == TargetSpec::None {
-                    return;
-                }
-                // A permanent's cast-target requirement carries no `Timing::Spell` effect to read
-                // a count off — it's always exactly one target (CR 303.4a). An instant/sorcery
-                // keeps its own effect's declared count (Twinflame's Strive-scaled retarget, etc).
-                let count = def
-                    .abilities
-                    .iter()
-                    .find(|a| matches!(a.timing, Timing::Spell))
-                    .map_or(TargetCount::default(), |a| a.effect.target_count());
-                self.choose_spell_targets(copy, spec, count, controller, controller, events);
-            }
-            // Chain Lightning's reflexive rider: "that player or that permanent's controller may
-            // pay {cost}." Reads the enclosing `Sequence`'s shared `target` (the preceding
-            // `DealDamage` step's own target) to find the payer — a player target pays
-            // themself; a permanent target's controller pays. A missing target (CR 608.2b) is
-            // unreachable in practice — the enclosing spell's own upfront target-legality check
-            // already fizzles the whole ability before this step could run without one — but
-            // stays a defensive no-op rather than a panic, matching this resolution's other
-            // guard arms.
-            Effect::MayPayToCopyThis { cost, count } => {
-                let payer = match target {
-                    Some(Target::Player(p)) => Some(p),
-                    Some(Target::Object(id)) => Some(self.controller_of(id)),
-                    None => None,
-                };
-                let Some(payer) = payer else {
-                    return;
-                };
-                pending::raise_choice(
-                    self,
-                    PendingChoice::PayCost {
-                        player: payer,
-                        source,
-                        cost,
-                        effect: Effect::CopyThisSpell {
-                            count,
-                            cast_from_graveyard_only: false,
-                            optional: false,
-                        },
-                    },
-                );
-            }
-            // Willbender (CR 114.6 / 702.37f) / Wild Ricochet (CR 114.6a). The bent spell is this
-            // ability's own chosen target (CR 603.3d for Willbender's trigger; the cast target for
-            // Wild Ricochet), already re-checked legal by CR 608.2b before this ran (so a spell that
-            // left the stack fizzles). Guard the shape defensively.
-            Effect::ChangeTargetOfTargetSpellOrAbility { optional, .. } => {
-                let Some(Target::Object(spell)) = target else {
-                    return;
-                };
-                if !matches!(self.objects[spell as usize], Object::Spell(_)) {
-                    return;
-                }
-                // Wild Ricochet (CR 114.6a): "you may choose new targets for target instant or
-                // sorcery spell" — no must-differ requirement (the bent spell's current target(s)
-                // stay legal, so re-picking them is how a player declines), and reaches every one
-                // of its independent target clauses, reusing the exact clause-chaining machinery a
-                // fresh cast or `CopyTargetSpell`'s own copy-retarget already runs. This ability's
-                // own controller chooses; legality is evaluated from the bent spell's own
-                // controller's perspective (retargeting never changes whose "you" the spell's own
-                // text refers to) — same anchor/chooser split Willbender's mandatory path below
-                // already keeps.
-                if optional {
-                    let def = self.def_of(spell);
-                    let Some((spec, count)) = self.spell_primary_target(def) else {
-                        return;
-                    };
-                    let anchor = self.spell(spell).controller;
-                    self.choose_spell_targets(spell, spec, count, anchor, controller, events);
-                    return;
-                }
-                // Willbender: the bent spell's own single target clause, and its currently-legal
-                // targets computed for the SPELL's controller (CR 114.6 — the new target must be
-                // legal for *that* spell), minus its current target (CR 114.6b — the target must
-                // change).
-                let def = self.def_of(spell);
-                let spec = def
-                    .abilities
-                    .iter()
-                    .find(|a| matches!(a.timing, Timing::Spell))
-                    .map_or(TargetSpec::None, |a| a.effect.target());
-                let spell_controller = self.spell(spell).controller;
-                let current = self.spell_target(spell);
-                let legal: Vec<Target> = self
-                    .legal_targets_for(
-                        spec,
-                        spell,
-                        spell_controller,
-                        color_identity(def),
-                        self.spell(spell).x,
-                    )
-                    .into_iter()
-                    .filter(|&t| Some(t) != current)
-                    .collect();
-                // CR 114.6b: no legal alternate — the target is left unchanged (no pause).
-                if legal.is_empty() {
-                    return;
-                }
-                // Willbender's controller chooses; the answer overwrites the stored single target
-                // via `Event::SpellTargetsChosen` (the same write-back a multi-target choice uses).
-                crate::pending::raise_choice(
-                    self,
-                    PendingChoice::ChooseSpellTargets {
-                        player: controller,
-                        spell,
-                        min: 1,
-                        max: 1,
-                        legal,
-                        clause: 0,
-                    },
-                );
-            }
-            // Thunderclap Drake's delayed one-shot: copy the spell that fired the armed
-            // `ScheduleNextCastTrigger` watch (baked in as `triggering_spell` at trigger
-            // placement — see `fill_triggering_spell`), not a chosen target or this ability's
-            // own spell.
-            Effect::CopyTriggeringSpell {
-                triggering_spell,
-                count,
-                may_choose_new_targets,
-                last_known_information,
-            } => {
-                let Some(original) = triggering_spell else {
-                    return;
-                };
-                let still_on_stack = matches!(self.objects[original as usize], Object::Spell(_));
-                if !still_on_stack {
-                    // CR 603.4: the triggering spell may have left the stack (countered in
-                    // response) before this trigger resolved. A true Storm keyword (CR 702.40a)
-                    // copies it anyway, from its last-known copiable characteristics — the object
-                    // is still there under a different `Object` variant (`SpellCopied`'s apply
-                    // already handles a non-Spell `original`, the same fallback Surge to
-                    // Victory's "copy the exiled card" relies on) — only bail outright if the
-                    // object left the game entirely (`def_of` would panic). Every other consumer
-                    // (Thunderclap Drake) keeps the plain "nothing left to copy" no-op.
-                    if !last_known_information
-                        || matches!(self.objects[original as usize], Object::Removed)
-                    {
-                        return;
-                    }
-                }
-                if may_choose_new_targets {
-                    self.mint_spell_copies(count, controller, original, target, x, events);
-                    return;
-                }
-                // CR 707.10c declined: mint each copy keeping the triggering spell's own
-                // targets, no retarget pause. Not exercised by any pool card yet.
-                let n = self.resolve_count(count, controller, source, target, x);
-                for _ in 0..n {
-                    let copy = self.next_object_id();
-                    self.push_apply(
-                        events,
-                        Event::SpellCopied {
-                            copy,
-                            original,
-                            controller,
-                        },
-                    );
-                }
-            }
-            // Mirrorwing Dragon's watch payoff (CR 707.10): "that player copies that spell for
-            // each other creature they control that the spell could target. Each copy targets a
-            // different one of those creatures." Same CR 603.4 "already left the stack" guard as
-            // `CopyTriggeringSpell` above.
-            Effect::CopyTriggeringSpellForEachOtherCreatureYouControl { triggering_spell } => {
-                let Some(original) = triggering_spell else {
-                    return;
-                };
-                if !matches!(self.objects[original as usize], Object::Spell(_)) {
-                    return;
-                }
-                // "That player copies" — the copies are made under the SPELL's controller, not
-                // this triggered ability's controller (`controller` here is Mirrorwing's).
-                let spell_controller = self.spell(original).controller;
-                let def = self.def_of(original);
-                let spec = def
-                    .abilities
-                    .iter()
-                    .find(|a| matches!(a.timing, Timing::Spell))
-                    .map_or(TargetSpec::None, |a| a.effect.target());
-                let legal = self.legal_targets_for(
-                    spec,
-                    original,
-                    spell_controller,
-                    color_identity(def),
-                    self.spell(original).x,
-                );
-                // ponytail: "could target" is read as "a creature the spell's controller
-                // controls, other than the original target (`source`, this triggered ability's
-                // Mirrorwing), that's a legal target of the spell's own spec" — exact for the
-                // pool's single-target instant/sorcery consumers.
-                let creatures: Vec<ObjectId> = legal
-                    .into_iter()
-                    .filter_map(|t| match t {
-                        Target::Object(other)
-                            if other != source && self.controller_of(other) == spell_controller =>
-                        {
-                            Some(other)
-                        }
-                        _ => None,
-                    })
-                    .collect();
-                for creature in creatures {
-                    let copy = self.next_object_id();
-                    self.push_apply(
-                        events,
-                        Event::SpellCopied {
-                            copy,
-                            original,
-                            controller: spell_controller,
-                        },
-                    );
-                    // "Each copy targets a different one of those creatures": the creatures are
-                    // already enumerated distinctly above, so each copy's target is set directly
-                    // here instead of pausing on a per-copy retarget choice (ponytail on the
-                    // effect's own doc comment: engine-chosen assignment, not player-chosen).
-                    self.push_apply(
-                        events,
-                        Event::SpellTargetsChosen {
-                            spell: copy,
-                            targets: TargetList::from_targets(&[Target::Object(creature)]),
-                            clause: 0,
-                        },
-                    );
-                }
-            }
-            // Unbound Flourishing (CR 707.10): "copy that ability" — copy the activated ability
-            // that fired the watch (its source baked in as `triggering_ability`). The copy goes on
-            // the stack above the original (CR 707.10c), carrying its effect/target and its chosen
-            // `{X}` unchanged (CR 706.10 — an already-doubled X isn't re-doubled).
-            Effect::CopyTriggeringAbility {
-                triggering_ability,
-                may_choose_new_targets,
-            } => {
-                let Some(original) = triggering_ability else {
-                    return;
-                };
-                // CR 603.4/707.10c: the triggering ability may have left the stack (countered in
-                // response) before this watch's trigger resolved — nothing left to copy. The watch
-                // sits directly above the original (CR 603.3b), so it's the topmost stack ability
-                // with that source.
-                let Some((copied_effect, copied_target, copied_x, copied_activated)) =
-                    self.stack.iter().rev().find_map(|item| match *item {
-                        StackItem::Ability {
-                            source,
-                            effect,
-                            target,
-                            x,
-                            activated,
-                            ..
-                        } if source == original => Some((effect, target, x, activated)),
-                        _ => None,
-                    })
-                else {
-                    return;
-                };
-                // CR 707.10c: "you may choose new targets for the copy" — a real re-pick when the
-                // copied ability actually targets (Nin, the Pain Artist's "target creature" is
-                // exactly the targeted `{X}`-cost activated ability this makes observable);
-                // `place_targeted_ability` re-derives the target fresh (protection included, CR
-                // 702.16b), threading the copy's own `{X}`/activated-ness onto the eventual push.
-                // Declining (`may_choose_new_targets = false`) or a targetless copy keeps the
-                // original's target(s) unchanged below — CR 707.10c's declined case.
-                if may_choose_new_targets && copied_effect.target() != TargetSpec::None {
-                    self.place_targeted_ability(
-                        controller,
-                        original,
-                        copied_effect,
-                        copied_x,
-                        copied_activated,
-                        events,
-                    );
-                    return;
-                }
-                // The copy is the same kind of ability as the original (CR 707.10c) — an activated
-                // copy stays activated, a triggered copy stays triggered. Its spent-mana multiset
-                // is empty: a copy is created, not activated, so no mana was spent on it (the same
-                // line converge's copy ruling draws for spells).
-                self.push_ability_group_with_x(
-                    controller,
-                    original,
-                    &[(copied_effect, copied_target)],
-                    copied_x,
-                    [0; 6],
-                    copied_activated,
-                    events,
-                );
-            }
-            // Demonstrate (CR 702.147a): "you may copy it" — a real, respondable trigger above
-            // the cast spell (`spell` baked in at placement, see `CardDef::demonstrate`). The
-            // spell may have been countered in response before this trigger resolved (CR 707.10c
-            // guard, same shape as `CopyTriggeringSpell`'s above): nothing left to copy.
-            Effect::Demonstrate { spell } => {
-                if !matches!(self.objects[spell as usize], Object::Spell(_)) {
-                    return;
-                }
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::MayYesNo {
-                        player: controller,
-                        source,
-                        effect: Effect::Demonstrate { spell },
-                    },
-                );
-            }
-            // Opal Palace's spend-to-cast rider: the commander spell (baked in as
-            // `triggering_spell` when the `SpendManaToCast` trigger fired) is still on the stack, so
-            // record the additional-counter count keyed by its id for `resolve_spell` to place as it
-            // enters. Guard-return if that spell already left the stack (countered in response, CR
-            // 603.4) — nothing to enter, so nothing to record.
-            Effect::CommanderEntersWithBonusCounters {
-                triggering_spell,
-                count,
-            } => {
-                let Some(spell) = triggering_spell else {
-                    return;
-                };
-                if !matches!(self.objects[spell as usize], Object::Spell(_)) {
-                    return;
-                }
-                let n = self.resolve_count(count, controller, source, target, x);
-                if n == 0 {
-                    return;
-                }
-                self.pending_enter_bonus_counters.push((spell, n));
-            }
-            // Renegade Bull's attack trigger: "exile up to one target instant or sorcery card
-            // from your graveyard and copy it. You may cast the copy without paying its mana
-            // cost." "Up to one": no chosen target (declined, or none legal — CR 603.3c already
-            // drops the ability before this runs) is a no-op. Exile the chosen card, then grant
-            // the free-cast permission (CR 118.5) for it — the same `CastFromExileFreePermissionGranted`
-            // plumbing `CastExiledWithThisFree` (Quintorius) grants — so the controller can
-            // genuinely *cast* it (CR 601) at their next opportunity, firing real "whenever you
-            // cast" watchers off it (including this card's own first ability above).
-            Effect::ExileTargetGraveyardSpellCastFree { .. } => {
-                let Some(object) = target.and_then(Target::object_id) else {
-                    return;
-                };
-                let exiled = self.next_object_id();
-                let move_event = self.exile_or_command(object, exiled);
-                self.push_apply(events, move_event);
-                self.push_apply(
-                    events,
-                    Event::CastFromExileFreePermissionGranted {
-                        card: exiled,
-                        player: controller,
-                    },
-                );
-            }
-            // Surge to Victory: "Exile target instant or sorcery card from your graveyard."
-            // Mandatory single target (unlike Renegade Bull's "up to one" above), so a legal
-            // target is guaranteed by the time this runs (CR 608.2b already fizzled the whole
-            // ability otherwise). Snapshot the exiled card's id + mana value for the following
-            // team-pump (`Amount::ExiledCardManaValueThisWay`) and combat-damage-copy arm
-            // (`ScheduleThisTurnCombatDamageCopy`) steps sharing this resolution's `Sequence`.
-            Effect::ExileTargetGraveyardCardRecordManaValue { .. } => {
-                let object =
-                    expect_object_target(target, "exile target graveyard card, record mana value");
-                let mana_value = self.def_of(object).mana_value();
-                let exiled = self.next_object_id();
-                let move_event = self.exile_or_command(object, exiled);
-                self.push_apply(events, move_event);
-                self.resolution_frame.surge_exiled_card = Some((exiled, mana_value));
-            }
-            // Surge to Victory's combat-damage-copy step: mint one free copy of the card the
-            // arming watch names — the exile already happened when the watch was armed, so this
-            // only mints. `card` is `None` only if this were ever misfired with no armed card,
-            // which `fire_combat_damage_copy_triggers` never does.
-            Effect::MintFreeCopyOfExiledCard { card } => {
-                let Some(card) = card else {
-                    return;
-                };
-                self.mint_spell_copies(Amount::Fixed(1), controller, card, None, 0, events);
-            }
-            // A discard pauses on a card-pick choice (the discarding player chooses which to
-            // pitch): the ability's controller, or a chosen target player (Prismari Command).
-            Effect::Discard {
-                count,
-                target_player,
-                or_one_matching,
-            } => {
-                let discarder = if target_player {
-                    let Some(Target::Player(player)) = target else {
-                        panic!("target-player discard resolves with a chosen player target");
-                    };
-                    player
-                } else {
-                    controller
-                };
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::Discard {
-                        player: discarder,
-                        count,
-                        or_one_matching,
-                    },
-                )
-            }
-            // Brainstorm's "put two cards from your hand on top of your library in any order"
-            // pauses on an ordered card-pick choice over the controller's own hand.
-            Effect::PutFromHandOnTop { count } => pending::raise(
-                self,
-                pending::ChoiceRequest::PutFromHandOnTop {
-                    player: controller,
-                    count,
-                },
-            ),
-            // "You may put a land from hand onto the battlefield" pauses on a card-pick choice
-            // (up to one hand land, or decline).
-            Effect::PutLandFromHand { tapped } => pending::raise(
-                self,
-                pending::ChoiceRequest::PutLandFromHand {
-                    player: controller,
-                    tapped,
-                },
-            ),
-            // Cauldron Dance's "You may put a creature card from your hand onto the
-            // battlefield" pauses on the creature sibling of `PutLandFromHand`'s card-pick
-            // choice (up to one hand creature, or decline). `source` is threaded through so the
-            // answer can later schedule the end-step sacrifice against this same ability.
-            Effect::PutCreatureFromHand => pending::raise(
-                self,
-                pending::ChoiceRequest::PutCreatureFromHand {
-                    player: controller,
-                    source,
-                },
-            ),
-            // Illusionary Mask's "you may cast a creature card in hand … face down as a 2/2"
-            // pauses on a card-pick choice over the hand creatures whose mana cost the mana
-            // spent on this ability's `{X}` could pay (`ctx.spent_mana`, CR 107.3).
-            Effect::CastCreatureFaceDown => pending::raise(
-                self,
-                pending::ChoiceRequest::CastCreatureFaceDown {
-                    player: controller,
-                    spent_mana,
-                },
-            ),
-            // Rupture Spire's own ETB trigger: "sacrifice it unless you pay {1}." Pauses on the
-            // same pay-or-sacrifice shape Echo's `PayEchoOrSacrifice` uses, under its own variant
-            // (this is a real triggered ability, not Echo — CR 603.3b, not CR 702.31).
-            Effect::SacrificeSelfUnlessPay { cost } => pending::raise(
-                self,
-                pending::ChoiceRequest::SacrificeUnlessPay {
-                    player: controller,
-                    source,
-                    cost,
-                },
-            ),
-            // Treva's Ruins' own ETB trigger: "sacrifice it unless you return a non-Lair land you
-            // control." Pauses on a candidate-land pick (or sacrifices outright with none).
-            Effect::SacrificeSelfUnlessReturnLand { filter } => {
-                pending::raise(
-                    self,
-                    pending::ChoiceRequest::SacrificeUnlessReturnLand {
-                        player: controller,
-                        source,
-                        filter,
-                    },
-                );
-                if !self.resolution_is_paused() {
-                    self.run(
-                        Effect::SacrificeObject {
-                            object: Some(source),
-                        },
-                        ResolveCtx {
-                            controller,
-                            source,
-                            target: None,
-                            targets_second: TargetList::default(),
-                            x: 0,
-                            spent_mana: [0; 6],
-                        },
-                        events,
-                    );
-                }
-            }
-            // "Put a card exiled with this" pauses on a card-pick choice over this source's
-            // exiled-with pile (up to one, or decline).
-            Effect::CashOutExiledWithThis => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseExiledWithCard {
-                    player: controller,
-                    source,
-                },
-            ),
-            // Quintorius's activated ability pauses on a card-pick choice over this source's (CR 602, CR 113)
-            // linked exile pile, granting the free-cast permission for the chosen card instead
-            // of cashing it out.
-            Effect::CastExiledWithThisFree => pending::raise(
-                self,
-                pending::ChoiceRequest::ChooseExiledWithCardToCast {
-                    player: controller,
-                    source,
-                },
-            ),
             // A sequence runs its steps in order, sharing this target/{X}; a pausing step defers
             // the rest until answered.
             Effect::Sequence { steps } => self.run_sequence(steps, ctx, events),
@@ -2272,284 +912,35 @@ impl Game {
                     self.run_sequence(then, ctx, events);
                 }
             }
-            // Feral Appetite: exile the targeted graveyard card, then — CR "if a creature card
-            // is exiled this way" — run `then` (mints the Pest token) only if the just-exiled
-            // card's own printed type is a creature. Reads the def before the move, the same
-            // shape `ExileTargetFromGraveyardCreateTokenCopy` reads `def_of` before it exiles.
-            Effect::ExileTargetGraveyardCardThenIfCreature { then } => {
-                let object =
-                    expect_object_target(target, "exile target graveyard card, then if creature");
-                let is_creature = matches!(self.def_of(object).kind, CardKind::Creature { .. });
-                let exiled = self.next_object_id();
-                let move_event = self.exile_or_command(object, exiled);
-                self.push_apply(events, move_event);
-                if is_creature {
-                    self.run_sequence(then, ctx, events);
-                }
+            // Feral Appetite — see `resolution/sequence_steps.rs::run_sequence_step`.
+            Effect::ExileTargetGraveyardCardThenIfCreature { .. } => {
+                self.run_sequence_step(effect, ctx, events)
             }
-            // Marauding Raptor: deal the damage (unchanged via `execute_effect`), then — CR "if a
-            // Dinosaur is dealt damage this way, this creature gets +2/+0 until end of turn" —
-            // run `then` only if the entering permanent's subtypes intersect `then_if_subtype`
-            // AND the damage actually landed (a `DamageMarked` event was produced — none means a
-            // protection/prevention shield stopped it, CR 119.3 "is dealt damage").
-            Effect::DealDamageToEnteringPermanent {
-                entering,
-                then_if_subtype,
-                then,
-                ..
-            } => {
-                let evs = self.execute_effect(effect, controller, source, target, x);
-                let damage_landed = evs.iter().any(|e| matches!(e, Event::DamageMarked { .. }));
-                self.apply_all(&evs);
-                events.extend(evs);
-                if !damage_landed {
-                    return;
-                }
-                let entering = entering.expect("the entering permanent is filled in at placement");
-                let is_matching_subtype = self
-                    .def_of(entering)
-                    .subtypes
-                    .iter()
-                    .any(|s| then_if_subtype.contains(s));
-                if !is_matching_subtype {
-                    return;
-                }
-                self.run_sequence(then, ctx, events);
+            // Marauding Raptor — see `resolution/damage.rs::resolve_deal_damage_to_entering`.
+            Effect::DealDamageToEnteringPermanent { .. } => {
+                self.resolve_deal_damage_to_entering(effect, ctx, events)
             }
-            // Untap the permanent this same resolution's own search step already put onto the
-            // battlefield (Fabled Passage's "then … untap that land") — reads it back from the
-            // SearchedToBattlefield event already recorded in `events` (see the variant doc).
-            // No such event yet (the search failed to find, or hasn't run): nothing to untap.
-            Effect::UntapSearchedLand => {
-                let found = events.iter().rev().find_map(|e| match e {
-                    Event::SearchedToBattlefield { permanent, .. } => Some(*permanent),
-                    _ => None,
-                });
-                if let Some(permanent) = found {
-                    self.push_apply(events, Event::Untapped { object: permanent });
-                }
-            }
-            // Ajani's Chosen: attach the triggering Aura to the token this same resolution's
-            // preceding `CreateToken` step already minted — read back from `events`. A non-Aura
-            // entering (`entering` is `None`, or its kind isn't Aura) or a missing token is a
-            // no-op (guard-return).
-            Effect::AttachTriggeringAuraToMintedToken { entering } => {
-                let Some(entering) = entering else {
-                    return;
-                };
-                if !matches!(self.def_of(entering).kind, CardKind::Aura) {
-                    return;
-                }
-                let Some(token) = events.iter().rev().find_map(|e| match e {
-                    Event::TokenCreated { token, .. } => Some(*token),
-                    _ => None,
-                }) else {
-                    return;
-                };
-                self.push_apply(
-                    events,
-                    Event::AttachedTo {
-                        object: entering,
-                        host: Some(token),
-                    },
-                );
-            }
-            // A reflexive "when you do" trigger (CR 603.3b — Forum Filibuster): the "you do" is
-            // that this resolution's preceding `CreateToken` step minted a token (read back from
-            // `events`, the same idiom as `AttachTriggeringAuraToMintedToken` above). No such
-            // token: no reflexive trigger (guard-return). Otherwise enqueue each `then` effect as
-            // its own reflexive triggered ability — a separate, respondable stack object placed
-            // the next time a player would get priority — threading the minted token in.
-            Effect::ReflexiveTrigger { then } => {
-                let Some(token) = events.iter().rev().find_map(|e| match e {
-                    Event::TokenCreated { token, .. } => Some(*token),
-                    _ => None,
-                }) else {
-                    return;
-                };
-                self.queue_reflexive_trigger(controller, source, then, token);
-            }
-            // The reflexive ability's own resolution: return the chosen graveyard card (CR 601.2c
-            // target, may be `None` — "up to one") to the battlefield attached to the minted
-            // `token`. Guard-return (CR 608.2b) if the token has left the battlefield since — with
-            // the host gone the returned card can't be attached, so nothing happens.
-            Effect::ReturnFromGraveyardAttachedToToken { token, .. } => {
-                let Some(token) = token.filter(|&t| self.as_permanent(t).is_some()) else {
-                    return;
-                };
-                let Some(card) = target.and_then(Target::object_id) else {
-                    return;
-                };
-                let event = self.reanimate_event(card, controller, false);
-                let Event::ReanimatedToBattlefield { permanent, .. } = event else {
-                    unreachable!("reanimate_event always returns a ReanimatedToBattlefield event")
-                };
-                self.push_apply(events, event);
-                self.push_apply(
-                    events,
-                    Event::AttachedTo {
-                        object: permanent,
-                        host: Some(token),
-                    },
-                );
-            }
-            // Animate Dead: attach this Aura to the creature this same resolution's preceding
-            // `ReanimateToBattlefield` step already put onto the battlefield — read back from
-            // `events`. No such event yet: nothing to attach to (guard-return).
-            Effect::AttachSelfToReanimated => {
-                let Some(permanent) = events.iter().rev().find_map(|e| match e {
-                    Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
-                    _ => None,
-                }) else {
-                    return;
-                };
-                self.push_apply(
-                    events,
-                    Event::AttachedTo {
-                        object: source,
-                        host: Some(permanent),
-                    },
-                );
-            }
-            // Fractal Harness: attach this Equipment to the token this same resolution's
-            // preceding `CreateToken` step already minted — read back from `events`, the same
-            // idiom as `AttachSelfToReanimated` above. No such token yet: nothing to attach to
-            // (guard-return).
-            Effect::AttachSelfToMintedToken => {
-                let Some(token) = events.iter().rev().find_map(|e| match e {
-                    Event::TokenCreated { token, .. } => Some(*token),
-                    _ => None,
-                }) else {
-                    return;
-                };
-                self.push_apply(
-                    events,
-                    Event::AttachedTo {
-                        object: source,
-                        host: Some(token),
-                    },
-                );
-            }
-            // Scriv, the Obligator: attach the Aura token this same resolution's preceding
-            // `CreateToken` step just minted to the ability's chosen target (a creature an opponent
-            // controls) — the mirror of `AttachSelfToMintedToken` above, attaching the *minted
-            // token* rather than the source. No token minted yet, a non-Aura token, or a
-            // non-object target: nothing to attach (guard-return).
-            // ponytail: only an Aura can be attached (CR 303); a non-Aura minted token is a no-op
-            // rather than a phantom attachment. The pool mints only the Contract Aura here.
-            Effect::AttachMintedAuraToTarget { .. } => {
-                let Some(host) = target.and_then(Target::object_id) else {
-                    return;
-                };
-                let Some(aura) = events.iter().rev().find_map(|e| match e {
-                    Event::TokenCreated { token, .. } => Some(*token),
-                    _ => None,
-                }) else {
-                    return;
-                };
-                if !matches!(self.def_of(aura).kind, CardKind::Aura) {
-                    return;
-                }
-                self.push_apply(
-                    events,
-                    Event::AttachedTo {
-                        object: aura,
-                        host: Some(host),
-                    },
-                );
-            }
-            // Fractal Harness's attack trigger: double the +1/+1 counters on the creature this
-            // Equipment is attached to (CR 614) — a no-target sibling of `DoubleCounters` pinned
-            // to `source`'s own `attached_to` instead of a chosen target. An unattached Equipment
-            // (unequipped, or between equip targets) has nothing to double (guard-return).
+            // Fabled Passage / Ajani's Chosen / Forum Filibuster / Fractal Harness / Scriv /
+            // Animate Dead — see `resolution/sequence_steps.rs::run_sequence_step`.
+            Effect::UntapSearchedLand
+            | Effect::AttachTriggeringAuraToMintedToken { .. }
+            | Effect::ReflexiveTrigger { .. }
+            | Effect::ReturnFromGraveyardAttachedToToken { .. }
+            | Effect::AttachSelfToReanimated
+            | Effect::AttachSelfToMintedToken
+            | Effect::AttachMintedAuraToTarget { .. } => self.run_sequence_step(effect, ctx, events),
+            // Fractal Harness — see
+            // `resolution/counters.rs::resolve_double_counters_on_attached_creature`.
             Effect::DoubleCountersOnAttachedCreature => {
-                let Some(object) = self.permanent(source).attached_to else {
-                    return;
-                };
-                if let Some(event) = self.doubled_counters_event(object, self.def_of(source).name) {
-                    self.push_apply(events, event);
-                }
+                self.resolve_double_counters_on_attached_creature(ctx, events)
             }
-            // Gift of Immortality: schedule the delayed return of this Aura (CR 603.7), attached
-            // to the creature this same resolution's preceding `ReanimateDyingEnchantedCreature`
-            // step just reanimated — read back from `events`, mirroring `AttachSelfToReanimated`'s
-            // idiom above. No such event yet (the enchanted creature wasn't reanimated): nothing
-            // to schedule (guard-return).
-            Effect::ScheduleReturnThisAuraAttachedToReanimated => {
-                let Some(permanent) = events.iter().rev().find_map(|e| match e {
-                    Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
-                    _ => None,
-                }) else {
-                    return;
-                };
-                self.push_apply(
-                    events,
-                    Event::DelayedTriggerScheduled {
-                        controller,
-                        source,
-                        fire_at: Step::End,
-                        effect: Effect::ReturnThisAuraAttachedTo {
-                            creature: Some(permanent),
-                        },
-                    },
-                );
-            }
-            // Cauldron Dance: grant haste to the creature this same resolution's preceding
-            // `ReanimateToBattlefield` step just put onto the battlefield — read back from
-            // `events`, mirroring `ScheduleReturnThisAuraAttachedToReanimated`'s idiom above —
-            // then schedule its return to hand at the next end step (CR 603.7). No such event
-            // yet (the reanimation target was illegal): nothing to grant or schedule
-            // (guard-return).
-            Effect::ScheduleReturnReanimatedToHand => {
-                let Some(permanent) = events.iter().rev().find_map(|e| match e {
-                    Event::ReanimatedToBattlefield { permanent, .. } => Some(*permanent),
-                    _ => None,
-                }) else {
-                    return;
-                };
-                const HASTE: &[Keyword] = &[Keyword::Haste];
-                let source_name = self.source_name_of(source);
-                self.push_apply(
-                    events,
-                    Event::TempBoost {
-                        object: permanent,
-                        power: 0,
-                        toughness: 0,
-                        keywords: HASTE,
-                        source_name,
-                    },
-                );
-                self.push_apply(
-                    events,
-                    Event::DelayedTriggerScheduled {
-                        controller,
-                        source,
-                        fire_at: Step::End,
-                        effect: Effect::ReturnObjectToHand {
-                            object: Some(permanent),
-                        },
-                    },
-                );
-            }
-            // Screams from Within: the immediate dies-return, choosing a new host (unlike Gift
-            // of Immortality's same-creature return above). Pauses via the shared helper — see
-            // its doc comment.
-            Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost => {
-                self.return_aura_from_graveyard_attached_to_chosen_host(source, events)
-            }
-            // Ghoulish Impetus: schedule the same choose-host return above at the next end step
-            // (CR 603.7), mirroring `ScheduleReturnThisAuraAttachedToReanimated`'s emit shape. No
-            // read-back needed — this Aura's own `source` is all the delayed payload needs.
-            Effect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost => {
-                self.push_apply(
-                    events,
-                    Event::DelayedTriggerScheduled {
-                        controller,
-                        source,
-                        fire_at: Step::End,
-                        effect: Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost,
-                    },
-                );
+            // Gift of Immortality / Cauldron Dance / Screams from Within / Ghoulish Impetus —
+            // see `resolution/sequence_steps.rs::run_sequence_step`.
+            Effect::ScheduleReturnThisAuraAttachedToReanimated
+            | Effect::ScheduleReturnReanimatedToHand
+            | Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost
+            | Effect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost => {
+                self.run_sequence_step(effect, ctx, events)
             }
             // Destroy / exile / mill "this way" snapshot choreography lives in the family modules
             // (`resolve_destroy_all` / `resolve_exile_all` / `resolve_mill_self`).
@@ -2562,162 +953,29 @@ impl Game {
             Effect::MillSelf { count } => {
                 self.resolve_mill_self(count, controller, source, target, x, events)
             }
-            // "Exile [this card] with N time counters on it" (Rousing Refrain): mark the resolving
-            // spell so `finish_instant_sorcery_resolution` sends it to exile with time counters
-            // instead of the graveyard (the resolving spell, `source`, is the card exiled).
-            Effect::ExileSelfWithTimeCounters { counters, .. } => {
-                self.self_exile_time_counters = Some(counters);
+            // Rousing Refrain / Spell Crumple self-move riders — see
+            // `resolution/resolve_misc.rs`.
+            Effect::ExileSelfWithTimeCounters { .. } | Effect::TuckSelfToLibraryBottom => {
+                self.run_misc_choreo(effect, ctx, events)
             }
-            // "Then put [this card] on the bottom of its owner's library" (Spell Crumple): mark
-            // the resolving spell so `finish_instant_sorcery_resolution` sends it to the bottom
-            // of its owner's library instead of the graveyard (`source`, the resolving spell
-            // itself, is the card tucked).
-            Effect::TuckSelfToLibraryBottom => {
-                self.self_tuck_to_library_bottom = true;
+            // Oversimplify — see `resolution/resolve_misc.rs`.
+            Effect::EachPlayerCreatesFractalFromExiledPower { .. } => {
+                self.run_misc_choreo(effect, ctx, events)
             }
-            // "Each player creates a 0/0 green and blue Fractal creature token and puts a number
-            // of +1/+1 counters on it equal to the total power of creatures they controlled that
-            // were exiled this way." (Oversimplify): mint one `token` per living player in APNAP
-            // order, applying each mint before computing its counters — `counters_after_replacements`
-            // reads the token's controller off game state, mirroring `CreateToken`'s `enters_with`
-            // below. No player choice, so this resolves in one pass, never pausing.
-            Effect::EachPlayerCreatesFractalFromExiledPower { token } => {
-                for player in self.apnap_order() {
-                    let minted = self.next_object_id();
-                    self.push_apply(
-                        events,
-                        Event::TokenCreated {
-                            token: minted,
-                            controller: player,
-                            def: token,
-                            creator: source,
-                        },
-                    );
-                    let power: i32 = self
-                        .resolution_frame
-                        .power_exiled_this_way
-                        .iter()
-                        .filter(|snap| snap.controller == player)
-                        .map(|snap| snap.power)
-                        .sum();
-                    let n = self.counters_after_replacements(minted, power);
-                    if n > 0 {
-                        self.push_apply(
-                            events,
-                            Event::CountersPlaced {
-                                object: minted,
-                                count: n,
-                                source_name: self.def_of(source).name,
-                            },
-                        );
-                    }
-                }
+            // Wheel of Fortune — see `resolution/resolve_misc.rs`.
+            Effect::EachPlayerDiscardsHandThenDraws { .. } => {
+                self.run_misc_choreo(effect, ctx, events)
             }
-            // "Each player discards their hand, then draws seven cards." (Wheel of Fortune):
-            // loop APNAP order, each living player discarding their whole hand (`discard_ids` —
-            // no choice, so no `PendingChoice`, unlike a partial-hand `Effect::Discard`) then
-            // drawing `count`.
-            Effect::EachPlayerDiscardsHandThenDraws { count } => {
-                let n = self.resolve_count(count, controller, source, target, x);
-                for player in self.apnap_order() {
-                    let hand = self.hand_of(player);
-                    self.discard_ids(&hand, player, events);
-                    for event in self.draw_events(player, n) {
-                        self.push_apply(events, event);
-                    }
-                }
-            }
-            // Mint the token(s) (unchanged batch via `execute_effect`), then — "Put X +1/+1
-            // counters on it" (Deekah's Magecraft Fractal) — place `enters_with` counters on each
-            // minted token, routed through the same doubler/Hardened-Scales replacement pipeline
-            // as a spell's own `EntersWithCounters` (`Game::resolve_spell`'s enters-with path).
-            // `counters_after_replacements` reads the token's controller off game state, so the
-            // mint must already be applied — mirrors `resolve_spell` applying `PermanentEntered`
-            // before reading its counters.
-            Effect::CreateToken { enters_with, .. } => {
-                let evs = self.execute_effect(effect, controller, source, target, x);
-                self.apply_all(&evs);
-                let minted: Vec<ObjectId> = evs
-                    .iter()
-                    .filter_map(|e| match e {
-                        Event::TokenCreated { token, .. } => Some(*token),
-                        _ => None,
-                    })
-                    .collect();
-                events.extend(evs);
-                let n_raw = self.resolve_amount(enters_with, controller, source, target, x);
-                if n_raw > 0 {
-                    for id in minted {
-                        let n = self.counters_after_replacements(id, n_raw);
-                        if n > 0 {
-                            self.push_apply(
-                                events,
-                                Event::CountersPlaced {
-                                    object: id,
-                                    count: n,
-                                    source_name: self.def_of(source).name,
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-            // Advanced Reconstruction's base ability: "exile a card from your graveyard at
-            // random. You may play the exiled card this turn." The card is picked by the
-            // injected RNG here (needs `&mut self`, unlike `ExileFromGraveyardMayPlay`'s
-            // trigger-supplied card), then reuses that same event/permission plumbing.
-            Effect::ExileRandomFromGraveyardMayPlay => {
-                let graveyard = self.graveyard_cards(controller);
-                // CR 701.19a: if there's nothing to exile, this is a no-op.
-                if graveyard.is_empty() {
-                    return;
-                }
-                let idx = (self.next_u64() % graveyard.len() as u64) as usize;
-                let from = graveyard[idx];
-                self.push_apply(
-                    events,
-                    Event::ExiledFromGraveyardMayPlay {
-                        player: controller,
-                        card: self.next_object_id(),
-                        from,
-                    },
-                );
-            }
-            // Ruhan of the Fomori's base ability: "Choose an opponent at random. ~ attacks that
-            // player this combat if able." The opponent is picked by the injected RNG here (needs
-            // `&mut self`), then reuses the same `must_attack` requirement plumbing a token's
-            // `must_attack_defender` uses.
-            Effect::MustAttackRandomOpponent => {
-                let opponents: Vec<PlayerId> =
-                    self.living_players().filter(|&p| p != controller).collect();
-                // CR 800.4a: no living opponents (a solitaire test rig) — nothing to choose.
-                if opponents.is_empty() {
-                    return;
-                }
-                let idx = (self.next_u64() % opponents.len() as u64) as usize;
-                self.push_apply(
-                    events,
-                    Event::MustAttackDeclared {
-                        object: source,
-                        defender: opponents[idx],
-                    },
-                );
-            }
-            // Inkshield (CR 615): arm a this-turn combat-damage prevention shield protecting the
-            // ability's controller ("dealt to *you*"), carrying the Inkling profile minted per
-            // point prevented. The tokens are created at the prevention itself (in `damage_player`),
-            // not here — at resolution no combat damage has been prevented yet. Runtime
-            // orchestration state (like the delayed combat-damage watches), not an event.
-            Effect::PreventCombatDamageToYouCreatingTokens { token } => self
-                .combat_extras
-                .combat_damage_prevention_shields
-                .push((controller, token)),
-            // Moment's Peace (#150): arm the this-turn table-wide combat-damage shield — every
-            // player's combat damage, not just this ability's controller's, and no token mint.
-            // Runtime orchestration state (like Inkshield's shield above), not an event.
-            Effect::PreventAllCombatDamageThisTurn => {
-                self.combat_extras.prevent_all_combat_damage_this_turn = true;
-            }
+            // `CreateToken`'s `enters_with` choreography — see
+            // `resolution/tokens.rs::resolve_create_token`.
+            Effect::CreateToken { .. } => self.resolve_create_token(effect, ctx, events),
+            // Advanced Reconstruction — see `resolution/resolve_misc.rs`.
+            Effect::ExileRandomFromGraveyardMayPlay => self.run_misc_choreo(effect, ctx, events),
+            // Ruhan of the Fomori — see `resolution/resolve_misc.rs`.
+            Effect::MustAttackRandomOpponent => self.run_misc_choreo(effect, ctx, events),
+            // Inkshield / Moment's Peace — see `resolution/resolve_misc.rs`.
+            Effect::PreventCombatDamageToYouCreatingTokens { .. }
+            | Effect::PreventAllCombatDamageThisTurn => self.run_misc_choreo(effect, ctx, events),
             // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
             // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
             // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters
@@ -2732,55 +990,6 @@ impl Game {
                 events.extend(evs);
             }
         }
-    }
-
-    /// Mint `count` copies of `source` (`Effect::CopyThisSpell`'s mandatory mint, and
-    /// `Game::answer_may`'s inline "yes" for its `optional` gate): mint every copy up front —
-    /// minting itself never pauses, and `source` (this resolving spell) is still on the stack for
-    /// all of them, unlike a queued per-copy mint that would resume after `source` has already
-    /// left (moved to the graveyard by this same resolution's trailing steps). Each copy's own CR
-    /// 707.10c retarget (which *does* pause) is then queued one at a time behind
-    /// `run_sequence`'s pause/resume machinery via `RetargetSpellCopy`, so one copy's
-    /// `ChooseSpellTargets` doesn't clobber another's.
-    pub(crate) fn mint_spell_copies(
-        &mut self,
-        count: Amount,
-        controller: PlayerId,
-        source: ObjectId,
-        target: Option<Target>,
-        x: u32,
-        events: &mut Vec<Event>,
-    ) {
-        let n = self.resolve_count(count, controller, source, target, x);
-        if n == 0 {
-            return;
-        }
-        let copies: Vec<Effect> = (0..n)
-            .map(|_| {
-                let copy = self.next_object_id();
-                self.push_apply(
-                    events,
-                    Event::SpellCopied {
-                        copy,
-                        original: source,
-                        controller,
-                    },
-                );
-                Effect::RetargetSpellCopy { copy }
-            })
-            .collect();
-        self.run_sequence(
-            Box::leak(copies.into_boxed_slice()),
-            ResolveCtx {
-                controller,
-                source,
-                target,
-                targets_second: TargetList::default(),
-                x,
-                spent_mana: [0; 6],
-            },
-            events,
-        );
     }
 
     /// Shared reanimation core: mint a `ReanimatedToBattlefield` event putting graveyard `card`

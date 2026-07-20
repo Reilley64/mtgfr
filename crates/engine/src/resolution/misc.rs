@@ -151,4 +151,59 @@ impl Game {
             _ => unreachable!("misc family mint received a non-family effect"),
         }
     }
+
+    /// Counter `spell` (CR 701.5a): move it from the stack to its owner's graveyard, so it never
+    /// resolves. A no-op if `spell` already left the stack (CR 608.2b) — a response emptied that
+    /// stack slot (countered/resolved) before this counter could act. Shared by the unconditional
+    /// [`Effect::CounterTargetSpell`] arm and the [`PendingChoice::PayOrCounter`] decline handler.
+    pub(crate) fn counter_spell(&self, spell: ObjectId) -> Vec<Event> {
+        if !matches!(self.objects[spell as usize], Object::Spell(_)) {
+            return Vec::new();
+        }
+        // CR 701.5g: "this spell can't be countered" — the counter fizzles and the spell
+        // stays on the stack, unaffected.
+        if self.def_of(spell).uncounterable {
+            return Vec::new();
+        }
+        // CR 707.10a: a countered spell that's a copy ceases to exist rather than going to any
+        // graveyard (mirrors `finish_instant_sorcery_resolution`'s own copy guard for the
+        // resolving case) — checked first since it preempts every other "where does it go"
+        // branch below (flashback/escape exile, Quintorius's tuck, the plain graveyard).
+        if self.is_copy_object(spell) {
+            return vec![Event::SpellCeasedToExist { spell }];
+        }
+        // CR 702.34e/CR 702.19d: a flashback or escape spell exiles "as it leaves the stack" —
+        // countered is one such departure, same as resolving (see
+        // `finish_instant_sorcery_resolution`'s twin check). Checked before the Quintorius rider
+        // below: a flashback/escape spell never reaches a graveyard in the first place, so
+        // Quintorius's "would be put into a graveyard" redirect doesn't apply to it either.
+        let countered = self.spell(spell);
+        if countered.flashback || countered.escape {
+            return vec![Event::MovedToExile {
+                card: self.next_object_id(),
+                from: spell,
+            }];
+        }
+        // Quintorius, Loremaster's CR 614.6 rider (see `finish_instant_sorcery_resolution`'s
+        // twin check) — "would be put into a graveyard" covers the countered case too. `&self`
+        // can't drain the flag here; it lingers until the unconditional cleanup clear, and a
+        // countered spell can't also resolve, so it never double-matches.
+        if self
+            .play_permissions
+            .stack_object_bottoms_library_on_leave
+            .iter()
+            .any(|&flagged| self.current_id(flagged) == spell)
+        {
+            return vec![Event::TuckedToLibrary {
+                card: self.next_object_id(),
+                from: spell,
+                to_top: false,
+                second_from_top: false,
+            }];
+        }
+        vec![Event::MovedToGraveyard {
+            card: self.next_object_id(),
+            from: spell,
+        }]
+    }
 }
