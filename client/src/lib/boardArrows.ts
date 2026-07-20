@@ -6,12 +6,13 @@ const ARROW_DRAW_MS = 180;
 
 export { ARROW_DRAW_MS };
 
-const arrowBorn = new Map<string, number>();
-let arrowsSeenThisFrame = new Set<string>();
-let arrowsAnimating = false;
+/** Birth times for in-flight arrow draw-on animations (owned by the paint loop). */
+export type ArrowAnimState = {
+  born: Map<string, number>;
+};
 
-function prefersReducedMotion(): boolean {
-  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+export function emptyArrowAnimState(): ArrowAnimState {
+  return { born: new Map() };
 }
 
 /** Fraction of an arrow's draw-on (0 → 1) given birth time and now. */
@@ -19,36 +20,36 @@ export function arrowDrawProgress(bornAtMs: number, nowMs: number): number {
   return Math.min(1, Math.max(0, (nowMs - bornAtMs) / ARROW_DRAW_MS));
 }
 
-function arrowProgress(key: string): number {
-  arrowsSeenThisFrame.add(key);
-  if (prefersReducedMotion()) return 1;
-  if (!arrowBorn.has(key)) arrowBorn.set(key, performance.now());
-  const t = arrowDrawProgress(arrowBorn.get(key) ?? 0, performance.now());
-  if (t < 1) arrowsAnimating = true;
-  return t;
+/**
+ * Progress for one arrow key; may insert a birth timestamp into `born`.
+ * Mutates `born` in place (same map reference the caller owns).
+ */
+export function arrowProgressFor(
+  born: Map<string, number>,
+  key: string,
+  nowMs: number,
+  reducedMotion: boolean,
+): { progress: number; animating: boolean } {
+  if (reducedMotion) return { progress: 1, animating: false };
+  if (!born.has(key)) born.set(key, nowMs);
+  const progress = arrowDrawProgress(born.get(key) ?? 0, nowMs);
+  return { progress, animating: progress < 1 };
 }
 
-export function pruneArrows() {
-  for (const k of [...arrowBorn.keys()]) {
-    if (!arrowsSeenThisFrame.has(k)) arrowBorn.delete(k);
+/** Drop birth entries for keys not seen this frame. */
+export function pruneArrowBorn(born: Map<string, number>, seen: ReadonlySet<string>): void {
+  for (const k of [...born.keys()]) {
+    if (!seen.has(k)) born.delete(k);
   }
-  arrowsSeenThisFrame = new Set();
 }
 
-export function resetArrowAnimFlag() {
-  arrowsAnimating = false;
-}
-
-export function markArrowsAnimating() {
-  arrowsAnimating = true;
-}
-
-export function arrowsNeedFrame(): boolean {
-  return arrowsAnimating;
-}
-
-export function arrowBetween(ctx: CanvasRenderingContext2D, a: Vec, b: Vec, stroke: Stroke, key: string) {
-  const t = arrowProgress(key);
+export function arrowBetweenWithProgress(
+  ctx: CanvasRenderingContext2D,
+  a: Vec,
+  b: Vec,
+  stroke: Stroke,
+  t: number,
+) {
   const mx = (a.x + b.x) / 2;
   const my = (a.y + b.y) / 2;
   const dx = b.x - a.x;

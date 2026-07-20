@@ -29,7 +29,14 @@ import { isInteractiveControl, myChoice, PromptHost } from "~/controllers/prompt
 import { useTableSurface } from "~/controllers/tableSurface";
 import { avatarPos, layout, type RenderCard, ZONE } from "~/layout";
 import { autoTapPreviewIds } from "~/lib/actions";
-import { draw, STACK_VERTICAL_RESERVED, stackAimOrigin, stackPeekFor, stagingAimFrom } from "~/lib/boardDraw";
+import {
+  draw,
+  emptyArrowAnimState,
+  STACK_VERTICAL_RESERVED,
+  stackAimOrigin,
+  stackPeekFor,
+  stagingAimFrom,
+} from "~/lib/boardDraw";
 import { boardStatusSummary } from "~/lib/boardStatus";
 import { worldToScreen } from "~/lib/camera";
 import { cn } from "~/lib/cn";
@@ -311,6 +318,8 @@ export default function Board() {
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    // Arrow draw-on births live with this paint loop (not module globals) so scene paint stays pure.
+    const arrowAnim = emptyArrowAnimState();
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
       canvas.width = window.innerWidth * dpr;
@@ -388,47 +397,51 @@ export default function Board() {
         avatarScreenPositions[p.player] = worldToScreen(cam, a.x, a.y);
       }
       const chrome = boardChrome();
-      const arrowsNeedFrame = draw(ctx, {
-        cam,
-        cards: drawnCards(),
-        cache,
-        me: me(),
-        active: game.state?.active_player ?? -1,
-        priority: game.state?.priority ?? -1,
-        viewer: me(),
-        count,
-        players,
-        combat: game.state?.combat ?? {
-          attackers: [],
-          blocks: [],
-          attackers_declared: false,
-          blockers_declared: [],
+      const arrowsNeedFrame = draw(
+        ctx,
+        {
+          cam,
+          cards: drawnCards(),
+          cache,
+          me: me(),
+          active: game.state?.active_player ?? -1,
+          priority: game.state?.priority ?? -1,
+          viewer: me(),
+          count,
+          players,
+          combat: game.state?.combat ?? {
+            attackers: [],
+            blocks: [],
+            attackers_declared: false,
+            blockers_declared: [],
+          },
+          attackers: attackers(),
+          blocks: blocks(),
+          // Aiming only while the arrow is the asking mode — the picker brings its own modal, and an
+          // arrow drawn under it would point at a board the player can no longer click.
+          aiming: arrowAiming(),
+          aimFrom: stagingAimFrom(
+            size().x,
+            size().y,
+            game.state?.stack.length ?? 0,
+            arrowAiming(),
+            stackPeekFor((game.state?.stack.length ?? 0) + (arrowAiming() ? 1 : 0), size().y, STACK_VERTICAL_RESERVED),
+          ),
+          targetObjects: stagedObjects(),
+          targetPlayers: stagedPlayers(),
+          canvasDrag: dragging(),
+          cursor: cursor(),
+          avatarScreenPositions,
+          stepIdx: step(),
+          selectedId: selectedId(),
+          paymentObjects: paymentPreviewIds(),
+          stackResponseFocus: chrome.focus,
+          responseObjects: chrome.brightIds,
+          flights: cardFlights.flights(),
+          hideCardIds: cardFlights.hideCardIds(),
         },
-        attackers: attackers(),
-        blocks: blocks(),
-        // Aiming only while the arrow is the asking mode — the picker brings its own modal, and an
-        // arrow drawn under it would point at a board the player can no longer click.
-        aiming: arrowAiming(),
-        aimFrom: stagingAimFrom(
-          size().x,
-          size().y,
-          game.state?.stack.length ?? 0,
-          arrowAiming(),
-          stackPeekFor((game.state?.stack.length ?? 0) + (arrowAiming() ? 1 : 0), size().y, STACK_VERTICAL_RESERVED),
-        ),
-        targetObjects: stagedObjects(),
-        targetPlayers: stagedPlayers(),
-        canvasDrag: dragging(),
-        cursor: cursor(),
-        avatarScreenPositions,
-        stepIdx: step(),
-        selectedId: selectedId(),
-        paymentObjects: paymentPreviewIds(),
-        stackResponseFocus: chrome.focus,
-        responseObjects: chrome.brightIds,
-        flights: cardFlights.flights(),
-        hideCardIds: cardFlights.hideCardIds(),
-      });
+        arrowAnim,
+      );
       // Combat/target arrows draw-on over ~180ms; without a follow-up paint they freeze as a stub
       // on the source card (staged attackers looked like they pointed at the creature).
       if (arrowsNeedFrame) {

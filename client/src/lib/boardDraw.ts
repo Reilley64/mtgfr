@@ -1,25 +1,12 @@
 // Canvas board drawing: seat bands, cards, avatars, combat/target arrows.
+// Orchestration is {@link buildBoardScene} + {@link paintBoardScene}; this module
+// keeps `DrawCtx` / `draw()` for the Board paint loop and re-exports.
 
-import { AVATAR_R, type RenderCard, STEP, seatBand, seatColor } from "~/layout";
-import {
-  arrowBetween,
-  arrowsNeedFrame,
-  markArrowsAnimating,
-  pruneArrows,
-  resetArrowAnimFlag,
-} from "~/lib/boardArrows";
-import { drawAvatar, ringAvatar } from "~/lib/boardAvatarPaint";
-import { drawCard, drawFlightCard } from "~/lib/boardCardPaint";
-import { drawFelt } from "~/lib/boardFelt";
-import {
-  ATTACK_STROKE,
-  BLOCK_STROKE,
-  roundRect,
-  SELECT_STROKE,
-  TARGET_STROKE,
-  type Vec,
-} from "~/lib/boardPaintPrims";
-import { type Camera, worldToScreen } from "~/lib/camera";
+import { type RenderCard } from "~/layout";
+import { type ArrowAnimState, emptyArrowAnimState } from "~/lib/boardArrows";
+import type { Vec } from "~/lib/boardPaintPrims";
+import { buildBoardScene, paintBoardScene } from "~/lib/boardScene";
+import type { Camera } from "~/lib/camera";
 import type { CardFlight } from "~/lib/cardFlight";
 import type { ImageCache } from "~/lib/imageCache";
 import type { VisibleState, WireAttack, WireBlock } from "~/wire/types";
@@ -46,8 +33,9 @@ export {
   stagingAimFrom,
 } from "~/lib/stackLayout";
 
-export { ARROW_DRAW_MS, arrowDrawProgress } from "~/lib/boardArrows";
+export { ARROW_DRAW_MS, arrowDrawProgress, emptyArrowAnimState, type ArrowAnimState } from "~/lib/boardArrows";
 export { RESPONSE_COLOR, TARGET_COLOR } from "~/lib/boardPaintPrims";
+export { buildBoardScene, paintBoardScene, type BoardScene, type BuildBoardSceneInput } from "~/lib/boardScene";
 
 export interface DrawCtx {
   cam: Camera;
@@ -85,112 +73,33 @@ export interface DrawCtx {
   hideCardIds?: ReadonlySet<number>;
 }
 
-export function draw(ctx: CanvasRenderingContext2D, d: DrawCtx): boolean {
+function prefersReducedMotion(): boolean {
+  return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * Paint one frame. When `arrowState` is omitted, a module singleton is used
+ * (tests / simple callers). Board passes its own state so births survive across effects.
+ */
+export function draw(ctx: CanvasRenderingContext2D, d: DrawCtx, arrowState?: ArrowAnimState): boolean {
+  const state = arrowState ?? fallbackArrowState;
   const dpr = window.devicePixelRatio || 1;
   const w = ctx.canvas.width / dpr;
   const h = ctx.canvas.height / dpr;
-  ctx.clearRect(0, 0, w, h);
-  drawFelt(ctx, w, h);
-  resetArrowAnimFlag();
-
-  const rad = AVATAR_R * d.cam.zoom;
-
-  for (const p of d.players) {
-    const seat = p.player;
-    const band = seatBand(seat, d.viewer, d.count);
-    const tl = worldToScreen(d.cam, band.x, band.y);
-    ctx.save();
-    // Soft seat wash + border for every seat; active reads louder so turn ownership stays clear.
-    ctx.fillStyle = seatColor(seat, seat === d.active ? 0.12 : 0.06);
-    roundRect(ctx, tl.x, tl.y, band.w * d.cam.zoom, band.h * d.cam.zoom, 12 * d.cam.zoom);
-    ctx.fill();
-    ctx.strokeStyle = seatColor(seat, seat === d.active ? 0.65 : 0.28);
-    ctx.lineWidth = seat === d.active ? 2.5 : 1.5;
-    roundRect(ctx, tl.x, tl.y, band.w * d.cam.zoom, band.h * d.cam.zoom, 12 * d.cam.zoom);
-    ctx.stroke();
-    ctx.restore();
+  const scene = buildBoardScene({
+    ...d,
+    viewportW: w,
+    viewportH: h,
+    nowMs: performance.now(),
+    reducedMotion: prefersReducedMotion(),
+  });
+  const result = paintBoardScene(ctx, scene, d.cache, state);
+  if (!arrowState) {
+    fallbackArrowState = result.arrowState;
+  } else {
+    arrowState.born = result.arrowState.born;
   }
-
-  const attackerSet = new Set(d.attackers.map((a) => a.attacker));
-  const blockerSet = new Set(d.blocks.map((b) => b.blocker));
-  const incoming = new Set(d.combat.attackers.map((a) => a.attacker));
-  // Instant-speed priority: dim permanents that aren't usable now (mana + legal activates stay bright).
-  // Skip during arrow targeting — legal targets already get their own highlight.
-  const dimOthers = !d.aiming && d.stackResponseFocus;
-
-  for (const card of d.cards) {
-    if (d.hideCardIds?.has(card.id)) continue;
-    let outline: (typeof ATTACK_STROKE) | null = null;
-    let glow: string | null = null;
-    if (attackerSet.has(card.id) || (incoming.has(card.id) && card.controller !== d.me)) {
-      outline = ATTACK_STROKE;
-      glow = "rgba(255,85,85,0.45)";
-    } else if (blockerSet.has(card.id)) {
-      outline = BLOCK_STROKE;
-      glow = "rgba(102,255,153,0.4)";
-    } else if (d.aiming && d.targetObjects.has(card.id)) {
-      outline = TARGET_STROKE;
-      glow = "rgba(119,204,255,0.5)";
-    } else if (d.selectedId === card.id) {
-      outline = SELECT_STROKE;
-      glow = "rgba(255,215,106,0.55)";
-    }
-    const dim = dimOthers && !d.responseObjects.has(card.id) && d.selectedId !== card.id;
-    drawCard(ctx, d.cam, card, d.cache, outline, d.viewer, glow, dim, d.paymentObjects.has(card.id));
-  }
-
-  if (d.flights?.length) {
-    for (const f of d.flights) {
-      if (f.phase === "settled") continue;
-      drawFlightCard(ctx, d.cam, f, d.cache);
-      markArrowsAnimating(); // keep the paint loop alive while flights ease
-    }
-  }
-
-  for (const p of d.players) {
-    const scr = d.avatarScreenPositions[p.player];
-    if (!scr) continue;
-    drawAvatar(ctx, scr, rad, p, d.priority === p.player);
-    if (d.aiming && d.targetPlayers.has(p.player)) ringAvatar(ctx, scr, rad, TARGET_STROKE);
-  }
-
-  for (const a of d.attackers) {
-    const c = d.cards.find((x) => x.id === a.attacker);
-    const to = d.avatarScreenPositions[a.defender];
-    if (c && to) arrowBetween(ctx, cardCenter(d.cam, c), to, ATTACK_STROKE, `stage-atk-${a.attacker}-${a.defender}`);
-  }
-  for (const a of d.combat.attackers) {
-    const c = d.cards.find((x) => x.id === a.attacker);
-    const to = d.avatarScreenPositions[a.defender];
-    if (c && to) arrowBetween(ctx, cardCenter(d.cam, c), to, ATTACK_STROKE, `atk-${a.attacker}-${a.defender}`);
-  }
-  for (const b of d.blocks) {
-    const from = d.cards.find((x) => x.id === b.blocker);
-    const to = d.cards.find((x) => x.id === b.attacker);
-    if (from && to)
-      arrowBetween(ctx, cardCenter(d.cam, from), cardCenter(d.cam, to), BLOCK_STROKE, `blk-${b.blocker}-${b.attacker}`);
-  }
-
-  if (d.canvasDrag) {
-    const declaringBlock = d.stepIdx === STEP.DeclareBlockers && d.active !== d.me;
-    arrowBetween(
-      ctx,
-      cardCenter(d.cam, d.canvasDrag),
-      d.cursor,
-      declaringBlock ? BLOCK_STROKE : ATTACK_STROKE,
-      `drag-${d.canvasDrag.id}`,
-    );
-  }
-
-  if (d.aiming && d.aimFrom) {
-    arrowBetween(ctx, d.aimFrom, d.cursor, TARGET_STROKE, "aim");
-  }
-  pruneArrows();
-  // True while any arrow's draw-on is incomplete — caller must keep painting until this is false,
-  // otherwise a one-shot redraw leaves the tip stuck on the source (e.g. staged attackers).
-  return arrowsNeedFrame();
+  return result.stillAnimating;
 }
 
-function cardCenter(cam: Camera, c: RenderCard): Vec {
-  return worldToScreen(cam, c.x + c.w / 2, c.y + c.h / 2);
-}
+let fallbackArrowState: ArrowAnimState = emptyArrowAnimState();
