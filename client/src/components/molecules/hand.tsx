@@ -40,6 +40,8 @@ const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 export const HAND_VISIBLE_H = 100;
 /** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
 export const HAND_STRIP_H = HAND_VISIBLE_H;
+/** Room above each face for cast-cost pips (reserved band outside the card). */
+const HAND_PIP_ROW_H = 28;
 
 /** MTGA fan: left/right tilt out; centre rises toward the board (edges sit lower). */
 function fanTransform(index: number, count: number): string {
@@ -50,8 +52,8 @@ function fanTransform(index: number, count: number): string {
 }
 
 /** Height of the bottom action bar; the Board uses it to place the play threshold.
- * Matches the on-screen tuck (plus fan rise), not the full card height. */
-export const HAND_BAR_H = HAND_VISIBLE_H + 20;
+ * Matches the on-screen tuck + pip row above the faces. */
+export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 12;
 
 const CARD_FACE = cn("block w-[112px] rounded-game");
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
@@ -61,7 +63,7 @@ const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
  * filter-composited glyph can never read as a hollow outline on the felt.
  */
 function CostPip(props: { ms: string; code: string; sizePx?: number }) {
-  const size = props.sizePx ?? 14;
+  const size = props.sizePx ?? 12;
   return (
     <span
       class="inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)]"
@@ -270,50 +272,55 @@ export default function Hand(props: {
           "--card-h": `${HAND_CARD_H}px`,
           "z-index": stackZ(),
         }}
-        // Rest slot is only the right peek wide; the face hangs left under the previous tile.
-        // Height is the on-screen tuck — the full face extends past the viewport bottom.
+        // Flex footprint stays peek-wide always. Growing width on raise shifted the
+        // right-aligned face out from under the cursor → enter/leave thrash (worst on the left).
+        // The face hangs left of the peek; raise only lifts height / z.
         class={cn(
-          "pointer-events-auto relative origin-bottom transition-[width,height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
-          raised() ? "h-(--card-h) w-[112px]" : "h-(--visible) w-(--peek)",
+          "pointer-events-auto relative w-(--peek) origin-bottom transition-[height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
+          raised() ? "h-(--card-h)" : "h-(--visible)",
         )}
       >
-        {/* Full face, top-aligned: hangs past the screen edge at rest (no mid-card clip). */}
-        <div class="absolute top-0 right-0 h-(--card-h) w-[112px] origin-bottom rounded-game">
-          <CardArt
-            print={p.print}
-            alt={p.name}
-            draggable={false}
-            onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
-            onPointerMove={() => {
-              setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
-              setHoverAction(p.action);
-            }}
-            onPointerLeave={() => {
-              if (hover() === p.name) setHoverCard(null);
-              if (!drag()) setHoverAction(null);
-            }}
-            class={cn(
-              CARD_FACE,
-              "cursor-default touch-none shadow-hand transition-[filter] duration-[80ms] ease-state",
-              p.action && "cursor-grab hover:brightness-110",
-              barZoneAura(p.zone),
-              dimmedness(p),
-            )}
-          />
+        {/* Face + pips share a 112px column (right-aligned in the peek slot). Pips live in a
+            reserved band *above* the face top — Arena cast disks, not overlaid on the art. */}
+        <div class="absolute top-0 right-0 w-[112px]">
           <Show when={pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
-              class="pointer-events-none absolute top-1 right-1 left-1 z-10 flex justify-end gap-px"
+              class="pointer-events-none absolute right-0 left-0 z-20 flex items-start justify-end gap-px pt-0.5"
+              style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
               aria-hidden="true"
             >
-              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 15 : 13} />}</For>
+              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 14 : 12} />}</For>
             </div>
           </Show>
-          <Show when={p.caption}>
-            <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
-              {p.caption}
-            </div>
-          </Show>
+          <div class="relative h-(--card-h) origin-bottom rounded-game">
+            <CardArt
+              print={p.print}
+              alt={p.name}
+              draggable={false}
+              onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
+              onPointerMove={() => {
+                setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
+                setHoverAction(p.action);
+              }}
+              onPointerLeave={() => {
+                if (hover() === p.name) setHoverCard(null);
+                if (!drag()) setHoverAction(null);
+              }}
+              class={cn(
+                CARD_FACE,
+                "cursor-default touch-none shadow-hand transition-[filter] duration-[80ms] ease-state",
+                p.action && "cursor-grab hover:brightness-110",
+                barZoneAura(p.zone),
+                dimmedness(p),
+              )}
+            />
+            <Show when={p.caption}>
+              <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
+                {p.caption}
+              </div>
+            </Show>
+          </div>
         </div>
       </div>
     );
@@ -419,7 +426,8 @@ export default function Hand(props: {
               />
               <Show when={ghostPips().length > 0}>
                 <div
-                  class="pointer-events-none absolute top-1 right-1 left-1 flex justify-end gap-px"
+                  class="pointer-events-none absolute right-0 left-0 flex items-start justify-end gap-px pt-0.5"
+                  style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
                   aria-hidden="true"
                 >
                   <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
