@@ -9,7 +9,8 @@ import * as Option from "effect/Option";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
-import { Button, CardArt } from "~/components/atoms";
+import { Button, buttonClass, CardArt } from "~/components/atoms";
+import { cardBugReportUrl } from "~/lib/cardBugReport";
 import { cn } from "~/lib/cn";
 import {
   type InspectFace,
@@ -22,6 +23,7 @@ import {
 } from "~/lib/inspect";
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { splitOracleText } from "~/lib/oracleText";
+import { tableId } from "~/net";
 import type { CatalogCard, ModifierSourceView } from "~/wire/types";
 
 // Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
@@ -227,6 +229,16 @@ export function InspectDock(props: {
   const hasOracle = () => !!(oracle() || approximates());
   const hasMods = () => modifiers().length > 0;
   const artPrint = () => current()?.print || card()?.default_print || "";
+  const reportHref = () => {
+    const pin = current();
+    if (!pin) return "";
+    return cardBugReportUrl({
+      cardName: displayName(),
+      tableId: tableId(),
+      cardId: pin.cardId || card()?.id,
+      objectId: pin.objectId,
+    });
+  };
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape dismisses via showModal() → onClose.
@@ -299,6 +311,18 @@ export function InspectDock(props: {
                 class="w-(--w) flex-none rounded-[14px] shadow-table"
               />
             </Show>
+            <a
+              href={reportHref()}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="report-card-bug"
+              class={buttonClass(
+                "game-quiet",
+                "mt-3 no-underline hover:text-snow-mint focus-visible:outline-2 focus-visible:outline-seafoam focus-visible:outline-offset-2",
+              )}
+            >
+              Report bug
+            </a>
           </div>
           <Show when={hasOracle() || hasMods()}>
             {/* Fixed-width cards wrap into columns across the remaining viewport width. */}

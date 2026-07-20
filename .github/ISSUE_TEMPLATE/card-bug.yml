@@ -1,0 +1,116 @@
+name: Card bug
+description: Report incorrect or incomplete card behavior from an in-game inspect
+title: "card: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a card bug. Prefill from the in-game **Report bug** button when you can —
+        card name and table id help us find the script and correlate with live-game context.
+
+        Live tables are in-memory (ADR 0021); a table id is still useful for logs, screenshots, and
+        “who was at which table” context shortly after the game.
+
+  - type: input
+    id: card_name
+    attributes:
+      label: Card name
+      description: Exact card name as shown in-game (front face unless the bug is on the back).
+      placeholder: Sol Ring
+    validations:
+      required: true
+
+  - type: input
+    id: table_id
+    attributes:
+      label: Table id
+      description: From `/play/:table` (prefilled by the Report bug button when available).
+      placeholder: ABC123
+    validations:
+      required: false
+
+  - type: input
+    id: card_id
+    attributes:
+      label: Card (oracle) id
+      description: Catalog id when known — maps to `crates/cards/data/`. Prefill from Report bug when available.
+      placeholder: (optional)
+    validations:
+      required: false
+
+  - type: input
+    id: object_id
+    attributes:
+      label: Object id
+      description: Battlefield object id if you Alt-pinned a permanent. Prefill from Report bug when available.
+      placeholder: (optional)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: bug_kind
+    attributes:
+      label: What kind of bug?
+      description: Pick the closest match so we route engine vs client vs card-script work.
+      options:
+        - Wrong rules / ability effect
+        - Ability missing or not offered
+        - Targeting / choices wrong
+        - Cost / mana / payment wrong
+        - Timing / stack / priority wrong
+        - Oracle text or approximation wrong
+        - UI / art / inspect display only
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: Actual behavior in plain language (what the card did or failed to do).
+      placeholder: When I activated Sol Ring, nothing happened / the wrong permanents tapped / …
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_expected
+    attributes:
+      label: What I expected
+      description: Correct Magic behavior (oracle wording is fine).
+      placeholder: "{T}: Add {C}{C}."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps from a fresh or known table state. Include who cast/activated what.
+      placeholder: |
+        1. Start a table with …
+        2. Cast …
+        3. Alt-inspect / activate …
+        4. Observe …
+    validations:
+      required: true
+
+  - type: textarea
+    id: game_context
+    attributes:
+      label: Game context
+      description: |
+        Anything that narrows the failure — whose turn, phase/step, cards on the stack, relevant
+        board state, commander, or “only with X in play”. Screenshots welcome as issue attachments.
+      placeholder: My turn, main phase, Sol Ring untapped on battlefield, no stack…
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: fidelity
+    attributes:
+      label: Fidelity notes
+      options:
+        - label: The in-game inspect showed an Approximation note for this card
+        - label: I believe this is a missing engine/DSL capability (fidelity backlog), not just a script typo
