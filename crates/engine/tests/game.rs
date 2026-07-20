@@ -7118,6 +7118,82 @@ fn two_unbound_flourishings_quadruple_x() {
     );
 }
 
+#[test]
+fn max_payable_x_for_hangarback_with_seven_mana_is_three() {
+    let mut game = Game::new();
+    for _ in 0..7 {
+        game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    }
+    let walker = game.spawn_in_hand(PlayerId(0), card("Hangarback Walker"));
+    let def = game.def_of(walker);
+
+    let max = game.max_payable_x(PlayerId(0), None, |x| Cost {
+        generic: (def.cost.x as u32).saturating_mul(x).min(u8::MAX as u32) as u8,
+        x: 0,
+        ..def.cost
+    });
+
+    assert_eq!(max, 3, "{{X}}{{X}} costs six mana at X = 3");
+}
+
+#[test]
+fn max_payable_x_for_blaze_respects_red_pip() {
+    let mut game = Game::new();
+    for _ in 0..5 {
+        game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    }
+    let blaze = game.spawn_in_hand(PlayerId(0), card("Blaze"));
+    let def = game.def_of(blaze);
+    let cost_at = |x| Cost {
+        generic: (def.cost.x as u32).saturating_mul(x).min(u8::MAX as u32) as u8,
+        x: 0,
+        ..def.cost
+    };
+
+    assert_eq!(
+        game.max_payable_x(PlayerId(0), None, cost_at),
+        0,
+        "five green mana cannot pay Blaze's required red pip",
+    );
+
+    game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    assert_eq!(
+        game.max_payable_x(PlayerId(0), None, cost_at),
+        5,
+        "one red plus five generic mana pays Blaze for X = 5",
+    );
+}
+
+#[test]
+fn max_payable_x_for_free_cast_returns_zero() {
+    let game = Game::new();
+
+    assert_eq!(
+        game.max_payable_x(PlayerId(0), None, |_| Cost::FREE),
+        0,
+        "a mana-free cost that does not change with X has no payable upper bound",
+    );
+}
+
+#[test]
+fn max_payable_x_for_pay_life_x_returns_life() {
+    let mut game = Game::new();
+    game.set_life(PlayerId(0), 17);
+    let cost_at = |_: u32| Cost {
+        additional: AdditionalCost {
+            pay_life_x: true,
+            ..NO_ADD
+        },
+        ..Cost::FREE
+    };
+
+    assert_eq!(
+        game.max_payable_x(PlayerId(0), None, cost_at),
+        17,
+        "pay_life_x with no mana cost caps X at the caster's life total",
+    );
+}
+
 /// A test permanent whose only activated ability has {X} in its activation cost: "{X}: Draw X
 /// cards." The minimal fixture for the ability half of Unbound Flourishing's second trigger
 /// (CR 707.10 — copy an activated ability whose cost contains {X}).

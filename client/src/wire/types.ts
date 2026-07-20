@@ -104,7 +104,7 @@ export type SeatView = {
 };
 export type SeedResponse = { pod_dns: string; table_id: string; version: string };
 export type SeedSeat = { deck_id: number; user_id: number; username: string };
-export type WireCost = { colored: Array<number>; generic: number; has_x?: boolean };
+export type WireCost = { colored: Array<number>; generic: number; has_x?: boolean; x_symbols?: number };
 export type WireEitherMana = { a: number; amount: number; b: number };
 export type WireKind =
   | { kind: "creature"; power: number; toughness: number }
@@ -356,9 +356,12 @@ export type ActionView = {
   id: number;
   kind: string;
   label: string;
+  max_x?: number;
+  min_x?: number;
   modal?: null | { choose: number; choose_max: number; modes: Array<ModeView> };
   needs_target: boolean;
   object?: null | number;
+  x_cost?: null | WireCost;
   required_attacks?: Array<WireAttack>;
   sacrifice_choices?: Array<number>;
   section: string;

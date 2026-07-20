@@ -169,6 +169,11 @@ message ActionView {
   // Creatures that must be declared as attackers for this `declare_attackers` action to be
   // legal (goad "attacks if able", CR 701.38a), each with a suggested legal defender.
   repeated WireAttack required_attacks = 18;
+  uint32 min_x = 19;
+  uint32 max_x = 20;
+  // Mana cost being paid for preview (printed / flashback / back face / activation).
+  // Absent when has_x is false.
+  optional WireCost x_cost = 21;
 }
 
 // The current combat state a client renders: who's attacking and the declared blocks.

@@ -142,6 +142,9 @@ pub struct WireCost {
     /// `x` field; this is only the marker.
     #[serde(default)]
     pub has_x: bool,
+    /// Number of `{X}` symbols (`engine::Cost.x`).
+    #[serde(default)]
+    pub x_symbols: u8,
 }
 
 /// One object the viewer may see, with its render-relevant state.
@@ -324,6 +327,15 @@ pub struct ActionView {
     /// back face for `cast_prepared`). False for non-cast actions.
     #[serde(default)]
     pub has_x: bool,
+    /// Inclusive minimum X value the engine will accept for this action.
+    #[serde(default)]
+    pub min_x: u32,
+    /// Inclusive maximum X value payable right now.
+    #[serde(default)]
+    pub max_x: u32,
+    /// Mana cost being paid for the X-prompt preview. Absent on non-X actions.
+    #[serde(default)]
+    pub x_cost: Option<WireCost>,
     /// Battlefield object ids `Game::plan_auto_taps` would tap to pay this action's mana
     /// (empty when the pool covers it or there is no mana cost). Same planner settle uses —
     /// the client paints a tap preview from this list on hover (choices-actions-and-resolution spec).
@@ -1284,13 +1296,14 @@ mod tests {
                     generic: 1,
                     colored: [0, 0, 1, 0, 0],
                     has_x: false,
+                    x_symbols: 0,
                 },
                 label: "Draw a card".to_string(),
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "pay_cost", "player": 3, "source": 7,
-                "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false},
+                "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0},
                 "label": "Draw a card",
             }),
         );

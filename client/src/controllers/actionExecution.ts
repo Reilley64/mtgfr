@@ -9,6 +9,7 @@ import type {
   ModeView,
   ObjectView,
   VisibleState,
+  WireCost,
   WireIntent,
   WireModeChoice,
   WireTarget,
@@ -246,7 +247,13 @@ export function useActionExecution(deps: ActionExecutionDeps) {
   /** Staged card flying back to hand after cancel (client-game-board-and-interaction spec). */
   const [returningStaged, setReturningStaged] = createSignal<StagedAction | null>(null);
   let returnTimer: ReturnType<typeof setTimeout> | null = null;
-  const [xPrompt, setXPrompt] = createSignal<{ name: string; submit: (x: number) => void } | null>(null);
+  const [xPrompt, setXPrompt] = createSignal<{
+    name: string;
+    minX: number;
+    maxX: number;
+    xCost: WireCost;
+    submit: (x: number) => void;
+  } | null>(null);
   const [modalCast, setModalCast] = createSignal<ModalCast | null>(null);
   const [sacrificePick, setSacrificePick] = createSignal<{
     action: ActionView;
@@ -286,8 +293,12 @@ export function useActionExecution(deps: ActionExecutionDeps) {
     // Prefer ActionView.has_x (back face for cast_prepared; paid cost for cast) over the
     // permanent/card object's front-face mana_cost.
     if (action.has_x && x === undefined) {
+      const xCost = action.x_cost ?? { generic: 0, colored: [0, 0, 0, 0, 0], has_x: true, x_symbols: 1 };
       setXPrompt({
         name: action.kind === "cast_prepared" ? action.label : (card?.name ?? action.label),
+        minX: action.min_x ?? 0,
+        maxX: action.max_x ?? 0,
+        xCost,
         submit: (chosen) => takeCastAction(action, target, chosen, modes, picks),
       });
       return;

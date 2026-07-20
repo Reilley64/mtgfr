@@ -260,6 +260,7 @@ pub(crate) fn wire_cost(cost: engine::Cost) -> WireCost {
         generic: cost.generic,
         colored: cost.colored,
         has_x: cost.x > 0,
+        x_symbols: cost.x,
     }
 }
 
@@ -471,6 +472,19 @@ mod tests {
             "got {:?}",
             back.oracle
         );
+    }
+
+    #[test]
+    fn wire_cost_carries_x_symbol_count() {
+        let hangar = def("Hangarback Walker");
+        let w = wire_cost(hangar.cost);
+        assert_eq!(w.x_symbols, 2);
+        assert!(w.has_x);
+
+        let shock = def("Shock");
+        let s = wire_cost(shock.cost);
+        assert_eq!(s.x_symbols, 0);
+        assert!(!s.has_x);
     }
 
     #[test]
