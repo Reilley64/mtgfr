@@ -14,6 +14,7 @@ import { cn } from "~/lib/cn";
 import {
   type InspectFace,
   type InspectPin,
+  inspectImageFace,
   inspectRootChanged,
   playFace,
   popInspectHistory,
@@ -293,7 +294,7 @@ export function InspectDock(props: {
               <CardArt
                 print={artPrint()}
                 size="large"
-                face={face()}
+                face={inspectImageFace(face())}
                 alt={displayName()}
                 style={{ "--w": `${W}px` }}
                 class="w-(--w) flex-none rounded-[14px] shadow-table"

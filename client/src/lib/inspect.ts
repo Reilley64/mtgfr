@@ -7,6 +7,16 @@ export function playFace(prepared: boolean, hasBack: boolean): InspectFace {
   return prepared && hasBack ? "back" : "front";
 }
 
+/**
+ * CDN/Scryfall image face for inspect art.
+ * Catalog `back` is prepare/flip *rules* text — those layouts have no Scryfall `/back/` art
+ * (API 422 "does not have a second face"; CDN 404). Flip still swaps name + oracle; keep the
+ * printing's front image so Flip does not request a missing `…/large/back/…` URL.
+ */
+export function inspectImageFace(_rulesFace: InspectFace): "front" {
+  return "front";
+}
+
 /** Catalog name to show for the given face. */
 export function shownName(frontName: string, backName: string | null | undefined, face: InspectFace): string {
   if (face === "back" && backName) return backName;
