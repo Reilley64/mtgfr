@@ -3,6 +3,7 @@
 // those zones (a card with a play action is draggable, an actionless one dims — the commander is
 // always on show while it sits in the command zone), and the Graveyard / Exile sections show
 // one card per action there. Battlefield activates live on the selection radial, not in this bar.
+// Zone groups follow Arena: gap + aura colour, no section captions.
 // Every playable card is physically dragged — a ghost follows the cursor — and on release the
 // Board takes the action by its id (drag above the play threshold → take_action; back in the bar
 // → snap back). Combat declarations are NOT cards here; they keep the board's existing
@@ -10,7 +11,7 @@
 
 import { createMemo, createSignal, For, type JSX, onCleanup, Show } from "solid-js";
 import { ZONE } from "~/layout";
-import { byObject, bySection, handExtras } from "~/lib/actions";
+import { type BarZone, barZoneAura, byObject, bySection, handExtras } from "~/lib/actions";
 import { cn } from "~/lib/cn";
 import { imageUrlByPrint } from "~/lib/scryfall";
 import { game } from "~/store";
@@ -32,8 +33,9 @@ function fanTransform(index: number, count: number): string {
 }
 
 /** Height of the bottom action bar; the Board uses it to place the play threshold.
- * Kept lean so fitCamera can spend more of the viewport on the battlefield. */
-export const HAND_BAR_H = 128;
+ * Kept lean so fitCamera can spend more of the viewport on the battlefield.
+ * No section captions (Arena gap+aura) — shorter than a labelled tray. */
+export const HAND_BAR_H = 112;
 
 // A card face, in the bar and as the drag ghost. The bar card overlaps its left neighbour.
 const CARD_FACE = cn("block w-[112px] rounded-game");
@@ -150,7 +152,7 @@ export default function Hand(props: {
   // previews on Alt). `caption` overlays an ability label for battlefield tiles; `fan` is the
   // MTGA-style arc transform for the card's slot in its section. Actionable cards are also
   // keyboard-operable: focusable, labelled for AT, Enter/Space plays them the same as a drag-out
-  // (dropped at the viewport center — comfortably above the bar threshold, so a targeted action
+  // (dropped at the viewport center — comfortably above the play threshold, so a targeted action
   // stages exactly as it would from a drag, and a plain one takes immediately).
   const activate = (action: ActionView) =>
     props.onDrop({ action, x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -168,71 +170,82 @@ export default function Hand(props: {
     dimmed?: boolean;
     caption?: string;
     fan?: string;
-  }) => (
-    // Not a <button>: `onDown` drops the card on pointerup, so a native button's click would fire
-    // `onDrop` a second time. The div carries the full button contract instead — tabIndex, role,
-    // aria-label and Enter/Space — but all four are conditional on `p.action` together, and Biome
-    // can't see that they move as a set.
-    // biome-ignore lint/a11y/noStaticElementInteractions: keyboard-operable exactly when actionable
-    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label is set iff role is "button"
-    <div
-      tabIndex={p.action ? 0 : undefined}
-      role={p.action ? "button" : undefined}
-      data-testid={p.objectId != null ? `hand-card-${p.objectId}` : undefined}
-      data-action-kind={p.action?.kind ?? undefined}
-      data-action-id={p.action != null ? String(p.action.id) : undefined}
-      data-needs-target={p.action?.needs_target ? "1" : "0"}
-      data-has-player-target={p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"}
-      data-has-object-target={p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"}
-      data-object-kind={p.objectKind}
-      aria-label={p.action ? (p.caption ? `${p.name}: ${p.caption}` : p.name) : undefined}
-      onKeyDown={(e) => {
-        if (!p.action || (e.key !== "Enter" && e.key !== " ")) return;
-        e.preventDefault(); // Space must not scroll the page
-        activate(p.action);
-      }}
-      style={{ "--fan": p.fan }}
-      // `transition-transform` re-settles the fan smoothly when a card leaves the row.
-      // first:ml-0 cancels the overlap on the lead card so the fan stays optically centered
-      // under the section label (otherwise every tile, including the first, shifts left).
-      class="pointer-events-auto relative -ml-6 origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)] first:ml-0"
-    >
-      <img
-        src={imageUrlByPrint(p.print)}
-        alt={p.name}
-        draggable={false}
-        onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, e)}
-        onPointerMove={() => {
-          setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
-          setHoverAction(p.action);
+    zone: BarZone;
+  }) => {
+    const zoneWord = p.zone === "hand" ? null : p.zone;
+    const ariaName = () => {
+      if (!p.action) return undefined;
+      const base = p.caption ? `${p.name}: ${p.caption}` : p.name;
+      return zoneWord ? `${base} (${zoneWord})` : base;
+    };
+    return (
+      // Not a <button>: `onDown` drops the card on pointerup, so a native button's click would fire
+      // `onDrop` a second time. The div carries the full button contract instead — tabIndex, role,
+      // aria-label and Enter/Space — but all four are conditional on `p.action` together, and Biome
+      // can't see that they move as a set.
+      // biome-ignore lint/a11y/noStaticElementInteractions: keyboard-operable exactly when actionable
+      // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label is set iff role is "button"
+      <div
+        tabIndex={p.action ? 0 : undefined}
+        role={p.action ? "button" : undefined}
+        data-testid={p.objectId != null ? `hand-card-${p.objectId}` : undefined}
+        data-action-kind={p.action?.kind ?? undefined}
+        data-action-id={p.action != null ? String(p.action.id) : undefined}
+        data-needs-target={p.action?.needs_target ? "1" : "0"}
+        data-has-player-target={p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"}
+        data-has-object-target={p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"}
+        data-object-kind={p.objectKind}
+        data-bar-zone={p.zone}
+        aria-label={ariaName()}
+        onKeyDown={(e) => {
+          if (!p.action || (e.key !== "Enter" && e.key !== " ")) return;
+          e.preventDefault(); // Space must not scroll the page
+          activate(p.action);
         }}
-        onPointerLeave={() => {
-          if (hover() === p.name) setHoverCard(null);
-          if (!drag()) setHoverAction(null);
-        }}
-        class={cn(
-          CARD_FACE,
-          "cursor-default touch-none shadow-hand transition-[transform,filter] duration-[80ms] ease-state",
-          p.action && "cursor-grab hover:brightness-110",
-          dimmedness(p),
-        )}
-      />
-      <Show when={p.caption}>
-        <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
-          {p.caption}
-        </div>
-      </Show>
-    </div>
-  );
+        style={{ "--fan": p.fan }}
+        // `transition-transform` re-settles the fan smoothly when a card leaves the row.
+        // first:ml-0 cancels the overlap on the lead card so the fan stays optically centered
+        // in its group (otherwise every tile, including the first, shifts left).
+        class="pointer-events-auto relative -ml-6 origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)] first:ml-0"
+      >
+        <img
+          src={imageUrlByPrint(p.print)}
+          alt={p.name}
+          draggable={false}
+          onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, e)}
+          onPointerMove={() => {
+            setHoverCard({ name: p.name, cardId: p.cardId, print: p.print });
+            setHoverAction(p.action);
+          }}
+          onPointerLeave={() => {
+            if (hover() === p.name) setHoverCard(null);
+            if (!drag()) setHoverAction(null);
+          }}
+          class={cn(
+            CARD_FACE,
+            "cursor-default touch-none shadow-hand transition-[transform,filter,box-shadow] duration-[80ms] ease-state",
+            p.action && "cursor-grab hover:brightness-110",
+            barZoneAura(p.zone),
+            dimmedness(p),
+          )}
+        />
+        <Show when={p.caption}>
+          <div class="pointer-events-none absolute right-0 bottom-2 left-0 mx-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-control bg-forest-hud px-1 py-0.5 text-center font-semibold text-micro text-snow">
+            {p.caption}
+          </div>
+        </Show>
+      </div>
+    );
+  };
 
   return (
     <>
       <div
         data-testid="hand-bar"
         style={{ "--bar-h": `${HAND_BAR_H}px` }}
-        class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-lg px-md pb-sm"
+        class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-xl px-md pb-sm"
       >
-        <Section label="Hand">
+        <Section name="Hand">
           <For each={handSlots()}>
             {(slot, i) => {
               const count = () => handSlots().length;
@@ -250,6 +263,7 @@ export default function Hand(props: {
                     action={slot.action}
                     caption={actionCaption(slot.action.kind)}
                     fan={fanTransform(i(), count())}
+                    zone="hand"
                   />
                 );
               }
@@ -267,13 +281,14 @@ export default function Hand(props: {
                   dimmed={dimmed()}
                   caption={caption()}
                   fan={fanTransform(i(), count())}
+                  zone="hand"
                 />
               );
             }}
           </For>
         </Section>
         <Show when={commandCards().length > 0}>
-          <Section label="Command" divider>
+          <Section name="Command">
             <For each={commandCards()}>
               {(card, i) => {
                 const action = () => commandActionByObject().get(card.id) ?? null;
@@ -288,14 +303,15 @@ export default function Hand(props: {
                     dimmed={!action() || slotDimmed(card.id)}
                     caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
                     fan={fanTransform(i(), commandCards().length)}
+                    zone="command"
                   />
                 );
               }}
             </For>
           </Section>
         </Show>
-        <ZoneSection label="Graveyard" actions={grouped().graveyard} name={(a) => a.label} />
-        <ZoneSection label="Exile" actions={grouped().exile} name={(a) => a.label} />
+        <ZoneSection zone="graveyard" actions={grouped().graveyard} name={(a) => a.label} />
+        <ZoneSection zone="exile" actions={grouped().exile} name={(a) => a.label} />
       </div>
       <Show when={drag()}>
         {(d) => (
@@ -318,14 +334,15 @@ export default function Hand(props: {
   // image (card name for zone casts, source-permanent name for abilities); `caption` overlays the
   // ability label. Declared inside the component so it closes over BarCard/onDown.
   function ZoneSection(p: {
-    label: string;
+    zone: "graveyard" | "exile";
     actions: ActionView[];
     name: (a: ActionView) => string;
     caption?: boolean;
   }) {
+    const groupName = p.zone === "graveyard" ? "Graveyard" : "Exile";
     return (
       <Show when={p.actions.length > 0}>
-        <Section label={p.label} divider>
+        <Section name={groupName}>
           <For each={p.actions}>
             {(a, i) => {
               const meta = objectMeta(a.object);
@@ -337,6 +354,7 @@ export default function Hand(props: {
                   action={a}
                   caption={p.caption ? a.label : undefined}
                   fan={fanTransform(i(), p.actions.length)}
+                  zone={p.zone}
                 />
               );
             }}
@@ -357,22 +375,11 @@ function actionCaption(kind: string): string | undefined {
   return undefined;
 }
 
-// A labelled group of bar cards with a small all-caps caption; `divider` draws the thin separator
-// that visually splits it from the section to its left.
-function Section(props: { label: string; divider?: boolean; children: JSX.Element }) {
+/** A group of bar cards. No visual caption — Arena uses gap + aura; `name` is for AT only. */
+function Section(props: { name: string; children: JSX.Element }) {
   return (
-    <div
-      class={cn(
-        "flex flex-col items-center justify-end gap-xs",
-        // Hairline separator — glass edge, not a second seat hue (seat hues = identity only).
-        props.divider && "border-white/14 border-l pl-lg",
-      )}
-    >
-      <div class="flex items-end">{props.children}</div>
-      {/* chip (not micro): zone labels must read from across the room (DESIGN principle 3). */}
-      <div class="pointer-events-none font-semibold text-chip text-seafoam uppercase tracking-[0.08em]">
-        {props.label}
-      </div>
-    </div>
+    <fieldset aria-label={props.name} class="m-0 flex min-w-0 items-end border-none p-0">
+      {props.children}
+    </fieldset>
   );
 }

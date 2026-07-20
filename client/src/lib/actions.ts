@@ -9,6 +9,24 @@ import type { ActionView } from "~/wire/types";
  * the existing combat UI rather than rendering as cards. */
 export type Section = "hand" | "command" | "graveyard" | "exile" | "battlefield" | "combat";
 
+/** Zones that can own tiles in the bottom action bar (not battlefield/combat). */
+export type BarZone = "hand" | "command" | "graveyard" | "exile";
+
+/**
+ * Arena-style zone aura on bar tiles: hand is unmarked; command / graveyard / exile each get a
+ * distinct ring so the gap between groups (not a caption) carries the zone cue.
+ */
+export function barZoneAura(zone: BarZone): string | null {
+  if (zone === "hand") return null;
+  if (zone === "command") {
+    return "ring-2 ring-commander-gold shadow-[0_0_12px_rgba(233,184,74,0.45)]";
+  }
+  if (zone === "graveyard") {
+    return "ring-2 ring-note-gold shadow-[0_0_12px_rgba(240,198,116,0.4)]";
+  }
+  return "ring-2 ring-island-blue shadow-[0_0_12px_rgba(119,204,255,0.45)]";
+}
+
 export type GroupedActions = Record<Section, ActionView[]>;
 
 /** Bucket the viewer's actions by their `section`. Unknown sections are dropped (forward-compat:
