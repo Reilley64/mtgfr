@@ -9,7 +9,7 @@
 //! negative id is refused. See [`is_precon`].
 //!
 //! The decklists are shared with the Phase 5.5 legality fixtures (`fixtures/decks/*.json`,
-//! generated from `decklists/*.md`) — one source of truth, `include_str!`'d in at build time.
+//! generated from `docs/decklists/*.md`) — one source of truth, `include_str!`'d in at build time.
 
 use std::sync::LazyLock;
 

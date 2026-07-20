@@ -160,7 +160,7 @@ form when the answer shape matches; the engine dispatches by pending-choice kind
 Every grind deck ends as a read-only in-app precon, so players get the deck, not just the
 pool that supports it. After client catch-up (the wire is settled by then):
 
-- Write `decklists/<snake_slug>.md` — the frozen target list (commander + grouped tables for
+- Write `docs/decklists/<snake_slug>.md` — the frozen target list (commander + grouped tables for
   the other 99 cards, 100 total), sourced from the Archidekt fetch.
 - Generate `crates/server/fixtures/decks/<snake_slug>.json` from that list: `commander` /
   `commander_print` and one `{id, count, print}` entry per non-commander card (basics carry
