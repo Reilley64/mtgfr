@@ -655,6 +655,62 @@ impl Game {
         available.can_pay(&cost, spell)
     }
 
+    /// Largest X such that `available_mana` can pay `cost_at(x)`, or `0` when even X=0 fails.
+    ///
+    /// A free cast has no mana-derived upper bound, so it returns zero. A cost whose X is paid
+    /// with life instead returns the player's current life total.
+    pub fn max_payable_x(
+        &self,
+        player: PlayerId,
+        spell: Option<SpellCharacteristics>,
+        mut cost_at: impl FnMut(u32) -> Cost,
+    ) -> u32 {
+        let available = self.available_mana(player);
+        let at_zero = cost_at(0);
+        let at_one = cost_at(1);
+        let life = self.players[player.0 as usize].life.max(0) as u32;
+
+        if at_zero == at_one
+            && at_zero.generic == 0
+            && at_zero.colored == [0; Color::COUNT]
+            && at_zero.colorless == 0
+            && at_zero.hybrid.is_empty()
+        {
+            return at_zero.additional.pay_life_x.then_some(life).unwrap_or(0);
+        }
+        if !Self::affordable_from(available, at_zero, spell) {
+            return 0;
+        }
+
+        let cap = if at_zero.additional.pay_life_x {
+            life.min(255)
+        } else {
+            255
+        };
+        let mut upper = 1.min(cap);
+        while upper < cap && Self::affordable_from(available, cost_at(upper), spell) {
+            upper = upper.saturating_mul(2).min(cap);
+        }
+        if Self::affordable_from(available, cost_at(upper), spell) {
+            return upper;
+        }
+
+        let mut lower = 0;
+        let mut best = 0;
+        while lower <= upper {
+            let middle = lower + (upper - lower) / 2;
+            if Self::affordable_from(available, cost_at(middle), spell) {
+                best = middle;
+                lower = middle + 1;
+            } else if middle == 0 {
+                break;
+            } else {
+                upper = middle - 1;
+            }
+        }
+        best
+    }
+
     /// Plan how to pay `cost` from `player`'s pool. Returns the exact multiset to remove, or
     /// `None` if the pool can't cover it. Pure — the caller applies the [`Event::ManaSpent`].
     pub(crate) fn plan_payment(
