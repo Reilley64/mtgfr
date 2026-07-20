@@ -3,8 +3,8 @@
 // narrate the `events` into a scrollable game log. No snapshot refetch mid-stream.
 
 import { createStore } from "solid-js/store";
-import { describe, extractProvenance } from "~/lib/eventFold";
 import type { ZonePileEntrance } from "~/lib/eventFold";
+import { describe, extractProvenance } from "~/lib/eventFold";
 import type { StreamFrame, VisibleState } from "~/wire/types";
 
 export type { ZonePileEntrance } from "~/lib/eventFold";

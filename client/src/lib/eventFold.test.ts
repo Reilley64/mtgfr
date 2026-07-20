@@ -1,7 +1,7 @@
-import { describe as suite, expect, it } from "vitest";
-import { describe, extractProvenance } from "~/lib/eventFold";
+import { expect, it, describe as suite } from "vitest";
 import { ZONE } from "~/layout";
-import type { ObjectView, VisibleEvent, VisibleState } from "~/wire/types";
+import { describe, extractProvenance } from "~/lib/eventFold";
+import type { ObjectView, VisibleState } from "~/wire/types";
 
 function mkObject(overrides: Partial<ObjectView> = {}): ObjectView {
   return {
