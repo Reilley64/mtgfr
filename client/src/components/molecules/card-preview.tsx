@@ -237,6 +237,7 @@ export function InspectDock(props: {
       tableId: tableId(),
       cardId: pin.cardId || card()?.id,
       objectId: pin.objectId,
+      approximates: approximates(),
     });
   };
 

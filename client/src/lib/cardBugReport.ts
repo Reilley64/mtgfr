@@ -10,6 +10,8 @@ export type CardBugReportFields = {
   cardId?: string;
   /** Battlefield object id when Alt-pinning a permanent. */
   objectId?: number;
+  /** Inspect-dock Approximation note for the shown face, when present. */
+  approximates?: string | null;
 };
 
 /** Issue form URL with `card_name` / `table_id` (and optional ids) as query prefills. */
@@ -23,5 +25,7 @@ export function cardBugReportUrl(fields: CardBugReportFields): string {
   const cardId = fields.cardId?.trim();
   if (cardId) params.set("card_id", cardId);
   if (fields.objectId != null) params.set("object_id", String(fields.objectId));
+  const approximates = fields.approximates?.trim();
+  if (approximates) params.set("approximates", approximates);
   return `${ISSUE_NEW}?${params.toString()}`;
 }
