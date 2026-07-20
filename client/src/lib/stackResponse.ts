@@ -132,6 +132,11 @@ export type StackChromeInput = {
   step: number;
   actions: readonly ActionView[] | undefined;
   manaSources: readonly ManaSourceCard[];
+  /**
+   * Local declare-attackers staging has at least one attacker and Attack has not been confirmed.
+   * End Turn must not compete with `Attack (N)` (clicking it would auto-pass and seal an empty declare).
+   */
+  pendingAttackers: boolean;
 };
 
 /**
@@ -169,7 +174,8 @@ export type StackChrome = {
   turnYielded: boolean;
   /**
    * Show Arena End Turn (ADR 0037) — arms the same `turn_yielded` flag while you are active.
-   * Hidden for spectators and when it is not your turn (`showTurnYield` covers until-my-turn).
+   * Hidden for spectators, when it is not your turn (`showTurnYield` covers until-my-turn),
+   * while Resolve card / Resolve stack own the pass job, and while Attack (N) is pending.
    */
   showEndTurn: boolean;
   /**
@@ -185,10 +191,24 @@ export function showTurnYieldControl(opts: { spectating: boolean; viewer: number
   return opts.active !== opts.viewer;
 }
 
-/** Whether End Turn is offered (ADR 0037 — same flag, only while you are active). */
-export function showEndTurnControl(opts: { spectating: boolean; viewer: number; active: number }): boolean {
+/**
+ * Whether End Turn is offered (ADR 0037 — same flag, only while you are active).
+ * Hidden while stack resolve chrome is the priority job, or while Attack (N) is pending confirm.
+ */
+export function showEndTurnControl(opts: {
+  spectating: boolean;
+  viewer: number;
+  active: number;
+  /** Resolve card / Resolve stack (armed or arm) — End Turn must not compete. */
+  stackResolveChrome: boolean;
+  /** Staged attackers awaiting Attack confirm. */
+  pendingAttackers: boolean;
+}): boolean {
   if (opts.spectating) return false;
-  return opts.active === opts.viewer;
+  if (opts.active !== opts.viewer) return false;
+  if (opts.stackResolveChrome) return false;
+  if (opts.pendingAttackers) return false;
+  return true;
 }
 
 /**
@@ -223,6 +243,7 @@ export function stackChrome(input: StackChromeInput): StackChrome {
   const focus = instantPriorityFocus(input);
   const hideControlsPass = input.stackLen > 0;
   const space = spaceBinding(input);
+  const stackResolveChrome = pass || stackYieldArm || stackYieldArmed;
   return {
     pass,
     stackYieldArm,
@@ -235,7 +256,13 @@ export function stackChrome(input: StackChromeInput): StackChrome {
     space,
     showTurnYield: showTurnYieldControl(input),
     turnYielded: input.turnYielded,
-    showEndTurn: showEndTurnControl(input),
+    showEndTurn: showEndTurnControl({
+      spectating: input.spectating,
+      viewer: input.viewer,
+      active: input.active,
+      stackResolveChrome,
+      pendingAttackers: input.pendingAttackers,
+    }),
     showPrimary: (primaryKind) => !(hideControlsPass && primaryKind === "pass"),
   };
 }
@@ -248,6 +275,8 @@ export function stackChrome(input: StackChromeInput): StackChrome {
 export type BoardChromeLocal = {
   staged: boolean;
   manaSources: readonly ManaSourceCard[];
+  /** True when Attack (N) is pending — local staged attackers, not yet confirmed. */
+  pendingAttackers: boolean;
 };
 
 /** Map VisibleState + local staging into StackChromeInput (no Board field scattering). */
@@ -267,6 +296,7 @@ export function stackChromeInputFromState(state: VisibleState | null, local: Boa
       step: -1,
       actions: undefined,
       manaSources: local.manaSources,
+      pendingAttackers: local.pendingAttackers,
     };
   }
   const spectating = state.viewer === SPECTATOR_VIEWER;
@@ -285,6 +315,7 @@ export function stackChromeInputFromState(state: VisibleState | null, local: Boa
     step: state.step,
     actions: state.actions,
     manaSources: local.manaSources,
+    pendingAttackers: local.pendingAttackers,
   };
 }
 

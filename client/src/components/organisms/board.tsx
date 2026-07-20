@@ -331,6 +331,8 @@ export default function Board() {
       // Expand suspends arrow drawing only — staged still blocks Pass / Space / yield.
       staged: stackStagedCard() != null,
       manaSources: drawnCards(),
+      // Attack (N) pending — End Turn must not compete (would auto-pass and seal empty).
+      pendingAttackers: primaryAction().kind === "confirm-attackers" && attackers().length > 0,
     }),
   );
   // Won, lost, or still in it. An eliminated player's intents are rejected by the server, so their

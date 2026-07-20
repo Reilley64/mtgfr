@@ -141,6 +141,7 @@ describe("stackChrome", () => {
     step: STEP.Main1,
     actions: [activate(1)],
     manaSources: [] as ManaSourceCard[],
+    pendingAttackers: false,
   };
 
   it("keeps Pass and Space in sync while the seat can act on the stack", () => {
@@ -182,9 +183,37 @@ describe("stackChrome", () => {
   });
 
   it("shows End Turn only when you are the active player (not spectating)", () => {
-    expect(stackChrome({ ...base, viewer: 0, active: 0 }).showEndTurn).toBe(true);
-    expect(stackChrome({ ...base, viewer: 0, active: 1 }).showEndTurn).toBe(false);
-    expect(stackChrome({ ...base, viewer: 0, active: 0, spectating: true }).showEndTurn).toBe(false);
+    expect(stackChrome({ ...base, stackLen: 0, viewer: 0, active: 0 }).showEndTurn).toBe(true);
+    expect(stackChrome({ ...base, stackLen: 0, viewer: 0, active: 1 }).showEndTurn).toBe(false);
+    expect(stackChrome({ ...base, stackLen: 0, viewer: 0, active: 0, spectating: true }).showEndTurn).toBe(false);
+  });
+
+  it("hides End Turn while Resolve card / Resolve stack are offered", () => {
+    // Active seat choosing how to advance the stack — End Turn competes with that job.
+    expect(stackChrome(base).showEndTurn).toBe(false);
+    expect(stackChrome({ ...base, yielded: true, actions: [] }).showEndTurn).toBe(false);
+    // Stack up but this seat is not choosing (no resolve chrome) — End Turn still makes sense.
+    expect(stackChrome({ ...base, priority: 1, actions: [] }).showEndTurn).toBe(true);
+  });
+
+  it("hides End Turn when attackers are staged and Attack has not been confirmed", () => {
+    expect(
+      stackChrome({
+        ...base,
+        stackLen: 0,
+        step: STEP.DeclareAttackers,
+        pendingAttackers: true,
+      }).showEndTurn,
+    ).toBe(false);
+    // Empty declare ("No attackers") may still offer End Turn to skip the rest of the turn.
+    expect(
+      stackChrome({
+        ...base,
+        stackLen: 0,
+        step: STEP.DeclareAttackers,
+        pendingAttackers: false,
+      }).showEndTurn,
+    ).toBe(true);
   });
 
   it("binds Space to primary on an empty stack, ignore for spectators", () => {
@@ -222,12 +251,13 @@ describe("boardChromeFromState", () => {
         actions: [activate(1)],
         active_player: 1,
       }),
-      { staged: false, manaSources: [] },
+      { staged: false, manaSources: [], pendingAttackers: false },
     );
     expect(chrome.pass).toBe(true);
     expect(chrome.space).toBe("pass_priority");
     expect(chrome.showTurnYield).toBe(true);
     expect(chrome.turnYielded).toBe(true);
+    expect(chrome.showEndTurn).toBe(false);
   });
 
   it("takes staged + manaSources as local binder args (not scattered Board field picks)", () => {
@@ -240,14 +270,32 @@ describe("boardChromeFromState", () => {
       active_player: 1,
       step: STEP.Upkeep,
     });
-    expect(boardChromeFromState(state, { staged: true, manaSources: [] }).space).toBe("ignore");
+    expect(boardChromeFromState(state, { staged: true, manaSources: [], pendingAttackers: false }).space).toBe(
+      "ignore",
+    );
 
     const withMana = boardChromeFromState(state, {
       staged: false,
       manaSources: [land(42)],
+      pendingAttackers: false,
     });
     expect(withMana.focus).toBe(true);
     expect(withMana.brightIds.has(42)).toBe(true);
+  });
+
+  it("hides End Turn when local pendingAttackers is set (Attack confirm pending)", () => {
+    const chrome = boardChromeFromState(
+      visible({
+        step: STEP.DeclareAttackers,
+        active_player: 0,
+        viewer: 0,
+        priority: 0,
+        can_act: true,
+        stack: [],
+      }),
+      { staged: false, manaSources: [], pendingAttackers: true },
+    );
+    expect(chrome.showEndTurn).toBe(false);
   });
 
   it("treats SPECTATOR_VIEWER as spectating (Space ignore) without a Board spectating() pick", () => {
@@ -259,7 +307,7 @@ describe("boardChromeFromState", () => {
         can_act: true,
         priority: 0,
       }),
-      { staged: false, manaSources: [] },
+      { staged: false, manaSources: [], pendingAttackers: false },
     );
     expect(chrome.space).toBe("ignore");
     expect(chrome.pass).toBe(false);
@@ -267,7 +315,7 @@ describe("boardChromeFromState", () => {
   });
 
   it("returns a safe empty-stack chrome when state is null", () => {
-    const chrome = boardChromeFromState(null, { staged: false, manaSources: [] });
+    const chrome = boardChromeFromState(null, { staged: false, manaSources: [], pendingAttackers: false });
     expect(chrome.space).toBe("primary");
     expect(chrome.pass).toBe(false);
     expect(chrome.allowDwell).toBe(false);
