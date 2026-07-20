@@ -1,8 +1,8 @@
 // DOM card art that registers with the shared ImageCache so canvas and overlays share one
 // decode pipeline. Slate background shows until the browser paints the image.
 
-import { createEffect, type JSX, splitProps } from "solid-js";
-import { cardArtFaceTag } from "~/lib/cardArtFace";
+import { createEffect, createSignal, type JSX, splitProps } from "solid-js";
+import { cardArtFaceTag, imageFaceAfterLoadError } from "~/lib/cardArtFace";
 import { cn } from "~/lib/cn";
 import { sharedImageCache } from "~/lib/imageCache";
 import { type ImageFace, type ImageSize, imageUrlByPrint } from "~/lib/scryfall";
@@ -19,8 +19,17 @@ export type CardArtProps = ImgProps & {
 };
 
 export function CardArt(props: CardArtProps) {
-  const [local, rest] = splitProps(props, ["print", "alt", "size", "face", "placeholderClass", "class"]);
-  const url = () => imageUrlByPrint(local.print, local.size ?? "large", local.face ?? "front");
+  const [local, rest] = splitProps(props, ["print", "alt", "size", "face", "placeholderClass", "class", "onError"]);
+  const requestedFace = () => local.face ?? "front";
+  // After a 404 on `/back/`, fall back to front (prepare/flip). Reset when print/face change.
+  const [overrideFace, setOverrideFace] = createSignal<ImageFace | null>(null);
+  createEffect(() => {
+    local.print;
+    requestedFace();
+    setOverrideFace(null);
+  });
+  const face = () => overrideFace() ?? requestedFace();
+  const url = () => imageUrlByPrint(local.print, local.size ?? "large", face());
 
   createEffect(() => {
     const u = url();
@@ -40,6 +49,12 @@ export function CardArt(props: CardArtProps) {
       src={url()}
       alt={local.alt ?? ""}
       class={cn("bg-morph-slate", local.class, local.placeholderClass)}
+      onError={(e) => {
+        const next = imageFaceAfterLoadError(face());
+        if (next !== face()) setOverrideFace(next);
+        const prev = local.onError;
+        if (typeof prev === "function") prev(e);
+      }}
     />
   );
 }

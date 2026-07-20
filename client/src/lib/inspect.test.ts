@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  inspectImageFace,
   inspectRootChanged,
   pinFromHit,
   playFace,
@@ -20,13 +19,6 @@ describe("playFace", () => {
 
   it("stays front when prepared but no back", () => {
     expect(playFace(true, false)).toBe("front");
-  });
-});
-
-describe("inspectImageFace", () => {
-  it("always loads front art — prepare/flip backs have no Scryfall /back/ image", () => {
-    expect(inspectImageFace("front")).toBe("front");
-    expect(inspectImageFace("back")).toBe("front");
   });
 });
 
