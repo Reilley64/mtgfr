@@ -1,9 +1,9 @@
 # When this creature enters, you may return target sorcery card from your graveyard to your hand.
 name = "Anarchist"
 subtypes = ["Human", "Rebel"]
-id = "6a439132-fc31-4a70-9043-462383458b2c"
-default_print = "11b167f0-a881-40ab-847e-c3f51528c414"
-set = "p02"
+id = "82b9ad93-df75-4417-9746-798db8fe6ba0"
+default_print = "966d56fd-4df8-4532-860c-371641630a70"
+set = "tpr"
 oracle = "When this creature enters, you may return target sorcery card from your graveyard to your hand."
 
 [cost]

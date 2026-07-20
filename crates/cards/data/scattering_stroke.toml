@@ -3,10 +3,10 @@
 # card of their library, then puts that card on the top or bottom. A player wins if their card had a
 # higher mana value.)
 name = "Scattering Stroke"
-id = "8015ea94-370e-466a-ab61-26d8f073f14d"
-default_print = "a1d085fa-79f9-4fac-80f2-cfc2effe65ed"
+id = "314a9604-34ec-4529-bd14-7b63be28669f"
+default_print = "20652385-465f-408b-adea-13a14fb05642"
 oracle = "Clash with an opponent. Counter target spell. If you win the clash, at the beginning of your next main phase, add {C} for each 1 mana in that spell's mana cost. (Each clashing player reveals the top card of their library, then puts that card on the top or bottom. A player wins if their card had a higher mana value.)"
-set = "all"
+set = "cmd"
 
 [cost]
 generic = 1

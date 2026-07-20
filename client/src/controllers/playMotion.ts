@@ -90,7 +90,9 @@ export function usePlayMotion(deps: PlayMotionDeps) {
     for (const [id, f] of [...next]) {
       if (!flightSettled(f)) continue;
       next.delete(id);
-      spawnedFromStack.delete(id);
+      // Do not clear spawnedFromStack here. Resolve provenance (fromStack) stays live until the
+      // next delta; clearing the guard lets absorb re-spawn a from-stack actor at the stack aim
+      // after the real flight already settled (Elvish Mystic snap-back / stuck stack ghost).
       const fromId = f.fromCardId;
       if (fromId != null) {
         setHandHidden((h) => {

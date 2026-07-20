@@ -1,4 +1,7 @@
-// Backfill `id` (Scryfall oracle id) and `default_print` (Scryfall card UUID) onto pool TOMLs.
+// Backfill `id` (Scryfall oracle id) and `default_print` (Scryfall preferred print UUID)
+// onto pool TOMLs. Preferred print = Scryfall `/cards/named` (or the card-ids.json seed).
+// Precon fixtures stamp their own prints (SoC / Archidekt) separately — do not copy those
+// into CardDef.default_print.
 //
 // Uses client/src/lib/card-ids.json (name → printing UUID) as the seed, then reads each card's
 // `oracle_id` from Scryfall's collection endpoint. Idempotent: strips prior top-level id /
