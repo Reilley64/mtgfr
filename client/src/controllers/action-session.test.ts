@@ -71,7 +71,13 @@ describe("ActionSession / ActionChrome cancel contract", () => {
         playOrigin: { x: 0, y: 0 },
         playOriginScreen: { x: 100, y: 200 },
       });
-      execution.setXPrompt({ name: "Fireball", submit: () => {} });
+      execution.setXPrompt({
+        name: "Fireball",
+        minX: 0,
+        maxX: 1,
+        xCost: { generic: 0, colored: [0, 0, 0, 0, 0], has_x: true, x_symbols: 1 },
+        submit: () => {},
+      });
 
       execution.cancelStagedOnly(); // ActionChrome staged-pick cancel path
       expect(execution.staged()).toBeNull();
@@ -79,6 +85,29 @@ describe("ActionSession / ActionChrome cancel contract", () => {
 
       execution.cancelActionState(); // Escape / session.cancel — clears everything
       expect(execution.xPrompt()).toBeNull();
+      dispose();
+    });
+  });
+
+  it("opens X prompt with the action's bounded cost", async () => {
+    const xAction = mkAction({
+      has_x: true,
+      min_x: 0,
+      max_x: 3,
+      x_cost: { generic: 1, colored: [0, 0, 0, 0, 0], has_x: true, x_symbols: 2 },
+    });
+    const state = { actions: [xAction], objects: [card(7)] } as VisibleState;
+    createRoot((dispose) => {
+      const execution = useActionExecution(sessionDeps(state));
+
+      void execution.takeCastAction(xAction, null);
+
+      expect(execution.xPrompt()).toMatchObject({
+        name: "Card 7",
+        minX: 0,
+        maxX: 3,
+        xCost: xAction.x_cost,
+      });
       dispose();
     });
   });

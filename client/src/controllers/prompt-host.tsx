@@ -1,10 +1,11 @@
 import { createMemo, createSignal, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { Button, Field, Modal } from "~/components/atoms";
-import { FORMS, PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
+import { costText, FORMS, PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
 import { type AnswerInput, choiceIntent, choiceShowKey, myChoice } from "~/lib/choice";
 import { isFullscreenPrompt } from "~/lib/promptForm";
-import type { PendingChoiceView, VisibleState, WireIntent } from "~/wire/types";
+import { clampX, costWithChosenX } from "~/lib/xCost";
+import type { PendingChoiceView, VisibleState, WireCost, WireIntent } from "~/wire/types";
 
 export { choiceShowKey, myChoice } from "~/lib/choice";
 
@@ -36,21 +37,51 @@ function PromptModal(props: { pc: PendingChoiceView; state: VisibleState; onAnsw
 /** Choose a value for a cast's `{X}` (CR 601.2b). Client-local like staged targeting — the chosen
  * value rides the cast intent's `x`; the engine verifies the whole payment and rejects an
  * unaffordable X, so no affordability math here. */
-export function XPromptModal(props: { name: string; onSubmit: (x: number) => void; onCancel: () => void }) {
-  const [x, setX] = createSignal(0);
+export function XPromptModal(props: {
+  name: string;
+  minX: number;
+  maxX: number;
+  xCost: WireCost;
+  onSubmit: (x: number) => void;
+  onCancel: () => void;
+}) {
+  const min = () => props.minX;
+  const max = () => props.maxX;
+  const [x, setX] = createSignal(clampX(props.maxX, min(), max()));
+  const setClamped = (value: number) => setX(clampX(value, min(), max()));
+  const preview = () => costText(costWithChosenX(props.xCost, x()));
   return (
-    <Modal class="fixed top-[45%] left-1/2 z-30 -translate-x-1/2 -translate-y-1/2">
+    <Modal
+      class="fixed top-[45%] left-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") props.onCancel();
+      }}
+    >
       <div class={PROMPT_TITLE}>Choose X for {props.name}</div>
+      <div class="mb-sm text-[var(--mist)]">Pay {preview()}</div>
       <div class={PROMPT_ROW}>
+        <Button type="button" variant="ghost" onClick={() => setClamped(min())}>
+          Min
+        </Button>
+        <Button type="button" disabled={x() <= min()} onClick={() => setClamped(x() - 1)}>
+          −
+        </Button>
         <Field
           ref={(el) => setTimeout(() => el.select())}
           type="number"
-          min="0"
+          min={String(min())}
+          max={String(max())}
           value={x()}
-          onInput={(e) => setX(Math.max(0, Math.floor(Number(e.currentTarget.value) || 0)))}
+          onInput={(e) => setClamped(Number(e.currentTarget.value))}
           onKeyDown={(e) => e.key === "Enter" && props.onSubmit(x())}
           class="w-[70px]"
         />
+        <Button type="button" disabled={x() >= max()} onClick={() => setClamped(x() + 1)}>
+          +
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setClamped(max())}>
+          Max
+        </Button>
         <Button type="button" onClick={() => props.onSubmit(x())}>
           Cast
         </Button>

@@ -39,7 +39,16 @@ export function ActionChrome(props: { execution: ActionExecution; playerName: (s
   return (
     <>
       <Show when={ex().xPrompt()}>
-        {(p) => <XPromptModal name={p().name} onSubmit={p().submit} onCancel={() => ex().setXPrompt(null)} />}
+        {(p) => (
+          <XPromptModal
+            name={p().name}
+            minX={p().minX}
+            maxX={p().maxX}
+            xCost={p().xCost}
+            onSubmit={p().submit}
+            onCancel={() => ex().setXPrompt(null)}
+          />
+        )}
       </Show>
       {/* A staged action whose legal targets aren't all on the canvas (a card in a graveyard, a
           spell on the stack) asks with a picker instead of the arrow. Same picker after escape /
