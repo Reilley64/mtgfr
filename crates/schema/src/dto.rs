@@ -142,6 +142,9 @@ pub struct WireCost {
     /// `x` field; this is only the marker.
     #[serde(default)]
     pub has_x: bool,
+    /// Number of `{X}` symbols (`engine::Cost.x`).
+    #[serde(default)]
+    pub x_symbols: u8,
 }
 
 /// One object the viewer may see, with its render-relevant state.
@@ -1284,13 +1287,14 @@ mod tests {
                     generic: 1,
                     colored: [0, 0, 1, 0, 0],
                     has_x: false,
+                    x_symbols: 0,
                 },
                 label: "Draw a card".to_string(),
             })
             .unwrap(),
             serde_json::json!({
                 "kind": "pay_cost", "player": 3, "source": 7,
-                "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false},
+                "cost": {"generic": 1, "colored": [0, 0, 1, 0, 0], "has_x": false, "x_symbols": 0},
                 "label": "Draw a card",
             }),
         );

@@ -61,6 +61,8 @@ message WireCost {
   // Whether the cost includes a variable `{X}` (CR 601.2b) — the chosen value rides the cast
   // intent's `x` field; this is only the marker.
   bool has_x = 3;
+  // Number of `{X}` symbols in the cost (0 = none). CR 107.3: each symbol is paid once.
+  uint32 x_symbols = 4;
 }
 
 // What a card fundamentally is, for the client (mirror of `engine::CardKind`).
