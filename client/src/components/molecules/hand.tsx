@@ -272,11 +272,12 @@ export default function Hand(props: {
           "--card-h": `${HAND_CARD_H}px`,
           "z-index": stackZ(),
         }}
-        // Rest slot is only the right peek wide; the face hangs left under the previous tile.
-        // Height is the on-screen tuck — the full face extends past the viewport bottom.
+        // Flex footprint stays peek-wide always. Growing width on raise shifted the
+        // right-aligned face out from under the cursor → enter/leave thrash (worst on the left).
+        // The face hangs left of the peek; raise only lifts height / z.
         class={cn(
-          "pointer-events-auto relative origin-bottom transition-[width,height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
-          raised() ? "h-(--card-h) w-[112px]" : "h-(--visible) w-(--peek)",
+          "pointer-events-auto relative w-(--peek) origin-bottom transition-[height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
+          raised() ? "h-(--card-h)" : "h-(--visible)",
         )}
       >
         {/* Face + pips share a 112px column (right-aligned in the peek slot). Pips live in a
