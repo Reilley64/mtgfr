@@ -65,7 +65,7 @@ impl Cost {
     /// This cost with a chosen `x` folded into its generic component (CR 601.2b/107.3: paying
     /// `{X}` adds `x` generic mana per `{X}` symbol in the cost — `{X}{X}{X}` pays the chosen
     /// value three times). A no-`{X}` cost ignores `x`, matching "must stay 0."
-    pub(crate) fn with_x(self, x: u32) -> Cost {
+    pub fn with_x(self, x: u32) -> Cost {
         // Clamp before narrowing so a huge chosen X (or a large multiplier) can never truncate
         // down to a cheap cost (a payment-bypass); a cost that saturates at 255 generic is
         // already unpayable.

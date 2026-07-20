@@ -327,6 +327,15 @@ pub struct ActionView {
     /// back face for `cast_prepared`). False for non-cast actions.
     #[serde(default)]
     pub has_x: bool,
+    /// Inclusive minimum X value the engine will accept for this action.
+    #[serde(default)]
+    pub min_x: u32,
+    /// Inclusive maximum X value payable right now.
+    #[serde(default)]
+    pub max_x: u32,
+    /// Mana cost being paid for the X-prompt preview. Absent on non-X actions.
+    #[serde(default)]
+    pub x_cost: Option<WireCost>,
     /// Battlefield object ids `Game::plan_auto_taps` would tap to pay this action's mana
     /// (empty when the pool covers it or there is no mana cost). Same planner settle uses —
     /// the client paints a tap preview from this list on hover (ADR 0022).

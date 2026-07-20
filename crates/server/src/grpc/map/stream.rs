@@ -148,6 +148,9 @@ pub fn action_view_to_pb(action: ActionView) -> pb::ActionView {
         graveyard_exile_min: u32::from(action.graveyard_exile_min),
         graveyard_exile_max: u32::from(action.graveyard_exile_max),
         has_x: action.has_x,
+        min_x: action.min_x,
+        max_x: action.max_x,
+        x_cost: action.x_cost.map(wire_cost_to_pb),
         auto_tap: action.auto_tap,
         required_attacks: action
             .required_attacks
@@ -1679,6 +1682,9 @@ mod tests {
                 graveyard_exile_min: 0,
                 graveyard_exile_max: 0,
                 has_x: false,
+                min_x: 0,
+                max_x: 0,
+                x_cost: None,
                 auto_tap: vec![],
                 required_attacks: vec![],
             }],

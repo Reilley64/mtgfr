@@ -880,7 +880,7 @@ impl CardDef {
     /// reads the printed cost (CR 202.3b treats `{X}` as 0 off the stack), which is safe here
     /// because [`SpendRestriction::ManaValueAtLeastOrHasX`] always also accepts `has_x`
     /// regardless of the value actually chosen for `{X}`.
-    pub(crate) fn spell_characteristics(self) -> SpellCharacteristics {
+    pub fn spell_characteristics(self) -> SpellCharacteristics {
         SpellCharacteristics {
             mana_value: self.mana_value(),
             has_x: self.cost.x > 0,

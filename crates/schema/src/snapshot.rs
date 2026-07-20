@@ -159,6 +159,20 @@ pub fn complete_visible(
 /// Wire form of one of `game`'s stored [`engine::LegalAction`]s. `MeaningfulAction::PlayLand`/
 /// `Cast` bucket by their carried zone; `Activate` is always "battlefield"; the combat
 /// declarations are "combat" (the board UI drives them, not the action bar).
+fn x_choice_fields(
+    game: &engine::Game,
+    player: engine::PlayerId,
+    paid: engine::Cost,
+    spell: Option<engine::SpellCharacteristics>,
+    cost_at: impl FnMut(u32) -> engine::Cost,
+) -> (bool, u32, u32, Option<crate::dto::WireCost>) {
+    if paid.x == 0 {
+        return (false, 0, 0, None);
+    }
+    let max_x = game.max_payable_x(player, spell, cost_at);
+    (true, 0, max_x, Some(wire_cost(paid)))
+}
+
 fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView {
     use engine::{MeaningfulAction, TargetSpec, Zone};
 
@@ -225,6 +239,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -240,14 +257,35 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                     None => (None, 0, 0),
                 };
             // The mana cost being paid — flashback/escape replace the printed cost from the GY.
-            let has_x = if zone == Zone::Graveyard {
+            let paid = if zone == Zone::Graveyard {
                 def.flashback
                     .or(def.escape.map(|e| e.cost))
-                    .map(|c| c.x > 0)
-                    .unwrap_or(def.cost.x > 0)
+                    .unwrap_or(def.cost)
             } else {
-                def.cost.x > 0
+                def.cost
             };
+            let (has_x, min_x, max_x, x_cost) = x_choice_fields(
+                game,
+                action.player,
+                paid,
+                Some(def.spell_characteristics()),
+                |x| {
+                    game.cast_cost(
+                        action.player,
+                        card,
+                        def,
+                        None,
+                        x,
+                        zone,
+                        0,
+                        false,
+                        false,
+                        false,
+                        0,
+                        0,
+                    )
+                },
+            );
             ActionView {
                 id: action.id,
                 kind: "cast".to_string(),
@@ -265,37 +303,47 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 graveyard_exile_min,
                 graveyard_exile_max,
                 has_x,
+                min_x,
+                max_x,
+                x_cost,
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
             }
         }
-        MeaningfulAction::Activate { source, ability } => ActionView {
-            id: action.id,
-            kind: "activate".to_string(),
-            object: Some(source),
-            ability_index: Some(ability as u32),
-            section: "battlefield".to_string(),
-            label: game
-                .ability_at(source, ability)
-                .map(|a| a.effect.label())
-                .unwrap_or_default(),
-            needs_target: game.ability_target_spec(source, ability) != TargetSpec::None,
-            targets: targets(source, Some(ability)),
-            modal: None,
-            sacrifice_choices: game.sacrifice_candidates(source, ability),
-            discard_choices: None,
-            discard_count: 0,
-            graveyard_exile_choices: None,
-            graveyard_exile_min: 0,
-            graveyard_exile_max: 0,
-            // An activation cost with {X} (Nin, the Pain Artist's {X}{U}{R}, {T}) needs the
-            // client's X prompt before the one-click take_action fires — same flag casts use.
-            has_x: game.ability_at(source, ability).is_some_and(
-                |a| matches!(a.timing, engine::Timing::Activated(cost) if cost.mana.x > 0),
-            ),
-            auto_tap: Vec::new(),
-            required_attacks: Vec::new(),
-        },
+        MeaningfulAction::Activate { source, ability } => {
+            let activation = game.ability_at(source, ability);
+            let paid = activation.and_then(|a| match a.timing {
+                engine::Timing::Activated(cost) => Some(cost.mana),
+                _ => None,
+            });
+            let (has_x, min_x, max_x, x_cost) = match paid {
+                Some(paid) => x_choice_fields(game, action.player, paid, None, |x| paid.with_x(x)),
+                None => (false, 0, 0, None),
+            };
+            ActionView {
+                id: action.id,
+                kind: "activate".to_string(),
+                object: Some(source),
+                ability_index: Some(ability as u32),
+                section: "battlefield".to_string(),
+                label: activation.map(|a| a.effect.label()).unwrap_or_default(),
+                needs_target: game.ability_target_spec(source, ability) != TargetSpec::None,
+                targets: targets(source, Some(ability)),
+                modal: None,
+                sacrifice_choices: game.sacrifice_candidates(source, ability),
+                discard_choices: None,
+                discard_count: 0,
+                graveyard_exile_choices: None,
+                graveyard_exile_min: 0,
+                graveyard_exile_max: 0,
+                has_x,
+                min_x,
+                max_x,
+                x_cost,
+                auto_tap: Vec::new(),
+                required_attacks: Vec::new(),
+            }
+        }
         MeaningfulAction::Cycle { card } => ActionView {
             id: action.id,
             kind: "cycle".to_string(),
@@ -315,6 +363,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -335,6 +386,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -356,6 +410,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -376,6 +433,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -396,6 +456,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -417,6 +480,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -427,6 +493,13 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 .expect("CastPrepared implies a back face");
             let back_def = *back;
             let (spec, legal) = game.prepared_cast_targets(source);
+            let (has_x, min_x, max_x, x_cost) = x_choice_fields(
+                game,
+                action.player,
+                back_def.cost,
+                Some(back_def.spell_characteristics()),
+                |x| back_def.cost.with_x(x),
+            );
             ActionView {
                 id: action.id,
                 kind: "cast_prepared".to_string(),
@@ -444,7 +517,10 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 graveyard_exile_min: 0,
                 graveyard_exile_max: 0,
                 // The back face is what you cast — never the front permanent's mana cost.
-                has_x: back_def.cost.x > 0,
+                has_x,
+                min_x,
+                max_x,
+                x_cost,
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
             }
@@ -466,6 +542,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: game
                 .required_attacks(action.player)
@@ -493,6 +572,9 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             graveyard_exile_min: 0,
             graveyard_exile_max: 0,
             has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
         },
@@ -1345,6 +1427,29 @@ mod tests {
             !action.auto_tap.contains(&ring),
             "lands are preferred over Sol Ring"
         );
+    }
+
+    #[test]
+    fn hangarback_cast_action_projects_max_x_from_available_mana() {
+        let mut game = Game::new();
+        let hangarback = game.spawn_in_hand(PlayerId(0), def("Hangarback Walker"));
+        let forests: Vec<ObjectId> = (0..7)
+            .map(|_| game.spawn_on_battlefield(PlayerId(0), def("Forest")))
+            .collect();
+        // One floating green plus six untapped Forests makes seven mana available.
+        refresh_via_mana_tap(&mut game, forests[0]);
+
+        let snap = snapshot(&game, PlayerId(0));
+        let action = snap
+            .actions
+            .iter()
+            .find(|action| action.kind == "cast" && action.object == Some(hangarback))
+            .expect("Hangarback Walker is a listed cast");
+
+        assert!(action.has_x);
+        assert_eq!(action.min_x, 0);
+        assert_eq!(action.max_x, 3, "seven mana pays three {{X}}{{X}} pairs");
+        assert_eq!(action.x_cost.as_ref().map(|cost| cost.x_symbols), Some(2));
     }
 
     #[test]

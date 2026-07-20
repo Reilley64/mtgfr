@@ -142,7 +142,7 @@ impl Game {
     /// Strive's "beyond the first") — 0 for a spell with no Replicate, or when pricing without a
     /// declared count.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn cast_cost(
+    pub fn cast_cost(
         &self,
         player: PlayerId,
         object: ObjectId,
