@@ -48,9 +48,17 @@ import { playerLabel } from "~/lib/players";
 import { stackInFromDelta } from "~/lib/playOrigin";
 import { type RadialOption, radialOptions } from "~/lib/radial";
 import { boardChromeFromState } from "~/lib/stackResponse";
+import {
+  isSoundEnabled,
+  playTableFeelDamage,
+  playTableFeelLand,
+  playTableFeelResolve,
+  playTableFeelStack,
+  setSoundEnabled,
+} from "~/lib/tableAudio";
 import { stagedTargetHint } from "~/lib/targetPrompt";
 import { connectedAtom, gameStreamFamily, tableId } from "~/net";
-import { foldProvenance, game, resetGame, SPECTATOR_VIEWER, setReject } from "~/store";
+import { foldProvenance, game, lastTableFeelBatch, resetGame, SPECTATOR_VIEWER, setReject } from "~/store";
 import type { ActionView, ObjectView } from "~/wire/types";
 
 export { humanReason, rejectMessageFor } from "~/controllers/reject";
@@ -138,6 +146,26 @@ export default function Board() {
     onCleanup(() => window.clearTimeout(t));
   });
   const [legendOpen, setLegendOpen] = createSignal(false);
+  const [soundOn, setSoundOn] = createSignal(isSoundEnabled());
+  const toggleSound = () => {
+    const next = !soundOn();
+    setSoundEnabled(next);
+    setSoundOn(next);
+  };
+
+  // Table-feel cues: one per kind per delta (ADR 0036). Flights decorate the same moments;
+  // provenance flags cover opponents and prefers-reduced-motion snaps.
+  createEffect((prevSeq: number | undefined) => {
+    const seq = game.seq;
+    if (prevSeq !== undefined && seq !== prevSeq) {
+      const batch = lastTableFeelBatch();
+      if (batch.land) playTableFeelLand();
+      if (batch.stack) playTableFeelStack();
+      if (batch.resolve) playTableFeelResolve();
+      if (batch.damage) playTableFeelDamage();
+    }
+    return seq;
+  });
 
   // Logical layout → TableSurface density overlay for hits; draw uses surface.drawnCards (tween + density).
   const cards = createMemo<RenderCard[]>(() => (game.state ? layout(game.state, me()) : []));
@@ -766,24 +794,40 @@ export default function Board() {
               >
                 Concede
               </Button>
-              {/* The '?' legend toggle — top-left so it doesn't stack on Pass / Next / yield. */}
-              <Button
-                type="button"
-                aria-label="Board legend"
-                aria-expanded={legendOpen()}
-                onClick={() => setLegendOpen((o) => !o)}
-                variant="ghost"
-                hitQuiet
-                class="fixed top-3 left-3 z-25 px-[11px] py-[5px]"
-              >
-                ?
-              </Button>
-              <Show when={legendOpen()}>
-                <LegendPanel onClose={() => setLegendOpen(false)} />
-              </Show>
               <Show when={hintVisible()}>
                 <HintStrip onDismiss={dismissHint} />
               </Show>
+            </Show>
+            {/* Legend + Sound — top-left. Sound is for everyone on the stream (table feel); legend for seated. */}
+            <div class="fixed top-3 left-3 z-25 flex items-center gap-1">
+              <Show when={!spectating() && !eliminated()}>
+                <Button
+                  type="button"
+                  aria-label="Board legend"
+                  aria-expanded={legendOpen()}
+                  onClick={() => setLegendOpen((o) => !o)}
+                  variant="ghost"
+                  hitQuiet
+                  class="px-[11px] py-[5px]"
+                >
+                  ?
+                </Button>
+              </Show>
+              <Button
+                type="button"
+                data-testid="board-sound-toggle"
+                aria-label={soundOn() ? "Mute sound" : "Unmute sound"}
+                aria-pressed={soundOn()}
+                onClick={toggleSound}
+                variant="ghost"
+                hitQuiet
+                class="px-[11px] py-[5px] text-caption"
+              >
+                {soundOn() ? "Sound" : "Muted"}
+              </Button>
+            </div>
+            <Show when={!spectating() && !eliminated() && legendOpen()}>
+              <LegendPanel onClose={() => setLegendOpen(false)} />
             </Show>
             <StackOverlay
               state={state()}

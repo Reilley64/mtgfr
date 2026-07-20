@@ -4,6 +4,7 @@ import {
   applySnapshot,
   game,
   landPlayFrom,
+  lastTableFeelBatch,
   priorStackObjectIds,
   resetGame,
   resolvedFromStack,
@@ -358,6 +359,22 @@ describe("applyDelta", () => {
       expect(landPlayFrom().get(3)).toBe(9);
       applyDelta(mkDelta(2, [{ kind: "priority_passed", player: 0 }]));
       expect(landPlayFrom().size).toBe(0);
+    });
+
+    it("flags table-feel batches once per delta kind", () => {
+      applyDelta(
+        mkDelta(
+          1,
+          [
+            { kind: "land_played", from: 9, permanent: 3, player: 0 },
+            { kind: "combat_damage_dealt_to_player", player: 1, source: 2, amount: 3 },
+          ],
+          [mkObject({ id: 3, name: "Forest", kind: { kind: "land", colors: [4] } })],
+        ),
+      );
+      expect(lastTableFeelBatch()).toEqual({ land: true, stack: false, resolve: false, damage: true });
+      applyDelta(mkDelta(2, [{ kind: "priority_passed", player: 0 }]));
+      expect(lastTableFeelBatch()).toEqual({ land: false, stack: false, resolve: false, damage: false });
     });
   });
 

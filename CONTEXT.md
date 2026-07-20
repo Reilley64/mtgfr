@@ -79,6 +79,8 @@ The ubiquitous language for the game engine and protocol. Terms only — no impl
 - **Session** — a signed-in user's authenticated context: an HttpOnly cookie bound to a server-side session record. Every request carries it; the server resolves it to the account (replacing the old anonymous browser token).
 - **Seat** — a player's position at a table (0–3); assigned when a browser claims a seat in the lobby.
 - **Spectator** — an eliminated player still receiving the stream (the game continues without them).
+- **Watcher** — a client with no seat at the table (observe-only). Distinct from a **Spectator**.
+  _Avoid_: calling watchers “spectators” when the eliminated-seat meaning is intended.
 - **Stack view** — the ordered, renderable list of what's on the stack (spells and abilities, with labels and targets). Default presentation is a right-edge physical pile; when reading room is needed it can open as an **Expanded stack view**.
 - **Stack peek compression** — shrinking the vertical peek between objects in the physical **Stack view** so the pile still fits the usable screen band (same overflow idea as battlefield **row packing**, for the stack).
 - **Stack expand control** — count + magnifier on the stack presentation (not in the **priority context bar**) that opens the **Expanded stack view**. Appears once stack size hits a reading threshold or once **stack peek compression** starts, whichever comes first.
@@ -119,6 +121,11 @@ The ubiquitous language for the game engine and protocol. Terms only — no impl
 - **Prepared** — battlefield status on a prepare double-faced card: its controller may cast a copy of its back-face spell; casting clears prepared.
 - **Permanent selection** — the viewer's focused permanent for acting; click selects one of yours on the battlefield.
 - **Activation radial** — pie of legal activates (including tap-for-mana) around the selected permanent.
+
+## Table audio
+- **Attention cue** — a short sound that signals *you* owe a game decision (gaining priority, or becoming the active player).
+- **Table-feel cue** — a quieter sound that decorates a visible table action (land play, spell to stack, resolve, combat damage); not a personal alert.
+- **Sound preference** — local on/off for all table audio; default on.
 
 ## Combat & Commander
 - **Attacker / blocker** — a creature declared attacking a chosen **defending player**, and a creature declared to block it; combat damage is dealt in the combat-damage step.
