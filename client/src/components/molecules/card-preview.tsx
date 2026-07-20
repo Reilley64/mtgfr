@@ -45,15 +45,23 @@ const PANEL_CARD = cn(
   "w-(--w) shrink-0 rounded-panel border border-vine bg-forest-surface px-xl py-lg text-preview-ash leading-[1.4]",
 );
 
-/** Oracle / approximates prose with `{T}` / `{G}` etc. as mana-font glyphs. */
+/** Oracle / approximates prose with `{T}` / `{G}` etc. as mana-font glyphs; `(reminder)` in italics. */
 function OracleRichText(props: { text: string }) {
   return (
     <For each={splitOracleText(props.text)}>
       {(part) =>
         part.kind === "text" ? (
-          part.text
+          part.reminder ? (
+            <i>{part.text}</i>
+          ) : (
+            part.text
+          )
         ) : (
-          <span role="img" class={cn("ms", "ms-cost", "ms-oracle", `ms-${part.ms}`)} aria-label={`{${part.code}}`} />
+          <span
+            role="img"
+            class={cn("ms", "ms-cost", "ms-oracle", `ms-${part.ms}`, part.reminder && "italic")}
+            aria-label={`{${part.code}}`}
+          />
         )
       }
     </For>
