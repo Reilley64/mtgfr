@@ -1,6 +1,6 @@
 import { batch, createRoot, createSignal } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useCardFlights } from "~/controllers/cardFlights";
+import { usePlayMotion } from "~/controllers/playMotion";
 import type { RenderCard } from "~/layout";
 import { fitCamera } from "~/lib/interaction";
 
@@ -23,7 +23,7 @@ function mountFlights(opts?: {
   );
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
   let dispose!: () => void;
-  let api!: ReturnType<typeof useCardFlights>;
+  let api!: ReturnType<typeof usePlayMotion>;
   const [landPlays, setLandPlays] = createSignal(opts?.landPlays ?? new Map<number, number>());
   const [stackEntrances, setStackEntrances] = createSignal(
     opts?.stackEntrances ?? new Map<number, { from: number; controller: number }>(),
@@ -38,7 +38,7 @@ function mountFlights(opts?: {
   createRoot((d) => {
     dispose = d;
     const size = () => ({ x: 800, y: 600 });
-    api = useCardFlights({
+    api = usePlayMotion({
       camera: () => fitCamera(size(), 2, 128),
       size,
       cards,
@@ -68,8 +68,8 @@ function mountFlights(opts?: {
   };
 }
 
-describe("useCardFlights", () => {
-  it("cancelFlight removes the in-flight card and undims the hand slot", () => {
+describe("usePlayMotion", () => {
+  it("cancel removes the in-flight card and undims the hand slot", () => {
     const { api, dispose } = mountFlights();
     api.spawnFromHand({
       cardId: 9,
@@ -81,7 +81,7 @@ describe("useCardFlights", () => {
     expect(api.flights().some((f) => f.id === 9)).toBe(true);
     expect(api.handHidden().has(9)).toBe(true);
 
-    api.cancelFlight(9);
+    api.cancel(9);
 
     expect(api.flights().some((f) => f.id === 9)).toBe(false);
     expect(api.handHidden().has(9)).toBe(false);

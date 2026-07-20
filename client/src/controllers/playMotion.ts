@@ -1,5 +1,6 @@
-// Solid controller for the canvas flight layer (ADR 0035): spawn on play commit, retarget on
-// delta bind / layout, step each frame, expose hide sets for hand + canvas resting faces.
+// PlayMotion (ADR 0035): canvas flight layer for play-committed motion — spawn on play
+// commit, retarget on delta bind / layout, absorb/orphan in one ordered pass, expose hide
+// sets for hand + canvas resting faces. TableSurface keeps non-play entrance glides.
 
 import { type Accessor, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { CARD_H, CARD_W, type RenderCard } from "~/layout";
@@ -16,7 +17,7 @@ import {
   stepFlights,
 } from "~/lib/cardFlight";
 
-export type CardFlightsDeps = {
+export type PlayMotionDeps = {
   camera: Accessor<Camera>;
   size: Accessor<{ x: number; y: number }>;
   cards: Accessor<RenderCard[]>;
@@ -35,7 +36,7 @@ export type CardFlightsDeps = {
   onTick: () => void;
 };
 
-export function useCardFlights(deps: CardFlightsDeps) {
+export function usePlayMotion(deps: PlayMotionDeps) {
   const [flights, setFlights] = createSignal(new Map<number, CardFlight>());
   let rafId = 0;
   let lastFrame = 0;
@@ -52,7 +53,7 @@ export function useCardFlights(deps: CardFlightsDeps) {
     }
     return hide;
   });
-  const flightOwnedIds = createMemo(() => new Set(flights().keys()));
+  const ownedIds = createMemo(() => new Set(flights().keys()));
 
   const kickRaf = () => {
     if (rafId) return;
@@ -143,7 +144,7 @@ export function useCardFlights(deps: CardFlightsDeps) {
   };
 
   /** Drop an in-flight card (e.g. staged cast cancel) so it cannot race the return animation. */
-  const cancelFlight = (cardId: number) => {
+  const cancel = (cardId: number) => {
     setFlights((prev) => {
       const next = new Map(prev);
       for (const [id, f] of prev) {
@@ -158,73 +159,59 @@ export function useCardFlights(deps: CardFlightsDeps) {
     });
   };
 
+  // One ordered pass: land rebind → stack-entrance rebind → from-stack absorb → orphan GC.
+  // Absorb before orphan so #39's pendingResolve race stays a module invariant.
   createEffect(() => {
     const plays = deps.landPlays();
+    const ents = deps.stackEntrances();
+    const resolved = deps.fromStack();
+    const exited = deps.fromStackExit();
+    const moves = deps.zoneMoves();
+    const sources = deps.stackSourceIds();
+    const objects = deps.objectIds();
+    const cards = deps.cards();
+    const cam = deps.camera();
+    const len = deps.stackLength();
+    const pendingResolve = resolved.size > 0 || exited.size > 0;
+
     let next = flights();
     let changed = false;
+
     for (const [permanent, from] of plays) {
       if (next.has(permanent) || !next.has(from)) continue;
       next = rebindFlightId(next, from, permanent);
       const f = next.get(permanent);
       if (f) next.set(permanent, { ...f, kind: "battlefield" });
       changed = true;
-      // Keep `from` in handHidden until settle — commander/bar faces stay dim under the flight.
     }
-    if (changed) {
-      setFlights(next);
-      kickRaf();
-    }
-  });
 
-  createEffect(() => {
-    const ents = deps.stackEntrances();
-    const cam = deps.camera();
-    let next = flights();
-    let changed = false;
     for (const [spell, meta] of ents) {
       if (next.has(spell) || !next.has(meta.from)) continue;
       next = rebindFlightId(next, meta.from, spell);
       const f = next.get(spell);
       if (f) {
-        const len = Math.max(1, deps.stackLength());
-        const peek = stackPeekFor(len, deps.size().y, STACK_VERTICAL_RESERVED);
-        const to = stackAimOrigin(deps.size().x, deps.size().y, len, peek);
+        const stackLen = Math.max(1, len);
+        const peek = stackPeekFor(stackLen, deps.size().y, STACK_VERTICAL_RESERVED);
+        const to = stackAimOrigin(deps.size().x, deps.size().y, stackLen, peek);
         next.set(
           spell,
           retargetFlight({ ...f, kind: "stack" }, { x: to.x, y: to.y, scale: stackFlightScale(cam.zoom) }),
         );
       }
       changed = true;
-      // Keep meta.from dimmed until settle (same as land rebind).
     }
-    if (changed) {
-      setFlights(next);
-      kickRaf();
-    }
-  });
 
-  createEffect(() => {
-    const resolved = deps.fromStack();
-    const exited = deps.fromStackExit();
-    const cam = deps.camera();
-    const cards = deps.cards();
-    const ents = deps.stackEntrances();
-    const moves = deps.zoneMoves();
-    const len = deps.stackLength();
     const originCount = Math.max(1, prevStackLen || len + 1);
     const peek = stackPeekFor(originCount, deps.size().y, STACK_VERTICAL_RESERVED);
-    const from = stackAimOrigin(deps.size().x, deps.size().y, originCount, peek);
-    let next = flights();
-    let changed = false;
+    const fromAim = stackAimOrigin(deps.size().x, deps.size().y, originCount, peek);
     for (const id of new Set([...resolved, ...exited])) {
       if (spawnedFromStack.has(id)) continue;
 
       const card = cards.find((c) => c.id === id);
-      const scr = card ? worldToScreen(cam, card.x + CARD_W / 2, card.y + CARD_H / 2) : from;
+      const scr = card ? worldToScreen(cam, card.x + CARD_W / 2, card.y + CARD_H / 2) : fromAim;
       const target = { x: scr.x, y: scr.y, scale: 1 as const };
 
-      // Absorb an unfinished stack flight for this resolve instead of drawing a second actor.
-      // Hand→spell rebind uses stackEntrances; spell→permanent uses zoneMoves (permanent_entered.from).
+      // Absorb ladder (preserve all rungs): entrances → zoneMoves → hand-keyed singleton → print/name.
       let stackFlight = next.get(id);
       if (stackFlight?.kind !== "stack") {
         const fromHand = ents.get(id)?.from;
@@ -240,8 +227,6 @@ export function useCardFlights(deps: CardFlightsDeps) {
           stackFlight = next.get(id);
         }
       }
-      // stackEntrances never rebound: flight still keyed by the consumed hand id.
-      // Prefer print/name match when several unrebound hand→stack flights are in flight.
       if (stackFlight?.kind !== "stack") {
         const handKeyed = [...next].filter(([fid, f]) => f.kind === "stack" && f.fromCardId === fid);
         let pick = handKeyed.length === 1 ? handKeyed[0] : undefined;
@@ -281,8 +266,8 @@ export function useCardFlights(deps: CardFlightsDeps) {
         id,
         print: card?.print ?? "",
         name: card?.name ?? "",
-        x: from.x,
-        y: from.y,
+        x: fromAim.x,
+        y: fromAim.y,
         scale: stackFlightScale(cam.zoom),
         targetX: target.x,
         targetY: target.y,
@@ -295,27 +280,6 @@ export function useCardFlights(deps: CardFlightsDeps) {
       changed = true;
     }
     prevStackLen = len;
-    if (changed) {
-      setFlights(next);
-      kickRaf();
-    }
-  });
-
-  // If absorb misses the one delta that carries fromStack/zoneMoves, kind:"stack" flights are
-  // retargeted at the stack aim forever (refresh clears them). Drop or promote orphans whose
-  // ids are no longer on the live stack. Hand-keyed flights (fromCardId === id) stay only while
-  // the hand object still exists, stackEntrances can still rebind them, or fromStack absorb
-  // still has a pending resolve this flush (do not race-delete before absorb runs).
-  createEffect(() => {
-    const sources = deps.stackSourceIds();
-    const objects = deps.objectIds();
-    const ents = deps.stackEntrances();
-    const moves = deps.zoneMoves();
-    const pendingResolve = deps.fromStack().size > 0 || deps.fromStackExit().size > 0;
-    const cards = deps.cards();
-    const cam = deps.camera();
-    let next = flights();
-    let changed = false;
 
     const spellToPermanent = new Map<number, number>();
     for (const [permanent, spell] of moves) spellToPermanent.set(spell, permanent);
@@ -324,7 +288,6 @@ export function useCardFlights(deps: CardFlightsDeps) {
       if (f.kind !== "stack") continue;
       if (sources.has(id)) continue;
 
-      // Still keyed by hand id — try late hand→spell rebind, else keep only while hand exists.
       if (f.fromCardId === id) {
         let spellId: number | undefined;
         for (const [spell, meta] of ents) {
@@ -337,9 +300,9 @@ export function useCardFlights(deps: CardFlightsDeps) {
           next = rebindFlightId(next, id, spellId);
           const rebound = next.get(spellId);
           if (rebound) {
-            const len = Math.max(1, deps.stackLength());
-            const peek = stackPeekFor(len, deps.size().y, STACK_VERTICAL_RESERVED);
-            const to = stackAimOrigin(deps.size().x, deps.size().y, len, peek);
+            const stackLen = Math.max(1, len);
+            const stackPeek = stackPeekFor(stackLen, deps.size().y, STACK_VERTICAL_RESERVED);
+            const to = stackAimOrigin(deps.size().x, deps.size().y, stackLen, stackPeek);
             next = new Map(next);
             next.set(
               spellId,
@@ -350,11 +313,8 @@ export function useCardFlights(deps: CardFlightsDeps) {
           continue;
         }
         if (objects.has(id)) continue;
-        // No object snapshot yet (boot / tests) — don't invent a disappearance.
         if (objects.size === 0) continue;
-        // fromStack absorb may still need this flight in the same flush.
         if (pendingResolve) continue;
-        // Hand object consumed and never rebound — drop the ghost (same end as refresh).
         next = new Map(next);
         next.delete(id);
         spawnedFromStack.delete(id);
@@ -421,9 +381,9 @@ export function useCardFlights(deps: CardFlightsDeps) {
   return {
     flights: flightList,
     hideCardIds,
-    flightOwnedIds,
+    ownedIds,
     handHidden,
     spawnFromHand,
-    cancelFlight,
+    cancel,
   };
 }

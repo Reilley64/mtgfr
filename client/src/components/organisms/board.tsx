@@ -21,9 +21,9 @@ import { PROMPT_ROW, PROMPT_TITLE } from "~/components/molecules/prompt-forms";
 import { useActionSession } from "~/controllers/action-session";
 import type { StagedAction } from "~/controllers/actionExecution";
 import { planCastClickResolution } from "~/controllers/actionExecution";
-import { useCardFlights } from "~/controllers/cardFlights";
 import { useCombatStaging } from "~/controllers/combatStaging";
 import { setStackDwellFn, setTurnYieldFn, setYieldFn, submitIntentFn } from "~/controllers/intentAtoms";
+import { usePlayMotion } from "~/controllers/playMotion";
 import { isInteractiveControl, myChoice, PromptHost } from "~/controllers/prompt-host";
 import { useTableSurface } from "~/controllers/tableSurface";
 import { avatarPos, layout, PHASES, phaseOf, type RenderCard, STEP_NAMES, ZONE } from "~/layout";
@@ -155,7 +155,9 @@ export default function Board() {
   // Logical layout → TableSurface density overlay for hits; draw uses surface.drawnCards (tween + density).
   const cards = createMemo<RenderCard[]>(() => (game.state ? layout(game.state, me()) : []));
   const provenance = () => foldProvenance();
-  const [flightOwnedBridge, setFlightOwnedBridge] = createSignal(new Set<number>());
+  // PlayMotion needs TableSurface's camera; TableSurface needs ownedIds. Assign the ref after
+  // both hooks so seedEntrances can skip play-owned ids without a Solid bridge signal.
+  let playMotionRef: { ownedIds: () => ReadonlySet<number> } | null = null;
   const surface = useTableSurface({
     me,
     playerCount,
@@ -166,16 +168,15 @@ export default function Board() {
     fromStackExit: () => provenance().leftStackToPile,
     tokenCreators: () => provenance().tokenCreators,
     zonePileEntrances: () => provenance().zonePileEntrances,
-    landPlays: () => provenance().landPlayFrom,
     stackObjectIds: () => provenance().priorStackObjectIds,
     stackLength: () => game.state?.stack.length ?? 0,
     selectedId,
-    flightOwnedIds: flightOwnedBridge,
+    flightOwnedIds: () => playMotionRef?.ownedIds() ?? new Set(),
   });
   const { camera, size, setSize, hitCard, hitSeat, dragging, drawnCards, inspectPin, clearInspect, tryPinInspect } =
     surface;
 
-  const cardFlights = useCardFlights({
+  const playMotion = usePlayMotion({
     camera,
     size,
     cards,
@@ -190,7 +191,7 @@ export default function Board() {
     reducedMotion: () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     onTick: () => setTick((t) => t + 1),
   });
-  createEffect(() => setFlightOwnedBridge(cardFlights.flightOwnedIds()));
+  playMotionRef = playMotion;
 
   /** Hand-card id → screen origin for stack DOM play-in; remapped to spell id on spell_cast. */
   const stackScreenByCard = new Map<number, { x: number; y: number }>();
@@ -206,7 +207,7 @@ export default function Board() {
     for (const id of [...next.keys()]) {
       if (!live.has(id)) next.delete(id);
     }
-    const owned = cardFlights.flightOwnedIds();
+    const owned = playMotion.ownedIds();
     const stackLen = game.state?.stack.length ?? 0;
     const peek = stackPeekFor(stackLen, sz.y, STACK_VERTICAL_RESERVED);
     for (const [spell, meta] of provenance().stackEntrances) {
@@ -241,11 +242,10 @@ export default function Board() {
     size,
     handBarH: HAND_BAR_H,
     setReject,
-    seedDrop: (cardId, world, screen, flight) => {
-      surface.notePlayOrigin(cardId, world);
+    seedDrop: (cardId, _world, screen, flight) => {
       stackScreenByCard.set(cardId, screen);
       const obj = game.state?.objects.find((o) => o.id === cardId);
-      cardFlights.spawnFromHand({
+      playMotion.spawnFromHand({
         cardId,
         print: obj?.print ?? "",
         name: obj?.name ?? "",
@@ -254,9 +254,8 @@ export default function Board() {
       });
     },
     clearPlayOrigin: (cardId) => {
-      surface.clearPlayOrigin(cardId);
       stackScreenByCard.delete(cardId);
-      cardFlights.cancelFlight(cardId);
+      playMotion.cancel(cardId);
     },
     onHintUsed: () => setHintAutoHidden(true),
   });
@@ -446,8 +445,8 @@ export default function Board() {
         paymentObjects: paymentPreviewIds(),
         stackResponseFocus: chrome.focus,
         responseObjects: chrome.brightIds,
-        flights: cardFlights.flights(),
-        hideCardIds: cardFlights.hideCardIds(),
+        flights: playMotion.flights(),
+        hideCardIds: playMotion.hideCardIds(),
       });
       // Combat/target arrows draw-on over ~180ms; without a follow-up paint they freeze as a stub
       // on the source card (staged attackers looked like they pointed at the creature).
@@ -812,9 +811,9 @@ export default function Board() {
                 return stackInFromDelta(to, from);
               })()}
               showPileStaged={
-                arrowAiming() && !(stackStagedCard() != null && cardFlights.hideCardIds().has(stackStagedCard()!.id))
+                arrowAiming() && !(stackStagedCard() != null && playMotion.hideCardIds().has(stackStagedCard()!.id))
               }
-              hideFaceIds={cardFlights.hideCardIds()}
+              hideFaceIds={playMotion.hideCardIds()}
               allowDwell={boardChrome().allowDwell}
               viewportW={size().x}
               viewportH={size().y}
@@ -834,7 +833,7 @@ export default function Board() {
         <Hand
           viewer={me()}
           hiddenId={stagedCard()?.id ?? session.overlay().returningStaged?.card.id ?? null}
-          flyingIds={cardFlights.handHidden()}
+          flyingIds={playMotion.handHidden()}
           onHoverCard={(c) => surface.setAuxHover("hand", c)}
           onHoverAction={setHoverAction}
           onDrop={onHandDrop}

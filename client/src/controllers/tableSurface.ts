@@ -23,7 +23,6 @@ import {
   pointerMove as reduceMove,
   pointerUp as reduceUp,
 } from "~/lib/interaction";
-import type { PlayOrigin } from "~/lib/playOrigin";
 import { type Positions, snapAll, stepScalar, stepToward } from "~/lib/tween";
 
 export type Vec = { x: number; y: number };
@@ -65,17 +64,15 @@ export type TableSurfaceDeps = {
   fromStackExit?: Accessor<Set<number>>;
   /** Token id → creator object id. Defaults to empty. */
   tokenCreators?: Accessor<Map<number, number>>;
-  /** Own play permanent id → world origin. Defaults to empty. */
+  /** Own play permanent id → world origin (optional; PlayMotion usually owns via skipIds). */
   playEntrances?: Accessor<Map<number, Vec>>;
   /** Zone-pile BF entrances. Defaults to empty. */
   zonePileEntrances?: Accessor<Map<number, { zone: ZonePileKind; seat: number }>>;
-  /** Land permanent id → hand card id (`land_played.from`) for play-origin matching. */
-  landPlays?: Accessor<Map<number, number>>;
   /** Object ids that were on the stack in the prior frame (token creator hybrid). */
   stackObjectIds?: Accessor<Set<number>>;
   /** Live stack length for stack→battlefield entrance seed. */
   stackLength?: Accessor<number>;
-  /** Ids currently owned by the canvas flight layer — skip competing entrance seeds. */
+  /** Ids owned by PlayMotion — skip competing entrance seeds. */
   flightOwnedIds?: Accessor<ReadonlySet<number>>;
   /** Override for tests; defaults to `prefers-reduced-motion`. */
   reducedMotion?: Accessor<boolean>;
@@ -106,12 +103,6 @@ export type TableSurface = {
 
   /** Paint path only — never feed to hit*. */
   drawnCards: Accessor<RenderCard[]>;
-  /** Record a play-in world origin for `cardId` (land → BF or cast staging). */
-  notePlayOrigin(cardId: number, seed: PlayOrigin): void;
-  /** Consume a pending play origin for a new permanent id (after land_played matching). */
-  takePlayEntrance(permanentId: number, fromCardId: number): void;
-  /** Clear pending play origins (e.g. cancelled staging). */
-  clearPlayOrigin(cardId: number): void;
 
   notePointer(sx: number, sy: number): void;
   setAuxHover(source: "hand" | "stack", card: { name: string; cardId?: string; print?: string } | null): void;
@@ -166,8 +157,8 @@ function zoneToConst(zone: ZonePileKind): typeof ZONE.Library | typeof ZONE.Grav
 export function seedEntrances(anim: Positions, targets: readonly RenderCard[], opts: EntranceSeedOpts): void {
   for (const c of targets) {
     if (anim.has(c.id)) continue;
-    // Own play / stack resolve: ADR 0035 canvas flight owns the motion — park the tween at the
-    // layout slot so settle doesn't ENTER_RISE or compete with a second glide.
+    // Own play / leave-stack: PlayMotion owns the motion (skipIds) — also park when
+    // fromStack provenance is present so the first layout tick doesn't ENTER_RISE.
     if (opts.playEntrances.has(c.id) || opts.fromStack.has(c.id) || opts.fromStackExit.has(c.id)) {
       anim.set(c.id, { x: c.x, y: c.y });
       continue;
@@ -469,33 +460,10 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   // ── Paint-only tween ──────────────────────────────────────────────────────────────
   // No idle rAF: the loop runs only while unsettled, then stops until the layout next changes.
   let anim: Positions = new Map();
-  /** Pending play-in origins keyed by hand/command card id. */
-  const pendingPlayOrigins = new Map<number, PlayOrigin>();
-  /** Matched permanent id → world origin for this layout tick. */
-  let playEntrancesLocal = new Map<number, Vec>();
   let tapAnim = new Map<number, number>();
   const [animTick, setAnimTick] = createSignal(0);
-  /** Bumps when a late takePlayEntrance lands after cards already laid out. */
-  const [entranceBump, setEntranceBump] = createSignal(0);
   let rafId = 0;
   let lastFrame = 0;
-
-  const notePlayOriginFn = (cardId: number, seed: PlayOrigin) => {
-    pendingPlayOrigins.set(cardId, seed);
-  };
-
-  const takePlayEntrance = (permanentId: number, fromCardId: number) => {
-    const origin = pendingPlayOrigins.get(fromCardId);
-    if (!origin) return;
-    pendingPlayOrigins.delete(fromCardId);
-    playEntrancesLocal.set(permanentId, origin);
-    // Re-run seeding if the layout effect already ran this tick without the origin.
-    setEntranceBump((n) => n + 1);
-  };
-
-  const clearPlayOrigin = (cardId: number) => {
-    pendingPlayOrigins.delete(cardId);
-  };
 
   const tapTargets = (cs: RenderCard[]) => new Map(cs.map((c) => [c.id, c.tapped ? 1 : 0]));
 
@@ -516,41 +484,17 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
   const fromStack = () => deps.fromStack?.() ?? new Set<number>();
   const fromStackExit = () => deps.fromStackExit?.() ?? new Set<number>();
   const tokenCreators = () => deps.tokenCreators?.() ?? new Map<number, number>();
-  const landPlays = () => deps.landPlays?.() ?? new Map<number, number>();
-  const playEntrances = () => {
-    const fromDeps = deps.playEntrances?.() ?? new Map<number, Vec>();
-    if (playEntrancesLocal.size === 0) return fromDeps;
-    const merged = new Map(fromDeps);
-    for (const [k, v] of playEntrancesLocal) merged.set(k, v);
-    return merged;
-  };
+  const playEntrances = () => deps.playEntrances?.() ?? new Map<number, Vec>();
   const zonePileEntrances = () => deps.zonePileEntrances?.() ?? new Map();
   const stackObjectIds = () => deps.stackObjectIds?.() ?? new Set<number>();
   const stackLength = () => deps.stackLength?.() ?? 0;
   const flightOwnedIds = () => deps.flightOwnedIds?.() ?? new Set<number>();
 
-  /** Match land_played.from → pending play origin before seeding (same tick as layout). */
-  const bindLandPlayEntrances = (targets: readonly RenderCard[]) => {
-    const present = new Set(targets.map((c) => c.id));
-    for (const [permanent, from] of landPlays()) {
-      if (!present.has(permanent)) continue;
-      if (playEntrancesLocal.has(permanent)) continue;
-      const origin = pendingPlayOrigins.get(from);
-      if (!origin) continue;
-      pendingPlayOrigins.delete(from);
-      playEntrancesLocal.set(permanent, origin);
-    }
-  };
-
   createEffect(() => {
-    entranceBump();
     const targets = deps.cards();
-    landPlays(); // subscribe — land provenance arrives with the same delta as new BF cards
-    bindLandPlayEntrances(targets);
     if (reducedMotion()) {
       anim = snapAll(targets);
       tapAnim = tapTargets(targets);
-      playEntrancesLocal = new Map();
       setAnimTick((t) => t + 1);
       return;
     }
@@ -580,7 +524,6 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
     } else {
       seedEntrances(anim, targets, entranceOpts);
     }
-    playEntrancesLocal = new Map();
     // Paint immediately at entrance seeds — don't wait for the first rAF tick.
     setAnimTick((t) => t + 1);
     if (rafId) return;
@@ -676,9 +619,6 @@ export function useTableSurface(deps: TableSurfaceDeps): TableSurface {
     pointerCancel,
     dragging,
     drawnCards,
-    notePlayOrigin: notePlayOriginFn,
-    takePlayEntrance,
-    clearPlayOrigin,
     notePointer,
     setAuxHover,
     tryPinInspect,
