@@ -201,10 +201,10 @@ export default function Hand(props: {
   // stages exactly as it would from a drag, and a plain one takes immediately).
   const activate = (action: ActionView) =>
     props.onDrop({ action, x: window.innerWidth / 2, y: window.innerHeight / 2 });
-  /** Later conditions win (twMerge resolves the `opacity-*` conflict), so this reads as a cascade:
-   * lit by default, dimmed when inert, nearly invisible while the drag ghost carries the card. */
+  /** Inert tiles darken in place; the drag source fades so the ghost carries the face.
+   * Prefer brightness over opacity for inert — opacity punches holes through the dense fan. */
   const dimmedness = (p: { action: ActionView | null; dimmed?: boolean }) =>
-    cn("opacity-100", p.dimmed && "opacity-55", p.action && drag()?.action.id === p.action.id && "opacity-25");
+    cn(p.dimmed && "brightness-[0.55]", p.action && drag()?.action.id === p.action.id && "opacity-25");
   const BarCard = (p: {
     name: string;
     print: string;
