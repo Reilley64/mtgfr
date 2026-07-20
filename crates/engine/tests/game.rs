@@ -17480,16 +17480,52 @@ fn lightning_greaves_grants_shroud_to_equipped_creature() {
 }
 
 #[test]
-fn a_modal_spell_counts_as_castable_even_when_its_modes_lack_targets() {
-    // Pins the documented mode-blind conservatism: with no chosen mode the query reads a
-    // modal spell as "no target required," so an affordable Abrade with nothing to hit still
-    // stops auto-pass. The player just passes; no illegal cast can result.
+fn a_modal_spell_with_no_playable_mode_is_not_a_meaningful_action() {
+    // Abrade's both modes need a target. With an empty board, nothing is legal to hit — listing
+    // it would brighten the hand card and stop auto-pass for a cast that can't complete.
     let mut game = Game::new();
     game.spawn_in_hand(PlayerId(0), card("Abrade"));
     game.fund_mana(PlayerId(0));
     assert!(
+        !game.has_meaningful_action(PlayerId(0)),
+        "an affordable modal spell with no playable mode can't be cast",
+    );
+}
+
+#[test]
+fn a_modal_spell_with_one_playable_mode_is_a_meaningful_action() {
+    // Abrade mode 0 wants a creature; an opponent's bear makes that mode choosable.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_in_hand(PlayerId(0), card("Abrade"));
+    game.fund_mana(PlayerId(0));
+    assert!(
         game.has_meaningful_action(PlayerId(0)),
-        "the mode-blind query counts an affordable modal spell as castable",
+        "a modal spell with at least one choosable mode is castable",
+    );
+}
+
+#[test]
+fn a_multi_target_spell_short_of_its_minimum_is_not_a_meaningful_action() {
+    // Ashes to Ashes exiles exactly two nonartifact creatures. One bear isn't enough.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_in_hand(PlayerId(0), card("Ashes to Ashes"));
+    game.fund_mana(PlayerId(0));
+    assert!(
+        !game.has_meaningful_action(PlayerId(0)),
+        "a spell that needs two targets isn't castable with only one legal",
+    );
+}
+
+#[test]
+fn an_activated_ability_with_no_legal_target_is_not_a_meaningful_action() {
+    // Equip needs a creature you control. Alone on the battlefield, Greaves has nothing to equip.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Lightning Greaves"));
+    assert!(
+        !game.has_meaningful_action(PlayerId(0)),
+        "an activatable ability with no legal target shouldn't stop auto-pass or light up",
     );
 }
 
