@@ -562,9 +562,11 @@ const ChooseModeForm: Component<FormProps> = (props) => {
  * Rendered only while open — the `flex` display would otherwise override the UA's `display: none`
  * on a closed dialog and leave it on screen.
  *
- * `overflow-y-auto` so a big pick (15+ candidates) scrolls inside the backdrop rather than clipping,
- * and `m-auto` on the column centers it while it fits but scrolls from the top when it doesn't. */
-function PickDialog(props: { label: string; onEscape?: () => void; children: JSX.Element }) {
+ * Default `overflow-y-auto` so a big pick (15+ candidates) scrolls inside the backdrop rather than
+ * clipping, and `m-auto` on the column centers it while it fits but scrolls from the top when it
+ * doesn't. Pass `containScroll` when a child pins chrome (search / submit) and scrolls only its
+ * card list — the dialog itself must not scroll or that chrome rides away. */
+function PickDialog(props: { label: string; onEscape?: () => void; containScroll?: boolean; children: JSX.Element }) {
   let dialog!: HTMLDialogElement;
   onMount(() => onCleanup(openModalWhenReady(dialog)));
   return (
@@ -575,7 +577,10 @@ function PickDialog(props: { label: string; onEscape?: () => void; children: JSX
         e.preventDefault(); // `open` is owned by the caller's state; never self-close behind its back
         props.onEscape?.();
       }}
-      class="fixed inset-0 m-0 flex h-full max-h-none w-full max-w-none overflow-y-auto bg-black/55 p-0 backdrop:bg-transparent"
+      class={cn(
+        "fixed inset-0 m-0 flex h-full max-h-none w-full max-w-none bg-black/55 p-0 backdrop:bg-transparent",
+        props.containScroll ? "overflow-hidden" : "overflow-y-auto",
+      )}
     >
       {props.children}
     </dialog>
@@ -583,6 +588,8 @@ function PickDialog(props: { label: string; onEscape?: () => void; children: JSX
 }
 
 const PICK_COLUMN = cn("m-auto flex flex-col items-center gap-xl py-xxl");
+/** Full-height column for CardPickPrompt: title / filter / submit stay put; only the card grid scrolls. */
+const PICK_COLUMN_PINNED = cn(PICK_COLUMN, "h-full max-h-full w-full overflow-hidden");
 
 /** Pick one target — a card in any zone, or a *player*. Distinct from `CardPickPrompt` because a
  * seat has no card image: it renders as its own life-orb-coloured tile. The board uses this wherever
@@ -810,13 +817,14 @@ export function CardPickPrompt(props: {
   return (
     // No `onEscape`: this answers a *pending choice* — the engine will not proceed until it's
     // answered, so there is nothing to escape to. Decline, where the choice allows one, is a button.
-    <PickDialog label={props.title}>
-      <div class={PICK_COLUMN} data-testid="pick-prompt">
-        <div class="text-snow text-title" data-testid="pick-title">
+    // `containScroll`: title / filter / Choose stay pinned; only the card grid scrolls (library search).
+    <PickDialog label={props.title} containScroll>
+      <div class={PICK_COLUMN_PINNED} data-testid="pick-prompt">
+        <div class="shrink-0 text-snow text-title" data-testid="pick-title">
           {props.title}
         </div>
         <Show when={props.hint}>
-          <div class="-mt-2 text-label text-mist">{props.hint}</div>
+          <div class="-mt-2 shrink-0 text-label text-mist">{props.hint}</div>
         </Show>
         <Show when={props.searchable}>
           <label for="card-pick-search" class="sr-only">
@@ -830,67 +838,73 @@ export function CardPickPrompt(props: {
             placeholder="Filter by name…"
             value={query()}
             onInput={(e) => setQuery(e.currentTarget.value)}
-            class="w-[min(90vw,320px)]"
+            class="w-[min(90vw,320px)] shrink-0"
           />
         </Show>
-        {/* Flat row — deliberately no hand-bar fan: this is a decision surface, not the hand. */}
-        <div class="flex max-w-[min(90vw,1040px)] flex-wrap justify-center gap-3">
-          <For each={shown()}>
-            {(it) => {
-              const selected = () => picked().includes(it.id);
-              const order = () => picked().indexOf(it.id);
-              return (
-                // Selected = vine ring + a lift; llanowar-family green is DESIGN.md's "selected".
-                // `relative` anchors the pick-order badge; `p-0` sheds the UA chrome so only the
-                // card art shows.
-                <button
-                  type="button"
-                  data-testid={`pick-card-${it.id}`}
-                  aria-pressed={selected()}
-                  aria-label={it.label}
-                  onClick={() => toggle(it.id)}
-                  onPointerMove={() => setHover({ name: it.label, print: artPrint(it) })}
-                  onPointerLeave={() => setHover((h) => (h?.name === it.label ? null : h))}
-                  class={cn(
-                    "relative cursor-pointer rounded-[9px] p-0 shadow-hand transition-[transform,box-shadow] duration-150 ease-out",
-                    selected() && "-translate-y-2 shadow-pick",
-                  )}
-                >
-                  {/* Fixed aspect ratio + card-back slate behind the loading image, so the row never
-                      reflows and a still-loading card reads as a card, not a hole. */}
-                  <img
-                    src={imageUrlByPrint(artPrint(it))}
-                    alt=""
-                    draggable={false}
-                    class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"
-                  />
-                  <Show when={props.ordered && selected()}>
-                    {/* 1-based pick-order chip (scry/surveil): click order = stacking order. */}
-                    <div class="absolute top-1.5 left-1.5 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-llanowar font-bold text-caption text-snow-mint">
-                      {order() + 1}
-                    </div>
-                  </Show>
-                </button>
-              );
-            }}
-          </For>
-          <Show when={props.searchable && query().trim() !== "" && shown().length === 0}>
-            <div class="text-label text-mist">No cards match.</div>
-          </Show>
+        {/* Flat row — deliberately no hand-bar fan: this is a decision surface, not the hand.
+            Only this region scrolls so the filter and Choose / Fail-to-find stay on screen. */}
+        <div
+          data-testid="pick-card-scroll"
+          class="min-h-0 w-full max-w-[min(90vw,1040px)] flex-1 overflow-y-auto overscroll-contain"
+        >
+          <div class="flex flex-wrap justify-center gap-3 px-3 pb-1">
+            <For each={shown()}>
+              {(it) => {
+                const selected = () => picked().includes(it.id);
+                const order = () => picked().indexOf(it.id);
+                return (
+                  // Selected = vine ring + a lift; llanowar-family green is DESIGN.md's "selected".
+                  // `relative` anchors the pick-order badge; `p-0` sheds the UA chrome so only the
+                  // card art shows.
+                  <button
+                    type="button"
+                    data-testid={`pick-card-${it.id}`}
+                    aria-pressed={selected()}
+                    aria-label={it.label}
+                    onClick={() => toggle(it.id)}
+                    onPointerMove={() => setHover({ name: it.label, print: artPrint(it) })}
+                    onPointerLeave={() => setHover((h) => (h?.name === it.label ? null : h))}
+                    class={cn(
+                      "relative cursor-pointer rounded-[9px] p-0 shadow-hand transition-[transform,box-shadow] duration-150 ease-out",
+                      selected() && "-translate-y-2 shadow-pick",
+                    )}
+                  >
+                    {/* Fixed aspect ratio + card-back slate behind the loading image, so the row never
+                        reflows and a still-loading card reads as a card, not a hole. */}
+                    <img
+                      src={imageUrlByPrint(artPrint(it))}
+                      alt=""
+                      draggable={false}
+                      class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"
+                    />
+                    <Show when={props.ordered && selected()}>
+                      {/* 1-based pick-order chip (scry/surveil): click order = stacking order. */}
+                      <div class="absolute top-1.5 left-1.5 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-llanowar font-bold text-caption text-snow-mint">
+                        {order() + 1}
+                      </div>
+                    </Show>
+                  </button>
+                );
+              }}
+            </For>
+            <Show when={props.searchable && query().trim() !== "" && shown().length === 0}>
+              <div class="text-label text-mist">No cards match.</div>
+            </Show>
+          </div>
         </div>
         <Show when={props.count !== null}>
-          <div class="text-caption text-mist" data-testid="pick-count">
+          <div class="shrink-0 text-caption text-mist" data-testid="pick-count">
             {picked().length} / {props.count} selected
           </div>
         </Show>
         <Show when={props.count === null && (props.minCount !== undefined || props.maxCount !== undefined)}>
-          <div class="text-caption text-mist" data-testid="pick-count">
+          <div class="shrink-0 text-caption text-mist" data-testid="pick-count">
             {picked().length}
             {props.maxCount !== undefined ? ` / ${props.maxCount}` : ""} selected
             {props.minCount !== undefined && props.minCount > 0 ? ` (need at least ${props.minCount})` : ""}
           </div>
         </Show>
-        <div class="flex gap-md">
+        <div class="flex shrink-0 gap-md">
           <Button type="button" data-testid="pick-submit" disabled={!ready()} onClick={() => props.onSubmit(picked())}>
             {props.submitLabel}
           </Button>

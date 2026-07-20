@@ -7,6 +7,7 @@ import { Hud } from "~/components/atoms";
 import { PHASES, phaseOf, STEP_NAMES } from "~/layout";
 import { cn } from "~/lib/cn";
 import { playerLabel } from "~/lib/players";
+import { playPrioritySound } from "~/lib/prioritySound";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
 import type { VisibleState } from "~/wire/types";
 
@@ -77,6 +78,13 @@ function PriorityWatch(props: { me: number; state: VisibleState }) {
   });
 
   const yours = () => holder() === props.me;
+  // Chime only on the transition into priority — not on first paint if you already hold it, and
+  // not on every re-render while you keep it. Solid feeds the prior return value back as `prev`.
+  createEffect((prev: boolean | undefined) => {
+    const now = yours();
+    if (now && prev === false) playPrioritySound();
+    return now;
+  });
   return (
     <div class={cn("font-semibold text-caption", HEAT_INK[heatOf(elapsed())], yours() && "text-turn-mint")}>
       {yours() ? "You have priority" : `Waiting on ${playerLabel(props.state.players, holder())}`}

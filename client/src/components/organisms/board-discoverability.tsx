@@ -48,8 +48,9 @@ const LEGEND_ITEMS: { color: string; shape: "dot" | "badge" | "outline"; label: 
 ];
 
 export function LegendPanel(props: { onClose: () => void }) {
+  // Top-left, under the '?' toggle — keeps the bottom-right free for Pass / Next / yield.
   return (
-    <Hud style={{ "--b": `${HAND_BAR_H + 92}px` }} class="fixed right-[10px] bottom-(--b) z-21 w-[220px]">
+    <Hud class="fixed top-12 left-3 z-21 w-[220px]">
       <div class="mb-1.5 flex items-center justify-between">
         <span class="font-bold">Board legend</span>
         <Button
