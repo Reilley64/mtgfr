@@ -4,7 +4,8 @@
 // always on show while it sits in the command zone), and the Graveyard / Exile sections show
 // one card per action there. Battlefield activates live on the selection radial, not in this bar.
 // Zone groups follow Arena: gap + aura colour, no section captions. Hand tiles are a dense fan
-// (partial face at rest) with live cast-cost pips on the top edge — hover expands the full card.
+// (right-edge peek at rest — mana corner visible) with cast-cost pips on the top-right; hover
+// expands the full card. Centre of the fan rises toward the board (Arena arc, not a smile).
 // Every playable card is physically dragged — a ghost follows the cursor — and on release the
 // Board takes the action by its id (drag above the play threshold → take_action; back in the bar
 // → snap back). Combat declarations are NOT cards here; they keep the board's existing
@@ -27,22 +28,22 @@ export interface ActionDrop {
 
 /** Face width — peek/overlap tuned so neighbours hide most of the card (Arena denser fan). */
 export const HAND_CARD_W = 112;
-/** Visible strip under the next card at rest. */
+/** Visible strip width at rest — right edge of the face (mana-cost corner), Arena-style. */
 export const HAND_CARD_PEEK = 40;
 export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
 /** Clipped resting height — top strip only; hover expands to the full face (~156px). */
 export const HAND_STRIP_H = 88;
 const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 
-/** MTGA-style fan: slight tilt + edges lift (not sink) so the clipped strip stays above the dock. */
+/** MTGA fan: left/right tilt out; centre rises toward the board (edges sit lower). */
 function fanTransform(index: number, count: number): string {
   const off = index - (count - 1) / 2;
   const angle = Math.max(-10, Math.min(10, off * 2.5));
-  const lift = Math.min(14, off * off * 1.2);
-  return `rotate(${angle}deg) translateY(${-lift}px)`;
+  const rise = Math.max(0, 12 - off * off * 1.1);
+  return `rotate(${angle}deg) translateY(${-rise}px)`;
 }
 
-/** Room above the strip for rest-state cost pips (they sit outside the overlap-covered face). */
+/** Room above the strip for rest-state cost pips that sit on the face top-right. */
 const HAND_PIP_ROW_H = 18;
 /** Height of the bottom action bar; the Board uses it to place the play threshold.
  * Sized to the clipped strip + pip row so fitCamera keeps more viewport on the battlefield. */
@@ -217,6 +218,9 @@ export default function Hand(props: {
     caption?: string;
     fan?: string;
     zone: BarZone;
+    /** Slot index in the section — earlier cards stack above so the right peek stays visible. */
+    index: number;
+    count: number;
   }) => {
     const zoneWord = p.zone === "hand" ? null : p.zone;
     const ariaName = () => {
@@ -226,6 +230,9 @@ export default function Hand(props: {
     };
     const pips = () => costPips(p.manaCost, { showZero: p.objectKind != null && p.objectKind !== "land" });
     const [raised, setRaised] = createSignal(false);
+    // Earlier tiles paint above later ones so each right-peek (mana corner) stays on top of the
+    // next card's overhang — Arena denser hand, not left-edge peeks.
+    const stackZ = () => (raised() ? 30 : p.count - p.index);
     return (
       // Not a <button>: `onDown` drops the card on pointerup, so a native button's click would fire
       // `onDrop` a second time. The div carries the full button contract instead — tabIndex, role,
@@ -254,34 +261,21 @@ export default function Hand(props: {
         onPointerLeave={() => setRaised(false)}
         style={{
           "--fan": p.fan,
-          "--overlap": `${HAND_CARD_OVERLAP}px`,
+          "--peek": `${HAND_CARD_PEEK}px`,
           "--strip-h": `${HAND_STRIP_H}px`,
           "--card-h": `${HAND_CARD_H}px`,
+          "z-index": stackZ(),
         }}
-        // Dense Arena fan: heavy negative margin; first:ml-0 keeps the group optically centered.
-        // Hover raises z so the expanded face paints above neighbours.
+        // Rest slot is only the right peek wide; the face hangs left under the previous tile.
         class={cn(
-          "pointer-events-auto relative -ml-(--overlap) origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)] first:ml-0",
-          raised() && "z-30",
+          "pointer-events-auto relative origin-bottom transition-[width,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
+          raised() ? "w-[112px]" : "w-(--peek)",
         )}
       >
-        {/* Rest: pips sit *above* the strip. Top-right of the face is under the next card's
-            overlap — those disks looked like hollow/transparent glyphs. Above the strip they
-            stay clear of neighbours (overlap is horizontal within the strip height only). */}
-        <Show when={!raised() && pips().length > 0}>
-          <div
-            data-testid="hand-cost-pips"
-            class="pointer-events-none absolute bottom-full left-0 z-20 mb-0.5 flex gap-px pl-0.5"
-            aria-hidden="true"
-          >
-            <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} />}</For>
-          </div>
-        </Show>
-        {/* Clip to a top strip at rest; expand upward on hover (pointer handlers, not CSS :hover —
-            transform/fan ancestors made group-hover unreliable). */}
+        {/* Face right-aligned in the peek slot so the printed mana corner (top-right) is what shows. */}
         <div
           class={cn(
-            "relative w-[112px] origin-bottom transition-[height,border-radius] duration-150 ease-state",
+            "absolute right-0 bottom-0 w-[112px] origin-bottom transition-[height,border-radius] duration-150 ease-state",
             raised() ? "h-(--card-h) overflow-visible rounded-game" : "h-(--strip-h) overflow-hidden rounded-t-game",
           )}
         >
@@ -306,13 +300,13 @@ export default function Hand(props: {
               dimmedness(p),
             )}
           />
-          <Show when={raised() && pips().length > 0}>
+          <Show when={pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
               class="pointer-events-none absolute top-1 right-1 left-1 z-10 flex justify-end gap-px"
               aria-hidden="true"
             >
-              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
+              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={raised() ? 15 : 13} />}</For>
             </div>
           </Show>
           <Show when={p.caption}>
@@ -352,6 +346,8 @@ export default function Hand(props: {
                     caption={actionCaption(slot.action.kind)}
                     fan={fanTransform(i(), count())}
                     zone="hand"
+                    index={i()}
+                    count={count()}
                   />
                 );
               }
@@ -371,6 +367,8 @@ export default function Hand(props: {
                   caption={caption()}
                   fan={fanTransform(i(), count())}
                   zone="hand"
+                  index={i()}
+                  count={count()}
                 />
               );
             }}
@@ -394,6 +392,8 @@ export default function Hand(props: {
                     caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
                     fan={fanTransform(i(), commandCards().length)}
                     zone="command"
+                    index={i()}
+                    count={commandCards().length}
                   />
                 );
               }}
@@ -460,6 +460,8 @@ export default function Hand(props: {
                   caption={p.caption ? a.label : undefined}
                   fan={fanTransform(i(), p.actions.length)}
                   zone={p.zone}
+                  index={i()}
+                  count={p.actions.length}
                 />
               );
             }}
@@ -480,10 +482,15 @@ function actionCaption(kind: string): string | undefined {
   return undefined;
 }
 
-/** A group of bar cards. No visual caption — Arena uses gap + aura; `name` is for AT only. */
+/** A group of bar cards. No visual caption — Arena uses gap + aura; `name` is for AT only.
+ * Left pad equals one overlap so the first face's left overhang stays inside the group. */
 function Section(props: { name: string; children: JSX.Element }) {
   return (
-    <fieldset aria-label={props.name} class="m-0 flex min-w-0 items-end border-none p-0">
+    <fieldset
+      aria-label={props.name}
+      style={{ "--overlap": `${HAND_CARD_OVERLAP}px` }}
+      class="m-0 flex min-w-0 items-end overflow-visible border-none p-0 pl-(--overlap)"
+    >
       {props.children}
     </fieldset>
   );
