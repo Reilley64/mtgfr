@@ -5,7 +5,8 @@
 // one card per action there. Battlefield activates live on the selection radial, not in this bar.
 // Zone groups follow Arena: gap + aura colour, no section captions. Hand tiles are a dense fan
 // (right-edge peek at rest — mana corner visible) with cast-cost pips on the top-right; hover
-// expands the full card. Centre of the fan rises toward the board (Arena arc, not a smile).
+// expands the full card. Centre of the fan rises toward the board. Faces tuck under the screen
+// edge at rest (viewport clips them — no mid-card overflow cut).
 // Every playable card is physically dragged — a ghost follows the cursor — and on release the
 // Board takes the action by its id (drag above the play threshold → take_action; back in the bar
 // → snap back). Combat declarations are NOT cards here; they keep the board's existing

@@ -2,14 +2,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   applyDelta,
   applySnapshot,
+  foldProvenance,
   game,
-  landPlayFrom,
   lastTableFeelBatch,
-  priorStackObjectIds,
   resetGame,
-  resolvedFromStack,
   setGame,
-  zoneMoves,
 } from "~/store";
 import type { ObjectView, StackObjectView, StreamFrame, VisibleEvent, VisibleState } from "~/wire/types";
 
@@ -317,18 +314,18 @@ describe("applyDelta", () => {
     });
   });
 
-  describe("zoneMoves provenance (for the cross-zone glide)", () => {
+  describe("foldProvenance (cross-zone glide + table-feel)", () => {
     it("maps a moved card's new id to the id it came from", () => {
       applyDelta(mkDelta(1, [{ kind: "moved_to_graveyard", card: 50, from: 12 }]));
-      expect(zoneMoves().get(50)).toBe(12); // graveyard object 50 came from battlefield object 12
+      expect(foldProvenance().zoneMoves.get(50)).toBe(12); // graveyard object 50 came from battlefield object 12
     });
 
     it("covers entering permanents too, and resets each delta", () => {
       applyDelta(mkDelta(1, [{ kind: "permanent_entered", permanent: 60, from: 30 }]));
-      expect(zoneMoves().get(60)).toBe(30);
+      expect(foldProvenance().zoneMoves.get(60)).toBe(30);
       // A later delta with no zone move clears the map (stale provenance must not linger).
       applyDelta(mkDelta(2, [{ kind: "priority_passed", player: 0 }]));
-      expect(zoneMoves().size).toBe(0);
+      expect(foldProvenance().zoneMoves.size).toBe(0);
     });
 
     it("marks a permanent entering from the stack, so it glides from the stack overlay", () => {
@@ -341,11 +338,12 @@ describe("applyDelta", () => {
           { kind: "moved_to_graveyard", card: 50, from: 12 },
         ]),
       );
-      expect(resolvedFromStack().has(60)).toBe(true);
-      expect(resolvedFromStack().has(50)).toBe(false);
+      const { resolvedFromStack } = foldProvenance();
+      expect(resolvedFromStack.has(60)).toBe(true);
+      expect(resolvedFromStack.has(50)).toBe(false);
       // And it resets with the next delta, like the move map.
       applyDelta(mkDelta(2, [{ kind: "priority_passed", player: 0 }]));
-      expect(resolvedFromStack().size).toBe(0);
+      expect(foldProvenance().resolvedFromStack.size).toBe(0);
     });
 
     it("records land_played permanent → hand card for play-origin matching", () => {
@@ -356,9 +354,9 @@ describe("applyDelta", () => {
           [mkObject({ id: 3, name: "Forest", kind: { kind: "land", colors: [4] } })],
         ),
       );
-      expect(landPlayFrom().get(3)).toBe(9);
+      expect(foldProvenance().landPlayFrom.get(3)).toBe(9);
       applyDelta(mkDelta(2, [{ kind: "priority_passed", player: 0 }]));
-      expect(landPlayFrom().size).toBe(0);
+      expect(foldProvenance().landPlayFrom.size).toBe(0);
     });
 
     it("flags table-feel batches once per delta kind", () => {
@@ -378,7 +376,7 @@ describe("applyDelta", () => {
     });
   });
 
-  describe("priorStackObjectIds", () => {
+  describe("priorStackObjectIds via foldProvenance", () => {
     const stackSpell = (source: number): StackObjectView => ({
       controller: 0,
       kind: "spell",
@@ -393,10 +391,10 @@ describe("applyDelta", () => {
         ...mkDelta(2, [{ kind: "token_created", controller: 0, token: 99, creator: 30 }]),
         state: { ...mkState(), stack: [] },
       });
-      expect(priorStackObjectIds().has(30)).toBe(true);
+      expect(foldProvenance().priorStackObjectIds.has(30)).toBe(true);
       // Next delta: prior was already empty after the resolve.
       applyDelta(mkDelta(3, [{ kind: "priority_passed", player: 0 }]));
-      expect(priorStackObjectIds().has(30)).toBe(false);
+      expect(foldProvenance().priorStackObjectIds.has(30)).toBe(false);
     });
 
     it("clears on snapshot", () => {
@@ -405,9 +403,9 @@ describe("applyDelta", () => {
         ...mkDelta(2, []),
         state: { ...mkState(), stack: [] },
       });
-      expect(priorStackObjectIds().has(30)).toBe(true);
+      expect(foldProvenance().priorStackObjectIds.has(30)).toBe(true);
       applySnapshot(3, mkState());
-      expect(priorStackObjectIds().size).toBe(0);
+      expect(foldProvenance().priorStackObjectIds.size).toBe(0);
     });
   });
 });
