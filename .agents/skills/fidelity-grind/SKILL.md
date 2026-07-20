@@ -139,10 +139,14 @@ pool that supports it. After client catch-up (the wire is settled by then):
 - Write `decklists/<snake_slug>.md` — the frozen target list (commander + grouped tables for
   the other 99 cards, 100 total), sourced from the Archidekt fetch.
 - Generate `crates/server/fixtures/decks/<snake_slug>.json` from that list: `commander` /
-  `commander_print` (the commander card's `id` / `default_print` from its TOML) and one
-  `{id, count, print}` entry per non-commander card (basics carry their count), mapped
-  through the pool TOMLs. Do not use `tooling/rewrite-precon-fixtures.mjs` for non-soc
-  decks — it prefers `soc` prints; the TOMLs' `default_print` is already right.
+  `commander_print` and one `{id, count, print}` entry per non-commander card (basics carry
+  their count). Map `id` through the pool TOMLs, but stamp each `print` from Archidekt
+  `card.uid` (the precon printing — e.g. `cmd` / `td0`), not `CardDef.default_print`
+  (Scryfall's preferred print from `/cards/named`, often a different set). For the three
+  existing grind precons use `node tooling/rewrite-grind-precon-fixtures.mjs`. Do not use
+  `tooling/rewrite-precon-fixtures.mjs` for non-soc decks — it prefers `soc` prints. Never
+  commit placeholder oracle/print UUIDs; they 404 on Scryfall and break art. Pool TOMLs keep
+  Scryfall's preferred `default_print`; only the fixture carries the Archidekt print.
 - Register it in `crates/server/src/precons.rs`: one `Source` entry with the **next
   negative id** (grow the `SOURCES` array length), name it after the deck.
 - Add the fixture to `FIXTURES` and an `<slug>_is_a_legal_commander_deck` acceptance test

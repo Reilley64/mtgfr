@@ -10,7 +10,7 @@ The ubiquitous language for the game engine and protocol. Terms only — no impl
 ## Cards & objects
 - **Card** — a data-driven script (identity + rules behavior). Canonical **id** is Scryfall's oracle id; **name** is the printed name for display and search. The north star is to support any card faithfully (ADR 0014); the implemented pool grows from real cards, one at a time.
 - **Printing** — a specific Scryfall card object (UUID). An art preference only — which face art to show — not rules identity. Many Printings map to one Card.
-- **Default print** — each Card's baked Scryfall-canonical Printing UUID; used when a deck line or object has no other print chosen.
+- **Default print** — each Card's baked Scryfall-preferred Printing UUID (`/cards/named`); used when a deck line or object has no other print chosen. Precon fixtures may override with Archidekt/SoC prints.
 - **Card kind** — what a card fundamentally is: creature, spell (instant/sorcery), or land.
 - **Permanent** — a card that exists on the battlefield (e.g. a creature or land).
 - **Marked damage** — damage recorded on a permanent this turn; compared against toughness by a state-based action. Removed during cleanup.

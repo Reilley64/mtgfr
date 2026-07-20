@@ -138,4 +138,32 @@ mod tests {
             assert_eq!(get(d.id).map(|g| &g.name), Some(&d.name));
         }
     }
+
+    /// Grind-deck fixtures stamp Archidekt print UUIDs (cmd / td0), not CardDef::default_print
+    /// (Scryfall preferred / `/cards/named`). Regression for Political Puppets shipping a
+    /// placeholder print for Pollen Lullaby.
+    #[test]
+    fn grind_precons_use_archidekt_prints() {
+        let pollen_oracle = "1f64d70d-ea38-4419-be91-8b68aab3401e";
+        let pollen_cmd = "5d033d41-2b64-4b9b-98d2-d32bb21f080f";
+        let puppets = get(-8).expect("Political Puppets");
+        let pollen = puppets
+            .cards
+            .iter()
+            .find(|c| c.id == pollen_oracle)
+            .expect("Pollen Lullaby in Political Puppets");
+        assert_eq!(pollen.print, pollen_cmd);
+
+        let rubinia = get(-6).expect("Enchantress Rubinia");
+        assert_eq!(
+            rubinia.commander_print, "65a6b9a5-11d6-4f6d-a646-b1ef9c9b68aa",
+            "Rubinia should use the td0 theme-deck print"
+        );
+
+        let xira = get(-7).expect("Deathdancer Xira");
+        assert_eq!(
+            xira.commander_print, "8c961265-72a8-4521-b413-0d51fd2e10ad",
+            "Xira should use the td0 theme-deck print"
+        );
+    }
 }
