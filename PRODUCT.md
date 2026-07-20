@@ -20,7 +20,7 @@ paper-Magic muscle memory.
 A browser-based 4-player Commander table: authoritative rules engine on the
 server, an MTGA-style board in the client, plus auth, lobby, and deck builder over
 the card pool. The north star is to support *any* card, built faithfully — grown
-from real cards with gaps flagged rather than forced (ADR 0014). The soc precons
+from real cards with gaps flagged rather than forced. The soc precons
 (~389 unique cards) are the first faithful decks; success = games worth replaying
 with rules that resolve correctly without manual bookkeeping.
 

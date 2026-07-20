@@ -282,7 +282,7 @@ export interface Mtgfr {
   /**
 * Search the pool from the deck builder's single input: cards matching every token of `q` against
 * name, card type, subtype, set, color, and keywords. Public (no auth) — the pool isn't private.
-* A DB error yields an empty page rather than a 500 (the projection is best-effort, ADR 0010).
+* A DB error yields an empty page rather than a 500 (the projection is best-effort, accounts-decks-and-catalog spec).
 */
 "searchCards": <Config extends OperationConfig>(options: { params?: SearchCardsParams | undefined; config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<SearchCards200, Config>, HttpClientError.HttpClientError>
   /**
@@ -329,7 +329,7 @@ export interface Mtgfr {
 * full redacted snapshot at the current seq; every later event is a redacted delta. On (re)connect
 * the client just gets a fresh snapshot, so there's no history buffer — the snapshot's seq is the
 * resume point. SSE (over fetch, not `EventSource`) so the generated client can consume it as a
-* typed `Stream<StreamFrame>` (ADR 0005).
+* typed `Stream<StreamFrame>` (lobby-table-routing-and-live-game spec).
 */
 "stream": <Config extends OperationConfig>(table: string, options: { config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<void, Config>, HttpClientError.HttpClientError>
   /**
@@ -337,12 +337,12 @@ export interface Mtgfr {
 * full redacted snapshot at the current seq; every later event is a redacted delta. On (re)connect
 * the client just gets a fresh snapshot, so there's no history buffer — the snapshot's seq is the
 * resume point. SSE (over fetch, not `EventSource`) so the generated client can consume it as a
-* typed `Stream<StreamFrame>` (ADR 0005).
+* typed `Stream<StreamFrame>` (lobby-table-routing-and-live-game spec).
 */
 "streamSse": (table: string) => Stream.Stream<Stream200Sse, HttpClientError.HttpClientError>
   /**
 * Mark (or clear) a seat's turn yield: auto-pass until that seat's next turn, or until they
-* take an intentional action (ADR 0029). Independent of stack yield.
+* take an intentional action (turn-priority-and-stack spec). Independent of stack yield.
 */
 "setTurnYield": <Config extends OperationConfig>(table: string, options: { payload: SetTurnYieldRequestJson; config?: Config | undefined }) => Effect.Effect<WithOptionalResponse<SetTurnYield200, Config>, HttpClientError.HttpClientError>
   /**

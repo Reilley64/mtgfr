@@ -1,6 +1,6 @@
 //! Reveal-family event mint — pure Event vectors for related [`Effect`] variants.
 //!
-//! Called only from the private mint path behind [`Game::run`] (ADR 0002 / explore-all deepen).
+//! Called only from the private mint path behind [`Game::run`] (card-dsl-and-card-pool spec / explore-all deepen).
 //! Apply stays in [`crate::apply`]; this module never mutates the board.
 
 use crate::*;

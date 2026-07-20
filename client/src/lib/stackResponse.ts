@@ -59,7 +59,7 @@ export function canActOnStack(opts: {
   return !viewerIsHelpless(opts.actions);
 }
 
-/** Stack-yield arm button: can act now and not yet armed (ADR 0027 one-shot). */
+/** Stack-yield arm button: can act now and not yet armed (turn-priority-and-stack spec one-shot). */
 export function showStackYieldArm(opts: {
   spectating: boolean;
   staged: boolean;
@@ -116,7 +116,7 @@ export function viewerIsHelpless(actions: readonly { id: number }[] | undefined)
   return (actions?.length ?? 0) === 0;
 }
 
-/** Seat facts for stack / instant-window / turn-yield chrome (ADR 0026 / 0027 / 0029). */
+/** Seat facts for stack / instant-window / turn-yield chrome (turn-priority-and-stack spec). */
 export type StackChromeInput = {
   spectating: boolean;
   staged: boolean;
@@ -166,14 +166,14 @@ export type StackChrome = {
    */
   space: "pass_priority" | "primary" | "ignore";
   /**
-   * Show the turn-yield rocker (ADR 0029). Hidden for spectators and on your own turn —
+   * Show the turn-yield rocker (turn-priority-and-stack spec). Hidden for spectators and on your own turn —
    * on your turn the same flag is **End Turn** (`showEndTurn`).
    */
   showTurnYield: boolean;
   /** Current turn-yield / end-turn armed state (wire mirror). */
   turnYielded: boolean;
   /**
-   * Show Arena End Turn (ADR 0037) — arms the same `turn_yielded` flag while you are active.
+   * Show Arena End Turn (turn-priority-and-stack spec) — arms the same `turn_yielded` flag while you are active.
    * Hidden for spectators, when it is not your turn (`showTurnYield` covers until-my-turn),
    * while Resolve card / Resolve stack own the pass job, and while Attack (N) is pending.
    */
@@ -190,14 +190,14 @@ export type StackChrome = {
   showPrimary: (primaryKind: string) => boolean;
 };
 
-/** Whether the turn-yield rocker is offered (ADR 0029 — until my turn, not your turn). */
+/** Whether the turn-yield rocker is offered (turn-priority-and-stack spec — until my turn, not your turn). */
 export function showTurnYieldControl(opts: { spectating: boolean; viewer: number; active: number }): boolean {
   if (opts.spectating) return false;
   return opts.active !== opts.viewer;
 }
 
 /**
- * Whether End Turn is offered (ADR 0037 — same flag, only while you are active).
+ * Whether End Turn is offered (turn-priority-and-stack spec — same flag, only while you are active).
  * Hidden while stack resolve chrome is the priority job, or while Attack (N) is pending confirm.
  */
 export function showEndTurnControl(opts: {
@@ -234,7 +234,7 @@ export function clearEndTurnControl(opts: {
 }
 
 /**
- * Space/Enter binding for priority chrome (ADR 0026 / 0027). Spectators never bind;
+ * Space/Enter binding for priority chrome (turn-priority-and-stack spec). Spectators never bind;
  * empty-stack fires primary; stack uses one-shot pass when the seat can act.
  */
 export function spaceBinding(opts: {

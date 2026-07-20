@@ -2,7 +2,7 @@
 //!
 //! Primary: CR 601 (casting spells), CR 602 (activating abilities), CR 118 (costs / payments).
 //! Also: alternative costs (CR 702.34 flashback, CR 702.19 escape), impulse play (CR 118.6).
-//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::playable::{CastInputs, CastPlayKind, ValidatedCast};
 use crate::*;

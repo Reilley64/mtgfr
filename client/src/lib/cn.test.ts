@@ -4,7 +4,7 @@
 // tailwind-merge ships knowing stock Tailwind's scales, not ours. Left unconfigured it reads
 // `text-caption` as a colour, decides it conflicts with `text-burn-red`, and silently drops the
 // font size — on ~25 sites. So `cn` re-declares our @theme scales, and the first test here fails
-// the build if that list ever drifts from global.css (the drift ADR 0024 exists to prevent).
+// the build if that list ever drifts from global.css (the drift client-shell-deck-builder-and-observability spec exists to prevent).
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";

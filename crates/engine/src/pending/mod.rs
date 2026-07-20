@@ -1,4 +1,4 @@
-//! Pending-choice lifecycle (ADR 0004): raise → answer → resume elsewhere.
+//! Pending-choice lifecycle (choices-actions-and-resolution spec): raise → answer → resume elsewhere.
 //!
 //! External seam for callers (`Game::submit`, effect/cast/trigger/combat/priority pause sites):
 //! - [`raise`] / [`ChoiceRequest`] — typed raise for common effect/cast pause sites

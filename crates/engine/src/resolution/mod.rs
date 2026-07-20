@@ -9,7 +9,7 @@
 //! [`pause_exile_cast`], [`pause_edict`], [`pause_fight`], [`pause_counter_spell`]), and mut-needing
 //! resolve choreography ([`copy`], [`sequence_steps`], [`resolve_misc`]) — the arms that read
 //! prior events, mint new stack objects, or arm runtime scratch beyond a pure `mint_*` batch.
-//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 mod control;
 mod copy;

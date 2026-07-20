@@ -26,7 +26,7 @@ import { splitOracleText } from "~/lib/oracleText";
 import { tableId } from "~/net";
 import type { CatalogCard, ModifierSourceView } from "~/wire/types";
 
-// Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
+// Keyed by Card (oracle) id — accounts-decks-and-catalog spec. An empty id (no id known for this pin/hover yet) skips
 // the fetch rather than looking anything up by name; there is no name-based lookup anymore.
 const cardTextFamily = Atom.family((id: string) =>
   Atom.make(id === "" ? Effect.succeed(null) : lookupCardsByIds([id]).pipe(Effect.map((cards) => cards[0] ?? null))),

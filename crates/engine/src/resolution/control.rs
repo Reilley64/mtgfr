@@ -1,6 +1,6 @@
 //! Control-family event mint — pure Event vectors for related [`Effect`] variants.
 //!
-//! Called only from the private mint path behind [`Game::run`] (ADR 0002 / explore-all deepen).
+//! Called only from the private mint path behind [`Game::run`] (card-dsl-and-card-pool spec / explore-all deepen).
 //! Apply stays in [`crate::apply`]; this module never mutates the board.
 
 use crate::*;
@@ -31,7 +31,7 @@ impl Game {
             // is filled at trigger placement; `None` only in an unplaced card template, which
             // never reaches resolution. Re-checks the Aura's own `enchant` filter against the
             // entering permanent (CR 303.4f-style legality) — a no-op if it isn't a legal host,
-            // even though the "you may" was accepted (FIDELITY_BACKLOG #156).
+            // even though the "you may" was accepted (deck fidelity increments #156).
             Effect::AttachSelfToEntering { entering } => {
                 let host = entering.expect("filled in from the entering trigger at placement");
                 if !self.attachment_host_legal(source, host) {

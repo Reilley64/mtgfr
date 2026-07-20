@@ -1,8 +1,8 @@
 //! Priority, turn structure, turn-based actions, and cleanup.
 //!
 //! Turn phases/steps, passing priority, turn-based actions (untap, draw, combat steps
-//! advance), cleanup. Also: mana abilities / auto-tap planning (CR 605, ADR 0007).
-//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! advance), cleanup. Also: mana abilities / auto-tap planning (CR 605, turn-priority-and-stack spec).
+//! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 
@@ -400,7 +400,7 @@ impl Game {
     /// board counts as castable mana.
     /// A painland's two free modes are both summed, over-counting a single land's output, but
     /// over-counting only makes auto-pass stop *more* often (never wrongly skip), the safe
-    /// direction (ADR 0007). (CR 605, CR 108.3, CR 113)
+    /// direction (turn-priority-and-stack spec). (CR 605, CR 108.3, CR 113)
     pub(crate) fn available_mana(&self, player: PlayerId) -> ManaPool {
         let mut mana = self.players[player.0 as usize].mana_pool;
         let mut used = vec![false; self.objects.len()];

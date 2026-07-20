@@ -66,7 +66,7 @@ export interface DrawCtx {
   responseObjects: ReadonlySet<number>;
   /** Screen-space origin for the targeting arrow while aiming (stack-card center). */
   aimFrom: Vec | null;
-  /** In-flight cards (ADR 0035) — drawn in screen space above board cards. */
+  /** In-flight cards (client-game-board-and-interaction spec) — drawn in screen space above board cards. */
   flights?: readonly CardFlight[];
   /** Canvas card ids still owned by a flight — skip drawing the resting face. */
   hideCardIds?: ReadonlySet<number>;

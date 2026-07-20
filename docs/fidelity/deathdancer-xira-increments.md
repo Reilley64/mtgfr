@@ -1,8 +1,7 @@
 # Deathdancer Xira deck increments (2026-07-17)
 
-Deck report: [deathdancer-xira.md](deathdancer-xira.md). Engine-wide tiers and per-card
-exotics stay in [../FIDELITY_BACKLOG.md](../FIDELITY_BACKLOG.md); increment numbering is
-global across both.
+Deck report: [deathdancer-xira.md](deathdancer-xira.md). This file is the sole engine-capability backlog for this deck (checklist + ranked increments + per-card exotics). Numbering is local to this file.
+
 
 From `docs/fidelity/deathdancer-xira.md` (Archidekt 2209179 — commander Xira Arien).
 26 of the deck's 65 new cards need engine work; ranked S-first within dependency order. The

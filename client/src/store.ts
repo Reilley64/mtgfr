@@ -1,5 +1,5 @@
 // The client's view of the game. Each stream delta now carries the viewer's full render
-// state *and* the events that produced it (ADR 0006): we replace the rendered `state` and
+// state *and* the events that produced it (wire-protocol-and-visibility spec): we replace the rendered `state` and
 // narrate the `events` into a scrollable game log. No snapshot refetch mid-stream.
 
 import { createStore } from "solid-js/store";

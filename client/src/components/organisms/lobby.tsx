@@ -183,7 +183,7 @@ export default function Lobby(props: { onStarted: () => void }) {
       return;
     }
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500); // a view-layer flip, not async work (ADR 0019)
+    setTimeout(() => setCopied(false), 1500); // a view-layer flip, not async work (client-shell-deck-builder-and-observability spec)
   };
 
   const myReady = () => {

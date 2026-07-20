@@ -1,4 +1,4 @@
-// PlayMotion (ADR 0035): canvas flight layer for play-committed motion — spawn on play
+// PlayMotion (client-game-board-and-interaction spec): canvas flight layer for play-committed motion — spawn on play
 // commit, retarget on delta bind / layout, absorb/orphan in one ordered pass, expose hide
 // sets for hand + canvas resting faces. TableSurface keeps non-play entrance glides.
 

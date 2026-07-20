@@ -7,16 +7,32 @@ description: Given an Archidekt deck link, make every card in that deck faithful
 
 Turn an Archidekt deck into a fully faithful slice of the card pool, end to end. This skill
 encodes the process that took the first 429-card pool from ~60% to 99.3% faithful (waves 1–142,
-2026-07). Read `card-dsl` (authoring bar) and use the `tdd` skill throughout.
+2026-07). Read `card-dsl` (authoring bar). Drive implementation with the
+`test-driven-development` skill (red → green) throughout. Use other obra/superpowers skills
+named below for isolation, planning, verification, review, and branch finish.
 
 **Inputs:** an Archidekt deck URL (`https://archidekt.com/decks/<id>/<slug>`).
 **Output:** every deck card scripted in `crates/cards/data/`, faithful or carrying a precise
 `approximates` residual; engine + client green; an open PR against the default branch with
 the wrap-up report as its body.
 
+## Superpowers skills this grind uses
+
+| Phase | Skill | Role |
+|-------|-------|------|
+| 0 | `using-git-worktrees` | Isolated worktree before any edits |
+| 3–4 | `test-driven-development` | Failing engine test before production code |
+| 4 (plan) | `writing-plans` / `dispatching-parallel-agents` | Wave planning + brief writing (via `wave-workflow.js`) |
+| 4 (verify) | `verification-before-completion` | Evidence before claiming a wave green |
+| 4 (verify) | `requesting-code-review` | Adversarial diff review of the wave |
+| 4 (bugs) | `systematic-debugging` | Root-cause before fixes when a wave goes red |
+| 6 | `verification-before-completion` + project `verify` | Final bar + live smoke |
+| 7 | `finishing-a-development-branch` | PR / merge options after the grind is green |
+
 ## Phase 0 — Setup (isolation)
 
-- Work in a dedicated git worktree so the user's checkout stays untouched:
+- Follow **`using-git-worktrees`** to put the grind in an isolated workspace. Prefer the
+  platform-native worktree flow; fall back to:
   `git worktree add ../mtgfr-grind-<slug> -b fidelity-<slug> main`
 - Commit every green wave on that branch. **Never merge to the default branch until the grind is done**
   and the user confirms. Periodically sync-merge the default branch *into* the grind branch (delegate to an
@@ -47,11 +63,12 @@ Write `docs/fidelity/<slug>.md` — a checkbox per deck card, in four sections:
 - **C. New, expressible today** — cards the current DSL can script with no engine change
   (judge against `DSL_REFERENCE.md` + `de.rs`; when unsure, mark D — flag-don't-force).
 - **D. New, needs engine work** — for these, write ranked increments to a per-deck file,
-  `docs/fidelity/<slug>-increments.md`, in the backlog's format: numbered heading (numbering
-  is GLOBAL — continue from the highest number anywhere), effort (S/M/L/XL), `Depends on:`
-  line, example cards, a *Sketch* of the intended design. XL increments get an explicit slice
-  staging. Leave a one-line pointer section in `docs/FIDELITY_BACKLOG.md` (which keeps only
-  the engine-wide tiers and per-card exotics).
+  `docs/fidelity/<slug>-increments.md`. That file is the **sole engine-capability backlog
+  for this deck** (no global fidelity backlog). Format: numbered heading (numbering is
+  **local to this deck file** — start at 1 for a new deck, or continue the highest number
+  already in *this* file), effort (S/M/L/XL), `Depends on:` line, example cards, a *Sketch*
+  of the intended design. XL increments get an explicit slice staging. Fold per-card
+  exotics into the same file (don't invent a second ledger).
 
 **Observability re-audit (do not skip):** many residuals are justified by pool absence —
 notes saying "no pool card does X", "unobservable", "dead variant". Grep every
@@ -62,9 +79,9 @@ variant" died the moment a planeswalker entered the pool.)
 
 ## Phase 3 — Pure authoring pass
 
-Author all of section C in batched waves (TDD: failing engine test in
-`crates/engine/tests/game.rs` first, then the TOML). No engine edits allowed in this phase —
-if a card turns out to need one, reclassify it to D and move on.
+Author all of section C in batched waves. Invoke **`test-driven-development`**: failing
+engine test in `crates/engine/tests/game.rs` first, then the TOML. No engine edits allowed
+in this phase — if a card turns out to need one, reclassify it to D and move on.
 
 **Frame audit (mandatory, after every authoring or grind wave that adds cards):** agents
 hallucinate frames — the first grind shipped 8/66 cards with wrong mana costs, P/T, or
@@ -86,7 +103,9 @@ Run the wave loop until the planner declares done. Assets in this folder:
   sequentially on the shared tree → verify+reconcile). Copy it to scratch space, fill the
   `{{WORKTREE}}` / `{{BRANCH}}` / `{{BACKLOG_RANGE}}` / `{{BACKLOG_FILE}}` tokens, and run it via the Workflow
   tool, relaunching after each green wave. Without a workflow orchestrator, run the same
-  three stages as sequential subagent dispatches.
+  three stages as sequential subagent dispatches (`dispatching-parallel-agents` only when
+  rider increments are proven disjoint; default is sequential on the shared tree). The Plan
+  stage should read like a `writing-plans` brief per increment.
 - [`shared-context-template.md`](shared-context-template.md) — the brief every wave agent
   reads first; fill the same tokens and keep it in scratch space next to the script.
 
@@ -105,10 +124,13 @@ Hard-won loop rules (already baked into the script — do not soften them):
   deliberate flag-don't-force residual remains, mark it LANDED with the residual named in the
   heading — an XL left "note-only" forever makes every later planner waste its mandatory XL
   slot re-confirming it.
-- **Verify gate (every wave, opus, adversarial):** full `cargo test --workspace`,
+- **Verify gate (every wave, opus, adversarial):** follow **`verification-before-completion`**
+  — no green claim without fresh command evidence. Run full `cargo test --workspace`,
   `cargo fmt --check`, `cargo clippy --all-targets` with zero NEW warnings vs a git-stash
-  baseline; adversarial diff review against the CR; reconcile every touched card's
-  `approximates` note against the actual diff; update backlog LANDED marks (XL slices get
+  baseline; then **`requesting-code-review`** for an adversarial diff review against the CR;
+  reconcile every touched card's
+  `approximates` note against the actual diff; update **this deck's**
+  `docs/fidelity/<slug>-increments.md` LANDED marks (XL slices get
   dated progress notes, not LANDED, until all slices land); regenerate `docs/CR_INDEX.md`
   (`just engine-cr-index`). **Frame audit (mandatory):** script a diff of every new/touched
   card's mana cost, P/T, type, legendary flag, and verbatim `oracle` field against a fresh
@@ -117,6 +139,8 @@ Hard-won loop rules (already baked into the script — do not soften them):
   truth — every card has `card.oracleCard.id` (oracle id) and `card.uid` (print id). Never
   commit placeholder uuids; they break the frame audit and deck fixtures. Verify stages catch
   real rules bugs (~1 every 3 waves in practice) — never skip.
+- When a wave goes red or a bug resists a first glance, use **`systematic-debugging`**
+  (root cause before fix) rather than patching symptoms.
 - **Commit per green wave**; on a red wave stop and surface it to the user.
 - Consolidate before the XL tier if the codebase has grown fast (module splits, walker
   unification) — behavior-preserving only, full green bar.
@@ -158,12 +182,14 @@ pool that supports it. After client catch-up (the wire is settled by then):
 1. Re-run the deck checklist: every card checked, or carrying a precise residual note the
    user has seen. Every remaining `approximates` in the pool must name *why* (absent
    subsystem, unobservable, dead variant) — never a silently dropped ability.
-2. **Live smoke game (do not skip):** boot the real server + client from the worktree (own
+2. **Live smoke game (do not skip):** follow **`verification-before-completion`**, then drive
+   the project **`verify`** skill — boot the real server + client from the worktree (own
    ports — never kill or reuse another session's dev servers) and drive a multiplayer game
    with the actual decklist over the HTTP/SSE surface. Saving the deck exercises deck
    legality (itself a frame gate — this is what exposed the hallucinated frames); the drive
    loop should answer every pending-choice kind it meets and log which new kinds fired live.
-   Fix what it finds with regression tests at the lowest layer. If the local environment
+   Fix what it finds with regression tests at the lowest layer (`test-driven-development`).
+   If the local environment
    cannot boot server+client (missing DB, port conflicts, etc.), delegate the smoke game to a
    cloud/remote agent with a clean setup, or fix the environment before proceeding. Do not
    skip — this is the final integration gate before the PR.
@@ -192,8 +218,9 @@ pool that supports it. After client catch-up (the wire is settled by then):
    verified tree: tag the old head (`git tag grind-<slug>-history`), then
    `git commit-tree 'HEAD^{tree}' -p origin/<default> -m "<conforming message>"`,
    `git reset --hard` to it, and force-push. The PR body carries the full story.
-6. **End with an open PR, not a direct merge:** push the branch and open it with
-   `gh pr create` against the default branch. The PR body is the wrap-up report — the deck
+6. **End with an open PR, not a direct merge:** follow **`finishing-a-development-branch`**
+   (verify tests → present options → execute). Prefer opening a PR with `gh pr create`
+   against the default branch. The PR body is the wrap-up report — the deck
    checklist summary (faithful counts before/after), engine capabilities landed, remaining
    residuals and their why, client surface added, and the test totals. The user reviews and
    merges. If the repo has no GitHub remote (yet), stop after the final verify and hand the
@@ -214,7 +241,7 @@ Stay on the PR until it merges; don't end the run at "PR opened".
   reply. Address each: code change + push for real issues, or a short factual reply
   (`gh pr comment` / replying on the thread) when no change is warranted — never leave a
   comment unanswered or resolve a thread without responding. Requested changes reopen
-  Phase 4/5 rules (TDD, verify gate, conventions).
+  Phase 4/5 rules (`test-driven-development`, verify gate, conventions).
 - Ping the user only when CI is green and all threads are addressed, when a review asks
   for something out of scope (a design decision), or when the same check fails twice with
   no fix in sight. Remove the worktree after the PR merges.

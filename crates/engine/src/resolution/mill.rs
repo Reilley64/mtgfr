@@ -1,7 +1,7 @@
 //! Mill-family Event mint and resolve choreography for related [`Effect`] variants.
 //!
 //! Pure mint stays behind [`Game::execute_effect`]; [`Game::resolve_mill_self`] owns
-//! mill → ResolutionFrame mana-value snapshot → apply (ADR 0002 deepen).
+//! mill → ResolutionFrame mana-value snapshot → apply (card-dsl-and-card-pool spec deepen).
 
 use crate::*;
 

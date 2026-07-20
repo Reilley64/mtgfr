@@ -48,7 +48,7 @@ pub const SPECTATOR_VIEWER: u8 = u8::MAX;
 /// Table-owned facts that finish a [`VisibleState`]. Pure data — no `Seat` / tokio coupling.
 ///
 /// Yield, stack-hold remaining, and display names live on the server's `Table`, not the `Game`
-/// (ADR 0026/0027). Callers map table state into this DTO and pass it to [`complete_visible`].
+/// (turn-priority-and-stack spec). Callers map table state into this DTO and pass it to [`complete_visible`].
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ViewExtras {
     pub yields: [bool; 4],
@@ -61,7 +61,7 @@ pub struct ViewExtras {
 }
 
 /// Inputs for one viewer-facing delta frame: redact events + complete board in one call
-/// (ADR 0005/0006). Callers map Table chrome into [`ViewExtras`] first — the engine stays
+/// (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec). Callers map Table chrome into [`ViewExtras`] first — the engine stays
 /// audience-unaware.
 pub struct DeltaCompose<'a> {
     pub game: &'a engine::Game,
@@ -97,7 +97,7 @@ pub fn compose_delta(input: DeltaCompose<'_>) -> StreamFrame {
 ///
 /// Redacts private zones, projects the board, then stamps Table policy from `extras` in one
 /// pass — yield, hold remaining, and usernames. Incomplete board projection is not a public
-/// wire path (ADR 0005/0006). Opening snapshots use this directly; live deltas use
+/// wire path (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec). Opening snapshots use this directly; live deltas use
 /// [`compose_delta`].
 pub fn complete_visible(
     game: &engine::Game,
@@ -901,7 +901,7 @@ mod tests {
     #[test]
     fn complete_visible_overlays_seat_prints_onto_library_search_items() {
         // Library cards never appear in `objects`, so ChoiceItem.print is the only art path —
-        // deck-chosen Printings must overlay there too (ADR 0031).
+        // deck-chosen Printings must overlay there too (accounts-decks-and-catalog spec).
         let mut game = Game::new();
         let p0 = PlayerId(0);
         game.fund_mana(p0);
@@ -2525,7 +2525,7 @@ mod tests {
     }
 
     /// Tokens used to project with an empty `print`, so the client drew name placeholders.
-    /// Authored / engine token profiles now stamp Scryfall Printing UUIDs (ADR 0031).
+    /// Authored / engine token profiles now stamp Scryfall Printing UUIDs (accounts-decks-and-catalog spec).
     #[test]
     fn projected_tokens_carry_scryfall_print_for_battlefield_art() {
         let mut game = Game::new();

@@ -2,7 +2,7 @@
 //!
 //! Primary: CR 601 (timing and zone legality), CR 307 (sorcery speed), flash and
 //! alternative cast windows. Shared by [`Game::cast`], [`Game::meaningful_actions`], and
-//! one-click take-action. Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! one-click take-action. Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 
@@ -34,12 +34,12 @@ pub(crate) struct CastInputs<'a> {
 /// Which cast legality surface is asking — list, one-click execute, or full execute.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CastPlayKind {
-    /// [`Game::meaningful_actions`] / auto-pass (ADR 0007): timing, zone, affordability, and
+    /// [`Game::meaningful_actions`] / auto-pass (turn-priority-and-stack spec): timing, zone, affordability, and
     /// enough legal targets (including at least `modal_choose` playable modes); no priority; no
     /// cost picks.
     List,
     /// Like [`CastPlayKind::List`], but empty-stack instants count — used by
-    /// [`Game::has_empty_stack_instant_play`] for Arena End Turn opponent windows (ADR 0037).
+    /// [`Game::has_empty_stack_instant_play`] for Arena End Turn opponent windows (turn-priority-and-stack spec).
     RespondList,
     /// [`Intent::TakeAction`]: validates target/modes/`x` and chosen discard / graveyard-exile
     /// picks the same way as [`CastPlayKind::Full`].
@@ -259,11 +259,11 @@ impl Game {
         })
     }
 
-    /// List ([`CastPlayKind::List`]) follows ADR 0007: instants count only in a reaction
+    /// List ([`CastPlayKind::List`]) follows turn-priority-and-stack spec: instants count only in a reaction
     /// window or at sorcery speed. Execute ([`CastPlayKind::OneClick`]/[`CastPlayKind::Full`])
     /// follows [`Game::cast`]: any instant-speed spell may be cast whenever its caster holds
     /// priority (CR 117.1a). The post-attack declare-attackers window is a reaction window for
-    /// each defending player so empty-stack removal can stop auto-pass before blockers (ADR 0007).
+    /// each defending player so empty-stack removal can stop auto-pass before blockers (turn-priority-and-stack spec).
     pub(crate) fn cast_timing_ok(
         &self,
         player: PlayerId,
@@ -295,7 +295,7 @@ impl Game {
                         || !self.stack.is_empty()
                         || self.in_attack_response_window(player);
                 }
-                // End Turn opponent windows (ADR 0037) and execute paths: instants are always on.
+                // End Turn opponent windows (turn-priority-and-stack spec) and execute paths: instants are always on.
                 CastPlayKind::RespondList | CastPlayKind::OneClick | CastPlayKind::Full => {
                     return true;
                 }

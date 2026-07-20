@@ -4,7 +4,7 @@
 // Trace parenting: the gRPC ManagedRuntime is separate from the OTEL runtime.
 // Effect parent spans live in fiber Context and do NOT survive
 // `ManagedRuntime.runPromise` into this client — always pass `outboundTraceparent`
-// explicitly (see ADR 0034). Do not reintroduce Node ALS for this.
+// explicitly (see production-topology-and-operations spec). Do not reintroduce Node ALS for this.
 
 import { GrpcClientProtocol, type GrpcStatusCode, GrpcStatusError } from "@effect-grpc/effect-grpc";
 import * as Effect from "effect/Effect";
@@ -193,7 +193,7 @@ const clientCache = new Map<string, GrpcClient>();
 
 /**
  * gRPC client for one request. Parenting comes from `env.traceparent` (BFF span),
- * never from ambient context — the gRPC ManagedRuntime is separate from OTEL (ADR 0034).
+ * never from ambient context — the gRPC ManagedRuntime is separate from OTEL (production-topology-and-operations spec).
  */
 export function grpcClientFor(address: string, env: GrpcRequestEnv): GrpcClient {
   return grpcClient(address, env.traceparent);

@@ -1,6 +1,6 @@
 //! Sequence-step choreography — arms that read prior events (or arm/read this same
 //! resolution's own scratch) from within a `Sequence`. Peeled out of [`Game::run`]
-//! (ADR 0002 deepen); pure event mint for the underlying variants stays elsewhere. The
+//! (card-dsl-and-card-pool spec deepen); pure event mint for the underlying variants stays elsewhere. The
 //! shared idiom is a reverse scan of `events` for a specific prior emission
 //! (`TokenCreated`, `ReanimatedToBattlefield`, `SearchedToBattlefield`) that this step
 //! then acts on (attach to it, schedule a delayed return, grant haste, untap).

@@ -639,7 +639,7 @@ token = "81183cc6-d39c-4e51-a982-2351588987aa"  # data/tokens/fungus_beast.toml
 ```
 
 Only a single optional trigger per ability is wired (an optional trigger that's also one of
-several simultaneous triggered abilities isn't modeled, see ADR 0006).
+several simultaneous triggered abilities isn't modeled, see wire-protocol-and-visibility spec).
 
 A modal *triggered* ability's "you may choose N" (§5 `begin_combat` note) puts `optional = true`
 on every one of the card's modes — the whole modal choice is one "may," not a per-mode one;
@@ -1776,7 +1776,7 @@ count = 2
 ## 9. Aura/Equipment statics (`grant_to_attached`, `set_attached_base_p_t`, `set_attached_types`, `control_attached`)
 
 An Aura or Equipment's continuous effect on its host is a `timing = "static"` ability read during
-characteristic recompute (ADR 0003 — additive layers, not full CR 613):
+characteristic recompute (engine-core-and-event-model spec — additive layers, not full CR 613):
 
 - **`grant_to_attached`**: adds `power`/`toughness` and `keywords` to the host. `power`/
   `toughness` are an [`Amount`] (a bare int like `4` parses as `Amount::Fixed(4)`), so a grant can

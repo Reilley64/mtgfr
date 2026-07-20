@@ -10,7 +10,7 @@ body:
         card name, table id, and any Approximation note help us find the script and see what the
         pool already flags as incomplete.
 
-        Live tables are in-memory (ADR 0021); a table id is still useful for logs, screenshots, and
+        Live tables are in-memory (lobby-table-routing-and-live-game spec); a table id is still useful for logs, screenshots, and
         “who was at which table” context shortly after the game.
 
   - type: input
@@ -126,4 +126,4 @@ body:
       label: Fidelity notes
       description: The Approximation note itself is in the field above when Report bug could see one.
       options:
-        - label: I believe this is a missing engine/DSL capability (fidelity backlog), not just a script typo
+        - label: I believe this is a missing engine/DSL capability (needs a fidelity-grind deck increment), not just a script typo

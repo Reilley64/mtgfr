@@ -1,7 +1,7 @@
 // The deck manager: list your saved decks, build a new one, edit or delete, or take one to a
 // table to play. Auth-gated (redirects to /login if not signed in).
 //
-// Deck list is the shared `decksAtom` (per ADR 0019); delete/logout are function atoms consumed
+// Deck list is the shared `decksAtom` (per client-shell-deck-builder-and-observability spec); delete/logout are function atoms consumed
 // via `useAtomSet` in promise mode, so error folding lives in the Effect pipeline, not here.
 
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-solid";

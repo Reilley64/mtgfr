@@ -3,7 +3,7 @@
 //! Primary: CR 608 (resolving spells and abilities). Owns stack entry
 //! (`resolve_top` / `resolve_spell` / enter / finish) and a **thin** [`Game::run`]
 //! dispatcher; Effect bodies live in [`crate::resolution`] (mint families, pause
-//! peels, resolve choreography). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! peels, resolve choreography). Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 
@@ -680,7 +680,7 @@ impl Game {
             .contains(&chosen)
     }
 
-    /// Resolve one effect — the sole call-site verb for Effect → board mutation (ADR 0004).
+    /// Resolve one effect — the sole call-site verb for Effect → board mutation (choices-actions-and-resolution spec).
     /// A pausing effect sets `pending_choice` (via [`pending::raise`] / dig-loop helpers); every other effect
     /// mints events, applies them, and appends to `events`. Callers never choose between a
     /// pure mint path and a mut path; composites, snapshots, and RNG all go through here.

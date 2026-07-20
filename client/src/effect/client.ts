@@ -169,7 +169,7 @@ export function makeClient(fetchImpl: typeof globalThis.fetch) {
   };
 }
 
-/** The wire client (over the real `fetch`). Wrap its methods in an `Atom` (ADR 0019). */
+/** The wire client (over the real `fetch`). Wrap its methods in an `Atom` (client-shell-deck-builder-and-observability spec). */
 export const client = makeClient(globalThis.fetch);
 
 export type Client = typeof client;

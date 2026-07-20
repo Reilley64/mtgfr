@@ -1633,7 +1633,7 @@ const TWO_ETB: CardDef = CardDef {
 
 /// A test-only creature whose single ETB trigger deals 2 damage to a target creature —
 /// exercises the resolution-time target choice for triggered abilities (no pool card has
-/// a targeted ETB yet; see ADR 0006).
+/// a targeted ETB yet; see wire-protocol-and-visibility spec).
 const PINGER: CardDef = CardDef {
     name: "Test Pinger",
     id: "",
@@ -3650,7 +3650,7 @@ fn this_creature_combat_damage_draws_leitmotif_composer() {
     );
 }
 
-// ── Combat damage to a creature (CR 510.2, fidelity backlog #193) ─────────────────────
+// ── Combat damage to a creature (CR 510.2, fidelity increment #193) ─────────────────────
 
 #[test]
 fn stinkweed_imp_destroys_creature_it_deals_combat_damage_to() {
@@ -3787,7 +3787,7 @@ fn stinkweed_imp_creature_trigger_does_not_fire_on_noncombat_damage() {
     );
 }
 
-// ── Turn-scoped damaged-by set + death-watch (CR 603.10a, fidelity backlog #194) ──────
+// ── Turn-scoped damaged-by set + death-watch (CR 603.10a, fidelity increment #194) ──────
 
 #[test]
 fn vampiric_dragon_gets_a_counter_when_a_creature_it_damaged_this_turn_dies() {
@@ -11436,7 +11436,7 @@ fn legal_actions_lists_study_hall_paid_when_a_feeder_floats() {
 #[test]
 fn legal_actions_lists_a_paid_mana_activate_without_stopping_auto_pass() {
     // Mountain floats {{R}} and refreshes the action list; Ferrous Lake's {{1}},{{T}} ability is
-    // offered for the radial, but alone it is not a meaningful action (ADR 0007).
+    // offered for the radial, but alone it is not a meaningful action (turn-priority-and-stack spec).
     let mut game = Game::new();
     let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
     let ferrous = game.spawn_on_battlefield(PlayerId(0), card("Ferrous Lake"));
@@ -11532,7 +11532,7 @@ fn auto_tap_uses_fetid_heath_filter_when_duals_are_required() {
 
 #[test]
 fn auto_pass_ignores_a_land_that_only_taps_for_unspendable_mana() {
-    // A painland's abilities are all mana abilities — worth nothing on their own (ADR 0007). With
+    // A painland's abilities are all mana abilities — worth nothing on their own (turn-priority-and-stack spec). With
     // an empty hand and nothing to spend the mana on, tapping it isn't a meaningful action.
     let mut game = Game::new();
     game.spawn_on_battlefield(PlayerId(0), card("Battlefield Forge"));
@@ -16272,7 +16272,7 @@ fn an_instant_stops_auto_pass_while_the_stack_is_not_empty() {
     game.spawn_on_battlefield(PlayerId(1), card("Mountain")); // untapped {R} for the response
     game.spawn_in_hand(PlayerId(1), card("Shock"));
 
-    // Empty stack, opponent's turn: holding the instant is not meaningful (ADR 0007 unchanged).
+    // Empty stack, opponent's turn: holding the instant is not meaningful (turn-priority-and-stack spec unchanged).
     assert!(
         !game.has_meaningful_action(PlayerId(1)),
         "an instant on an empty stack in the opponent's main phase doesn't stop the flow",
@@ -26845,7 +26845,7 @@ fn a_set_base_aura_overrides_printed_pt_then_counters_add_on_top() {
     assert_eq!(
         (game.power(beast), game.toughness(beast)),
         (1, 2),
-        "a +1/+1 counter still adds on top of the set base (additive model, ADR 0003)"
+        "a +1/+1 counter still adds on top of the set base (additive model, engine-core-and-event-model spec)"
     );
 }
 
@@ -32770,7 +32770,7 @@ fn primal_might_pumps_the_chosen_creature_by_x_until_end_of_turn() {
 #[test]
 fn primal_might_pumped_creature_fights_chosen_enemy() {
     // Primal Might ({X}{G}) — the pump and the fight now share one cast target: the pumped
-    // creature ("it") is the same object that fights (fidelity backlog #73 rider).
+    // creature ("it") is the same object that fights (fidelity increment #73 rider).
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let bear = game.spawn_on_battlefield(PlayerId(0), creature("Bear 2/2", 2, 2, &[]));
@@ -41786,7 +41786,7 @@ fn casualties_of_war_choosing_one_mode_is_legal_and_targets_are_checked_per_mode
     );
 }
 
-// ── Modal triggered ability (CR 700.2 extended to a trigger, fidelity backlog #110) ───────
+// ── Modal triggered ability (CR 700.2 extended to a trigger, fidelity increment #110) ───────
 
 #[test]
 fn shadrix_begin_combat_choosing_two_modes_targets_two_distinct_players() {
@@ -41929,7 +41929,7 @@ fn shadrix_declining_the_may_resolves_to_nothing() {
     );
 }
 
-// ── Fight (CR 701.12, fidelity backlog #48) ───────────────────────────────────────────
+// ── Fight (CR 701.12, fidelity increment #48) ───────────────────────────────────────────
 
 /// A free instant that just fights: `Effect::Fight` targets an opponent's creature at cast, then
 /// pauses at resolution for the caster to pick their own creature (see `Effect::Fight`'s doc).
@@ -55855,7 +55855,7 @@ fn a_sequence_defers_the_rest_until_a_pausing_step_is_answered() {
     );
 }
 
-// --- stored legal-action list + TakeAction (ADR: "everything is an action") ---
+// --- stored legal-action list + TakeAction (choices-actions-and-resolution spec: action lists) ---
 
 /// Build a [`Intent::TakeAction`] carrying only a target (the other params default) — most
 /// action picks in these tests are a plain play or a single-target cast.
@@ -56615,7 +56615,7 @@ fn legal_actions_is_empty_while_a_choice_is_pending() {
 }
 
 // ── Small effect verbs: tap/untap, each-player-draws, target-player-loses-life,
-//    sacrifice-own, mill-self (fidelity backlog #13 / #21) ─────────────────────────────
+//    sacrifice-own, mill-self (fidelity increment #13 / #21) ─────────────────────────────
 
 #[test]
 fn killian_taps_and_goads_when_your_enchantment_enters() {
@@ -57615,7 +57615,7 @@ fn perpetual_timepiece_shuffle_can_choose_subset() {
     assert_eq!(game.library_size(PlayerId(0)), starting_library + 1);
 }
 
-// ── Exile a whole graveyard: graveyard hate (fidelity backlog #30) ──────────────────────
+// ── Exile a whole graveyard: graveyard hate (fidelity increment #30) ──────────────────────
 
 #[test]
 fn exile_target_players_graveyard_bojuka_bog() {
@@ -76026,7 +76026,7 @@ fn twisted_abomination_swampcycling_fetches_any_swamp_typed_land() {
     // shape as Noble Templar's Plainscycling / Shoreline Ranger's Islandcycling.
     // ponytail: the pool's other "Swamp"-subtyped lands (Woodland Cemetery, Necroblossom Snarl,
     // …) are mistyped — their real Oracle type line is plain "Land", no basic land subtype — so
-    // only the basic Swamp is a genuine "Swamp card" fixture here; see FIDELITY_BACKLOG follow-up.
+    // only the basic Swamp is a genuine "Swamp card" fixture here; see deck fidelity increments follow-up.
     let mut game = Game::new();
     game.fund_mana(PlayerId(0));
     let lib = game.stack_library(PlayerId(0), &[card("Island"), card("Swamp")]);
@@ -77170,7 +77170,7 @@ fn court_hussar_looks_at_top_three_and_puts_one_in_hand() {
     );
 }
 
-// ── Armadillo Cloak (fidelity backlog #151, attached-host damage watch) ───────────────
+// ── Armadillo Cloak (fidelity increment #151, attached-host damage watch) ───────────────
 
 /// [`cast_and_resolve`], but for a game seated with more than two players: passes priority once
 /// per seated player rather than [`resolve_top_of_stack`]'s hardcoded two, which only carries a
@@ -80412,7 +80412,7 @@ fn dredge_multi_draw_milling_a_creature_does_not_fire_its_dies_trigger() {
     );
 }
 
-// ── Printed dredgers (fidelity backlog #200 residual) ──────────────────────────────────
+// ── Printed dredgers (fidelity increment #200 residual) ──────────────────────────────────
 
 #[test]
 fn golgari_thug_dredges_four() {

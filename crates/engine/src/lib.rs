@@ -12,7 +12,7 @@
 //! Implemented today: 2–4 player Commander, stack/priority, mana economy, triggered
 //! and activated abilities, combat (incl. first strike, trample, multi-block), commander
 //! rules, data-driven card scripts, and [`PendingChoice`] pauses. See `CONTEXT.md`,
-//! `docs/FIDELITY_BACKLOG.md`, `docs/agent-navigation.md`, and `docs/CR_INDEX.md`
+//! `docs/fidelity/` (per-deck increments via fidelity-grind), `docs/agent-navigation.md`, and `docs/CR_INDEX.md`
 //! for vocabulary, gaps, and CR lookup.
 
 /// Card-DSL deserialization (the `card-dsl` feature): manual impls for the types whose

@@ -167,7 +167,7 @@ and "enchanted creature" tracking gets exercised hard. Specific pain points:
   Insect, loses abilities, indestructible), `Eldrazi Conscription` (+10/+10, trample,
   annihilator), `Angelic Destiny` (type-change + flying/first strike + return-on-death),
   `Sage's Reverie`, `Fallen Ideal`, `Spirit Mantle`. These are exactly the layer
-  interactions ADR-0003 chose *not* to model — flag before pulling any of them in.
+  interactions the engine-core-and-event-model spec chose *not* to model — flag before pulling any of them in.
 - **Control-changing effects.** `Changing Loyalty` (Aura that steals a creature) and
   Scriv/Killian's goad on opponents' creatures assume a real multiplayer control/attack
   model — Phase 4 territory, not the 1v1 engine.

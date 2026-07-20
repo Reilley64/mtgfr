@@ -666,7 +666,7 @@ pub(crate) struct TriggerContext {
     /// `def_of`/`owner_of`/`zone_of` all still resolve it whether it's still a live permanent or
     /// has since left. See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`] for where this is captured. Named so a future "all damage this
-    /// source dealt this turn" generalization (fidelity backlog #194) can extend it.
+    /// source dealt this turn" generalization (fidelity increment #194) can extend it.
     pub(crate) damaged_creature: Option<ObjectId>,
     /// The triggering spell's stack object id, for a delayed [`Trigger::CastSpell`] one-shot
     /// armed by [`Effect::ScheduleNextCastTrigger`] whose `then` copies that spell (Thunderclap

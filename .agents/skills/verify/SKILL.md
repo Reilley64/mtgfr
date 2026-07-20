@@ -5,11 +5,15 @@ description: Drive a live two-player mtgfr game end-to-end to verify engine/serv
 
 # Verifying mtgfr changes live
 
+Before claiming the change is verified, follow **`verification-before-completion`**: run the
+commands below (or the project `verify` path), read the output, and only then claim green.
+When a live drive fails mysteriously, use **`systematic-debugging`** before patching.
+
 ## Handles
 
 - **Dev loop is usually already running**: `just dev` = `bacon server` (auto-rebuilds+restarts `target/debug/server serve` — health on :8080, gRPC on :50051 — on source change) + vite on :5173. Check `lsof -nP -i :8080` — if `server`'s parent is `bacon server`, the running binary already has your changes (bacon restarted it after your last build). Don't start a second server; listen addrs come from `Settings` (`config/mtgfr.toml` / env).
 - Cold start: `DATABASE_URL="sqlite::memory:" cargo run -p server` + `cd client && bun run dev`.
-- Confirm the API is up: `curl -s localhost:8080/health/live`. Every game/auth/decks/cards route is gRPC now (ADR 0032) — there's no `/openapi.json` or REST path to curl directly; drive it through the BFF's `/api/rpc` (below) or a gRPC client against `:50051`.
+- Confirm the API is up: `curl -s localhost:8080/health/live`. Every game/auth/decks/cards route is gRPC now (wire-protocol-and-visibility spec) — there's no `/openapi.json` or REST path to curl directly; drive it through the BFF's `/api/rpc` (below) or a gRPC client against `:50051`.
 
 ## Seating a 2-player game via the BFF (no UI needed)
 

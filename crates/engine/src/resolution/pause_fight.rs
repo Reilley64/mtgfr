@@ -1,6 +1,6 @@
 //! Fight / move-counters pause family — resolution-time second-target peels.
 //!
-//! Pause peel behind [`Game::run`] (ADR 0002 deepen). Pause bookkeeping stays in
+//! Pause peel behind [`Game::run`] (card-dsl-and-card-pool spec deepen). Pause bookkeeping stays in
 //! [`crate::pending`].
 
 use crate::*;

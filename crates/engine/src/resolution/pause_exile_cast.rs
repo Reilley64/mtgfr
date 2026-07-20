@@ -1,6 +1,6 @@
 //! Exile-linked / graveyard-shuffle pause family — cash-out, free-cast, shuffle-from-graveyard.
 //!
-//! Pause peel behind [`Game::run`] (ADR 0002 deepen). Pause bookkeeping stays in
+//! Pause peel behind [`Game::run`] (card-dsl-and-card-pool spec deepen). Pause bookkeeping stays in
 //! [`crate::pending`]; this module only raises the choice.
 
 use crate::*;

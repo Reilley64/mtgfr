@@ -30,7 +30,7 @@ fn is_basic(def: &engine::CardDef) -> bool {
 
 /// Validate a deck for Commander legality. `Ok(())` = legal; `Err` lists every problem.
 /// `commander` and each entry's `id` are Card ids (Scryfall oracle ids). `commander_print` and
-/// each entry's `print` must be non-empty Printing UUIDs (art preference — ADR 0031).
+/// each entry's `print` must be non-empty Printing UUIDs (art preference — accounts-decks-and-catalog spec).
 pub fn validate(
     commander: &str,
     commander_print: &str,

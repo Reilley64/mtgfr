@@ -1,4 +1,4 @@
-//! Pure-mint Effect dispatcher behind [`Game::run`] (ADR 0002 deepen).
+//! Pure-mint Effect dispatcher behind [`Game::run`] (card-dsl-and-card-pool spec deepen).
 //!
 //! One exhaustive `match` that calls family `mint_*_family` helpers. Apply stays in
 //! [`crate::apply`]; pausing effects never reach here — [`Game::run`] intercepts them.

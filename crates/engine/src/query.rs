@@ -1,8 +1,8 @@
 //! Meaningful / legal actions and auto-pass predicates.
 //!
-//! Actions worth stopping priority for (ADR 0007). Also: CR 605 mana-ability carve-outs
+//! Actions worth stopping priority for (turn-priority-and-stack spec). Also: CR 605 mana-ability carve-outs
 //! so tapping for mana does not block auto-pass. Deferred / gaps: see
-//! `docs/FIDELITY_BACKLOG.md`.
+//! per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 
@@ -16,8 +16,8 @@ impl Game {
     }
 
     /// Whether `player` has an instant-speed cast they could take on an empty stack right now.
-    /// Broader than [`Game::has_meaningful_action`] (ADR 0007 omits empty-stack instants so the
-    /// table does not halt for every removal in hand). Used by server End Turn chrome (ADR 0037)
+    /// Broader than [`Game::has_meaningful_action`] (turn-priority-and-stack spec omits empty-stack instants so the
+    /// table does not halt for every removal in hand). Used by server End Turn chrome (turn-priority-and-stack spec)
     /// so opponents still get priority windows while the active seat auto-passes their turn.
     pub fn has_empty_stack_instant_play(&self, player: PlayerId) -> bool {
         if self.players[player.0 as usize].lost {
@@ -39,7 +39,7 @@ impl Game {
     }
 
     /// Every *meaningful action* `player` may take right now — the plays worth stopping
-    /// priority for (ADR 0007): a land drop, a castable spell, an activatable non-mana
+    /// priority for (turn-priority-and-stack spec): a land drop, a castable spell, an activatable non-mana
     /// ability, or a combat declaration. Auto-pass ([`Game::has_meaningful_action`]) and
     /// intent validation read the same per-action predicates, so they cannot drift apart.
     /// Where validation needs a *chosen* input the query can't know (an ability's target or
@@ -47,7 +47,7 @@ impl Game {
     /// whose inputs turn out unsatisfiable (equip with no creature), but never skips a
     /// player who had a legal one.
     ///
-    /// Deliberate scoping (ADR 0007): bare mana production (tap-for-mana, mana abilities)
+    /// Deliberate scoping (turn-priority-and-stack spec): bare mana production (tap-for-mana, mana abilities)
     /// never counts, since it's almost always legal but pointless on its own; on an *empty*
     /// stack, casts and land drops count at sorcery speed only — holding an instant does NOT
     /// stop the flow in combat or on an opponent's turn, otherwise the game halts constantly
@@ -351,7 +351,7 @@ impl Game {
             return false;
         };
         let back = *back;
-        // Match CastPlayKind::List timing (ADR 0007): instants only in a reaction window or at
+        // Match CastPlayKind::List timing (turn-priority-and-stack spec): instants only in a reaction window or at
         // sorcery speed; sorceries need sorcery speed.
         if back.is_instant_speed() {
             if !self.can_take_sorcery_speed_action(player)
@@ -473,7 +473,7 @@ impl Game {
     }
 
     /// Paid tap-for-mana activates (filter lands, karoos, signets) for the wire radial — **not**
-    /// part of [`Game::meaningful_actions`], so they never stop auto-pass (ADR 0007). Appended onto
+    /// part of [`Game::meaningful_actions`], so they never stop auto-pass (turn-priority-and-stack spec). Appended onto
     /// [`Game::actions`] by [`Game::refresh_actions`] so the client can show them.
     pub(crate) fn paid_mana_activates(&self, player: PlayerId) -> Vec<MeaningfulAction> {
         if player != self.priority {

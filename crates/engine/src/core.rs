@@ -2,7 +2,7 @@
 //!
 //! Zone object identity (new [`ObjectId`] on zone change), controller vs owner.
 //! Also: multiplayer elimination handoff (CR 800.4a). Deferred / gaps: see
-//! `docs/FIDELITY_BACKLOG.md`.
+//! per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 
@@ -417,7 +417,7 @@ impl Game {
 
     /// The control-changing Aura (CR 720 — [`Effect::ControlAttached`]) currently attached to
     /// `host`, if any — the object whose owner controls `host` while it stays attached. `None`
-    /// when no such Aura is attached. Applied additively over the base owner (ADR 0003), so the
+    /// when no such Aura is attached. Applied additively over the base owner (engine-core-and-event-model spec), so the
     /// override vanishes on its own when the Aura leaves the battlefield.
     pub(crate) fn control_aura(&self, host: ObjectId) -> Option<ObjectId> {
         self.attachments(host).into_iter().find(|&aura| {

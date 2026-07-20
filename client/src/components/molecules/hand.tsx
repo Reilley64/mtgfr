@@ -93,7 +93,7 @@ function CostPip(props: { ms: string; code: string; sizePx?: number }) {
 export default function Hand(props: {
   viewer: number;
   hiddenId: number | null; // the staged card, dimmed in place while it awaits a target
-  /** Hand/command ids owned by the canvas flight layer — dim the resting slot (ADR 0035). */
+  /** Hand/command ids owned by the canvas flight layer — dim the resting slot (client-game-board-and-interaction spec). */
   flyingIds?: ReadonlySet<number>;
   /** Current face-up bar card under the cursor (for Alt-pin inspect owned by Board). */
   onHoverCard?: (card: { name: string; cardId?: string; print?: string } | null) => void;

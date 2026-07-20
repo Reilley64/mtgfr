@@ -1,6 +1,6 @@
 //! Edict / multiplayer fan-out pause family — sacrifices, graveyard exile, votes, keep-one.
 //!
-//! Pause peel behind [`Game::run`] (ADR 0002 deepen). Pause bookkeeping stays in
+//! Pause peel behind [`Game::run`] (card-dsl-and-card-pool spec deepen). Pause bookkeeping stays in
 //! [`crate::pending`]; dig/edict *handlers* stay in [`crate::pending::handlers`].
 
 use crate::*;

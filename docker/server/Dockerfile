@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# mtgfr-server — distroless API (DEPLOYMENT.md). Same image runs `server serve` and `server migration …`.
+# mtgfr-server — distroless API (see production-topology spec). Same image runs `server serve` and `server migration …`.
 
 FROM rust:1-bookworm AS build
 WORKDIR /src

@@ -1,4 +1,4 @@
-//! The pure core of the delta stream (ADR 0005/0006): snapshot-then-delta framing, per-viewer
+//! The pure core of the delta stream (lobby-table-routing-and-live-game spec / wire-protocol-and-visibility spec): snapshot-then-delta framing, per-viewer
 //! redaction, and the seq-dedup boundary that prevents double delivery across the
 //! subscribe/snapshot gap. Pulled out of the `stream` handler in `lib.rs` so this logic has a
 //! test surface with no broadcast channel, keepalive timer, or `Body` involved — the handler
@@ -105,7 +105,7 @@ pub fn table_view_extras(table: &crate::Table) -> ViewExtras {
 /// Whether a broadcast message at `broadcast_seq` should reach a stream whose opening
 /// snapshot was already at `snapshot_broadcast_seq`. Anything already reflected in that
 /// snapshot is dropped — this is what prevents double delivery across the
-/// subscribe-before-snapshot gap (ADR 0005). Hold-only ticks advance `broadcast_seq` without
+/// subscribe-before-snapshot gap (lobby-table-routing-and-live-game spec). Hold-only ticks advance `broadcast_seq` without
 /// bumping game `seq`, so dwell updates still reach clients.
 pub fn should_deliver(broadcast_seq: u64, snapshot_broadcast_seq: u64) -> bool {
     broadcast_seq > snapshot_broadcast_seq
@@ -118,7 +118,7 @@ pub fn should_deliver(broadcast_seq: u64, snapshot_broadcast_seq: u64) -> bool {
 /// label never names a private card).
 ///
 /// Thin transport adapter: maps into [`schema::compose_delta`]. Redaction stays separate from
-/// completeness inside schema (ADR 0006).
+/// completeness inside schema (wire-protocol-and-visibility spec).
 pub fn frame_for(
     viewer: Option<PlayerId>,
     seq: u64,

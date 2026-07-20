@@ -7,7 +7,7 @@ This is a **code map**, not a design system doc — tokens stay in [`DESIGN.md`]
 
 1. **Paint (pixels):** `client/src/lib/boardDraw.ts` orchestration → felt / cards / avatars / arrows modules; scene builder in `boardScene.ts` when present.
 2. **Hits / camera:** `client/src/lib/camera.ts`, `hitTest.ts`, `boardDensity.ts`; composed by `controllers/tableSurface.ts`.
-3. **Flights (ADR 0035):** `controllers/cardFlights.ts` + `lib/cardFlight.ts` — canvas owns in-flight cards; resting hand/stack stay DOM.
+3. **Flights (client-game-board-and-interaction spec):** `controllers/cardFlights.ts` + `lib/cardFlight.ts` — canvas owns in-flight cards; resting hand/stack stay DOM.
 4. **Wiring root:** `components/organisms/board.tsx` — controllers, pointer Match, paint loop, composition only.
 5. **DOM chrome:** sibling organisms (`stack-overlay`, `turn-chrome`, `priority-context-bar`, `board-discoverability`, `board-overlays`) + molecules (`hand`, mana tray, prompts).
 
@@ -17,7 +17,7 @@ This is a **code map**, not a design system doc — tokens stay in [`DESIGN.md`]
 |--------|------|
 | `lib/camera.ts` | Camera SoT: `screen = world * zoom + pan` |
 | `lib/hitTest.ts` | Screen→world card/avatar hits (tapped/fan footprints) |
-| `lib/boardDensity.ts` | Row packing / hover-raise / clusters ([ADR 0028](adr/0028-battlefield-density-packing.md)) |
+| `lib/boardDensity.ts` | Row packing / hover-raise / clusters ([client board](superpowers/specs/2026-07-20-client-game-board-and-interaction.md)) |
 | `lib/stackLayout.ts` | Shared stack geometry (DOM overlay + aim origins) |
 | `lib/boardDraw.ts` | `DrawCtx` + paint orchestration (re-exports stack helpers) |
 | `lib/boardFelt.ts` / `boardCardPaint.ts` / `boardAvatarPaint.ts` / `boardArrows.ts` | Dumb paint helpers |
@@ -44,9 +44,7 @@ This is a **code map**, not a design system doc — tokens stay in [`DESIGN.md`]
 
 | Doc | Use for |
 |-----|---------|
-| [ADR 0028](adr/0028-battlefield-density-packing.md) | Density packing / clusters |
-| [ADR 0035](adr/0035-canvas-flight-layer.md) | Continuous play flight (pos+scale) |
-| [ADR 0033](adr/0033-segmented-card-play-motion.md) | Superseded by 0035 |
+| [Client board spec](superpowers/specs/2026-07-20-client-game-board-and-interaction.md) | Packing, flights, chrome, audio, inspect |
 | [`DESIGN.md`](../DESIGN.md) | Tokens; canvas hex exemptions |
 | [`agent-navigation.md`](agent-navigation.md) | Engine CR lookup (server-side) |
 
@@ -54,4 +52,4 @@ This is a **code map**, not a design system doc — tokens stay in [`DESIGN.md`]
 
 - No Pixi / Konva / fabric / WebGL migration from this map.
 - No unified DOM+canvas retained graph — dual surface is intentional.
-- Decision history stays in ADRs; do not duplicate ADR bodies here.
+- Decision history lives in the feature specs; do not duplicate them here.

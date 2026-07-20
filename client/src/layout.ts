@@ -87,9 +87,9 @@ export interface RenderCard {
   w: number;
   h: number;
   name: string;
-  /** Card (oracle) id, when known — drives Alt-pin inspect's oracle-text lookup (ADR 0031). */
+  /** Card (oracle) id, when known — drives Alt-pin inspect's oracle-text lookup (accounts-decks-and-catalog spec). */
   cardId: string;
-  /** Printing UUID for this object's art (ADR 0031); empty renders a broken image. */
+  /** Printing UUID for this object's art (accounts-decks-and-catalog spec); empty renders a broken image. */
   print: string;
   pt: string;
   tapped: boolean;
@@ -158,7 +158,7 @@ const COL_X = -(COL_W + 2 * GAP); // just left of the battlefield's first card (
 // Horizontal grid: the two table columns. A seat's content spans its zone column (COL_X) out to a
 // nominal SEAT_COLS battlefield slots; the second column starts a COLUMN_GAP past that so boards
 // don't touch. BAND_W is the seat outline/footprint width used for the highlight and bounds.
-// Rows that exceed SEAT_COLS pack (compress step) inside the seat — see ADR 0028.
+// Rows that exceed SEAT_COLS pack (compress step) inside the seat — see client-game-board-and-interaction spec.
 // 7 slots + 1×CARD_HSTEP column gap: packs on wide boards, keeps the 2×2 table dense.
 const SEAT_COLS = 7;
 const SEAT_RIGHT = SEAT_COLS * CARD_HSTEP;
@@ -372,7 +372,7 @@ function isAttached(o: ObjectView): boolean {
   return o.attached_to != null;
 }
 
-/** Visible-object equality for permanent clusters — explicit fields, sorted arrays (ADR 0028). */
+/** Visible-object equality for permanent clusters — explicit fields, sorted arrays (client-game-board-and-interaction spec). */
 function clusterKey(o: ObjectView): string {
   const keywords = [...(o.keywords ?? [])].sort().join(",");
   const modifiers = [...(o.modifiers ?? [])]

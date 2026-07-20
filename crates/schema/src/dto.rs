@@ -125,7 +125,7 @@ pub enum WireKind {
     /// A land and the colors it can tap for (WUBRG indices; see `engine::Color::index`):
     /// one entry for a mono producer, two for a dual ("{T}: Add {G} or {U}"), all five
     /// for "any color", empty for a pure colorless producer. Informational for the client
-    /// (row layout / inspect); payment planning is engine-side (ADR 0022).
+    /// (row layout / inspect); payment planning is engine-side (choices-actions-and-resolution spec).
     Land {
         colors: Vec<u8>,
     },
@@ -250,7 +250,7 @@ pub struct StackObjectView {
 
 /// One labelled item offered by a pending choice (a legal target, or a blocker to assign
 /// damage to). The `label` is the object's name, so the prompt UI needn't join against the
-/// object list. `print` is the Printing UUID for art (ADR 0031) — required for hidden-zone
+/// object list. `print` is the Printing UUID for art (accounts-decks-and-catalog spec) — required for hidden-zone
 /// picks (library search, scry) that never appear in [`VisibleState::objects`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChoiceItem {
@@ -326,7 +326,7 @@ pub struct ActionView {
     pub has_x: bool,
     /// Battlefield object ids `Game::plan_auto_taps` would tap to pay this action's mana
     /// (empty when the pool covers it or there is no mana cost). Same planner settle uses —
-    /// the client paints a tap preview from this list on hover (ADR 0022).
+    /// the client paints a tap preview from this list on hover (choices-actions-and-resolution spec).
     #[serde(default)]
     pub auto_tap: Vec<ObjectId>,
     /// Creatures that must be declared as attackers for this `declare_attackers` action to be
@@ -383,7 +383,7 @@ pub struct CombatView {
 
 /// A summary of the decision the engine is blocked on, if any. A discriminated union so each
 /// wire `kind` carries only the fields that choice actually needs — the client's `PromptModal`
-/// switches on `kind` and the compiler checks the switch is exhaustive (see ADR 0001 refinement).
+/// switches on `kind` and the compiler checks the switch is exhaustive (see wire-protocol-and-visibility spec refinement).
 /// The `kind` strings are load-bearing wire contract: they must stay exactly what they were
 /// when this was one flattened struct with a `kind: String` field.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -982,7 +982,7 @@ pub struct VisibleState {
     /// the client never has to mirror the clearing rules. Always false for a spectator.
     #[serde(default)]
     pub yielded: bool,
-    /// Whether THIS viewer has turn-yielded (auto-pass until their turn / until they act — ADR 0029).
+    /// Whether THIS viewer has turn-yielded (auto-pass until their turn / until they act — turn-priority-and-stack spec).
     /// Always false for a spectator.
     #[serde(default)]
     pub turn_yielded: bool,
@@ -998,7 +998,7 @@ pub struct VisibleState {
 // ── Lobby ────────────────────────────────────────────────────────────────────────────
 // The pre-game flow: a created table holds up-to-four claimable seats (bound to a
 // per-browser token), each choosing a deck, that the host starts. Poll `GET /tables/{table}/lobby`
-// for state until `started`, then connect the game stream (ADR-style note: poll-based, a
+// for state until `started`, then connect the game stream (lobby poll-based, a
 // push channel if it ever feels laggy).
 
 /// Create a fresh lobby table.

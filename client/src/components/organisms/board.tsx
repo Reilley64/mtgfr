@@ -93,7 +93,7 @@ export default function Board() {
   // A targeted action staged onto the stack, awaiting its target. Carries the action so the eventual
   // submission is `take_action { id, target }` — the action id is threaded through the staged state.
   const [expand, setExpand] = createSignal<{ zone: number; owner: number } | null>(null);
-  // Stream + intent submission as atoms (ADR 0019). Mounting the per-table stream atom here ties
+  // Stream + intent submission as atoms (client-shell-deck-builder-and-observability spec). Mounting the per-table stream atom here ties
   // its fiber to this component's lifetime — it runs while Board is alive and is interrupted on
   // unmount. `connected` reads the stream's health for the reconnect banner. The intent setters run
   // the submission Effects (error folding lives inside the fn bodies).
@@ -106,7 +106,7 @@ export default function Board() {
   // The viewer's "don't care" state is the server's flag, carried on every frame
   // (VisibleState.yielded) — no client mirror to drift when the server clears it mid-drive.
   const yielded = () => game.state?.yielded ?? false;
-  // One-shot arm only (ADR 0027); server clears when the stack empties — no chrome cancel.
+  // One-shot arm only (turn-priority-and-stack spec); server clears when the stack empties — no chrome cancel.
   const armStackYield = () => {
     if (yielded()) return;
     void sendYield({ enabled: true });
@@ -156,7 +156,7 @@ export default function Board() {
     setSoundOn(next);
   };
 
-  // Table-feel cues: one per kind per delta (ADR 0036). Flights decorate the same moments;
+  // Table-feel cues: one per kind per delta (client-game-board-and-interaction spec). Flights decorate the same moments;
   // provenance flags cover opponents and prefers-reduced-motion snaps.
   createEffect((prevSeq: number | undefined) => {
     const seq = game.seq;
@@ -230,7 +230,7 @@ export default function Board() {
     const peek = stackPeekFor(stackLen, sz.y, STACK_VERTICAL_RESERVED);
     for (const [spell, meta] of provenance().stackEntrances) {
       if (next.has(spell)) continue;
-      // Canvas flight owns hand→stack; skip CSS stack-in deltas for those ids (ADR 0035).
+      // Canvas flight owns hand→stack; skip CSS stack-in deltas for those ids (client-game-board-and-interaction spec).
       if (owned.has(spell) || owned.has(meta.from)) continue;
       let fromScreen = stackScreenByCard.get(meta.from);
       if (!fromScreen) {
@@ -335,7 +335,7 @@ export default function Board() {
       pendingAttackers: primaryAction().kind === "confirm-attackers" && attackers().length > 0,
     }),
   );
-  // End Turn cannot stay armed in windows where the arm control is hidden (ADR 0037 cancel).
+  // End Turn cannot stay armed in windows where the arm control is hidden (turn-priority-and-stack spec).
   createEffect((wasClearing?: boolean) => {
     const clear = boardChrome().clearEndTurn;
     if (clear && !wasClearing) setTurnYield(false);
@@ -401,7 +401,7 @@ export default function Board() {
         e.preventDefault();
         tryPinInspect();
       }
-      // Space = one priority pass (Next / Resolve card). Enter = End Turn while active (ADR 0037).
+      // Space = one priority pass (Next / Resolve card). Enter = End Turn while active (turn-priority-and-stack spec).
       if (e.key === "Enter" && !inspectPin() && !promptOpen() && !isInteractiveControl(e.target)) {
         const chrome = boardChrome();
         if (chrome.showEndTurn) {

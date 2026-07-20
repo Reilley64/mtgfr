@@ -1,8 +1,8 @@
 # Political Puppets deck increments (2026-07-18)
 
-Deck report: [political-puppets.md](political-puppets.md). Engine-wide tiers and per-card
-exotics stay in [../FIDELITY_BACKLOG.md](../FIDELITY_BACKLOG.md); increment numbering is
-global across files (continues after #202 in
+Deck report: [political-puppets.md](political-puppets.md). This file is the sole
+engine-capability backlog for this deck (checklist + ranked increments + per-card
+exotics). Numbering is local to this file (historically continued after
 [deathdancer-xira-increments.md](deathdancer-xira-increments.md)).
 
 From `docs/fidelity/political-puppets.md` (Archidekt 2209176 — commander Zedruu the

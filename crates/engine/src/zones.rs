@@ -2,7 +2,7 @@
 //! Primary: CR 400 (zones), CR 121 (drawing a card), CR 106.4 (mana pool).
 //!
 //! Zone membership and library/hand operations; mana pool empties as turn-based
-//! actions elsewhere. Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! actions elsewhere. Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 

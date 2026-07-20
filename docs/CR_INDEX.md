@@ -218,7 +218,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/characteristics.rs:504` — color-set union and still only needs one qualifying land to add a color (CR 605, CR 108.3, CR 113).
 - `crates/engine/src/effects.rs:1160` — leaving ownership with the donor (CR 108.3). A target that has left the battlefield
 - `crates/engine/src/effects.rs:1185` — ownership untouched (CR 108.3). Both must still be on the battlefield — an exchange
-- `crates/engine/src/priority.rs:403` — direction (ADR 0007). (CR 605, CR 108.3, CR 113)
+- `crates/engine/src/priority.rs:403` — direction (turn-priority-and-stack spec). (CR 605, CR 108.3, CR 113)
 - `crates/engine/src/resolution/pump.rs:202` — defender being someone other than the Aura's controller. An unattached Aura (mid-SBA) (CR 704, CR 3…
 - `crates/engine/src/triggers.rs:973` — No pool effect kills in sequence within one resolution; revisit if one ever does. (CR 704, CR 108.3…
 - `crates/engine/src/triggers.rs:2085` — single `amount`. (CR 510, CR 111, CR 108.3)
@@ -397,7 +397,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/effects.rs:1699` — placing a new triggered ability — this rider is part of `source`'s own (CR 603, CR 113)
 - `crates/engine/src/effects.rs:2215` — Quintorius's activated ability pauses on a card-pick choice over this source's (CR 602, CR 113)
 - `crates/engine/src/priority.rs:135` — land's *non*-mana ability (which finds none, and rejects below). Delegate so the one (CR 605, CR 11…
-- `crates/engine/src/priority.rs:403` — direction (ADR 0007). (CR 605, CR 108.3, CR 113)
+- `crates/engine/src/priority.rs:403` — direction (turn-priority-and-stack spec). (CR 605, CR 108.3, CR 113)
 - `crates/engine/src/query.rs:118` — A non-mana activated ability the player can afford, or a prepared back-face cast. (CR 602, CR 601, …
 - `crates/engine/src/query.rs:408` — An activated ability granted by an Aura attached to `source` (Fallen Ideal's "Sacrifice (CR 602, CR…
 - `crates/engine/src/resolution/mana.rs:22` — `single_color` is handled by `Game::activate_ability` before a mana ability ever (CR 605, CR 113)
@@ -1244,7 +1244,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/lib.rs:2` — Primary: CR 117 (priority), CR 405 (stack), CR 903 (Commander).
 - `crates/engine/src/pending/handlers/optional.rs:16` — still-resolving spell rather than going on the stack as a new triggered ability — (CR 603, CR 405, …
 - `crates/engine/src/triggers.rs:308` — going on the stack at the next priority window (the following upkeep) rather (CR 117, CR 405, CR 50…
-- `crates/engine/src/types/card.rs:404` — of a several-ability simultaneous group grows from a real card (see ADR 0006). (CR 603, CR 601.2c, …
+- `crates/engine/src/types/card.rs:404` — of a several-ability simultaneous group grows from a real card (see wire-protocol-and-visibility spec). (CR 603, CR 601.2c, …
 - `crates/engine/tests/game.rs:3072` — Hand P1 priority (still P0's turn, empty stack — one pass just hands off, doesn't end the step). (C…
 - `crates/engine/tests/game.rs:10330` — The colored mode (ability 1) is a mana ability — it produces immediately, uses no stack and (CR 605…
 - `crates/engine/tests/game.rs:15352` — Sacrifice one Treasure for its own mana ability (a mana ability, no stack — avoids (CR 605, CR 405,…
@@ -1554,7 +1554,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/types/trigger.rs:661` — CR 510.2/603.10a last-known information: the creature a [`Trigger::DealsCombatDamageToCreature`]
 - `crates/engine/src/types/trigger.rs:686` — CR 510.2/603.10a last-known information: the trigger's own source permanent's power at the
 - `crates/engine/tests/game.rs:3579` — hit in the same combat does not (CR 510.2 x the your_tokens scope).
-- `crates/engine/tests/game.rs:3653` — ── Combat damage to a creature (CR 510.2, fidelity backlog #193) ─────────────────────
+- `crates/engine/tests/game.rs:3653` — ── Combat damage to a creature (CR 510.2, fidelity increment #193) ─────────────────────
 - `crates/engine/tests/game.rs:3739` — Deals-combat-damage-to-a-creature is creature-scoped (CR 510.2): an unblocked Stinkweed
 - `crates/engine/tests/game.rs:3904` — The damaged-by set records damage from either creature-damage choke (CR 510.2 combat and
 - `crates/engine/tests/game.rs:4171` — target, a mana-value-4 one is not (CR 510.2/603.10a last-known information).
@@ -1754,7 +1754,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/triggers.rs:3677` — (min 0) isn't mandatory — CR 601.2c already treats choosing zero of "up to N" as a
 - `crates/engine/src/triggers.rs:3737` — target clauses (CR 601.2c) — its first clause is the permanent (`Effect::target`); its
 - `crates/engine/src/triggers.rs:3849` — number" of zero). No pause. Otherwise the controller chooses (CR 601.2c).
-- `crates/engine/src/types/card.rs:404` — of a several-ability simultaneous group grows from a real card (see ADR 0006). (CR 603, CR 601.2c, …
+- `crates/engine/src/types/card.rs:404` — of a several-ability simultaneous group grows from a real card (see wire-protocol-and-visibility spec). (CR 603, CR 601.2c, …
 - `crates/engine/src/types/card.rs:1278` — The chosen targets (CR 601.2c). A single-target spell fills one slot; Aether Gale fills up
 - `crates/engine/src/types/card.rs:1283` — A *second* independent target clause's chosen targets (CR 601.2c — Magma Opus's "Tap two
 - `crates/engine/src/types/card.rs:1355` — the spell has no Strive cost. Settled before the spell hits the stack (CR 601.2c precedes
@@ -2114,7 +2114,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/triggers.rs:107` — A creature dying (battlefield → graveyard) fires its own Dies trigger. (CR 603.6, CR 403.5, CR 603)
 - `crates/engine/src/triggers.rs:225` — A dying token fires its Dies trigger before vanishing; its arena slot is (CR 603.6, CR 111, CR 603)
 - `crates/engine/src/triggers.rs:3322` — A source that has already left the game entirely (a token's own Dies trigger, fired (CR 603.6, CR 1…
-- `crates/engine/src/types/card.rs:404` — of a several-ability simultaneous group grows from a real card (see ADR 0006). (CR 603, CR 601.2c, …
+- `crates/engine/src/types/card.rs:404` — of a several-ability simultaneous group grows from a real card (see wire-protocol-and-visibility spec). (CR 603, CR 601.2c, …
 - `crates/engine/src/types/card.rs:725` — zone tags — defer until one exists. (CR 603, CR 108.4, CR 403.5)
 - `crates/engine/src/types/effect.rs:1895` — card is ever added. (CR 603, CR 108.3, CR 601.2c)
 - `crates/engine/src/types/effect.rs:2995` — drain (`Game::fire_delayed_triggers`) if a card ever needs a third step. (CR 603, CR 111, CR 108.3)
@@ -2581,7 +2581,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/types/trigger.rs:718` — CR 603.10a last-known information: the permanent this object was attached to the instant
 - `crates/engine/tests/game.rs:3680` — CR 603.10a: bouncing the damaged creature in response to the (already-stacked) destroy
 - `crates/engine/tests/game.rs:3710` — "the trigger's target already left the battlefield (CR 603.10a) — no re-destruction"
-- `crates/engine/tests/game.rs:3790` — ── Turn-scoped damaged-by set + death-watch (CR 603.10a, fidelity backlog #194) ──────
+- `crates/engine/tests/game.rs:3790` — ── Turn-scoped damaged-by set + death-watch (CR 603.10a, fidelity increment #194) ──────
 - `crates/engine/tests/game.rs:4171` — target, a mana-value-4 one is not (CR 510.2/603.10a last-known information).
 - `crates/engine/tests/game.rs:4295` — target; a mana-value-5 one and a land are not (CR 510.2/603.10a last-known information).
 - `crates/engine/tests/game.rs:13909` — CR 603.10a last-known information cuts both ways: if the exiled card has already left
@@ -2604,11 +2604,11 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/cast.rs:2152` — exempts a mana ability from the stack, not from choices made while it resolves, so (CR 605, CR 405,…
 - `crates/engine/src/cast.rs:2177` — `Game::run` so a composite mana ability (CR 605, CR 113) (Brass Infiniscope's
 - `crates/engine/src/characteristics.rs:504` — color-set union and still only needs one qualifying land to add a color (CR 605, CR 108.3, CR 113).
-- `crates/engine/src/priority.rs:4` — advance), cleanup. Also: mana abilities / auto-tap planning (CR 605, ADR 0007).
+- `crates/engine/src/priority.rs:4` — advance), cleanup. Also: mana abilities / auto-tap planning (CR 605, turn-priority-and-stack spec).
 - `crates/engine/src/priority.rs:135` — land's *non*-mana ability (which finds none, and rejects below). Delegate so the one (CR 605, CR 11…
 - `crates/engine/src/priority.rs:267` — Pay 1 life to add {C} under Yavimaya Bloomsage's Channel grant (a CR 605 mana ability —
-- `crates/engine/src/priority.rs:403` — direction (ADR 0007). (CR 605, CR 108.3, CR 113)
-- `crates/engine/src/query.rs:3` — Actions worth stopping priority for (ADR 0007). Also: CR 605 mana-ability carve-outs
+- `crates/engine/src/priority.rs:403` — direction (turn-priority-and-stack spec). (CR 605, CR 108.3, CR 113)
+- `crates/engine/src/query.rs:3` — Actions worth stopping priority for (turn-priority-and-stack spec). Also: CR 605 mana-ability carve-outs
 - `crates/engine/src/resolution/mana.rs:22` — `single_color` is handled by `Game::activate_ability` before a mana ability ever (CR 605, CR 113)
 - `crates/engine/src/resolution/misc.rs:59` — Yavimaya Bloomsage's Channel back face: "Until end of turn, any time you could (CR 605, CR 118.4)
 - `crates/engine/src/resolution/tokens.rs:27` — this arm only reaches direct `execute_effect` callers (a mana ability, a (CR 605, CR 113)
@@ -2824,22 +2824,22 @@ Check freshness with `just engine-cr-index-check`.
 
 - `crates/engine/src/cast.rs:1760` — (indices past the printed slice) sit after the removal in CR 613 order, so stay active.
 - `crates/engine/src/characteristics.rs:10` — One CR 613 continuous-effect entry contributing to a creature's power/toughness, built fresh
-- `crates/engine/src/characteristics.rs:34` — [`Game::modifier_provenance`]. Additive attribution only — not CR 613 layers (ADR 0003).
+- `crates/engine/src/characteristics.rs:34` — [`Game::modifier_provenance`]. Additive attribution only — not CR 613 layers (engine-core-and-event-model spec).
 - `crates/engine/src/characteristics.rs:918` — Reads printed types for a non-permanent (CR 613 applies only to the permanent).
 - `crates/engine/src/characteristics.rs:946` — printed subtypes for a non-permanent (CR 613 applies only to the permanent).
 - `crates/engine/src/characteristics.rs:986` — A creature's effective power: its printed base run through the CR 613 P/T layers
 - `crates/engine/src/characteristics.rs:1027` — The printed base P/T to feed the CR 613 layers, or `None` if `object` has no P/T (not a
 - `crates/engine/src/characteristics.rs:1044` — (not `p.def`) so the flipped numbers feed the CR 613 layers.
 - `crates/engine/src/characteristics.rs:1053` — Every CR 613 P/T layer entry currently affecting `object` — the enchanted-base-set Aura
-- `crates/engine/src/characteristics_cache.rs:4` — Invalidated on relevant [`Event`]s. ADR 0003 additive recompute, not CR 613 layers.
+- `crates/engine/src/characteristics_cache.rs:4` — Invalidated on relevant [`Event`]s. engine-core-and-event-model spec additive recompute, not CR 613 layers.
 - `crates/engine/src/characteristics_cache.rs:13` — additive recompute, not CR 613 layers).
-- `crates/engine/src/combat.rs:5` — Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`; layers (CR 613) per ADR 0003.
+- `crates/engine/src/combat.rs:5` — Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill); layers (CR 613) per engine-core-and-event-model spec.
 - `crates/engine/src/types/card.rs:1657` — CR 706/613 — "become a copy … until end of turn"): when the copy is established, the
 - `crates/engine/src/types/effect.rs:637` — A manland self-animation (CR 613 — Restless Spire's "Until end of turn, this land becomes a
 - `crates/engine/src/types/effect.rs:1428` — / keyword grants; full CR 613 still deferred), never resolved off the stack.
 - `crates/engine/src/types/effect.rs:1510` — ponytail: last-applied would win under CR 613 layer 7b, but the pool never stacks two
 - `crates/engine/src/types/effect.rs:1525` — `grant_to_attached` keywords) are unaffected — they sit after the removal in CR 613 order.
-- `crates/engine/src/types/effect.rs:1548` — additive override of the base owner (ADR 0003 — no CR 613 layers), so control reverts
+- `crates/engine/src/types/effect.rs:1548` — additive override of the base owner (engine-core-and-event-model spec — no CR 613 layers), so control reverts
 - `crates/engine/tests/game.rs:26946` — activated ability (gain 1 life) — exercises the CR 613/701 "loses all abilities" removal:
 - `crates/engine/tests/game.rs:27090` — The Aura's own grants still apply (they sit after the removal in CR 613 order).
 - `crates/engine/tests/game.rs:33949` — A +1/+1 counter layers on top of the set 1/1 (CR 613: 7b base-set, then 7c delta → 2/2).
@@ -3101,7 +3101,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/tests/game.rs:19943` — instead of pausing on a choice (CR 700.2's "as many as possible").
 - `crates/engine/tests/game.rs:40997` — ── Modal "choose one" spells (CR 700.2) ────────────────────────────────────────────
 - `crates/engine/tests/game.rs:41108` — ── Modal "choose two" spells (CR 700.2) — the Command shape ──────────────────────────
-- `crates/engine/tests/game.rs:41710` — ── Modal triggered ability (CR 700.2 extended to a trigger, fidelity backlog #110) ───────
+- `crates/engine/tests/game.rs:41710` — ── Modal triggered ability (CR 700.2 extended to a trigger, fidelity increment #110) ───────
 - `crates/engine/tests/game.rs:52607` — ── Modal triggered ability (CR 700.2 "choose one" on a trigger) — Atsushi ──────────────
 - `crates/engine/tests/game.rs:61911` — living inside one mode of a modal spell (CR 700.2 + CR 601.2c together).
 - `crates/engine/tests/game.rs:70060` — mode choice — leaving a `ChooseMode` pause for a self-death modal trigger. (CR 603.6, CR 700.2, CR …
@@ -3238,7 +3238,7 @@ Check freshness with `just engine-cr-index-check`.
 - `crates/engine/src/types/stack.rs:2397` — since noncombat creature damage (fight, CR 701.12) also emits `DamageMarked` but must not
 - `crates/engine/src/types/trigger.rs:278` — (CR 701.12) or other noncombat creature damage only emits that, not this marker. The
 - `crates/engine/tests/game.rs:3764` — Fight (CR 701.12) deals noncombat damage — the trigger only watches combat damage (CR
-- `crates/engine/tests/game.rs:41853` — ── Fight (CR 701.12, fidelity backlog #48) ───────────────────────────────────────────
+- `crates/engine/tests/game.rs:41853` — ── Fight (CR 701.12, fidelity increment #48) ───────────────────────────────────────────
 - `crates/engine/tests/game.rs:74152` — durationless permanent static: effect damage and fight damage (CR 701.12) to the
 - `crates/engine/tests/game.rs:74265` — Fight damage is noncombat (CR 701.12): your other creature deals its damage but takes
 

@@ -1,4 +1,4 @@
-// Design-system atoms (Brad Frost). Not Effect `~/atoms` (ADR 0019 reactivity).
+// Design-system atoms (Brad Frost). Not Effect `~/atoms` (client-shell-deck-builder-and-observability spec reactivity).
 
 export { AppVersion } from "./app-version";
 export { Button, type ButtonVariant, buttonClass } from "./button";

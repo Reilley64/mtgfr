@@ -1,6 +1,6 @@
 // Card imagery from an optional self-hosted CDN (bake `VITE_CARD_CDN`), which mirrors Scryfall's
 // image folder path (`<size>/front/<a>/<b>/<id>.ext`) but serves only `large` and converts
-// everything to webp. Keyed by Scryfall *Printing* UUID (ADR 0031). Missing art is a broken
+// everything to webp. Keyed by Scryfall *Printing* UUID (accounts-decks-and-catalog spec). Missing art is a broken
 // image — no Scryfall image-host fallback. Without a CDN, resolve the same UUID via Scryfall's
 // card-id image endpoint so localdev still works.
 

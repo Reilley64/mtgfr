@@ -1,4 +1,4 @@
-//! Choice-discriminant answer / forced table (ADR 0004 deepen).
+//! Choice-discriminant answer / forced table (choices-actions-and-resolution spec deepen).
 //!
 //! [`answer`] matches the pending [`PendingChoice`] first, then accepts only the Intent
 //! shape that variant expects — wrong Intent → [`Reject::IllegalChoice`]. [`forced`]

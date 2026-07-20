@@ -508,7 +508,7 @@ describe("useTableSurface", () => {
         });
       });
       setCards([existing, land]);
-      // ADR 0035: play entrance parks at layout; canvas flight owns drop→slot motion.
+      // client-game-board-and-interaction spec: play entrance parks at layout; canvas flight owns drop→slot motion.
       expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(expect.objectContaining({ id: 3, x: 400, y: 400 }));
       dispose();
     } finally {
@@ -543,7 +543,7 @@ describe("useTableSurface", () => {
         });
       });
       setCards([existing, land]);
-      // ADR 0035: PlayMotion owns drop→slot; TableSurface parks at layout via skipIds.
+      // client-game-board-and-interaction spec: PlayMotion owns drop→slot; TableSurface parks at layout via skipIds.
       expect(surface.drawnCards().find((c) => c.id === 3)).toEqual(expect.objectContaining({ id: 3, x: 400, y: 400 }));
       dispose();
     } finally {

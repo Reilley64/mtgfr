@@ -1,5 +1,5 @@
 // Paint/hit overlays for overcrowded battlefields: hover-raise packed cards and fan
-// permanent clusters. Pure transforms over layout output — see ADR 0028.
+// permanent clusters. Pure transforms over layout output — see client-game-board-and-interaction spec.
 
 import { CARD_H, CARD_W, type RenderCard, seatBand } from "~/layout";
 
