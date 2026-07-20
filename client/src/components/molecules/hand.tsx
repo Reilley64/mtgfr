@@ -31,9 +31,14 @@ export const HAND_CARD_W = 112;
 /** Visible strip width at rest — right edge of the face (mana-cost corner), Arena-style. */
 export const HAND_CARD_PEEK = 40;
 export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
-/** Clipped resting height — top strip only; hover expands to the full face (~156px). */
-export const HAND_STRIP_H = 88;
 const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
+/**
+ * How much of each tucked card sticks into the viewport at rest. The rest hangs past the
+ * bottom edge so the *screen* clips the face (Arena), not an overflow:hidden mid-card cut.
+ */
+export const HAND_VISIBLE_H = 100;
+/** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
+export const HAND_STRIP_H = HAND_VISIBLE_H;
 
 /** MTGA fan: left/right tilt out; centre rises toward the board (edges sit lower). */
 function fanTransform(index: number, count: number): string {
@@ -43,11 +48,9 @@ function fanTransform(index: number, count: number): string {
   return `rotate(${angle}deg) translateY(${-rise}px)`;
 }
 
-/** Room above the strip for rest-state cost pips that sit on the face top-right. */
-const HAND_PIP_ROW_H = 18;
 /** Height of the bottom action bar; the Board uses it to place the play threshold.
- * Sized to the clipped strip + pip row so fitCamera keeps more viewport on the battlefield. */
-export const HAND_BAR_H = HAND_STRIP_H + HAND_PIP_ROW_H + 24;
+ * Matches the on-screen tuck (plus fan rise), not the full card height. */
+export const HAND_BAR_H = HAND_VISIBLE_H + 20;
 
 const CARD_FACE = cn("block w-[112px] rounded-game");
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
@@ -262,23 +265,19 @@ export default function Hand(props: {
         style={{
           "--fan": p.fan,
           "--peek": `${HAND_CARD_PEEK}px`,
-          "--strip-h": `${HAND_STRIP_H}px`,
+          "--visible": `${HAND_VISIBLE_H}px`,
           "--card-h": `${HAND_CARD_H}px`,
           "z-index": stackZ(),
         }}
         // Rest slot is only the right peek wide; the face hangs left under the previous tile.
+        // Height is the on-screen tuck — the full face extends past the viewport bottom.
         class={cn(
-          "pointer-events-auto relative origin-bottom transition-[width,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
-          raised() ? "w-[112px]" : "w-(--peek)",
+          "pointer-events-auto relative origin-bottom transition-[width,height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
+          raised() ? "h-(--card-h) w-[112px]" : "h-(--visible) w-(--peek)",
         )}
       >
-        {/* Face right-aligned in the peek slot so the printed mana corner (top-right) is what shows. */}
-        <div
-          class={cn(
-            "absolute right-0 bottom-0 w-[112px] origin-bottom transition-[height,border-radius] duration-150 ease-state",
-            raised() ? "h-(--card-h) overflow-visible rounded-game" : "h-(--strip-h) overflow-hidden rounded-t-game",
-          )}
-        >
+        {/* Full face, top-aligned: hangs past the screen edge at rest (no mid-card clip). */}
+        <div class="absolute top-0 right-0 h-(--card-h) w-[112px] origin-bottom rounded-game">
           <img
             src={imageUrlByPrint(p.print)}
             alt={p.name}
@@ -324,7 +323,7 @@ export default function Hand(props: {
       <div
         data-testid="hand-bar"
         style={{ "--bar-h": `${HAND_BAR_H}px` }}
-        class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-xl px-md pb-sm"
+        class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-xl overflow-visible px-md"
       >
         <Section name="Hand">
           <For each={handSlots()}>
