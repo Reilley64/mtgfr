@@ -756,7 +756,7 @@ impl Game {
     /// controller wins iff their card's mana value is strictly greater ("you win a clash if your
     /// card has a higher mana value than all other cards revealed in that clash"), and each player
     /// then takes a one-card scry to leave the card on top or bottom it (CR 701.22a) — the ability's
-    /// controller first, then the opponent (deferred via [`Game::pending_clash_scry`]).
+    /// controller first, then the opponent (deferred via [`ResumeState::clash_scry`]).
     pub(crate) fn resume_clash(
         &mut self,
         opponent: PlayerId,
@@ -796,7 +796,7 @@ impl Game {
             },
         );
         if self.resolution_is_paused() {
-            self.pending_clash_scry = Some(opponent); // opponent's scry follows, once this clears
+            self.resume.clash_scry = Some(opponent); // opponent's scry follows, once this clears
             return;
         }
         // The controller had no card to arrange; go straight to the opponent's keep/bottom scry.

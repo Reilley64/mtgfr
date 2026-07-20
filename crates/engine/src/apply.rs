@@ -2128,22 +2128,7 @@ impl Game {
                 {
                     self.pending_choice = None;
                 }
-                if self
-                    .pending_sequence
-                    .as_ref()
-                    .is_some_and(|cont| cont.ctx.controller == player)
-                {
-                    self.pending_sequence = None;
-                }
-                if self.pending_spell_finish.is_some_and(removed) {
-                    self.pending_spell_finish = None;
-                }
-                if self
-                    .pending_demonstrate_opponent_copy
-                    .is_some_and(|(opponent, spell)| opponent == player || removed(spell))
-                {
-                    self.pending_demonstrate_opponent_copy = None;
-                }
+                self.resume.clear_for_removed(player, removed);
                 self.pending_enter_bonus_counters
                     .retain(|&(object, _)| !removed(object));
                 self.exile_time_counters.retain(|&(card, _)| !removed(card));

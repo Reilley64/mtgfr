@@ -223,7 +223,7 @@ impl Game {
                 return Err(Reject::IllegalTarget);
             };
             self.mint_spell_copies(Amount::Fixed(1), player, spell, None, 0, &mut events);
-            self.pending_demonstrate_opponent_copy = Some((opponent, spell));
+            self.resume.demonstrate_opponent_copy = Some((opponent, spell));
         } else {
             // The first clause's target is chosen; a second target clause (Kinetic Ooze's X≥10
             // doubling) is chosen next at placement (CR 603.3d) before the ability hits the stack.

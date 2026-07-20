@@ -20,11 +20,13 @@ mod mint;
 mod misc;
 mod pause_arrange;
 mod pump;
+mod resume;
 mod reveal;
 mod tokens;
 mod zones;
 
 pub(crate) use frame::ResolutionFrame;
+pub(crate) use resume::ResumeState;
 
 use crate::*;
 
@@ -104,7 +106,7 @@ impl Game {
             if self.resolution_is_paused() {
                 let rest = &steps[i + 1..];
                 if !rest.is_empty() {
-                    self.pending_sequence = Some(SequenceCont { steps: rest, ctx });
+                    self.resume.sequence = Some(SequenceCont { steps: rest, ctx });
                 }
                 return;
             }
@@ -113,7 +115,7 @@ impl Game {
 
     /// After a choice answer fully clears the pause, resume any deferred sequence tail into
     /// `events`. The tail may itself pause and re-stash a continuation. Once resolution is truly
-    /// unpaused, also finishes any [`Game::pending_spell_finish`] spell whose own resolution was
+    /// unpaused, also finishes any [`ResumeState::spell_finish`] spell whose own resolution was
     /// waiting on this same pause (Sevinne's Reclamation's "may copy this spell" rider).
     pub(crate) fn resume_deferred_sequence(&mut self, events: &mut Vec<Event>) {
         if self.resolution_is_paused() {
@@ -123,7 +125,7 @@ impl Game {
         // before running the ability's own tail (the deal-damage/won-clash riders), so both reveals
         // are decided first. An opponent with an empty library raises no scry and falls straight
         // through to the tail below.
-        if let Some(opponent) = self.pending_clash_scry.take() {
+        if let Some(opponent) = self.resume.clash_scry.take() {
             crate::pending::raise(
                 self,
                 crate::pending::ChoiceRequest::ArrangeTop {
@@ -136,19 +138,19 @@ impl Game {
                 return;
             }
         }
-        if let Some(cont) = self.pending_sequence.take() {
+        if let Some(cont) = self.resume.sequence.take() {
             self.run_sequence(cont.steps, cont.ctx, events);
         }
         if self.resolution_is_paused() {
             return;
         }
-        if let Some((opponent, spell)) = self.pending_demonstrate_opponent_copy.take() {
+        if let Some((opponent, spell)) = self.resume.demonstrate_opponent_copy.take() {
             self.mint_spell_copies(Amount::Fixed(1), opponent, spell, None, 0, events);
         }
         if self.resolution_is_paused() {
             return;
         }
-        if let Some(object) = self.pending_spell_finish.take() {
+        if let Some(object) = self.resume.spell_finish.take() {
             self.finish_instant_sorcery_resolution(object, events);
         }
     }
@@ -257,7 +259,7 @@ mod tests {
             "surveil should pause before the draw"
         );
         assert!(
-            game.pending_sequence.is_some(),
+            game.resume.sequence.is_some(),
             "the deferred draw should be stashed"
         );
         assert_eq!(hand_count(&game, PlayerId(0)), 0, "draw is deferred");
@@ -270,13 +272,13 @@ mod tests {
         let mut events = Vec::new();
 
         game.run_sequence(SURVEIL_THEN_DRAW, ctx(PlayerId(0)), &mut events);
-        assert!(game.pending_sequence.is_some());
+        assert!(game.resume.sequence.is_some());
 
         game.finish_answer();
         game.resume_deferred_sequence(&mut events);
 
         assert!(!game.resolution_is_paused());
-        assert!(game.pending_sequence.is_none());
+        assert!(game.resume.sequence.is_none());
         assert_eq!(
             hand_count(&game, PlayerId(0)),
             1,
@@ -298,7 +300,7 @@ mod tests {
         let mut events = Vec::new();
 
         game.run_sequence(SURVEIL_THEN_DRAW, ctx(PlayerId(0)), &mut events);
-        assert!(game.pending_sequence.is_some());
+        assert!(game.resume.sequence.is_some());
 
         events.extend(
             game.arrange_top(PlayerId(0), vec![lib[0], lib[1]], vec![])
@@ -307,7 +309,7 @@ mod tests {
         game.resume_deferred_sequence(&mut events);
 
         assert!(!game.resolution_is_paused());
-        assert!(game.pending_sequence.is_none());
+        assert!(game.resume.sequence.is_none());
         assert_eq!(hand_count(&game, PlayerId(0)), 1);
     }
 

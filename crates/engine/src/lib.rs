@@ -92,34 +92,10 @@ pub struct Game {
     pub(crate) pending_cumulative_upkeep: Vec<ObjectId>,
     /// A decision the engine is blocked on until the active chooser answers.
     pub(crate) pending_choice: Option<PendingChoice>,
-    /// The steps of an [`Effect::Sequence`] still to run after the current pausing step
-    /// ([`pending_choice`](Self::pending_choice)) is answered — a deferred continuation
-    /// (Prismari Charm's "surveil 2, *then draw a card*"). `None` unless a sequence paused with
-    /// more steps to go; resumed by [`Game::resume_deferred_sequence`] once the choice fully clears.
-    pub(crate) pending_sequence: Option<resolution::SequenceCont>,
-    /// A [`CardKind::Spell`] resolution paused mid-way (a resolution-time optional rider on the
-    /// spell's own ability, e.g. `Effect::CopyThisSpell`'s `optional` gate) — the object still
-    /// waiting to leave the stack once the pause clears. `None` unless a Timing::Spell ability
-    /// paused; resumed by [`Game::resume_deferred_sequence`], which finishes the spell (moves it
-    /// to its post-resolution zone) once `pending_choice`/`pending_sequence` both clear. Keeping
-    /// the spell a live `Object::Spell` until then lets a resumed continuation
-    /// (`Event::SpellCopied`'s copy-from-original) still read it back.
-    pub(crate) pending_spell_finish: Option<ObjectId>,
-    /// Demonstrate's (CR 702.147a) second copy: `(opponent, spell)`, recorded once the
-    /// controller's own copy is minted (see the `Effect::Demonstrate` branch in
-    /// [`Game::choose_targets`]). `None` unless a Demonstrate accept is mid-resolution; drained by
-    /// [`Game::resume_deferred_sequence`] once `pending_choice`/`pending_sequence` both clear, the
-    /// same "wait for the current pause, then continue" shape as
-    /// [`pending_spell_finish`](Self::pending_spell_finish) — the opponent's copy can't mint
-    /// alongside the controller's own copy's CR 707.10c retarget pause, since the two copies have
-    /// different controllers and `mint_spell_copies` shares one [`resolution::ResolveCtx`] per call.
-    pub(crate) pending_demonstrate_opponent_copy: Option<(PlayerId, ObjectId)>,
-    /// Clash (CR 701.22): the opponent still owed a keep-on-top-or-bottom scry after the ability's
-    /// controller has taken theirs. `None` unless a clash is mid-way between its two reveals'
-    /// keep/bottom decisions; drained by [`Game::resume_deferred_sequence`] once the controller's
-    /// scry clears, raising the opponent's — the same "wait for the current pause, then continue"
-    /// shape as [`pending_demonstrate_opponent_copy`](Self::pending_demonstrate_opponent_copy).
-    pub(crate) pending_clash_scry: Option<PlayerId>,
+    /// Deferred resolution resume riders (clash scry, sequence tail, demonstrate opponent copy,
+    /// spell finish) — drained by [`Game::resume_deferred_sequence`] once
+    /// [`pending_choice`](Self::pending_choice) clears. See [`resolution::ResumeState`].
+    pub(crate) resume: resolution::ResumeState,
     /// Whether the current resolution's [`Effect::Clash`] was won by its controller (CR 701.22d),
     /// read by a following [`Condition::WonClash`] step. Resolution-scoped, not a persistent board
     /// fact: each clash overwrites it and only a same-resolution `conditional` reads it, so it is
