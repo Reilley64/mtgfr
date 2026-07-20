@@ -47,6 +47,7 @@ export function resetGame(): void {
   stackEntrances = new Map();
   prevStackIds = new Set();
   stackIdsAtDeltaStart = new Set();
+  tableFeelBatch = { land: false, stack: false, resolve: false, damage: false };
   setGame({ state: null, seq: 0, reject: null, log: [] });
 }
 
@@ -62,6 +63,7 @@ export function applySnapshot(seq: number, state: VisibleState): void {
     stackEntrances = new Map();
     prevStackIds = new Set(state.stack.map((s) => s.source));
     stackIdsAtDeltaStart = new Set();
+    tableFeelBatch = { land: false, stack: false, resolve: false, damage: false };
     setGame({ state, seq });
   }
 }
@@ -116,6 +118,16 @@ export function applyDelta(delta: DeltaEnvelope): void {
   // Freeze the pre-delta stack for token-creator seeding this frame (before advancing).
   stackIdsAtDeltaStart = priorStack;
   prevStackIds = new Set(delta.state.stack.map((s) => s.source));
+  tableFeelBatch = {
+    land: landPlays.size > 0,
+    stack:
+      stackEntrances.size > 0 ||
+      delta.events.some((e) => e.kind === "triggered_ability_on_stack" || e.kind === "spell_copied"),
+    resolve: stackResolved.size > 0 || stackExits.size > 0 || delta.events.some((e) => e.kind === "ability_resolved"),
+    damage: delta.events.some(
+      (e) => e.kind === "combat_damage_dealt_to_creature" || e.kind === "combat_damage_dealt_to_player",
+    ),
+  };
   setGame({ state: delta.state, seq: delta.seq });
   if (lines.length) setGame("log", (log) => [...log, ...lines].slice(-200));
 }
@@ -175,6 +187,20 @@ export type FoldProvenance = {
   stackEntrances: Map<number, { controller: number; from: number }>;
   priorStackObjectIds: Set<number>;
 };
+
+/** One-shot table-feel flags from the most recent delta (one cue per kind per delta). */
+export type TableFeelBatch = {
+  land: boolean;
+  stack: boolean;
+  resolve: boolean;
+  damage: boolean;
+};
+
+let tableFeelBatch: TableFeelBatch = { land: false, stack: false, resolve: false, damage: false };
+
+export function lastTableFeelBatch(): TableFeelBatch {
+  return tableFeelBatch;
+}
 
 /** Provenance shape TableSurface needs after the latest delta fold. */
 export function foldProvenance(): FoldProvenance {
@@ -416,8 +442,7 @@ function extractProvenance(
 // (post-apply) state. Returns null for events with no narrative value (priority, mana).
 // Wire event kinds are projected in crates/schema/src/projection/event.rs — new kinds land
 // there first; the exhaustive lists below are the client-side follow-up for log/provenance.
-const colorName = (color: number): string =>
-  ["white", "blue", "black", "red", "green"][color] ?? `color ${color}`;
+const colorName = (color: number): string => ["white", "blue", "black", "red", "green"][color] ?? `color ${color}`;
 
 function describe(e: VisibleEvent, state: VisibleState): string | null {
   const name = (id: number) => state.objects.find((o) => o.id === id)?.name ?? `#${id}`;

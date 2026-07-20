@@ -7,8 +7,9 @@ import { Hud } from "~/components/atoms";
 import { PHASES, phaseOf, STEP_NAMES } from "~/layout";
 import { cn } from "~/lib/cn";
 import { playerLabel } from "~/lib/players";
-import { playPrioritySound } from "~/lib/prioritySound";
+import { playAttentionPriority, playAttentionYourTurn } from "~/lib/tableAudio";
 import { type Heat, heatOf, watchElapsed } from "~/lib/watch";
+import { SPECTATOR_VIEWER } from "~/store";
 import type { VisibleState } from "~/wire/types";
 
 export function TurnBanner(props: { me: number; state: VisibleState }) {
@@ -22,6 +23,24 @@ export function TurnBanner(props: { me: number; state: VisibleState }) {
     const name = STEP_NAMES[s().step] ?? String(s().step);
     return band && band.steps.length > 1 && band.name !== name ? name : null;
   };
+
+  // Attention cues: your-turn wins when both flip in the same update (ADR 0036).
+  // Skip watchers and eliminated seats — they cannot hold priority.
+  createEffect((prev: { turn: boolean; priority: boolean } | undefined) => {
+    const viewer = s().viewer;
+    const seat = s().players.find((p) => p.player === props.me);
+    const canHearAttention = viewer !== SPECTATOR_VIEWER && seat != null && !seat.lost;
+    const turn = yourTurn();
+    const priority = s().priority === props.me;
+    if (canHearAttention && prev !== undefined) {
+      const gainedTurn = turn && !prev.turn;
+      const gainedPriority = priority && !prev.priority;
+      if (gainedTurn) playAttentionYourTurn();
+      else if (gainedPriority) playAttentionPriority();
+    }
+    return { turn, priority };
+  });
+
   return (
     <Hud
       data-testid="board-turn-banner"
@@ -78,13 +97,6 @@ function PriorityWatch(props: { me: number; state: VisibleState }) {
   });
 
   const yours = () => holder() === props.me;
-  // Chime only on the transition into priority — not on first paint if you already hold it, and
-  // not on every re-render while you keep it. Solid feeds the prior return value back as `prev`.
-  createEffect((prev: boolean | undefined) => {
-    const now = yours();
-    if (now && prev === false) playPrioritySound();
-    return now;
-  });
   return (
     <div class={cn("font-semibold text-caption", HEAT_INK[heatOf(elapsed())], yours() && "text-turn-mint")}>
       {yours() ? "You have priority" : `Waiting on ${playerLabel(props.state.players, holder())}`}
