@@ -1,0 +1,12 @@
+# Token: Elemental
+# Sources: prismari_pianist.toml
+name = "Elemental"
+id = "e1cab9f5-a094-4df4-9094-71bebf91956f"
+default_print = "222b8394-20e7-4808-8eec-cb048f548055"
+colors = ["blue", "red"]
+subtypes = ["Elemental"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

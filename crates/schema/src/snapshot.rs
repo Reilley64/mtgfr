@@ -747,7 +747,7 @@ mod tests {
     use crate::dto::{CommanderDamageView, PendingChoiceView, WireKind};
     use crate::intent::{WireAttack, WireTarget};
     use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
-    use engine::{Game, ObjectId, PlayerId};
+    use engine::{Effect, Game, ObjectId, PlayerId};
 
     use super::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
 
@@ -2488,5 +2488,44 @@ mod tests {
             flipped.print, front_print,
             "print (art) stays the front's — the back face has no image of its own"
         );
+    }
+
+    /// Tokens used to project with an empty `print`, so the client drew name placeholders.
+    /// Authored / engine token profiles now stamp Scryfall Printing UUIDs (ADR 0031).
+    #[test]
+    fn projected_tokens_carry_scryfall_print_for_battlefield_art() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        let treasure = game.spawn_token_on_battlefield(p0, engine::treasure_token());
+        let beast = cards::get_by_name("Beast Within").expect("Beast Within in pool");
+        let Effect::Sequence { steps } = beast.abilities[0].effect else {
+            panic!("Beast Within spell body");
+        };
+        let Effect::CreateToken { token, .. } = steps[1] else {
+            panic!("Beast Within create_token step");
+        };
+        let beast_token = game.spawn_token_on_battlefield(p0, token);
+
+        let snap = snapshot(&game, p0);
+        let treasure_view = snap
+            .objects
+            .iter()
+            .find(|o| o.id == treasure)
+            .expect("treasure");
+        assert_eq!(treasure_view.name, "Treasure");
+        assert!(
+            !treasure_view.print.is_empty(),
+            "Treasure must project a Printing UUID for art"
+        );
+        assert_eq!(treasure_view.print, engine::treasure_token().default_print);
+
+        let beast_view = snap
+            .objects
+            .iter()
+            .find(|o| o.id == beast_token)
+            .expect("beast");
+        assert_eq!(beast_view.name, "Beast");
+        assert_eq!(beast_view.print, "5871be0a-0fd6-441d-8f9e-76c66b5bd8bc");
+        assert_eq!(beast_view.card_id, "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920");
     }
 }

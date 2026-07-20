@@ -1,0 +1,13 @@
+# Token: Zombie
+# Sources: jadar_ghoulcaller_of_nephalia.toml
+name = "Zombie"
+id = "888fef82-b8be-434a-9be2-609e1ded9a5e"
+default_print = "b0d6fd21-48f0-4151-9671-762c25d95592"
+colors = ["black"]
+subtypes = ["Zombie"]
+keywords = ["decayed"]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

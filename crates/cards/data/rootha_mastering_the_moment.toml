@@ -33,12 +33,7 @@ type = "cast_instant_or_sorcery_this_turn"
 # greatest mana value among instant and sorcery spells you've cast this turn.
 [[abilities.effects]]
 type = "create_token"
+token = "57094a2f-4c1b-4f96-bc06-3798a0c09125"
 count = 1
 set_base_pt = "greatest_instant_or_sorcery_mana_value_cast_this_turn"
-[abilities.effects.token]
-name = "Elemental"
-power = 0
-toughness = 0
-colors = ["blue", "red"]
-subtypes = ["Elemental"]
-keywords = ["flying", "haste"]
+

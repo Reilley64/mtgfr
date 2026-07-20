@@ -1,0 +1,13 @@
+# Token: Elemental
+# Sources: rootha_mastering_the_moment.toml
+name = "Elemental"
+id = "57094a2f-4c1b-4f96-bc06-3798a0c09125"
+default_print = "fe42cba4-e00f-4e34-8e26-99721727dced"
+colors = ["blue", "red"]
+subtypes = ["Elemental"]
+keywords = ["flying", "haste"]
+
+[kind]
+type = "creature"
+power = 0
+toughness = 0

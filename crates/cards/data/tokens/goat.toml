@@ -1,0 +1,12 @@
+# Token: Goat
+# Sources: woe_strider.toml
+name = "Goat"
+id = "f62b776a-d4de-455a-ae5a-ca07982974db"
+default_print = "a8d85b98-8390-412f-9542-2f1e2890235d"
+colors = ["white"]
+subtypes = ["Goat"]
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1

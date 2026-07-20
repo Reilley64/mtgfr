@@ -29,4 +29,4 @@ target = { permanent = { types = ["artifact", "creature"] } }
 [[abilities.effects]]
 type = "create_token"
 controller = "target_controller"
-token = { name = "Elemental", power = 4, toughness = 4, colors = ["blue", "red"], subtypes = ["Elemental"] }
+token = "f81c047d-de36-4aed-806b-f14a290771a4"

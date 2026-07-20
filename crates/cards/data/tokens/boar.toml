@@ -1,0 +1,12 @@
+# Token: Boar
+# Sources: curse_of_the_swine.toml
+name = "Boar"
+id = "11734409-b03b-4905-af83-261f29a96bc2"
+default_print = "32ffd1ae-8ce6-4e84-a496-ffcfdd0460bc"
+colors = ["green"]
+subtypes = ["Boar"]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

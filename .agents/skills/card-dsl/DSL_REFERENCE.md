@@ -635,11 +635,7 @@ generic = 2
 [[abilities.effects]]
 type = "create_token"
 count = 1
-[abilities.effects.token]
-name = "Fungus Beast"
-power = 4
-toughness = 4
-keywords = ["trample"]
+token = "81183cc6-d39c-4e51-a982-2351588987aa"  # data/tokens/fungus_beast.toml
 ```
 
 Only a single optional trigger per ability is wired (an optional trigger that's also one of
@@ -1681,29 +1677,41 @@ restriction = { mana_value_at_least_or_has_x = 5 }
 Ability activation costs never satisfy a restriction (CR 106.9's restrictions name a *spell*) —
 a restricted credit floating in the pool can't fund one, even one that would otherwise fit.
 
-**Token profile** (`[abilities.effects.token]` for `create_token`): either the creature-token
-*sugar* — `name` + base `power`/`toughness` + evergreen `keywords`, plus the token's stated
-`colors`/`subtypes` (CR 105.2a/111.4 — a token has no mana cost to derive color from) — or, when
-a token must be an artifact or carry an ability, a **full inline card table** (its own
-`[…token.kind]`, `[[…token.abilities]]`, …), the same shape a top-level card takes.
+**Token profile** (`token` on `create_token` / Inkshield / Oversimplify): a Scryfall **oracle id**
+string naming a file under `crates/cards/data/tokens/*.toml`. Token characteristics are **not**
+inlined on the creating card — each unique token is its own top-level [`CardDef`] TOML (`name`,
+`id`, `default_print`, `[kind]`, `colors` / `subtypes` / `keywords`, optional `[[abilities]]`).
+The cards loader installs that registry before parsing deckable cards so `token = "<id>"`
+resolves into an embedded `CardDef` on the effect (engine mint stays pool-agnostic). Tokens are
+excluded from the deckable catalog `registry()`.
+
 ```toml
+# data/tokens/beast.toml
+name = "Beast"
+id = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920"
+default_print = "5871be0a-0fd6-441d-8f9e-76c66b5bd8bc"
+colors = ["green"]
+subtypes = ["Beast"]
+
+[kind]
+type = "creature"
+power = 3
+toughness = 3
+```
+
+```toml
+# on the creating card (e.g. beast_within.toml)
 [[abilities.effects]]
 type = "create_token"
 count = 1   # count is an amount (§7): a number, "x", or a derived count like
             # { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" } (Izoni)
-
-[abilities.effects.token]
-name = "Elephant"
-power = 3
-toughness = 3
-keywords = ["trample"]   # optional, evergreen keywords only
-colors = ["green"]       # optional stated color(s)
-subtypes = ["Elephant"]  # optional stated creature type(s)
+token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920"
 ```
+
 Copy-tokens aren't spelled via this shape (use `create_token_copy`). A token profile may be a
-non-creature — including an **Aura** (`[…token.kind] type = "aura"`, with an `enchant = { … }`
-restriction and its own `[[…token.abilities]]`) minted attached to a target via
-`attach_minted_aura_to_target` (Scriv, the Obligator's Contract token).
+non-creature — including an **Aura** (`[kind] type = "aura"`, with an `enchant = { … }`
+restriction and its own `[[abilities]]`) minted attached to a target via
+`attach_minted_aura_to_target` (Scriv, the Obligator's Contract token — see `data/tokens/contract.toml`).
 
 **`controller`** (default `"you"`): who ends up controlling the minted token(s).
 - `"you"` — the ability's own controller (CR 111.4's default; most `create_token` cards).
@@ -1715,7 +1723,7 @@ restriction and its own `[[…token.abilities]]`) minted attached to a target vi
   effects = [
       { type = "destroy_target", target = { permanent = {} } },
       { type = "create_token", controller = "target_controller",
-        token = { name = "Beast", power = 3, toughness = 3 } },
+        token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920" },
   ]
   ```
 - `"each_opponent"` — one copy of the token per opponent of the ability's controller, each under
@@ -1733,10 +1741,7 @@ restriction and its own `[[…token.abilities]]`) minted attached to a target vi
   [[abilities.effects]]
   type = "create_token"
   controller = "target_player"
-  [abilities.effects.token]
-  name = "Inkling"
-  power = 2
-  toughness = 1
+  token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"  # data/tokens/inkling.toml
   ```
 - `"target_opponent"` — the same shape as `"target_player"` above, restricted to an opponent (CR
   "target opponent" — Questing Phelddagrif's "Target opponent creates a 1/1 ... Hippo ..."):
@@ -1754,13 +1759,14 @@ restriction and its own `[[…token.abilities]]`) minted attached to a target vi
   [[abilities.effects]]
   type = "create_token"
   controller = "each_other_player"
-  token = { name = "Dragon", power = 5, toughness = 5, colors = ["red"], subtypes = ["Dragon"],
-            keywords = ["flying"] }
+  token = "60fe4897-6760-4c5a-8074-c92bd64df52b"  # data/tokens/dragon.toml
   ```
 
-**Treasure tokens** are engine-provided (`engine::treasure_token`: a colorless artifact token with
-"{T}, Sacrifice this artifact: Add one mana of any color"). Make them with `create_treasure`
-(§6) — no token profile needed:
+**Treasure tokens** live in `data/tokens/treasure.toml` like every other token profile.
+`create_treasure` (§6) is sugar that mints that profile (via `engine::treasure_token()`, which
+resolves the installed registry after cards load). Prefer `create_treasure` over a bare
+`create_token` + Treasure id when the card says "create a Treasure token" — it also carries
+`target_player` / `tapped` knobs:
 ```toml
 [[abilities.effects]]
 type = "create_treasure"
@@ -1893,10 +1899,7 @@ timing = "etb"
 [[abilities.effects]]
 type = "create_token"
 count = 1
-[abilities.effects.token]
-name = "Inkling"
-power = 2
-toughness = 1
+token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"  # data/tokens/inkling.toml
 
 # {1}{B}: Level 2
 [[abilities]]

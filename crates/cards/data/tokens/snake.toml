@@ -1,0 +1,12 @@
+# Token: Snake
+# Sources: ophiomancer.toml
+name = "Snake"
+id = "c02feaa1-8540-4948-b92f-01a719218c2b"
+default_print = "62340bbb-cff0-48c1-8854-235340e80477"
+subtypes = ["Snake"]
+keywords = ["deathtouch"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

@@ -28,23 +28,6 @@ who = "this"
 # create that many 0/1 colorless Eldrazi Spawn creature tokens.
 [[abilities.effects]]
 type = "create_token"
+token = "3aaf906a-e749-4e86-ac79-97650b92f271"
 count = "combat_damage_dealt"
 
-[abilities.effects.token]
-name = "Eldrazi Spawn"
-subtypes = ["Eldrazi", "Spawn"]
-
-[abilities.effects.token.kind]
-type = "creature"
-power = 0
-toughness = 1
-
-# "Sacrifice this token: Add {C}."
-[[abilities.effects.token.abilities]]
-timing = "activated"
-sacrifice = "this"
-
-# Add {C}.
-[[abilities.effects.token.abilities.effects]]
-type = "add_mana"
-mana = ["colorless"]

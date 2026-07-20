@@ -152,11 +152,11 @@ pub struct ObjectView {
     pub zone: u8,
     pub owner: u8,
     pub controller: u8,
-    /// Card id (Scryfall oracle id). Empty when face-down or a token without one.
+    /// Card id (Scryfall oracle id). Empty when face-down, or a token with no Scryfall id.
     #[serde(default)]
     pub card_id: String,
     pub name: String,
-    /// Printing UUID for art (CDN). Empty when unknown / token without art.
+    /// Printing UUID for art (CDN). Empty when unknown / face-down / token without a print.
     #[serde(default)]
     pub print: String,
     pub kind: WireKind,

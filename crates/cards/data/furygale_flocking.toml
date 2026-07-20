@@ -22,14 +22,8 @@ timing = "spell"
 # turn if able
 [[abilities.effects]]
 type = "create_token"
+token = "ed8ed87e-7c33-4201-81a6-1331b21a93bf"
 count = 2
 controller = "one_per_opponent"
 must_attack_defender = true
 
-[abilities.effects.token]
-name = "Elemental"
-power = 3
-toughness = 3
-keywords = ["flying", "haste"]
-colors = ["blue", "red"]
-subtypes = ["Elemental"]

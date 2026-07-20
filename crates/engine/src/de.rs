@@ -11,6 +11,9 @@
 //! CR citations appear on individual fields where the DSL encodes a rules concept
 //! (e.g. commander identity mana, target counts); see `docs/CR_INDEX.md`.
 
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
 use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
@@ -23,6 +26,23 @@ use crate::{
     SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed, SpendToCastPredicate,
     Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
 };
+
+/// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
+/// Scryfall oracle id; [`token_profile`] resolves `token = "<id>"` against this map.
+static TOKEN_DEFS: OnceLock<HashMap<&'static str, CardDef>> = OnceLock::new();
+
+/// Install the token-profile registry used by [`token_profile`]. Call once from the `cards` crate
+/// after loading `data/tokens/*.toml` and before parsing deckable card TOMLs. Panics if called twice.
+pub fn install_token_defs(defs: HashMap<&'static str, CardDef>) {
+    TOKEN_DEFS
+        .set(defs)
+        .unwrap_or_else(|_| panic!("install_token_defs called more than once"));
+}
+
+/// Look up a token profile by Scryfall oracle id after [`install_token_defs`].
+pub fn token_def(id: &str) -> Option<CardDef> {
+    TOKEN_DEFS.get().and_then(|m| m.get(id).copied())
+}
 
 // ── Interning + serde defaults (referenced by the derives in lib.rs) ────────────────
 
@@ -146,111 +166,22 @@ pub(crate) fn creature_edict() -> PermanentFilter {
     PermanentFilter::of(TypeSet::CREATURE)
 }
 
-/// A token's characteristics as written in a card's TOML (`[abilities.effects.token]`), read by
-/// [`Effect::CreateToken`]. Written either as the creature *sugar* — `name` + base `power`/
-/// `toughness` + evergreen `keywords`, no `kind` table (the common Inkling/Saproling case) — or,
-/// when a token needs to be an artifact or carry an ability, as a full inline card table (its own
-/// `[…token.kind]` and `[[…token.abilities]]`), the same shape a top-level [`CardDef`] takes.
-/// The full form is exactly what [`crate::treasure_token`] is in Rust: an artifact token with an
-/// activated ability. The runtime spawn path already handles either — a token's abilities function
-/// from the battlefield like any permanent's (Treasure's sac ability, a Pest's Dies trigger).
-///
-/// The sugar form also takes the token's `colors`/`subtypes` (CR 105.2a/CR 111.4 — a token's
-/// color and creature type are stated outright, not derived from a mana cost it doesn't have),
-/// the same shape [`CardDef::colors`]/[`CardDef::subtypes`] take on a top-level card. An untagged
-/// try-full-then-sugar: a real error in a full-form token surfaces as the sugar's parse error,
-/// which is acceptable while the pool is small.
+/// A token profile reference on `create_token` (and siblings): a Scryfall oracle id string
+/// (`token = "37c4adc8-…"`) resolved against the registry installed by [`install_token_defs`].
+/// Token characteristics live in `cards/data/tokens/*.toml`; after resolve the effect embeds a
+/// full [`CardDef`] so mint paths stay pool-agnostic.
 pub(crate) fn token_profile<'de, D: Deserializer<'de>>(d: D) -> Result<CardDef, D::Error> {
-    /// The creature-token sugar: base P/T + evergreen keywords + colors/subtypes, no
-    /// `kind`/`abilities` table.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields)]
-    struct Sugar {
-        name: String,
-        power: i32,
-        toughness: i32,
-        #[serde(default)]
-        keywords: Vec<Keyword>,
-        #[serde(default)]
-        colors: Vec<Color>,
-        #[serde(default)]
-        subtypes: Vec<String>,
+    let id = String::deserialize(d)?;
+    if id.is_empty() {
+        return Err(de::Error::custom(
+            "token profile id is empty — expected a Scryfall oracle id from data/tokens/",
+        ));
     }
-
-    // ponytail: `Full` holds a whole `CardDef` (large by design, `Copy`); this transient parse enum
-    // is unavoidably big-variant. Boxing buys nothing here, so silence the lint.
-    #[allow(clippy::large_enum_variant)]
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum TokenSpec {
-        /// A full inline card — reuses [`CardDef`]'s own `Deserialize` (cost defaults to `FREE`).
-        Full(CardDef),
-        /// The `power`/`toughness` sugar, tried when the full form's required `kind` is absent.
-        Sugar(Sugar),
-    }
-
-    Ok(match TokenSpec::deserialize(d)? {
-        TokenSpec::Full(def) => def,
-        TokenSpec::Sugar(token) => CardDef {
-            name: Box::leak(token.name.into_boxed_str()),
-            id: "",
-            default_print: "",
-            cost: Cost::FREE,
-            kind: CardKind::Creature {
-                power: token.power,
-                toughness: token.toughness,
-                also: TypeSet::NONE,
-            },
-            enchant: None,
-            enchant_graveyard: false,
-            legendary: false,
-            uncounterable: false,
-            modal: false,
-            modal_choose: 1,
-            modal_choose_max: None,
-            modal_choose_max_if_commander: false,
-            keywords: intern(token.keywords),
-            conditional_keywords: &[],
-            abilities: &[],
-            identity_pips: &[],
-            colors: intern(token.colors),
-            devoid: false,
-            enters_tapped: false,
-            enters_tapped_unless: None,
-            free_cast_if: None,
-            cast_only_during_combat: false,
-            approximates: None,
-            oracle: None,
-            set: "",
-            subtypes: intern_strs(token.subtypes),
-            otags: &[],
-            cycling: None,
-            cycling_sacrifice: SacrificeCost::None,
-            flashback: None,
-            echo: None,
-            cumulative_upkeep: None,
-            recover: None,
-            bestow: None,
-            morph: None,
-            evoke: None,
-            delve: false,
-            escape: None,
-            retrace: false,
-            graveyard_cast_cost: None,
-            cascade: false,
-            demonstrate: false,
-            functions_in_graveyard: false,
-            back: None,
-            adventure: None,
-            suspend: None,
-            devour: None,
-            enter_as_copy: None,
-            encore: None,
-            hand_ability: None,
-            forecast: None,
-            may_choose_not_to_untap: false,
-            dredge: None,
-        },
+    token_def(&id).ok_or_else(|| {
+        de::Error::custom(format!(
+            "unknown token profile id {id:?} — add data/tokens/<name>.toml and ensure \
+             install_token_defs ran before loading deckable cards"
+        ))
     })
 }
 

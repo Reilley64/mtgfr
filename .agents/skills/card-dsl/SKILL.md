@@ -6,6 +6,8 @@ description: Author or edit a card definition TOML in crates/cards/data/, or jud
 # Card-Definition TOML DSL
 
 One TOML file per card in `crates/cards/data/*.toml`, deserialized into `engine::CardDef`.
+Token profiles live in `crates/cards/data/tokens/*.toml` and are referenced from creating cards
+by Scryfall oracle id (`token = "<id>"` on `create_token` — no inline token tables).
 
 **Full field reference: [`DSL_REFERENCE.md`](DSL_REFERENCE.md)** (in this skill folder). Read
 it before writing or editing a card TOML. **Source of truth for shapes** is

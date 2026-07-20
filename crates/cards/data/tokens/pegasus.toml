@@ -1,0 +1,13 @@
+# Token: Pegasus
+# Sources: archon_of_suns_grace.toml
+name = "Pegasus"
+id = "246d7a00-288d-448e-9b77-8af41e40a44d"
+default_print = "f130171f-a3e2-4dac-806a-1f2c428ac9fc"
+colors = ["white"]
+subtypes = ["Pegasus"]
+keywords = ["flying"]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

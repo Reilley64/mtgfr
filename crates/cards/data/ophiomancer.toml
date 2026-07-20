@@ -31,14 +31,6 @@ subtypes = ["Snake"]
 # create a 1/1 black Snake creature token with deathtouch.
 [[abilities.effects]]
 type = "create_token"
+token = "c02feaa1-8540-4948-b92f-01a719218c2b"
 count = 1
 
-[abilities.effects.token]
-name = "Snake"
-subtypes = ["Snake"]
-keywords = ["deathtouch"]
-
-[abilities.effects.token.kind]
-type = "creature"
-power = 1
-toughness = 1

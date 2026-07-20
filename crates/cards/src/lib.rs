@@ -1,11 +1,16 @@
-//! The card pool as data: one TOML file per card under `data/`, loaded once into a
-//! registry of `engine::CardDef`. The engine's `card-dsl` feature deserializes a card's
-//! TOML directly into `CardDef` (interning owned strings and slices to `&'static` at
-//! load, so `CardDef` stays `Copy` — a bounded, load-once pool that lives for the
-//! program's lifetime anyway); this crate is just the file I/O and the id-keyed
+//! The card pool as data: one TOML file per card under `data/`, plus token profiles under
+//! `data/tokens/`. Loaded once into registries of `engine::CardDef`. The engine's `card-dsl`
+//! feature deserializes a card's TOML directly into `CardDef` (interning owned strings and
+//! slices to `&'static` at load, so `CardDef` stays `Copy` — a bounded, load-once pool that
+//! lives for the program's lifetime anyway); this crate is just the file I/O and the id-keyed
 //! registry, keeping the engine free of I/O (`CLAUDE.md`).
+//!
+//! Token profiles load first and are installed via [`engine::install_token_defs`] so
+//! `create_token`'s `token = "<oracle-id>"` resolves during deckable-card deserialize. Tokens
+//! are **not** in [`registry`] — the catalog/deck builder only sees castable cards.
 
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use engine::CardDef;
@@ -17,13 +22,25 @@ struct Pool {
     by_name: HashMap<String, CardDef>,
 }
 
+struct TokenPool {
+    by_id: HashMap<String, CardDef>,
+}
+
 static POOL: OnceLock<Pool> = OnceLock::new();
+static TOKEN_POOL: OnceLock<TokenPool> = OnceLock::new();
 
 fn pool() -> &'static Pool {
     POOL.get_or_init(load_from_data_dir)
 }
 
-/// The loaded card registry, keyed by Card id (Scryfall oracle id).
+fn token_pool() -> &'static TokenPool {
+    let _ = pool();
+    TOKEN_POOL
+        .get()
+        .expect("token pool installed during card load")
+}
+
+/// The loaded card registry, keyed by Card id (Scryfall oracle id). Deckable cards only.
 pub fn registry() -> &'static HashMap<String, CardDef> {
     &pool().by_id
 }
@@ -38,22 +55,85 @@ pub fn get_by_name(name: &str) -> Option<CardDef> {
     pool().by_name.get(name).copied()
 }
 
+/// Token profiles from `data/tokens/`, keyed by Scryfall oracle id.
+pub fn token_registry() -> &'static HashMap<String, CardDef> {
+    &token_pool().by_id
+}
+
+/// The token profile with the given Scryfall oracle id, if it exists.
+pub fn get_token(id: &str) -> Option<CardDef> {
+    token_pool().by_id.get(id).copied()
+}
+
+fn data_dir() -> PathBuf {
+    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/data"))
+}
+
+fn load_toml_file(path: &Path) -> CardDef {
+    let text =
+        std::fs::read_to_string(path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
+    toml::from_str(&text).unwrap_or_else(|e| panic!("parsing {}: {e}", path.display()))
+}
+
+fn load_token_defs(dir: &Path) {
+    let tokens_dir = dir.join("tokens");
+    let entries = std::fs::read_dir(&tokens_dir)
+        .unwrap_or_else(|e| panic!("reading token data dir {}: {e}", tokens_dir.display()));
+
+    let mut by_id_owned: HashMap<String, CardDef> = HashMap::new();
+    let mut engine_map: HashMap<&'static str, CardDef> = HashMap::new();
+
+    for entry in entries {
+        let path = entry.expect("token data dir entry").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("toml") {
+            continue;
+        }
+        let def = load_toml_file(&path);
+        if def.id.is_empty() {
+            panic!(
+                "{}: token CardDef.id (Scryfall oracle id) is required",
+                path.display()
+            );
+        }
+        if def.default_print.is_empty() {
+            panic!(
+                "{}: token CardDef.default_print (Scryfall card UUID) is required",
+                path.display()
+            );
+        }
+        if by_id_owned.insert(def.id.to_string(), def).is_some() {
+            panic!("{}: duplicate token id {}", path.display(), def.id);
+        }
+        // `def.id` is already leaked/`'static` from CardDef deserialize.
+        engine_map.insert(def.id, def);
+    }
+
+    TOKEN_POOL
+        .set(TokenPool { by_id: by_id_owned })
+        .unwrap_or_else(|_| panic!("token pool installed twice"));
+    engine::install_token_defs(engine_map);
+}
+
 fn load_from_data_dir() -> Pool {
-    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/data");
+    let dir = data_dir();
+    // Tokens first so `token = "<id>"` resolves while parsing deckable cards.
+    load_token_defs(&dir);
+
     let entries =
-        std::fs::read_dir(dir).unwrap_or_else(|e| panic!("reading card data dir {dir}: {e}"));
+        std::fs::read_dir(&dir).unwrap_or_else(|e| panic!("reading card data dir {dir:?}: {e}"));
 
     let mut by_id = HashMap::new();
     let mut by_name = HashMap::new();
     for entry in entries {
         let path = entry.expect("card data dir entry").path();
+        // Non-recursive: `data/tokens/` is loaded separately above.
+        if path.is_dir() {
+            continue;
+        }
         if path.extension().and_then(|e| e.to_str()) != Some("toml") {
             continue;
         }
-        let text = std::fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
-        let def: CardDef =
-            toml::from_str(&text).unwrap_or_else(|e| panic!("parsing {}: {e}", path.display()));
+        let def = load_toml_file(&path);
         if def.id.is_empty() {
             panic!(
                 "{}: CardDef.id (Scryfall oracle id) is required",
@@ -92,13 +172,55 @@ mod tests {
             .expect("card data dir")
             .filter(|entry| {
                 let path = entry.as_ref().expect("card data dir entry").path();
-                path.extension().and_then(|e| e.to_str()) == Some("toml")
+                path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("toml")
             })
             .count();
         assert!(toml_files > 400, "the soc pool is ~430 files");
         // registry() parses every file (panicking with the file's path on a bad one);
         // the count match also proves no two files define the same card name.
         assert_eq!(registry().len(), toml_files);
+    }
+
+    #[test]
+    fn every_token_toml_loads_into_the_token_registry() {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/data/tokens");
+        let toml_files = std::fs::read_dir(dir)
+            .expect("token data dir")
+            .filter(|entry| {
+                let path = entry.as_ref().expect("token data dir entry").path();
+                path.extension().and_then(|e| e.to_str()) == Some("toml")
+            })
+            .count();
+        assert!(
+            toml_files >= 30,
+            "expected ~35 token profiles, got {toml_files}"
+        );
+        assert_eq!(token_registry().len(), toml_files);
+        for id in token_registry().keys() {
+            assert!(
+                get(id).is_none(),
+                "token {id} must not be in the deckable registry"
+            );
+        }
+    }
+
+    #[test]
+    fn treasure_token_resolves_from_token_registry_after_load() {
+        let _ = registry();
+        let from_registry =
+            get_token(engine::TREASURE_ORACLE_ID).expect("treasure.toml in token_registry");
+        let from_helper = engine::treasure_token();
+        assert_eq!(from_helper.id, from_registry.id);
+        assert_eq!(from_helper.default_print, from_registry.default_print);
+        assert_eq!(from_helper.name, "Treasure");
+        assert_eq!(from_helper.kind, CardKind::Artifact);
+        assert_eq!(from_helper.subtypes, &["Treasure"]);
+        // Same ability shape: {T}, sac → add {any}.
+        assert_eq!(from_helper.abilities.len(), from_registry.abilities.len());
+        assert_eq!(
+            from_helper.abilities[0].timing,
+            from_registry.abilities[0].timing
+        );
     }
 
     #[test]
@@ -213,13 +335,15 @@ mana = [["black", "green"]]
     }
 
     #[test]
-    fn a_token_profile_can_be_a_full_card_with_abilities() {
-        // A token table is either the creature sugar (name + P/T + keywords) or a full inline
-        // card (its own `kind` and `[[abilities]]`), which is what lets a token be an artifact
-        // or carry a death/sac ability.
+    fn create_token_resolves_oracle_id_from_token_registry() {
+        // Install tokens via the normal load path, then parse a card that only names an id.
+        let _ = registry();
+        let pest_id = "37c4adc8-7455-4725-95fb-169a8b0254e5";
+        let food_id = "a468338f-635e-4206-89d6-72d723071d45";
+        let inkling_id = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70";
 
-        // Pest: a 1/1 creature token with "When this token dies, you gain 1 life."
-        let pest = r#"name = "Make Pest (test)"
+        let pest = format!(
+            r#"name = "Make Pest (test)"
 id = "00000000-0000-0000-0000-000000000001"
 default_print = "00000000-0000-0000-0000-000000000002"
 
@@ -232,23 +356,10 @@ timing = "spell"
 [[abilities.effects]]
 type = "create_token"
 count = 1
-
-[abilities.effects.token]
-name = "Pest"
-
-[abilities.effects.token.kind]
-type = "creature"
-power = 1
-toughness = 1
-
-[[abilities.effects.token.abilities]]
-timing = "dies"
-
-[[abilities.effects.token.abilities.effects]]
-type = "gain_life"
-amount = 1
-"#;
-        let def: CardDef = toml::from_str(pest).expect("a full-card creature token parses");
+token = "{pest_id}"
+"#
+        );
+        let def: CardDef = toml::from_str(&pest).expect("token id resolves");
         let Effect::CreateToken { token, .. } = def.abilities[0].effect else {
             panic!("expected a create_token effect");
         };
@@ -270,8 +381,8 @@ amount = 1
             }
         ));
 
-        // Food: an *artifact* token with "{2}, {T}, Sacrifice this token: You gain 3 life."
-        let food = r#"name = "Make Food (test)"
+        let food = format!(
+            r#"name = "Make Food (test)"
 id = "00000000-0000-0000-0000-000000000001"
 default_print = "00000000-0000-0000-0000-000000000002"
 
@@ -284,26 +395,10 @@ timing = "spell"
 [[abilities.effects]]
 type = "create_token"
 count = 1
-
-[abilities.effects.token]
-name = "Food"
-
-[abilities.effects.token.kind]
-type = "artifact"
-
-[[abilities.effects.token.abilities]]
-timing = "activated"
-taps_self = true
-sacrifice = "this"
-
-[abilities.effects.token.abilities.activation_cost]
-generic = 2
-
-[[abilities.effects.token.abilities.effects]]
-type = "gain_life"
-amount = 3
-"#;
-        let def: CardDef = toml::from_str(food).expect("a full-card artifact token parses");
+token = "{food_id}"
+"#
+        );
+        let def: CardDef = toml::from_str(&food).expect("food token id resolves");
         let Effect::CreateToken { token, .. } = def.abilities[0].effect else {
             panic!("expected a create_token effect");
         };
@@ -319,8 +414,8 @@ amount = 3
         assert_eq!(cost.sacrifice, SacrificeCost::This);
         assert_eq!(cost.mana.generic, 2);
 
-        // The minimal creature sugar (no `kind` table) still parses as base P/T + keywords.
-        let inkling = r#"name = "Make Inkling (test)"
+        let inkling = format!(
+            r#"name = "Make Inkling (test)"
 id = "00000000-0000-0000-0000-000000000001"
 default_print = "00000000-0000-0000-0000-000000000002"
 
@@ -333,27 +428,161 @@ timing = "spell"
 [[abilities.effects]]
 type = "create_token"
 count = 1
-
-[abilities.effects.token]
-name = "Inkling"
-power = 1
-toughness = 1
-keywords = ["flying"]
-"#;
-        let def: CardDef = toml::from_str(inkling).expect("the minimal token sugar still parses");
+token = "{inkling_id}"
+"#
+        );
+        let def: CardDef = toml::from_str(&inkling).expect("inkling token id resolves");
         let Effect::CreateToken { token, .. } = def.abilities[0].effect else {
             panic!("expected a create_token effect");
         };
         assert_eq!(
             token.kind,
             CardKind::Creature {
-                power: 1,
+                power: 2,
                 toughness: 1,
                 also: TypeSet::NONE,
             }
         );
         assert!(token.keywords.contains(&Keyword::Flying));
-        assert!(token.abilities.is_empty());
+    }
+
+    #[test]
+    fn create_token_rejects_unknown_and_inline_profiles() {
+        let _ = registry();
+        let unknown = r#"name = "Make Unknown (test)"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
+
+[kind]
+type = "sorcery"
+
+[[abilities]]
+timing = "spell"
+
+[[abilities.effects]]
+type = "create_token"
+token = "00000000-0000-0000-0000-000000000099"
+"#;
+        assert!(
+            toml::from_str::<CardDef>(unknown).is_err(),
+            "unknown token id must fail at load"
+        );
+
+        let inline = r#"name = "Make Inline (test)"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
+
+[kind]
+type = "sorcery"
+
+[[abilities]]
+timing = "spell"
+
+[[abilities.effects]]
+type = "create_token"
+token = { name = "Inkling", power = 2, toughness = 1 }
+"#;
+        assert!(
+            toml::from_str::<CardDef>(inline).is_err(),
+            "inline token tables are no longer accepted"
+        );
+    }
+
+    /// Battlefield art is print-UUID-only (ADR 0031). Every resolved `create_token` profile
+    /// must stamp `id` + `default_print` from `data/tokens/`.
+    #[test]
+    fn pool_token_profiles_carry_scryfall_art_ids() {
+        fn collect(effect: &Effect, out: &mut Vec<(&'static str, CardDef)>) {
+            match effect {
+                Effect::CreateToken { token, .. }
+                | Effect::PreventCombatDamageToYouCreatingTokens { token }
+                | Effect::EachPlayerCreatesFractalFromExiledPower { token } => {
+                    out.push((token.name, *token));
+                }
+                Effect::Sequence { steps } => {
+                    for step in *steps {
+                        collect(step, out);
+                    }
+                }
+                Effect::Conditional { then, .. }
+                | Effect::ExileTargetGraveyardCardThenIfCreature { then }
+                | Effect::ReflexiveTrigger { then }
+                | Effect::DealDamageToEnteringPermanent { then, .. }
+                | Effect::ScheduleNextCastTrigger { then, .. }
+                | Effect::EachPlayerSacrifices { then, .. }
+                | Effect::MaySacrifice { then, .. }
+                | Effect::MayDiscard { then } => {
+                    for step in *then {
+                        collect(step, out);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        fn scan_card(def: CardDef, out: &mut Vec<(String, &'static str, CardDef)>) {
+            let mut tokens = Vec::new();
+            for ability in def.abilities {
+                collect(&ability.effect, &mut tokens);
+            }
+            if let Some(hand) = def.hand_ability {
+                for effect in hand.effects {
+                    collect(effect, &mut tokens);
+                }
+            }
+            if let Some(forecast) = def.forecast {
+                for effect in forecast.effects {
+                    collect(effect, &mut tokens);
+                }
+            }
+            if let Some(back) = def.back {
+                scan_card(*back, out);
+            }
+            if let Some(adventure) = def.adventure {
+                scan_card(*adventure, out);
+            }
+            for (name, token) in tokens {
+                out.push((def.name.to_string(), name, token));
+            }
+        }
+
+        let mut tokens = Vec::new();
+        for def in registry().values() {
+            scan_card(*def, &mut tokens);
+        }
+        assert!(
+            !tokens.is_empty(),
+            "pool should mint at least one authored token profile"
+        );
+        let missing: Vec<_> = tokens
+            .iter()
+            .filter(|(_, _, t)| t.id.is_empty() || t.default_print.is_empty())
+            .map(|(card, name, _)| format!("{card} → {name}"))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "token profiles need Scryfall id + default_print for battlefield art: {missing:?}"
+        );
+        for (_, _, token) in &tokens {
+            let reg = get_token(token.id).unwrap_or_else(|| {
+                panic!(
+                    "create_token embeds id {} missing from token_registry",
+                    token.id
+                )
+            });
+            assert_eq!(reg.default_print, token.default_print);
+        }
+
+        let beast = get_by_name("Beast Within").expect("Beast Within in pool");
+        let Effect::Sequence { steps } = beast.abilities[0].effect else {
+            panic!("Beast Within spell body should be a Sequence");
+        };
+        let Effect::CreateToken { token, .. } = steps[1] else {
+            panic!("expected create_token step");
+        };
+        assert_eq!(token.name, "Beast");
+        assert_eq!(token.id, "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920");
+        assert_eq!(token.default_print, "5871be0a-0fd6-441d-8f9e-76c66b5bd8bc");
     }
 
     /// Regression: Rubinia shipped with a hallucinated frame — {2}{W}{U}{U}, 2/4, flying — which

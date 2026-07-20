@@ -27,17 +27,9 @@ timing = "etb"
 # create a 2/1 white and black Inkling creature token with flying.
 [[abilities.effects]]
 type = "create_token"
+token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 count = 1
 
-[abilities.effects.token]
-name = "Inkling"
-power = 2
-toughness = 1
-keywords = ["flying"]
-colors = ["white", "black"]
-subtypes = ["Inkling"]
-
-# {1}{B}: Level 2
 [[abilities]]
 timing = "activated"
 sorcery_speed = true
@@ -88,12 +80,6 @@ type = "modified_creature_died_this_turn"
 # create a 2/1 white and black Inkling creature token with flying.
 [[abilities.effects]]
 type = "create_token"
+token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 count = 1
 
-[abilities.effects.token]
-name = "Inkling"
-power = 2
-toughness = 1
-keywords = ["flying"]
-colors = ["white", "black"]
-subtypes = ["Inkling"]

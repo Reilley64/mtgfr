@@ -1,0 +1,12 @@
+# Token: Elemental
+# Sources: magma_opus.toml, resculpt.toml
+name = "Elemental"
+id = "f81c047d-de36-4aed-806b-f14a290771a4"
+default_print = "8ba20bb4-a476-448d-bb39-23f8dd59e5a8"
+colors = ["blue", "red"]
+subtypes = ["Elemental"]
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

@@ -28,11 +28,6 @@ filter = "creatures"
 # controlled that was destroyed this way.
 [[abilities.effects]]
 type = "create_token"
+token = "994879c3-48a7-4da5-9a42-46561fafdd69"
 count = { permanents_destroyed_this_way = { types = "creature", controller = "you", token = "nontoken" } }
 
-[abilities.effects.token]
-name = "Spirit"
-power = 3
-toughness = 2
-colors = ["red", "white"]
-subtypes = ["Spirit"]

@@ -422,9 +422,11 @@ pub struct Ability {
 /// straight from a card's TOML file — the `cards` crate loads the pool this way.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardDef {
-    /// Scryfall oracle id — canonical Card identity (ADR 0031). Empty for tokens / test stubs.
+    /// Scryfall oracle id — canonical Card identity (ADR 0031). Empty for test stubs; tokens
+    /// that have a Scryfall token card stamp theirs so battlefield art resolves.
     pub id: &'static str,
-    /// Scryfall card UUID for the Card's default Printing (art). Empty for tokens / test stubs.
+    /// Scryfall card UUID for the Card's default Printing (art). Empty for test stubs; tokens
+    /// stamp a Scryfall token printing when one exists.
     pub default_print: &'static str,
     pub name: &'static str,
     pub cost: Cost,
@@ -1010,13 +1012,27 @@ pub(crate) fn fresh_token(def: CardDef, controller: PlayerId) -> Permanent {
     }
 }
 
+/// Scryfall oracle id for the canonical Treasure token (`cards/data/tokens/treasure.toml`).
+pub const TREASURE_ORACLE_ID: &str = "3c549374-6c37-42e0-8d88-a8555d46732d";
+
 /// The canonical Treasure token (CR: Treasure): a colorless artifact token with
 /// "{T}, Sacrifice this artifact: Add one mana of any color." Every "create a Treasure" path
-/// mints from this one definition. The `any` mana it adds is a wildcard that pays any single
-/// colored pip or generic (see [`Mana::Any`]). Carries the "Treasure" subtype so a
-/// [`PermanentFilter`] can pick Treasures out from any other artifact (Goldspan Dragon's
-/// "Treasures you control" grant, #57).
+/// mints from this one definition. Prefers the profile installed from
+/// `data/tokens/treasure.toml` (via [`crate::token_def`]) when the cards crate has loaded;
+/// otherwise falls back to a builtin matching that file so engine-only tests still work.
+/// The `any` mana it adds is a wildcard that pays any single colored pip or generic (see
+/// [`Mana::Any`]). Carries the "Treasure" subtype so a [`PermanentFilter`] can pick Treasures
+/// out from any other artifact (Goldspan Dragon's "Treasures you control" grant, #57).
 pub fn treasure_token() -> CardDef {
+    #[cfg(feature = "card-dsl")]
+    if let Some(def) = crate::token_def(TREASURE_ORACLE_ID) {
+        return def;
+    }
+    treasure_token_builtin()
+}
+
+/// Builtin Treasure profile — keep in lockstep with `cards/data/tokens/treasure.toml`.
+fn treasure_token_builtin() -> CardDef {
     const ABILITIES: &[Ability] = &[Ability {
         timing: Timing::Activated(ActivationCost {
             taps_self: true,
@@ -1064,8 +1080,8 @@ pub fn treasure_token() -> CardDef {
     }];
     CardDef {
         name: "Treasure",
-        id: "",
-        default_print: "",
+        id: TREASURE_ORACLE_ID,
+        default_print: "b4f61b5e-9c53-40b1-b93e-3ffa351ff052",
         cost: Cost::FREE,
         kind: CardKind::Artifact,
         legendary: false,
@@ -1125,8 +1141,8 @@ pub fn treasure_token() -> CardDef {
 pub(crate) fn rogue_token_stub() -> CardDef {
     CardDef {
         name: "Rogue",
-        id: "",
-        default_print: "",
+        id: "9acbc363-827c-4146-a004-81be179a8c28",
+        default_print: "80244f4b-3361-4776-a72b-1b0d70c7e855",
         cost: Cost::FREE,
         kind: CardKind::Creature {
             power: 2,
@@ -1192,8 +1208,8 @@ pub(crate) fn rogue_token_stub() -> CardDef {
 pub(crate) fn illusion_token() -> CardDef {
     CardDef {
         name: "Illusion",
-        id: "",
-        default_print: "",
+        id: "ec406831-a1d0-4e41-bd09-f76d0ba206ae",
+        default_print: "f6469938-5af9-4f0a-9f2e-603c833e48ba",
         cost: Cost::FREE,
         kind: CardKind::Creature {
             power: 0,

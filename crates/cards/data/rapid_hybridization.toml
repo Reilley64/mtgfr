@@ -28,4 +28,4 @@ cant_be_regenerated = true
 [[abilities.effects]]
 type = "create_token"
 controller = "target_controller"
-token = { name = "Frog Lizard", power = 3, toughness = 3, colors = ["green"], subtypes = ["Frog", "Lizard"] }
+token = "8653c69b-99a9-4881-a14c-68ba928c34d5"

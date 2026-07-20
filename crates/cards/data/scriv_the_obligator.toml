@@ -39,29 +39,8 @@ timing = "etb"
 [[abilities.effects]]
 type = "create_token"
 
-[abilities.effects.token]
-name = "Contract"
-colors = ["white"]
-subtypes = ["Aura"]
-enchant = { types = "creature" }
+token = "c06d8d9d-a157-482e-9c9a-463745d7bf61"
 
-[abilities.effects.token.kind]
-type = "aura"
-
-# "Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of
-# your opponents. Otherwise, its controller loses 2 life."
-[[abilities.effects.token.abilities]]
-timing = "enchanted_creature_attacks"
-
-# it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its
-# controller loses 2 life.
-[[abilities.effects.token.abilities.effects]]
-type = "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life"
-power = 2
-toughness = 0
-life = 2
-
-# attached to target creature an opponent controls
 [[abilities.effects]]
 type = "attach_minted_aura_to_target"
 target = { permanent = { types = "creature", controller = "opponent" } }
@@ -77,29 +56,8 @@ timing = "attacks"
 [[abilities.effects]]
 type = "create_token"
 
-[abilities.effects.token]
-name = "Contract"
-colors = ["white"]
-subtypes = ["Aura"]
-enchant = { types = "creature" }
+token = "c06d8d9d-a157-482e-9c9a-463745d7bf61"
 
-[abilities.effects.token.kind]
-type = "aura"
-
-# "Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of
-# your opponents. Otherwise, its controller loses 2 life."
-[[abilities.effects.token.abilities]]
-timing = "enchanted_creature_attacks"
-
-# it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its
-# controller loses 2 life.
-[[abilities.effects.token.abilities.effects]]
-type = "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life"
-power = 2
-toughness = 0
-life = 2
-
-# attached to target creature an opponent controls
 [[abilities.effects]]
 type = "attach_minted_aura_to_target"
 target = { permanent = { types = "creature", controller = "opponent" } }

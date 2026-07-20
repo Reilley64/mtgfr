@@ -28,16 +28,9 @@ timing = "etb"
 # create a 0/0 black Phyrexian Germ creature token
 [[abilities.effects]]
 type = "create_token"
+token = "a1c2af93-83c0-4974-b4db-abf95981d4e3"
 count = 1
 
-[abilities.effects.token]
-name = "Germ"
-power = 0
-toughness = 0
-colors = ["black"]
-subtypes = ["Phyrexian", "Germ"]
-
-# then attach this to it.
 [[abilities.effects]]
 type = "attach_self_to_minted_token"
 

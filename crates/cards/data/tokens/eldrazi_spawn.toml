@@ -1,0 +1,22 @@
+# Token: Eldrazi Spawn
+# Sources: awakening_zone.toml, pawn_of_ulamog.toml, rapacious_one.toml
+name = "Eldrazi Spawn"
+id = "3aaf906a-e749-4e86-ac79-97650b92f271"
+default_print = "96b0ffdf-351e-4b89-92f2-79b20420b3bc"
+subtypes = ["Eldrazi", "Spawn"]
+
+[kind]
+type = "creature"
+power = 0
+toughness = 1
+
+# "Sacrifice this token: Add {C}." Color is not modeled, but a token with no color pips is
+# colorless anyway.
+[[abilities]]
+timing = "activated"
+sacrifice = "this"
+
+# Add {C}
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]

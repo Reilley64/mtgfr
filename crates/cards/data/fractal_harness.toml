@@ -31,17 +31,10 @@ timing = "etb"
 # create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it
 [[abilities.effects]]
 type = "create_token"
+token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
 count = 1
 enters_with = "x"
 
-[abilities.effects.token]
-name = "Fractal"
-power = 0
-toughness = 0
-colors = ["green", "blue"]
-subtypes = ["Fractal"]
-
-# attach this Equipment to it.
 [[abilities.effects]]
 type = "attach_self_to_minted_token"
 

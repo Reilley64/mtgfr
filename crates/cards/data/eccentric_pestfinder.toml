@@ -59,24 +59,7 @@ timing = "spell"
 # dies, you gain 1 life."
 [[back.abilities.effects]]
 type = "create_token"
+token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = 1
 controller = "one_per_opponent"
 
-[back.abilities.effects.token]
-name = "Pest"
-colors = ["black", "green"]
-subtypes = ["Pest"]
-
-[back.abilities.effects.token.kind]
-type = "creature"
-power = 1
-toughness = 1
-
-# "When this token dies, you gain 1 life."
-[[back.abilities.effects.token.abilities]]
-timing = "dies"
-
-# you gain 1 life
-[[back.abilities.effects.token.abilities.effects]]
-type = "gain_life"
-amount = 1

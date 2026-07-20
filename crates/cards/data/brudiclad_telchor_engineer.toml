@@ -41,20 +41,8 @@ timing = "begin_combat"
 # create a 2/1 blue Phyrexian Myr artifact creature token
 [[abilities.effects]]
 type = "create_token"
+token = "d23c9257-f0fc-40fb-ab35-4be57979568a"
 count = 1
 
-[abilities.effects.token]
-name = "Myr"
-colors = ["blue"]
-subtypes = ["Phyrexian", "Myr"]
-
-[abilities.effects.token.kind]
-type = "creature"
-power = 2
-toughness = 1
-also = ["artifact"]
-
-# Then you may choose a token you control. If you do, each other token you control becomes a copy
-# of that token.
 [[abilities.effects]]
 type = "each_other_token_becomes_copy_of_chosen"

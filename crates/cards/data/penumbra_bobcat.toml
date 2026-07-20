@@ -24,12 +24,5 @@ timing = "dies"
 [[abilities.effects]]
 type = "create_token"
 
-[abilities.effects.token]
-name = "Cat"
-colors = ["black"]
-subtypes = ["Cat"]
+token = "b1612d71-4e81-4ea7-95d9-05ed7a70e5f1"
 
-[abilities.effects.token.kind]
-type = "creature"
-power = 2
-toughness = 1

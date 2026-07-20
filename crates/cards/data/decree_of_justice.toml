@@ -24,17 +24,9 @@ timing = "spell"
 # Create X 4/4 white Angel creature tokens with flying.
 [[abilities.effects]]
 type = "create_token"
+token = "40c64f08-ab2f-4933-8e0e-d1a1c729008f"
 count = "x"
 
-[abilities.effects.token]
-name = "Angel"
-power = 4
-toughness = 4
-colors = ["white"]
-subtypes = ["Angel"]
-keywords = ["flying"]
-
-# When you cycle this card, you may pay {X}. If you do, create X 1/1 white Soldier creature tokens.
 [[abilities]]
 timing = "cycled"
 optional = true
@@ -45,11 +37,6 @@ x = true
 # create X 1/1 white Soldier creature tokens.
 [[abilities.effects]]
 type = "create_token"
+token = "eac25f12-6459-438c-a09e-93e23d2cf80d"
 count = "x"
 
-[abilities.effects.token]
-name = "Soldier"
-power = 1
-toughness = 1
-colors = ["white"]
-subtypes = ["Soldier"]

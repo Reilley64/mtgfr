@@ -21,6 +21,10 @@
 #[cfg(feature = "card-dsl")]
 mod de;
 
+/// Install / look up token profiles (`data/tokens/*.toml`) for card-DSL load.
+#[cfg(feature = "card-dsl")]
+pub use de::{install_token_defs, token_def};
+
 mod amount;
 mod apply;
 mod cast;

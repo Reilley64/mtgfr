@@ -36,7 +36,7 @@ toughness = 1
 [[abilities.effects]]
 type = "create_token"
 controller = "target_opponent"
-token = { name = "Hippo", power = 1, toughness = 1, colors = ["green"], subtypes = ["Hippo"] }
+token = "c0751938-a8c6-4b27-b8ac-88aa70516721"
 
 # {W}: This creature gains protection from black and from red until end of turn. Target opponent
 # gains 2 life.

@@ -47,10 +47,5 @@ controller = "you"
 [[abilities.effects]]
 type = "create_token"
 
-[abilities.effects.token]
-name = "Pegasus"
-power = 2
-toughness = 2
-keywords = ["flying"]
-colors = ["white"]
-subtypes = ["Pegasus"]
+token = "246d7a00-288d-448e-9b77-8af41e40a44d"
+

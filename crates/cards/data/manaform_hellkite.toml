@@ -30,13 +30,8 @@ spell_filter = "noncreature"
 # of mana spent to cast that spell. Exile that token at the beginning of the next end step.
 [[abilities.effects]]
 type = "create_token"
+token = "33b8ab7a-1c27-46f0-a682-7c9d7e9f43a6"
 count = 1
 set_base_pt = "triggering_spell_mana_spent"
 exile_at_next_end_step = true
-[abilities.effects.token]
-name = "Dragon Illusion"
-power = 0
-toughness = 0
-colors = ["red"]
-subtypes = ["Dragon", "Illusion"]
-keywords = ["flying", "haste"]
+

@@ -24,10 +24,5 @@ timing = "spell"
 # way, create a 2/1 white and black Inkling creature token with flying.
 [[abilities.effects]]
 type = "prevent_combat_damage_to_you_creating_tokens"
-[abilities.effects.token]
-name = "Inkling"
-power = 2
-toughness = 1
-colors = ["white", "black"]
-subtypes = ["Inkling"]
-keywords = ["flying"]
+token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
+

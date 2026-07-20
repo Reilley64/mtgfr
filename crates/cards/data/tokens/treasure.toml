@@ -1,0 +1,20 @@
+# Token: Treasure
+# Canonical Treasure (CR Treasure). Minted by create_treasure / create_token paths via
+# engine::treasure_token(), which resolves this profile after cards load.
+name = "Treasure"
+id = "3c549374-6c37-42e0-8d88-a8555d46732d"
+default_print = "b4f61b5e-9c53-40b1-b93e-3ffa351ff052"
+subtypes = ["Treasure"]
+
+[kind]
+type = "artifact"
+
+# "{T}, Sacrifice this artifact: Add one mana of any color."
+[[abilities]]
+timing = "activated"
+taps_self = true
+sacrifice = "this"
+
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]

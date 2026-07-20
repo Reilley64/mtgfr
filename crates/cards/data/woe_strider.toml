@@ -36,16 +36,9 @@ timing = "etb"
 # create a 0/1 white Goat creature token.
 [[abilities.effects]]
 type = "create_token"
+token = "f62b776a-d4de-455a-ae5a-ca07982974db"
 count = 1
 
-[abilities.effects.token]
-name = "Goat"
-power = 0
-toughness = 1
-colors = ["white"]
-subtypes = ["Goat"]
-
-# Sacrifice another creature: Scry 1.
 [[abilities]]
 timing = "activated"
 sacrifice = { creature = { other = true } }

@@ -28,12 +28,12 @@ spell_filter = "instant_or_sorcery"
 [[abilities.effects]]
 type = "create_token"
 count = 1
-token = { name = "Elemental", power = 1, toughness = 1, colors = ["blue", "red"], subtypes = ["Elemental"] }
+token = "e1cab9f5-a094-4df4-9094-71bebf91956f"
 
 # If that spell's mana value is 5 or greater, create three of those tokens instead.
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "triggering_spell_mana_value_at_least", at_least = 5 }
 then = [
-        { type = "create_token", count = 2, token = { name = "Elemental", power = 1, toughness = 1, colors = ["blue", "red"], subtypes = ["Elemental"] } },
+        { type = "create_token", count = 2, token = "e1cab9f5-a094-4df4-9094-71bebf91956f" },
     ]
