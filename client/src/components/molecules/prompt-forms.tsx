@@ -579,7 +579,9 @@ function PickDialog(props: { label: string; onEscape?: () => void; containScroll
       }}
       class={cn(
         "fixed inset-0 m-0 flex h-full max-h-none w-full max-w-none bg-black/55 p-0 backdrop:bg-transparent",
-        props.containScroll ? "overflow-hidden" : "overflow-y-auto",
+        // Column flex + min-h-0 so the pinned picker's card region can shrink instead of clipping
+        // Choose on short viewports (flex items default to min-height: auto).
+        props.containScroll ? "flex-col overflow-hidden" : "overflow-y-auto",
       )}
     >
       {props.children}
@@ -588,8 +590,10 @@ function PickDialog(props: { label: string; onEscape?: () => void; containScroll
 }
 
 const PICK_COLUMN = cn("m-auto flex flex-col items-center gap-xl py-xxl");
-/** Full-height column for CardPickPrompt: title / filter / submit stay put; only the card grid scrolls. */
-const PICK_COLUMN_PINNED = cn(PICK_COLUMN, "h-full max-h-full w-full overflow-hidden");
+/** Full-height column for CardPickPrompt: title / filter / submit stay put; only the card grid scrolls.
+ * Tighter gap/padding than `PICK_COLUMN` so chrome fits short viewports; `min-h-0` / `flex-1` let the
+ * card region collapse first instead of pushing Choose off-screen. */
+const PICK_COLUMN_PINNED = cn("flex min-h-0 w-full flex-1 flex-col items-center gap-md overflow-hidden py-md");
 
 /** Pick one target — a card in any zone, or a *player*. Distinct from `CardPickPrompt` because a
  * seat has no card image: it renders as its own life-orb-coloured tile. The board uses this wherever
@@ -904,7 +908,8 @@ export function CardPickPrompt(props: {
             {props.minCount !== undefined && props.minCount > 0 ? ` (need at least ${props.minCount})` : ""}
           </div>
         </Show>
-        <div class="flex shrink-0 gap-md">
+        {/* Footer stays shrink-0 so Choose / decline remain reachable when the card grid collapses. */}
+        <div class="flex shrink-0 gap-md pb-[max(0px,env(safe-area-inset-bottom))]">
           <Button type="button" data-testid="pick-submit" disabled={!ready()} onClick={() => props.onSubmit(picked())}>
             {props.submitLabel}
           </Button>

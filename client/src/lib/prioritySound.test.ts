@@ -74,4 +74,23 @@ describe("prioritySound", () => {
     expect(resume).not.toHaveBeenCalled();
     expect(createOscillator).not.toHaveBeenCalled();
   });
+
+  it("swallows resume rejection instead of leaving an unhandled promise", async () => {
+    const { resume } = stubAudio("suspended");
+    resume.mockReturnValueOnce(Promise.reject(new Error("closed")));
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => {
+      unhandled.push(reason);
+    };
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      unlockPriorityAudio();
+      await vi.waitFor(() => expect(resume).toHaveBeenCalledTimes(1));
+      // Let any uncaught rejection surface if our .catch were missing.
+      await new Promise((r) => setTimeout(r, 0));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
 });
