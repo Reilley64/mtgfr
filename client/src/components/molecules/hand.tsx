@@ -16,6 +16,7 @@ import { createMemo, createSignal, For, type JSX, onCleanup, Show } from "solid-
 import { CardArt } from "~/components/atoms";
 import { ZONE } from "~/layout";
 import { type BarZone, barZoneAura, byObject, bySection, handExtras } from "~/lib/actions";
+import { HAND_FACE_W } from "~/lib/cardFlight";
 import { cn } from "~/lib/cn";
 import { costPipPlate, costPips } from "~/lib/costPips";
 import { game } from "~/store";
@@ -30,8 +31,9 @@ export interface ActionDrop {
 /**
  * Face width — Arena-scale (~stack overlay size) so hand/command/graveyard/exile tiles
  * read as real cards, not chrome thumbnails. Every bar tile uses this same locked box.
+ * Sourced from `HAND_FACE_W` so flight scale can't drift.
  */
-export const HAND_CARD_W = 180;
+export const HAND_CARD_W = HAND_FACE_W;
 /** Visible strip width at rest — right edge of the face (mana-cost corner), Arena-style. */
 export const HAND_CARD_PEEK = 64;
 export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;

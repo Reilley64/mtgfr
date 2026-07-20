@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { HAND_CARD_W } from "~/components/molecules/hand";
 import { CARD_W } from "~/layout";
 import { STACK_CARD_W } from "~/lib/boardDraw";
 import {
@@ -219,8 +218,8 @@ describe("cardFlight", () => {
 
   it("handFlightScale and stackFlightScale are relative to canvas card screen width", () => {
     const zoom = 0.5;
-    expect(HAND_FACE_W).toBe(HAND_CARD_W);
-    // Canvas card screen width = CARD_W * zoom = 48; hand face matches HAND_CARD_W.
+    // Hand face matches stack overlay width (Arena-scale readable card).
+    expect(HAND_FACE_W).toBe(STACK_CARD_W);
     expect(handFlightScale(zoom)).toBeCloseTo(HAND_FACE_W / (CARD_W * zoom), 5);
     expect(stackFlightScale(zoom)).toBeCloseTo(STACK_CARD_W / (CARD_W * zoom), 5);
   });
