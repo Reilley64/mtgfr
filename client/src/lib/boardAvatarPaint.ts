@@ -2,6 +2,7 @@
 
 import { AVATAR_R, seatColor } from "~/layout";
 import type { Stroke, Vec } from "~/lib/boardPaintPrims";
+import { fitCanvasLabel } from "~/lib/fitCanvasLabel";
 import { LETHAL_COMMANDER_DAMAGE, worstCommanderDamage } from "~/lib/outcome";
 import type { VisibleState } from "~/wire/types";
 
@@ -36,8 +37,9 @@ export function drawAvatar(
   ctx.fillText(`${player.life}`, pos.x, pos.y + 4 * scale);
   ctx.font = `${Math.max(1, Math.round(14 * scale))}px system-ui, sans-serif`;
   ctx.fillStyle = "#9cb";
-  const label = player.username?.trim() || `P${player.player}`;
-  ctx.fillText(`${label}${player.lost ? " ✕" : ""}`, pos.x, pos.y + 26 * scale);
+  // Cap to ~2.2× orb diameter so long usernames don't collide with the band / hand chrome.
+  const name = `${player.username?.trim() || `P${player.player}`}${player.lost ? " ✕" : ""}`;
+  ctx.fillText(fitCanvasLabel(ctx, name, radius * 2.2), pos.x, pos.y + 26 * scale);
   ctx.fillStyle = "#89a";
   ctx.fillText(`🖐${player.hand_count}`, pos.x, pos.y - 30 * scale);
   const worst = worstCommanderDamage(player.commander_damage);

@@ -26,7 +26,7 @@ export function PriorityContextBar(props: {
   return (
     <div
       style={{ "--b": `${HAND_BAR_H + 10}px` }}
-      class="fixed right-[10px] bottom-(--b) z-25 flex flex-col items-end gap-sm"
+      class="fixed right-md bottom-(--b) z-25 flex flex-col items-end gap-sm"
     >
       <div class="flex flex-row-reverse flex-wrap items-center justify-end gap-sm">
         {/* Primary first in reverse row so it sits rightmost (Arena-style pass cluster). */}

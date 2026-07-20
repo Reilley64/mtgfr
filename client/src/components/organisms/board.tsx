@@ -728,7 +728,7 @@ export default function Board() {
       <Show when={!connected()}>
         <div
           data-testid="board-reconnecting"
-          class="fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-1.5 text-center font-semibold text-label text-snow"
+          class="fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-sm text-center font-semibold text-label text-snow"
         >
           Reconnecting…
         </div>
@@ -763,7 +763,7 @@ export default function Board() {
           <>
             <TurnBanner me={me()} state={state()} />
             <Show when={spectating()}>
-              <div class="fixed top-3 left-1/2 z-20 -translate-x-1/2 rounded-control bg-llanowar px-3 py-1 font-semibold text-label text-snow-mint tracking-[0.04em]">
+              <div class="fixed top-md left-1/2 z-20 -translate-x-1/2 rounded-control bg-llanowar px-md py-xs font-semibold text-label text-snow-mint tracking-[0.04em]">
                 Spectating
               </div>
             </Show>
@@ -790,16 +790,13 @@ export default function Board() {
                 data-testid="board-concede"
                 onClick={() => setConfirmConcede(true)}
                 variant="ghost"
-                class="fixed top-3 right-3 z-20"
+                class="fixed top-md right-md z-20"
               >
                 Concede
               </Button>
-              <Show when={hintVisible()}>
-                <HintStrip onDismiss={dismissHint} />
-              </Show>
             </Show>
             {/* Legend + Sound — top-left. Sound is for everyone on the stream (table feel); legend for seated. */}
-            <div class="fixed top-3 left-3 z-25 flex items-center gap-1">
+            <div class="fixed top-md left-md z-25 flex items-center gap-xs">
               <Show when={!spectating() && !eliminated()}>
                 <Button
                   type="button"
@@ -808,7 +805,7 @@ export default function Board() {
                   onClick={() => setLegendOpen((o) => !o)}
                   variant="ghost"
                   hitQuiet
-                  class="px-[11px] py-[5px]"
+                  class="px-md py-xs"
                 >
                   ?
                 </Button>
@@ -821,7 +818,7 @@ export default function Board() {
                 onClick={toggleSound}
                 variant="ghost"
                 hitQuiet
-                class="px-[11px] py-[5px] text-caption"
+                class="px-md py-xs text-caption"
               >
                 {soundOn() ? "Sound" : "Muted"}
               </Button>
@@ -862,7 +859,16 @@ export default function Board() {
               onHoverCard={(c) => surface.setAuxHover("stack", c)}
               onDwell={setDwell}
             />
-            <LogPanel />
+            {/* Left chrome column: hint above log so they never fight for the same inset. */}
+            <div
+              style={{ "--b": `${HAND_BAR_H + 10}px` }}
+              class="fixed bottom-(--b) left-md z-20 flex max-w-[min(420px,46vw)] flex-col items-start gap-sm"
+            >
+              <Show when={!spectating() && !eliminated() && hintVisible()}>
+                <HintStrip onDismiss={dismissHint} />
+              </Show>
+              <LogPanel />
+            </div>
             <PromptHost me={me()} state={state()} onAnswer={act} />
           </>
         )}
