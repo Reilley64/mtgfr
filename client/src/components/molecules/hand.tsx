@@ -41,7 +41,7 @@ export const HAND_VISIBLE_H = 100;
 /** @deprecated Alias — prefer `HAND_VISIBLE_H`. */
 export const HAND_STRIP_H = HAND_VISIBLE_H;
 /** Room above each face for cast-cost pips (reserved band outside the card). */
-const HAND_PIP_ROW_H = 20;
+const HAND_PIP_ROW_H = 22;
 
 /** MTGA fan: left/right tilt out; centre rises toward the board (edges sit lower). */
 function fanTransform(index: number, count: number): string {
@@ -285,7 +285,7 @@ export default function Hand(props: {
           <Show when={pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
-              class="pointer-events-none absolute right-0 left-0 z-20 flex items-end justify-end gap-px"
+              class="pointer-events-none absolute right-0 left-0 z-20 flex items-start justify-end gap-px pt-0.5"
               style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
               aria-hidden="true"
             >
@@ -425,7 +425,7 @@ export default function Hand(props: {
               />
               <Show when={ghostPips().length > 0}>
                 <div
-                  class="pointer-events-none absolute right-0 left-0 flex items-end justify-end gap-px"
+                  class="pointer-events-none absolute right-0 left-0 flex items-start justify-end gap-px pt-0.5"
                   style={{ top: `-${HAND_PIP_ROW_H}px`, height: `${HAND_PIP_ROW_H}px` }}
                   aria-hidden="true"
                 >
