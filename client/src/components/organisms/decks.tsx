@@ -11,13 +11,12 @@ import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { decksAtom } from "~/atoms";
-import { Button, Felt, ListRow } from "~/components/atoms";
+import { Button, CardArt, Felt, ListRow } from "~/components/atoms";
 import CardPreview from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import { client, succeeded } from "~/effect/client";
 import { RequireAuth } from "~/guard";
 import { lookupCardsByIds } from "~/lib/lookupCards";
-import { imageUrlByPrint } from "~/lib/scryfall";
 import type { CatalogCard, Me } from "~/wire/types";
 
 const deleteDeckFn = Atom.fn((id: number) => succeeded(client.deleteDeck(String(id))));
@@ -124,8 +123,9 @@ function DecksSignedIn(props: { user: Me }) {
                     fallback={<div class="size-[56px] shrink-0 rounded-control bg-glass" aria-hidden="true" />}
                   >
                     {(print) => (
-                      <img
-                        src={imageUrlByPrint(print(), "art_crop")}
+                      <CardArt
+                        print={print()}
+                        size="art_crop"
                         alt=""
                         class="size-[56px] shrink-0 rounded-control object-cover"
                         loading="lazy"

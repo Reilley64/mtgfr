@@ -3,7 +3,7 @@ import { turnYieldRockerClass, turnYieldThumbClass, turnYieldTrackClass } from "
 
 describe("turnYieldChrome (Gold Means Act)", () => {
   it("arms with yielded amber, never priority gold", () => {
-    expect(turnYieldRockerClass(true)).toContain("border-yielded/50");
+    expect(turnYieldRockerClass(true)).toContain("border-yielded/60");
     expect(turnYieldRockerClass(true)).not.toContain("priority-gold");
     expect(turnYieldTrackClass(true)).toContain("bg-yielded");
     expect(turnYieldTrackClass(true)).not.toContain("priority-gold");

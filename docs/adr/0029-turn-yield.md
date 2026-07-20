@@ -1,6 +1,6 @@
 # 0029 — Turn yield
 
-Status: **Accepted**. Depends on [0007](0007-auto-pass-and-commander-ui-ahead-of-engine.md), [0027](0027-stack-chrome-next-pass-and-yield.md).
+Status: **Accepted**. Depends on [0007](0007-auto-pass-and-commander-ui-ahead-of-engine.md), [0027](0027-stack-chrome-next-pass-and-yield.md). Extended by [0037](0037-end-turn.md) (same flag while active = End Turn).
 
 ## Context
 

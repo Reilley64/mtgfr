@@ -9,7 +9,8 @@ import * as Option from "effect/Option";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import * as Atom from "effect/unstable/reactivity/Atom";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
-import { Button } from "~/components/atoms";
+import { Button, buttonClass, CardArt } from "~/components/atoms";
+import { cardBugReportUrl } from "~/lib/cardBugReport";
 import { cn } from "~/lib/cn";
 import {
   type InspectFace,
@@ -22,7 +23,7 @@ import {
 } from "~/lib/inspect";
 import { lookupCardsByIds } from "~/lib/lookupCards";
 import { splitOracleText } from "~/lib/oracleText";
-import { imageUrlByPrint } from "~/lib/scryfall";
+import { tableId } from "~/net";
 import type { CatalogCard, ModifierSourceView } from "~/wire/types";
 
 // Keyed by Card (oracle) id — ADR 0031. An empty id (no id known for this pin/hover yet) skips
@@ -46,15 +47,23 @@ const PANEL_CARD = cn(
   "w-(--w) shrink-0 rounded-panel border border-vine bg-forest-surface px-xl py-lg text-preview-ash leading-[1.4]",
 );
 
-/** Oracle / approximates prose with `{T}` / `{G}` etc. as mana-font glyphs. */
+/** Oracle / approximates prose with `{T}` / `{G}` etc. as mana-font glyphs; `(reminder)` in italics. */
 function OracleRichText(props: { text: string }) {
   return (
     <For each={splitOracleText(props.text)}>
       {(part) =>
         part.kind === "text" ? (
-          part.text
+          part.reminder ? (
+            <i>{part.text}</i>
+          ) : (
+            part.text
+          )
         ) : (
-          <span role="img" class={cn("ms", "ms-cost", "ms-oracle", `ms-${part.ms}`)} aria-label={`{${part.code}}`} />
+          <span
+            role="img"
+            class={cn("ms", "ms-cost", "ms-oracle", `ms-${part.ms}`, part.reminder && "italic")}
+            aria-label={`{${part.code}}`}
+          />
         )
       }
     </For>
@@ -148,8 +157,8 @@ export function HoverPreview(props: { id: string | null; print?: string | null; 
             flipped() && "flex-row-reverse",
           )}
         >
-          <img
-            src={imageUrlByPrint(print())}
+          <CardArt
+            print={print()}
             alt={card()?.name ?? ""}
             style={{ "--w": `${W}px` }}
             class="w-(--w) flex-none rounded-[14px] shadow-table"
@@ -228,6 +237,17 @@ export function InspectDock(props: {
   const hasOracle = () => !!(oracle() || approximates());
   const hasMods = () => modifiers().length > 0;
   const artPrint = () => current()?.print || card()?.default_print || "";
+  const reportHref = () => {
+    const pin = current();
+    if (!pin) return "";
+    return cardBugReportUrl({
+      cardName: displayName(),
+      tableId: tableId(),
+      cardId: pin.cardId || card()?.id,
+      objectId: pin.objectId,
+      approximates: approximates(),
+    });
+  };
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape dismisses via showModal() → onClose.
@@ -291,13 +311,27 @@ export function InspectDock(props: {
                 />
               }
             >
-              <img
-                src={imageUrlByPrint(artPrint(), "large", face())}
+              <CardArt
+                print={artPrint()}
+                size="large"
+                face={face()}
                 alt={displayName()}
                 style={{ "--w": `${W}px` }}
                 class="w-(--w) flex-none rounded-[14px] shadow-table"
               />
             </Show>
+            <a
+              href={reportHref()}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="report-card-bug"
+              class={buttonClass(
+                "game-quiet",
+                "mt-3 no-underline hover:text-snow-mint focus-visible:outline-2 focus-visible:outline-seafoam focus-visible:outline-offset-2",
+              )}
+            >
+              Report bug
+            </a>
           </div>
           <Show when={hasOracle() || hasMods()}>
             {/* Fixed-width cards wrap into columns across the remaining viewport width. */}

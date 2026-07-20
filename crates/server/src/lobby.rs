@@ -4,8 +4,8 @@
 use std::sync::atomic::Ordering;
 
 use crate::db::Deck;
-use crate::decks::{SeatDeck, Table, seed_game};
-use crate::{AppState, legality, lock, precons};
+use crate::decks::{SeatDeck, seed_game};
+use crate::{AppState, Table, legality, lock, precons};
 use axum::http::StatusCode;
 use engine::PlayerId;
 use rand::RngCore;
@@ -31,7 +31,7 @@ pub(crate) async fn seed_table_core(
     if !req.seats.iter().any(|s| s.user_id == caller_user_id) {
         return Err(StatusCode::BAD_REQUEST);
     }
-    if lock(&state.reg).tables.contains_key(&req.table_id) {
+    if lock(&state.reg).get(&req.table_id).is_some() {
         return Err(StatusCode::BAD_REQUEST);
     }
 
@@ -45,10 +45,6 @@ pub(crate) async fn seed_table_core(
     }
 
     let mut reg = lock(&state.reg);
-    // Re-check under the lock: another request could have raced the same id past the first check.
-    if reg.tables.contains_key(&req.table_id) {
-        return Err(StatusCode::BAD_REQUEST);
-    }
     // H3: seed each game from the OS CSPRNG so libraries aren't reproducible offline (the pool is
     // five *published* decklists). Record the seed on the table so a replay reproduces the shuffle.
     let seed = OsRng.next_u64();
@@ -57,7 +53,10 @@ pub(crate) async fn seed_table_core(
         table.prints[player.0 as usize] = deck.prints.clone();
     }
     table.game = Some(seed_game(&resolved, seed));
-    reg.tables.insert(req.table_id.clone(), table);
+    // try_insert under the lock: another request could have raced the same id past the first check.
+    if !reg.try_insert(req.table_id.clone(), table) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
     drop(reg);
     crate::action_log::start(&req.table_id); // outside the lock — blocking disk I/O
 
@@ -160,7 +159,7 @@ mod tests {
         );
 
         let reg = lock(&state.reg);
-        let table = reg.tables.get("tbl1").expect("table inserted");
+        let table = reg.get("tbl1").expect("table inserted");
         assert!(table.game.is_some(), "the game is seeded immediately");
         assert_eq!(table.host, Some(host_user_id));
         assert_eq!(table.seats[0].username.as_deref(), Some("host"));
@@ -188,7 +187,7 @@ mod tests {
         .expect_err("draining rejects new tables");
         assert_eq!(err, StatusCode::SERVICE_UNAVAILABLE);
         assert!(
-            !lock(&state.reg).tables.contains_key("tbl-draining"),
+            lock(&state.reg).get("tbl-draining").is_none(),
             "no table was created while draining"
         );
     }
@@ -213,7 +212,7 @@ mod tests {
         .await
         .expect_err("an unresolvable deck is rejected");
         assert_eq!(err, StatusCode::BAD_REQUEST);
-        assert!(!lock(&state.reg).tables.contains_key("tbl-baddeck"));
+        assert!(lock(&state.reg).get("tbl-baddeck").is_none());
     }
 
     #[tokio::test]
@@ -278,7 +277,7 @@ mod tests {
         .await
         .expect_err("only the host may seed");
         assert_eq!(err, StatusCode::FORBIDDEN);
-        assert!(!lock(&state.reg).tables.contains_key("tbl-spoof"));
+        assert!(lock(&state.reg).get("tbl-spoof").is_none());
     }
 
     #[tokio::test]
@@ -324,6 +323,6 @@ mod tests {
         .await
         .expect_err("deck must belong to the seated user");
         assert_eq!(err, StatusCode::BAD_REQUEST);
-        assert!(!lock(&state.reg).tables.contains_key("tbl-stolen-deck"));
+        assert!(lock(&state.reg).get("tbl-stolen-deck").is_none());
     }
 }

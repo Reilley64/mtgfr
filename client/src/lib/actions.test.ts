@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { autoTapPreviewIds, byObject, bySection, handExtras } from "~/lib/actions";
+import { autoTapPreviewIds, barZoneAura, byObject, bySection, handExtras } from "~/lib/actions";
 import type { ActionView } from "~/wire/types";
 
 function mkAction(overrides: Partial<ActionView> = {}): ActionView {
   return { id: 0, kind: "cast", label: "Card", needs_target: false, section: "hand", ...overrides };
 }
+
+describe("barZoneAura", () => {
+  it("leaves hand tiles untinted; tints command / graveyard / exile distinctly", () => {
+    expect(barZoneAura("hand")).toBeNull();
+    expect(barZoneAura("command")).toContain("commander-gold");
+    expect(barZoneAura("graveyard")).toContain("note-gold");
+    expect(barZoneAura("exile")).toContain("island-blue");
+    // GY and exile must not share a ring colour — that's the glance cue Arena uses.
+    expect(barZoneAura("graveyard")).not.toEqual(barZoneAura("exile"));
+  });
+});
 
 describe("bySection", () => {
   it("buckets actions by their section and defaults every section to []", () => {

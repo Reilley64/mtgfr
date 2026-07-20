@@ -1,4 +1,4 @@
-//! Live Table chrome (ADR 0007 / 0026 / 0027 / 0029): intent submission, yield / dwell,
+//! Live Table chrome (ADR 0007 / 0026 / 0027 / 0029 / 0037): intent submission, yield / dwell,
 //! auto-advance, stack-hold scheduling, and delta packaging. Chrome knobs live on
 //! [`crate::chrome::ChromeState`]; only [`TableSession`] mutates them. gRPC adapters call the
 //! chrome verbs and get [`ApplyResult`] / [`DwellResult`] — [`Disposition`] stays crate-private
@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use crate::decks::Table;
+use crate::table::Table;
 use crate::{AppState, lock};
 use engine::{Event, Game, Intent, PendingChoice, PlayerId, Reject};
 use tokio::time::Instant;
@@ -183,12 +183,21 @@ impl<'a> TableSession<'a> {
             let mut events = match intent {
                 Some(intent) => {
                     let player = intent.actor();
+                    let substantive = !matches!(intent, Intent::PassPriority { .. });
                     let more = game.submit(intent)?;
                     // Untap / being-attacked may appear on the player intent itself — clear
                     // before auto_advance (ADR 0029).
                     clear_turn_yields_from_events(turn_yields, &more);
                     if clear_turn_yield_on_intent {
                         turn_yields[player.0 as usize] = false;
+                        // Arena End Turn (ADR 0037): another player's cast/activate cancels the
+                        // active seat's end-turn yield so they can respond.
+                        if substantive {
+                            let active = game.active_player();
+                            if active != player {
+                                turn_yields[active.0 as usize] = false;
+                            }
+                        }
                     }
                     more
                 }
@@ -294,12 +303,12 @@ pub fn settle_after_apply(
         // C3: the engine panicked mid-submit — the game is in an unknown state. Drop the
         // whole table so the poison can't spread and the players can start a clean one.
         Disposition::Panicked => {
-            reg.tables.remove(table_id);
+            reg.remove(table_id);
             eprintln!("quarantined table {table_id} after an engine panic");
         }
         // M3: the game is over — evict it (and its broadcast buffer of cloned games).
         Disposition::GameOver => {
-            reg.tables.remove(table_id);
+            reg.remove(table_id);
         }
         Disposition::Live { stack_held: true } => {
             schedule_stack_resolution(state.clone(), table_id.to_string(), seq);
@@ -336,7 +345,7 @@ fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
     tokio::spawn(async move {
         {
             let mut reg = lock(&state.reg);
-            if let Some(table) = reg.tables.get_mut(&table_id) {
+            if let Some(table) = reg.get_mut(&table_id) {
                 let now = Instant::now();
                 table.chrome.begin_hold(seq, now);
             }
@@ -344,7 +353,7 @@ fn schedule_stack_resolution(state: AppState, table_id: String, seq: u64) {
         loop {
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             let mut reg = lock(&state.reg);
-            let Some(table) = reg.tables.get_mut(&table_id) else {
+            let Some(table) = reg.get_mut(&table_id) else {
                 return;
             };
             if table.seq != seq {
@@ -438,9 +447,20 @@ fn auto_advance(
         // Attacked seats list empty-stack instants as meaningful (engine attack-response
         // window) so has_meaningful_action already stops them when they can respond;
         // helpless defenders auto-pass through to blockers.
+        //
+        // Arena End Turn (ADR 0037): while the active seat has turn yield armed, other seats
+        // with empty-stack instant-speed plays still receive priority windows — ADR 0007 would
+        // otherwise skip them and opponents could never respond during an end-turn walk.
+        let active = game.active_player();
+        let end_turn = turn_yields[active.0 as usize];
+        let can_respond = end_turn
+            && holder != active
+            && game.stack_is_empty()
+            && game.has_empty_stack_instant_play(holder);
         let skip = yields[holder.0 as usize]
-            || turn_yields[holder.0 as usize]
-            || !game.has_meaningful_action(holder);
+            // End Turn response windows override the responder's until-my-turn (ADR 0037).
+            || (turn_yields[holder.0 as usize] && !can_respond)
+            || (!game.has_meaningful_action(holder) && !can_respond);
         if !skip {
             break;
         }
@@ -464,6 +484,14 @@ fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) 
     use engine::Step;
     for e in events {
         match e {
+            // ADR 0037: End Turn ends with the turn. Clear on Cleanup itself so a discard-to-
+            // hand-size pause (Untap deferred to a later batch) cannot leave the flag armed.
+            Event::StepBegan {
+                step: Step::Cleanup,
+                active_player,
+            } => {
+                turn_yields[active_player.0 as usize] = false;
+            }
             // ADR 0029: your own turn starts — stop yielding through it.
             Event::StepBegan {
                 step: Step::Untap,
@@ -1263,6 +1291,154 @@ mod tests {
         );
     }
 
+    /// Arena End Turn (ADR 0037): active player arms turn yield → auto-pass through remaining
+    /// steps until the next player's turn, while opponents still receive priority windows.
+    #[test]
+    fn end_turn_advances_to_next_player_through_phase_windows() {
+        let mut table = Table::empty();
+        let game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        assert_eq!(game.active_player(), PlayerId(0));
+        assert_eq!(game.current_step(), engine::Step::Main1);
+        table.game = Some(game);
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.active_player(),
+            PlayerId(1),
+            "end turn hands the turn to the next player"
+        );
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "end turn must clear at the turn boundary (not morph into until-my-turn)"
+        );
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(1),
+            "next player keeps priority on their turn"
+        );
+    }
+
+    /// Arena End Turn: if another player casts/activates, stop so the end-turner can respond.
+    #[test]
+    fn end_turn_clears_when_another_player_acts() {
+        use engine::{Intent, Target};
+
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        let bear_id = game.spawn_on_battlefield(PlayerId(0), bear());
+        game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+        let shock = game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
+        table.game = Some(game);
+
+        assert_eq!(table.game.as_ref().unwrap().priority_holder(), PlayerId(0));
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        // End turn should stop when P1 can act (Shock in hand with Mountain).
+        let game = table.game.as_ref().unwrap();
+        assert_eq!(
+            game.priority_holder(),
+            PlayerId(1),
+            "opponent with a playable instant still gets a priority window"
+        );
+        assert!(
+            table.chrome.turn_yields()[0],
+            "end turn stays armed until the opponent actually acts"
+        );
+
+        let (result, _) = TableSession::new(&mut table).submit(Intent::Cast {
+            player: PlayerId(1),
+            object: shock,
+            target: Some(Target::Object(bear_id)),
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+        });
+        assert!(result.accepted, "P1 casts Shock: {:?}", result.reason);
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "opponent action cancels end turn so the active seat can respond"
+        );
+    }
+
+    /// End Turn response windows must open even when the responder already armed until-my-turn.
+    #[test]
+    fn end_turn_stops_for_turn_yielded_opponent_with_an_instant() {
+        let bear = || cards::get_by_name("Grizzly Bear").expect("Grizzly Bear in pool");
+        let mut table = Table::empty();
+        let mut game = engine::Game::new();
+        let _bear = game.spawn_on_battlefield(PlayerId(0), bear());
+        game.spawn_on_battlefield(PlayerId(1), cards::get_by_name("Mountain").unwrap());
+        let _shock = game.spawn_in_hand(PlayerId(1), cards::get_by_name("Shock").unwrap());
+        table.game = Some(game);
+
+        assert!(
+            TableSession::new(&mut table)
+                .set_turn_yield(PlayerId(1), true)
+                .0
+                .accepted,
+            "P1 arms until-my-turn before P0 ends"
+        );
+        assert!(table.chrome.turn_yields()[1]);
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        assert_eq!(
+            table.game.as_ref().unwrap().priority_holder(),
+            PlayerId(1),
+            "until-my-turn must not skip an End Turn response window"
+        );
+        assert!(
+            table.chrome.turn_yields()[0],
+            "P0's end turn stays armed until P1 acts or the turn ends"
+        );
+    }
+
+    /// Cleanup discard pauses the turn boundary mid-batch — End Turn must still clear.
+    #[test]
+    fn end_turn_clears_when_cleanup_pauses_on_discard() {
+        let plains = || cards::get_by_name("Plains").expect("Plains in pool");
+        let mut table = Table::empty();
+        table.game = Some(engine::Game::new());
+
+        // Reach End with an empty hand, then overfill so Cleanup must pause on discard.
+        advance_table_to_step(&mut table, engine::Step::End);
+        {
+            let game = table.game.as_mut().unwrap();
+            for _ in 0..8 {
+                game.spawn_in_hand(PlayerId(0), plains());
+            }
+        }
+
+        let (result, _) = TableSession::new(&mut table).set_turn_yield(PlayerId(0), true);
+        assert!(result.accepted);
+
+        let game = table.game.as_ref().unwrap();
+        assert!(
+            matches!(
+                game.pending_choice(),
+                Some(engine::PendingChoice::DiscardToHandSize { .. })
+            ),
+            "cleanup must pause on discard-to-hand-size"
+        );
+        assert!(
+            !table.chrome.turn_yields()[0],
+            "end turn must clear on Cleanup even when Untap is deferred"
+        );
+    }
+
     fn advance_table_to_step(table: &mut Table, step: engine::Step) {
         use engine::Intent;
         for _ in 0..64 {
@@ -1375,13 +1551,13 @@ mod tests {
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
         let seq = table.seq;
-        lock(&state.reg).tables.insert("hold".to_string(), table);
+        assert!(lock(&state.reg).try_insert("hold".to_string(), table));
 
         schedule_stack_resolution(state.clone(), "hold".to_string(), seq);
         tokio::time::sleep(STACK_HOLD * 2).await;
 
         let reg = lock(&state.reg);
-        let game = reg.tables.get("hold").unwrap().game.as_ref().unwrap();
+        let game = reg.get("hold").unwrap().game.as_ref().unwrap();
         assert_eq!(game.zone_of(bear), engine::Zone::Battlefield);
     }
 
@@ -1393,13 +1569,13 @@ mod tests {
         assert!(held(disp));
         let stale_seq = table.seq;
         table.seq += 1;
-        lock(&state.reg).tables.insert("stale".to_string(), table);
+        assert!(lock(&state.reg).try_insert("stale".to_string(), table));
 
         schedule_stack_resolution(state.clone(), "stale".to_string(), stale_seq);
         tokio::time::sleep(STACK_HOLD * 2).await;
 
         let reg = lock(&state.reg);
-        let game = reg.tables.get("stale").unwrap().game.as_ref().unwrap();
+        let game = reg.get("stale").unwrap().game.as_ref().unwrap();
         assert_eq!(game.zone_of(bear), engine::Zone::Stack);
     }
 
@@ -1410,14 +1586,14 @@ mod tests {
         let (_result, disp) = cast(&mut table, PlayerId(0), bear);
         assert!(held(disp));
         let seq = table.seq;
-        lock(&state.reg).tables.insert("dwell".to_string(), table);
+        assert!(lock(&state.reg).try_insert("dwell".to_string(), table));
 
         schedule_stack_resolution(state.clone(), "dwell".to_string(), seq);
         // Let the hold start stamp land.
         tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         {
             let mut reg = lock(&state.reg);
-            let table = reg.tables.get_mut("dwell").unwrap();
+            let table = reg.get_mut("dwell").unwrap();
             let dwell = TableSession::new(table).set_dwell(PlayerId(1), true);
             assert!(dwell.accepted);
             assert!(table.stack_hold_remaining_ms() > STACK_HOLD.as_millis() as u32);
@@ -1426,7 +1602,7 @@ mod tests {
         tokio::time::sleep(STACK_HOLD).await;
         {
             let reg = lock(&state.reg);
-            let game = reg.tables.get("dwell").unwrap().game.as_ref().unwrap();
+            let game = reg.get("dwell").unwrap().game.as_ref().unwrap();
             assert_eq!(
                 game.zone_of(bear),
                 engine::Zone::Stack,
@@ -1436,7 +1612,7 @@ mod tests {
 
         tokio::time::sleep(STACK_HOLD_DWELL_EXTRA).await;
         let reg = lock(&state.reg);
-        let game = reg.tables.get("dwell").unwrap().game.as_ref().unwrap();
+        let game = reg.get("dwell").unwrap().game.as_ref().unwrap();
         assert_eq!(
             game.zone_of(bear),
             engine::Zone::Battlefield,
@@ -1482,11 +1658,11 @@ mod tests {
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
             0,
         ));
-        lock(&state.reg).tables.insert("take".to_string(), table);
+        assert!(lock(&state.reg).try_insert("take".to_string(), table));
 
         let action = {
             let reg = lock(&state.reg);
-            let game = reg.tables.get("take").unwrap().game.as_ref().unwrap();
+            let game = reg.get("take").unwrap().game.as_ref().unwrap();
             game.legal_actions()
                 .iter()
                 .find(|a| a.player == PlayerId(0))
@@ -1534,14 +1710,14 @@ mod tests {
             &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
             0,
         ));
-        lock(&state.reg).tables.insert("y".to_string(), table);
+        assert!(lock(&state.reg).try_insert("y".to_string(), table));
 
         let ack = set_yield_core(&state, as_user(&state, "p1@x.c").await.0.id, "y", true).await;
         assert!(ack.accepted);
 
         let ack = set_yield_core(&state, as_user(&state, "p0@x.c").await.0.id, "y", true).await;
         assert!(ack.accepted);
-        assert!(lock(&state.reg).tables.contains_key("y"));
+        assert!(lock(&state.reg).get("y").is_some());
     }
 
     #[tokio::test]
@@ -1555,7 +1731,7 @@ mod tests {
         let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
         game.set_life(PlayerId(1), 0);
         table.game = Some(game);
-        lock(&state.reg).tables.insert("over".to_string(), table);
+        assert!(lock(&state.reg).try_insert("over".to_string(), table));
 
         let ack = submit_intent_core(
             &state,
@@ -1569,7 +1745,7 @@ mod tests {
         )
         .await;
         assert!(ack.accepted);
-        assert!(!lock(&state.reg).tables.contains_key("over"));
+        assert!(lock(&state.reg).get("over").is_none());
     }
 
     #[test]
@@ -1634,9 +1810,7 @@ mod tests {
         let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
         table.game = Some(game);
-        lock(&state.reg)
-            .tables
-            .insert("eyes-escape".to_string(), table);
+        assert!(lock(&state.reg).try_insert("eyes-escape".to_string(), table));
 
         let missing = submit_intent_core(
             &state,
@@ -1687,13 +1861,7 @@ mod tests {
         assert!(ack.accepted, "escape with exile + target: {ack:?}");
 
         let reg = lock(&state.reg);
-        let game = reg
-            .tables
-            .get("eyes-escape")
-            .unwrap()
-            .game
-            .as_ref()
-            .unwrap();
+        let game = reg.get("eyes-escape").unwrap().game.as_ref().unwrap();
         assert_eq!(game.zone_of(eyes), Zone::Stack);
         for &fid in &fodder {
             assert_eq!(game.zone_of(fid), Zone::Exile);

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { CARD_W } from "~/layout";
+import { STACK_CARD_W } from "~/lib/boardDraw";
 import {
   type CardFlight,
   flightSettled,
+  HAND_FACE_W,
   handFlightScale,
   spawnFlight,
   stackFlightScale,
@@ -216,8 +218,9 @@ describe("cardFlight", () => {
 
   it("handFlightScale and stackFlightScale are relative to canvas card screen width", () => {
     const zoom = 0.5;
-    // Canvas card screen width = CARD_W * zoom = 48; hand face 112 → scale 112/48.
-    expect(handFlightScale(zoom)).toBeCloseTo(112 / (CARD_W * zoom), 5);
-    expect(stackFlightScale(zoom)).toBeCloseTo(180 / (CARD_W * zoom), 5);
+    // Hand face matches stack overlay width (Arena-scale readable card).
+    expect(HAND_FACE_W).toBe(STACK_CARD_W);
+    expect(handFlightScale(zoom)).toBeCloseTo(HAND_FACE_W / (CARD_W * zoom), 5);
+    expect(stackFlightScale(zoom)).toBeCloseTo(STACK_CARD_W / (CARD_W * zoom), 5);
   });
 });

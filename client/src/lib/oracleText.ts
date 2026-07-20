@@ -1,6 +1,8 @@
-// Split oracle / approximates prose into plain text and mana-font symbol parts.
+// Split oracle / approximates prose into plain text, reminder italics, and mana-font symbols.
 
-export type OraclePart = { kind: "text"; text: string } | { kind: "symbol"; code: string; ms: string };
+export type OraclePart =
+  | { kind: "text"; text: string; reminder?: boolean }
+  | { kind: "symbol"; code: string; ms: string; reminder?: boolean };
 
 const KNOWN = new Set([
   "0",
@@ -102,30 +104,63 @@ export function manaFontClass(code: string): string | null {
   return null;
 }
 
-function pushText(parts: OraclePart[], text: string) {
+function pushText(parts: OraclePart[], text: string, reminder: boolean) {
   if (text === "") return;
   const prev = parts[parts.length - 1];
-  if (prev?.kind === "text") {
+  if (prev?.kind === "text" && !!prev.reminder === reminder) {
     prev.text += text;
     return;
   }
-  parts.push({ kind: "text", text });
+  parts.push(reminder ? { kind: "text", text, reminder: true } : { kind: "text", text });
 }
 
-/** Split prose on `{…}` mana/tap symbols; unknown braces stay in text runs. */
-export function splitOracleText(text: string): OraclePart[] {
+/** Parenthetical reminder spans (MTG italic reminder text), including the surrounding `()`. */
+function reminderSpans(text: string): Array<{ text: string; reminder: boolean }> {
+  const spans: Array<{ text: string; reminder: boolean }> = [];
+  const re = /\([^)]*\)/g;
+  let last = 0;
+  for (const match of text.matchAll(re)) {
+    const start = match.index ?? 0;
+    if (start > last) spans.push({ text: text.slice(last, start), reminder: false });
+    spans.push({ text: match[0], reminder: true });
+    last = start + match[0].length;
+  }
+  if (last < text.length) spans.push({ text: text.slice(last), reminder: false });
+  return spans.length > 0 ? spans : [{ text, reminder: false }];
+}
+
+/** Split one span on `{…}` mana/tap symbols; unknown braces stay in text runs. */
+function splitManaSymbols(text: string, reminder: boolean): OraclePart[] {
   const parts: OraclePart[] = [];
   const re = /\{([^}]+)\}/g;
   let last = 0;
   for (const match of text.matchAll(re)) {
     const start = match.index ?? 0;
-    if (start > last) pushText(parts, text.slice(last, start));
+    if (start > last) pushText(parts, text.slice(last, start), reminder);
     const code = match[1] ?? "";
     const ms = manaFontClass(code);
-    if (ms) parts.push({ kind: "symbol", code, ms });
-    else pushText(parts, match[0]);
+    if (ms) {
+      parts.push(reminder ? { kind: "symbol", code, ms, reminder: true } : { kind: "symbol", code, ms });
+    } else {
+      pushText(parts, match[0], reminder);
+    }
     last = start + match[0].length;
   }
-  if (last < text.length) pushText(parts, text.slice(last));
+  if (last < text.length) pushText(parts, text.slice(last), reminder);
+  return parts;
+}
+
+/** Split prose into reminder italics + `{…}` mana/tap symbols; unknown braces stay in text. */
+export function splitOracleText(text: string): OraclePart[] {
+  const parts: OraclePart[] = [];
+  for (const span of reminderSpans(text)) {
+    for (const part of splitManaSymbols(span.text, span.reminder)) {
+      if (part.kind === "text") {
+        pushText(parts, part.text, !!part.reminder);
+      } else {
+        parts.push(part);
+      }
+    }
+  }
   return parts;
 }

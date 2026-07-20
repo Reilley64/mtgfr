@@ -165,4 +165,68 @@ impl Game {
             _ => unreachable!("counters family mint received a non-family effect"),
         }
     }
+
+    /// The shared core of "double `object`'s +1/+1 counters" (CR 614): as many more as it
+    /// already has, through the same replaceable-step pipeline [`Effect::PutCounters`] uses.
+    /// `None` when doubling is a no-op — zero counters, or a replacement effect zeroes the
+    /// result out — the same "no event for a no-op doubling" rule
+    /// [`Effect::DoubleCounters`] and [`Effect::DoubleCountersOnAttachedCreature`] both follow.
+    pub(crate) fn doubled_counters_event(
+        &self,
+        object: ObjectId,
+        source_name: &'static str,
+    ) -> Option<Event> {
+        let current = self.permanent(object).plus_counters;
+        let n = self.counters_after_replacements(object, current);
+        (n > 0).then_some(Event::CountersPlaced {
+            object,
+            count: n,
+            source_name,
+        })
+    }
+
+    /// Kinetic Ooze's X≥10 rider (CR 601.2c/603.3d): double the +1/+1 counters on each of the
+    /// "other target creatures" chosen at placement (read from this ability's second target
+    /// clause). A target that has left the battlefield since is skipped (CR 608.2b).
+    pub(crate) fn resolve_double_counters_on_target_creatures(
+        &mut self,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            source,
+            targets_second,
+            ..
+        } = ctx;
+        let source_name = self.source_name_of(source);
+        for chosen in targets_second.iter() {
+            let Some(object) = chosen.object_id() else {
+                continue;
+            };
+            if self.as_permanent(object).is_none() {
+                continue;
+            }
+            if let Some(event) = self.doubled_counters_event(object, source_name) {
+                self.push_apply(events, event);
+            }
+        }
+    }
+
+    /// Fractal Harness's attack trigger: double the +1/+1 counters on the creature this
+    /// Equipment is attached to (CR 614) — a no-target sibling of [`Effect::DoubleCounters`]
+    /// pinned to `source`'s own `attached_to` instead of a chosen target. An unattached
+    /// Equipment (unequipped, or between equip targets) has nothing to double (guard-return).
+    pub(crate) fn resolve_double_counters_on_attached_creature(
+        &mut self,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx { source, .. } = ctx;
+        let Some(object) = self.permanent(source).attached_to else {
+            return;
+        };
+        if let Some(event) = self.doubled_counters_event(object, self.def_of(source).name) {
+            self.push_apply(events, event);
+        }
+    }
 }

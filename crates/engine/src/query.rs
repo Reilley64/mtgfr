@@ -15,6 +15,29 @@ impl Game {
         !self.meaningful_actions(player).is_empty()
     }
 
+    /// Whether `player` has an instant-speed cast they could take on an empty stack right now.
+    /// Broader than [`Game::has_meaningful_action`] (ADR 0007 omits empty-stack instants so the
+    /// table does not halt for every removal in hand). Used by server End Turn chrome (ADR 0037)
+    /// so opponents still get priority windows while the active seat auto-passes their turn.
+    pub fn has_empty_stack_instant_play(&self, player: PlayerId) -> bool {
+        if self.players[player.0 as usize].lost {
+            return false;
+        }
+        for (id, o) in self.objects.iter().enumerate() {
+            let id = id as ObjectId;
+            let Object::Card(c) = o else {
+                continue;
+            };
+            if matches!(c.def.kind, CardKind::Land { .. }) {
+                continue;
+            }
+            if self.cast_respond_listable(player, id).is_some() {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Every *meaningful action* `player` may take right now — the plays worth stopping
     /// priority for (ADR 0007): a land drop, a castable spell, an activatable non-mana
     /// ability, or a combat declaration. Auto-pass ([`Game::has_meaningful_action`]) and
@@ -401,9 +424,21 @@ impl Game {
             let Ok((_, cost)) = self.ability_activation_gate(player, source, i) else {
                 continue;
             };
-            if Self::affordable_from(available, cost.mana, None) {
-                actions.push(MeaningfulAction::Activate { source, ability: i });
+            if !Self::affordable_from(available, cost.mana, None) {
+                continue;
             }
+            // Same target gate as casts: don't list (or stop auto-pass for) an activation that
+            // can't name a legal target right now.
+            if !self.effect_targets_listable(
+                a.effect,
+                source,
+                player,
+                color_identity(self.def_of(source)),
+                0,
+            ) {
+                continue;
+            }
+            actions.push(MeaningfulAction::Activate { source, ability: i });
         }
         // An activated ability granted by an Aura attached to `source` (Fallen Ideal's "Sacrifice (CR 602, CR 303.4, CR 113)
         // a creature: +2/+1"), addressed past the source's own abilities and its granted mana
@@ -415,12 +450,25 @@ impl Game {
             let Ok((_, cost)) = self.ability_activation_gate(player, source, index) else {
                 continue;
             };
-            if Self::affordable_from(available, cost.mana, None) {
-                actions.push(MeaningfulAction::Activate {
-                    source,
-                    ability: index,
-                });
+            if !Self::affordable_from(available, cost.mana, None) {
+                continue;
             }
+            let Some(ability) = self.ability_at(source, index) else {
+                continue;
+            };
+            if !self.effect_targets_listable(
+                ability.effect,
+                source,
+                player,
+                color_identity(self.def_of(source)),
+                0,
+            ) {
+                continue;
+            }
+            actions.push(MeaningfulAction::Activate {
+                source,
+                ability: index,
+            });
         }
     }
 
@@ -671,6 +719,34 @@ impl Game {
             Object::Permanent(p) => p.entered_with_x,
             _ => 0,
         }
+    }
+
+    /// Whether `effect`'s target requirement is satisfiable right now for listing (auto-pass /
+    /// hand highlight / radial). Untargeted effects pass; a single mandatory target needs ≥1
+    /// legal; a multi-target count needs ≥ `count.min` (so "up to N" with min 0 stays listable
+    /// on an empty board).
+    pub(crate) fn effect_targets_listable(
+        &self,
+        effect: Effect,
+        source: ObjectId,
+        controller: PlayerId,
+        source_colors: [bool; Color::COUNT],
+        x: u32,
+    ) -> bool {
+        let spec = effect.target();
+        if spec == TargetSpec::None {
+            return true;
+        }
+        let count = effect.target_count();
+        let n = self
+            .legal_targets_for(spec, source, controller, source_colors, x)
+            .len();
+        let min = if count.is_single() {
+            1usize
+        } else {
+            count.min as usize
+        };
+        n >= min
     }
 
     /// The targets that satisfy a [`TargetSpec`] right now (empty for `None`), for an action

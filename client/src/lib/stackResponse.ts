@@ -139,11 +139,11 @@ export type StackChromeInput = {
  * Priority context bar, keyboard, and canvas all read this — they do not reassemble predicates.
  */
 export type StackChrome = {
-  /** One-shot Stack Pass — bar button and Space/Enter while the stack is up. */
+  /** One-shot resolve-card control — bar button and Space/Enter while the stack is up (`pass_priority`). */
   pass: boolean;
-  /** Clickable stack-yield arm (one-shot). */
+  /** Clickable resolve-stack arm (one-shot stack yield). */
   stackYieldArm: boolean;
-  /** Armed stack yield — show disabled control, no cancel. */
+  /** Armed resolve-stack — show disabled control, no cancel. */
   stackYieldArmed: boolean;
   /** Helpless during an uncontested hold (dwell eligibility base). */
   helpless: boolean;
@@ -153,31 +153,42 @@ export type StackChrome = {
   focus: boolean;
   /** IDs that stay bright under `focus`. */
   brightIds: ReadonlySet<number>;
-  /** Hide priority-bar Next while the stack owns Pass. */
+  /** Hide priority-bar Next while the stack owns Resolve card. */
   hideControlsPass: boolean;
   /**
-   * Space/Enter binding: pass on stack, fire primary Next on empty stack, or ignore.
+   * Space/Enter binding: resolve-card pass on stack, fire primary Next on empty stack, or ignore.
    * Board still gates prompt-open / inspect — not chrome policy.
    */
   space: "pass_priority" | "primary" | "ignore";
   /**
    * Show the turn-yield rocker (ADR 0029). Hidden for spectators and on your own turn —
-   * turn yield means "until I become active".
+   * on your turn the same flag is **End Turn** (`showEndTurn`).
    */
   showTurnYield: boolean;
-  /** Current turn-yield armed state (wire mirror for the rocker). */
+  /** Current turn-yield / end-turn armed state (wire mirror). */
   turnYielded: boolean;
   /**
-   * Show the priority-bar primary (Next / Declare / …). Hidden when the stack owns Pass and
+   * Show Arena End Turn (ADR 0037) — arms the same `turn_yielded` flag while you are active.
+   * Hidden for spectators and when it is not your turn (`showTurnYield` covers until-my-turn).
+   */
+  showEndTurn: boolean;
+  /**
+   * Show the priority-bar primary (Next / Declare / …). Hidden when the stack owns Resolve card and
    * the primary action is itself a bare pass (duplicate affordance).
    */
   showPrimary: (primaryKind: string) => boolean;
 };
 
-/** Whether the turn-yield rocker is offered (ADR 0029). */
+/** Whether the turn-yield rocker is offered (ADR 0029 — until my turn, not your turn). */
 export function showTurnYieldControl(opts: { spectating: boolean; viewer: number; active: number }): boolean {
   if (opts.spectating) return false;
   return opts.active !== opts.viewer;
+}
+
+/** Whether End Turn is offered (ADR 0037 — same flag, only while you are active). */
+export function showEndTurnControl(opts: { spectating: boolean; viewer: number; active: number }): boolean {
+  if (opts.spectating) return false;
+  return opts.active === opts.viewer;
 }
 
 /**
@@ -224,6 +235,7 @@ export function stackChrome(input: StackChromeInput): StackChrome {
     space,
     showTurnYield: showTurnYieldControl(input),
     turnYielded: input.turnYielded,
+    showEndTurn: showEndTurnControl(input),
     showPrimary: (primaryKind) => !(hideControlsPass && primaryKind === "pass"),
   };
 }

@@ -1,6 +1,6 @@
-// A tiny async image cache for canvas rendering. `get` returns the decoded image
-// if it's ready, or undefined while it loads (the caller draws a placeholder and
-// redraws once `onLoad` fires). One HTMLImageElement per URL, loaded once.
+// A tiny async image cache for canvas rendering and DOM card art. `get` returns the decoded
+// image if it's ready, or undefined while it loads (callers draw a placeholder and redraw once
+// `onLoad` / `subscribe` fires). One HTMLImageElement per URL, loaded once.
 //
 // The load is an Effect: the first `get` for a URL forks one fiber (via the shared
 // `runtime`) that resolves on `onload` / fails on `onerror`. `get` itself stays plain
@@ -21,12 +21,29 @@ interface ImageLike {
 export class ImageCache {
   private images = new Map<string, ImageLike>();
   private ready = new Set<string>();
+  private listeners = new Set<() => void>();
 
   // ponytail: no eviction — the board's card set is small and bounded.
   constructor(
-    private onLoad: () => void,
+    private onLoad: () => void = () => {},
     private makeImage: () => ImageLike = () => new Image(),
   ) {}
+
+  /** Notify when any URL finishes loading. Returns unsubscribe. */
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /** Kick off loads for many URLs (skips empties; dedupes with `get`). */
+  preload(urls: Iterable<string>): void {
+    for (const url of urls) {
+      if (!url) continue;
+      void this.get(url);
+    }
+  }
 
   get(url: string): HTMLImageElement | undefined {
     const existing = this.images.get(url);
@@ -54,7 +71,7 @@ export class ImageCache {
           // loop, not "die silently" (there's no supervisor to die loudly to).
           if (!success) return;
           this.ready.add(url);
-          this.onLoad();
+          this.notifyLoaded();
         }),
       ),
     );
@@ -62,4 +79,12 @@ export class ImageCache {
 
     return undefined;
   }
+
+  private notifyLoaded(): void {
+    this.onLoad();
+    for (const listener of this.listeners) listener();
+  }
 }
+
+/** Shared cache for canvas paint and every DOM card-art surface. */
+export const sharedImageCache = new ImageCache();

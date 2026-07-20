@@ -4,10 +4,15 @@
 //!
 //! Primary: CR 608. External seam: [`Game::run`] (in `effects`) is the sole Effect→board verb —
 //! callers never choose mint vs pause. Internals here: [`SequenceCont`] / resume, [`ResolutionFrame`],
-//! pure mint dispatcher ([`mint`]) + families ([`draw`], [`damage`], [`life`], …), and pause peels
-//! ([`pause_arrange`]). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! pure mint dispatcher ([`mint`]) + families ([`draw`], [`damage`], [`life`], …), pause peels
+//! ([`pause_arrange`], [`pause_look`], [`pause_hand`], [`pause_may`], [`pause_choose`],
+//! [`pause_exile_cast`], [`pause_edict`], [`pause_fight`], [`pause_counter_spell`]), and mut-needing
+//! resolve choreography ([`copy`], [`sequence_steps`], [`resolve_misc`]) — the arms that read
+//! prior events, mint new stack objects, or arm runtime scratch beyond a pure `mint_*` batch.
+//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
 
 mod control;
+mod copy;
 mod counters;
 mod damage;
 mod destroy;
@@ -19,9 +24,19 @@ mod mill;
 mod mint;
 mod misc;
 mod pause_arrange;
+mod pause_choose;
+mod pause_counter_spell;
+mod pause_edict;
+mod pause_exile_cast;
+mod pause_fight;
+mod pause_hand;
+mod pause_look;
+mod pause_may;
 mod pump;
+mod resolve_misc;
 mod resume;
 mod reveal;
+mod sequence_steps;
 mod tokens;
 mod zones;
 

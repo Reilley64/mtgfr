@@ -34,14 +34,25 @@ pub(crate) struct CastInputs<'a> {
 /// Which cast legality surface is asking — list, one-click execute, or full execute.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CastPlayKind {
-    /// [`Game::meaningful_actions`] / auto-pass (ADR 0007): timing, zone, affordability;
-    /// mode-blind for modal spells; no priority; no cost picks.
+    /// [`Game::meaningful_actions`] / auto-pass (ADR 0007): timing, zone, affordability, and
+    /// enough legal targets (including at least `modal_choose` playable modes); no priority; no
+    /// cost picks.
     List,
+    /// Like [`CastPlayKind::List`], but empty-stack instants count — used by
+    /// [`Game::has_empty_stack_instant_play`] for Arena End Turn opponent windows (ADR 0037).
+    RespondList,
     /// [`Intent::TakeAction`]: validates target/modes/`x` and chosen discard / graveyard-exile
     /// picks the same way as [`CastPlayKind::Full`].
     OneClick,
     /// [`Intent::Cast`]: full validation including discard and graveyard-exile payments.
     Full,
+}
+
+impl CastPlayKind {
+    /// Enumeration paths (meaningful-actions / End Turn response) — no priority, no cost picks.
+    fn is_enumeration(self) -> bool {
+        matches!(self, Self::List | Self::RespondList)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -60,8 +71,23 @@ pub(crate) struct ValidatedCast {
 
 impl Game {
     /// Whether `player` may cast `object` for auto-pass / meaningful-action enumeration.
-    /// Mode-blind for modal spells; prices with `x = 0` and no delve count.
+    /// Requires a completable target set (or enough playable modes for a modal); prices with
+    /// `x = 0` and no delve count.
     pub(crate) fn cast_listable(&self, player: PlayerId, object: ObjectId) -> Option<Zone> {
+        self.cast_listable_kind(player, object, CastPlayKind::List)
+    }
+
+    /// Like [`Game::cast_listable`], but empty-stack instants count (End Turn response windows).
+    pub(crate) fn cast_respond_listable(&self, player: PlayerId, object: ObjectId) -> Option<Zone> {
+        self.cast_listable_kind(player, object, CastPlayKind::RespondList)
+    }
+
+    fn cast_listable_kind(
+        &self,
+        player: PlayerId,
+        object: ObjectId,
+        kind: CastPlayKind,
+    ) -> Option<Zone> {
         self.validate_cast(
             player,
             object,
@@ -78,7 +104,7 @@ impl Game {
                 strive_count: 0,
                 replicate_count: 0,
             },
-            CastPlayKind::List,
+            kind,
         )
         .ok()
         .map(|v| v.zone)
@@ -101,7 +127,7 @@ impl Game {
         let Some(zone) = self.playable_zone(object, player) else {
             return Err(Reject::NotCastable);
         };
-        if kind != CastPlayKind::List && player != self.priority {
+        if !kind.is_enumeration() && player != self.priority {
             return Err(Reject::NotYourPriority);
         }
         if !self.cast_timing_ok(player, object, card.def, kind) {
@@ -127,7 +153,7 @@ impl Game {
             if inputs.target.is_some() {
                 return Err(Reject::IllegalMode);
             }
-            if kind == CastPlayKind::List {
+            if kind.is_enumeration() {
                 Modes::default()
             } else {
                 self.validate_modes(object, card.def, inputs.modes, player, x)?;
@@ -149,7 +175,7 @@ impl Game {
             if inputs.target.is_some() || !inputs.modes.is_empty() {
                 return Err(Reject::IllegalTarget);
             }
-            if kind != CastPlayKind::List {
+            if !kind.is_enumeration() {
                 let n = self
                     .legal_targets_for(spec, object, player, color_identity(card.def), x)
                     .len();
@@ -174,7 +200,7 @@ impl Game {
             if !inputs.modes.is_empty() {
                 return Err(Reject::IllegalMode);
             }
-            if kind != CastPlayKind::List
+            if !kind.is_enumeration()
                 && !self.targets_are_legal(object, card.def, inputs.target, player, None, x)
             {
                 return Err(Reject::IllegalTarget);
@@ -198,7 +224,7 @@ impl Game {
             inputs.replicate_count,
         );
 
-        if kind == CastPlayKind::List {
+        if kind.is_enumeration() {
             if !self.cast_affordable_list(player, object, card.def, zone) {
                 return Err(Reject::CannotPayCost);
             }
@@ -263,12 +289,17 @@ impl Game {
             || self.players[player.0 as usize].flash_permission_this_turn
             || self.may_cast_from_exile_free(object, player);
         if as_instant {
-            if kind == CastPlayKind::List {
-                return sorcery_ok
-                    || !self.stack.is_empty()
-                    || self.in_attack_response_window(player);
+            match kind {
+                CastPlayKind::List => {
+                    return sorcery_ok
+                        || !self.stack.is_empty()
+                        || self.in_attack_response_window(player);
+                }
+                // End Turn opponent windows (ADR 0037) and execute paths: instants are always on.
+                CastPlayKind::RespondList | CastPlayKind::OneClick | CastPlayKind::Full => {
+                    return true;
+                }
             }
-            return true;
         }
         sorcery_ok
     }
@@ -309,16 +340,39 @@ impl Game {
         };
         let any_delve = |target: Option<Target>| (0..=max_delve).any(|d| affordable(target, d));
 
+        // Modal: mana first, then enough playable modes for `modal_choose` (CR 700.2) — an Abrade
+        // with nothing to hit must not brighten the hand or stop auto-pass.
         if def.modal {
-            return any_delve(None);
+            return any_delve(None) && self.modal_modes_listable(object, player, def);
+        }
+        // Multi-target: need at least `count.min` legal targets (an "up to N" with min 0 stays
+        // listable on an empty board; Ashes to Ashes with one creature does not).
+        if let Some((spec, count)) = self.spell_multi_target(def) {
+            let n = self
+                .legal_targets_for(spec, object, player, color_identity(def), 0)
+                .len();
+            return n >= count.min as usize && any_delve(None);
         }
         let spec = self.required_target(def, None);
         if spec == TargetSpec::None {
             return any_delve(None);
         }
+        // Single-target: try each legal target so a per-target reducer (Killian) can make the
+        // cast affordable against one creature but not another.
         self.legal_targets_for(spec, object, player, color_identity(def), 0)
             .into_iter()
             .any(|t| any_delve(Some(t)))
+    }
+
+    /// Whether `def`'s modal spell has at least [`CardDef::modal_choose`] modes the caster can
+    /// actually pick right now (each mode either needs no target, or has enough legal ones).
+    fn modal_modes_listable(&self, object: ObjectId, player: PlayerId, def: CardDef) -> bool {
+        let colors = color_identity(def);
+        let available = (0..MAX_MODES)
+            .map_while(|m| nth_mode(def, m))
+            .filter(|a| self.effect_targets_listable(a.effect, object, player, colors, 0))
+            .count();
+        available >= def.modal_choose as usize
     }
 
     fn validate_cast_cost_picks(
@@ -700,14 +754,62 @@ mod tests {
     }
 
     #[test]
-    fn modal_spell_is_listable_mode_blind() {
+    fn modal_spell_is_listable_when_a_mode_has_targets() {
         let mut game = Game::new();
         let object = game.spawn_in_hand(P0, spell_def("Modal", flash_cost(2), true));
         game.fund_mana(P0);
+        // Mode 0 is AnyTarget — living players keep it choosable even on an empty board.
         assert_eq!(
             game.cast_listable(P0, object),
             Some(Zone::Hand),
-            "mode-blind affordability lists modal spells",
+            "a modal spell with a playable mode lists when affordable",
+        );
+    }
+
+    #[test]
+    fn modal_spell_is_not_listable_when_no_mode_has_targets() {
+        let mut game = Game::new();
+        // Both modes want a creature; empty board → nothing to choose.
+        let object = game.spawn_in_hand(
+            P0,
+            CardDef {
+                abilities: Box::leak(Box::new([
+                    Ability {
+                        timing: Timing::Spell,
+                        effect: Effect::DealDamage {
+                            amount: Amount::Fixed(3),
+                            target: TargetSpec::Creature,
+                            count: TargetCount::default(),
+                            divided: false,
+                        },
+                        optional: false,
+                        min_level: 0,
+                        cost: Cost::FREE,
+                        condition: None,
+                        once_each_turn: false,
+                    },
+                    Ability {
+                        timing: Timing::Spell,
+                        effect: Effect::DestroyTarget {
+                            target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),
+                            count: TargetCount::default(),
+                            cant_be_regenerated: false,
+                        },
+                        optional: false,
+                        min_level: 0,
+                        cost: Cost::FREE,
+                        condition: None,
+                        once_each_turn: false,
+                    },
+                ])),
+                ..spell_def("ModalNoTargets", flash_cost(2), true)
+            },
+        );
+        game.fund_mana(P0);
+        assert_eq!(
+            game.cast_listable(P0, object),
+            None,
+            "a modal spell with no playable mode is not listed",
         );
     }
 

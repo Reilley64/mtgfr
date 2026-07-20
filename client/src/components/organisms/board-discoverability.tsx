@@ -2,16 +2,15 @@
 
 import { For } from "solid-js";
 import { Button, Hud } from "~/components/atoms";
-import { HAND_BAR_H } from "~/components/molecules/hand";
 import { RESPONSE_COLOR } from "~/lib/boardDraw";
 
+/** Coaching strip — parent positions it in the left chrome column above the log. */
 export function HintStrip(props: { onDismiss: () => void }) {
   return (
     <Hud
-      style={{ "--b": `${HAND_BAR_H + 16}px` }}
-      // Left of center so it clears the viewer's life orb (centered under their band).
+      data-testid="board-hint"
       // Lichen, not prose ink: this is metadata about the interface (DESIGN.md §6).
-      class="fixed bottom-(--b) left-3 z-20 flex max-w-[min(420px,46vw)] items-center gap-md text-lichen"
+      class="flex max-w-[min(420px,46vw)] items-center gap-md text-chip text-lichen"
     >
       <span>Drag to play · Click to activate · Alt inspect · Space pass</span>
       <Button
@@ -48,11 +47,11 @@ const LEGEND_ITEMS: { color: string; shape: "dot" | "badge" | "outline"; label: 
 ];
 
 export function LegendPanel(props: { onClose: () => void }) {
-  // Top-left, under the '?' toggle — keeps the bottom-right free for Pass / Next / yield.
+  // Top-left, under the '?' toggle — keeps the bottom-right free for Resolve / Next / yield.
   return (
-    <Hud class="fixed top-12 left-3 z-21 w-[220px]">
-      <div class="mb-1.5 flex items-center justify-between">
-        <span class="font-bold">Board legend</span>
+    <Hud class="fixed top-12 left-md z-21 w-[240px]">
+      <div class="mb-sm flex items-center justify-between gap-sm">
+        <span class="font-bold text-label text-seafoam">Board legend</span>
         <Button
           type="button"
           aria-label="Close legend"
@@ -64,16 +63,18 @@ export function LegendPanel(props: { onClose: () => void }) {
           ✕
         </Button>
       </div>
-      <For each={LEGEND_ITEMS}>
-        {(item) => (
-          <div class="my-1 flex items-center gap-sm">
-            {/* The swatch's colour is canvas paint, so it arrives as data (a CSS variable) and the
-                classes read it — the same colours drawCard() uses, not a second encoding of them. */}
-            <span style={{ "--c": item.color }} class={legendSwatch(item.shape)} />
-            <span>{item.label}</span>
-          </div>
-        )}
-      </For>
+      <div class="flex flex-col gap-xs">
+        <For each={LEGEND_ITEMS}>
+          {(item) => (
+            <div class="flex items-center gap-sm">
+              {/* The swatch's colour is canvas paint, so it arrives as data (a CSS variable) and the
+                  classes read it — the same colours drawCard() uses, not a second encoding of them. */}
+              <span style={{ "--c": item.color }} class={legendSwatch(item.shape)} />
+              <span class="text-caption text-mist">{item.label}</span>
+            </div>
+          )}
+        </For>
+      </div>
     </Hud>
   );
 }

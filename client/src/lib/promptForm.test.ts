@@ -4,6 +4,7 @@ import {
   dedupeChoiceItems,
   filterChoiceItems,
   isFullscreenPrompt,
+  PICK_CARD_SCROLL_MIN_CLASS,
   promptChrome,
   searchableChoiceItems,
 } from "~/lib/promptForm";
@@ -123,5 +124,13 @@ describe("cardPickIsSearchable", () => {
     expect(cardPickIsSearchable("search_library")).toBe(true);
     expect(cardPickIsSearchable("discard")).toBe(false);
     expect(cardPickIsSearchable("scry")).toBe(false);
+  });
+});
+
+describe("PICK_CARD_SCROLL_MIN_CLASS", () => {
+  it("keeps a non-zero min-height so short viewports cannot hide every library card", () => {
+    // Regression: containScroll flex shrink collapsed pick-card-scroll to 0px; Fail-to-find stayed.
+    expect(PICK_CARD_SCROLL_MIN_CLASS).toMatch(/min-h-/);
+    expect(PICK_CARD_SCROLL_MIN_CLASS).toMatch(/280px|40vh/);
   });
 });

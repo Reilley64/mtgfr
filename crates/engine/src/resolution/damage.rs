@@ -280,6 +280,53 @@ impl Game {
         }
     }
 
+    /// Marauding Raptor's [`Effect::DealDamageToEnteringPermanent`] choreography: run the
+    /// damage step (unchanged via `execute_effect`), then — CR "if a Dinosaur is dealt damage
+    /// this way, this creature gets +2/+0 until end of turn" — run `then` only if the entering
+    /// permanent's subtypes intersect `then_if_subtype` AND the damage actually landed (a
+    /// `DamageMarked` event was produced — none means a protection/prevention shield stopped
+    /// it, CR 119.3 "is dealt damage").
+    pub(crate) fn resolve_deal_damage_to_entering(
+        &mut self,
+        effect: Effect,
+        ctx: ResolveCtx,
+        events: &mut Vec<Event>,
+    ) {
+        let ResolveCtx {
+            controller,
+            source,
+            target,
+            x,
+            ..
+        } = ctx;
+        let Effect::DealDamageToEnteringPermanent {
+            entering,
+            then_if_subtype,
+            then,
+            ..
+        } = effect
+        else {
+            unreachable!("resolve_deal_damage_to_entering received a non-family effect")
+        };
+        let evs = self.execute_effect(effect, controller, source, target, x);
+        let damage_landed = evs.iter().any(|e| matches!(e, Event::DamageMarked { .. }));
+        self.apply_all(&evs);
+        events.extend(evs);
+        if !damage_landed {
+            return;
+        }
+        let entering = entering.expect("the entering permanent is filled in at placement");
+        let is_matching_subtype = self
+            .def_of(entering)
+            .subtypes
+            .iter()
+            .any(|s| then_if_subtype.contains(s));
+        if !is_matching_subtype {
+            return;
+        }
+        self.run_sequence(then, ctx, events);
+    }
+
     /// Lifelink (CR 702.15): if `source` has lifelink and dealt `amount` (>0) damage to a
     /// player, its controller gains that much life — the pure-mint twin of
     /// [`Game::gain_lifelink`] (`combat.rs`), appended to this effect's own event batch instead

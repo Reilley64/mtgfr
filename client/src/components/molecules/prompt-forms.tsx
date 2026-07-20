@@ -3,8 +3,18 @@
 // lives: `Record<PendingChoiceView["kind"], ...>` means adding a wire kind without adding a form
 // here is a TypeScript build failure, not a silent "Unhandled choice" caught only at runtime.
 
-import { type Component, createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
-import { Button, Field } from "~/components/atoms";
+import {
+  type Component,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  type JSX,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
+import { Button, CardArt, Field, preloadPrints } from "~/components/atoms";
 import { InspectDock } from "~/components/molecules/card-preview";
 import { seatColor } from "~/layout";
 import type { AnswerInput } from "~/lib/choice";
@@ -13,8 +23,12 @@ import { cn } from "~/lib/cn";
 import { type InspectPin, pinFromHit } from "~/lib/inspect";
 import { modeAvailable } from "~/lib/modal";
 import { openModalWhenReady } from "~/lib/modalDialog";
-import { cardPickIsSearchable, filterChoiceItems, searchableChoiceItems } from "~/lib/promptForm";
-import { imageUrlByPrint } from "~/lib/scryfall";
+import {
+  cardPickIsSearchable,
+  filterChoiceItems,
+  PICK_CARD_SCROLL_MIN_CLASS,
+  searchableChoiceItems,
+} from "~/lib/promptForm";
 import {
   choiceItemPrint,
   mayYesNoTitle,
@@ -110,6 +124,9 @@ const SeatTargetPick: Component<{
   items: ReadonlyArray<ChoiceItem>;
   onPick: (id: number, player?: number) => void;
 }> = (props) => {
+  createEffect(() => {
+    preloadPrints(props.items.map((it) => choiceItemPrint(props.state, it)));
+  });
   const seatLabel = (seat: number, fallback: string) => {
     const name = props.state.players.find((p) => p.player === seat)?.username?.trim();
     return name || fallback;
@@ -134,8 +151,8 @@ const SeatTargetPick: Component<{
                 <Show
                   when={it.player != null ? { seat: it.player as number } : null}
                   fallback={
-                    <img
-                      src={imageUrlByPrint(choiceItemPrint(props.state, it))}
+                    <CardArt
+                      print={choiceItemPrint(props.state, it)}
                       alt={it.label}
                       draggable={false}
                       width={150}
@@ -579,9 +596,11 @@ function PickDialog(props: { label: string; onEscape?: () => void; containScroll
       }}
       class={cn(
         "fixed inset-0 m-0 flex h-full max-h-none w-full max-w-none bg-black/55 p-0 backdrop:bg-transparent",
-        // Column flex + min-h-0 so the pinned picker's card region can shrink instead of clipping
-        // Choose on short viewports (flex items default to min-height: auto).
-        props.containScroll ? "flex-col overflow-hidden" : "overflow-y-auto",
+        // Column flex so the pinned picker's card region can flex. `overflow-y-auto` (not
+        // `overflow-hidden`) so a short viewport can still scroll when the card strip's min-height
+        // + chrome exceed the window — otherwise the grid collapses to 0px and only
+        // Choose / Fail-to-find remain visible.
+        props.containScroll ? "flex-col overflow-y-auto" : "overflow-y-auto",
       )}
     >
       {props.children}
@@ -592,9 +611,8 @@ function PickDialog(props: { label: string; onEscape?: () => void; containScroll
 const PICK_COLUMN = cn("m-auto flex flex-col items-center gap-xl py-xxl");
 /** Full-height column for CardPickPrompt: title / filter / submit stay put; only the card grid scrolls.
  * Tighter gap/padding than `PICK_COLUMN` so chrome fits short viewports; `min-h-0` / `flex-1` let the
- * card region collapse first instead of pushing Choose off-screen. */
-const PICK_COLUMN_PINNED = cn("flex min-h-0 w-full flex-1 flex-col items-center gap-md overflow-hidden py-md");
-
+ * card region shrink — but never below `PICK_CARD_SCROLL_MIN_CLASS`. */
+const PICK_COLUMN_PINNED = cn("flex min-h-0 w-full flex-1 flex-col items-center gap-md py-md");
 /** Pick one target — a card in any zone, or a *player*. Distinct from `CardPickPrompt` because a
  * seat has no card image: it renders as its own life-orb-coloured tile. The board uses this wherever
  * the targeting arrow can't reach (a graveyard pile, the stack overlay) and for every mode of a
@@ -611,6 +629,9 @@ export function TargetPickPrompt(props: {
   onPick: (target: WireTarget) => void;
   onCancel: () => void;
 }) {
+  createEffect(() => {
+    preloadPrints(props.targets.flatMap((t) => (t.kind === "object" ? [objectPrint(props.state, t.id)] : [])));
+  });
   const seatLabel = (seat: number) => props.playerName?.(seat) ?? `P${seat}`;
   return (
     <PickDialog label={props.title} onEscape={props.onCancel}>
@@ -642,8 +663,8 @@ export function TargetPickPrompt(props: {
                   }
                 >
                   {(obj) => (
-                    <img
-                      src={imageUrlByPrint(objectPrint(props.state, obj().id))}
+                    <CardArt
+                      print={objectPrint(props.state, obj().id)}
                       alt=""
                       draggable={false}
                       class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"
@@ -737,7 +758,7 @@ export function ModePickPrompt(props: {
  * - `searchable` — autofocused name filter; also dedupes by face when `count === 1` (library
  *   tutors). Multi-pick searchable surfaces filter only, so two Forests stay distinct.
  *
- * Art is always `choiceItemPrint` → `imageUrlByPrint` (ADR 0031). Pass `state` so an empty
+ * Art is always `choiceItemPrint` → shared `CardArt` / ImageCache (ADR 0031). Pass `state` so an empty
  * `item.print` can fall back to a visible object (rolling deploy); client-built items should set
  * `print` themselves. */
 export function CardPickPrompt(props: {
@@ -760,6 +781,9 @@ export function CardPickPrompt(props: {
   onSubmit: (ids: number[]) => void;
 }) {
   const artPrint = (it: ChoiceItem) => (props.state ? choiceItemPrint(props.state, it) : (it.print ?? ""));
+  createEffect(() => {
+    preloadPrints(props.items.map((it) => artPrint(it)));
+  });
   const [picked, setPicked] = createSignal<number[]>([]);
   const [query, setQuery] = createSignal("");
   const shown = createMemo(() => {
@@ -849,7 +873,10 @@ export function CardPickPrompt(props: {
             Only this region scrolls so the filter and Choose / Fail-to-find stay on screen. */}
         <div
           data-testid="pick-card-scroll"
-          class="min-h-0 w-full max-w-[min(90vw,1040px)] flex-1 overflow-y-auto overscroll-contain"
+          class={cn(
+            PICK_CARD_SCROLL_MIN_CLASS,
+            "w-full max-w-[min(90vw,1040px)] flex-1 overflow-y-auto overscroll-contain",
+          )}
         >
           <div class="flex flex-wrap justify-center gap-3 px-3 pb-1">
             <For each={shown()}>
@@ -875,8 +902,8 @@ export function CardPickPrompt(props: {
                   >
                     {/* Fixed aspect ratio + card-back slate behind the loading image, so the row never
                         reflows and a still-loading card reads as a card, not a hole. */}
-                    <img
-                      src={imageUrlByPrint(artPrint(it))}
+                    <CardArt
+                      print={artPrint(it)}
                       alt=""
                       draggable={false}
                       class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"
@@ -1535,6 +1562,9 @@ const ChooseCounterTargetForForm: Component<FormProps> = (props) => {
 // size (a full partition — the three counts sum to items.length; `distribute_top` in the engine).
 const DistributeTopForm: Component<FormProps> = (props) => {
   const pc = () => props.pc as Narrow<"distribute_top">;
+  createEffect(() => {
+    preloadPrints(pc().items.map((it) => choiceItemPrint(props.state, it)));
+  });
   type Slot = "hand" | "bottom" | "exile";
   const [slots, setSlots] = createSignal<Record<number, Slot>>({});
   const chosen = (slot: Slot) => pc().items.filter((it) => slots()[it.id] === slot);
@@ -1559,8 +1589,8 @@ const DistributeTopForm: Component<FormProps> = (props) => {
           <For each={pc().items}>
             {(it) => (
               <div class="flex flex-col items-center gap-xs">
-                <img
-                  src={imageUrlByPrint(choiceItemPrint(props.state, it))}
+                <CardArt
+                  print={choiceItemPrint(props.state, it)}
                   alt={it.label}
                   draggable={false}
                   class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"

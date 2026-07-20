@@ -87,3 +87,7 @@ export function searchableChoiceItems(items: readonly ChoiceItem[], query: strin
 export function cardPickIsSearchable(kind: PendingChoiceView["kind"]): boolean {
   return kind === "search_library";
 }
+
+/** Floor for the CardPickPrompt card strip (`data-testid="pick-card-scroll"`). Flex shrink must not
+ * collapse the grid to 0px on a short viewport (library search then shows only Fail-to-find). */
+export const PICK_CARD_SCROLL_MIN_CLASS = "min-h-[min(40vh,280px)]";

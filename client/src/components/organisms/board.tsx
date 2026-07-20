@@ -7,6 +7,7 @@
 
 import { useAtomMount, useAtomSet, useAtomValue } from "@effect/atom-solid";
 import { useNavigate } from "@solidjs/router";
+import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Button } from "~/components/atoms";
@@ -40,8 +41,10 @@ import {
 import { boardStatusSummary } from "~/lib/boardStatus";
 import { worldToScreen } from "~/lib/camera";
 import { cn } from "~/lib/cn";
-import { ImageCache } from "~/lib/imageCache";
+import { preloadDecksIntoCache } from "~/lib/deckImagePreload";
+import { sharedImageCache } from "~/lib/imageCache";
 import { resolveClick } from "~/lib/interaction";
+import * as lobbyClient from "~/lib/lobbyClient";
 import { projectManaTrays } from "~/lib/manaTrayProject";
 import { type Outcome, outcome } from "~/lib/outcome";
 import { playerLabel } from "~/lib/players";
@@ -78,7 +81,7 @@ export default function Board() {
   const playerCount = createMemo(() => game.state?.players.length ?? 4);
   const opponents = () => (game.state?.players ?? []).map((p) => p.player).filter((s) => s !== me());
   const [tick, setTick] = createSignal(0);
-  const cache = new ImageCache(() => setTick((t) => t + 1));
+  const cache = sharedImageCache;
   // Mana ability glyphs paint via canvas fillText — redraw once the face settles (ok or fail).
   void document.fonts.load("14px Mana").then(
     () => setTick((t) => t + 1),
@@ -343,6 +346,16 @@ export default function Board() {
     // The delta stream runs off `useAtomMount(gameStreamFamily(...))` above; its frames fold into
     // the store, its status flips `connected`, and its terminal errors set the reject line.
 
+    const unsubCache = cache.subscribe(() => setTick((t) => t + 1));
+    onCleanup(unsubCache);
+
+    // Warm every seated deck's art (owned decks + public precons). Library search then hits cache.
+    void lobbyClient.lobbyState(tableId()).then((view) => {
+      if (!view) return;
+      const ids = view.seats.flatMap((s) => (s.deck_id != null ? [s.deck_id] : []));
+      Effect.runFork(preloadDecksIntoCache(ids, cache));
+    });
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     // Arrow draw-on births live with this paint loop (not module globals) so scene paint stays pure.
@@ -380,15 +393,21 @@ export default function Board() {
         e.preventDefault();
         tryPinInspect();
       }
-      // Space/Enter = primary context bar when the stack is empty; on the stack, one-shot
-      // pass_priority while you can act (Next is hidden — stack yield is the standing opt-out).
-      if (
-        (e.key === " " || e.key === "Enter") &&
-        !inspectPin() &&
-        !promptOpen() &&
-        yours() &&
-        !isInteractiveControl(e.target)
-      ) {
+      // Space = one priority pass (Next / Resolve card). Enter = End Turn while active (ADR 0037).
+      if (e.key === "Enter" && !inspectPin() && !promptOpen() && !isInteractiveControl(e.target)) {
+        const chrome = boardChrome();
+        if (chrome.showEndTurn) {
+          e.preventDefault();
+          setTurnYield(!chrome.turnYielded);
+          return;
+        }
+        if (chrome.showTurnYield) {
+          e.preventDefault();
+          setTurnYield(!chrome.turnYielded);
+          return;
+        }
+      }
+      if (e.key === " " && !inspectPin() && !promptOpen() && yours() && !isInteractiveControl(e.target)) {
         e.preventDefault(); // Space must not scroll the page
         const binding = boardChrome().space;
         if (binding === "pass_priority") {
@@ -728,7 +747,7 @@ export default function Board() {
       <Show when={!connected()}>
         <div
           data-testid="board-reconnecting"
-          class="fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-1.5 text-center font-semibold text-label text-snow"
+          class="fixed top-0 right-0 left-0 z-40 bg-reconnect-rust p-sm text-center font-semibold text-label text-snow"
         >
           Reconnecting…
         </div>
@@ -763,7 +782,7 @@ export default function Board() {
           <>
             <TurnBanner me={me()} state={state()} />
             <Show when={spectating()}>
-              <div class="fixed top-3 left-1/2 z-20 -translate-x-1/2 rounded-control bg-llanowar px-3 py-1 font-semibold text-label text-snow-mint tracking-[0.04em]">
+              <div class="fixed top-md left-1/2 z-20 -translate-x-1/2 rounded-control bg-llanowar px-md py-xs font-semibold text-label text-snow-mint tracking-[0.04em]">
                 Spectating
               </div>
             </Show>
@@ -790,16 +809,13 @@ export default function Board() {
                 data-testid="board-concede"
                 onClick={() => setConfirmConcede(true)}
                 variant="ghost"
-                class="fixed top-3 right-3 z-20"
+                class="fixed top-md right-md z-20"
               >
                 Concede
               </Button>
-              <Show when={hintVisible()}>
-                <HintStrip onDismiss={dismissHint} />
-              </Show>
             </Show>
             {/* Legend + Sound — top-left. Sound is for everyone on the stream (table feel); legend for seated. */}
-            <div class="fixed top-3 left-3 z-25 flex items-center gap-1">
+            <div class="fixed top-md left-md z-25 flex items-center gap-xs">
               <Show when={!spectating() && !eliminated()}>
                 <Button
                   type="button"
@@ -808,7 +824,7 @@ export default function Board() {
                   onClick={() => setLegendOpen((o) => !o)}
                   variant="ghost"
                   hitQuiet
-                  class="px-[11px] py-[5px]"
+                  class="px-md py-xs"
                 >
                   ?
                 </Button>
@@ -821,7 +837,7 @@ export default function Board() {
                 onClick={toggleSound}
                 variant="ghost"
                 hitQuiet
-                class="px-[11px] py-[5px] text-caption"
+                class="px-md py-xs text-caption"
               >
                 {soundOn() ? "Sound" : "Muted"}
               </Button>
@@ -862,7 +878,16 @@ export default function Board() {
               onHoverCard={(c) => surface.setAuxHover("stack", c)}
               onDwell={setDwell}
             />
-            <LogPanel />
+            {/* Left chrome column: hint above log so they never fight for the same inset. */}
+            <div
+              style={{ "--b": `${HAND_BAR_H + 10}px` }}
+              class="fixed bottom-(--b) left-md z-20 flex max-w-[min(420px,46vw)] flex-col items-start gap-sm"
+            >
+              <Show when={!spectating() && !eliminated() && hintVisible()}>
+                <HintStrip onDismiss={dismissHint} />
+              </Show>
+              <LogPanel />
+            </div>
             <PromptHost me={me()} state={state()} onAnswer={act} />
           </>
         )}

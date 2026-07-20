@@ -61,4 +61,28 @@ describe("splitOracleText", () => {
       { kind: "text", text: "." },
     ]);
   });
+
+  it("marks parenthetical reminder text (with the parens) for italic rendering", () => {
+    expect(
+      splitOracleText("This creature becomes prepared. (While it's prepared, you may cast a copy of its spell.)"),
+    ).toEqual([
+      { kind: "text", text: "This creature becomes prepared. " },
+      {
+        kind: "text",
+        text: "(While it's prepared, you may cast a copy of its spell.)",
+        reminder: true,
+      },
+    ]);
+  });
+
+  it("still splits mana symbols inside reminder text", () => {
+    expect(splitOracleText("Equip {1} ({T}: Attach to target creature you control.)")).toEqual([
+      { kind: "text", text: "Equip " },
+      { kind: "symbol", code: "1", ms: "1" },
+      { kind: "text", text: " " },
+      { kind: "text", text: "(", reminder: true },
+      { kind: "symbol", code: "T", ms: "tap", reminder: true },
+      { kind: "text", text: ": Attach to target creature you control.)", reminder: true },
+    ]);
+  });
 });

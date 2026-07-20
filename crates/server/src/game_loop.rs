@@ -7,9 +7,8 @@ use engine::PlayerId;
 use schema::{IntentEnvelope, to_intent_for_seat};
 use serde::{Deserialize, Serialize};
 
-use crate::decks::Table;
 use crate::session::{ApplyResult, Disposition, DwellResult, TableSession, settle_after_apply};
-use crate::{AppState, Registry, lock};
+use crate::{AppState, Registry, Table, lock};
 
 /// The response to a submitted intent. Deltas arrive on the stream, not here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -122,7 +121,7 @@ fn seated_table<'r>(
     table_id: &str,
     user_id: i64,
 ) -> Result<(&'r mut Table, u8), Ack> {
-    let Some(table) = reg.tables.get_mut(table_id) else {
+    let Some(table) = reg.get_mut(table_id) else {
         return Err(reject("UnknownTable"));
     };
     if table.game.is_none() {
@@ -166,8 +165,9 @@ pub(crate) async fn set_yield_core(
 }
 
 /// Mark (or clear) a seat's turn yield: auto-pass until that seat's next turn, or until they
-/// take an intentional action (ADR 0029). Independent of stack yield. Called by the gRPC
-/// `Game.SetTurnYield` service.
+/// take an intentional action (ADR 0029). While that seat is active, the same flag is Arena
+/// End Turn (ADR 0037). Independent of stack yield. Called by the gRPC `Game.SetTurnYield`
+/// service.
 pub(crate) async fn set_turn_yield_core(
     state: &AppState,
     user_id: i64,

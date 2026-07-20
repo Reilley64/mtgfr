@@ -61,4 +61,33 @@ describe("ImageCache", () => {
     expect(cache.get("a.png")).toBeUndefined();
     expect(onLoadCalls).toBe(0);
   });
+
+  it("preload starts a load for each non-empty URL and dedupes with get", () => {
+    const { make, images } = fakeImageFactory();
+    const cache = new ImageCache(() => {}, make);
+
+    cache.preload(["a.png", "", "b.png", "a.png"]);
+
+    expect(images.map((img) => img.src)).toEqual(["a.png", "b.png"]);
+  });
+
+  it("subscribe listeners fire once per successful load", async () => {
+    const { make, images } = fakeImageFactory();
+    const cache = new ImageCache(() => {}, make);
+    let hits = 0;
+    const unsub = cache.subscribe(() => {
+      hits += 1;
+    });
+
+    cache.get("a.png");
+    images[0].onload?.();
+    await flush();
+    expect(hits).toBe(1);
+
+    unsub();
+    cache.get("b.png");
+    images[1].onload?.();
+    await flush();
+    expect(hits).toBe(1);
+  });
 });

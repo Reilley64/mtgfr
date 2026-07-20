@@ -1,7 +1,7 @@
 // Right-edge / expanded / full stack presentation. Pass / yield live on the priority context bar.
 
 import { createEffect, createMemo, createSignal, For, Index, onCleanup, onMount, Show } from "solid-js";
-import { Button } from "~/components/atoms";
+import { Button, CardArt } from "~/components/atoms";
 import type { StagedAction } from "~/controllers/actionExecution";
 import {
   STACK_CARD_W,
@@ -20,7 +20,6 @@ import {
 } from "~/lib/boardDraw";
 import { cn } from "~/lib/cn";
 import { playerLabel } from "~/lib/players";
-import { imageUrlByPrint } from "~/lib/scryfall";
 import type { ObjectView, PlayerView, VisibleState, WireTarget } from "~/wire/types";
 
 function targetLabel(target: WireTarget, name: (id: number) => string, players: PlayerView[]): string {
@@ -181,7 +180,7 @@ export function StackOverlay(props: {
       onMouseEnter={() => hoverEntry(opts.row, opts.imageName, { cardId: opts.cardId, print: opts.print })}
       style={opts.style}
       class={cn(
-        "absolute rounded-game shadow-[0_4px_14px_rgb(0_0_0/0.55)]",
+        "absolute rounded-game shadow-hand",
         opts.returning ? "animate-stack-return" : opts.entranceDelta ? "animate-stack-in" : null,
         opts.staged && "ring-(--target) ring-2",
         opts.isTop && holdMs() > 0 && stackHover() && "shadow-[0_0_16px_rgba(255,215,106,0.4)]",
@@ -198,7 +197,7 @@ export function StackOverlay(props: {
           </div>
         }
       >
-        {(n) => <img src={imageUrlByPrint(opts.print)} alt={n()} width={STACK_CARD_W} class="block rounded-game" />}
+        {(n) => <CardArt print={opts.print} alt={n()} width={STACK_CARD_W} class="block rounded-game" />}
       </Show>
     </div>
   );
