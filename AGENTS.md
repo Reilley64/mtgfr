@@ -48,6 +48,7 @@ Commits on `main`/`master` follow the [Angular commit message guidelines](https:
 - **Routing:** Required identifiers belong in **path params** (server: Axum `Path`, client: Solid `:param` segments). **Query params are optional** — filters, paging, redirect targets (`?next=`), and preselection (`?deck=`). Never put a required resource id in a query string.
 - **Public crawl posture:** `client/public/robots.txt` disallows all crawlers; do not add sitemaps or marketing SEO without revisiting that choice.
 - **Engine CR lookup:** Start at [`docs/agent-navigation.md`](docs/agent-navigation.md) (module map, `docs/CR_INDEX.md`, regenerate with `just engine-cr-index` / agent hooks).
+- **Client canvas board:** Start at [`docs/client-canvas-map.md`](docs/client-canvas-map.md) (paint vs hits vs flights vs DOM overlays).
 
 Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic + health Axum) / `schema` (projection DTOs; mapped to/from native proto at the gRPC edge).
 
