@@ -22,7 +22,7 @@ import { type BarZone, barZoneAura, byObject, bySection, handExtras } from "~/li
 import { HAND_FACE_W } from "~/lib/cardFlight";
 import { cn } from "~/lib/cn";
 import { costPipPlate, costPips } from "~/lib/costPips";
-import { HAND_BAR_PEEK } from "~/lib/handBarHit";
+import { HAND_BAR_PEEK, handBarHitWidth } from "~/lib/handBarHit";
 import { game } from "~/store";
 import type { ActionView, ObjectView, WireCost } from "~/wire/types";
 
@@ -262,6 +262,9 @@ export default function Hand(props: {
       if (hover() === p.name) setHoverCard(null);
       if (!drag()) setHoverAction(null);
     };
+    // Buried cards: left peek only. Rightmost (and single-card sections like the commander):
+    // full face — nothing to the right to protect (`handBarHitWidth`).
+    const hitW = () => handBarHitWidth(p.index, p.count, HAND_CARD_PEEK, HAND_CARD_W);
     return (
       // Layout slot only — interactive hit strip is the left peek on the face (below).
       <div
@@ -276,7 +279,8 @@ export default function Hand(props: {
         // Flex footprint stays peek-wide always. Growing width on raise shifted the
         // right-aligned face out from under the cursor → enter/leave thrash.
         // The face hangs left of the peek; raise only lifts height / z. Layout box is
-        // pointer-events-none — hits live on the left peek strip of the face.
+        // pointer-events-none — hits live on the face hit strip (left peek, or full face
+        // for the rightmost card in the section).
         class={cn(
           "pointer-events-none relative w-(--peek) origin-bottom transition-[height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
           raised() ? "h-(--card-h)" : "h-(--visible)",
@@ -318,8 +322,8 @@ export default function Hand(props: {
                 {p.caption}
               </div>
             </Show>
-            {/* Left-peek hit target — matches the visible name strip under right-on-top stacking
-                (`hitHandBarSlot`). Full face stays paint-only so a raise cannot steal neighbors.
+            {/* Hit target — left peek for buried cards; full face for the section's rightmost
+                (`handBarHitWidth` / `hitHandBarSlot`). Face art stays paint-only.
                 Not a <button>: onDown drops on pointerup, so a native button click would double-fire. */}
             {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard-operable exactly when actionable */}
             {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label is set iff role is "button" */}
@@ -343,8 +347,9 @@ export default function Hand(props: {
               onPointerMove={onHitMove}
               onPointerLeave={onHitLeave}
               onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
+              style={{ width: `${hitW()}px` }}
               class={cn(
-                "pointer-events-auto absolute top-0 left-0 h-full w-(--peek)",
+                "pointer-events-auto absolute top-0 left-0 h-full",
                 p.action ? "cursor-grab" : "cursor-default",
               )}
             />
