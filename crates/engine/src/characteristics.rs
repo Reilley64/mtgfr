@@ -296,9 +296,13 @@ impl Game {
         self.as_permanent(object).is_some_and(|p| p.tapped)
     }
 
-    /// Whether a permanent is summoning sick (entered this turn, no haste yet).
+    /// Whether a permanent is subject to summoning sickness (CR 302.6): it entered under its
+    /// current controller this turn *and* is currently a creature. Noncreatures keep the internal
+    /// flag for untap bookkeeping, but they are not summoning sick — they may pay `{T}` the turn
+    /// they enter, and must not show the client sick badge.
     pub fn is_summoning_sick(&self, object: ObjectId) -> bool {
         self.as_permanent(object).is_some_and(|p| p.summoning_sick)
+            && self.effective_types(object).intersects(TypeSet::CREATURE)
     }
 
     /// Whether a permanent has haste (so it may attack / tap the turn it enters).
@@ -977,10 +981,9 @@ impl Game {
     /// Whether a creature is barred from attacking / using tap abilities this turn:
     /// summoning sick and without haste. Summoning sickness's `{T}` restriction is creature-only
     /// (CR 302.6) — an artifact/land (a Treasure, a fetchland) may tap the turn it enters.
+    /// Creature-ness is effective types (a manland animated the turn it entered is sick too).
     pub(crate) fn is_sick_without_haste(&self, object: ObjectId) -> bool {
-        matches!(self.def_of(object).kind, CardKind::Creature { .. })
-            && self.is_summoning_sick(object)
-            && !self.has_keyword(object, Keyword::Haste)
+        self.is_summoning_sick(object) && !self.has_keyword(object, Keyword::Haste)
     }
 
     /// A creature's effective power: its printed base run through the CR 613 P/T layers

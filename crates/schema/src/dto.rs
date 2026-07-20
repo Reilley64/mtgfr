@@ -164,6 +164,9 @@ pub struct ObjectView {
     /// Whether casting this card requires choosing a target (drives the targeting UI).
     pub needs_target: bool,
     pub tapped: bool,
+    /// Whether this permanent is summoning sick for CR 302.6 purposes (a creature that entered
+    /// under its controller this turn). Noncreatures are always `false` — the client paints the
+    /// Arena sick badge from this bit.
     pub summoning_sick: bool,
     /// Has haste — so it may attack / tap even while summoning sick (the client combines the two
     /// exactly as the engine does when deciding what can attack).
