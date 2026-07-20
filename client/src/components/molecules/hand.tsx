@@ -42,12 +42,24 @@ function fanTransform(index: number, count: number): string {
   return `rotate(${angle}deg) translateY(${-lift}px)`;
 }
 
+/** Room above the strip for rest-state cost pips (they sit outside the overlap-covered face). */
+const HAND_PIP_ROW_H = 18;
 /** Height of the bottom action bar; the Board uses it to place the play threshold.
- * Sized to the clipped strip so fitCamera keeps more viewport on the battlefield. */
-export const HAND_BAR_H = HAND_STRIP_H + 24;
+ * Sized to the clipped strip + pip row so fitCamera keeps more viewport on the battlefield. */
+export const HAND_BAR_H = HAND_STRIP_H + HAND_PIP_ROW_H + 24;
 
 const CARD_FACE = cn("block w-[112px] rounded-game");
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
+
+/** Opaque mana-font cost disks — drop-shadow alone reads as hollow glyphs on dark art. */
+function CostPip(props: { ms: string; sizePx?: number }) {
+  return (
+    <i
+      class={cn("ms", "ms-cost", `ms-${props.ms}`, "shadow-[0_1px_2px_rgb(0_0_0/0.85)]")}
+      style={{ "font-size": `${props.sizePx ?? 12}px` }}
+    />
+  );
+}
 
 export default function Hand(props: {
   viewer: number;
@@ -241,6 +253,18 @@ export default function Hand(props: {
           raised() && "z-30",
         )}
       >
+        {/* Rest: pips sit *above* the strip. Top-right of the face is under the next card's
+            overlap — those disks looked like hollow/transparent glyphs. Above the strip they
+            stay clear of neighbours (overlap is horizontal within the strip height only). */}
+        <Show when={!raised() && pips().length > 0}>
+          <div
+            data-testid="hand-cost-pips"
+            class="pointer-events-none absolute bottom-full left-0 z-20 mb-0.5 flex gap-px pl-0.5"
+            aria-hidden="true"
+          >
+            <For each={pips()}>{(pip) => <CostPip ms={pip.ms} />}</For>
+          </div>
+        </Show>
         {/* Clip to a top strip at rest; expand upward on hover (pointer handlers, not CSS :hover —
             transform/fan ancestors made group-hover unreliable). */}
         <div
@@ -270,20 +294,13 @@ export default function Hand(props: {
               dimmedness(p),
             )}
           />
-          <Show when={pips().length > 0}>
+          <Show when={raised() && pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
               class="pointer-events-none absolute top-1 right-1 left-1 z-10 flex justify-end gap-px"
               aria-hidden="true"
             >
-              <For each={pips()}>
-                {(pip) => (
-                  <i
-                    class={cn("ms", "ms-cost", `ms-${pip.ms}`, "drop-shadow-[0_1px_1px_rgb(0_0_0/0.85)]")}
-                    style={{ "font-size": "13px" }}
-                  />
-                )}
-              </For>
+              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} sizePx={13} />}</For>
             </div>
           </Show>
           <Show when={p.caption}>
@@ -393,14 +410,7 @@ export default function Hand(props: {
                   class="pointer-events-none absolute top-1 right-1 left-1 flex justify-end gap-px"
                   aria-hidden="true"
                 >
-                  <For each={ghostPips()}>
-                    {(pip) => (
-                      <i
-                        class={cn("ms", "ms-cost", `ms-${pip.ms}`, "drop-shadow-[0_1px_1px_rgb(0_0_0/0.85)]")}
-                        style={{ "font-size": "13px" }}
-                      />
-                    )}
-                  </For>
+                  <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} sizePx={13} />}</For>
                 </div>
               </Show>
             </div>
