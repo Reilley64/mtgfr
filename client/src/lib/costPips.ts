@@ -5,6 +5,16 @@ import type { WireCost } from "~/wire/types";
 
 const COLOR_PIP = ["W", "U", "B", "R", "G"] as const;
 
+/** Opaque disk fills — same hexes as mana-font `.ms-cost` (Arena-readable on dark felt). */
+const PLATE_GENERIC = "#beb9b2";
+const PLATE_BY_CODE: Record<string, string> = {
+  W: "#f0f2c0",
+  U: "#b5cde3",
+  B: "#aca29a",
+  R: "#db8664",
+  G: "#93b483",
+};
+
 export type CostPip = { ms: string; code: string };
 
 /**
@@ -21,6 +31,11 @@ export function costPips(cost: WireCost, opts?: { showZero?: boolean }): CostPip
   }
   if (out.length === 0 && opts?.showZero) push(out, "0");
   return out;
+}
+
+/** Solid plate colour for a pip code (`2`, `W`, `X`, …). */
+export function costPipPlate(code: string): string {
+  return PLATE_BY_CODE[code.toUpperCase()] ?? PLATE_GENERIC;
 }
 
 function push(out: CostPip[], code: string) {

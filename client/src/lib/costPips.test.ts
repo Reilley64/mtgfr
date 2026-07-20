@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { costPips } from "~/lib/costPips";
+import { costPipPlate, costPips } from "~/lib/costPips";
 
 describe("costPips", () => {
   it("emits X, then generic, then WUBRG in order", () => {
@@ -28,5 +28,14 @@ describe("costPips", () => {
       { ms: "1", code: "1" },
       { ms: "u", code: "U" },
     ]);
+  });
+});
+
+describe("costPipPlate", () => {
+  it("uses coloured disks for WUBRG and generic for numbers/X", () => {
+    expect(costPipPlate("W")).toBe("#f0f2c0");
+    expect(costPipPlate("U")).toBe("#b5cde3");
+    expect(costPipPlate("2")).toBe("#beb9b2");
+    expect(costPipPlate("X")).toBe("#beb9b2");
   });
 });

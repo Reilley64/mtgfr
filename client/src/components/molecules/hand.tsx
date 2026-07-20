@@ -14,7 +14,7 @@ import { createMemo, createSignal, For, type JSX, onCleanup, Show } from "solid-
 import { ZONE } from "~/layout";
 import { type BarZone, barZoneAura, byObject, bySection, handExtras } from "~/lib/actions";
 import { cn } from "~/lib/cn";
-import { costPips } from "~/lib/costPips";
+import { costPipPlate, costPips } from "~/lib/costPips";
 import { imageUrlByPrint } from "~/lib/scryfall";
 import { game } from "~/store";
 import type { ActionView, ObjectView, WireCost } from "~/wire/types";
@@ -51,13 +51,25 @@ export const HAND_BAR_H = HAND_STRIP_H + HAND_PIP_ROW_H + 24;
 const CARD_FACE = cn("block w-[112px] rounded-game");
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
 
-/** Opaque mana-font cost disks — drop-shadow alone reads as hollow glyphs on dark art. */
-function CostPip(props: { ms: string; sizePx?: number }) {
+/**
+ * Arena cost disk: opaque plate is inline (not only `.ms-cost` background) so a buried or
+ * filter-composited glyph can never read as a hollow outline on the felt.
+ */
+function CostPip(props: { ms: string; code: string; sizePx?: number }) {
+  const size = props.sizePx ?? 14;
   return (
-    <i
-      class={cn("ms", "ms-cost", `ms-${props.ms}`, "shadow-[0_1px_2px_rgb(0_0_0/0.85)]")}
-      style={{ "font-size": `${props.sizePx ?? 12}px` }}
-    />
+    <span
+      class="inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)]"
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        "background-color": costPipPlate(props.code),
+        color: "#111",
+        "font-size": `${Math.round(size * 0.82)}px`,
+      }}
+    >
+      <i class={cn("ms", `ms-${props.ms}`)} />
+    </span>
   );
 }
 
@@ -262,7 +274,7 @@ export default function Hand(props: {
             class="pointer-events-none absolute bottom-full left-0 z-20 mb-0.5 flex gap-px pl-0.5"
             aria-hidden="true"
           >
-            <For each={pips()}>{(pip) => <CostPip ms={pip.ms} />}</For>
+            <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} />}</For>
           </div>
         </Show>
         {/* Clip to a top strip at rest; expand upward on hover (pointer handlers, not CSS :hover —
@@ -300,7 +312,7 @@ export default function Hand(props: {
               class="pointer-events-none absolute top-1 right-1 left-1 z-10 flex justify-end gap-px"
               aria-hidden="true"
             >
-              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} sizePx={13} />}</For>
+              <For each={pips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
             </div>
           </Show>
           <Show when={p.caption}>
@@ -410,7 +422,7 @@ export default function Hand(props: {
                   class="pointer-events-none absolute top-1 right-1 left-1 flex justify-end gap-px"
                   aria-hidden="true"
                 >
-                  <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} sizePx={13} />}</For>
+                  <For each={ghostPips()}>{(pip) => <CostPip ms={pip.ms} code={pip.code} sizePx={15} />}</For>
                 </div>
               </Show>
             </div>
