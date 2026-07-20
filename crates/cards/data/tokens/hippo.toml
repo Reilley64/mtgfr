@@ -1,0 +1,12 @@
+# Token: Hippo
+# Sources: questing_phelddagrif.toml
+name = "Hippo"
+id = "c0751938-a8c6-4b27-b8ac-88aa70516721"
+default_print = "1aea5e0b-dc4e-4055-9e13-1dfbc25a2f00"
+colors = ["green"]
+subtypes = ["Hippo"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

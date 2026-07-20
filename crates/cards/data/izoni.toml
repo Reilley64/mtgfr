@@ -31,18 +31,9 @@ timing = "etb_triggered"
 # create a 1/1 black and green Insect creature token for each creature card in your graveyard.
 [[abilities.effects]]
 type = "create_token"
+token = "ea029c48-d26e-40b1-acef-2ec47fb61101"
 count = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
 
-[abilities.effects.token]
-name = "Insect"
-id = "ea029c48-d26e-40b1-acef-2ec47fb61101"
-default_print = "f120bca2-9ecf-429a-bc01-ba29729e19c9"
-power = 1
-toughness = 1
-colors = ["black", "green"]
-subtypes = ["Insect"]
-
-# {B}{G}, Sacrifice another creature: You gain 1 life and draw a card.
 [[abilities]]
 timing = "activated"
 sacrifice = { creature = { other = true } }

@@ -37,22 +37,9 @@ timing = "dies"
 # on this creature
 [[abilities.effects]]
 type = "create_token"
+token = "7c0b6b53-4ddb-4bb5-8a26-0041b2006d3f"
 count = "per_counter_on_source"
 
-[abilities.effects.token]
-name = "Thopter"
-id = "7c0b6b53-4ddb-4bb5-8a26-0041b2006d3f"
-default_print = "b9d38c75-c69f-45cd-a745-03ac7513491b"
-subtypes = ["Thopter"]
-keywords = ["flying"]
-
-[abilities.effects.token.kind]
-type = "creature"
-power = 1
-toughness = 1
-also = ["artifact"]
-
-# {1}, {T}: Put a +1/+1 counter on this creature.
 [[abilities]]
 timing = "activated"
 taps_self = true

@@ -1,0 +1,12 @@
+# Token: Cat
+# Sources: ajanis_chosen.toml
+name = "Cat"
+id = "6788478d-e157-4483-be09-9edb3f841431"
+default_print = "7d400b41-813d-4a63-848f-5eb4db4bf3bb"
+colors = ["white"]
+subtypes = ["Cat"]
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2

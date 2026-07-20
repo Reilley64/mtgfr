@@ -31,32 +31,9 @@ timing = "end_step"
 # battlefield under your control this turn.
 [[abilities.effects]]
 type = "create_token"
+token = "a468338f-635e-4206-89d6-72d723071d45"
 count = "nontoken_creatures_entered_this_turn"
 
-[abilities.effects.token]
-name = "Food"
-id = "a468338f-635e-4206-89d6-72d723071d45"
-default_print = "da1fca2e-4ea7-4c5f-bd58-f9529dfb6f37"
-subtypes = ["Food"]
-
-[abilities.effects.token.kind]
-type = "artifact"
-
-# "{2}, {T}, Sacrifice this token: You gain 3 life."
-[[abilities.effects.token.abilities]]
-timing = "activated"
-taps_self = true
-sacrifice = "this"
-
-[abilities.effects.token.abilities.activation_cost]
-generic = 2
-
-# You gain 3 life.
-[[abilities.effects.token.abilities.effects]]
-type = "gain_life"
-amount = 3
-
-# {1}, Sacrifice a Food: Target creature gains indestructible until end of turn. Tap it.
 [[abilities]]
 timing = "activated"
 sacrifice = { permanent = { subtypes = ["Food"] } }

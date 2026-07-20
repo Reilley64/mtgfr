@@ -1,0 +1,13 @@
+# Token: Angel
+# Sources: decree_of_justice.toml
+name = "Angel"
+id = "40c64f08-ab2f-4933-8e0e-d1a1c729008f"
+default_print = "8fe9d826-2642-4dc8-9dfd-0526394d43ac"
+colors = ["white"]
+subtypes = ["Angel"]
+keywords = ["flying"]
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

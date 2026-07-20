@@ -1,0 +1,24 @@
+# Token: Contract
+# Sources: scriv_the_obligator.toml
+name = "Contract"
+id = "c06d8d9d-a157-482e-9c9a-463745d7bf61"
+default_print = "4c5e0caa-a043-41de-acbf-cdf3a6b6ab18"
+colors = ["white"]
+subtypes = ["Aura"]
+enchant = { types = "creature" }
+
+[kind]
+type = "aura"
+
+# "Whenever enchanted creature attacks, it gets +2/+0 until end of turn if it's attacking one of
+# your opponents. Otherwise, its controller loses 2 life."
+[[abilities]]
+timing = "enchanted_creature_attacks"
+
+# it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its
+# controller loses 2 life.
+[[abilities.effects]]
+type = "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life"
+power = 2
+toughness = 0
+life = 2

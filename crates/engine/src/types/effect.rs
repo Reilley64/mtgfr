@@ -991,7 +991,8 @@ pub enum Effect {
     /// combat damage has been prevented yet.
     PreventCombatDamageToYouCreatingTokens {
         /// The creature-token profile (Inkling: 2/1 white+black flying) minted once per point of
-        /// combat damage prevented — a [`de::token_profile`] table, like [`CreateToken`](Self::CreateToken)'s.
+        /// combat damage prevented — a Scryfall oracle id resolved via [`de::token_profile`],
+        /// like [`CreateToken`](Self::CreateToken)'s.
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::token_profile"))]
         token: CardDef,
     },
@@ -1287,8 +1288,8 @@ pub enum Effect {
     /// Create `count` tokens with the characteristics of `token`, under `controller`'s control
     /// (default "you" — CR 111.4). Takes no target of its own — a `target_controller`
     /// `controller` reads the *ability's* shared target (typically shared with an earlier
-    /// [`Sequence`](Self::Sequence) step, e.g. destroy-then-compensate). (`token` is a
-    /// creature-token profile in TOML — see [`de::token_profile`] — not a full card table.)
+    /// [`Sequence`](Self::Sequence) step, e.g. destroy-then-compensate). In TOML `token` is a
+    /// Scryfall oracle id resolved at load via [`de::token_profile`] into an embedded [`CardDef`].
     CreateToken {
         #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::token_profile"))]
         token: CardDef,

@@ -45,25 +45,6 @@ type = "exile_target_graveyard_card_then_if_creature"
 # create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."
 [[abilities.effects.then]]
 type = "create_token"
+token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = 1
 
-[abilities.effects.then.token]
-name = "Pest"
-id = "37c4adc8-7455-4725-95fb-169a8b0254e5"
-default_print = "c72ceae7-72d6-41dc-82cc-b86e845d7aa6"
-colors = ["black", "green"]
-subtypes = ["Pest"]
-
-[abilities.effects.then.token.kind]
-type = "creature"
-power = 1
-toughness = 1
-
-# "When this token dies, you gain 1 life."
-[[abilities.effects.then.token.abilities]]
-timing = "dies"
-
-# you gain 1 life
-[[abilities.effects.then.token.abilities.effects]]
-type = "gain_life"
-amount = 1

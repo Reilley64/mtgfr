@@ -38,13 +38,6 @@ timing = "player_attacks_your_opponent"
 # that's attacking that opponent
 [[abilities.effects]]
 type = "create_token"
+token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 enters_tapped_and_attacking = true
-[abilities.effects.token]
-name = "Inkling"
-id = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
-default_print = "b2ef67fc-b544-4fb3-8362-a29d4533fdd7"
-power = 2
-toughness = 1
-colors = ["white", "black"]
-subtypes = ["Inkling"]
-keywords = ["flying"]
+

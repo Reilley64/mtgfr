@@ -26,17 +26,9 @@ timing = "etb"
 # create a 1/1 white Spirit creature token with flying.
 [[abilities.effects]]
 type = "create_token"
+token = "dc4e2134-f0c2-49aa-9ea3-ebf83af1445c"
 count = 1
 
-[abilities.effects.token]
-name = "Spirit"
-id = "dc4e2134-f0c2-49aa-9ea3-ebf83af1445c"
-default_print = "6f5a5786-e2be-4bb0-b971-81d1d5cc8f52"
-power = 1
-toughness = 1
-keywords = ["flying"]
-
-# {W}, {T}, Remove a story counter from this artifact: Draw a card.
 [[abilities]]
 timing = "activated"
 taps_self = true

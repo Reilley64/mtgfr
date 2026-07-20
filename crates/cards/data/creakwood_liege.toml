@@ -51,11 +51,6 @@ optional = true
 # create a 1/1 black and green Worm creature token
 [[abilities.effects]]
 type = "create_token"
+token = "318d6000-b6e0-4ef0-ad58-d470f4a271e6"
 count = 1
 
-[abilities.effects.token]
-name = "Worm"
-id = "318d6000-b6e0-4ef0-ad58-d470f4a271e6"
-default_print = "9f5ddcda-dcf0-468d-a5db-011e1b6ccab1"
-power = 1
-toughness = 1

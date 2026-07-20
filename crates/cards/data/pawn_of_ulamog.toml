@@ -26,25 +26,6 @@ optional = true
 # create a 0/1 colorless Eldrazi Spawn creature token.
 [[abilities.effects]]
 type = "create_token"
+token = "3aaf906a-e749-4e86-ac79-97650b92f271"
 count = 1
 
-[abilities.effects.token]
-name = "Eldrazi Spawn"
-id = "3aaf906a-e749-4e86-ac79-97650b92f271"
-default_print = "96b0ffdf-351e-4b89-92f2-79b20420b3bc"
-subtypes = ["Eldrazi", "Spawn"]
-
-[abilities.effects.token.kind]
-type = "creature"
-power = 0
-toughness = 1
-
-# "Sacrifice this token: Add {C}."
-[[abilities.effects.token.abilities]]
-timing = "activated"
-sacrifice = "this"
-
-# Add {C}.
-[[abilities.effects.token.abilities.effects]]
-type = "add_mana"
-mana = ["colorless"]

@@ -27,12 +27,6 @@ generic = 2
 # create a 4/4 green Fungus Beast creature token with trample.
 [[abilities.effects]]
 type = "create_token"
+token = "81183cc6-d39c-4e51-a982-2351588987aa"
 count = 1
 
-[abilities.effects.token]
-name = "Fungus Beast"
-id = "81183cc6-d39c-4e51-a982-2351588987aa"
-default_print = "2646dda1-05f0-49e4-b610-19205784b3b0"
-power = 4
-toughness = 4
-keywords = ["trample"]

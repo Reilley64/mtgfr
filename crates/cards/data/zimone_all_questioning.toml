@@ -37,17 +37,6 @@ conditions = [
 # that many +1/+1 counters on it
 [[abilities.effects]]
 type = "create_token"
+token = "19d20151-ecb4-4627-aa80-3086ad77b4a5"
 enters_with = { per_permanent = { types = "land", controller = "you" } }
 
-[abilities.effects.token]
-name = "Primo, the Indivisible"
-id = "19d20151-ecb4-4627-aa80-3086ad77b4a5"
-default_print = "c990db6b-e1f2-4802-b8b1-80a8b768be0e"
-legendary = true
-colors = ["green", "blue"]
-subtypes = ["Fractal"]
-
-[abilities.effects.token.kind]
-type = "creature"
-power = 0
-toughness = 0

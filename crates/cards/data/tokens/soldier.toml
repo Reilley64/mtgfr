@@ -1,0 +1,12 @@
+# Token: Soldier
+# Sources: decree_of_justice.toml
+name = "Soldier"
+id = "eac25f12-6459-438c-a09e-93e23d2cf80d"
+default_print = "e17648a0-f680-429d-8dda-2b0c14f3d80a"
+colors = ["white"]
+subtypes = ["Soldier"]
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

@@ -31,11 +31,5 @@ filter = "creatures"
 [[abilities.effects]]
 type = "each_player_creates_fractal_from_exiled_power"
 
-[abilities.effects.token]
-name = "Fractal"
-id = "23c6a041-b8ff-449c-8a2c-e3939668c017"
-default_print = "de564776-9d88-4533-8717-842eecdd0594"
-power = 0
-toughness = 0
-colors = ["green", "blue"]
-subtypes = ["Fractal"]
+token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
+

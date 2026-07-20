@@ -41,14 +41,7 @@ timing = "zero_base_power_creatures_deal_combat_damage"
 # to the damage dealt.
 [[abilities.effects]]
 type = "create_token"
+token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
 count = 1
 enters_with = "combat_damage_dealt"
 
-[abilities.effects.token]
-name = "Fractal"
-id = "23c6a041-b8ff-449c-8a2c-e3939668c017"
-default_print = "de564776-9d88-4533-8717-842eecdd0594"
-power = 0
-toughness = 0
-colors = ["green", "blue"]
-subtypes = ["Fractal"]

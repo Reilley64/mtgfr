@@ -20,4 +20,4 @@ timing = "spell"
 [[abilities.effects]]
 type = "create_token"
 controller = "each_other_player"
-token = { name = "Dragon", id = "60fe4897-6760-4c5a-8074-c92bd64df52b", default_print = "a5d4dd3b-0a5f-4d2c-aa6b-3c47e71e8c39", power = 5, toughness = 5, colors = ["red"], subtypes = ["Dragon"], keywords = ["flying"] }
+token = "60fe4897-6760-4c5a-8074-c92bd64df52b"

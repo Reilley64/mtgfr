@@ -1,0 +1,11 @@
+# Token: Fungus Beast
+# Sources: trudge_garden.toml
+name = "Fungus Beast"
+id = "81183cc6-d39c-4e51-a982-2351588987aa"
+default_print = "2646dda1-05f0-49e4-b610-19205784b3b0"
+keywords = ["trample"]
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

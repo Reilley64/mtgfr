@@ -1,0 +1,10 @@
+# Token: Worm
+# Sources: creakwood_liege.toml
+name = "Worm"
+id = "318d6000-b6e0-4ef0-ad58-d470f4a271e6"
+default_print = "9f5ddcda-dcf0-468d-a5db-011e1b6ccab1"
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1

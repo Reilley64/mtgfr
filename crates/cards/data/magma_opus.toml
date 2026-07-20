@@ -46,18 +46,9 @@ timing = "spell"
 # Create a 4/4 blue and red Elemental creature token.
 [[abilities.effects]]
 type = "create_token"
+token = "f81c047d-de36-4aed-806b-f14a290771a4"
 count = 1
 
-[abilities.effects.token]
-name = "Elemental"
-id = "f81c047d-de36-4aed-806b-f14a290771a4"
-default_print = "8ba20bb4-a476-448d-bb39-23f8dd59e5a8"
-power = 4
-toughness = 4
-colors = ["blue", "red"]
-subtypes = ["Elemental"]
-
-# Draw two cards.
 [[abilities]]
 timing = "spell"
 

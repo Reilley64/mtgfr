@@ -28,15 +28,7 @@ controller = "you"
 [[abilities.effects]]
 type = "create_token"
 
-[abilities.effects.token]
-name = "Cat"
-id = "6788478d-e157-4483-be09-9edb3f841431"
-default_print = "7d400b41-813d-4a63-848f-5eb4db4bf3bb"
-power = 2
-toughness = 2
-colors = ["white"]
-subtypes = ["Cat"]
+token = "6788478d-e157-4483-be09-9edb3f841431"
 
-# If that enchantment is an Aura, you may attach it to the token.
 [[abilities.effects]]
 type = "attach_triggering_aura_to_minted_token"
