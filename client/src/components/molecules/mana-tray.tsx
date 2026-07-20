@@ -87,6 +87,7 @@ function Chip(props: { chip: ManaTrayChip; zoom: number }) {
 export default function ManaTray(props: { trays: ManaTraySeat[] }) {
   return (
     <Show when={props.trays.length > 0}>
+      {/* Above canvas hit markers (z-15/16), below hand / action chrome (z-20). */}
       <div class="pointer-events-none fixed inset-0 z-[18]">
         <For each={props.trays}>
           {(t) => (

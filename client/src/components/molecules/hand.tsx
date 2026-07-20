@@ -357,7 +357,8 @@ export default function Hand(props: {
       <div
         data-testid="hand-bar"
         style={{ "--bar-h": `${HAND_BAR_H}px` }}
-        class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-xl overflow-visible px-md"
+        // Above world-anchored mana trays (z-18); level with other action chrome (log / turn).
+        class="pointer-events-none fixed right-0 bottom-0 left-0 z-20 flex h-(--bar-h) items-end justify-center gap-xl overflow-visible px-md"
       >
         <Show when={commandCards().length > 0}>
           <Section name="Command">
