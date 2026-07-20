@@ -1,4 +1,4 @@
-// Canvas flight layer (ADR 0035): screen-space pose + scale for a card in transit between
+// Canvas flight layer (client-game-board-and-interaction spec): screen-space pose + scale for a card in transit between
 // resting surfaces (hand/stack DOM ↔ battlefield canvas). Same exponential ease as tween.ts
 // (~150–200ms settle). Pure and clock-free — the caller passes dt and reduced-motion.
 

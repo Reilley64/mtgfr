@@ -1,4 +1,4 @@
-//! Live tables and the in-process registry that owns them (ADR 0005 / 0021).
+//! Live tables and the in-process registry that owns them (lobby-table-routing-and-live-game spec).
 //!
 //! One table per `table_id`; born already seeded (see [`Table::seeded`] + [`crate::decks::seed_game`]).
 //! Deck seeding stays in [`crate::decks`]; stream subscribe stays in [`crate::stream`].
@@ -127,7 +127,7 @@ impl Table {
 }
 
 /// The registry of live tables, keyed by `table_id`. Single instance, in-process — no Redis
-/// (ADR 0005). Ids are random 128-bit hex, so they're unguessable.
+/// (lobby-table-routing-and-live-game spec). Ids are random 128-bit hex, so they're unguessable.
 #[derive(Default)]
 pub struct Registry {
     tables: HashMap<String, Table>,
@@ -271,7 +271,7 @@ mod tests {
     }
 
     /// Drain waits on `active_table_count() == 0`. A seeded game with no stream subscribers is
-    /// "seats vacated" (DEPLOYMENT.md) — it must not block SIGTERM forever the way production
+    /// "seats vacated" (production-topology spec) — it must not block SIGTERM forever the way production
     /// Terminating pods did (ghost `active_tables` long after players left).
     #[test]
     fn abandoned_table_with_no_stream_subscribers_is_evicted_for_drain() {

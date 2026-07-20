@@ -6,7 +6,7 @@
 //! two paths cannot drift.
 //!
 //! Primary: CR 704 (SBA fixpoint), CR 603 (trigger enqueue / APNAP placement), CR 608
-//! (priority rounds emptying the stack). Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! (priority rounds emptying the stack). Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 

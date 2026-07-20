@@ -63,7 +63,7 @@ export function useActionSession(deps: ActionExecutionDeps): ActionSession {
     play(action, screen) {
       let x = screen?.x;
       let y = screen?.y;
-      // No drag drop — play-in from the hand slot (ADR 0033).
+      // No drag drop — play-in from the hand slot (client-game-board-and-interaction spec).
       if ((x == null || y == null) && action.object != null) {
         const slot = handCardScreenOrigin(action.object);
         if (slot) {

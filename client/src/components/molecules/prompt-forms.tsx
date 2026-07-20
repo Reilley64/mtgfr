@@ -758,7 +758,7 @@ export function ModePickPrompt(props: {
  * - `searchable` — autofocused name filter; also dedupes by face when `count === 1` (library
  *   tutors). Multi-pick searchable surfaces filter only, so two Forests stay distinct.
  *
- * Art is always `choiceItemPrint` → shared `CardArt` / ImageCache (ADR 0031). Pass `state` so an empty
+ * Art is always `choiceItemPrint` → shared `CardArt` / ImageCache (accounts-decks-and-catalog spec). Pass `state` so an empty
  * `item.print` can fall back to a visible object (rolling deploy); client-built items should set
  * `print` themselves. */
 export function CardPickPrompt(props: {

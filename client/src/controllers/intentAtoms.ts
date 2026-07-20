@@ -33,7 +33,7 @@ export const setYieldFn = Atom.fn((p: { enabled: boolean }) =>
     .pipe(Effect.match({ onSuccess: ackToReject, onFailure: failureToReject })),
 );
 
-/** Toggle turn yield (ADR 0029): auto-pass until this seat's turn / until they act. */
+/** Toggle turn yield (turn-priority-and-stack spec): auto-pass until this seat's turn / until they act. */
 export const setTurnYieldFn = Atom.fn((p: { enabled: boolean }) =>
   client
     .setTurnYield(tableId(), { enabled: p.enabled })

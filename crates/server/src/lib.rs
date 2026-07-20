@@ -2,7 +2,7 @@
 //! Game/auth/decks/cards live on the tonic gRPC server in [`grpc`].
 //!
 //! Single instance, so live-game fan-out is an in-process `tokio::broadcast` rather than Redis
-//! (see ADR 0005). State lives behind a `std::sync::Mutex` — `Game::submit` is synchronous and
+//! (see lobby-table-routing-and-live-game spec). State lives behind a `std::sync::Mutex` — `Game::submit` is synchronous and
 //! fast, and the lock is never held across an `.await`.
 
 use std::sync::atomic::AtomicBool;

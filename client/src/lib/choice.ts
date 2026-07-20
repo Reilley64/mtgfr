@@ -1,5 +1,5 @@
 // PendingChoice client module: answer packing + prompt chrome helpers.
-// Forms stay dumb — they collect AnswerInput; choiceIntent maps to WireIntent (ADR 0006).
+// Forms stay dumb — they collect AnswerInput; choiceIntent maps to WireIntent (wire-protocol-and-visibility spec).
 // Schema counterpart: `crates/schema/src/answer_protocol.rs` (`encode_answer`) — keep in sync.
 
 import * as Match from "effect/Match";

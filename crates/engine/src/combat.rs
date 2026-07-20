@@ -2,7 +2,7 @@
 //!
 //! Primary: CR 506–511 (combat phases/steps), CR 702 (evergreen combat keywords).
 //! Also: CR 701.38 (goad), CR 508.1g (attack costs / pillow-fort).
-//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`; layers (CR 613) per ADR 0003.
+//! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill); layers (CR 613) per engine-core-and-event-model spec.
 
 use crate::*;
 

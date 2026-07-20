@@ -2,7 +2,7 @@
 //!
 //! Primary: CR 603 (triggered abilities). Also: CR 603.6c/603.10 look-back, CR 603.3c no
 //! legal target, CR 603.7 delayed triggers. Numeric [`Amount`] evaluation lives in
-//! [`crate::amount`]. Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! [`crate::amount`]. Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 
@@ -583,7 +583,7 @@ impl Game {
                 } => {
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
                     // Vampiric Dragon's turn-scoped "a creature dealt damage by this creature
-                    // this turn dies" tally (fidelity backlog #194) — every creature-damage choke
+                    // this turn dies" tally (fidelity increment #194) — every creature-damage choke
                     // records here, combat or noncombat alike; read back at the death choke below.
                     self.damaged_this_turn.push((source, object));
                 }

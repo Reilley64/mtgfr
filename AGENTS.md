@@ -4,7 +4,7 @@ Project instructions for AI coding agents working in this repository.
 
 ## What this is
 
-A browser-based 4-player Commander (MTG) game for playing with friends. The **north star is to support *any* card, built faithfully** — no card is out of scope in principle. This is a design posture, not a completeness claim: ~493 card scripts exist today (`crates/cards/data/`), many with `approximates` / `# ponytail:` gaps, and the engine is not rules-complete. Grow the engine and DSL *from real cards* (ADR 0002), TDD, smallest-increment-first, and **flag-don't-force**: when a card needs something the DSL can't yet express, surface it in `docs/FIDELITY_BACKLOG.md` rather than contort the card. The five Secrets of Strixhaven (`soc`, 2026) Commander decks (~389 unique cards) are the **first faithful decks** — the current proving ground, not the terminal scope. See ADR 0014 (and ADR 0012 for the prior step), `.agents/skills/card-dsl/` for card authoring, `.agents/skills/fidelity-grind/` for the deck-to-faithful pipeline (Archidekt link in, fidelity report, grind waves, client catch-up, PR out), and `docs/FIDELITY_BACKLOG.md` for engine work remaining.
+A browser-based 4-player Commander (MTG) game for playing with friends. The **north star is to support *any* card, built faithfully** — no card is out of scope in principle. This is a design posture, not a completeness claim: ~493 card scripts exist today (`crates/cards/data/`), many with `approximates` / `# ponytail:` gaps, and the engine is not rules-complete. Grow the engine and DSL *from real cards*, TDD, smallest-increment-first, and **flag-don't-force**: when a card needs something the DSL can't yet express, surface it in that deck's `docs/fidelity/<slug>-increments.md` (via the `fidelity-grind` skill) rather than contort the card. The five Secrets of Strixhaven (`soc`, 2026) Commander decks (~389 unique cards) are the **first faithful decks** — the current proving ground, not the terminal scope. See [`docs/superpowers/specs/`](docs/superpowers/specs/) (especially card-dsl-and-card-pool), `.agents/skills/card-dsl/` for card authoring, and `.agents/skills/fidelity-grind/` for the deck-to-faithful pipeline (Archidekt link in, per-deck fidelity report + increments backlog, grind waves, client catch-up, PR out).
 
 ## Commands
 
@@ -31,7 +31,7 @@ just dev                        # tmux: bacon server + client vinxi
 
 ## Commits & releases
 
-Commits on `main`/`master` follow the [Angular commit message guidelines](https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md) (`feat:`, `fix:`, `build:`, `ci:`, `docs:`, `perf:`, `refactor:`, `test`, …; breaking changes via a `BREAKING CHANGE:` footer). [commitlint](https://github.com/conventional-changelog/commitlint) with `@commitlint/config-angular` enforces this on `commit-msg` (Husky). [semantic-release](https://semantic-release.org/) is the **only** writer of `v*` tags and GitHub Releases — do not create or push version tags by hand. Repo secret `RELEASE_TOKEN` (PAT with `contents` + `workflow`) is required so that tag push can trigger `docker.yml` (default `GITHUB_TOKEN` cannot cascade workflows). See [docs/prds/DEPLOYMENT.md](docs/prds/DEPLOYMENT.md).
+Commits on `main`/`master` follow the [Angular commit message guidelines](https://github.com/angular/angular/blob/main/contributing-docs/commit-message-guidelines.md) (`feat:`, `fix:`, `build:`, `ci:`, `docs:`, `perf:`, `refactor:`, `test`, …; breaking changes via a `BREAKING CHANGE:` footer). [commitlint](https://github.com/conventional-changelog/commitlint) with `@commitlint/config-angular` enforces this on `commit-msg` (Husky). [semantic-release](https://semantic-release.org/) is the **only** writer of `v*` tags and GitHub Releases — do not create or push version tags by hand. Repo secret `RELEASE_TOKEN` (PAT with `contents` + `workflow`) is required so that tag push can trigger `docker.yml` (default `GITHUB_TOKEN` cannot cascade workflows). See [production-topology-and-operations](docs/superpowers/specs/2026-07-20-production-topology-and-operations.md).
 
 **PRs are squash-merged.** The squash commit message on `main` is the **PR title** (plus `(#N)`), not the branch’s individual commits. semantic-release analyzes that squash line only — title PRs with `feat:` / `fix:` (or a `BREAKING CHANGE:` footer) when the merge should cut a release; `build:` / `ci:` / `docs:` / `refactor:` / `test:` / `style:` / `perf:` alone will verify green and skip a version bump.
 
@@ -39,15 +39,16 @@ Commits on `main`/`master` follow the [Angular commit message guidelines](https:
 
 - **Engine:** Pure Rust, deterministic, **sequential state machine** — the stack/priority model, *not* a game-loop. Runs authoritatively on the server.
 - **Event-sourced state:** every intent produces events; events mutate board facts. Priority/pass bookkeeping and pending choices are orchestration state in the submit path — preserve intent-replay determinism.
-- **Server:** tonic gRPC (game/auth/decks/catalog/seed) + Axum HTTP health only (ADR 0032). Live games are in-memory only (ADR 0021); Postgres `mtgfr` holds users, sessions, decks (ADR 0010). Pre-game lobby + `table_routes` live in SolidStart on Postgres `mtgfr_web` (Drizzle). BFF routes in-game by table id → pod DNS gRPC; seeds hit Service `edh-api` (newest instance only). API/web Deployments are Argo-owned; rolls drain on SIGTERM (ADR 0030). Server-side per-player visibility filtering is a hard rule (hands/libraries are private).
-- **Client:** SolidStart 1.3 (Vinxi, `ssr: false`) — hybrid canvas/WebGL board + thin DOM overlay; same-origin Effect RPC (`/api/rpc`) to the BFF, which dials tonic. **Camera transform** (single source of truth for pan/zoom) and **screen→world hit-testing** are foundations everything downstream assumes. Design tokens live in [`DESIGN.md`](DESIGN.md) / `client/src/global.css`.
-- **Client state is Effect-first, Solid-second (ADR 0019).** Async work — wire calls, streams, polling — goes through atoms (`effect/unstable/reactivity` + `@effect/atom-solid`); Solid signals/stores are the view layer. Keep `effect`, `@effect/atom-solid`, and `@effect/sql-pg` pinned to the same exact beta. BFF Drizzle uses `@effect/sql-pg` (pg-proxy).
-- **Observability:** self-hosted LGTM + Faro + OTEL (ADR 0034). Exporters no-op locally unless `OTEL_EXPORTER_OTLP_ENDPOINT` / Faro upstream is set; never put hand/library contents or intent payloads in telemetry.
-- **Card pool is data-driven scripts.** Let the scripting DSL grow from real cards — resist generalizing it prematurely.
-- **Wire types:** `.proto` is the sole contract (ADR 0032) → prost/tonic (`build.rs` → `OUT_DIR`) + Effect-gRPC clients (`just server-codegen` / `bun run gen` → gitignored `client/src/wire/generated/`). Run codegen after proto changes. See [docs/WIRE_COMPAT.md](docs/WIRE_COMPAT.md) for expand-only proto field rules.
+- **Server:** tonic gRPC (game/auth/decks/catalog/seed) + Axum HTTP health only. Live games are in-memory only; Postgres `mtgfr` holds users, sessions, decks. Pre-game lobby + `table_routes` live in SolidStart on Postgres `mtgfr_web` (Drizzle). BFF routes in-game by table id → pod DNS gRPC; seeds hit Service `edh-api` (newest instance only). API/web Deployments are Argo-owned; rolls drain on SIGTERM. Server-side per-player visibility filtering is a hard rule (hands/libraries are private). See [wire](docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md), [lobby/live-game](docs/superpowers/specs/2026-07-20-lobby-table-routing-and-live-game.md), [accounts/decks](docs/superpowers/specs/2026-07-20-accounts-decks-and-catalog.md).
+- **Client:** SolidStart 1.3 (Vinxi, `ssr: false`) — hybrid canvas/WebGL board + thin DOM overlay; same-origin Effect RPC (`/api/rpc`) to the BFF, which dials tonic. **Camera transform** (single source of truth for pan/zoom) and **screen→world hit-testing** are foundations everything downstream assumes. Design tokens live in [`DESIGN.md`](DESIGN.md) / `client/src/global.css`. See [client board](docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md) and [client shell](docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md).
+- **Client state is Effect-first, Solid-second.** Async work — wire calls, streams, polling — goes through atoms (`effect/unstable/reactivity` + `@effect/atom-solid`); Solid signals/stores are the view layer. Keep `effect`, `@effect/atom-solid`, and `@effect/sql-pg` pinned to the same exact beta. BFF Drizzle uses `@effect/sql-pg` (pg-proxy).
+- **Observability:** self-hosted LGTM + Faro + OTEL. Exporters no-op locally unless `OTEL_EXPORTER_OTLP_ENDPOINT` / Faro upstream is set; never put hand/library contents or intent payloads in telemetry. See [production topology](docs/superpowers/specs/2026-07-20-production-topology-and-operations.md).
+- **Card pool is data-driven scripts.** Let the scripting DSL grow from real cards — resist generalizing it prematurely. See [card-dsl-and-card-pool](docs/superpowers/specs/2026-07-20-card-dsl-and-card-pool.md).
+- **Wire types:** `.proto` is the sole contract → prost/tonic (`build.rs` → `OUT_DIR`) + Effect-gRPC clients (`just server-codegen` / `bun run gen` → gitignored `client/src/wire/generated/`). Run codegen after proto changes. See [docs/WIRE_COMPAT.md](docs/WIRE_COMPAT.md) and [wire-protocol-and-visibility](docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md).
 - **Routing:** Required identifiers belong in **path params** (server: Axum `Path`, client: Solid `:param` segments). **Query params are optional** — filters, paging, redirect targets (`?next=`), and preselection (`?deck=`). Never put a required resource id in a query string.
 - **Public crawl posture:** `client/public/robots.txt` disallows all crawlers; do not add sitemaps or marketing SEO without revisiting that choice.
 - **Engine CR lookup:** Start at [`docs/agent-navigation.md`](docs/agent-navigation.md) (module map, `docs/CR_INDEX.md`, regenerate with `just engine-cr-index` / agent hooks).
+- **Feature specs:** Start at [`docs/superpowers/specs/`](docs/superpowers/specs/) for module behavior (source of truth).
 - **Client canvas board:** Start at [`docs/client-canvas-map.md`](docs/client-canvas-map.md) (paint vs hits vs flights vs DOM overlays).
 
 Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic + health Axum) / `schema` (projection DTOs; mapped to/from native proto at the gRPC edge).
@@ -58,10 +59,21 @@ Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic 
 
 - **Readability and maintainability are the top priority**, above cleverness or brevity.
 - **Guard-return-first (early return) style.** Handle error/edge/invalid cases up front and `return` (or `?` / `continue`) immediately.
-- **TDD is the default workflow.** Use the `tdd` skill. The engine is testable via direct API calls with no UI or network.
-- **Every bug fix gets a regression test.** When you find a bug, add a test that fails on the broken behavior and passes with the fix — in the same change if you can. Place it at the lowest layer that catches the failure (engine unit test, schema projection test, client mapping test, HTTP integration test).
+- **TDD is the default workflow.** Use the `test-driven-development` skill (obra/superpowers). Red → green → review. The engine is testable via direct API calls with no UI or network.
+- **Every bug fix gets a regression test.** When you find a bug, add a test that fails on the broken behavior and passes with the fix — in the same change if you can. Place it at the lowest layer that catches the failure (engine unit test, schema projection test, client mapping test, HTTP integration test). Use `systematic-debugging` when the cause is unclear.
+- **Verify before claiming done.** Use `verification-before-completion` (and the project `verify` skill for live games).
 - **Keep the engine pure.** No I/O, no networking, no wall-clock or randomness that isn't injected.
 - **Use Magic terminology and semantics wherever possible.** The ubiquitous language lives in `CONTEXT.md`; keep code and glossary aligned. When rules and simplicity genuinely conflict, name the rule approximated in a `ponytail:` comment.
+
+## Agent skills
+
+Project skills: `card-dsl`, `fidelity-grind`, `verify`, `effect-ts`.
+
+Workflow skills from **obra/superpowers** (see `skills-lock.json`): `brainstorming`,
+`test-driven-development`, `systematic-debugging`, `verification-before-completion`,
+`requesting-code-review`, `writing-plans`, `executing-plans`, `subagent-driven-development`,
+`dispatching-parallel-agents`, `using-git-worktrees`, `finishing-a-development-branch`,
+`receiving-code-review`, `using-superpowers`, `writing-skills`.
 
 ## Cursor Cloud specific instructions
 

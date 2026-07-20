@@ -1,7 +1,7 @@
 //! Engine data types: cards, effects, events, intents, zones, and their helpers.
 //!
 //! Pure definitions and small pure helpers — no `Game` state. Moved out of `lib.rs`
-//! verbatim in the module split; see docs/adr.
+//! verbatim in the module split; see docs/superpowers/specs/.
 //!
 //! Cross-cutting CR glossary: individual [`Effect`] / [`Event`] / [`Intent`] /
 //! [`Keyword`] / [`PendingChoice`] variants cite the rules they model. Not owned by

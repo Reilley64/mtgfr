@@ -1107,7 +1107,7 @@ pub enum Effect {
         opponents_only: bool,
     },
     /// Put `count` +1/+1 counters on each of `targets`-many chosen target creatures. Permanent
-    /// (unlike a pump): each adds +1/+1 via the additive recompute (ADR 0003). The quantity is a
+    /// (unlike a pump): each adds +1/+1 via the additive recompute (engine-core-and-event-model spec). The quantity is a
     /// single replaceable step per target (CR 614) — see [`Game::counters_after_replacements`].
     /// `targets` is the same [`TargetCount`] multi-target surface as
     /// [`ReturnToHand`](Self::ReturnToHand)'s `count` (named differently here since `count`
@@ -1425,7 +1425,7 @@ pub enum Effect {
         attacking_context: Option<(PlayerId, PlayerId)>,
     },
     /// A static ability on an Aura/Equipment: while it is attached, its host creature gets
-    /// +power/+toughness and gains `keywords`. Read during recompute (ADR 0003 — `PtLayer` 7c
+    /// +power/+toughness and gains `keywords`. Read during recompute (engine-core-and-event-model spec — `PtLayer` 7c
     /// / keyword grants; full CR 613 still deferred), never resolved off the stack.
     GrantToAttached {
         #[cfg_attr(feature = "card-dsl", serde(default))]
@@ -1506,7 +1506,7 @@ pub enum Effect {
     },
     /// A static ability on an Aura: while it is attached, its host's *base* power/toughness
     /// becomes this fixed value (Darksteel Mutation's "base power and toughness 0/1"). Read
-    /// during recompute as a `PtLayer` 7b base-set (ADR 0003): the set base replaces the
+    /// during recompute as a `PtLayer` 7b base-set (engine-core-and-event-model spec): the set base replaces the
     /// printed base, then 7c counters/pumps/anthems still add on top. Never resolved off the stack.
     /// ponytail: last-applied would win under CR 613 layer 7b, but the pool never stacks two
     /// set-base effects on one creature, so a single override is enough — grow ordering from a
@@ -1546,7 +1546,7 @@ pub enum Effect {
     },
     /// A static ability on an Aura: while it is attached, its controller controls the host
     /// (a continuous control-changing effect, CR 720). Read by [`Game::controller_of`] as an
-    /// additive override of the base owner (ADR 0003 — no CR 613 layers), so control reverts
+    /// additive override of the base owner (engine-core-and-event-model spec — no CR 613 layers), so control reverts
     /// on its own when the Aura leaves. Never resolves off the stack.
     ControlAttached,
     /// A one-shot control change (CR 720): the ability's controller gains control of the

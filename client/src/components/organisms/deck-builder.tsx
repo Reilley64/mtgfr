@@ -4,7 +4,7 @@
 // enforced by the server on save; we surface its problems and mirror the obvious ones live.
 //
 // Card identity is the Scryfall oracle id (`CardDef.id` / `CatalogCard.id`); a Printing (Scryfall
-// card UUID) is art preference only (ADR 0031). `preferredPrint` is a sticky, session-local choice
+// card UUID) is art preference only (accounts-decks-and-catalog spec). `preferredPrint` is a sticky, session-local choice
 // per Card id — once you pick a printing for a card, adding it again reuses that choice.
 
 import { useAtom, useAtomSet, useAtomValue } from "@effect/atom-solid";

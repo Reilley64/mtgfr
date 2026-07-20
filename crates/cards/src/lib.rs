@@ -488,7 +488,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
     }
 
-    /// Battlefield art is print-UUID-only (ADR 0031). Every resolved `create_token` profile
+    /// Battlefield art is print-UUID-only (accounts-decks-and-catalog spec). Every resolved `create_token` profile
     /// must stamp `id` + `default_print` from `data/tokens/`.
     #[test]
     fn pool_token_profiles_carry_scryfall_art_ids() {

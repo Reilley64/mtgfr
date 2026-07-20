@@ -18,9 +18,10 @@ delete/trim their notes.
 
 ## The backlog (authoritative task source)
 
-`{{BACKLOG_FILE}}` (deck increments; engine-wide tiers stay in `docs/FIDELITY_BACKLOG.md`) — your brief names ONE increment by number and heading. Read
-that section; the *Sketch* line is the intended design. Verify "landed" claims against
-the code, not the prose.
+`{{BACKLOG_FILE}}` — the deck's `docs/fidelity/<slug>-increments.md`. That file is the
+**only** backlog for this grind (checklist gaps → ranked increments → per-card exotics).
+Your brief names ONE increment by number and heading. Read that section; the *Sketch* line
+is the intended design. Verify "landed" claims against the code, not the prose.
 
 ## Where things live
 
@@ -45,8 +46,9 @@ Fixed points:
 
 ## Non-negotiable constraints
 
-1. **TDD.** Failing engine test FIRST, then code. Use the `tdd` skill. Every bug you find
+1. **TDD.** Invoke the `test-driven-development` skill. Failing engine test FIRST, then code. Every bug you find
    and fix gets a regression test in the same change, at the lowest layer that catches it.
+   When a failure is mysterious, use `systematic-debugging` before patching.
 2. **Fidelity.** Use the `card-dsl` skill. Model behavior after the real CR; name
    types/tests after the real concept. Shortcuts get a `// ponytail:` comment naming the
    rule approximated and the upgrade path.

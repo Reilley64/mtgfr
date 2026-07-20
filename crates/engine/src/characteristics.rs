@@ -3,7 +3,7 @@
 //! Characteristic queries used across combat, SBAs, and cast gates.
 //! Also: CR 614 slices (counter replacements, enters-tapped). P/T is a CR 613-ordered layered
 //! recompute (`pt_layers`/`apply_pt_layers` — 7b base-set, 7c modifications); keywords/other
-//! characteristics stay additive per ADR 0003. Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! characteristics stay additive per engine-core-and-event-model spec. Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 
@@ -31,7 +31,7 @@ impl Game {
     /// Every live sourced modifier on a battlefield permanent, grouped by source card def name
     /// for the Alt-inspect ledger. Empty when `object` is not a battlefield permanent.
     /// Continuous effects are re-derived from the board; timed/stateful batches come from
-    /// [`Game::modifier_provenance`]. Additive attribution only — not CR 613 layers (ADR 0003).
+    /// [`Game::modifier_provenance`]. Additive attribution only — not CR 613 layers (engine-core-and-event-model spec).
     pub fn modifier_sources(&self, object: ObjectId) -> Vec<ModifierSourceGroup> {
         if self.as_permanent(object).is_none() {
             return Vec::new();
@@ -312,7 +312,7 @@ impl Game {
 
     /// Whether `object` currently has `keyword`: its base keywords ∪ keywords granted by
     /// Auras/Equipment attached to it ∪ any until-end-of-turn keyword grant ∪ a matching
-    /// static anthem's keyword grant (ADR 0003 — effective keywords are a computed union).
+    /// static anthem's keyword grant (engine-core-and-event-model spec — effective keywords are a computed union).
     pub fn has_keyword(&self, object: ObjectId, keyword: Keyword) -> bool {
         self.effective_keywords(object).contains(&keyword)
     }
@@ -1673,7 +1673,7 @@ impl Game {
     /// Total generic cost reduction `player`'s static [`Effect::ReduceSpellCost`] abilities grant
     /// to a spell they're casting (`def`, aimed at `target`): the sum of every matching reducer
     /// they control (CR 118.9 — reduces generic mana only, so the caller floors generic at 0).
-    /// Pure recompute each cast — nothing is stored (ADR 0003, applied to cost).
+    /// Pure recompute each cast — nothing is stored (engine-core-and-event-model spec, applied to cost).
     pub(crate) fn cost_reduction(
         &self,
         player: PlayerId,

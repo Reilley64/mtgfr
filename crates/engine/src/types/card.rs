@@ -401,7 +401,7 @@ pub struct Ability {
     /// non-free `cost`, a pay-or-decline) choice before it goes on the stack. An accepted
     /// optional trigger that targets then pauses to choose its target (Sun Titan).
     /// ponytail: only single optional triggers are wired; an optional trigger that is *also* one
-    /// of a several-ability simultaneous group grows from a real card (see ADR 0006). (CR 603, CR 601.2c, CR 405)
+    /// of a several-ability simultaneous group grows from a real card (see wire-protocol-and-visibility spec). (CR 603, CR 601.2c, CR 405)
     pub optional: bool,
     /// The cost to accept an `optional` ability (`Cost::FREE` = a plain "may").
     pub cost: Cost,
@@ -422,7 +422,7 @@ pub struct Ability {
 /// straight from a card's TOML file — the `cards` crate loads the pool this way.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardDef {
-    /// Scryfall oracle id — canonical Card identity (ADR 0031). Empty for test stubs; tokens
+    /// Scryfall oracle id — canonical Card identity (accounts-decks-and-catalog spec). Empty for test stubs; tokens
     /// that have a Scryfall token card stamp theirs so battlefield art resolves.
     pub id: &'static str,
     /// Scryfall card UUID for the Card's default Printing (art). Empty for test stubs; tokens

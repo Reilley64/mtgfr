@@ -5,7 +5,7 @@
 //! player may not legally see (a drawn card's identity is private to its owner).
 //! Redaction lives here, never in the engine — the engine stays audience-unaware.
 //!
-//! `.proto` is the sole wire contract (ADR 0032 / `docs/WIRE_COMPAT.md`): these types are the
+//! `.proto` is the sole wire contract (wire-protocol-and-visibility spec / `docs/WIRE_COMPAT.md`): these types are the
 //! projection / visibility model. The gRPC edge maps them field-by-field onto native protobuf
 //! messages (`crates/server/src/grpc`); the client's TypeScript mirrors the same shapes by hand
 //! (`client/src/wire/types.ts`). They are **not** serialized as JSON inside a proto string.

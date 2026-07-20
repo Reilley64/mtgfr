@@ -2,7 +2,7 @@
 //!
 //! Live [`crate::Table`] values live in [`crate::table`]. The pre-game lobby (claiming seats,
 //! picking decks, readying up) lives entirely in the SolidStart BFF's own store
-//! (`mtgfr_web` Postgres, Drizzle) — see `docs/prds` for the split. A table is born already
+//! (`mtgfr_web` Postgres, Drizzle) — see lobby/live-game + accounts/decks specs for the split. A table is born already
 //! seeded: the BFF calls `Tables.Seed` once, handing over the host and ordered seats (each
 //! with its resolved deck); [`seed_game`] builds the running game.
 

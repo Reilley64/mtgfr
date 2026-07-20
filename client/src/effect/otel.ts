@@ -1,4 +1,4 @@
-// BFF OpenTelemetry — process-scoped `@effect/opentelemetry` (ADR 0034).
+// BFF OpenTelemetry — process-scoped `@effect/opentelemetry` (production-topology-and-operations spec).
 //
 // Architecture ([Effect tracing](https://effect.website/docs/observability/tracing) +
 // `OtelTracer.withSpanContext`):

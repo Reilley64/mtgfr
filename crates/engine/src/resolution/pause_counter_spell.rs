@@ -1,6 +1,6 @@
 //! Counter-spell destination / unless-pays pause (and forced-bottom) family.
 //!
-//! Behind [`Game::run`] (ADR 0002 deepen). Pause bookkeeping stays in [`crate::pending`].
+//! Behind [`Game::run`] (card-dsl-and-card-pool spec deepen). Pause bookkeeping stays in [`crate::pending`].
 
 use crate::*;
 

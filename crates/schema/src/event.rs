@@ -14,7 +14,7 @@ use crate::intent::WireTarget;
 /// A batch of already-redacted events for one viewer plus the viewer's full render state
 /// after they were applied. The `events` drive the game log / stack panel / combat highlights
 /// (folded client-side); `state` is the board the client renders. Carrying both makes each
-/// delta self-sufficient — the client never re-fetches a snapshot mid-stream (see ADR 0006).
+/// delta self-sufficient — the client never re-fetches a snapshot mid-stream (see wire-protocol-and-visibility spec).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeltaEnvelope {
     pub seq: u64,
@@ -521,7 +521,7 @@ pub enum VisibleEvent {
     TokenCreated {
         token: ObjectId,
         controller: u8,
-        /// Resolving stack object or ability source (ADR 0033). Absent on older peers.
+        /// Resolving stack object or ability source (client-game-board-and-interaction spec). Absent on older peers.
         creator: Option<ObjectId>,
     },
     TokenCeasedToExist {

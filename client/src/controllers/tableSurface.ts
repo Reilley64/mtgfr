@@ -30,7 +30,7 @@ export { seedEntrances } from "~/controllers/tableEntrances";
 
 export type Vec = { x: number; y: number };
 
-/** Touch hold duration before a permanent cluster fans (ADR 0028). */
+/** Touch hold duration before a permanent cluster fans (client-game-board-and-interaction spec). */
 export const CLUSTER_LONG_PRESS_MS = 400;
 
 export type PointerCtx = {

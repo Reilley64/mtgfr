@@ -1,9 +1,9 @@
 # Wire backwards compatibility
 
 Durable rules for the proto / gRPC wire contract during a rolling deploy. See
-[ADR 0030](adr/0030-table-instance-affinity-for-drain-rolls.md),
-[ADR 0032](adr/0032-effect-rpc-and-grpc-proto-wire.md), and
-[ADR 0021](adr/0021-live-games-in-memory-only.md).
+[wire-protocol-and-visibility](superpowers/specs/2026-07-20-wire-protocol-and-visibility.md),
+[lobby-table-routing-and-live-game](superpowers/specs/2026-07-20-lobby-table-routing-and-live-game.md),
+[production-topology-and-operations](superpowers/specs/2026-07-20-production-topology-and-operations.md).
 
 ## Why this exists
 
@@ -14,7 +14,7 @@ talk to older pods via BFF `table_routes` → pod DNS on the headless Service.
 So every concurrent instance version must speak a wire protocol the current SPA/BFF can parse —
 **expand-only** across the whole set until grace expires / pods exit.
 
-## Transport migration (ADR 0032)
+## Transport migration (wire-protocol-and-visibility spec)
 
 The OpenAPI/REST/SSE → Effect RPC + gRPC cutover is a **hard cut**: API and web ship together.
 No N/N−1 coexistence between REST and gRPC is required for that release. In-flight tables may

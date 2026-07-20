@@ -1,6 +1,6 @@
 // Pre-submit cost / modal / X / staged-pick chrome for ActionSession.
 // Binds directly to ActionExecution — no wide ActionChromeModel bag at the seam.
-// Engine PendingChoice stays on PromptHost — dual stacks by design (ADR 0006 / 0022).
+// Engine PendingChoice stays on PromptHost — dual stacks by design (wire-protocol-and-visibility spec / choices-actions-and-resolution spec).
 
 import { createMemo, type JSX, Show } from "solid-js";
 import { CardPickPrompt, ModePickPrompt, TargetPickPrompt } from "~/components/molecules/prompt-forms";

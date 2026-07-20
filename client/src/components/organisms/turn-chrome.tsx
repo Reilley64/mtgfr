@@ -24,7 +24,7 @@ export function TurnBanner(props: { me: number; state: VisibleState }) {
     return band && band.steps.length > 1 && band.name !== name ? name : null;
   };
 
-  // Attention cues: your-turn wins when both flip in the same update (ADR 0036).
+  // Attention cues: your-turn wins when both flip in the same update (client-game-board-and-interaction spec).
   // Skip watchers and eliminated seats — they cannot hold priority.
   createEffect((prev: { turn: boolean; priority: boolean } | undefined) => {
     const viewer = s().viewer;

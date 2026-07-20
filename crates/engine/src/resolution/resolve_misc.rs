@@ -1,5 +1,5 @@
 //! Misc resolution choreography that needs `&mut self` — the pause-free "one-off" arms
-//! peeled out of [`Game::run`] (ADR 0002 deepen). Pure event mint for these effect variants
+//! peeled out of [`Game::run`] (card-dsl-and-card-pool spec deepen). Pure event mint for these effect variants
 //! lives in [`crate::resolution::misc`]; this module is the choreography twin, calling into
 //! game state directly (RNG, snapshotted resolution-frame reads, arm-armed runtime flags,
 //! per-player fan-outs) rather than through the pure `mint_*` families.

@@ -1,4 +1,4 @@
-//! Compiles `proto/mtgfr/v1/mtgfr.proto` (ADR 0032) into server stubs plus an encoded file
+//! Compiles `proto/mtgfr/v1/mtgfr.proto` (wire-protocol-and-visibility spec) into server stubs plus an encoded file
 //! descriptor set, so `crates/server/src/grpc` has both the generated types/traits and (for a
 //! future reflection service) the wire's self-description.
 

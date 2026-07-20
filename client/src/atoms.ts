@@ -1,4 +1,4 @@
-// Shared atoms per ADR 0019: screens consume these via `@effect/atom-solid` hooks.
+// Shared atoms per client-shell-deck-builder-and-observability spec: screens consume these via `@effect/atom-solid` hooks.
 // Screen-local atoms live in their own component files, not here.
 
 import * as Effect from "effect/Effect";

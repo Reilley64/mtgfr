@@ -1,4 +1,4 @@
-//! Live Table chrome (ADR 0007 / 0026 / 0027 / 0029 / 0037): intent submission, yield / dwell,
+//! Live Table chrome (turn-priority-and-stack spec / turn-priority-and-stack spec / 0029 / 0037): intent submission, yield / dwell,
 //! auto-advance, stack-hold scheduling, and delta packaging. Chrome knobs live on
 //! [`crate::chrome::ChromeState`]; only [`TableSession`] mutates them. gRPC adapters call the
 //! chrome verbs and get [`ApplyResult`] / [`DwellResult`] — [`Disposition`] stays crate-private
@@ -24,7 +24,7 @@ pub const STACK_HOLD_DWELL_EXTRA: std::time::Duration = std::time::Duration::fro
 /// `complete_visible` for its viewer) — no re-lock, no race.
 ///
 /// ponytail: clones the whole `Game` per intent — trivial at this scale; if it ever shows in a
-/// profile, carry a canonical full-info snapshot struct instead (see ADR 0006).
+/// profile, carry a canonical full-info snapshot struct instead (see wire-protocol-and-visibility spec).
 /// ponytail: `yielded` is stamped per-viewer via `complete_visible` + `ViewExtras` in
 /// `stream::frame_for` / the opening snapshot — can't stamp once at publish without knowing
 /// every viewer.
@@ -107,7 +107,7 @@ impl<'a> TableSession<'a> {
     /// Stamp this seat's "don't care about this stack" flag and drive auto-advance. Enabling may
     /// unstick the game immediately — the yielder might be the player everyone is waiting on —
     /// so this broadcasts like any intent (including when the flag didn't change).
-    /// One-shot arm only (ADR 0027): `enabled: false` is rejected — no chrome/API cancel.
+    /// One-shot arm only (turn-priority-and-stack spec): `enabled: false` is rejected — no chrome/API cancel.
     pub fn set_yield(&mut self, seat: PlayerId, enabled: bool) -> (ApplyResult, Disposition) {
         if !enabled {
             return (
@@ -119,7 +119,7 @@ impl<'a> TableSession<'a> {
         self.drive(None, false)
     }
 
-    /// Stamp this seat's turn yield (ADR 0029) and drive auto-advance.
+    /// Stamp this seat's turn yield (turn-priority-and-stack spec) and drive auto-advance.
     pub fn set_turn_yield(&mut self, seat: PlayerId, enabled: bool) -> (ApplyResult, Disposition) {
         self.table
             .chrome
@@ -127,7 +127,7 @@ impl<'a> TableSession<'a> {
         self.drive(None, false)
     }
 
-    /// Helpless-reader hover on the stack during a hold (ADR 0026). Hold-tick only: never bumps
+    /// Helpless-reader hover on the stack during a hold (turn-priority-and-stack spec). Hold-tick only: never bumps
     /// game `seq`, never returns a [`Disposition`]. Seats that still have a meaningful action
     /// are rejected with `NotHelpless`.
     pub fn set_dwell(&mut self, seat: PlayerId, dwelling: bool) -> DwellResult {
@@ -164,7 +164,7 @@ impl<'a> TableSession<'a> {
     }
 
     /// Shared submit / yield-drive path: optional intent → auto-advance → broadcast.
-    /// `clear_turn_yield_on_intent` is true for player-initiated HTTP intents (ADR 0029).
+    /// `clear_turn_yield_on_intent` is true for player-initiated HTTP intents (turn-priority-and-stack spec).
     fn drive(
         &mut self,
         intent: Option<Intent>,
@@ -186,11 +186,11 @@ impl<'a> TableSession<'a> {
                     let substantive = !matches!(intent, Intent::PassPriority { .. });
                     let more = game.submit(intent)?;
                     // Untap / being-attacked may appear on the player intent itself — clear
-                    // before auto_advance (ADR 0029).
+                    // before auto_advance (turn-priority-and-stack spec).
                     clear_turn_yields_from_events(turn_yields, &more);
                     if clear_turn_yield_on_intent {
                         turn_yields[player.0 as usize] = false;
-                        // Arena End Turn (ADR 0037): another player's cast/activate cancels the
+                        // Arena End Turn (turn-priority-and-stack spec): another player's cast/activate cancels the
                         // active seat's end-turn yield so they can respond.
                         if substantive {
                             let active = game.active_player();
@@ -433,7 +433,7 @@ fn auto_advance(
             match game.submit(intent) {
                 Ok(more) => {
                     // Clear turn yield as soon as Untap begins or this seat is attacked —
-                    // before the next skip check (ADR 0029). Must not wait until after the
+                    // before the next skip check (turn-priority-and-stack spec). Must not wait until after the
                     // whole auto_advance loop.
                     clear_turn_yields_from_events(turn_yields, &more);
                     events.extend(more);
@@ -448,8 +448,8 @@ fn auto_advance(
         // window) so has_meaningful_action already stops them when they can respond;
         // helpless defenders auto-pass through to blockers.
         //
-        // Arena End Turn (ADR 0037): while the active seat has turn yield armed, other seats
-        // with empty-stack instant-speed plays still receive priority windows — ADR 0007 would
+        // Arena End Turn (turn-priority-and-stack spec): while the active seat has turn yield armed, other seats
+        // with empty-stack instant-speed plays still receive priority windows — turn-priority-and-stack spec would
         // otherwise skip them and opponents could never respond during an end-turn walk.
         let active = game.active_player();
         let end_turn = turn_yields[active.0 as usize];
@@ -458,7 +458,7 @@ fn auto_advance(
             && game.stack_is_empty()
             && game.has_empty_stack_instant_play(holder);
         let skip = yields[holder.0 as usize]
-            // End Turn response windows override the responder's until-my-turn (ADR 0037).
+            // End Turn response windows override the responder's until-my-turn (turn-priority-and-stack spec).
             || (turn_yields[holder.0 as usize] && !can_respond)
             || (!game.has_meaningful_action(holder) && !can_respond);
         if !skip {
@@ -484,7 +484,7 @@ fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) 
     use engine::Step;
     for e in events {
         match e {
-            // ADR 0037: End Turn ends with the turn. Clear on Cleanup itself so a discard-to-
+            // turn-priority-and-stack spec: End Turn ends with the turn. Clear on Cleanup itself so a discard-to-
             // hand-size pause (Untap deferred to a later batch) cannot leave the flag armed.
             Event::StepBegan {
                 step: Step::Cleanup,
@@ -492,7 +492,7 @@ fn clear_turn_yields_from_events(turn_yields: &mut [bool; 4], events: &[Event]) 
             } => {
                 turn_yields[active_player.0 as usize] = false;
             }
-            // ADR 0029: your own turn starts — stop yielding through it.
+            // turn-priority-and-stack spec: your own turn starts — stop yielding through it.
             Event::StepBegan {
                 step: Step::Untap,
                 active_player,
@@ -1291,7 +1291,7 @@ mod tests {
         );
     }
 
-    /// Arena End Turn (ADR 0037): active player arms turn yield → auto-pass through remaining
+    /// Arena End Turn (turn-priority-and-stack spec): active player arms turn yield → auto-pass through remaining
     /// steps until the next player's turn, while opponents still receive priority windows.
     #[test]
     fn end_turn_advances_to_next_player_through_phase_windows() {

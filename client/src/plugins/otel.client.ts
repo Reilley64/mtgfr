@@ -1,4 +1,4 @@
-// Auto-discovered client plugin — Faro RUM + OTEL tracing (ADR 0034).
+// Auto-discovered client plugin — Faro RUM + OTEL tracing (production-topology-and-operations spec).
 
 import { getWebInstrumentations, initializeFaro } from "@grafana/faro-web-sdk";
 import { TracingInstrumentation } from "@grafana/faro-web-tracing";

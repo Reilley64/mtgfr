@@ -1,7 +1,7 @@
 //! Memoized effective characteristics for battlefield objects.
 //!
 //! Cache for [`characteristics`](crate::characteristics) — no CR chapter of its own.
-//! Invalidated on relevant [`Event`]s. ADR 0003 additive recompute, not CR 613 layers.
+//! Invalidated on relevant [`Event`]s. engine-core-and-event-model spec additive recompute, not CR 613 layers.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use crate::*;
 
 /// Cached effective power/toughness/keywords per battlefield object, invalidated by
-/// [`Game::invalidate_characteristics_cache`] when relevant [`Event`]s apply (ADR 0003 —
+/// [`Game::invalidate_characteristics_cache`] when relevant [`Event`]s apply (engine-core-and-event-model spec —
 /// additive recompute, not CR 613 layers).
 #[derive(Clone, Default)]
 pub(crate) struct CharacteristicsCache {

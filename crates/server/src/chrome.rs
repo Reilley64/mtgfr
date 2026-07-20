@@ -1,4 +1,4 @@
-//! Live-table priority chrome (ADR 0007 / 0026 / 0027 / 0029): yields, stack hold, and dwell.
+//! Live-table priority chrome (turn-priority-and-stack spec / turn-priority-and-stack spec / 0029): yields, stack hold, and dwell.
 //!
 //! Owned by [`crate::Table`] as `chrome`; mutate only via [`crate::session::TableSession`]
 //! (or the `pub(crate)` accessors below used by the hold timer). gRPC adapters never poke chrome.
@@ -9,7 +9,7 @@ pub struct ChromeState {
     /// Per-seat "don't care" yields: a yielded seat is auto-passed while the stack is
     /// non-empty. Cleared whenever the stack empties.
     yields: [bool; 4],
-    /// Per-seat turn yield (ADR 0029 / 0037): auto-pass until that seat's turn / until they act,
+    /// Per-seat turn yield (turn-priority-and-stack spec): auto-pass until that seat's turn / until they act,
     /// or End Turn while they are active.
     turn_yields: [bool; 4],
     /// Active stack-hold (uncontested resolve pause): seq + when the hold started

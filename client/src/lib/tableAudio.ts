@@ -1,4 +1,4 @@
-// Sparse table audio (ADR 0036): synthesized attention + table-feel cues.
+// Sparse table audio (client-game-board-and-interaction spec): synthesized attention + table-feel cues.
 // Unlock at lobby Ready up (user gesture); play later without a fresh activation.
 
 export const SOUND_PREF_KEY = "mtgfr.sound";

@@ -20,7 +20,7 @@ The public origin ships `robots.txt` that disallows crawlers; this is a friends 
 | API | tonic gRPC (game / auth / decks / catalog / seed) + Axum `/health/*` only |
 | BFF / client | SolidStart 1.3 (Vinxi, `ssr: false`); lobby + `table_routes` on Postgres `mtgfr_web` (Drizzle); canvas/WebGL board + thin DOM overlay |
 | Durable data | Postgres `mtgfr` (users, sessions, decks); `mtgfr_web` (lobbies, table→pod routes) |
-| Deploy | k3s + Cloudflare Tunnel; Argo-owned API/web rolls with SIGTERM drain (ADR 0030) |
+| Deploy | k3s + Cloudflare Tunnel; Argo-owned API/web rolls with SIGTERM drain |
 
 Live games stay **in memory per API process**. Concurrent pods pin each table via BFF `table_routes` → pod DNS. Hands and libraries are filtered server-side — private info never leaves for the wrong seat.
 
@@ -48,9 +48,8 @@ just --list
 
 - [`CONTEXT.md`](CONTEXT.md) — Magic / domain glossary used in the code
 - [`PRODUCT.md`](PRODUCT.md) / [`DESIGN.md`](DESIGN.md) — product intent and design system
-- [`docs/FIDELITY_BACKLOG.md`](docs/FIDELITY_BACKLOG.md) — engine work still needed for faithful cards
-- [`docs/adr/`](docs/adr/) — architectural decisions
-- [`docs/prds/DEPLOYMENT.md`](docs/prds/DEPLOYMENT.md) — production deploy (k3s + Cloudflare Tunnel + releases)
+- [`docs/superpowers/specs/`](docs/superpowers/specs/) — feature specs for existing modules (source of truth)
+- [`docs/fidelity/`](docs/fidelity/) — per-deck fidelity reports and increments backlogs (created by `fidelity-grind`)
 - [`docs/WIRE_COMPAT.md`](docs/WIRE_COMPAT.md) — expand-only proto rules across drain rolls
 - [`docs/README.md`](docs/README.md) — full docs index
 

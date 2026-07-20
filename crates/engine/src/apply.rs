@@ -2,7 +2,7 @@
 //!
 //! Primary: CR 704 (state-based actions). Also the apply path that mutates board facts
 //! from [`Event`]s after each intent.
-//! Deferred / gaps: see `docs/FIDELITY_BACKLOG.md`.
+//! Deferred / gaps: per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 

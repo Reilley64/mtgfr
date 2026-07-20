@@ -1,7 +1,7 @@
 //! Spell/ability copy choreography — CR 706 / 707 / 114.6 (copying spells, copying
 //! abilities, changing targets, minting free copies of exiled cards).
 //!
-//! Peeled out of [`Game::run`] (ADR 0002 deepen). Each `run_copy` arm needs `&mut self`
+//! Peeled out of [`Game::run`] (card-dsl-and-card-pool spec deepen). Each `run_copy` arm needs `&mut self`
 //! either to mint a new stack object ([`Effect::CopyTargetSpell`], `CopyThisSpell`),
 //! reuse [`Self::mint_spell_copies`] behind [`Effect::RetargetSpellCopy`]'s pause queue,
 //! or pause on a retarget/pay-cost choice ([`Effect::MayPayToCopyThis`],

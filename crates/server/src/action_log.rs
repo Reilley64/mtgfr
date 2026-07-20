@@ -2,7 +2,7 @@
 //!
 //! One TOON-tabular file per table under `{ACTION_LOG_DIR}/actions.<table_id>.toon` (default
 //! `./logs/` locally, `/logs` in the cluster): header once, then one indented row per submitted
-//! intent (accepted or rejected). Independent of DB persistence (ADR 0021) — live games stay
+//! intent (accepted or rejected). Independent of DB persistence (lobby-table-routing-and-live-game spec) — live games stay
 //! in-memory; these files are a local diagnostic only.
 //!
 //! ponytail: traces still hold full hidden info (Debug-formatted `CardDef`s) under the log dir

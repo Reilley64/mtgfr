@@ -1,7 +1,7 @@
 //! Test/setup object minting and commander tax helpers.
 //!
 //! Seeded objects for tests and lobby setup; commander tax (CR 903). Deferred / gaps:
-//! see `docs/FIDELITY_BACKLOG.md`.
+//! see per-deck increments under `docs/fidelity/` (fidelity-grind skill).
 
 use crate::*;
 

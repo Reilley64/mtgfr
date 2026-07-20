@@ -38,7 +38,7 @@ export function StackOverlay(props: {
   stagedReturn: { dx: number; dy: number } | null;
   /** Pile shows the staged ghost only while arrow aiming (suspended in expand/full). */
   showPileStaged: boolean;
-  /** Ids owned by canvas flight — hide resting stack faces until settle (ADR 0035). */
+  /** Ids owned by canvas flight — hide resting stack faces until settle (client-game-board-and-interaction spec). */
   hideFaceIds: ReadonlySet<number>;
   /** From shared boardChrome — do not recompute with a divergent staged/mana policy. */
   allowDwell: boolean;

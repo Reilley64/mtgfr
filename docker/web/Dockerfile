@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# mtgfr-web — SolidStart (Vinxi/Nitro) BFF on distroless Node (DEPLOYMENT.md).
+# mtgfr-web — SolidStart (Vinxi/Nitro) BFF on distroless Node (see production-topology spec).
 
 FROM oven/bun:1 AS deps
 WORKDIR /client

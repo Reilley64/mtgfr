@@ -1,6 +1,6 @@
 // The priority-watch shame clock: how long the current priority holder has been dawdling, and how
 // loudly to say so. Split out of Board.tsx so the escalation is testable — the tick sleeps on the
-// Effect Clock (a schedule, hence Effect's; ADR 0019), not on `setInterval` + `Date.now()`.
+// Effect Clock (a schedule, hence Effect's; client-shell-deck-builder-and-observability spec), not on `setInterval` + `Date.now()`.
 
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";

@@ -2787,7 +2787,7 @@ pub enum Reject {
     UnknownAction,
 }
 
-/// One *meaningful action* — a play worth stopping priority for (ADR 0007). Enumerated by
+/// One *meaningful action* — a play worth stopping priority for (turn-priority-and-stack spec). Enumerated by
 /// [`Game::meaningful_actions`]; see it for the deliberate scoping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MeaningfulAction {

@@ -1,6 +1,6 @@
 //! Answer protocol: PendingChoiceView + raw answer → WireIntent.
 //!
-//! Structural packing only — engine validates legality (ADR 0004).
+//! Structural packing only — engine validates legality (choices-actions-and-resolution spec).
 //! Client `choiceIntent` is the TypeScript adapter of the same mapping.
 
 use crate::ObjectId;

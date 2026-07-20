@@ -2,7 +2,7 @@
 //!
 //! Pure mint stays behind [`Game::execute_effect`]; [`Game::resolve_destroy_all`] /
 //! [`Game::resolve_exile_all`] own mint → ResolutionFrame snapshot → apply so
-//! [`Game::run`] stays a thin dispatcher (ADR 0002 deepen).
+//! [`Game::run`] stays a thin dispatcher (card-dsl-and-card-pool spec deepen).
 
 use crate::*;
 

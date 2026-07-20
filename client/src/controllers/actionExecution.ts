@@ -231,7 +231,7 @@ export interface ActionExecutionDeps {
   size: Accessor<Vec>;
   handBarH: number;
   setReject: (msg: string | null) => void;
-  /** Record play-in origin and spawn canvas flight (ADR 0035). */
+  /** Record play-in origin and spawn canvas flight (client-game-board-and-interaction spec). */
   seedDrop: (cardId: number, world: Vec, screen: Vec, flight: "battlefield" | "stack") => void;
   clearPlayOrigin: (cardId: number) => void;
   onHintUsed: () => void;
@@ -243,7 +243,7 @@ export type ActionExecution = ReturnType<typeof useActionExecution>;
 /** Staged targeting, modal casts, cost picks, and take_action submission. */
 export function useActionExecution(deps: ActionExecutionDeps) {
   const [staged, setStaged] = createSignal<StagedAction | null>(null);
-  /** Staged card flying back to hand after cancel (ADR 0033). */
+  /** Staged card flying back to hand after cancel (client-game-board-and-interaction spec). */
   const [returningStaged, setReturningStaged] = createSignal<StagedAction | null>(null);
   let returnTimer: ReturnType<typeof setTimeout> | null = null;
   const [xPrompt, setXPrompt] = createSignal<{ name: string; submit: (x: number) => void } | null>(null);
@@ -296,7 +296,7 @@ export function useActionExecution(deps: ActionExecutionDeps) {
     await deps.act(buildTakeActionIntent(deps.me(), action.id, target, x ?? 0, modes, picks));
   };
 
-  /** Commander recast from the command-zone card on the canvas — routed through take_action (ADR 0020). */
+  /** Commander recast from the command-zone card on the canvas — routed through take_action (choices-actions-and-resolution spec). */
   const castFromCommandZone = async (card: ObjectView, target: WireTarget | null, x?: number) => {
     const action = findCastActionForObject(deps.getState()?.actions, card.id);
     if (!action) {
@@ -357,7 +357,7 @@ export function useActionExecution(deps: ActionExecutionDeps) {
   };
 
   const objectName = (id: number): string => deps.getState()?.objects.find((o) => o.id === id)?.name ?? `#${id}`;
-  // Printing UUID for a target's art (ADR 0031); empty renders a broken image.
+  // Printing UUID for a target's art (accounts-decks-and-catalog spec); empty renders a broken image.
   const objectPrint = (id: number): string => deps.getState()?.objects.find((o) => o.id === id)?.print ?? "";
 
   const runAction = (
