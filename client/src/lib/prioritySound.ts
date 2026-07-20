@@ -1,5 +1,6 @@
-// Soft chime when priority arrives. Synthesized via Web Audio so we don't ship a binary asset;
-// browsers gate AudioContext behind a user gesture — `resume()` after the first click/tap unlocks it.
+// Soft chime when priority arrives. Synthesized via Web Audio so we don't ship a binary asset.
+// Browsers gate AudioContext behind a user gesture — unlock at lobby Ready up, then play later
+// from the priority transition effect without needing a fresh activation.
 
 let sharedCtx: AudioContext | null = null;
 
@@ -39,13 +40,19 @@ function chime(ac: AudioContext): void {
   tone(ac, 659.25, t + 0.1, 0.18, 0.07);
 }
 
-/** Two soft notes (C5 → E5). No-ops when AudioContext is unavailable or still locked. */
-export function playPrioritySound(): void {
+/** Call from a user gesture (lobby Ready up). Creates + resumes the shared context. */
+export function unlockPriorityAudio(): void {
   const ac = audioContext();
   if (!ac) return;
-  if (ac.state === "running") {
-    chime(ac);
-    return;
-  }
-  void ac.resume().then(() => chime(ac));
+  if (ac.state === "running") return;
+  void ac.resume().catch(() => {
+    // Closed / autoplay-blocked — play will no-op until another gesture unlocks.
+  });
+}
+
+/** Two soft notes (C5 → E5). Silent when AudioContext is missing or still locked. */
+export function playPrioritySound(): void {
+  const ac = audioContext();
+  if (!ac || ac.state !== "running") return;
+  chime(ac);
 }
