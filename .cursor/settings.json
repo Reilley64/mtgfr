@@ -8,6 +8,9 @@
     },
     "grafana-assistant": {
       "enabled": true
+    },
+    "superpowers": {
+      "enabled": true
     }
   }
 }
