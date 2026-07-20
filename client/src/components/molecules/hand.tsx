@@ -34,18 +34,17 @@ export const HAND_CARD_OVERLAP = HAND_CARD_W - HAND_CARD_PEEK;
 export const HAND_STRIP_H = 88;
 const HAND_CARD_H = Math.round(HAND_CARD_W / 0.716);
 
-/** MTGA-style fan for a card row: tilt grows linearly with distance from the row's center and
- * the card sinks quadratically, tracing a slight arc. A single card sits flat. */
+/** MTGA-style fan: slight tilt + edges lift (not sink) so the clipped strip stays above the dock. */
 function fanTransform(index: number, count: number): string {
   const off = index - (count - 1) / 2;
   const angle = Math.max(-10, Math.min(10, off * 2.5));
-  const drop = Math.min(22, off * off * 1.8);
-  return `rotate(${angle}deg) translateY(${drop}px)`;
+  const lift = Math.min(14, off * off * 1.2);
+  return `rotate(${angle}deg) translateY(${-lift}px)`;
 }
 
 /** Height of the bottom action bar; the Board uses it to place the play threshold.
  * Sized to the clipped strip so fitCamera keeps more viewport on the battlefield. */
-export const HAND_BAR_H = HAND_STRIP_H + 16;
+export const HAND_BAR_H = HAND_STRIP_H + 24;
 
 const CARD_FACE = cn("block w-[112px] rounded-game");
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
@@ -234,14 +233,14 @@ export default function Hand(props: {
         }}
         // Dense Arena fan: heavy negative margin; first:ml-0 keeps the group optically centered.
         // Hover raises z so the expanded face paints above neighbours.
-        class="pointer-events-auto relative -ml-(--overlap) origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)] first:ml-0 hover:z-30"
+        class="group/card pointer-events-auto relative -ml-(--overlap) origin-bottom transition-transform duration-[120ms] [transform:var(--fan,none)] first:ml-0 hover:z-30"
       >
-        {/* Clip to a top strip at rest; hover expands to the full face and lifts it. */}
+        {/* Clip to a top strip at rest; hover expands upward (origin-bottom) so the cursor stays on the tile. */}
         <div
           class={cn(
-            "relative w-[112px] overflow-hidden rounded-t-game",
-            "h-(--strip-h) transition-[height,transform,border-radius] duration-150 ease-state",
-            "hover:h-(--card-h) hover:-translate-y-8 hover:overflow-visible hover:rounded-game",
+            "relative w-[112px] origin-bottom overflow-hidden rounded-t-game",
+            "h-(--strip-h) transition-[height,border-radius] duration-150 ease-state",
+            "group-hover/card:h-(--card-h) group-hover/card:overflow-visible group-hover/card:rounded-game",
           )}
         >
           <img
@@ -371,8 +370,7 @@ export default function Hand(props: {
       </div>
       <Show when={drag()}>
         {(d) => {
-          const ghostPips = () =>
-            costPips(d().manaCost, { showZero: d().kind != null && d().kind !== "land" });
+          const ghostPips = () => costPips(d().manaCost, { showZero: d().kind != null && d().kind !== "land" });
           return (
             <div
               style={{ "--x": `${d().x}px`, "--y": `${d().y}px` }}
@@ -385,7 +383,10 @@ export default function Hand(props: {
                 class={cn(CARD_FACE, "drop-shadow-drag")}
               />
               <Show when={ghostPips().length > 0}>
-                <div class="pointer-events-none absolute top-1 right-1 left-1 flex justify-end gap-px" aria-hidden="true">
+                <div
+                  class="pointer-events-none absolute top-1 right-1 left-1 flex justify-end gap-px"
+                  aria-hidden="true"
+                >
                   <For each={ghostPips()}>
                     {(pip) => (
                       <i
