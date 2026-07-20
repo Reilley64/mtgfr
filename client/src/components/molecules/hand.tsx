@@ -1,12 +1,13 @@
 // The bottom action bar as a DOM overlay on the canvas board. It is driven by the viewer's
-// legal-action list (`game.state.actions`): the Hand and Command sections show every card in
+// legal-action list (`game.state.actions`): the Command and Hand sections show every card in
 // those zones (a card with a play action is draggable, an actionless one dims — the commander is
 // always on show while it sits in the command zone), and the Graveyard / Exile sections show
 // one card per action there. Battlefield activates live on the selection radial, not in this bar.
-// Zone groups follow Arena: gap + aura colour, no section captions. Hand tiles are a dense fan
-// (right-edge peek at rest — mana corner visible) with cast-cost pips on the top-right; hover
-// expands the full card. Centre of the fan rises toward the board. Faces tuck under the screen
-// edge at rest (viewport clips them — no mid-card overflow cut).
+// Zone order left→right: command → hand → graveyard → exile. Zone groups follow Arena: gap +
+// aura colour, no section captions. Hand tiles are a dense fan (right-edge peek at rest — mana
+// corner visible) with cast-cost pips on the top-right; hover expands the full card. Centre of
+// the fan rises toward the board. Faces tuck under the screen edge at rest (viewport clips them
+// — no mid-card overflow cut).
 // Every playable card is physically dragged — a ghost follows the cursor — and on release the
 // Board takes the action by its id (drag above the play threshold → take_action; back in the bar
 // → snap back). Combat declarations are NOT cards here; they keep the board's existing
@@ -340,6 +341,32 @@ export default function Hand(props: {
         style={{ "--bar-h": `${HAND_BAR_H}px` }}
         class="pointer-events-none fixed right-0 bottom-0 left-0 flex h-(--bar-h) items-end justify-center gap-xl overflow-visible px-md"
       >
+        <Show when={commandCards().length > 0}>
+          <Section name="Command">
+            <For each={commandCards()}>
+              {(card, i) => {
+                const action = () => commandActionByObject().get(card.id) ?? null;
+                return (
+                  <BarCard
+                    name={card.name}
+                    print={card.print ?? ""}
+                    cardId={card.card_id || undefined}
+                    objectId={card.id}
+                    objectKind={card.kind.kind}
+                    manaCost={card.mana_cost}
+                    action={action()}
+                    dimmed={!action() || slotDimmed(card.id)}
+                    caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
+                    fan={fanTransform(i(), commandCards().length)}
+                    zone="command"
+                    index={i()}
+                    count={commandCards().length}
+                  />
+                );
+              }}
+            </For>
+          </Section>
+        </Show>
         <Section name="Hand">
           <For each={handSlots()}>
             {(slot, i) => {
@@ -388,32 +415,6 @@ export default function Hand(props: {
             }}
           </For>
         </Section>
-        <Show when={commandCards().length > 0}>
-          <Section name="Command">
-            <For each={commandCards()}>
-              {(card, i) => {
-                const action = () => commandActionByObject().get(card.id) ?? null;
-                return (
-                  <BarCard
-                    name={card.name}
-                    print={card.print ?? ""}
-                    cardId={card.card_id || undefined}
-                    objectId={card.id}
-                    objectKind={card.kind.kind}
-                    manaCost={card.mana_cost}
-                    action={action()}
-                    dimmed={!action() || slotDimmed(card.id)}
-                    caption={card.is_commander && commanderTax() > 0 ? `Tax +{${commanderTax()}}` : undefined}
-                    fan={fanTransform(i(), commandCards().length)}
-                    zone="command"
-                    index={i()}
-                    count={commandCards().length}
-                  />
-                );
-              }}
-            </For>
-          </Section>
-        </Show>
         <ZoneSection zone="graveyard" actions={grouped().graveyard} name={(a) => a.label} />
         <ZoneSection zone="exile" actions={grouped().exile} name={(a) => a.label} />
       </div>
