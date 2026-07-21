@@ -263,6 +263,8 @@ fn intent_str(w: &WireIntent) -> String {
             format!("cast-bestow {object}>{}", opt(target))
         }
         WireIntent::PassPriority { .. } => "pass".to_string(),
+        WireIntent::KeepHand { .. } => "keep-hand".to_string(),
+        WireIntent::Mulligan { .. } => "mulligan".to_string(),
         WireIntent::Concede { .. } => "concede".to_string(),
         WireIntent::TakeAction { id, target, .. } => {
             format!("take {id}>{}", opt(target))

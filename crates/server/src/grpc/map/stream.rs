@@ -121,6 +121,9 @@ pub fn player_view_to_pb(player: PlayerView) -> pb::PlayerView {
         lost: player.lost,
         hand_count: player.hand_count,
         library_count: player.library_count,
+        mulligans_taken: u32::from(player.mulligans_taken),
+        hand_kept: player.hand_kept,
+        can_mulligan: player.can_mulligan,
         mana_pool: Some(wire_mana_pool_to_pb(player.mana_pool)),
         commander_damage: player
             .commander_damage
@@ -1552,6 +1555,7 @@ pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
         stack_hold_remaining_ms: state.stack_hold_remaining_ms,
         pending_choice: state.pending_choice.map(pending_choice_view_to_pb),
         actions: state.actions.into_iter().map(action_view_to_pb).collect(),
+        mulliganing: state.mulliganing,
     }
 }
 
@@ -1597,6 +1601,9 @@ mod tests {
             lost: false,
             hand_count: 0,
             library_count: 99,
+            mulligans_taken: 0,
+            hand_kept: false,
+            can_mulligan: false,
             mana_pool: WireManaPool::default(),
             commander_damage: vec![],
         }
@@ -1655,6 +1662,7 @@ mod tests {
             }],
             combat: CombatView::default(),
             can_act: true,
+            mulliganing: false,
             yielded: false,
             turn_yielded: false,
             stack_hold_remaining_ms: 0,

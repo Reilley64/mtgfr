@@ -462,6 +462,12 @@ pub enum WireIntent {
     PassPriority {
         player: u8,
     },
+    KeepHand {
+        player: u8,
+    },
+    Mulligan {
+        player: u8,
+    },
     /// Leave the game (CR 104.3a). Legal at any time — with or without priority, and even while the
     /// engine waits on this player's own choice.
     Concede {
@@ -643,6 +649,8 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             target,
         },
         PassPriority { .. } => PassPriority { player },
+        KeepHand { .. } => KeepHand { player },
+        Mulligan { .. } => Mulligan { player },
         Concede { .. } => Concede { player },
         TakeAction {
             id,
@@ -991,6 +999,12 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         WireIntent::PassPriority { player } => Intent::PassPriority {
             player: PlayerId(player),
         },
+        WireIntent::KeepHand { player } => Intent::KeepHand {
+            player: PlayerId(player),
+        },
+        WireIntent::Mulligan { player } => Intent::Mulligan {
+            player: PlayerId(player),
+        },
         WireIntent::Concede { player } => Intent::Concede {
             player: PlayerId(player),
         },
@@ -1031,7 +1045,9 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
 
 #[cfg(test)]
 mod tests {
-    use crate::intent::{WireBlock, WireDamage, WireIntent, WireTarget, to_intent};
+    use crate::intent::{
+        WireBlock, WireDamage, WireIntent, WireTarget, to_intent, to_intent_for_seat,
+    };
     use engine::PlayerId;
 
     #[test]
@@ -1067,6 +1083,22 @@ mod tests {
             engine::Intent::AssignDamage {
                 player: PlayerId(0),
                 assignment: vec![(3, 2)],
+            },
+        );
+    }
+
+    #[test]
+    fn to_intent_maps_mulligan_intents_and_stamps_the_authenticated_seat() {
+        assert_eq!(
+            to_intent(WireIntent::KeepHand { player: 1 }),
+            engine::Intent::KeepHand {
+                player: PlayerId(1),
+            },
+        );
+        assert_eq!(
+            to_intent_for_seat(WireIntent::Mulligan { player: 1 }, PlayerId(2)),
+            engine::Intent::Mulligan {
+                player: PlayerId(2),
             },
         );
     }

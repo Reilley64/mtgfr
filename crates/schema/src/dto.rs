@@ -22,6 +22,15 @@ pub struct PlayerView {
     /// Card count only — hand identities are private (see the object list for own hand).
     pub hand_count: u32,
     pub library_count: u32,
+    /// Completed pre-game mulligans this player has taken.
+    #[serde(default)]
+    pub mulligans_taken: u8,
+    /// Whether this player has kept their current opening hand.
+    #[serde(default)]
+    pub hand_kept: bool,
+    /// Whether this player may still take another pre-game mulligan.
+    #[serde(default)]
+    pub can_mulligan: bool,
     /// Floating mana pool for this player (every credit kind). Shown under each life orb.
     pub mana_pool: WireManaPool,
     /// Commander damage this player has taken, one entry per commander that has connected.
@@ -980,6 +989,9 @@ pub struct VisibleState {
     /// Step discriminant; see `engine::Step`.
     pub step: u8,
     pub priority: u8,
+    /// Whether the game is in the simultaneous pre-game mulligan phase.
+    #[serde(default)]
+    pub mulliganing: bool,
     pub players: Vec<PlayerView>,
     pub objects: Vec<ObjectView>,
     /// The stack, bottom-first (last entry is the top, which resolves next).

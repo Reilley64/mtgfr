@@ -72,6 +72,8 @@ message WireIntent {
     WireIntentPutCreatureFromHand put_creature_from_hand = 51;
     WireIntentPutFromHandOnTop put_from_hand_on_top = 52;
     WireIntentChooseDrawCount choose_draw_count = 53;
+    WireIntentKeepHand keep_hand = 54;
+    WireIntentMulligan mulligan = 55;
   }
 }
 
@@ -402,6 +404,14 @@ message WireIntentCastBestow {
 }
 
 message WireIntentPassPriority {
+  uint32 player = 1;
+}
+
+message WireIntentKeepHand {
+  uint32 player = 1;
+}
+
+message WireIntentMulligan {
   uint32 player = 1;
 }
 
