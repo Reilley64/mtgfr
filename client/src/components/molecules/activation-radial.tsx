@@ -1,16 +1,16 @@
 // Activation radial around a selected permanent: continuous SVG donut of legal options.
 
-import { For, createSignal } from "solid-js";
+import { createSignal, For } from "solid-js";
 import { Button } from "~/components/atoms";
 import { cn } from "~/lib/cn";
 import {
   activationRadialInnerRadius,
   activationRadialOuterRadius,
+  type RadialOption,
+  type RadialPress,
   radialOptionKey,
   radialPressDown,
   radialPressUp,
-  type RadialOption,
-  type RadialPress,
   wedgeLabelPoint,
   wedgePath,
 } from "~/lib/radial";
@@ -79,6 +79,8 @@ export default function ActivationRadial(props: {
         }}
       />
       <svg
+        role="img"
+        aria-label="Activation options"
         class="pointer-events-none absolute z-[31]"
         width={size()}
         height={size()}
@@ -96,6 +98,7 @@ export default function ActivationRadial(props: {
               const active = () => hover() === i() || press().armed === i();
               return (
                 <g data-wedge={i()} data-testid={`radial-wedge-${radialOptionKey(opt)}`}>
+                  {/* biome-ignore lint/a11y/useSemanticElements: SVG wedge hit targets must be paths, not HTML buttons */}
                   <path
                     d={d()}
                     tabindex={0}
@@ -104,9 +107,9 @@ export default function ActivationRadial(props: {
                     class={cn(
                       "cursor-pointer outline-none",
                       active()
-                        ? "fill-llanowar-deep stroke-priority-gold stroke-2"
-                        : "fill-forest-hud stroke-priority-gold/70 stroke-1",
-                      "focus-visible:stroke-priority-gold focus-visible:stroke-2",
+                        ? "fill-llanowar-deep stroke-2 stroke-priority-gold"
+                        : "fill-forest-hud stroke-1 stroke-priority-gold/70",
+                      "focus-visible:stroke-2 focus-visible:stroke-priority-gold",
                     )}
                     onPointerDown={(e) => {
                       e.preventDefault();
@@ -139,7 +142,7 @@ export default function ActivationRadial(props: {
                     y={label().y}
                     text-anchor="middle"
                     dominant-baseline="middle"
-                    class="pointer-events-none fill-snow text-[11px] font-semibold"
+                    class="pointer-events-none fill-snow font-semibold text-[11px]"
                   >
                     {opt.label.length > 18 ? `${opt.label.slice(0, 16)}…` : opt.label}
                   </text>
