@@ -23,9 +23,6 @@ impl Game {
 
     /// A fresh `players`-seat game keyed by a 32-byte master seed.
     pub fn with_master_seed(players: u8, master_seed: [u8; 32]) -> Self {
-        let mut legacy_bytes = [0u8; 8];
-        legacy_bytes.copy_from_slice(&master_seed[..8]);
-        let legacy_rng_state = u64::from_le_bytes(legacy_bytes);
         Game {
             players: vec![
                 Player {
@@ -63,7 +60,6 @@ impl Game {
             exile_links: state::ExileLinks::default(),
             delayed_triggers: state::DelayedTriggers::default(),
             master_seed,
-            legacy_rng_state,
             skip_starting_players_first_draw: false,
             actions: Vec::new(),
             next_action_id: 0,
@@ -178,16 +174,6 @@ impl Game {
                 },
             })
             .collect()
-    }
-
-    /// splitmix64 on the temporary legacy stream — dig/misc until Task 2 wraps whole ops in
-    /// [`Game::with_op_rng`]. Library shuffles use per-op streams only.
-    pub(crate) fn next_u64(&mut self) -> u64 {
-        self.legacy_rng_state = self.legacy_rng_state.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.legacy_rng_state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^ (z >> 31)
     }
 
     /// A player's current life total.

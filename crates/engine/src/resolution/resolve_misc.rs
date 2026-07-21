@@ -90,7 +90,7 @@ impl Game {
                 if graveyard.is_empty() {
                     return;
                 }
-                let idx = (self.next_u64() % graveyard.len() as u64) as usize;
+                let idx = self.with_op_rng(controller, |rng| rng.gen_index(graveyard.len()));
                 let from = graveyard[idx];
                 self.push_apply(
                     events,
@@ -112,7 +112,7 @@ impl Game {
                 if opponents.is_empty() {
                     return;
                 }
-                let idx = (self.next_u64() % opponents.len() as u64) as usize;
+                let idx = self.with_op_rng(controller, |rng| rng.gen_index(opponents.len()));
                 self.push_apply(
                     events,
                     Event::MustAttackDeclared {

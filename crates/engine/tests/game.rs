@@ -38420,6 +38420,20 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
 // ── Choose an opponent at random, must attack (CR 508.1a — Ruhan of the Fomori) ──────
 
 #[test]
+fn random_opponent_pick_is_stable_for_same_iteration() {
+    // Derive-per-op RNG: the same master seed and seat sequence must pick the same opponent
+    // every replay — locks attribution to the controller's op stream, not a shared legacy stream.
+    let pick = |seed: u64| {
+        let mut game = Game::with_players(3, seed);
+        game.spawn_on_battlefield(PlayerId(0), card("Ruhan of the Fomori"));
+        advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+        game.required_attacks(PlayerId(0))[0].1
+    };
+    assert_eq!(pick(42), pick(42));
+    assert_eq!(pick(99), pick(99));
+}
+
+#[test]
 fn ruhan_attacks_a_random_opponent_each_combat() {
     // "At the beginning of combat on your turn, choose an opponent at random. Ruhan attacks that
     // player this combat if able." The opponent is picked by the injected RNG, then enforced the
@@ -52693,24 +52707,24 @@ fn exile_random_from_graveyard_may_play_picks_a_graveyard_card_deterministically
         "the other two graveyard cards are untouched"
     );
 
-    // Determinism: seed 7's first `next_u64() % 3` picks index 0 (Forest) — locks the pick to
-    // the injected PRNG so replay stays reproducible for a fixed seed.
+    // Determinism: seed 7's derive-per-op stream for P0 iteration 0 picks index 2 (Mountain) —
+    // locks the pick to the controller-attributed PRNG so replay stays reproducible for a fixed seed.
     assert_eq!(
-        game.zone_of(forest),
+        game.zone_of(mountain),
         Zone::Exile,
-        "seed 7 deterministically picks the first graveyard card"
+        "seed 7 deterministically picks the third graveyard card"
     );
+    assert_eq!(game.zone_of(forest), Zone::Graveyard);
     assert_eq!(game.zone_of(island), Zone::Graveyard);
-    assert_eq!(game.zone_of(mountain), Zone::Graveyard);
 
     // The exiled card carries impulse-play permission this turn (CR "you may play it").
-    let exiled_forest = game.current_id(forest);
+    let exiled_mountain = game.current_id(mountain);
     game.submit(Intent::PlayLand {
         player: PlayerId(0),
-        object: exiled_forest,
+        object: exiled_mountain,
     })
     .expect("the randomly-exiled card is playable from exile this turn");
-    assert_eq!(game.zone_of(exiled_forest), Zone::Battlefield);
+    assert_eq!(game.zone_of(exiled_mountain), Zone::Battlefield);
 }
 
 #[test]
