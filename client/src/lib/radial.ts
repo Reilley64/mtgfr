@@ -71,6 +71,25 @@ export function wedgeLabelPoint(
   return { x: Math.cos(mid) * r, y: Math.sin(mid) * r };
 }
 
+export type RadialPress = { armed: number | null };
+
+export function radialPressDown(_state: RadialPress, wedgeIndex: number): RadialPress {
+  return { armed: wedgeIndex };
+}
+
+export function radialPressUp(
+  state: RadialPress,
+  wedgeIndex: number | null,
+): { state: RadialPress; commit: number | null; dismiss: boolean } {
+  const clear = { armed: null as number | null };
+  if (state.armed != null) {
+    const commit = wedgeIndex === state.armed ? state.armed : null;
+    return { state: clear, commit, dismiss: false };
+  }
+  if (wedgeIndex == null) return { state: clear, commit: null, dismiss: true };
+  return { state: clear, commit: wedgeIndex, dismiss: false };
+}
+
 /** Options for the activation radial around a selected permanent. */
 export function radialOptions(
   objectId: number,

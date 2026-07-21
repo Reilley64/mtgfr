@@ -6,6 +6,9 @@ import {
   activationRadialRadius,
   radialOptionKey,
   radialOptions,
+  radialPressDown,
+  radialPressUp,
+  type RadialPress,
   wedgeIndex,
   wedgeLabelPoint,
   wedgePath,
@@ -139,5 +142,38 @@ describe("radialOptionKey", () => {
         action: activate({ id: 42 }),
       }),
     ).toBe("action:42");
+  });
+});
+
+const idle: RadialPress = { armed: null };
+
+describe("radialPress", () => {
+  it("commits when down and up on the same wedge", () => {
+    const armed = radialPressDown(idle, 2);
+    expect(armed).toEqual({ armed: 2 });
+    const up = radialPressUp(armed, 2);
+    expect(up.commit).toBe(2);
+    expect(up.dismiss).toBe(false);
+    expect(up.state.armed).toBeNull();
+  });
+
+  it("cancels when sliding off before release", () => {
+    const armed = radialPressDown(idle, 1);
+    const up = radialPressUp(armed, null);
+    expect(up.commit).toBeNull();
+    expect(up.dismiss).toBe(false);
+    expect(up.state.armed).toBeNull();
+  });
+
+  it("dismisses on scrim up when nothing was armed", () => {
+    const up = radialPressUp(idle, null);
+    expect(up.commit).toBeNull();
+    expect(up.dismiss).toBe(true);
+  });
+
+  it("commits an idle up on a wedge (no prior down)", () => {
+    const up = radialPressUp(idle, 0);
+    expect(up.commit).toBe(0);
+    expect(up.dismiss).toBe(false);
   });
 });
