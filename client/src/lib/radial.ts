@@ -44,12 +44,25 @@ export function wedgeIndex(angleRad: number, count: number): number {
 }
 
 export function wedgePath(i: number, count: number, inner: number, outer: number): string {
+  const x = (r: number, a: number) => Math.cos(a) * r;
+  const y = (r: number, a: number) => Math.sin(a) * r;
+  // Full ring: evenodd double-circle (a single 360° A collapses; two semicircles leave a seam).
+  if (count <= 1) {
+    return [
+      `M ${x(outer, -Math.PI / 2)} ${y(outer, -Math.PI / 2)}`,
+      `A ${outer} ${outer} 0 1 1 ${x(outer, Math.PI / 2)} ${y(outer, Math.PI / 2)}`,
+      `A ${outer} ${outer} 0 1 1 ${x(outer, -Math.PI / 2)} ${y(outer, -Math.PI / 2)}`,
+      "Z",
+      `M ${x(inner, -Math.PI / 2)} ${y(inner, -Math.PI / 2)}`,
+      `A ${inner} ${inner} 0 1 0 ${x(inner, Math.PI / 2)} ${y(inner, Math.PI / 2)}`,
+      `A ${inner} ${inner} 0 1 0 ${x(inner, -Math.PI / 2)} ${y(inner, -Math.PI / 2)}`,
+      "Z",
+    ].join(" ");
+  }
   const slice = (2 * Math.PI) / count;
   const a0 = -Math.PI / 2 - slice / 2 + i * slice;
   const a1 = a0 + slice;
   const large = slice > Math.PI ? 1 : 0;
-  const x = (r: number, a: number) => Math.cos(a) * r;
-  const y = (r: number, a: number) => Math.sin(a) * r;
   return [
     `M ${x(outer, a0)} ${y(outer, a0)}`,
     `A ${outer} ${outer} 0 ${large} 1 ${x(outer, a1)} ${y(outer, a1)}`,
