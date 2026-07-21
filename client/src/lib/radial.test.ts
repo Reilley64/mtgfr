@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment happy-dom
+ */
 import { describe, expect, it } from "vitest";
 import { CARD_H, CARD_W } from "~/layout";
 import {
@@ -9,6 +12,8 @@ import {
   radialOptions,
   radialPressDown,
   radialPressUp,
+  radialWedgeAtPoint,
+  radialWedgeFromElement,
   wedgeIndex,
   wedgeLabelPoint,
   wedgePath,
@@ -146,6 +151,27 @@ describe("radialOptionKey", () => {
 });
 
 const idle: RadialPress = { armed: null };
+
+describe("radialWedgeFromElement / radialWedgeAtPoint", () => {
+  it("returns the wedge index from a data-wedge element", () => {
+    const el = document.createElement("g");
+    el.setAttribute("data-wedge", "2");
+    expect(radialWedgeFromElement(el)).toBe(2);
+  });
+
+  it("returns null for null or non-wedge elements", () => {
+    expect(radialWedgeFromElement(null)).toBeNull();
+    expect(radialWedgeFromElement(document.createElement("div"))).toBeNull();
+  });
+
+  it("resolves wedge at point via elementFromPoint", () => {
+    const wedge = document.createElement("g");
+    wedge.setAttribute("data-wedge", "2");
+    const fromPoint = (_x: number, _y: number) => wedge;
+    expect(radialWedgeAtPoint(10, 20, fromPoint)).toBe(2);
+    expect(radialWedgeAtPoint(10, 20, () => null)).toBeNull();
+  });
+});
 
 describe("radialPress", () => {
   it("commits when down and up on the same wedge", () => {

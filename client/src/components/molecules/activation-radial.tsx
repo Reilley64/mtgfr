@@ -11,6 +11,7 @@ import {
   radialOptionKey,
   radialPressDown,
   radialPressUp,
+  radialWedgeAtPoint,
   wedgeLabelPoint,
   wedgePath,
 } from "~/lib/radial";
@@ -33,21 +34,6 @@ export default function ActivationRadial(props: {
   const outer = () => activationRadialOuterRadius(props.zoom);
   const size = () => outer() * 2 + 8;
   const origin = () => size() / 2;
-
-  /** Resolve wedge index from an element (`data-wedge` on the path's `<g>`). */
-  const wedgeAttr = (el: EventTarget | null): number | null => {
-    if (!(el instanceof Element)) return null;
-    const node = el.closest("[data-wedge]");
-    if (!node) return null;
-    const v = node.getAttribute("data-wedge");
-    if (v == null) return null;
-    const i = Number(v);
-    return Number.isFinite(i) ? i : null;
-  };
-
-  /** Wedge under the pointer at release — not `e.target`, which follows capture. */
-  const wedgeAtPoint = (clientX: number, clientY: number): number | null =>
-    wedgeAttr(document.elementFromPoint(clientX, clientY));
 
   const applyUp = (wedge: number | null) => {
     const result = radialPressUp(press(), wedge);
@@ -78,8 +64,9 @@ export default function ActivationRadial(props: {
           applyUp(null);
         }}
       />
+      {/* biome-ignore lint/a11y/useSemanticElements: SVG donut must stay svg; group keeps wedge buttons in the a11y tree (img would not) */}
       <svg
-        role="img"
+        role="group"
         aria-label="Activation options"
         class="pointer-events-none absolute z-[31]"
         width={size()}
@@ -120,7 +107,7 @@ export default function ActivationRadial(props: {
                     onPointerUp={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      applyUp(wedgeAtPoint(e.clientX, e.clientY));
+                      applyUp(radialWedgeAtPoint(e.clientX, e.clientY, document.elementFromPoint.bind(document)));
                     }}
                     onPointerEnter={() => {
                       setHover(i());

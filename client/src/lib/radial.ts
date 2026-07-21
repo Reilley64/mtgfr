@@ -59,12 +59,7 @@ export function wedgePath(i: number, count: number, inner: number, outer: number
   ].join(" ");
 }
 
-export function wedgeLabelPoint(
-  i: number,
-  count: number,
-  inner: number,
-  outer: number,
-): { x: number; y: number } {
+export function wedgeLabelPoint(i: number, count: number, inner: number, outer: number): { x: number; y: number } {
   const slice = (2 * Math.PI) / count;
   const mid = -Math.PI / 2 + i * slice;
   const r = (inner + outer) / 2;
@@ -75,6 +70,26 @@ export type RadialPress = { armed: number | null };
 
 export function radialPressDown(_state: RadialPress, wedgeIndex: number): RadialPress {
   return { armed: wedgeIndex };
+}
+
+/** Resolve wedge index from an element (`data-wedge` on the path's `<g>`). */
+export function radialWedgeFromElement(el: EventTarget | null): number | null {
+  if (!(el instanceof Element)) return null;
+  const node = el.closest("[data-wedge]");
+  if (!node) return null;
+  const v = node.getAttribute("data-wedge");
+  if (v == null) return null;
+  const i = Number(v);
+  return Number.isFinite(i) ? i : null;
+}
+
+/** Wedge under the pointer at release — not event target, which follows capture. */
+export function radialWedgeAtPoint(
+  clientX: number,
+  clientY: number,
+  elementFromPoint: (x: number, y: number) => Element | null,
+): number | null {
+  return radialWedgeFromElement(elementFromPoint(clientX, clientY));
 }
 
 export function radialPressUp(
