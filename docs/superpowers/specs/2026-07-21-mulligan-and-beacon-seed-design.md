@@ -1,7 +1,7 @@
 # Mulligans and Cloudflare beacon seeding
 
 **Date:** 2026-07-21  
-**Status:** Approved for planning  
+**Status:** Implemented on `cursor/mulligan-and-beacon-seed-design-1e1a`  
 **Context:** Opening hands are dealt at `Tables.Seed` with no mulligan path (`OPENING_HAND = 7` — “no mulligan — Phase 3”). Library shuffle uses Fisher–Yates over a single shared splitmix64 PRNG seeded from `OsRng`. Cloudflare appears only as the public tunnel edge, not as entropy. Friends Commander expects one free (friendly) mulligan, then penalty redraws, with publicly auditable seed entropy and per-player derived randomness so seat order does not couple libraries.
 
 ## Goals
