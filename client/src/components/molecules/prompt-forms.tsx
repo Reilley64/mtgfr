@@ -145,30 +145,34 @@ const SeatTargetPick: Component<{
                 type="button"
                 aria-label={it.label}
                 onClick={() => props.onPick(it.id, it.player ?? undefined)}
-                class="relative cursor-pointer rounded-[9px] p-0 shadow-hand transition-transform duration-150 ease-out hover:-translate-y-2"
+                class="group relative cursor-pointer rounded-[9px] border-0 bg-transparent p-0 shadow-hand"
               >
-                {/* Wrap seat in an object so Show doesn't treat seat 0 as falsy. */}
-                <Show
-                  when={it.player != null ? { seat: it.player as number } : null}
-                  fallback={
-                    <CardArt
-                      print={choiceItemPrint(props.state, it)}
-                      alt={it.label}
-                      draggable={false}
-                      width={150}
-                      class="block rounded-[9px]"
-                    />
-                  }
-                >
-                  {(p) => (
-                    <div
-                      style={{ "--seat": seatColor(p().seat, 0.9) }}
-                      class="flex aspect-[150/209] w-[150px] flex-col items-center justify-center rounded-[9px] border-(--seat) border-4 bg-morph-slate font-bold text-snow text-title"
-                    >
-                      {seatLabel(p().seat, it.label)}
-                    </div>
-                  )}
-                </Show>
+                {/* Lift the paint only — translating the button itself steals the cursor at the
+                    bottom edge and thrash-fires mouseenter/leave. */}
+                <span class="block transition-transform duration-150 ease-out group-hover:-translate-y-2">
+                  {/* Wrap seat in an object so Show doesn't treat seat 0 as falsy. */}
+                  <Show
+                    when={it.player != null ? { seat: it.player as number } : null}
+                    fallback={
+                      <CardArt
+                        print={choiceItemPrint(props.state, it)}
+                        alt={it.label}
+                        draggable={false}
+                        width={150}
+                        class="block rounded-[9px]"
+                      />
+                    }
+                  >
+                    {(p) => (
+                      <div
+                        style={{ "--seat": seatColor(p().seat, 0.9) }}
+                        class="flex aspect-[150/209] w-[150px] flex-col items-center justify-center rounded-[9px] border-(--seat) border-4 bg-morph-slate font-bold text-snow text-title"
+                      >
+                        {seatLabel(p().seat, it.label)}
+                      </div>
+                    )}
+                  </Show>
+                </span>
               </button>
             )}
           </For>
@@ -648,29 +652,33 @@ export function TargetPickPrompt(props: {
                     : objectName(props.state, t.id)
                 }
                 onClick={() => props.onPick(t)}
-                class="relative cursor-pointer rounded-[9px] p-0 shadow-hand transition-transform duration-150 ease-out hover:-translate-y-2"
+                class="group relative cursor-pointer rounded-[9px] border-0 bg-transparent p-0 shadow-hand"
               >
-                <Show
-                  when={t.kind === "object" && t}
-                  fallback={
-                    // A seat, drawn as its life orb is on the canvas — same colour, same name.
-                    <div
-                      style={{ "--seat": seatColor((t as Extract<WireTarget, { kind: "player" }>).player, 0.9) }}
-                      class="flex aspect-[150/209] w-[150px] flex-col items-center justify-center rounded-[9px] border-(--seat) border-4 bg-morph-slate font-bold text-snow text-title"
-                    >
-                      {seatLabel((t as Extract<WireTarget, { kind: "player" }>).player)}
-                    </div>
-                  }
-                >
-                  {(obj) => (
-                    <CardArt
-                      print={objectPrint(props.state, obj().id)}
-                      alt=""
-                      draggable={false}
-                      class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"
-                    />
-                  )}
-                </Show>
+                {/* Lift the paint only — translating the button itself thrash-fires hover at the
+                    bottom edge. */}
+                <span class="block transition-transform duration-150 ease-out group-hover:-translate-y-2">
+                  <Show
+                    when={t.kind === "object" && t}
+                    fallback={
+                      // A seat, drawn as its life orb is on the canvas — same colour, same name.
+                      <div
+                        style={{ "--seat": seatColor((t as Extract<WireTarget, { kind: "player" }>).player, 0.9) }}
+                        class="flex aspect-[150/209] w-[150px] flex-col items-center justify-center rounded-[9px] border-(--seat) border-4 bg-morph-slate font-bold text-snow text-title"
+                      >
+                        {seatLabel((t as Extract<WireTarget, { kind: "player" }>).player)}
+                      </div>
+                    }
+                  >
+                    {(obj) => (
+                      <CardArt
+                        print={objectPrint(props.state, obj().id)}
+                        alt=""
+                        draggable={false}
+                        class="block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"
+                      />
+                    )}
+                  </Show>
+                </span>
               </button>
             )}
           </For>

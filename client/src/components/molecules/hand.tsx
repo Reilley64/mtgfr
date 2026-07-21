@@ -5,7 +5,8 @@
 // one card per action there. Battlefield activates live on the selection radial, not in this bar.
 // Zone order left→right: command → hand → graveyard → exile. Zone groups follow Arena: gap +
 // aura colour, no section captions. Hand tiles are a dense fan (faces hang left of a peek-wide
-// slot) with cast-cost pips on the top-right; hover raises the full card. Arena stacking: left
+// slot) with cast-cost pips on the top-right; hover raises the full card (paint translate only —
+// layout footprint stays peek × visible so the hit box cannot thrash). Arena stacking: left
 // lowest, right highest, so resting cards show a left-edge name strip. Hits stay on that left
 // peek only (`~/lib/handBarHit`) so a raised face cannot steal a neighbor. Centre of the fan
 // rises toward the board. Faces tuck under the screen edge at rest (viewport clips them —
@@ -22,7 +23,7 @@ import { type BarZone, barZoneAura, byObject, bySection, handExtras } from "~/li
 import { HAND_FACE_W } from "~/lib/cardFlight";
 import { cn } from "~/lib/cn";
 import { costPipPlate, costPips } from "~/lib/costPips";
-import { HAND_BAR_PEEK, handBarHitWidth } from "~/lib/handBarHit";
+import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "~/lib/handBarHit";
 import { game } from "~/store";
 import type { ActionView, ObjectView, WireCost } from "~/wire/types";
 
@@ -265,8 +266,10 @@ export default function Hand(props: {
     // Buried cards: left peek only. Rightmost (and single-card sections like the commander):
     // full face — nothing to the right to protect (`handBarHitWidth`).
     const hitW = () => handBarHitWidth(p.index, p.count, HAND_CARD_PEEK, HAND_CARD_W);
+    const hitH = () => handBarHitHeight(raised(), HAND_VISIBLE_H, HAND_CARD_H);
+    const raiseY = () => handBarRaiseTranslateY(raised(), HAND_VISIBLE_H, HAND_CARD_H);
     return (
-      // Layout slot only — interactive hit strip is the left peek on the face (below).
+      // Layout slot only — hit strip is a sibling of the paint face (below), not inside it.
       <div
         style={{
           "--fan": p.fan,
@@ -276,19 +279,17 @@ export default function Hand(props: {
           "--card-h": `${HAND_CARD_H}px`,
           "z-index": stackZ(),
         }}
-        // Flex footprint stays peek-wide always. Growing width on raise shifted the
-        // right-aligned face out from under the cursor → enter/leave thrash.
-        // The face hangs left of the peek; raise only lifts height / z. Layout box is
-        // pointer-events-none — hits live on the face hit strip (left peek, or full face
-        // for the rightmost card in the section).
-        class={cn(
-          "pointer-events-none relative w-(--peek) origin-bottom transition-[height,transform] duration-[120ms] ease-state [transform:var(--fan,none)]",
-          raised() ? "h-(--card-h)" : "h-(--visible)",
-        )}
+        // Flex footprint stays peek-wide *and* visible-tall always. Growing width or height on
+        // raise moved the hit box out from under the cursor → enter/leave thrash. Raise is
+        // paint-only translateY on the face; the hit strip bottom-anchors and grows upward.
+        class="pointer-events-none relative h-(--visible) w-(--peek) origin-bottom [transform:var(--fan,none)]"
       >
         {/* Face + pips share a fixed column (right-aligned in the peek slot). Pips live in a
             reserved band *above* the face top — Arena cast disks, not overlaid on the art. */}
-        <div class="pointer-events-none absolute top-0 right-0 w-(--card-w)">
+        <div
+          class="pointer-events-none absolute top-0 right-0 w-(--card-w) transition-transform duration-[120ms] ease-state"
+          style={{ transform: `translateY(${raiseY()}px)` }}
+        >
           <Show when={pips().length > 0}>
             <div
               data-testid="hand-cost-pips"
@@ -322,39 +323,43 @@ export default function Hand(props: {
                 {p.caption}
               </div>
             </Show>
-            {/* Hit target — left peek for buried cards; full face for the section's rightmost
-                (`handBarHitWidth` / `hitHandBarSlot`). Face art stays paint-only.
-                Not a <button>: onDown drops on pointerup, so a native button click would double-fire. */}
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard-operable exactly when actionable */}
-            {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label is set iff role is "button" */}
-            <div
-              tabIndex={p.action ? 0 : undefined}
-              role={p.action ? "button" : undefined}
-              data-action-kind={p.action?.kind ?? undefined}
-              data-action-id={p.action != null ? String(p.action.id) : undefined}
-              data-needs-target={p.action?.needs_target ? "1" : "0"}
-              data-has-player-target={p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"}
-              data-has-object-target={p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"}
-              data-object-kind={p.objectKind}
-              data-bar-zone={p.zone}
-              aria-label={ariaName()}
-              onKeyDown={(e) => {
-                if (!p.action || (e.key !== "Enter" && e.key !== " ")) return;
-                e.preventDefault(); // Space must not scroll the page
-                activate(p.action);
-              }}
-              onPointerEnter={onHitEnter}
-              onPointerMove={onHitMove}
-              onPointerLeave={onHitLeave}
-              onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
-              style={{ width: `${hitW()}px` }}
-              class={cn(
-                "pointer-events-auto absolute top-0 left-0 h-full",
-                p.action ? "cursor-grab" : "cursor-default",
-              )}
-            />
           </div>
         </div>
+        {/* Hit target — left peek for buried cards; full face for the section's rightmost
+            (`handBarHitWidth` / `hitHandBarSlot`). Bottom-anchored so raise grows upward and a
+            cursor on the resting visible bottom never leaves. Face art stays paint-only.
+            Not a <button>: onDown drops on pointerup, so a native button click would double-fire. */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard-operable exactly when actionable */}
+        {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label is set iff role is "button" */}
+        <div
+          tabIndex={p.action ? 0 : undefined}
+          role={p.action ? "button" : undefined}
+          data-action-kind={p.action?.kind ?? undefined}
+          data-action-id={p.action != null ? String(p.action.id) : undefined}
+          data-needs-target={p.action?.needs_target ? "1" : "0"}
+          data-has-player-target={p.action?.targets?.some((t) => t.kind === "player") ? "1" : "0"}
+          data-has-object-target={p.action?.targets?.some((t) => t.kind === "object") ? "1" : "0"}
+          data-object-kind={p.objectKind}
+          data-bar-zone={p.zone}
+          aria-label={ariaName()}
+          onKeyDown={(e) => {
+            if (!p.action || (e.key !== "Enter" && e.key !== " ")) return;
+            e.preventDefault(); // Space must not scroll the page
+            activate(p.action);
+          }}
+          onPointerEnter={onHitEnter}
+          onPointerMove={onHitMove}
+          onPointerLeave={onHitLeave}
+          onPointerDown={(e) => p.action && onDown(p.action, p.name, p.print, p.manaCost, p.objectKind, e)}
+          style={{
+            width: `${hitW()}px`,
+            height: `${hitH()}px`,
+            // Face is right-aligned in the peek slot; hit starts at the face's left edge
+            // (name strip), not the slot's left — same as the old `left-0` on the face.
+            right: `${HAND_CARD_W - hitW()}px`,
+          }}
+          class={cn("pointer-events-auto absolute bottom-0", p.action ? "cursor-grab" : "cursor-default")}
+        />
       </div>
     );
   };

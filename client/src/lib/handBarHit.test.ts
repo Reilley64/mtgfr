@@ -4,7 +4,9 @@ import {
   HAND_BAR_PEEK,
   type HandBarPeekSlot,
   handBarFaceLeft,
+  handBarHitHeight,
   handBarHitWidth,
+  handBarRaiseTranslateY,
   hitHandBarSlot,
 } from "~/lib/handBarHit";
 
@@ -97,5 +99,36 @@ describe("hitHandBarSlot", () => {
     const onRaisedRight = TWO[1].faceLeft + PEEK + 30;
     expect(hitHandBarSlot(onRaisedRight, TWO, PEEK, FACE)).toBe(1);
     expect(hitHandBarSlotFullFaceWhenRaised(onRaisedRight, TWO, PEEK, FACE, 1)).toBe(1);
+  });
+});
+
+/** Slot-local Y: 0 at the top of the resting peek, `visibleH` at its bottom. */
+function hitBandBottomAnchored(raised: boolean, visibleH: number, cardH: number): { top: number; bottom: number } {
+  const height = handBarHitHeight(raised, visibleH, cardH);
+  // Bottom edge stays on the resting peek bottom; raise only grows upward.
+  return { top: visibleH - height, bottom: visibleH };
+}
+
+describe("handBarHitHeight / raise translate (vertical thrash)", () => {
+  const VISIBLE = 130;
+  const CARD = Math.round(FACE / 0.716);
+
+  it("keeps the resting visible bottom inside the hit band when raised", () => {
+    const restBottom = VISIBLE;
+    const resting = hitBandBottomAnchored(false, VISIBLE, CARD);
+    const raised = hitBandBottomAnchored(true, VISIBLE, CARD);
+    expect(restBottom).toBeGreaterThanOrEqual(resting.top);
+    expect(restBottom).toBeLessThanOrEqual(resting.bottom);
+    expect(restBottom).toBeGreaterThanOrEqual(raised.top);
+    expect(restBottom).toBeLessThanOrEqual(raised.bottom);
+    // Bottom edge must not move — moving it out from under the cursor is the thrash.
+    expect(raised.bottom).toBe(resting.bottom);
+  });
+
+  it("lifts the face by cardH - visibleH without growing the layout footprint", () => {
+    expect(handBarRaiseTranslateY(false, VISIBLE, CARD)).toBe(0);
+    expect(handBarRaiseTranslateY(true, VISIBLE, CARD)).toBe(VISIBLE - CARD);
+    expect(handBarHitHeight(false, VISIBLE, CARD)).toBe(VISIBLE);
+    expect(handBarHitHeight(true, VISIBLE, CARD)).toBe(CARD);
   });
 });
