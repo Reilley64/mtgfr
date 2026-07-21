@@ -120,6 +120,13 @@ Space bar mirrors the primary action. Enter mirrors End Turn / turn-yield toggle
 
 **Instant-priority focus** (battlefield dimming, turn-priority-and-stack spec): client-only presentation. When you can act in a non-empty-stack window, non-usable permanents take a black veil; legal activates and untapped mana sources stay bright. Empty-stack main and declare attackers/blockers stay fully lit. Spectators are never dimmed.
 
+### Activation radial
+
+Selecting your battlefield permanent opens a **continuous SVG donut** of legal options
+(`radialOptions`: tap-for-mana + battlefield activates). Wedges commit on **pointer-up**
+on the same wedge (slide-off cancels; outside/hole dismisses). Screen center + zoom are
+frozen while open. Empty option lists do not show a hollow ring.
+
 ### Inspect dock (client-game-board-and-interaction spec, `lib/inspect.ts`, `components/molecules/card-preview.tsx`)
 
 Alt-down over a face-up card pins it into the left inspect dock with a full-board dim scrim (modal: board/HUD clicks blocked). `InspectPin` carries `{ name, prepared, objectId?, cardId?, print? }`. The dock shows:

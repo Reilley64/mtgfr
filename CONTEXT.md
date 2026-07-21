@@ -121,7 +121,7 @@ The ubiquitous language for the game engine and protocol. Terms only — no impl
 - **Play face** — which face the inspect dock opens on: the back when the inspected permanent is prepared, otherwise the front.
 - **Prepared** — battlefield status on a prepare double-faced card: its controller may cast a copy of its back-face spell; casting clears prepared.
 - **Permanent selection** — the viewer's focused permanent for acting; click selects one of yours on the battlefield.
-- **Activation radial** — pie of legal activates (including tap-for-mana) around the selected permanent.
+- **Activation radial** — continuous SVG donut of legal options (tap-for-mana + battlefield activates) around the selected permanent; wedges commit on pointer-up (slide-off cancels).
 
 ## Table audio
 - **Attention cue** — a short sound that signals *you* owe a game decision (gaining priority, or becoming the active player).
