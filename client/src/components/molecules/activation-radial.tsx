@@ -1,65 +1,144 @@
-// Activation radial around a selected permanent: pie of legal options.
+// Activation radial around a selected permanent: continuous SVG donut of legal options.
 
-import { For } from "solid-js";
+import { createSignal, For } from "solid-js";
 import { Button } from "~/components/atoms";
 import { cn } from "~/lib/cn";
-import { activationRadialRadius, type RadialOption } from "~/lib/radial";
+import {
+  activationRadialInnerRadius,
+  activationRadialOuterRadius,
+  type RadialOption,
+  type RadialPress,
+  radialOptionKey,
+  radialPressDown,
+  radialPressUp,
+  radialWedgeAtPoint,
+  wedgeLabelPoint,
+  wedgePath,
+} from "~/lib/radial";
 import type { ActionView } from "~/wire/types";
 
 export default function ActivationRadial(props: {
   x: number;
   y: number;
-  /** Camera zoom — ring radius tracks the on-screen card size. */
   zoom: number;
   options: RadialOption[];
   onPick: (opt: RadialOption) => void;
   onDismiss: () => void;
-  /** Hovered action option — Board paints its `auto_tap` preview (not synthetic tap-for-mana). */
   onHoverAction?: (action: ActionView | null) => void;
 }) {
+  const [press, setPress] = createSignal<RadialPress>({ armed: null });
+  const [hover, setHover] = createSignal<number | null>(null);
+
   const n = () => props.options.length;
-  const r = () => activationRadialRadius(props.zoom);
-  const pos = (i: number) => {
-    const count = n();
-    const ang = -Math.PI / 2 + (i * 2 * Math.PI) / count;
-    const radius = r();
-    return { left: props.x + Math.cos(ang) * radius, top: props.y + Math.sin(ang) * radius };
+  const inner = () => activationRadialInnerRadius(props.zoom);
+  const outer = () => activationRadialOuterRadius(props.zoom);
+  const size = () => outer() * 2 + 8;
+  const origin = () => size() / 2;
+
+  const applyUp = (wedge: number | null) => {
+    const result = radialPressUp(press(), wedge);
+    setPress(result.state);
+    if (result.dismiss) {
+      props.onHoverAction?.(null);
+      props.onDismiss();
+      return;
+    }
+    if (result.commit != null) {
+      const opt = props.options[result.commit];
+      if (!opt) return;
+      props.onHoverAction?.(null);
+      props.onPick(opt);
+    }
   };
+
   return (
     <div class="pointer-events-none fixed inset-0 z-30">
       <Button
         type="button"
         aria-label="Close"
         variant="ghost"
+        hitQuiet
         class="pointer-events-auto absolute inset-0 cursor-default rounded-none border-0 bg-transparent hover:bg-transparent"
-        onClick={() => props.onDismiss()}
-      />
-      <For each={props.options}>
-        {(opt, i) => {
-          const p = () => pos(i());
-          return (
-            <Button
-              type="button"
-              variant="game-quiet"
-              style={{ "--x": `${p().left}px`, "--y": `${p().top}px` }}
-              class={cn(
-                "pointer-events-auto absolute top-(--y) left-(--x) z-[31] max-w-[140px] -translate-x-1/2 -translate-y-1/2",
-                "min-h-11 border border-priority-gold/70 bg-forest-hud px-sm py-sm font-semibold text-caption text-snow shadow-hud",
-                "hover:border-priority-gold hover:bg-llanowar-deep",
-              )}
-              onMouseEnter={() => props.onHoverAction?.(opt.kind === "action" ? opt.action : null)}
-              onMouseLeave={() => props.onHoverAction?.(null)}
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onHoverAction?.(null);
-                props.onPick(opt);
-              }}
-            >
-              {opt.label}
-            </Button>
-          );
+        onPointerUp={(e) => {
+          e.preventDefault();
+          applyUp(null);
         }}
-      </For>
+      />
+      {/* biome-ignore lint/a11y/useSemanticElements: SVG donut must stay svg; group keeps wedge buttons in the a11y tree (img would not) */}
+      <svg
+        role="group"
+        aria-label="Activation options"
+        class="pointer-events-none absolute z-[31]"
+        width={size()}
+        height={size()}
+        style={{
+          left: `${props.x}px`,
+          top: `${props.y}px`,
+          transform: "translate(-50%, -50%)",
+        }}
+      >
+        <g transform={`translate(${origin()}, ${origin()})`} class="pointer-events-auto">
+          <For each={props.options}>
+            {(opt, i) => {
+              const d = () => wedgePath(i(), n(), inner(), outer());
+              const label = () => wedgeLabelPoint(i(), n(), inner(), outer());
+              const active = () => hover() === i() || press().armed === i();
+              return (
+                <g data-wedge={i()} data-testid={`radial-wedge-${radialOptionKey(opt)}`}>
+                  {/* biome-ignore lint/a11y/useSemanticElements: SVG wedge hit targets must be paths, not HTML buttons */}
+                  <path
+                    d={d()}
+                    tabindex={0}
+                    role="button"
+                    aria-label={opt.label}
+                    class={cn(
+                      "cursor-pointer outline-none",
+                      active()
+                        ? "fill-llanowar-deep stroke-2 stroke-priority-gold"
+                        : "fill-forest-hud stroke-1 stroke-priority-gold/70",
+                      "focus-visible:stroke-2 focus-visible:stroke-priority-gold",
+                    )}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+                      setPress(radialPressDown(press(), i()));
+                    }}
+                    onPointerUp={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      applyUp(radialWedgeAtPoint(e.clientX, e.clientY, document.elementFromPoint.bind(document)));
+                    }}
+                    onPointerEnter={() => {
+                      setHover(i());
+                      props.onHoverAction?.(opt.kind === "action" ? opt.action : null);
+                    }}
+                    onPointerLeave={() => {
+                      setHover((h) => (h === i() ? null : h));
+                      props.onHoverAction?.(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      e.preventDefault();
+                      props.onHoverAction?.(null);
+                      props.onPick(opt);
+                    }}
+                  />
+                  <text
+                    x={label().x}
+                    y={label().y}
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                    class="pointer-events-none fill-snow font-semibold text-[11px]"
+                  >
+                    {opt.label.length > 18 ? `${opt.label.slice(0, 16)}…` : opt.label}
+                  </text>
+                </g>
+              );
+            }}
+          </For>
+        </g>
+      </svg>
     </div>
   );
 }
