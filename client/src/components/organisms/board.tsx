@@ -612,7 +612,7 @@ export default function Board() {
   createEffect((prev: number | null | undefined) => {
     const id = selectedId();
     if (id == null) {
-      setRadialAnchor(null);
+      if (radialAnchor() != null) setRadialAnchor(null);
       return null;
     }
     if (prev !== id) {

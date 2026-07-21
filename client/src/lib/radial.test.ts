@@ -130,6 +130,17 @@ describe("wedgePath / wedgeLabelPoint", () => {
     }
   });
 
+  it("draws a full donut with two outer semicircles when count is 1", () => {
+    // SVG cannot express a 360° arc in one A command (start==end collapses).
+    const d = wedgePath(0, 1, 50, 90);
+    const outerArcs = d.match(/A 90 90/g) ?? [];
+    expect(outerArcs.length).toBe(2);
+    expect(d).toContain("A 50 50");
+    // evenodd hole: outer closed, then inner closed (no radial L seam through the label)
+    expect(d.indexOf("Z")).toBeLessThan(d.lastIndexOf("Z"));
+    expect(d).not.toMatch(/L /);
+  });
+
   it("places the single-wedge label at the top", () => {
     const p = wedgeLabelPoint(0, 1, 50, 90);
     expect(p.x).toBeCloseTo(0, 5);

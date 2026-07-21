@@ -2,7 +2,6 @@
 
 import { createSignal, For } from "solid-js";
 import { Button } from "~/components/atoms";
-import { cn } from "~/lib/cn";
 import {
   activationRadialInnerRadius,
   activationRadialOuterRadius,
@@ -91,13 +90,16 @@ export default function ActivationRadial(props: {
                     tabindex={0}
                     role="button"
                     aria-label={opt.label}
-                    class={cn(
-                      "cursor-pointer outline-none",
-                      active()
-                        ? "fill-llanowar-deep stroke-2 stroke-priority-gold"
-                        : "fill-forest-hud stroke-1 stroke-priority-gold/70",
-                      "focus-visible:stroke-2 focus-visible:stroke-priority-gold",
-                    )}
+                    // Explicit SVG paints — Tailwind fill/stroke utilities often miss <path>.
+                    fill-rule="evenodd"
+                    style={{
+                      // Opaque band that reads on forest felt (8-digit hex fills wash out).
+                      fill: active() ? "#276B3C" : "#15241c",
+                      stroke: "#FFD76A",
+                      strokeWidth: active() ? 2.5 : 2,
+                      strokeOpacity: 1,
+                    }}
+                    class="cursor-pointer outline-none focus-visible:stroke-[3px]"
                     onPointerDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -130,6 +132,7 @@ export default function ActivationRadial(props: {
                     text-anchor="middle"
                     dominant-baseline="middle"
                     class="pointer-events-none fill-snow font-semibold text-[11px]"
+                    style={{ fill: "#EEFFFF" }}
                   >
                     {opt.label.length > 18 ? `${opt.label.slice(0, 16)}…` : opt.label}
                   </text>
