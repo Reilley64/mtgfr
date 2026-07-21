@@ -33,9 +33,11 @@ pub struct Table {
     pub host: Option<i64>,
     /// The live game.
     pub game: Option<Game>,
-    /// The PRNG seed the game was seeded with (recorded so a replay reproduces the shuffle).
+    /// The master seed the game was seeded with (recorded so a replay reproduces the shuffle).
     /// Meaningful only once `game` is `Some`.
-    pub seed: u64,
+    pub seed: [u8; 32],
+    /// Drand round used to derive [`Self::seed`]; `0` means `MTGFR_MASTER_SEED`/test override.
+    pub beacon_round: u64,
     /// Monotonic delta sequence number; the snapshot watermark for resume.
     pub seq: u64,
     /// Monotonic publish id for the stream fan-out (gRPC broadcast). Advances on every
@@ -67,7 +69,8 @@ impl Table {
             seats: Default::default(),
             host: None,
             game: None,
-            seed: 0,
+            seed: [0; 32],
+            beacon_round: 0,
             seq: 0,
             broadcast_seq: 0,
             tx,
@@ -209,6 +212,7 @@ pub fn lock(reg: &Mutex<Registry>) -> std::sync::MutexGuard<'_, Registry> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::decks::master_from_u64;
     use engine::PlayerId;
     use std::sync::Mutex;
 
@@ -260,7 +264,7 @@ mod tests {
                 (PlayerId(0), crate::test_support::seat_deck()),
                 (PlayerId(1), crate::test_support::seat_deck()),
             ],
-            0,
+            master_from_u64(0),
         ));
         assert!(registry.try_insert("live".to_string(), table));
         assert_eq!(
@@ -282,7 +286,7 @@ mod tests {
                 (PlayerId(0), crate::test_support::seat_deck()),
                 (PlayerId(1), crate::test_support::seat_deck()),
             ],
-            0,
+            master_from_u64(0),
         ));
         // Quiet since long before grace — stands in for a table abandoned hours ago.
         table.quiet_since = Some(Instant::now() - Duration::from_secs(120));
@@ -307,7 +311,7 @@ mod tests {
                 (PlayerId(0), crate::test_support::seat_deck()),
                 (PlayerId(1), crate::test_support::seat_deck()),
             ],
-            0,
+            master_from_u64(0),
         ));
         table.quiet_since = Some(Instant::now() - Duration::from_secs(120));
         let _rx = table.tx.subscribe();
@@ -327,7 +331,7 @@ mod tests {
                 (PlayerId(0), crate::test_support::seat_deck()),
                 (PlayerId(1), crate::test_support::seat_deck()),
             ],
-            0,
+            master_from_u64(0),
         ));
         table.quiet_since = Some(Instant::now() - Duration::from_secs(30));
         assert!(registry.try_insert("blip".to_string(), table));
@@ -349,7 +353,7 @@ mod tests {
                 (PlayerId(0), crate::test_support::seat_deck()),
                 (PlayerId(1), crate::test_support::seat_deck()),
             ],
-            0,
+            master_from_u64(0),
         ));
         // Subscribe cleared the seed quiet mark; streams then dropped with no further sweep.
         table.quiet_since = None;

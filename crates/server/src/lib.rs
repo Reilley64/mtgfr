@@ -13,6 +13,7 @@ use axum::{Router, http::HeaderValue, routing::get};
 mod action_log;
 pub use action_log::log_dir;
 pub mod auth;
+pub mod beacon;
 pub mod catalog_search;
 mod chrome;
 pub mod db;

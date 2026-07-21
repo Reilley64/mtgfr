@@ -30,8 +30,8 @@ fn expand(list: &[(CardDef, usize)]) -> Vec<CardDef> {
 /// Build a game for the given seated players (`(seat, deck)`, seats contiguous from 0):
 /// designate each commander, seed and shuffle each library, draw opening hands, and wait for
 /// each player to keep or mulligan.
-pub fn seed_game(seats: &[(PlayerId, SeatDeck)], seed: u64) -> Game {
-    let mut game = Game::with_players(seats.len() as u8, seed);
+pub fn seed_game(seats: &[(PlayerId, SeatDeck)], master_seed: [u8; 32]) -> Game {
+    let mut game = Game::with_master_seed(seats.len() as u8, master_seed);
     for (player, deck) in seats {
         game.designate_commander(*player, deck.commander);
         game.stack_library(*player, &expand(&deck.cards));
@@ -62,6 +62,13 @@ pub fn keep_all_hands(game: &mut Game) {
 }
 
 #[cfg(test)]
+pub(crate) fn master_from_u64(seed: u64) -> [u8; 32] {
+    let mut master_seed = [0; 32];
+    master_seed[..8].copy_from_slice(&seed.to_le_bytes());
+    master_seed
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -88,7 +95,7 @@ mod tests {
             }
         };
         let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
-        let mut game = seed_game(&seats, 0);
+        let mut game = seed_game(&seats, master_from_u64(0));
         assert!(game.mulliganing());
         assert_eq!(game.player_count(), 2);
         for (player, _) in &seats {
@@ -123,7 +130,7 @@ mod tests {
             }
         };
         let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
-        let game = seed_game(&seats, 0);
+        let game = seed_game(&seats, master_from_u64(0));
 
         assert!(game.mulliganing());
         assert_eq!(game.current_step(), engine::Step::Main1);
@@ -136,7 +143,7 @@ mod soc_deck_tests {
     //! Acceptance tests for the precon decks (fixtures in `fixtures/decks/`): the five `soc`
     //! decks plus one per fidelity-grind deck.
 
-    use super::{SeatDeck, keep_all_hands, seed_game};
+    use super::{SeatDeck, keep_all_hands, master_from_u64, seed_game};
     use engine::{Game, Intent, PendingChoice, PlayerId};
     use schema::DeckCardEntry;
     use serde::Deserialize;
@@ -252,7 +259,7 @@ mod soc_deck_tests {
             (PlayerId(2), fixture_seat_deck(others[1])),
             (PlayerId(3), fixture_seat_deck(others[2])),
         ];
-        let mut game = seed_game(&seats, 0x50c_2026);
+        let mut game = seed_game(&seats, master_from_u64(0x50c_2026));
         keep_all_hands(&mut game);
         game
     }

@@ -553,7 +553,7 @@ fn forced_action_label(game: &Game, choice: &PendingChoice) -> String {
 mod tests {
     use super::*;
     use crate::db;
-    use crate::decks::{keep_all_hands, seed_game};
+    use crate::decks::{keep_all_hands, master_from_u64, seed_game};
     use crate::test_support::{as_user, seat_deck, user_with_deck};
     use engine::{PlayerId, SacrificeCost};
     use schema::{IntentEnvelope, WireIntent, to_intent};
@@ -661,7 +661,10 @@ mod tests {
     #[test]
     fn a_rejected_intent_does_not_advance_the_sequence() {
         let mut table = Table::empty();
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         table.game = Some(game);
         let before = table.seq;
@@ -676,7 +679,10 @@ mod tests {
     #[test]
     fn an_action_and_its_auto_passes_fold_into_one_broadcast_frame() {
         let mut table = Table::empty();
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         table.game = Some(game);
         let mut rx = table.tx.subscribe();
@@ -815,7 +821,10 @@ mod tests {
 
     fn bear_table() -> (Table, engine::ObjectId) {
         let mut table = Table::empty();
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         game.fund_mana(PlayerId(0));
         let bear = game.spawn_in_hand(PlayerId(0), cards::get_by_name("Grizzly Bear").unwrap());
@@ -1321,7 +1330,10 @@ mod tests {
     #[test]
     fn end_turn_advances_to_next_player_through_phase_windows() {
         let mut table = Table::empty();
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         assert_eq!(game.active_player(), PlayerId(0));
         assert_eq!(game.current_step(), engine::Step::Main1);
@@ -1524,7 +1536,10 @@ mod tests {
 
     #[test]
     fn a_yield_is_inert_once_the_stack_is_empty() {
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         assert_eq!(game.priority_holder(), PlayerId(0));
 
@@ -1681,7 +1696,10 @@ mod tests {
 
         let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         table.game = Some(game);
         assert!(lock(&state.reg).try_insert("take".to_string(), table));
@@ -1732,7 +1750,10 @@ mod tests {
         let mut table = Table::empty();
         table.seats[0].user_id = Some(uid0);
         table.seats[1].user_id = Some(uid1);
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         table.game = Some(game);
         assert!(lock(&state.reg).try_insert("y".to_string(), table));
@@ -1753,7 +1774,10 @@ mod tests {
 
         let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         game.set_life(PlayerId(1), 0);
         table.game = Some(game);
@@ -1777,7 +1801,10 @@ mod tests {
     #[test]
     fn published_delta_carries_self_sufficient_game_snapshot() {
         let mut table = Table::empty();
-        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(
+            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
+            master_from_u64(0),
+        );
         keep_all_hands(&mut game);
         table.game = Some(game);
         let mut rx = table.tx.subscribe();
