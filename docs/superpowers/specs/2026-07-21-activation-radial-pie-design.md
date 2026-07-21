@@ -35,7 +35,7 @@ Chosen over “keep `click` and harden chips” because the failure mode is clic
 | Commit | `pointerdown` on wedge arms; `pointerup` on the **same** wedge commits. Slide off that wedge before release → cancel that press (menu stays open). |
 | Hover | Hovering an `action` wedge still drives `auto_tap` payment preview; tap-for-mana does not. |
 | After pick | Clear selection, then `tap_for_mana` intent or `session.play(action)` as today. |
-| Dismiss | Esc, or pointer on dismiss scrim (outside the ring / in the card hole) clears selection. |
+| Dismiss | Esc, or pointer-up on the dismiss scrim (outside the ring / in the card hole) clears selection. |
 
 ## Visual layout
 
