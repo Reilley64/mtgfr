@@ -6,9 +6,9 @@
 //! seeded: the BFF calls `Tables.Seed` once, handing over the host and ordered seats (each
 //! with its resolved deck); [`seed_game`] builds the running game.
 
-use engine::{CardDef, Game, PlayerId};
+use engine::{CardDef, Game, Intent, PlayerId};
 
-/// Opening hand size (no mulligan — Phase 3).
+/// Opening hand size before pre-game mulligans.
 const OPENING_HAND: u32 = 7;
 
 /// A seat's resolved deck: the commander, the 99 as `(card, copies)`, and Card-id→Printing
@@ -28,7 +28,8 @@ fn expand(list: &[(CardDef, usize)]) -> Vec<CardDef> {
 }
 
 /// Build a game for the given seated players (`(seat, deck)`, seats contiguous from 0):
-/// designate each commander, seed and shuffle each library, and draw opening hands.
+/// designate each commander, seed and shuffle each library, draw opening hands, and wait for
+/// each player to keep or mulligan.
 pub fn seed_game(seats: &[(PlayerId, SeatDeck)], seed: u64) -> Game {
     let mut game = Game::with_players(seats.len() as u8, seed);
     for (player, deck) in seats {
@@ -41,16 +42,23 @@ pub fn seed_game(seats: &[(PlayerId, SeatDeck)], seed: u64) -> Game {
             game.draw_card(*player);
         }
     }
-    // The board exists now, so run turn 1's beginning steps (untap/upkeep/draw) — the constructor
-    // parked at Main1 with them un-run. Auto-pass then carries an empty upkeep into Main1, so the
-    // game is handed back at the starting player's first meaningful window, exactly as before.
-    game.begin_first_turn();
-    // No delta broadcasts yet at start (the table has no subscribers until the stream connects),
-    // so there is nothing to fold the forced-choice labels into — a fresh `stream` connect just
-    // renders the post-advance state directly. Discard them.
-    // (The stack is empty at start, so this can never pause for a stack hold.)
-    crate::session::advance_seeded_game(&mut game);
+    game.begin_mulligans();
     game
+}
+
+/// Test helper: keep every opening hand, then advance to the first playable priority window.
+pub fn keep_all_hands(game: &mut Game) {
+    while game.mulliganing() {
+        for p in 0..game.player_count() {
+            let player = PlayerId(p as u8);
+            if game.hand_kept(player) {
+                continue;
+            }
+            game.submit(Intent::KeepHand { player })
+                .expect("KeepHand accepted during seeded mulligans");
+        }
+    }
+    crate::session::advance_seeded_game(game);
 }
 
 #[cfg(test)]
@@ -80,9 +88,11 @@ mod tests {
             }
         };
         let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
-        let game = seed_game(&seats, 0);
+        let mut game = seed_game(&seats, 0);
+        assert!(game.mulliganing());
         assert_eq!(game.player_count(), 2);
         for (player, _) in &seats {
+            assert!(!game.hand_kept(*player));
             let snap =
                 schema::complete_visible(&game, Some(*player), &schema::ViewExtras::default());
             assert_eq!(snap.players[player.0 as usize].hand_count, OPENING_HAND);
@@ -91,6 +101,33 @@ mod tests {
                 99 - OPENING_HAND,
             );
         }
+        keep_all_hands(&mut game);
+        assert!(!game.mulliganing());
+    }
+
+    #[test]
+    fn seed_game_does_not_start_turns_until_keeps() {
+        let deck = || {
+            let commander = card("Tajic, Legion's Edge");
+            let plains = card("Plains");
+            let mut prints = std::collections::HashMap::new();
+            prints.insert(
+                commander.id.to_string(),
+                commander.default_print.to_string(),
+            );
+            prints.insert(plains.id.to_string(), plains.default_print.to_string());
+            SeatDeck {
+                commander,
+                cards: vec![(plains, 99)],
+                prints,
+            }
+        };
+        let seats = [(PlayerId(0), deck()), (PlayerId(1), deck())];
+        let game = seed_game(&seats, 0);
+
+        assert!(game.mulliganing());
+        assert_eq!(game.current_step(), engine::Step::Main1);
+        assert_eq!(game.active_player(), PlayerId(0));
     }
 }
 
@@ -99,7 +136,7 @@ mod soc_deck_tests {
     //! Acceptance tests for the precon decks (fixtures in `fixtures/decks/`): the five `soc`
     //! decks plus one per fidelity-grind deck.
 
-    use super::{SeatDeck, seed_game};
+    use super::{SeatDeck, keep_all_hands, seed_game};
     use engine::{Game, Intent, PendingChoice, PlayerId};
     use schema::DeckCardEntry;
     use serde::Deserialize;
@@ -215,7 +252,9 @@ mod soc_deck_tests {
             (PlayerId(2), fixture_seat_deck(others[1])),
             (PlayerId(3), fixture_seat_deck(others[2])),
         ];
-        seed_game(&seats, 0x50c_2026)
+        let mut game = seed_game(&seats, 0x50c_2026);
+        keep_all_hands(&mut game);
+        game
     }
 
     fn advance_whole_turns(game: &mut Game, turns: usize) {

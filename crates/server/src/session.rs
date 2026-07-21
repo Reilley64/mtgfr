@@ -265,6 +265,9 @@ impl<'a> TableSession<'a> {
 /// Opening auto-advance after [`crate::decks::seed_game`] (stack is empty — never pauses for a
 /// hold). Kept as a thin public entry so `auto_advance` itself stays private to this module.
 pub fn advance_seeded_game(game: &mut Game) {
+    if game.mulliganing() {
+        return;
+    }
     let _ = auto_advance(game, &mut [false; 4], &mut [false; 4]);
 }
 
@@ -415,6 +418,10 @@ fn auto_advance(
     yields: &mut [bool; 4],
     turn_yields: &mut [bool; 4],
 ) -> (Vec<Event>, Vec<String>, bool) {
+    if game.mulliganing() {
+        return (Vec::new(), Vec::new(), false);
+    }
+
     let mut events = Vec::new();
     let mut labels = Vec::new();
     for _ in 0..256 {
@@ -546,7 +553,7 @@ fn forced_action_label(game: &Game, choice: &PendingChoice) -> String {
 mod tests {
     use super::*;
     use crate::db;
-    use crate::decks::seed_game;
+    use crate::decks::{keep_all_hands, seed_game};
     use crate::test_support::{as_user, seat_deck, user_with_deck};
     use engine::{PlayerId, SacrificeCost};
     use schema::{IntentEnvelope, WireIntent, to_intent};
@@ -573,6 +580,25 @@ mod tests {
             step_before,
             "the game advanced instead of stalling on a no-op priority window",
         );
+    }
+
+    #[test]
+    fn auto_advance_no_ops_during_mulligans() {
+        let mut game = engine::Game::new();
+        game.begin_mulligans();
+        let mut yields = [true, false, false, false];
+        let mut turn_yields = [true, false, false, false];
+        let priority = game.priority_holder();
+
+        let (events, labels, held) = auto_advance(&mut game, &mut yields, &mut turn_yields);
+
+        assert!(events.is_empty());
+        assert!(labels.is_empty());
+        assert!(!held);
+        assert!(game.mulliganing());
+        assert_eq!(game.priority_holder(), priority);
+        assert_eq!(yields, [true, false, false, false]);
+        assert_eq!(turn_yields, [true, false, false, false]);
     }
 
     #[test]
@@ -635,10 +661,9 @@ mod tests {
     #[test]
     fn a_rejected_intent_does_not_advance_the_sequence() {
         let mut table = Table::empty();
-        table.game = Some(seed_game(
-            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            0,
-        ));
+        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
+        table.game = Some(game);
         let before = table.seq;
         let (result, _) = TableSession::new(&mut table).submit(to_intent(WireIntent::PlayLand {
             player: 0,
@@ -651,10 +676,9 @@ mod tests {
     #[test]
     fn an_action_and_its_auto_passes_fold_into_one_broadcast_frame() {
         let mut table = Table::empty();
-        table.game = Some(seed_game(
-            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            0,
-        ));
+        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
+        table.game = Some(game);
         let mut rx = table.tx.subscribe();
 
         let mut actions = 0;
@@ -792,6 +816,7 @@ mod tests {
     fn bear_table() -> (Table, engine::ObjectId) {
         let mut table = Table::empty();
         let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
         game.fund_mana(PlayerId(0));
         let bear = game.spawn_in_hand(PlayerId(0), cards::get_by_name("Grizzly Bear").unwrap());
         table.game = Some(game);
@@ -1296,7 +1321,8 @@ mod tests {
     #[test]
     fn end_turn_advances_to_next_player_through_phase_windows() {
         let mut table = Table::empty();
-        let game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
         assert_eq!(game.active_player(), PlayerId(0));
         assert_eq!(game.current_step(), engine::Step::Main1);
         table.game = Some(game);
@@ -1499,6 +1525,7 @@ mod tests {
     #[test]
     fn a_yield_is_inert_once_the_stack_is_empty() {
         let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
         assert_eq!(game.priority_holder(), PlayerId(0));
 
         let mut yields = [true, false, false, false];
@@ -1654,10 +1681,9 @@ mod tests {
 
         let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
-        table.game = Some(seed_game(
-            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            0,
-        ));
+        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
+        table.game = Some(game);
         assert!(lock(&state.reg).try_insert("take".to_string(), table));
 
         let action = {
@@ -1706,10 +1732,9 @@ mod tests {
         let mut table = Table::empty();
         table.seats[0].user_id = Some(uid0);
         table.seats[1].user_id = Some(uid1);
-        table.game = Some(seed_game(
-            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            0,
-        ));
+        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
+        table.game = Some(game);
         assert!(lock(&state.reg).try_insert("y".to_string(), table));
 
         let ack = set_yield_core(&state, as_user(&state, "p1@x.c").await.0.id, "y", true).await;
@@ -1729,6 +1754,7 @@ mod tests {
         let mut table = Table::empty();
         table.seats[0].user_id = Some(uid);
         let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
         game.set_life(PlayerId(1), 0);
         table.game = Some(game);
         assert!(lock(&state.reg).try_insert("over".to_string(), table));
@@ -1751,10 +1777,9 @@ mod tests {
     #[test]
     fn published_delta_carries_self_sufficient_game_snapshot() {
         let mut table = Table::empty();
-        table.game = Some(seed_game(
-            &[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())],
-            0,
-        ));
+        let mut game = seed_game(&[(PlayerId(0), seat_deck()), (PlayerId(1), seat_deck())], 0);
+        keep_all_hands(&mut game);
+        table.game = Some(game);
         let mut rx = table.tx.subscribe();
         let (result, _) = TableSession::new(&mut table).set_yield(PlayerId(0), true);
         assert!(result.accepted);
