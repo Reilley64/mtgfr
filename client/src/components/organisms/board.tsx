@@ -16,6 +16,7 @@ import { InspectDock } from "~/components/molecules/card-preview";
 import ConfirmDialog from "~/components/molecules/confirm-dialog";
 import Hand, { type ActionDrop, HAND_BAR_H } from "~/components/molecules/hand";
 import ManaTray from "~/components/molecules/mana-tray";
+import { MulliganBar } from "~/components/molecules/mulligan-bar";
 import { HintStrip, LegendPanel } from "~/components/organisms/board-discoverability";
 import { Connecting, LogPanel, PileOverlay, ResultOverlay } from "~/components/organisms/board-overlays";
 import { PriorityContextBar } from "~/components/organisms/priority-context-bar";
@@ -46,6 +47,7 @@ import { sharedImageCache } from "~/lib/imageCache";
 import { resolveClick } from "~/lib/interaction";
 import * as lobbyClient from "~/lib/lobbyClient";
 import { projectManaTrays } from "~/lib/manaTrayProject";
+import { mulliganChrome } from "~/lib/mulligan";
 import { type Outcome, outcome } from "~/lib/outcome";
 import { playerLabel } from "~/lib/players";
 import { stackInFromDelta } from "~/lib/playOrigin";
@@ -335,6 +337,13 @@ export default function Board() {
       pendingAttackers: primaryAction().kind === "confirm-attackers" && attackers().length > 0,
     }),
   );
+  const mulligan = createMemo(() =>
+    mulliganChrome({
+      mulliganing: game.state?.mulliganing,
+      localSeat: me(),
+      players: game.state?.players ?? [],
+    }),
+  );
   // End Turn cannot stay armed in windows where the arm control is hidden (turn-priority-and-stack spec).
   createEffect((wasClearing?: boolean) => {
     const clear = boardChrome().clearEndTurn;
@@ -402,7 +411,7 @@ export default function Board() {
         tryPinInspect();
       }
       // Space = one priority pass (Next / Resolve card). Enter = End Turn while active (turn-priority-and-stack spec).
-      if (e.key === "Enter" && !inspectPin() && !promptOpen() && !isInteractiveControl(e.target)) {
+      if (e.key === "Enter" && !inspectPin() && !promptOpen() && !mulligan().show && !isInteractiveControl(e.target)) {
         const chrome = boardChrome();
         if (chrome.showEndTurn) {
           e.preventDefault();
@@ -415,7 +424,14 @@ export default function Board() {
           return;
         }
       }
-      if (e.key === " " && !inspectPin() && !promptOpen() && yours() && !isInteractiveControl(e.target)) {
+      if (
+        e.key === " " &&
+        !inspectPin() &&
+        !promptOpen() &&
+        !mulligan().show &&
+        yours() &&
+        !isInteractiveControl(e.target)
+      ) {
         e.preventDefault(); // Space must not scroll the page
         const binding = boardChrome().space;
         if (binding === "pass_priority") {
@@ -816,7 +832,14 @@ export default function Board() {
                 Spectating
               </div>
             </Show>
-            <Show when={!spectating() && !eliminated()}>
+            <Show when={!spectating() && !eliminated() && mulligan().show}>
+              <MulliganBar
+                chrome={mulligan()}
+                onKeep={() => void act({ kind: "keep_hand", player: me() })}
+                onMulligan={() => void act({ kind: "mulligan", player: me() })}
+              />
+            </Show>
+            <Show when={!spectating() && !eliminated() && !mulligan().show}>
               <PriorityContextBar
                 action={primaryAction()}
                 yours={yours()}
@@ -831,6 +854,8 @@ export default function Board() {
                 onTurnYield={setTurnYield}
                 onCancelTarget={stackStagedCard() ? () => session.cancel() : null}
               />
+            </Show>
+            <Show when={!spectating() && !eliminated()}>
               {/* Quitting the table. Conceding is a real game action (CR 104.3a), not a navigation:
                   it eliminates the seat so the other three stop waiting on it. The result overlay
                   comes up afterwards and offers the way back to the deck manager. */}
