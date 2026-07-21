@@ -87,6 +87,45 @@ fn friendly_mulligan_redraws_seven() {
 }
 
 #[test]
+fn friendly_mulligan_emits_library_shuffled_before_redraw() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+
+    let events = game
+        .submit(Intent::Mulligan {
+            player: PlayerId(0),
+        })
+        .unwrap();
+
+    let shuffle_pos = events
+        .iter()
+        .position(
+            |event| matches!(event, Event::LibraryShuffled { player } if *player == PlayerId(0)),
+        )
+        .expect("a mulligan shuffles through the event stream");
+    assert_eq!(
+        events
+            .iter()
+            .filter(
+                |event| matches!(event, Event::LibraryShuffled { player } if *player == PlayerId(0))
+            )
+            .count(),
+        1,
+        "a mulligan shuffles exactly once"
+    );
+    let redraw_pos = events
+        .iter()
+        .position(
+            |event| matches!(event, Event::CardDrawn { player, .. } if *player == PlayerId(0)),
+        )
+        .expect("a mulligan redraws a hand");
+    assert!(
+        shuffle_pos < redraw_pos,
+        "shuffle must happen before redraw"
+    );
+}
+
+#[test]
 fn second_mulligan_draws_six() {
     let mut game = Game::with_players(2, 1);
     deal_opening(&mut game, 40);
@@ -164,6 +203,44 @@ fn simultaneous_keeps_ignore_priority() {
     })
     .unwrap();
     assert!(!game.mulliganing());
+}
+
+#[test]
+fn concede_after_other_player_kept_finishes_mulligans() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::KeepHand {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    assert!(game.mulliganing());
+
+    let events = game
+        .submit(Intent::Concede {
+            player: PlayerId(0),
+        })
+        .unwrap();
+
+    assert!(game.has_lost(PlayerId(0)));
+    assert!(!game.mulliganing());
+    assert!(
+        events
+            .iter()
+            .any(|event| matches!(event, Event::MulligansFinished))
+    );
+}
+
+#[test]
+fn pass_priority_rejects_while_mulliganing() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+
+    assert_eq!(
+        game.submit(Intent::PassPriority {
+            player: PlayerId(0),
+        }),
+        Err(Reject::Mulliganing)
+    );
 }
 
 #[test]

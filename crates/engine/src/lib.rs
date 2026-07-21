@@ -317,7 +317,11 @@ impl Game {
                 Intent::CastFaceDown { player, card } => self.cast_face_down(player, card)?,
                 Intent::TapForMana { player, object } => self.tap_for_mana(player, object)?,
                 Intent::ChannelColorlessMana { player } => self.channel_colorless_mana(player)?,
-                Intent::Concede { player } => self.concede(player),
+                Intent::Concede { player } => {
+                    let mut events = self.concede(player);
+                    self.finish_mulligans_if_all_kept(&mut events);
+                    events
+                }
                 Intent::ActivateAbility {
                     player,
                     object,

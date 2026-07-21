@@ -65,7 +65,7 @@ impl Game {
             );
         }
 
-        self.shuffle(player);
+        self.push_apply(&mut events, Event::LibraryShuffled { player });
         for event in self.draw_events(player, hand_size as u32) {
             self.push_apply(&mut events, event);
         }
@@ -97,7 +97,11 @@ impl Game {
         Ok(())
     }
 
-    fn finish_mulligans_if_all_kept(&mut self, events: &mut Vec<Event>) {
+    pub(crate) fn finish_mulligans_if_all_kept(&mut self, events: &mut Vec<Event>) {
+        if !self.mulliganing {
+            return;
+        }
+
         let all_kept = self
             .players
             .iter()
