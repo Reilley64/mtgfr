@@ -34,7 +34,7 @@ export default function ActivationRadial(props: {
   const size = () => outer() * 2 + 8;
   const origin = () => size() / 2;
 
-  /** Resolve wedge index from the element under the pointer (`data-wedge` on the path's `<g>`). */
+  /** Resolve wedge index from an element (`data-wedge` on the path's `<g>`). */
   const wedgeAttr = (el: EventTarget | null): number | null => {
     if (!(el instanceof Element)) return null;
     const node = el.closest("[data-wedge]");
@@ -44,6 +44,10 @@ export default function ActivationRadial(props: {
     const i = Number(v);
     return Number.isFinite(i) ? i : null;
   };
+
+  /** Wedge under the pointer at release — not `e.target`, which follows capture. */
+  const wedgeAtPoint = (clientX: number, clientY: number): number | null =>
+    wedgeAttr(document.elementFromPoint(clientX, clientY));
 
   const applyUp = (wedge: number | null) => {
     const result = radialPressUp(press(), wedge);
@@ -113,7 +117,7 @@ export default function ActivationRadial(props: {
                     onPointerUp={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      applyUp(wedgeAttr(e.target) ?? i());
+                      applyUp(wedgeAtPoint(e.clientX, e.clientY));
                     }}
                     onPointerEnter={() => {
                       setHover(i());
