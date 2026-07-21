@@ -1734,6 +1734,10 @@ pub(crate) struct Player {
     pub(crate) library: Vec<ObjectId>,
     /// Set when the player tried to draw from an empty library (loses via SBA).
     pub(crate) attempted_empty_draw: bool,
+    /// Completed mulligans this player has taken in the pre-game mulligan phase.
+    pub(crate) mulligans_taken: u8,
+    /// Whether this player has kept their hand for the pre-game mulligan phase.
+    pub(crate) hand_kept: bool,
     /// Lands played this turn (reset at untap; limited to one).
     pub(crate) lands_played: u8,
     /// Life this player has gained this turn (turn-scoped; reset each turn at untap). Feeds

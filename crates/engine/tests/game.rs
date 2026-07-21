@@ -22,6 +22,22 @@ fn land_permanent(events: &[Event]) -> ObjectId {
         .expect("playing a land emits LandPlayed")
 }
 
+fn deal_opening(game: &mut Game, deck_size: usize) {
+    let plains = card("Plains");
+    let deck = vec![plains; deck_size];
+    for p in 0..game.player_count() as u8 {
+        let player = PlayerId(p);
+        game.stack_library(player, &deck);
+        game.shuffle(player);
+    }
+    for _ in 0..7 {
+        for p in 0..game.player_count() as u8 {
+            game.draw_card(PlayerId(p));
+        }
+    }
+    game.begin_mulligans();
+}
+
 /// Pass priority for whichever player currently holds it until `predicate` holds,
 /// rolling the game forward through steps. On declare attackers, submits
 /// [`Game::required_attacks`] (empty when nothing is forced) so goad cannot wedge
@@ -56,6 +72,98 @@ fn advance_until(game: &mut Game, predicate: impl Fn(&Game) -> bool) {
 fn pass_until_next_turn(game: &mut Game) {
     let start = game.active_player();
     advance_until(game, |g| g.active_player() != start);
+}
+
+#[test]
+fn friendly_mulligan_redraws_seven() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::Mulligan {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    assert_eq!(game.hand(PlayerId(0)).len(), 7);
+    assert!(game.mulliganing());
+}
+
+#[test]
+fn second_mulligan_draws_six() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::Mulligan {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Mulligan {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    assert_eq!(game.hand(PlayerId(0)).len(), 6);
+}
+
+#[test]
+fn mulligan_to_one_auto_keeps() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    for _ in 0..7 {
+        game.submit(Intent::Mulligan {
+            player: PlayerId(0),
+        })
+        .unwrap();
+    }
+    assert_eq!(game.hand(PlayerId(0)).len(), 1);
+    assert!(game.hand_kept(PlayerId(0)));
+    assert_eq!(game.mulligans_taken(PlayerId(0)), 7);
+    assert!(
+        game.submit(Intent::Mulligan {
+            player: PlayerId(0),
+        })
+        .is_err()
+    );
+}
+
+#[test]
+fn all_keeps_begin_first_turn() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::KeepHand {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    assert!(game.mulliganing());
+    let events = game
+        .submit(Intent::KeepHand {
+            player: PlayerId(1),
+        })
+        .unwrap();
+    assert!(!game.mulliganing());
+    assert!(events.iter().any(|e| matches!(e, Event::MulligansFinished)));
+    assert!(events.iter().any(|e| matches!(
+        e,
+        Event::StepBegan {
+            step: Step::Upkeep,
+            ..
+        }
+    )));
+}
+
+#[test]
+fn simultaneous_keeps_ignore_priority() {
+    let mut game = Game::with_players(3, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::KeepHand {
+        player: PlayerId(2),
+    })
+    .unwrap();
+    game.submit(Intent::KeepHand {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::KeepHand {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    assert!(!game.mulliganing());
 }
 
 #[test]

@@ -60,6 +60,7 @@ impl Game {
             exile_links: state::ExileLinks::default(),
             delayed_triggers: state::DelayedTriggers::default(),
             master_seed,
+            mulliganing: false,
             skip_starting_players_first_draw: false,
             actions: Vec::new(),
             next_action_id: 0,
@@ -99,7 +100,7 @@ impl Game {
     /// beginning steps un-run (zones are empty then), and this reruns them once the board exists.
     /// The starting player draws in their first draw step in every game *except* a two-player one,
     /// where they skip it (CR 103.8a/c) — armed here, spent in [`Game::perform_turn_based_actions`].
-    pub fn begin_first_turn(&mut self) -> Vec<Event> {
+    pub(crate) fn begin_first_turn_events(&mut self) -> Vec<Event> {
         self.skip_starting_players_first_draw = self.players.len() == 2;
 
         let mut events = Vec::new();
@@ -115,6 +116,11 @@ impl Game {
         // Untap has no priority window, so this rolls straight on to the upkeep and stops there. (CR 117, CR 502.1, CR 503)
         events.extend(self.advance_step());
 
+        events
+    }
+
+    pub fn begin_first_turn(&mut self) -> Vec<Event> {
+        let mut events = self.begin_first_turn_events();
         // Mirror `submit`'s tail so an upkeep trigger reaches the stack.
         self.after_events(&mut events);
         events

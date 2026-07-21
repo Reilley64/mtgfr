@@ -1452,6 +1452,12 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
                 player: u32::from(player),
             })
         }
+        VisibleEvent::MulliganTaken { .. }
+        | VisibleEvent::HandKept { .. }
+        | VisibleEvent::MulligansFinished => {
+            // Engine-only for Task 3; proto/client wiring follows in later tasks.
+            return pb::VisibleEvent { event: None };
+        }
         VisibleEvent::CardDrawn {
             player,
             object,

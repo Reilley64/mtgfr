@@ -3,6 +3,10 @@ use super::*;
 /// A player's requested action. Fed to [`Game::submit`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Intent {
+    /// Keep this player's opening hand during the simultaneous pre-game mulligan phase.
+    KeepHand { player: PlayerId },
+    /// Take a pre-game mulligan: return the hand to the library, shuffle, and draw to size.
+    Mulligan { player: PlayerId },
     /// Move a spell from hand onto the stack. `x` is the value chosen for a `{X}` cost
     /// (CR 601.2b); it is 0 (and ignored) for a spell with no `{X}`.
     ///
@@ -542,6 +546,8 @@ impl Intent {
             | Intent::ChooseCreatureType { .. }
             | Intent::ChooseColor { .. }
             | Intent::ChooseTopOrBottom { .. }
+            | Intent::KeepHand { .. }
+            | Intent::Mulligan { .. }
             | Intent::PassPriority { .. }
             | Intent::Concede { .. } => Vec::new(),
         }
@@ -550,7 +556,9 @@ impl Intent {
     /// The player taking this action (every intent names its actor).
     pub fn actor(&self) -> PlayerId {
         match self {
-            Intent::Cast { player, .. }
+            Intent::KeepHand { player }
+            | Intent::Mulligan { player }
+            | Intent::Cast { player, .. }
             | Intent::PlayLand { player, .. }
             | Intent::Cycle { player, .. }
             | Intent::ActivateHandAbility { player, .. }
@@ -653,7 +661,9 @@ impl Intent {
             | Intent::ChooseCopyTarget { .. }
             | Intent::ChooseAttachHost { .. }
             | Intent::ChooseTopOrBottom { .. } => true,
-            Intent::Cast { .. }
+            Intent::KeepHand { .. }
+            | Intent::Mulligan { .. }
+            | Intent::Cast { .. }
             | Intent::PlayLand { .. }
             | Intent::Cycle { .. }
             | Intent::ActivateHandAbility { .. }
@@ -2688,6 +2698,16 @@ pub enum Event {
     /// `player` got the city's blessing (CR 702.131 Ascend) — a state-based action fired once
     /// they control ten or more permanents. Fully public: sticky for the rest of the game.
     CitysBlessingGained { player: PlayerId },
+    /// A player completed a pre-game mulligan and redrew to the resulting hand size.
+    MulliganTaken {
+        player: PlayerId,
+        mulligans_taken: u8,
+        hand_size: u8,
+    },
+    /// A player kept their current opening hand during the pre-game mulligan phase.
+    HandKept { player: PlayerId },
+    /// Every living player has kept; the pre-game mulligan phase is over.
+    MulligansFinished,
     /// A player drew a card. Full information (canonical); the card's identity is
     /// private and gets hidden from other players by the redaction layer
     /// (`schema::to_visible_event`), not here — this event stays canonical/unredacted
@@ -2774,6 +2794,8 @@ pub enum Reject {
     IllegalMode,
     /// The action can't be taken at this time (e.g. a sorcery-speed spell mid-combat).
     WrongTiming,
+    /// The action is legal only inside or outside the pre-game mulligan phase.
+    Mulliganing,
     /// The engine is waiting on a pending choice; resolve it before acting.
     ChoicePending,
     /// The answer to a pending choice was malformed (not a valid permutation, etc.).
@@ -2791,6 +2813,10 @@ pub enum Reject {
 /// [`Game::meaningful_actions`]; see it for the deliberate scoping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MeaningfulAction {
+    /// Keep the current opening hand during the simultaneous pre-game mulligan phase.
+    KeepHand,
+    /// Take a pre-game mulligan and redraw to the next hand size.
+    Mulligan,
     /// Play `card` as this turn's land drop, from `zone` (hand, or exile with permission).
     PlayLand { card: ObjectId, zone: Zone },
     /// Cast `card` from `zone` (hand, the command zone, or exile with permission). The zone
