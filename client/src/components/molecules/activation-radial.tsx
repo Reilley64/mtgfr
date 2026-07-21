@@ -96,8 +96,8 @@ export default function ActivationRadial(props: {
                       // Opaque band that reads on forest felt (8-digit hex fills wash out).
                       fill: active() ? "#276B3C" : "#15241c",
                       stroke: "#FFD76A",
-                      strokeWidth: active() ? 2.5 : 2,
-                      strokeOpacity: 1,
+                      "stroke-width": active() ? 2.5 : 2,
+                      "stroke-opacity": 1,
                     }}
                     class="cursor-pointer outline-none focus-visible:stroke-[3px]"
                     onPointerDown={(e) => {
