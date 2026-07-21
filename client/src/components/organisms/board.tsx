@@ -587,6 +587,12 @@ export default function Board() {
     // Prefer density/tween pose (fanned member); fall back to the cluster face that owns id.
     return byId(id) ?? cards().find((c) => c.clusterMembers.includes(id)) ?? null;
   };
+  const selectedScreen = createMemo(() => {
+    const c = selectedCard();
+    if (!c) return null;
+    const s = worldToScreen(camera(), c.x + c.w / 2, c.y + c.h / 2);
+    return s;
+  });
   createEffect(() => {
     const id = selectedId();
     if (id == null) return;
@@ -622,12 +628,6 @@ export default function Board() {
     if (selectedRadial().length === 0) setSelectedId(null);
   });
 
-  const selectedScreen = createMemo(() => {
-    const c = selectedCard();
-    if (!c) return null;
-    const s = worldToScreen(camera(), c.x + c.w / 2, c.y + c.h / 2);
-    return s;
-  });
   const manaTrays = createMemo(() => projectManaTrays(game.state?.players ?? [], me(), playerCount(), camera()));
   // DOM hit targets over canvas life orbs — for AT and for Playwright targeting/combat aims.
   const lifeOrbs = createMemo(() => {

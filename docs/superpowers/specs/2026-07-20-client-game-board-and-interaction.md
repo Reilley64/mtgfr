@@ -25,7 +25,7 @@ The living architecture map for this module is **[docs/client-canvas-map.md](../
 
 - As a player, I see my seat at the bottom of the table and my opponents above me, matching where they would physically sit.
 - As a player, I drag a card from my hand over the threshold to play it; the card flies from my hand to the stack without a disjointed snap.
-- As a player, I can right-click (or long-press) a permanent to open a radial menu of its activated abilities, then select one to cast.
+- As a player, I can click a battlefield permanent to select it and open a radial menu of its activated abilities, then select one to cast.
 - As a player with priority during a non-empty stack, I see a "Resolve card" button and a "Resolve stack" arm control, not a generic "Next".
 - As an active player who wants to stop clicking Next, I press "End Turn" and the game advances through my remaining phases while opponents retain their response windows.
 - As a player, I Alt-click (or Alt-hold) a face-up card to pin it in the inspect dock on the left, with a modifier ledger for battlefield permanents.
