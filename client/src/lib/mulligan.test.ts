@@ -18,6 +18,21 @@ describe("mulliganChrome", () => {
     expect(c.waitingCount).toBe(2);
   });
 
+  it("still offers keep when another mulligan is unavailable", () => {
+    const c = mulliganChrome({
+      mulliganing: true,
+      localSeat: 0,
+      players: [
+        { player: 0, hand_kept: false, can_mulligan: false, mulligans_taken: 6 },
+        { player: 1, hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      ],
+    });
+
+    expect(c.showControls).toBe(true);
+    expect(c.keepLabel).toBe("Keep");
+    expect(c.canMulligan).toBe(false);
+  });
+
   it("hides controls when local seat kept but still shows waiting", () => {
     const c = mulliganChrome({
       mulliganing: true,

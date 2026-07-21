@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  applyDelta,
-  applySnapshot,
-  foldProvenance,
-  game,
-  lastTableFeelBatch,
-  resetGame,
-  setGame,
-} from "~/store";
+import { applyDelta, applySnapshot, foldProvenance, game, lastTableFeelBatch, resetGame, setGame } from "~/store";
 import type { ObjectView, StackObjectView, StreamFrame, VisibleEvent, VisibleState } from "~/wire/types";
 
 /** The delta payload (delta arm of `StreamFrame` minus its `frame` tag; the generator inlines it). */
@@ -99,6 +91,34 @@ describe("applyDelta", () => {
     applyDelta(mkDelta(1, [], [bears]));
     expect(game.seq).toBe(1);
     expect(game.state?.objects).toEqual([bears]);
+  });
+
+  it("applies snapshot-sourced mulligan updates with no visible events", () => {
+    applyDelta({
+      ...mkDelta(1, []),
+      state: {
+        ...mkState(),
+        mulliganing: true,
+        players: [
+          {
+            player: 0,
+            username: "p0",
+            life: 40,
+            commander_tax: 0,
+            lost: false,
+            hand_count: 7,
+            library_count: 92,
+            mulligans_taken: 0,
+            hand_kept: true,
+            can_mulligan: false,
+            mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+          },
+        ],
+      },
+    });
+    expect(game.state?.players[0]?.hand_kept).toBe(true);
+    expect(game.state?.players[0]?.can_mulligan).toBe(false);
+    expect(game.log).toEqual([]);
   });
 
   it("appends a narrated log line for each event with narrative value", () => {

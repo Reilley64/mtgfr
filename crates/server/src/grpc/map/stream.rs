@@ -802,7 +802,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
     }
 }
 
-pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
+pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
     use pb::visible_event::Event;
     let event = match event {
         VisibleEvent::SpellCast {
@@ -1458,8 +1458,9 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
         VisibleEvent::MulliganTaken { .. }
         | VisibleEvent::HandKept { .. }
         | VisibleEvent::MulligansFinished => {
-            // Engine-only for Task 3; proto/client wiring follows in later tasks.
-            return pb::VisibleEvent { event: None };
+            // Mulligan state is snapshot-sourced; no event payload is sent until the wire owns
+            // explicit mulligan variants.
+            return None;
         }
         VisibleEvent::CardDrawn {
             player,
@@ -1532,7 +1533,7 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
             controller: u32::from(controller),
         }),
     };
-    pb::VisibleEvent { event: Some(event) }
+    Some(pb::VisibleEvent { event: Some(event) })
 }
 
 pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
@@ -1571,7 +1572,7 @@ pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamFrame {
             events: envelope
                 .events
                 .into_iter()
-                .map(visible_event_to_pb)
+                .filter_map(visible_event_to_pb)
                 .collect(),
             state: Some(visible_state_to_pb(envelope.state)),
             auto_actions: envelope.auto_actions,
@@ -1792,5 +1793,28 @@ mod tests {
             }
             other => panic!("expected SpellDamageDivided, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn delta_omits_mulligan_lifecycle_events_from_wire() {
+        let state = rich_snapshot_state();
+        let pb = stream_frame_to_pb(StreamFrame::Delta(DeltaEnvelope {
+            seq: 11,
+            events: vec![
+                VisibleEvent::MulliganTaken {
+                    player: 0,
+                    mulligans_taken: 1,
+                    hand_size: 6,
+                },
+                VisibleEvent::HandKept { player: 0 },
+                VisibleEvent::MulligansFinished,
+            ],
+            state,
+            auto_actions: vec![],
+        }));
+        let Some(pb::stream_frame::Frame::Delta(delta)) = pb.frame else {
+            panic!("expected Delta frame");
+        };
+        assert!(delta.events.is_empty());
     }
 }
