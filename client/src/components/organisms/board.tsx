@@ -600,6 +600,28 @@ export default function Board() {
     // Use the selected object id — `c` may be the cluster face when falling back for pose.
     return radialOptions(id, game.state?.actions, c.tapsForMana, c.tapped, game.state?.can_act ?? false);
   });
+  const [radialAnchor, setRadialAnchor] = createSignal<{ x: number; y: number; zoom: number } | null>(null);
+
+  // Freeze screen position when selection opens; clear when it closes.
+  createEffect((prev: number | null | undefined) => {
+    const id = selectedId();
+    if (id == null) {
+      setRadialAnchor(null);
+      return null;
+    }
+    if (prev !== id) {
+      const s = selectedScreen();
+      if (s) setRadialAnchor({ x: s.x, y: s.y, zoom: camera().zoom });
+    }
+    return id;
+  });
+
+  // No hollow pie — drop selection when nothing is legal.
+  createEffect(() => {
+    if (selectedId() == null) return;
+    if (selectedRadial().length === 0) setSelectedId(null);
+  });
+
   const selectedScreen = createMemo(() => {
     const c = selectedCard();
     if (!c) return null;
@@ -769,12 +791,12 @@ export default function Board() {
         }}
         onDismiss={clearInspect}
       />
-      <Show when={selectedScreen()}>
+      <Show when={radialAnchor() && selectedRadial().length > 0 ? radialAnchor() : null}>
         {(pos) => (
           <ActivationRadial
             x={pos().x}
             y={pos().y}
-            zoom={camera().zoom}
+            zoom={pos().zoom}
             options={selectedRadial()}
             onPick={onRadialPick}
             onDismiss={() => {
