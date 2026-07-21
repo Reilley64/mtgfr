@@ -27,6 +27,9 @@ jar.txt
 # Local agent/dogfood artifacts (videos, screenshots, seed jars)
 /tmp/
 
+# Visual brainstorm companion sessions (obra/superpowers)
+.superpowers/
+
 # Ephemeral CR-index hook state + atomic write scratch
 .cursor/hooks/state/
 docs/CR_INDEX.md.tmp
