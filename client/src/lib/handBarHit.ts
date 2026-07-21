@@ -1,9 +1,11 @@
 // Hand-bar hit policy for the dense Arena fan.
 //
 // Stacking: left lowest, right highest (so resting cards show a left-edge name strip).
-// Layout: each flex slot is still peek-wide; the full face hangs left of that right-aligned
-// peek. Buried cards are hit on the LEFT `peekW` only. The rightmost card in a section has no
-// neighbor to protect, so its entire face is hittable.
+// Layout: each flex slot is still peek-wide and visible-tall; the full face hangs left of that
+// right-aligned peek and tucks under the screen. Buried cards are hit on the LEFT `peekW` only.
+// The rightmost card in a section has no neighbor to protect, so its entire face is hittable.
+// Raise is paint-only (`handBarRaiseTranslateY`); the hit strip bottom-anchors and grows upward
+// (`handBarHitHeight`) so a cursor on the resting visible bottom never leave/enter-thrashes.
 
 /** Visible strip width at rest — left edge of the face (card name), Arena-style. */
 export const HAND_BAR_PEEK = 64;
@@ -23,6 +25,25 @@ export function handBarHitWidth(index: number, count: number, peekW: number, fac
   if (peekW <= 0 || faceW <= 0 || count <= 0) return 0;
   if (index < 0 || index >= count) return 0;
   return index === count - 1 ? faceW : peekW;
+}
+
+/**
+ * Hit strip height for a hand-bar slot. Bottom-anchored in the resting peek box so raise
+ * grows upward — a cursor parked on the resting visible bottom stays inside (no enter/leave
+ * thrash). Growing the layout slot height with a top-anchored face is the failing model.
+ */
+export function handBarHitHeight(raised: boolean, visibleH: number, cardH: number): number {
+  if (visibleH <= 0 || cardH <= 0) return 0;
+  return raised ? Math.max(visibleH, cardH) : visibleH;
+}
+
+/**
+ * Paint-only raise: translateY (px) applied to the face while the layout slot stays
+ * `visibleH` tall. Negative = toward the board.
+ */
+export function handBarRaiseTranslateY(raised: boolean, visibleH: number, cardH: number): number {
+  if (!raised || visibleH <= 0 || cardH <= 0) return 0;
+  return visibleH - cardH;
 }
 
 /**
