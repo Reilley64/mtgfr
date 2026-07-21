@@ -40,6 +40,7 @@ mod playable;
 mod priority;
 mod query;
 mod resolution;
+pub mod rng;
 mod spawn;
 mod state;
 mod triggers;
@@ -125,9 +126,11 @@ pub struct Game {
     pub(crate) exile_links: state::ExileLinks,
     /// Pending CR 603.7 delayed triggered abilities not yet placed on the stack.
     pub(crate) delayed_triggers: state::DelayedTriggers,
-    /// Injected PRNG state (splitmix64) — the only source of randomness, so the
-    /// engine stays deterministic: same seed ⇒ same shuffles.
-    pub(crate) rng_state: u64,
+    /// Master seed for derive-per-op random streams (BLAKE3 keyed by player + iteration).
+    pub(crate) master_seed: [u8; 32],
+    /// Temporary shared splitmix64 stream for dig/misc until Task 2 migrates whole ops to
+    /// [`Game::with_op_rng`]. Shuffles use per-op streams only.
+    pub(crate) legacy_rng_state: u64,
     /// Whether the active player's next draw step is skipped: the starting player skips their
     /// first draw in a two-player game only (CR 103.8a; multiplayer skips no one, CR 103.8c).
     /// Armed by [`Game::begin_first_turn`] from the seat count and spent on the first draw step.

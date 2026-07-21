@@ -1820,6 +1820,8 @@ pub(crate) struct Player {
     /// [`Effect::PlayFromGraveyardOncePerTurn`], read by [`Game::playable_zone`] to reject a
     /// second such play the same turn. `false` until the permission is used.
     pub(crate) graveyard_play_used_this_turn: bool,
+    /// Monotonic counter for derive-per-op RNG — bumped once per random operation for this seat.
+    pub(crate) op_iteration: u64,
     /// Times this player has cast their commander from the command zone (tax = 2× this).
     pub(crate) command_casts: u8,
     /// Commander combat damage taken, keyed by the source commander's owner (each player

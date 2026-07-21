@@ -13295,6 +13295,86 @@ fn the_same_seed_shuffles_a_library_identically() {
 }
 
 #[test]
+fn the_same_master_seed_and_iteration_shuffles_identically() {
+    let deck = [
+        card("Grizzly Bear"),
+        card("Shock"),
+        card("Grizzly Bear"),
+        card("Shock"),
+        card("Grizzly Bear"),
+    ];
+    let order = |seed: u64| {
+        let mut game = Game::with_players(2, seed);
+        game.stack_library(PlayerId(0), &deck);
+        game.shuffle(PlayerId(0));
+        (0..deck.len())
+            .flat_map(|_| game.draw_card(PlayerId(0)))
+            .filter_map(|e| match e {
+                Event::CardDrawn { card, .. } => Some(card.name),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(order(42), order(42));
+}
+
+#[test]
+fn different_players_get_independent_shuffle_streams() {
+    let deck = [
+        card("Grizzly Bear"),
+        card("Shock"),
+        card("Island"),
+        card("Mountain"),
+        card("Forest"),
+    ];
+    let mut game = Game::with_players(2, 99);
+    game.stack_library(PlayerId(0), &deck);
+    game.stack_library(PlayerId(1), &deck);
+    game.shuffle(PlayerId(0));
+    game.shuffle(PlayerId(1));
+    let top0 = match game
+        .draw_card(PlayerId(0))
+        .into_iter()
+        .find_map(|e| match e {
+            Event::CardDrawn { card, .. } => Some(card.name),
+            _ => None,
+        }) {
+        Some(n) => n,
+        None => panic!("expected draw"),
+    };
+    // Re-deal identical libraries and only shuffle P1 first — P0's first shuffle must match
+    // the previous P0 order, proving P1's op did not consume P0's stream.
+    let mut game2 = Game::with_players(2, 99);
+    game2.stack_library(PlayerId(0), &deck);
+    game2.stack_library(PlayerId(1), &deck);
+    game2.shuffle(PlayerId(1));
+    game2.shuffle(PlayerId(0));
+    let top0_b = match game2
+        .draw_card(PlayerId(0))
+        .into_iter()
+        .find_map(|e| match e {
+            Event::CardDrawn { card, .. } => Some(card.name),
+            _ => None,
+        }) {
+        Some(n) => n,
+        None => panic!("expected draw"),
+    };
+    assert_eq!(top0, top0_b);
+}
+
+#[test]
+fn gen_index_stays_in_range() {
+    use engine::rng::OpRng;
+    let mut rng = OpRng::from_seed(0xDEAD_BEEF);
+    for upper in [1usize, 2, 7, 99] {
+        for _ in 0..200 {
+            let i = rng.gen_index(upper);
+            assert!(i < upper);
+        }
+    }
+}
+
+#[test]
 fn drawing_from_an_empty_library_loses_the_game() {
     let mut game = Game::new();
     // Player 1 has an empty library and attempts to draw.
@@ -65967,39 +66047,49 @@ fn creative_technique_bottoms_rest_in_prng_order() {
     // library before any of this is revealed, so which lands end up as "the rest" is itself
     // seed-dependent — the events themselves are read below rather than the pre-cast stack
     // order, so that's irrelevant to what's being tested here.)
-    let mut game = TestGame {
-        game: Game::with_seed(1),
+    //
+    // Library shuffles now use derive-per-op streams; dig bottoming still uses the legacy stream
+    // until Task 2 — pick the first seed that reveals ≥2 lands and reorders the bottom pile.
+    let deck = [
+        card("Forest"),
+        card("Island"),
+        card("Swamp"),
+        card("Grizzly Bear"), // the lone nonland — the reveal's stop point
+        card("Mountain"),
+    ];
+    let bottom_pile = |seed: u64| -> (Vec<ObjectId>, Vec<ObjectId>) {
+        let mut game = TestGame {
+            game: Game::with_seed(seed),
+        };
+        game.stack_library(PlayerId(0), &deck);
+        let technique = game.spawn_in_hand(PlayerId(0), card("Creative Technique"));
+        game.cast(technique).submit();
+        decline_demonstrate(&mut game);
+        let resolved = resolve_top_of_stack_events(&mut game);
+        let mut revealed: Vec<ObjectId> = resolved
+            .iter()
+            .filter_map(|e| match e {
+                Event::RevealedTopOfLibrary { card, .. } => Some(*card),
+                _ => None,
+            })
+            .collect();
+        revealed.pop();
+        let bottomed: Vec<ObjectId> = resolved
+            .iter()
+            .filter_map(|e| match e {
+                Event::PutOnBottomOfLibrary { card, .. } => Some(*card),
+                _ => None,
+            })
+            .collect();
+        (revealed, bottomed)
     };
-    game.stack_library(
-        PlayerId(0),
-        &[
-            card("Forest"),
-            card("Island"),
-            card("Swamp"),
-            card("Grizzly Bear"), // the lone nonland — the reveal's stop point
-            card("Mountain"),
-        ],
-    );
-    let technique = game.spawn_in_hand(PlayerId(0), card("Creative Technique"));
-    game.cast(technique).submit();
-    decline_demonstrate(&mut game);
-    let resolved = resolve_top_of_stack_events(&mut game);
-
-    let mut revealed: Vec<ObjectId> = resolved
-        .iter()
-        .filter_map(|e| match e {
-            Event::RevealedTopOfLibrary { card, .. } => Some(*card),
-            _ => None,
+    let seed = (0..256u64)
+        .find(|&seed| {
+            let (revealed, bottomed) = bottom_pile(seed);
+            revealed.len() >= 2 && bottomed != revealed
         })
-        .collect();
-    revealed.pop(); // drop the hit itself — only the lands revealed ahead of it are "the rest"
-    let bottomed: Vec<ObjectId> = resolved
-        .iter()
-        .filter_map(|e| match e {
-            Event::PutOnBottomOfLibrary { card, .. } => Some(*card),
-            _ => None,
-        })
-        .collect();
+        .expect("at least one seed reveals two lands and reorders the bottom pile");
+    let (revealed, bottomed) = bottom_pile(seed);
     assert_eq!(
         revealed.len(),
         bottomed.len(),
@@ -66007,11 +66097,11 @@ fn creative_technique_bottoms_rest_in_prng_order() {
     );
     assert!(
         revealed.len() >= 2,
-        "seed 0 must reveal at least two lands before the hit for this test to mean anything"
+        "seed {seed} must reveal at least two lands before the hit for this test to mean anything"
     );
     assert_ne!(
         bottomed, revealed,
-        "seed 1's Fisher-Yates reorders the bottomed pile away from reveal order"
+        "seed {seed}'s Fisher-Yates reorders the bottomed pile away from reveal order"
     );
     let mut sorted_bottomed = bottomed.clone();
     sorted_bottomed.sort();
@@ -66023,19 +66113,19 @@ fn creative_technique_bottoms_rest_in_prng_order() {
     );
 
     // Control: a different seed produces a different shuffled order for the identical setup.
+    let control_seed = (0..256u64)
+        .find(|&s| {
+            if s == seed {
+                return false;
+            }
+            let (_, control) = bottom_pile(s);
+            !control.is_empty() && control != bottomed
+        })
+        .expect("at least one other seed bottom-reorders differently");
     let mut control = TestGame {
-        game: Game::with_seed(16),
+        game: Game::with_seed(control_seed),
     };
-    control.stack_library(
-        PlayerId(0),
-        &[
-            card("Forest"),
-            card("Island"),
-            card("Swamp"),
-            card("Grizzly Bear"),
-            card("Mountain"),
-        ],
-    );
+    control.stack_library(PlayerId(0), &deck);
     let technique = control.spawn_in_hand(PlayerId(0), card("Creative Technique"));
     control.cast(technique).submit();
     decline_demonstrate(&mut control);
@@ -66050,7 +66140,7 @@ fn creative_technique_bottoms_rest_in_prng_order() {
     assert_ne!(
         control_bottomed.len(),
         0,
-        "seed 16 must also reveal at least one land before the hit for this test to mean anything"
+        "seed {control_seed} must also reveal at least one land before the hit for this test to mean anything"
     );
     assert_ne!(
         control_bottomed, bottomed,

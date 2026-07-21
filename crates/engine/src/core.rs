@@ -16,6 +16,16 @@ impl Game {
     /// Player 0 is the starting active player and holds priority; a lobby that wants a
     /// random first player randomizes the seat→person assignment instead.
     pub fn with_players(players: u8, seed: u64) -> Self {
+        let mut master = [0u8; 32];
+        master[..8].copy_from_slice(&seed.to_le_bytes());
+        Self::with_master_seed(players, master)
+    }
+
+    /// A fresh `players`-seat game keyed by a 32-byte master seed.
+    pub fn with_master_seed(players: u8, master_seed: [u8; 32]) -> Self {
+        let mut legacy_bytes = [0u8; 8];
+        legacy_bytes.copy_from_slice(&master_seed[..8]);
+        let legacy_rng_state = u64::from_le_bytes(legacy_bytes);
         Game {
             players: vec![
                 Player {
@@ -52,7 +62,8 @@ impl Game {
             once_per_turn: state::OncePerTurnLimits::default(),
             exile_links: state::ExileLinks::default(),
             delayed_triggers: state::DelayedTriggers::default(),
-            rng_state: seed,
+            master_seed,
+            legacy_rng_state,
             skip_starting_players_first_draw: false,
             actions: Vec::new(),
             next_action_id: 0,
@@ -67,6 +78,20 @@ impl Game {
             self_exile_time_counters: None,
             self_tuck_to_library_bottom: false,
         }
+    }
+
+    /// Run one derive-per-op random operation for `player`, bumping that seat's iteration counter.
+    pub fn with_op_rng<R>(
+        &mut self,
+        player: PlayerId,
+        f: impl FnOnce(&mut crate::rng::OpRng) -> R,
+    ) -> R {
+        let p = &mut self.players[player.0 as usize];
+        let iteration = p.op_iteration;
+        p.op_iteration = iteration + 1;
+        let key = crate::rng::derive_op_key(&self.master_seed, player.0, iteration);
+        let mut rng = crate::rng::op_rng_from_key(&key);
+        f(&mut rng)
     }
 
     /// Begin the game's first turn, once setup is done (libraries shuffled, opening hands drawn).
@@ -155,11 +180,11 @@ impl Game {
             .collect()
     }
 
-    /// splitmix64 — a tiny, well-distributed deterministic PRNG. Handles a zero
-    /// seed cleanly, so no external RNG dependency is needed.
+    /// splitmix64 on the temporary legacy stream — dig/misc until Task 2 wraps whole ops in
+    /// [`Game::with_op_rng`]. Library shuffles use per-op streams only.
     pub(crate) fn next_u64(&mut self) -> u64 {
-        self.rng_state = self.rng_state.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.rng_state;
+        self.legacy_rng_state = self.legacy_rng_state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.legacy_rng_state;
         z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
         z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
         z ^ (z >> 31)
