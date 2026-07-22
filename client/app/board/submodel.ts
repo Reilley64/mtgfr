@@ -749,6 +749,11 @@ function applyInspectPin(model: BoardModel, pin: InspectPin | null): BoardReturn
   ];
 }
 
+function applyLiveInspectPin(model: BoardModel, fold: GameFoldState): BoardReturn {
+  if (!model.altDown) return [model, []];
+  return applyInspectPin(model, tryPinInspect(model, fold));
+}
+
 /** Pin from hand/stack aux hover, else the face-up canvas card under `model.cursor`. */
 function tryPinInspect(model: BoardModel, fold: GameFoldState): InspectPin | null {
   const aux = model.handInspectHover ?? model.stackInspectHover;
@@ -1229,7 +1234,7 @@ export function updateBoard(
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
     case "BoardPointerMove":
-      return [pointerMoveModel(model, message.x, message.y), []];
+      return applyLiveInspectPin(pointerMoveModel(model, message.x, message.y), fold);
     case "BoardPointerUp":
       return pointerUpModel(model, fold, tableId, message.x, message.y);
     case "TickedFrame":
@@ -1656,9 +1661,9 @@ export function updateBoard(
       return [{ ...model, altDown: false, inspectPin: null, inspectCard: undefined }, []];
     case "InspectAuxHovered": {
       if (message.source === "hand") {
-        return [{ ...model, handInspectHover: message.card }, []];
+        return applyLiveInspectPin({ ...model, handInspectHover: message.card }, fold);
       }
-      return [{ ...model, stackInspectHover: message.card }, []];
+      return applyLiveInspectPin({ ...model, stackInspectHover: message.card }, fold);
     }
     case "InspectCardFetched":
       return [{ ...model, inspectCard: message.card }, []];

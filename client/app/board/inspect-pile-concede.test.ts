@@ -88,6 +88,14 @@ function update(model: BoardModel, message: Message): BoardModel {
   return next;
 }
 
+function screenCenterForCard(fold: GameFoldState, id: number) {
+  const state = fold.state;
+  if (state == null) throw new Error("expected game state");
+  const card = layout(state, state.viewer).find((c) => c.id === id);
+  if (card == null) throw new Error(`expected card ${id}`);
+  return worldToScreen(initialBoardModel().camera, card.x + card.w / 2, card.y + card.h / 2);
+}
+
 // ── AltDown / AltUp (hold Alt over a card to pin; release clears) ─
 
 function battlefieldCreature(id: number, name: string, overrides: Partial<ObjectView> = {}): ObjectView {
@@ -122,10 +130,7 @@ test("AltDown sets altDown flag", () => {
 test("AltDown pins the face-up card under the cursor (no click)", () => {
   const creature = battlefieldCreature(7, "Sol Ring");
   const fold = gameFold({ objects: [creature] });
-  const cards = layout(fold.state!, 0);
-  const card = cards.find((c) => c.id === 7);
-  expect(card).toBeTruthy();
-  const screen = worldToScreen(initialBoardModel().camera, card!.x + card!.w / 2, card!.y + card!.h / 2);
+  const screen = screenCenterForCard(fold, 7);
 
   let model = initialBoardModel();
   [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
@@ -138,12 +143,28 @@ test("AltDown pins the face-up card under the cursor (no click)", () => {
   expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
 });
 
+test("pointer move pins the face-up board card while Alt is already held", () => {
+  const creature = battlefieldCreature(7, "Sol Ring");
+  const fold = gameFold({ objects: [creature] });
+  const screen = screenCenterForCard(fold, 7);
+
+  const [pinned, cmds] = updateBoard(
+    { ...initialBoardModel(), altDown: true },
+    BoardPointerMove({ x: screen.x, y: screen.y }),
+    fold,
+    "table-1",
+  );
+
+  expect(pinned.inspectPin).toEqual(
+    expect.objectContaining({ name: "Sol Ring", objectId: 7, cardId: "card-1", print: "print-1" }),
+  );
+  expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
+});
+
 test("AltDown prefers hand aux hover over the battlefield hit under the cursor", () => {
   const creature = battlefieldCreature(7, "Board Bolt");
   const fold = gameFold({ objects: [creature] });
-  const cards = layout(fold.state!, 0);
-  const card = cards.find((c) => c.id === 7)!;
-  const screen = worldToScreen(initialBoardModel().camera, card.x + card.w / 2, card.y + card.h / 2);
+  const screen = screenCenterForCard(fold, 7);
 
   let model = initialBoardModel();
   [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
@@ -164,6 +185,55 @@ test("AltDown prefers hand aux hover over the battlefield hit under the cursor",
     cardId: "shock-id",
     print: "shock-print",
   });
+});
+
+test("aux hover pins hand and stack cards while Alt is already held", () => {
+  const fold = gameFold();
+  let model: BoardModel = { ...initialBoardModel(), altDown: true };
+
+  let cmds: ReadonlyArray<unknown>;
+  [model, cmds] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  expect(model.inspectPin).toEqual({
+    name: "Hand Shock",
+    prepared: false,
+    cardId: "shock-id",
+    print: "shock-print",
+  });
+  expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
+
+  [model, cmds] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "stack",
+      card: { name: "Stack Bolt", cardId: "bolt-id", print: "bolt-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  expect(model.inspectPin).toEqual({
+    name: "Hand Shock",
+    prepared: false,
+    cardId: "shock-id",
+    print: "shock-print",
+  });
+  expect(cmds).toEqual([]);
+
+  [model, cmds] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+  expect(model.inspectPin).toEqual({
+    name: "Stack Bolt",
+    prepared: false,
+    cardId: "bolt-id",
+    print: "bolt-print",
+  });
+  expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
 });
 
 test("AltUp clears altDown and dismisses the inspect pin", () => {
