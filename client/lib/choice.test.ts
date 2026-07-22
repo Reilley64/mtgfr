@@ -529,7 +529,7 @@ describe("answerFromDraft builds accepted intents", () => {
     );
   });
 
-  test("builds sacrifice-family answers", () => {
+  test("builds pay answers for cumulative upkeep", () => {
     expectDraftIntent(
       {
         kind: "pay_cumulative_upkeep_or_sacrifice",
@@ -538,8 +538,8 @@ describe("answerFromDraft builds accepted intents", () => {
         player: 0,
         source: 1,
       },
-      { kind: "card-pick", picked: [33] },
-      { kind: "choose_sacrifices", player: 0, sacrifices: [33] },
+      { kind: "pay", pay: true },
+      { kind: "pay_optional_cost", player: 0, pay: true },
     );
   });
 

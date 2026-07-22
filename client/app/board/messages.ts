@@ -99,6 +99,16 @@ export const PromptDeclined = m("PromptDeclined");
 export const PromptOrderMoved = m("PromptOrderMoved", { pos: S.Number, delta: S.Number });
 /** Set combat damage assigned to a blocker. */
 export const PromptDamageSet = m("PromptDamageSet", { id: S.Number, amount: S.Number });
+/** Toggle a trigger-mode choice while assembling a pending-choice answer. */
+export const PromptModeChoiceToggled = m("PromptModeChoiceToggled", {
+  index: S.Number,
+  target: S.NullOr(WireTarget),
+});
+/** Assign a card to a partition bucket (or clear it). */
+export const PromptPartitionSet = m("PromptPartitionSet", {
+  id: S.Number,
+  bucket: S.NullOr(S.String),
+});
 /** Toggle a modal mode while picking choose..chooseMax modes before cast. */
 export const ModalModeToggled = m("ModalModeToggled", { index: S.Number });
 
@@ -205,6 +215,8 @@ export const Message = S.Union([
   PromptDeclined,
   PromptOrderMoved,
   PromptDamageSet,
+  PromptModeChoiceToggled,
+  PromptPartitionSet,
   ModalModeToggled,
   StackDwellChanged,
   StackExpandClicked,

@@ -2,9 +2,11 @@ import type { Command as FoldkitCommand } from "foldkit";
 import {
   buildAnswerFromDraft,
   cardPickReady,
+  cardPickRequiredCount,
   choiceDraftKey,
   choiceIntent,
   damageAssignReady,
+  declineAnswer,
   initPromptDraft,
   type PromptDraft,
 } from "~/choice";
@@ -276,6 +278,37 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
     promptDraft: pc != null && gameState != null ? initPromptDraft(pc, gameState) : null,
   };
 }
+
+function samePromptTarget(a: WireTarget | null | undefined, b: WireTarget | null | undefined): boolean {
+  if (a == null || b == null) return a == null && b == null;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "player" && b.kind === "player") return a.player === b.player;
+  if (a.kind === "object" && b.kind === "object") return a.id === b.id;
+  return false;
+}
+
+function samePromptModeChoice(a: WireModeChoice, b: WireModeChoice): boolean {
+  return a.index === b.index && samePromptTarget(a.target, b.target);
+}
+
+function partitionReady(
+  pc: Extract<ActionlessPendingChoice, { kind: "partition_revealed" | "distribute_top" }>,
+  draft: PromptDraft,
+): boolean {
+  if (draft.kind !== "partition") return false;
+  if (pc.kind === "partition_revealed") return true;
+  const toHand = draft.buckets.to_hand ?? [];
+  const toBottom = draft.buckets.to_bottom ?? [];
+  const toExile = draft.buckets.to_exile_may_play ?? [];
+  return (
+    toHand.length === pc.to_hand &&
+    toBottom.length === pc.to_bottom &&
+    toExile.length === pc.to_exile_may_play &&
+    toHand.length + toBottom.length + toExile.length === pc.items.length
+  );
+}
+
+type ActionlessPendingChoice = NonNullable<BoardFold["state"]>["pending_choice"];
 
 function cardsFor(fold: GameFoldState): RenderCard[] {
   if (fold.state == null) return [];
@@ -1279,41 +1312,50 @@ export function updateBoard(
     case "PromptCardToggled": {
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
-      if (pc == null || synced.promptDraft?.kind !== "card-pick") return [synced, []];
-      const required =
-        pc.kind === "discard" || pc.kind === "choose_own_sacrifices"
-          ? pc.count
-          : pc.kind === "choose_target"
-            ? 1
-            : null;
-      const pickOne =
-        required === 1 ||
-        pc.kind === "search_library" ||
-        pc.kind === "put_land_from_hand" ||
-        pc.kind === "put_creature_from_hand" ||
-        pc.kind === "choose_exiled_with_card";
-      const max =
-        pc.kind === "select_from_top"
-          ? pc.up_to
-          : required != null
-            ? required
-            : pc.kind === "sacrifice_edict" && !pc.keep_one
-              ? 1
-              : pc.kind === "sacrifice_edict" && pc.keep_one
-                ? Math.max(0, pc.items.length - 1)
-                : undefined;
-      const picked = synced.promptDraft.picked;
-      let next: number[];
-      if (picked.includes(message.id)) {
-        next = picked.filter((id) => id !== message.id);
-      } else if (pickOne) {
-        next = [message.id];
-      } else if (max != null && picked.length >= max) {
-        return [synced, []];
-      } else {
-        next = [...picked, message.id];
+      if (pc == null || synced.promptDraft == null) return [synced, []];
+
+      if (synced.promptDraft.kind === "card-pick") {
+        const required = cardPickRequiredCount(pc);
+        const pickOne = required === 1;
+        const max = pc.kind === "select_from_top" ? pc.up_to : (required ?? undefined);
+        const picked = synced.promptDraft.picked;
+        let next: number[];
+        if (picked.includes(message.id)) {
+          next = picked.filter((id) => id !== message.id);
+        } else if (pickOne) {
+          next = [message.id];
+        } else if (max != null && picked.length >= max) {
+          return [synced, []];
+        } else {
+          next = [...picked, message.id];
+        }
+        return [{ ...synced, promptDraft: { kind: "card-pick", picked: next } }, []];
       }
-      return [{ ...synced, promptDraft: { kind: "card-pick", picked: next } }, []];
+
+      if (synced.promptDraft.kind === "player-pick") {
+        if (pc.kind !== "choose_target_players" && pc.kind !== "choose_splitting_opponent") return [synced, []];
+        const max = pc.kind === "choose_target_players" ? pc.max : 1;
+        const players = synced.promptDraft.players;
+        let next: number[];
+        if (players.includes(message.id)) {
+          next = players.filter((player) => player !== message.id);
+        } else if (max === 1) {
+          next = [message.id];
+        } else if (players.length >= max) {
+          return [synced, []];
+        } else {
+          next = [...players, message.id];
+        }
+        return [{ ...synced, promptDraft: { kind: "player-pick", players: next } }, []];
+      }
+
+      if (synced.promptDraft.kind === "partition" && pc.kind === "partition_revealed") {
+        const pileA = synced.promptDraft.buckets.pile_a ?? [];
+        const nextPileA = pileA.includes(message.id) ? pileA.filter((id) => id !== message.id) : [...pileA, message.id];
+        return [{ ...synced, promptDraft: { kind: "partition", buckets: { pile_a: nextPileA } } }, []];
+      }
+
+      return [synced, []];
     }
     case "PromptOrderMoved": {
       const synced = syncPromptDraft(model, fold);
@@ -1326,8 +1368,21 @@ export function updateBoard(
     }
     case "PromptDamageSet": {
       const synced = syncPromptDraft(model, fold);
-      if (synced.promptDraft?.kind !== "damage") return [synced, []];
+      if (synced.promptDraft == null) return [synced, []];
       const amount = Math.max(0, Number.parseInt(String(message.amount), 10) || 0);
+      if (synced.promptDraft.kind === "divide") {
+        return [
+          {
+            ...synced,
+            promptDraft: {
+              kind: "divide",
+              amounts: { ...synced.promptDraft.amounts, [message.id]: amount },
+            },
+          },
+          [],
+        ];
+      }
+      if (synced.promptDraft.kind !== "damage") return [synced, []];
       return [
         {
           ...synced,
@@ -1339,6 +1394,38 @@ export function updateBoard(
         [],
       ];
     }
+    case "PromptModeChoiceToggled": {
+      const synced = syncPromptDraft(model, fold);
+      const pc = fold.state?.pending_choice;
+      if (pc?.kind !== "choose_trigger_modes" || synced.promptDraft?.kind !== "modes") return [synced, []];
+      const choice: WireModeChoice =
+        message.target == null ? { index: message.index } : { index: message.index, target: message.target };
+      let modes = [...synced.promptDraft.modes];
+      if (modes.some((existing) => samePromptModeChoice(existing, choice))) {
+        modes = modes.filter((existing) => !samePromptModeChoice(existing, choice));
+      } else if (modes.length >= pc.choose) {
+        return [synced, []];
+      } else {
+        modes = [...modes, choice];
+      }
+      return [{ ...synced, promptDraft: { kind: "modes", modes } }, []];
+    }
+    case "PromptPartitionSet": {
+      const synced = syncPromptDraft(model, fold);
+      if (synced.promptDraft?.kind !== "partition") return [synced, []];
+      const buckets: Record<string, number[]> = {};
+      let currentBucket: string | null = null;
+      for (const [bucket, ids] of Object.entries(synced.promptDraft.buckets)) {
+        if (ids.includes(message.id)) currentBucket = bucket;
+        buckets[bucket] = ids.filter((id) => id !== message.id);
+      }
+      const nextBucket = currentBucket === message.bucket ? null : message.bucket;
+      if (nextBucket != null) {
+        const ids = buckets[nextBucket] ?? [];
+        buckets[nextBucket] = [...ids, message.id];
+      }
+      return [{ ...synced, promptDraft: { kind: "partition", buckets } }, []];
+    }
     case "PromptSubmitted": {
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
@@ -1348,6 +1435,33 @@ export function updateBoard(
         return [synced, []];
       }
       if (synced.promptDraft.kind === "damage" && !damageAssignReady(pc, synced.promptDraft, gameState)) {
+        return [synced, []];
+      }
+      if (synced.promptDraft.kind === "divide" && buildAnswerFromDraft(pc, synced.promptDraft) == null) {
+        return [synced, []];
+      }
+      if (synced.promptDraft.kind === "player-pick") {
+        const count = synced.promptDraft.players.length;
+        if (pc.kind === "choose_target_players" && (count < pc.min || count > pc.max)) {
+          return [synced, []];
+        }
+        if (pc.kind === "choose_splitting_opponent" && count !== 1) {
+          return [synced, []];
+        }
+      }
+      if (
+        synced.promptDraft.kind === "modes" &&
+        pc.kind === "choose_trigger_modes" &&
+        synced.promptDraft.modes.length !== pc.choose &&
+        !(pc.optional && synced.promptDraft.modes.length === 0)
+      ) {
+        return [synced, []];
+      }
+      if (
+        synced.promptDraft.kind === "partition" &&
+        (pc.kind === "partition_revealed" || pc.kind === "distribute_top") &&
+        !partitionReady(pc, synced.promptDraft)
+      ) {
         return [synced, []];
       }
       const answer = buildAnswerFromDraft(pc, synced.promptDraft);
@@ -1361,13 +1475,12 @@ export function updateBoard(
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;
       if (pc == null) return [synced, []];
-      if (pc.kind === "search_library") {
-        return [
-          { ...synced, promptDraft: null, pendingChoiceKey: null },
-          boardIntentSubmit(tableId, choiceIntent(pc, { kind: "search", choice: null })),
-        ];
-      }
-      return [synced, []];
+      const answer = declineAnswer(pc);
+      if (answer == null) return [synced, []];
+      return [
+        { ...synced, promptDraft: null, pendingChoiceKey: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+      ];
     }
     case "ModalModeToggled": {
       const mc = model.modalCast;

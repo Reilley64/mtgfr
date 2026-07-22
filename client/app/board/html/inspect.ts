@@ -5,10 +5,10 @@
 
 import { type Html, html } from "foldkit/html";
 import { cn } from "~/cn";
-import { cardArt } from "~/ui/card-art";
 import { type InspectFace, type InspectPin, shownName } from "~/inspect";
 import { splitOracleText } from "~/oracleText";
 import { buttonClass } from "~/ui/buttonClass";
+import { cardArt } from "~/ui/card-art";
 import type { CatalogCard, ObjectView } from "~/wire/types";
 import { InspectDismissed, InspectFlipFace, type Message } from "../messages";
 

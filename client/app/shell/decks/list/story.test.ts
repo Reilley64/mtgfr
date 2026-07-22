@@ -47,9 +47,6 @@ test("commander hover preview renders when model carries hover state", () => {
       BindDeckListCommanderHover({ cardId: "atraxa", print: "atraxa-print" }),
       ClearedDeckListHover(),
     ),
-    Scene.Mount.resolveAll(
-      [BindCardArt, CardArtTick()],
-      [BindCardArt, CardArtTick()],
-    ),
+    Scene.Mount.resolveAll([BindCardArt, CardArtTick()], [BindCardArt, CardArtTick()]),
   );
 });

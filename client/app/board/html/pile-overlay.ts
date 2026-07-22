@@ -2,8 +2,8 @@
 // Mirrors Solid board-overlays.tsx PileOverlay.
 
 import { type Html, html } from "foldkit/html";
-import { cardArt } from "~/ui/card-art";
 import { buttonClass } from "~/ui/buttonClass";
+import { cardArt } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import { type Message, PileOverlayClosed } from "../messages";

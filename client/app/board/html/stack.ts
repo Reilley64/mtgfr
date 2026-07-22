@@ -5,8 +5,8 @@
 // priority (dwell-suppresses helpless auto-resolve).
 
 import { type Attribute, type Html, html } from "foldkit/html";
-import { cardArt } from "~/ui/card-art";
 import { buttonClass } from "~/ui/buttonClass";
+import { cardArt } from "~/ui/card-art";
 import type { PlayerView, StackObjectView, VisibleState } from "~/wire/types";
 import { stagedPickTargets } from "../action/targeting";
 import {

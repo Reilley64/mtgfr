@@ -1,19 +1,21 @@
 // Engine `pending_choice` prompts, plus pre-submit cost/modal/X pickers owned by the board.
 //
-// High-traffic pending_choice kinds get faithful interactive forms (card multi-pick, trigger
-// ordering, combat damage assignment, etc.) mapped through `choiceIntent`. Remaining kinds keep a
-// banner + single-click item list so the pipeline still flows.
+// Pending-choice formulators collect answers and route every submission through `choiceIntent`.
 
 import { type Html, html } from "foldkit/html";
 import {
+  type AnswerInput,
+  buildAnswerFromDraft,
   cardPickReady,
+  choiceIntent,
   chooseTargetIsCardPick,
   damageAssignReady,
+  declineAnswer,
+  FORMULATOR_FOR_KIND,
   initPromptDraft,
-  isFaithfulPromptKind,
 } from "~/choice";
 import { cardArt } from "~/ui/card-art";
-import type { ChoiceItem, PendingChoiceView, VisibleState, WireIntent, WireTarget } from "~/wire/types";
+import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { modeAvailable } from "../action/modal";
 import { objectName, playerSeatLabel, stagedPickTargets, stagedTargetTitle } from "../action/targeting";
 import { seatColor } from "../geometry/layout";
@@ -28,7 +30,9 @@ import {
   PromptCardToggled,
   PromptDamageSet,
   PromptDeclined,
+  PromptModeChoiceToggled,
   PromptOrderMoved,
+  PromptPartitionSet,
   PromptSubmitted,
   SacrificeChosen,
   TargetChosen,
@@ -425,38 +429,26 @@ function modalPrompt(mc: NonNullable<BoardModel["modalCast"]>): Html {
   return frame("modal-waiting", "Pick a target for the chosen mode.", [cancelButton()]);
 }
 
-function pendingChoiceLabel(pending: PendingChoiceView): string {
+function pendingChoiceTitle(pending: PendingChoiceView): string {
   if ("label" in pending && typeof pending.label === "string" && pending.label !== "") return pending.label;
   return `Choose (${pending.kind})`;
 }
 
-function pendingChoiceItems(pending: PendingChoiceView): ReadonlyArray<ChoiceItem> {
-  if ("items" in pending && Array.isArray(pending.items)) return pending.items;
-  return [];
-}
-
-function pendingChoiceIntent(pending: PendingChoiceView, itemId: number): WireIntent | null {
-  switch (pending.kind) {
-    case "may_yes_no":
-      return { kind: "answer_may", player: pending.player, yes: itemId === 1 };
-    case "choose_mode":
-      return { kind: "choose_mode", player: pending.player, mode: itemId };
-    case "choose_ability_targets":
-    case "choose_spell_targets":
-    case "choose_copy_target":
-      return { kind: "choose_targets", player: pending.player, targets: [{ kind: "object", id: itemId }] };
-    default:
-      return null;
-  }
-}
-
-function answerButton(testId: string, label: string, intent: WireIntent, primary: boolean): Html {
+function answerButton(
+  pending: PendingChoiceView,
+  testId: string,
+  label: string,
+  answer: AnswerInput,
+  primary: boolean,
+  disabled = false,
+): Html {
   return h.button(
     [
       h.Type("button"),
       h.DataAttribute("testid", testId),
-      h.OnClick(PendingChoiceAnswered({ intent })),
-      h.Class("group relative cursor-pointer rounded-hud border-0 bg-transparent p-0"),
+      h.Disabled(disabled),
+      h.OnClick(PendingChoiceAnswered({ intent: choiceIntent(pending, answer) })),
+      h.Class("group relative rounded-hud border-0 bg-transparent p-0 disabled:cursor-not-allowed disabled:opacity-50"),
     ],
     [
       h.span(
@@ -476,106 +468,706 @@ function answerButton(testId: string, label: string, intent: WireIntent, primary
   );
 }
 
-function faithfulPendingChoice(pending: PendingChoiceView, state: VisibleState, board: BoardModel): Html | null {
+function playerSeatFromItem(item: ChoiceItem, state: VisibleState, fallbackIndex: number): number | null {
+  if (item.player != null) return item.player;
+  const match = item.label.match(/^Player\s+(\d+)$/i);
+  if (match != null) {
+    const seat = Number.parseInt(match[1] ?? "", 10) - 1;
+    if (!Number.isNaN(seat)) return seat;
+  }
+  const fallback = state.players[fallbackIndex];
+  return fallback?.player ?? null;
+}
+
+function targetLabel(target: WireTarget, state: VisibleState): string {
+  if (target.kind === "player") return playerSeatLabel(state, target.player);
+  return objectName(state, target.id);
+}
+
+function sameTarget(a: WireTarget | null | undefined, b: WireTarget | null | undefined): boolean {
+  if (a == null || b == null) return a == null && b == null;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "player" && b.kind === "player") return a.player === b.player;
+  if (a.kind === "object" && b.kind === "object") return a.id === b.id;
+  return false;
+}
+
+function sameModeChoice(a: WireModeChoice, b: WireModeChoice): boolean {
+  return a.index === b.index && sameTarget(a.target, b.target);
+}
+
+function cardPickDeclineLabel(pending: PendingChoiceView): string | null {
   switch (pending.kind) {
-    case "order_triggers":
-      return orderPrompt(pending, board);
-    case "assign_combat_damage":
-      return damageAssignPrompt(pending, state, board);
     case "search_library":
-      return cardPickPrompt(pending, pending.items, state, board, {
-        title: "Search your library",
-        submitLabel: "Choose",
-        declineLabel: "Fail to find",
-      });
-    case "scry":
-      return cardPickPrompt(pending, pending.items, state, board, {
-        title: `Scry ${pending.items.length}`,
-        hint: "Click cards to keep on top, in that order — the rest go to the bottom of your library.",
-        submitLabel: "Done",
-        ordered: true,
-      });
-    case "surveil":
-      return cardPickPrompt(pending, pending.items, state, board, {
-        title: `Surveil ${pending.items.length}`,
-        hint: "Click cards to keep on top, in that order — the rest go to your graveyard.",
-        submitLabel: "Done",
-        ordered: true,
-      });
-    case "select_from_top":
-      return cardPickPrompt(pending, pending.items, state, board, {
-        title: `Select up to ${pending.up_to} from the top`,
-        hint: "Click cards to take — the rest go to the bottom.",
-        submitLabel: "Done",
-      });
-    case "discard":
-      return cardPickPrompt(pending, pending.items, state, board, {
-        title: `Discard ${pending.count} card${pending.count === 1 ? "" : "s"}`,
-        submitLabel: "Discard",
-      });
-    case "sacrifice_edict":
-      return cardPickPrompt(pending, pending.items, state, board, {
-        title: pending.keep_one ? "Choose permanents to sacrifice (keep one)" : "Choose a permanent to sacrifice",
-        submitLabel: "Sacrifice",
-      });
-    case "choose_own_sacrifices":
-      return cardPickPrompt(pending, pending.items, state, board, {
-        title: `Choose ${pending.count} permanent${pending.count === 1 ? "" : "s"} to sacrifice`,
-        submitLabel: "Sacrifice",
-      });
-    case "proliferate":
-      return cardPickPrompt(pending, pending.items, state, board, {
-        title: "Proliferate — choose any number",
-        submitLabel: "Proliferate",
-      });
+      return "Fail to find";
+    case "put_land_from_hand":
+      return "Don't put a land";
+    case "put_creature_from_hand":
+      return "Don't put a creature";
+    case "choose_exiled_with_card":
+    case "opponent_chooses_exiled_nonland":
+    case "opponent_chooses_revealed_to_graveyard":
+      return "Choose none";
+    case "choose_exiled_with_card_to_cast":
+    case "choose_exiled_dig_to_cast_free":
+      return "Don't cast";
+    case "choose_attach_host":
+      return pending.optional ? "Don't attach" : null;
+    case "choose_target":
+      return pending.optional ? "No target" : null;
     default:
       return null;
   }
 }
 
-function stubPendingChoice(
+function cardPickConfig(pending: PendingChoiceView): {
+  title: string;
+  hint?: string;
+  submitLabel: string;
+  declineLabel?: string;
+  ordered?: boolean;
+} {
+  const declineLabel = cardPickDeclineLabel(pending) ?? undefined;
+  switch (pending.kind) {
+    case "choose_target":
+      return { title: pending.label, submitLabel: "Choose", declineLabel };
+    case "choose_spell_targets":
+    case "choose_ability_targets":
+      return { title: pending.label, submitLabel: "Choose" };
+    case "choose_activation_cost_targets":
+      return { title: "Choose cost targets", submitLabel: "Choose" };
+    case "decline_untap":
+      return { title: "Choose permanents to keep tapped", submitLabel: "Keep tapped" };
+    case "sacrifice_unless_return_land":
+      return { title: "Return a land or sacrifice", submitLabel: "Return land" };
+    case "scry":
+      return {
+        title: `Scry ${pending.items.length}`,
+        hint: "Click cards to keep on top, in that order — the rest go to the bottom of your library.",
+        submitLabel: "Done",
+        ordered: true,
+      };
+    case "surveil":
+      return {
+        title: `Surveil ${pending.items.length}`,
+        hint: "Click cards to keep on top, in that order — the rest go to your graveyard.",
+        submitLabel: "Done",
+        ordered: true,
+      };
+    case "search_library":
+      return { title: "Search your library", submitLabel: "Choose", declineLabel };
+    case "select_from_top":
+      return {
+        title: `Select up to ${pending.up_to} from the top`,
+        hint: "Click cards to take — the rest go to the bottom.",
+        submitLabel: "Done",
+      };
+    case "shuffle_from_graveyard":
+      return {
+        title: `Choose up to ${pending.max} card${pending.max === 1 ? "" : "s"} to shuffle in`,
+        submitLabel: "Shuffle",
+      };
+    case "sacrifice_edict":
+      return {
+        title: pending.keep_one ? "Choose permanents to sacrifice (keep one)" : "Choose a permanent to sacrifice",
+        submitLabel: "Sacrifice",
+      };
+    case "proliferate":
+      return { title: "Proliferate — choose any number", submitLabel: "Proliferate" };
+    case "phase_out":
+      return { title: "Choose permanents to phase out", submitLabel: "Phase out" };
+    case "may_sacrifice":
+      return { title: "You may sacrifice any number", submitLabel: "Continue" };
+    case "choose_own_sacrifices":
+      return {
+        title: `Choose ${pending.count} permanent${pending.count === 1 ? "" : "s"} to sacrifice`,
+        submitLabel: "Sacrifice",
+      };
+    case "devour":
+      return { title: "Choose creatures to devour", submitLabel: "Devour" };
+    case "exile_from_graveyard":
+      return { title: "Choose cards to exile from a graveyard", submitLabel: "Exile" };
+    case "caster_keep_permanents":
+      return { title: "Choose permanents to keep", submitLabel: "Keep" };
+    case "choose_counter_target_for_player":
+      return { title: "Choose permanents that get counters", submitLabel: "Choose" };
+    case "may_return_from_graveyard":
+      return { title: "Choose cards to return from your graveyard", submitLabel: "Return" };
+    case "may_discard":
+      return { title: "Choose cards to discard", submitLabel: "Discard" };
+    case "discard":
+      return { title: `Discard ${pending.count} card${pending.count === 1 ? "" : "s"}`, submitLabel: "Discard" };
+    case "put_land_from_hand":
+      return {
+        title: "Put a land from your hand onto the battlefield",
+        submitLabel: "Put onto battlefield",
+        declineLabel,
+      };
+    case "put_creature_from_hand":
+      return {
+        title: "Put a creature from your hand onto the battlefield",
+        submitLabel: "Put onto battlefield",
+        declineLabel,
+      };
+    case "choose_dredge":
+      return { title: "Choose a card to dredge", submitLabel: "Dredge" };
+    case "cast_creature_face_down":
+      return { title: "Choose a creature to cast face down", submitLabel: "Cast face down" };
+    case "choose_exiled_with_card":
+      return { title: "Choose an exiled card", submitLabel: "Choose", declineLabel };
+    case "choose_exiled_with_card_to_cast":
+      return { title: "Choose an exiled card to cast", submitLabel: "Cast", declineLabel };
+    case "choose_exiled_dig_to_cast_free":
+      return { title: "Choose a card to cast for free", submitLabel: "Cast", declineLabel };
+    case "opponent_chooses_exiled_nonland":
+      return { title: "Choose an exiled nonland card", submitLabel: "Choose", declineLabel };
+    case "choose_exiled_to_cast_free":
+      return {
+        title: `Choose ${pending.count} card${pending.count === 1 ? "" : "s"} to cast for free`,
+        submitLabel: "Choose",
+      };
+    case "choose_copy_target":
+      return { title: "Choose a copy target", submitLabel: "Copy" };
+    case "choose_attach_host":
+      return { title: "Choose what to attach to", submitLabel: "Attach", declineLabel };
+    case "put_from_hand_on_top":
+      return {
+        title: `Put ${pending.count} card${pending.count === 1 ? "" : "s"} from your hand on top`,
+        submitLabel: "Put on top",
+      };
+    case "opponent_chooses_revealed_to_graveyard":
+      return { title: "Choose a revealed card to put into the graveyard", submitLabel: "Choose", declineLabel };
+    default:
+      return { title: pendingChoiceTitle(pending), submitLabel: "Choose" };
+  }
+}
+
+function cardPickForKind(
   pending: PendingChoiceView,
   state: VisibleState,
   board: BoardModel,
   tableId: string | null,
 ): Html {
-  const items = pendingChoiceItems(pending);
-  if (pending.kind === "choose_target" && chooseTargetIsCardPick(items)) {
-    return cardPickPrompt(pending, pending.items, state, board, {
-      title: pending.label,
-      submitLabel: "Choose",
+  if (pending.kind === "choose_target" && !chooseTargetIsCardPick(pending.items)) {
+    const buttons = pending.items.flatMap((item, index) => {
+      const seat = playerSeatFromItem(item, state, index);
+      if (seat == null) return [];
+      return [
+        answerButton(
+          pending,
+          `prompt-player-${seat}`,
+          item.label,
+          { kind: "target", id: item.id, player: seat },
+          false,
+          tableId == null,
+        ),
+      ];
     });
-  }
-  const yesNo = pending.kind === "may_yes_no";
-  const buttons: Html[] = [];
-  if (yesNo) {
-    if (tableId != null) {
+    const decline = declineAnswer(pending);
+    if (decline != null) {
       buttons.push(
-        answerButton("prompt-yes", "Yes", { kind: "answer_may", player: pending.player, yes: true }, true),
-        answerButton("prompt-no", "No", { kind: "answer_may", player: pending.player, yes: false }, false),
+        answerButton(
+          pending,
+          "prompt-decline",
+          cardPickDeclineLabel(pending) ?? "Decline",
+          decline,
+          false,
+          tableId == null,
+        ),
       );
     }
-  } else if (pending.kind === "choose_mode" && "labels" in pending) {
-    for (let i = 0; i < pending.labels.length; i++) {
-      const label = pending.labels[i] ?? `Mode ${i}`;
-      if (tableId == null) continue;
-      buttons.push(
-        answerButton(`prompt-mode-${i}`, label, { kind: "choose_mode", player: pending.player, mode: i }, false),
-      );
-    }
-  } else {
-    for (const item of items) {
-      const intent = pendingChoiceIntent(pending, item.id);
-      if (intent == null || tableId == null) continue;
-      buttons.push(answerButton(`prompt-item-${item.id}`, item.label, intent, false));
-    }
+    return frame("pending-choice", pending.label, [h.div([h.Class("flex flex-wrap gap-2")], buttons)]);
   }
-  const title = pendingChoiceLabel(pending);
-  return frame("pending-choice", title === "" ? `Engine prompt (${pending.kind})` : title, [
-    h.div([h.Class("flex flex-col gap-1")], buttons),
-    !isFaithfulPromptKind(pending.kind)
-      ? h.div([h.Class("text-caption text-mist")], ["Limited UI — pick an option"])
-      : h.span([], []),
+
+  const items = "items" in pending ? pending.items : [];
+  const config = cardPickConfig(pending);
+  return cardPickPrompt(pending, items, state, board, config);
+}
+
+function yesNoPrompt(
+  pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" | "trade_secrets_repeat" }>,
+  tableId: string | null,
+): Html {
+  return frame("pending-choice", pendingChoiceTitle(pending), [
+    h.div(
+      [h.Class("flex flex-wrap gap-2")],
+      [
+        answerButton(pending, "prompt-yes", "Yes", { kind: "may", yes: true }, true, tableId == null),
+        answerButton(pending, "prompt-no", "No", { kind: "may", yes: false }, false, tableId == null),
+      ],
+    ),
+  ]);
+}
+
+function payCostPrompt(
+  pending: Extract<
+    PendingChoiceView,
+    {
+      kind:
+        | "pay_cost"
+        | "pay_or_counter"
+        | "pay_or_controller_draws"
+        | "pay_echo_or_sacrifice"
+        | "pay_recover_or_exile"
+        | "sacrifice_unless_pay"
+        | "pay_cumulative_upkeep_or_sacrifice";
+    }
+  >,
+  tableId: string | null,
+): Html {
+  const title = "label" in pending ? pending.label : pendingChoiceTitle(pending);
+  return frame("pending-choice", title, [
+    h.div(
+      [h.Class("flex flex-wrap gap-2")],
+      [
+        answerButton(pending, "prompt-pay", "Pay", { kind: "pay", pay: true }, true, tableId == null),
+        answerButton(pending, "prompt-decline", "Don't pay", { kind: "pay", pay: false }, false, tableId == null),
+      ],
+    ),
+  ]);
+}
+
+function modeListPrompt(
+  pending: Extract<PendingChoiceView, { kind: "choose_mode" | "choose_trigger_modes" }>,
+  board: BoardModel,
+  state: VisibleState,
+  tableId: string | null,
+): Html {
+  if (pending.kind === "choose_mode") {
+    return frame("pending-choice", "Choose a mode", [
+      h.div(
+        [h.Class("flex flex-col gap-2")],
+        pending.labels.map((label, index) =>
+          answerButton(
+            pending,
+            `prompt-mode-${index}`,
+            label,
+            { kind: "mode", mode: index },
+            index === 0,
+            tableId == null,
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  const draft = board.promptDraft ?? initPromptDraft(pending, state);
+  const picked = draft.kind === "modes" ? draft.modes : [];
+  const concreteChoices: Array<{ choice: WireModeChoice; label: string }> = pending.modes.flatMap((mode, index) => {
+    if (!mode.needs_target) {
+      return [{ choice: { index } satisfies WireModeChoice, label: mode.label }];
+    }
+    return mode.targets.map((target) => ({
+      choice: { index, target } satisfies WireModeChoice,
+      label: `${mode.label} — ${targetLabel(target, state)}`,
+    }));
+  });
+  const ready = picked.length === pending.choose || (pending.optional && picked.length === 0);
+  return frame("pending-choice", "Choose trigger modes", [
+    h.div(
+      [h.Class("text-caption text-mist")],
+      [pending.optional ? `Choose ${pending.choose} or none` : `Choose ${pending.choose}`],
+    ),
+    h.div(
+      [h.Class("flex flex-col gap-2")],
+      concreteChoices.map(({ choice, label }, choiceIndex) => {
+        const selected = picked.some((pickedChoice) => sameModeChoice(pickedChoice, choice));
+        return h.button(
+          [
+            h.Type("button"),
+            h.DataAttribute("testid", `prompt-mode-choice-${choiceIndex}`),
+            h.AriaPressed(selected ? "true" : "false"),
+            h.Disabled(tableId == null),
+            h.OnClick(PromptModeChoiceToggled({ index: choice.index, target: choice.target ?? null })),
+            h.Class(
+              [
+                "rounded-hud px-3 py-2 text-left text-body",
+                selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
+                tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
+              ].join(" "),
+            ),
+          ],
+          [label],
+        );
+      }),
+    ),
+    h.div([h.Class("flex gap-2")], [submitButton("Choose", !ready), cancelButton()]),
+  ]);
+}
+
+function playerPickPrompt(
+  pending: Extract<PendingChoiceView, { kind: "choose_target_players" | "choose_splitting_opponent" }>,
+  state: VisibleState,
+  board: BoardModel,
+  tableId: string | null,
+): Html {
+  if (pending.kind === "choose_splitting_opponent") {
+    return frame("pending-choice", pending.label, [
+      h.div(
+        [h.Class("flex flex-wrap gap-2")],
+        pending.items.flatMap((item, index) => {
+          const seat = playerSeatFromItem(item, state, index);
+          if (seat == null) return [];
+          return [
+            answerButton(
+              pending,
+              `prompt-player-${seat}`,
+              item.label,
+              { kind: "target", id: item.id, player: seat },
+              false,
+              tableId == null,
+            ),
+          ];
+        }),
+      ),
+    ]);
+  }
+
+  const draft = board.promptDraft ?? initPromptDraft(pending, state);
+  const picked = draft.kind === "player-pick" ? draft.players : [];
+  const ready = picked.length >= pending.min && picked.length <= pending.max;
+  return frame("pending-choice", pending.label, [
+    h.div(
+      [h.Class("flex flex-wrap gap-2")],
+      pending.items.flatMap((item, index) => {
+        const seat = playerSeatFromItem(item, state, index);
+        if (seat == null) return [];
+        const selected = picked.includes(seat);
+        return [
+          h.button(
+            [
+              h.Type("button"),
+              h.DataAttribute("testid", `prompt-player-${seat}`),
+              h.AriaPressed(selected ? "true" : "false"),
+              h.Disabled(tableId == null),
+              h.OnClick(PromptCardToggled({ id: seat })),
+              h.Class(
+                [
+                  "rounded-hud px-3 py-2 text-body",
+                  selected ? "bg-llanowar/25 text-snow" : "bg-glass text-snow",
+                  tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
+                ].join(" "),
+              ),
+            ],
+            [item.label],
+          ),
+        ];
+      }),
+    ),
+    h.div([h.Class("flex gap-2")], [submitButton("Choose", !ready), cancelButton()]),
+  ]);
+}
+
+function divideTotalPrompt(
+  pending: Extract<PendingChoiceView, { kind: "divide_spell_damage" | "divide_counters" }>,
+  board: BoardModel,
+  state: VisibleState,
+): Html {
+  const draft = board.promptDraft ?? initPromptDraft(pending, state);
+  const ready = buildAnswerFromDraft(pending, draft) != null;
+  if (pending.kind === "divide_spell_damage") {
+    const amounts = draft.kind === "divide" ? draft.amounts : {};
+    const assigned = Object.values(amounts).reduce((sum, amount) => sum + amount, 0);
+    return frame("pending-choice", `Divide ${pending.total} damage`, [
+      ...pending.items.map((item, index) =>
+        h.div(
+          [h.Class("flex items-center gap-2")],
+          [
+            h.span([h.Class("w-44 truncate text-body")], [item.label]),
+            h.input([
+              h.Type("number"),
+              h.Min("0"),
+              h.DataAttribute("testid", `prompt-damage-${index}`),
+              h.Value(String(amounts[index] ?? 0)),
+              h.OnInput((value) => PromptDamageSet({ id: index, amount: Number.parseInt(value, 10) || 0 })),
+              h.Class("w-16 rounded-hud bg-glass px-2 py-1 text-body text-snow"),
+            ]),
+          ],
+        ),
+      ),
+      h.div(
+        [h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber")],
+        [`assigned ${assigned} / ${pending.total}`],
+      ),
+      submitButton("Assign", !ready),
+    ]);
+  }
+
+  const amounts = draft.kind === "damage" ? draft.amounts : {};
+  const assigned = Object.values(amounts).reduce((sum, amount) => sum + amount, 0);
+  return frame("pending-choice", `Divide ${pending.total} counters`, [
+    ...pending.items.map((item) =>
+      h.div(
+        [h.Class("flex items-center gap-2")],
+        [
+          h.span([h.Class("w-44 truncate text-body")], [item.label]),
+          h.input([
+            h.Type("number"),
+            h.Min("0"),
+            h.DataAttribute("testid", `prompt-damage-${item.id}`),
+            h.Value(String(amounts[item.id] ?? 0)),
+            h.OnInput((value) => PromptDamageSet({ id: item.id, amount: Number.parseInt(value, 10) || 0 })),
+            h.Class("w-16 rounded-hud bg-glass px-2 py-1 text-body text-snow"),
+          ]),
+        ],
+      ),
+    ),
+    h.div(
+      [h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber")],
+      [`assigned ${assigned} / ${pending.total}`],
+    ),
+    submitButton("Assign", !ready),
+  ]);
+}
+
+function pilePickPrompt(
+  pending: Extract<PendingChoiceView, { kind: "opponent_chooses_pile" | "choose_pile_for_hand" }>,
+  tableId: string | null,
+): Html {
+  const pileBlock = (title: string, items: ReadonlyArray<ChoiceItem>, pile: 0 | 1): Html =>
+    h.div(
+      [h.Class("min-w-[220px] rounded-panel bg-glass p-3")],
+      [
+        h.div([h.Class("mb-2 font-semibold text-body")], [title]),
+        h.div(
+          [h.Class("mb-3 flex flex-col gap-1 text-caption text-mist")],
+          items.map((item) => h.span([], [item.label])),
+        ),
+        answerButton(
+          pending,
+          `prompt-pile-${pile}`,
+          title,
+          { kind: "opponent_pile", pile },
+          pile === 0,
+          tableId == null,
+        ),
+      ],
+    );
+  return frame("pending-choice", "Choose a pile", [
+    h.div(
+      [h.Class("flex flex-wrap gap-3")],
+      [pileBlock("Pile A", pending.pile_a, 0), pileBlock("Pile B", pending.pile_b, 1)],
+    ),
+  ]);
+}
+
+function partitionPrompt(
+  pending: Extract<PendingChoiceView, { kind: "partition_revealed" | "distribute_top" }>,
+  board: BoardModel,
+  state: VisibleState,
+  tableId: string | null,
+): Html {
+  const draft = board.promptDraft ?? initPromptDraft(pending, state);
+  const buckets = draft.kind === "partition" ? draft.buckets : {};
+
+  if (pending.kind === "partition_revealed") {
+    const picked = buckets.pile_a ?? [];
+    return frame("pending-choice", "Choose cards for Pile A", [
+      h.div([h.Class("text-caption text-mist")], ["Click cards to put them in Pile A — the rest go to Pile B."]),
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        pending.items.map((item) => cardPickButton(item, state, picked, false)),
+      ),
+      h.div([h.Class("flex gap-2")], [submitButton("Lock piles", false), cancelButton()]),
+    ]);
+  }
+
+  const currentBucket = (id: number): string | null => {
+    for (const [bucket, ids] of Object.entries(buckets)) {
+      if (ids.includes(id)) return bucket;
+    }
+    return null;
+  };
+  const toHand = buckets.to_hand ?? [];
+  const toBottom = buckets.to_bottom ?? [];
+  const toExile = buckets.to_exile_may_play ?? [];
+  const ready =
+    toHand.length === pending.to_hand &&
+    toBottom.length === pending.to_bottom &&
+    toExile.length === pending.to_exile_may_play &&
+    toHand.length + toBottom.length + toExile.length === pending.items.length;
+
+  const bucketButton = (
+    itemId: number,
+    bucket: "to_hand" | "to_bottom" | "to_exile_may_play",
+    label: string,
+    active: boolean,
+  ): Html =>
+    h.button(
+      [
+        h.Type("button"),
+        h.DataAttribute("testid", `prompt-partition-${itemId}-${bucket}`),
+        h.Disabled(tableId == null),
+        h.OnClick(PromptPartitionSet({ id: itemId, bucket })),
+        h.Class(
+          [
+            "rounded-hud px-2 py-1 text-caption",
+            active ? "bg-llanowar/25 text-snow" : "bg-glass text-mist",
+            tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
+          ].join(" "),
+        ),
+      ],
+      [label],
+    );
+
+  return frame("pending-choice", "Distribute the revealed cards", [
+    h.div(
+      [h.Class("text-caption text-mist")],
+      [
+        `Hand ${toHand.length}/${pending.to_hand} · Bottom ${toBottom.length}/${pending.to_bottom} · Exile ${toExile.length}/${pending.to_exile_may_play}`,
+      ],
+    ),
+    ...pending.items.map((item) => {
+      const assigned = currentBucket(item.id);
+      return h.div(
+        [h.Class("flex items-center justify-between gap-3 rounded-panel bg-glass p-2")],
+        [
+          h.span([h.Class("truncate text-body")], [item.label]),
+          h.div(
+            [h.Class("flex gap-2")],
+            [
+              bucketButton(item.id, "to_hand", "Hand", assigned === "to_hand"),
+              bucketButton(item.id, "to_bottom", "Bottom", assigned === "to_bottom"),
+              bucketButton(item.id, "to_exile_may_play", "Exile", assigned === "to_exile_may_play"),
+            ],
+          ),
+        ],
+      );
+    }),
+    h.div([h.Class("flex gap-2")], [submitButton("Distribute", !ready), cancelButton()]),
+  ]);
+}
+
+function colorPickPrompt(
+  pending: Extract<PendingChoiceView, { kind: "choose_color" | "choose_mana_color" }>,
+  tableId: string | null,
+): Html {
+  const colors = [
+    { index: 0, label: "W" },
+    { index: 1, label: "U" },
+    { index: 2, label: "B" },
+    { index: 3, label: "R" },
+    { index: 4, label: "G" },
+  ] as const;
+  return frame("pending-choice", pending.kind === "choose_mana_color" ? "Choose a mana color" : "Choose a color", [
+    h.div(
+      [h.Class("flex flex-wrap gap-2")],
+      colors.map((color) =>
+        answerButton(
+          pending,
+          `prompt-color-${color.index}`,
+          color.label,
+          pending.kind === "choose_mana_color"
+            ? { kind: "mana_color", color: color.index }
+            : { kind: "color", color: color.index },
+          false,
+          tableId == null,
+        ),
+      ),
+    ),
+  ]);
+}
+
+function stringPickPrompt(
+  pending: Extract<PendingChoiceView, { kind: "choose_creature_type" }>,
+  tableId: string | null,
+): Html {
+  return frame("pending-choice", "Choose a creature type", [
+    h.div(
+      [h.Class("flex flex-wrap gap-2")],
+      pending.options.map((option, index) =>
+        answerButton(
+          pending,
+          `prompt-string-${index}`,
+          option,
+          { kind: "creature_type", subtype: option },
+          false,
+          tableId == null,
+        ),
+      ),
+    ),
+  ]);
+}
+
+function numberPickPrompt(
+  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "trade_secrets_caster_draw" }>,
+  tableId: string | null,
+): Html {
+  const title =
+    pending.kind === "trade_secrets_caster_draw"
+      ? `Choose how many cards to draw (up to ${pending.max})`
+      : `Draw up to ${pending.max}`;
+  return frame("pending-choice", title, [
+    h.div(
+      [h.Class("flex flex-wrap gap-2")],
+      Array.from({ length: pending.max + 1 }, (_, count) =>
+        answerButton(
+          pending,
+          `prompt-number-${count}`,
+          String(count),
+          { kind: "draw_count", count },
+          count === pending.max,
+          tableId == null,
+        ),
+      ),
+    ),
+  ]);
+}
+
+function destinationPickPrompt(
+  pending: Extract<
+    PendingChoiceView,
+    { kind: "choose_countered_spell_destination" | "revealed_card_to_battlefield_or_hand" }
+  >,
+  tableId: string | null,
+): Html {
+  if (pending.kind === "choose_countered_spell_destination") {
+    return frame("pending-choice", "Put the countered spell on top or bottom?", [
+      h.div(
+        [h.Class("flex gap-2")],
+        [
+          answerButton(
+            pending,
+            "prompt-destination-top",
+            "Top",
+            { kind: "top_or_bottom", top: true },
+            true,
+            tableId == null,
+          ),
+          answerButton(
+            pending,
+            "prompt-destination-bottom",
+            "Bottom",
+            { kind: "top_or_bottom", top: false },
+            false,
+            tableId == null,
+          ),
+        ],
+      ),
+    ]);
+  }
+  return frame("pending-choice", "Put the revealed card onto the battlefield or into your hand?", [
+    h.div(
+      [h.Class("flex gap-2")],
+      [
+        answerButton(
+          pending,
+          "prompt-destination-battlefield",
+          "Battlefield",
+          { kind: "revealed", choice: pending.item.id },
+          true,
+          tableId == null,
+        ),
+        answerButton(
+          pending,
+          "prompt-destination-hand",
+          "Hand",
+          { kind: "revealed", choice: null },
+          false,
+          tableId == null,
+        ),
+      ],
+    ),
   ]);
 }
 
@@ -585,9 +1177,89 @@ function pendingChoicePrompt(
   board: BoardModel,
   tableId: string | null,
 ): Html {
-  const faithful = faithfulPendingChoice(pending, state, board);
-  if (faithful != null) return faithful;
-  return stubPendingChoice(pending, state, board, tableId);
+  const id = FORMULATOR_FOR_KIND[pending.kind];
+  switch (id) {
+    case "cardPick":
+      return cardPickForKind(pending, state, board, tableId);
+    case "orderTriggers":
+      if (pending.kind !== "order_triggers") return frame("pending-choice", pendingChoiceTitle(pending), []);
+      return orderPrompt(pending, board);
+    case "damageAssign":
+      if (pending.kind !== "assign_combat_damage") return frame("pending-choice", pendingChoiceTitle(pending), []);
+      return damageAssignPrompt(pending, state, board);
+    case "yesNo":
+      if (
+        pending.kind !== "may_yes_no" &&
+        pending.kind !== "dance_exile_more" &&
+        pending.kind !== "trade_secrets_repeat"
+      ) {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return yesNoPrompt(pending, tableId);
+    case "payCost":
+      if (
+        pending.kind !== "pay_cost" &&
+        pending.kind !== "pay_or_counter" &&
+        pending.kind !== "pay_or_controller_draws" &&
+        pending.kind !== "pay_echo_or_sacrifice" &&
+        pending.kind !== "pay_recover_or_exile" &&
+        pending.kind !== "sacrifice_unless_pay" &&
+        pending.kind !== "pay_cumulative_upkeep_or_sacrifice"
+      ) {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return payCostPrompt(pending, tableId);
+    case "modeList":
+      if (pending.kind !== "choose_mode" && pending.kind !== "choose_trigger_modes") {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return modeListPrompt(pending, board, state, tableId);
+    case "playerPick":
+      if (pending.kind !== "choose_target_players" && pending.kind !== "choose_splitting_opponent") {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return playerPickPrompt(pending, state, board, tableId);
+    case "divideTotal":
+      if (pending.kind !== "divide_spell_damage" && pending.kind !== "divide_counters") {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return divideTotalPrompt(pending, board, state);
+    case "pilePick":
+      if (pending.kind !== "opponent_chooses_pile" && pending.kind !== "choose_pile_for_hand") {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return pilePickPrompt(pending, tableId);
+    case "partition":
+      if (pending.kind !== "partition_revealed" && pending.kind !== "distribute_top") {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return partitionPrompt(pending, board, state, tableId);
+    case "colorPick":
+      if (pending.kind !== "choose_color" && pending.kind !== "choose_mana_color") {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return colorPickPrompt(pending, tableId);
+    case "stringPick":
+      if (pending.kind !== "choose_creature_type") return frame("pending-choice", pendingChoiceTitle(pending), []);
+      return stringPickPrompt(pending, tableId);
+    case "numberPick":
+      if (pending.kind !== "may_draw_up_to" && pending.kind !== "trade_secrets_caster_draw") {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return numberPickPrompt(pending, tableId);
+    case "destinationPick":
+      if (
+        pending.kind !== "choose_countered_spell_destination" &&
+        pending.kind !== "revealed_card_to_battlefield_or_hand"
+      ) {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return destinationPickPrompt(pending, tableId);
+    default: {
+      const _exhaustive: never = id;
+      return _exhaustive;
+    }
+  }
 }
 
 export function promptsView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
@@ -629,5 +1301,3 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
   if (state.pending_choice != null) return pendingChoicePrompt(state.pending_choice, state, board, tableId);
   return null;
 }
-
-export { isFaithfulPromptKind };

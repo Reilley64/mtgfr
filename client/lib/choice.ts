@@ -91,7 +91,7 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   choose_attach_host: "cardPick",
   put_from_hand_on_top: "cardPick",
   opponent_chooses_revealed_to_graveyard: "cardPick",
-  pay_cumulative_upkeep_or_sacrifice: "cardPick",
+  pay_cumulative_upkeep_or_sacrifice: "payCost",
   may_draw_up_to: "numberPick",
   trade_secrets_caster_draw: "numberPick",
   trade_secrets_repeat: "yesNo",
@@ -221,6 +221,7 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
     case "pay_echo_or_sacrifice":
     case "pay_recover_or_exile":
     case "sacrifice_unless_pay":
+    case "pay_cumulative_upkeep_or_sacrifice":
       return { kind: "pay", pay: false };
     case "choose_mode":
       return { kind: "mode", mode: 0 };
@@ -296,6 +297,7 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "pay_echo_or_sacrifice":
     case "pay_recover_or_exile":
     case "sacrifice_unless_pay":
+    case "pay_cumulative_upkeep_or_sacrifice":
       if (draft.kind !== "pay") return null;
       return { kind: "pay", pay: draft.pay };
     case "choose_mode":
@@ -386,7 +388,6 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "may_return_from_graveyard":
     case "may_discard":
     case "choose_exiled_to_cast_free":
-    case "pay_cumulative_upkeep_or_sacrifice":
       if (draft.kind !== "card-pick") return null;
       return { kind: "sacrifice", ids: draft.picked };
     case "choose_target":
@@ -446,6 +447,31 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
 }
 
 export const buildAnswerFromDraft = answerFromDraft;
+
+export function declineAnswer(pc: PendingChoiceView): AnswerInput | null {
+  switch (pc.kind) {
+    case "search_library":
+      return { kind: "search", choice: null };
+    case "put_land_from_hand":
+      return { kind: "put_land", choice: null };
+    case "put_creature_from_hand":
+      return { kind: "put_creature", choice: null };
+    case "choose_exiled_with_card":
+    case "opponent_chooses_exiled_nonland":
+    case "opponent_chooses_revealed_to_graveyard":
+      return { kind: "choose_exiled", choice: null };
+    case "choose_exiled_with_card_to_cast":
+      return { kind: "choose_exiled_cast", choice: null };
+    case "choose_exiled_dig_to_cast_free":
+      return { kind: "choose_exiled_dig", choice: null };
+    case "choose_attach_host":
+      return pc.optional ? { kind: "attach_host", host: null } : null;
+    case "choose_target":
+      return pc.optional ? { kind: "targets", ids: [] } : null;
+    default:
+      return null;
+  }
+}
 
 export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
   switch (pc.kind) {
@@ -569,24 +595,4 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
       draw_count: (a) => ({ kind: "choose_draw_count", player, count: a.count }),
     }),
   );
-}
-
-export const FAITHFUL_PROMPT_KINDS = new Set<PendingChoiceView["kind"]>([
-  "may_yes_no",
-  "order_triggers",
-  "search_library",
-  "scry",
-  "surveil",
-  "select_from_top",
-  "discard",
-  "sacrifice_edict",
-  "choose_own_sacrifices",
-  "assign_combat_damage",
-  "proliferate",
-  "choose_mode",
-  "choose_target",
-]);
-
-export function isFaithfulPromptKind(kind: PendingChoiceView["kind"]): boolean {
-  return FAITHFUL_PROMPT_KINDS.has(kind);
 }

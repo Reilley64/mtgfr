@@ -90,7 +90,7 @@ export class UpdateDeck422 extends Schema.TaggedErrorClass<UpdateDeck422>()("Upd
   cause: DeckError,
 }) {}
 
-export type ChoiceItem = { id: number; label: string; print?: string; player?: never };
+export type ChoiceItem = { id: number; label: string; print?: string; player?: number };
 export type CommanderDamageView = { amount: number; from: number };
 export type ModifierSourceView = { contributions: Array<string>; source_card_id?: string; source_name: string };
 export type SeatView = {

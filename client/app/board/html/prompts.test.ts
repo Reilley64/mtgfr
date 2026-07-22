@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
-import { type Message, PromptCardToggled, PromptSubmitted } from "../messages";
+import { type Message, PromptCardToggled, PromptDamageSet, PromptSubmitted } from "../messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
@@ -77,6 +77,17 @@ const sceneUpdate = (model: ViewModel, message: Message): readonly [ViewModel, R
 
 function intentFromCommand(cmd: unknown): unknown {
   return (cmd as { args: { intent: unknown } }).args.intent;
+}
+
+function clickPromptIntent(s: VisibleState, click: ReturnType<typeof Scene.click>): unknown[] {
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+  Scene.scene({ update, view }, Scene.with(viewModel(s)), resolveBoardOverlayMounts(), click);
+  return commands.map(intentFromCommand);
 }
 
 test("discard prompt submit disabled until count cards picked", () => {
@@ -214,4 +225,229 @@ test("assign_combat_damage submit when damage sums to power", () => {
     player: 0,
     assignment: [{ blocker: 20, amount: 4 }],
   });
+});
+
+test("may_yes_no prompt emits answer_may intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "may_yes_no",
+        label: "Draw a card?",
+        player: 0,
+        source: 1,
+      },
+    }),
+    Scene.click(Scene.testId("prompt-yes")),
+  );
+  expect(intents).toEqual([{ kind: "answer_may", player: 0, yes: true }]);
+});
+
+test("pay_cost prompt emits pay_optional_cost intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "pay_cost",
+        cost: { colored: [], generic: 2 },
+        label: "Pay 2?",
+        player: 0,
+        source: 1,
+      },
+    }),
+    Scene.click(Scene.testId("prompt-pay")),
+  );
+  expect(intents).toEqual([{ kind: "pay_optional_cost", player: 0, pay: true }]);
+});
+
+test("choose_mode prompt emits choose_mode intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "choose_mode",
+        labels: ["Mode A", "Mode B"],
+        player: 0,
+        source: 1,
+      },
+    }),
+    Scene.click(Scene.testId("prompt-mode-1")),
+  );
+  expect(intents).toEqual([{ kind: "choose_mode", player: 0, mode: 1 }]);
+});
+
+test("choose_splitting_opponent prompt emits player target intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "choose_splitting_opponent",
+        items: [
+          { id: 0, label: "Player 2", player: 1 },
+          { id: 0, label: "Player 3", player: 2 },
+        ],
+        label: "Choose an opponent",
+        player: 0,
+        source: 1,
+      },
+      players: [
+        {
+          player: 0,
+          username: "Alice",
+          life: 40,
+          hand_count: 5,
+          library_count: 90,
+          lost: false,
+          commander_tax: 0,
+          mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+        },
+        {
+          player: 1,
+          username: "Bob",
+          life: 40,
+          hand_count: 5,
+          library_count: 90,
+          lost: false,
+          commander_tax: 0,
+          mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+        },
+        {
+          player: 2,
+          username: "Carol",
+          life: 40,
+          hand_count: 5,
+          library_count: 90,
+          lost: false,
+          commander_tax: 0,
+          mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+        },
+      ],
+    }),
+    Scene.click(Scene.testId("prompt-player-2")),
+  );
+  expect(intents).toEqual([
+    {
+      kind: "choose_targets",
+      player: 0,
+      targets: [{ kind: "player", player: 2 }],
+    },
+  ]);
+});
+
+test("divide_spell_damage submit emits divide intent when assignments match total", () => {
+  const s = state({
+    pending_choice: {
+      kind: "divide_spell_damage",
+      items: [
+        { id: 21, label: "Target A" },
+        { id: 22, label: "Target B" },
+      ],
+      player: 0,
+      spell: 99,
+      total: 3,
+    },
+  });
+  const gf = gameFold(s);
+  let board = updateBoard(initialBoardModel(), PromptDamageSet({ id: 0, amount: 2 }), gf, "T1")[0];
+  board = updateBoard(board, PromptDamageSet({ id: 1, amount: 1 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "divide_spell_damage",
+    player: 0,
+    assignment: [
+      { amount: 2, target: { kind: "object", id: 21 } },
+      { amount: 1, target: { kind: "object", id: 22 } },
+    ],
+  });
+});
+
+test("choose_pile_for_hand prompt emits choose_opponent_pile intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "choose_pile_for_hand",
+        pile_a: [{ id: 1, label: "Pile A card" }],
+        pile_b: [{ id: 2, label: "Pile B card" }],
+        player: 0,
+        source: 8,
+      },
+    }),
+    Scene.click(Scene.testId("prompt-pile-1")),
+  );
+  expect(intents).toEqual([{ kind: "choose_opponent_pile", player: 0, pile: 1 }]);
+});
+
+test("partition_revealed submit emits choose_sacrifices intent", () => {
+  const s = state({
+    pending_choice: {
+      kind: "partition_revealed",
+      items: [
+        { id: 6, label: "A" },
+        { id: 7, label: "B" },
+      ],
+      player: 1,
+      source: 8,
+    },
+  });
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 6 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_sacrifices",
+    player: 1,
+    sacrifices: [6],
+  });
+});
+
+test("choose_color prompt emits choose_color intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "choose_color",
+        player: 0,
+        source: 1,
+      },
+    }),
+    Scene.click(Scene.testId("prompt-color-4")),
+  );
+  expect(intents).toEqual([{ kind: "choose_color", player: 0, color: 4 }]);
+});
+
+test("choose_creature_type prompt emits choose_creature_type intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "choose_creature_type",
+        options: ["Wizard", "Cleric"],
+        player: 0,
+        source: 1,
+      },
+    }),
+    Scene.click(Scene.testId("prompt-string-1")),
+  );
+  expect(intents).toEqual([{ kind: "choose_creature_type", player: 0, subtype: "Cleric" }]);
+});
+
+test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "may_draw_up_to",
+        max: 3,
+        player: 0,
+      },
+    }),
+    Scene.click(Scene.testId("prompt-number-2")),
+  );
+  expect(intents).toEqual([{ kind: "choose_draw_count", player: 0, count: 2 }]);
+});
+
+test("choose_countered_spell_destination prompt emits choose_top_or_bottom intent from UI", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "choose_countered_spell_destination",
+        player: 0,
+        spell: 5,
+      },
+    }),
+    Scene.click(Scene.testId("prompt-destination-top")),
+  );
+  expect(intents).toEqual([{ kind: "choose_top_or_bottom", player: 0, top: true }]);
 });
