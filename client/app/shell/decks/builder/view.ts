@@ -362,7 +362,6 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
   return h.button(
     [
       h.Type("button"),
-      h.Title("Right-click or long-press for more options"),
       h.DataAttribute("testid", `pool-card-${card.id}`),
       h.Class(cn(POOL_CARD, offIdentity(model, card) && "opacity-40")),
       h.OnMount(BindBuilderCardPointer({ cardId: card.id, kind: "pool" })),
@@ -462,7 +461,6 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
             : h.button(
                 [
                   h.Type("button"),
-                  h.Title("Click to remove · right-click or long-press to change art"),
                   h.DataAttribute("testid", "builder-commander"),
                   h.Class(
                     "flex w-full cursor-pointer items-center gap-sm rounded-control border border-vine bg-glass-dim px-sm py-xs text-left",
@@ -498,7 +496,6 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
                 h.button(
                   [
                     h.Type("button"),
-                    h.Title("Click to remove one · right-click or long-press for print"),
                     h.DataAttribute("testid", `deck-row-${row.id}`),
                     h.Class(DECK_ROW),
                     h.OnMount(BindBuilderCardPointer({ cardId: row.id, kind: "deck" })),

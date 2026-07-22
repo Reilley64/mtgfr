@@ -245,6 +245,26 @@ test("choose-print menu action opens the print picker without adding a copy", ()
   );
 });
 
+test("pool cards do not set a native title tooltip on hover", () => {
+  const solRing = card({ id: "sol-ring", name: "Sol Ring" });
+  const model = {
+    ...initialDeckBuilderSubmodel(),
+    atEnd: true,
+    pool: [solRing],
+    preferredPrint: { "sol-ring": solRing.default_print },
+    searching: false,
+  };
+
+  Scene.scene(
+    { update: builderUpdate, view: (model) => builderView(model, null) },
+    Scene.with(model),
+    Scene.expect(Scene.selector('[data-testid="pool-card-sol-ring"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="pool-card-sol-ring"][title]')).toBeAbsent(),
+    Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
+  );
+});
+
 test("hover preview and context menu render when present in the model", () => {
   const solRing = card({
     id: "sol-ring",
