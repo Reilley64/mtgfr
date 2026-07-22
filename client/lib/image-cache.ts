@@ -31,6 +31,10 @@ export class ImageCache {
     }
   }
 
+  isReady(url: string): boolean {
+    return this.ready.has(url);
+  }
+
   get(url: string): HTMLImageElement | undefined {
     const existing = this.images.get(url);
     if (existing) return this.ready.has(url) ? (existing as HTMLImageElement) : undefined;
