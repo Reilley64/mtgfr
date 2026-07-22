@@ -160,6 +160,9 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
     if (!snap) {
       return json(toLobbyView(unknownLobby(tableId), me.id, "UnknownTable"), 404);
     }
+    if (snap.startedAt) {
+      return json(toLobbyView(snap, me.id));
+    }
     const err = startError(snap, me.id);
     if (err) return json(toLobbyView(snap, me.id, err));
 
@@ -210,7 +213,7 @@ const handleLobbyTraced = Effect.fn(function* (event: H3Event, path: string) {
   });
 });
 
-/** Mirrors SolidStart `export const GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS`. */
+/** Nitro handler methods for lobby/meta. */
 const ALLOWED_METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
 
 async function forward(event: H3Event) {

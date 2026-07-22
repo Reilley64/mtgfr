@@ -1,5 +1,4 @@
 // Shared stack geometry for the DOM overlay and canvas aim origins.
-// Ported from Solid `client/src/lib/stackLayout.ts`.
 
 export const STACK_CARD_W = 180;
 export const STACK_OVERLAY_RIGHT = 16;

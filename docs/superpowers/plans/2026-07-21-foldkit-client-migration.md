@@ -1,6 +1,6 @@
 # Foldkit Client Migration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical plan — executed.** Do not use as a task list. Live architecture: `AGENTS.md`, shell/board specs, and `docs/client-canvas-map.md`. Do not run subagent-driven-development or executing-plans against the checkboxes below.
 
 **Goal:** Replace the SolidStart client with a Foldkit SPA (event-reactor Model/update/view) hosted on Nitro, preserving full board parity via Foldkit Canvas + Mount bitmap adapter + HTML overlays, and deleting SolidStart/Vinxi at cutover.
 

@@ -1,7 +1,7 @@
 # Foldkit cutover — merge cleanup
 
 **Date:** 2026-07-22  
-**Status:** Approved for planning  
+**Status:** Done  
 **PR:** [#74](https://github.com/Reilley64/mtgfr/pull/74) (`cursor/foldkit-migration-design-1ef0`)  
 **Context:** SolidStart/Vinxi is already removed; Foldkit + Nitro is the live client. CI is green. This work is **merge readiness only** — present-tense docs, light code hygiene, small behavior/build nits, and PR metadata for squash-merge + semantic-release.
 

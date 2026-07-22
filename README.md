@@ -16,9 +16,9 @@ The public origin ships `robots.txt` that disallows crawlers; this is a friends 
 |-------|------|
 | Engine | Pure Rust, deterministic stack/priority state machine |
 | Cards | Data-driven TOML scripts (`crates/cards/data/`) |
-| Wire | `.proto` → tonic gRPC (API) + Effect RPC (browser → SolidStart BFF) |
+| Wire | `.proto` → tonic gRPC (API) + Effect RPC (browser → Nitro BFF) |
 | API | tonic gRPC (game / auth / decks / catalog / seed) + Axum `/health/*` only |
-| BFF / client | SolidStart 1.3 (Vinxi, `ssr: false`); lobby + `table_routes` on Postgres `mtgfr_web` (Drizzle); canvas/WebGL board + thin DOM overlay |
+| BFF / client | Foldkit SPA on Nitro (Vite); lobby + `table_routes` on Postgres `mtgfr_web` (Drizzle); canvas + Mount bitmap board + thin HTML overlays |
 | Durable data | Postgres `mtgfr` (users, sessions, decks); `mtgfr_web` (lobbies, table→pod routes) |
 | Deploy | k3s + Cloudflare Tunnel; Argo-owned API/web rolls with SIGTERM drain |
 
@@ -31,7 +31,7 @@ docker compose up -d          # Postgres on :5432 (mtgfr)
 # create mtgfr_web if you need lobby persistence locally, then:
 just migrate                  # Toasty → mtgfr
 just client-migrate           # Drizzle → mtgfr_web (needs WEB_DATABASE_URL)
-just dev                      # tmux: bacon server (:8080) + Vinxi client (default :3000)
+just dev                      # tmux: bacon server (:8080) + Foldkit/Vite client (default :3000)
 ```
 
 Without `WEB_DATABASE_URL`, the BFF falls back to localhost for game paths (lobby DB features need the web DB).

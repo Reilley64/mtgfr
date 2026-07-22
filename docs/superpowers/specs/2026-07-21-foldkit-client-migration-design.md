@@ -1,7 +1,8 @@
 # Foldkit client migration (full rewrite)
 
 **Date:** 2026-07-21  
-**Status:** Approved for planning  
+**Status:** Done (cutover on branch; pending merge)  
+**Note:** Historical design. Live architecture is `AGENTS.md` plus the shell and board specs.
 **Context:** The client is SolidStart 1.3 + Effect atoms + a dual-surface board (canvas battlefield + DOM hand/stack/chrome). We want a full Foldkit rewrite with an event-reactor shape (server frames → client reactions), Foldkit Canvas for vector battlefield layers, a Mount bitmap adapter for card art parity, and Nitro (SolidStart beta 2-style adapter) hosting the existing BFF routes.
 
 ## Decisions (locked)

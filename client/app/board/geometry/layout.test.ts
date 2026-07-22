@@ -372,7 +372,9 @@ describe("layout", () => {
     });
     const bf = layout(state, 0).filter((c) => c.zone === ZONE.Battlefield && c.kind === "creature");
     expect(bf).toHaveLength(7); // 6 bears + 1 cluster
-    const cluster = bf.find((c) => c.cluster > 1)!;
+    const cluster = bf.find((c) => c.cluster > 1);
+    expect(cluster).toBeDefined();
+    if (!cluster) return;
     expect(cluster).toMatchObject({ id: 10, cluster: 4, name: "Saproling" });
     expect(cluster.clusterMembers).toEqual([10, 11, 12, 13]);
     // 7 slots fit at full spacing — center-out, no pack to edges.
@@ -417,7 +419,9 @@ describe("layout", () => {
     const bf = layout(state, 0).filter((c) => c.zone === ZONE.Battlefield && c.kind === "creature");
     // 4 plains → 1 cluster, equipped alone, 5 bears → 7 faces
     expect(bf).toHaveLength(7);
-    const cluster = bf.find((c) => c.cluster === 4)!;
+    const cluster = bf.find((c) => c.cluster === 4);
+    expect(cluster).toBeDefined();
+    if (!cluster) return;
     expect(cluster.id).toBe(1);
     expect(bf.find((c) => c.id === 5)).toMatchObject({ cluster: 0 });
   });
@@ -491,9 +495,13 @@ describe("layout", () => {
     });
     const cards = layout(state, 0);
     const byId = new Map(cards.map((c) => [c.id, c]));
-    const host = byId.get(1)!;
-    const equip = byId.get(2)!;
-    const ring = byId.get(3)!;
+    const host = byId.get(1);
+    const equip = byId.get(2);
+    const ring = byId.get(3);
+    expect(host).toBeDefined();
+    expect(equip).toBeDefined();
+    expect(ring).toBeDefined();
+    if (!host || !equip || !ring) return;
 
     expect(host.y).toBe(576); // Creatures row
     expect(ring.y).toBe(434); // Noncreature row
@@ -530,8 +538,11 @@ describe("layout", () => {
     });
     const cards = layout(state, 0);
     const byId = new Map(cards.map((c) => [c.id, c]));
-    const host = byId.get(1)!;
-    const aura = byId.get(2)!;
+    const host = byId.get(1);
+    const aura = byId.get(2);
+    expect(host).toBeDefined();
+    expect(aura).toBeDefined();
+    if (!host || !aura) return;
     // Flipped opponent creature at y=142; Aura centerward (+ATTACH_OFFSET when flipped).
     expect(host).toMatchObject({ x: 312, y: 142 });
     expect(aura).toMatchObject({ x: host.x, y: host.y + 26.8 });

@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { createRouter, toNodeListener } from "h3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import rpcHandler from "./[...path]";
+import rpcHandler from "../../server/routes/api/rpc/[...path]";
 
 describe("/api/rpc method gate", () => {
   let port = 0;

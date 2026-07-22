@@ -162,7 +162,6 @@ export async function setReady(
 
 export function startError(snap: LobbySnapshot, userId: number): string | null {
   if (snap.hostUserId !== userId) return "NotHost";
-  if (snap.startedAt) return "AlreadyStarted";
   if (!snap.seats.some((s) => s.userId === userId)) return "NotSeated";
   if (snap.seats.length < 2) return "NeedTwoPlayers";
   if (!snap.seats.every((s) => s.ready)) return "NotAllReady";
@@ -245,7 +244,7 @@ export function toLobbyView(snap: LobbySnapshot, userId: number | null, error?: 
     seats,
     you,
     started: snap.startedAt != null,
-    start_error: userId == null ? "NotSeated" : you == null ? "NotSeated" : startError(snap, userId),
+    start_error: snap.startedAt != null ? null : userId == null || you == null ? "NotSeated" : startError(snap, userId),
     error: error ?? null,
   };
 }

@@ -1,5 +1,4 @@
 // Game outcome: who won, who's out, whether the game is over.
-// Ported from Solid client/src/lib/outcome.ts.
 
 import type { PlayerView } from "~/wire/types";
 

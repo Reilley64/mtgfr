@@ -1,6 +1,5 @@
-// Faro RUM client boot — Grafana Faro Web SDK + tracing instrumentation.
+// Faro RUM boot for the Foldkit entry (no-op without upstream).
 //
-// Mirrors the retired SolidStart `client/src/plugins/otel.client.ts`:
 // - Same-origin `/api/faro/collect` collector (Nitro forwards to `FARO_COLLECT_UPSTREAM`).
 // - Session sampling repair for resumed sessions (avoids Tempo orphans).
 // - Traceparent propagation restricted to `/api/*` — never leaks to Scryfall/etc.

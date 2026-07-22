@@ -1,4 +1,4 @@
-// `/api/rpc` dispatcher: request shape in, outcome out — unit-testable without a Vinxi route.
+// `/api/rpc` dispatcher — unit-testable without a Nitro route.
 
 import * as Match from "effect/Match";
 import { GrpcCallError, type GrpcRequestEnv, grpcClientFor, httpStatusOf } from "./grpcClient";

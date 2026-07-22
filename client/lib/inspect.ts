@@ -1,5 +1,4 @@
 // Pure helpers for card inspect: which face to show, and pin lifecycle rules.
-// Ported from Solid client/src/lib/inspect.ts.
 
 export type InspectFace = "front" | "back";
 

@@ -89,8 +89,10 @@ describe("withClusterFan", () => {
     expect(fan[1].fanAngle ?? 0).toBe(0);
     expect(fan[0].y).toBeGreaterThan(cluster.y);
     expect(fan[2].y).toBeGreaterThan(cluster.y);
-    expect(fan[0].fanAngle!).toBeLessThan(0);
-    expect(fan[2].fanAngle!).toBeGreaterThan(0);
+    expect(fan[0].fanAngle).toBeDefined();
+    expect(fan[2].fanAngle).toBeDefined();
+    expect(fan[0].fanAngle).toBeLessThan(0);
+    expect(fan[2].fanAngle).toBeGreaterThan(0);
   });
 
   it("places an outer fan member away from the cluster slot center", () => {
@@ -102,7 +104,9 @@ describe("withClusterFan", () => {
       clusterMembers: [10, 11, 12],
     });
     // Middle index stays on the slot x; an outer member shifts horizontally.
-    const outer = withClusterFan([cluster], 10).find((c) => c.id === 12)!;
+    const outer = withClusterFan([cluster], 10).find((c) => c.id === 12);
+    expect(outer).toBeDefined();
+    if (!outer) return;
     expect(outer.x + outer.w / 2).not.toBeCloseTo(cluster.x + cluster.w / 2);
   });
 

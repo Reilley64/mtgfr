@@ -1,6 +1,6 @@
-// Faro collect helpers — kept out of the SolidStart route module so Nitro's
-// production bundle does not drop named exports the handler still calls
-// (`ReferenceError: upstreamUrl is not defined` in `.output/server`).
+// Faro collect helpers for the Nitro `/api/faro/collect` route.
+// Kept separate from the route module so Nitro's production bundle does not drop
+// named exports the handler still calls.
 
 /** Soft cap for Faro payloads (browser RUM batches). Oversize → 413. */
 export const FARO_MAX_BODY_BYTES = 512 * 1024;

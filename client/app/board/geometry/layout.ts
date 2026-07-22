@@ -429,7 +429,9 @@ function rowSlots(objects: ObjectView[], hostsWithAttachments: Set<number>): Row
     groups.get(k)?.push(o);
   }
   return order.map((k) => {
-    const members = [...groups.get(k)!].sort((a, b) => a.id - b.id);
+    const group = groups.get(k);
+    if (!group) return { members: [] as ObjectView[] };
+    const members = [...group].sort((a, b) => a.id - b.id);
     return { members };
   });
 }
@@ -488,9 +490,16 @@ export function layout(state: VisibleState, viewer: number): RenderCard[] {
   const freeHostIds = new Set(
     state.objects.filter((o) => o.zone === ZONE.Battlefield && !isAttached(o)).map((o) => o.id),
   );
-  const stacksOnHost = (o: ObjectView) => isAttached(o) && freeHostIds.has(o.attached_to!);
+  const attachedHostId = (o: ObjectView): number | null => (o.attached_to == null ? null : o.attached_to);
+  const stacksOnHost = (o: ObjectView) => {
+    const hostId = attachedHostId(o);
+    return isAttached(o) && hostId != null && freeHostIds.has(hostId);
+  };
   const hostsWithAttachments = new Set(
-    state.objects.filter((o) => o.zone === ZONE.Battlefield && stacksOnHost(o)).map((o) => o.attached_to!),
+    state.objects
+      .filter((o) => o.zone === ZONE.Battlefield && stacksOnHost(o))
+      .map((o) => attachedHostId(o))
+      .filter((id): id is number => id != null),
   );
 
   /** Host id → world top-left of the host card (filled as free permanents are placed). */
@@ -564,7 +573,8 @@ export function layout(state: VisibleState, viewer: number): RenderCard[] {
   const attachments = state.objects.filter((o) => o.zone === ZONE.Battlefield && stacksOnHost(o));
   const byHost = new Map<number, ObjectView[]>();
   for (const a of attachments) {
-    const hostId = a.attached_to!;
+    const hostId = attachedHostId(a);
+    if (hostId == null) continue;
     const list = byHost.get(hostId) ?? [];
     list.push(a);
     byHost.set(hostId, list);

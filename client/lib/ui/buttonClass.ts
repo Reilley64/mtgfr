@@ -1,4 +1,4 @@
-// DESIGN.md §5 button vocabulary for Foldkit views (ported from Solid `atoms/button.tsx`).
+// DESIGN.md §5 button vocabulary for Foldkit views.
 
 import { cn } from "../cn";
 

@@ -4,7 +4,7 @@
 **Module:** `crates/server/src/table.rs`, `crates/server/src/lobby.rs`, `crates/server/src/session.rs`,
 `crates/server/src/game_loop.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
 `crates/server/src/health.rs`, `crates/server/src/main.rs`,
-BFF `client/src/server/` (SolidStart lobby + `table_routes`)
+BFF `client/server/` (Nitro lobby + `table_routes`)
 
 ---
 
@@ -24,14 +24,14 @@ newest pod only.
 
 The system separates pre-game lobby from live-game concerns across two persistence boundaries:
 
-- **Pre-game lobby** lives on the SolidStart BFF (`edh-web`) against Postgres `mtgfr_web`
+- **Pre-game lobby** lives on the Nitro BFF (`edh-web`) against Postgres `mtgfr_web`
   (Drizzle), entirely outside the API pod.
 - **Live game** lives in the API pod's in-memory `Registry` (lobby-table-routing-and-live-game spec). No game state is
   persisted; the game is lost if the pod restarts.
 
 **Lobby flow (BFF-owned):**
 
-1. User creates or joins a lobby on `mtgfr_web` (SolidStart Effect RPC, Drizzle/Postgres).
+1. User creates or joins a lobby on `mtgfr_web` (Nitro Effect RPC, Drizzle/Postgres).
 2. Each user claims a seat (bound to their account via session cookie) and picks a deck.
 3. Each user toggles ready. The host (first to join) sees the Start button when ≥2 seats are
    claimed and all claimed seats are ready.

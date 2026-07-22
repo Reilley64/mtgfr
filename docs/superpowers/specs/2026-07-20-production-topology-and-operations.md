@@ -36,7 +36,7 @@ port-forward`; no tunnel hostname for the observability plane.
 
 ## User Stories
 
-- As a **player**, I open `https://edh.example.com/` in a browser; the SolidStart SPA loads,
+- As a **player**, I open `https://edh.example.com/` in a browser; the Foldkit SPA loads,
   I log in, browse my decks, join a lobby, and start a game — all over TLS with no self-signed
   certs or port-forwarding.
 - As an **operator**, I merge a `feat:` PR to `main`; CI runs verify, semantic-release cuts a
@@ -69,7 +69,7 @@ cloudflared Deployment (1 replica; HA: set cloudflared_replicas=2)
   │
   ▼
 edh-web ClusterIP Service :8080
-  │ SolidStart BFF
+  │ Nitro BFF
   ├─ Lobby RPCs → mtgfr_web (Drizzle, Postgres)
   ├─ Auth/Decks/Cards → edh-api ClusterIP Service :50051 (newest pod)
   └─ In-game → table_routes lookup → pod DNS → edh-api-headless :50051 (any pod)
@@ -100,7 +100,7 @@ Axum health probes are on `:8080` inside the cluster; the BFF exposes only `meta
 
 | Resource | Owned by | Notes |
 |----------|----------|-------|
-| Deployment `edh-web` | Argo (`charts/edh`) | SolidStart BFF; `API_UPSTREAM`, `WEB_DATABASE_URL` |
+| Deployment `edh-web` | Argo (`charts/edh`) | Nitro BFF; `API_UPSTREAM`, `WEB_DATABASE_URL` |
 | Deployment `edh-api-<tag>` | Argo (`charts/edh`) | Newest active API binary; prior generations Terminating |
 | Service `edh-api` | Argo (`charts/edh`) | Selects `app=<apiActiveInstanceId>` (newest only); for seed + auth/decks/cards |
 | Service `edh-api-headless` | Terraform | `publishNotReadyAddresses=true`; for in-game pod DNS dial |
@@ -209,7 +209,7 @@ Loaded once at startup via `Settings::load()`:
 Source precedence (later wins): built-in defaults → `config/mtgfr.toml` (committed, non-secret)
 → environment variables (`__` separator for nested keys; flat vars like `DATABASE_URL` also work).
 
-Web BFF env (SolidStart `edh-web`):
+Web BFF env (Nitro `edh-web`):
 
 | Env var | Purpose |
 |---------|---------|
@@ -230,10 +230,10 @@ Web BFF env (SolidStart `edh-web`):
 - **Grafana** — dashboards and trace/log correlation; operator-only via `kubectl port-forward`.
 
 **Browser:** Grafana Faro (`@grafana/faro-web-sdk` + `@grafana/faro-web-tracing`) in
-`client/src/plugins/otel.client.ts`. Posts to same-origin `/api/faro/collect`; the BFF proxies
+`client/app/faro.ts`. Posts to same-origin `/api/faro/collect`; the BFF proxies
 to Alloy `faro.receiver`. Session sampling: 100%; stuck `isSampled=false` sessions are repaired.
 
-**BFF:** `src/plugins/otel.server.ts` — process-scoped `@effect/opentelemetry` `ManagedRuntime`.
+**BFF:** `client/server/plugins/otel.server.ts` — process-scoped `@effect/opentelemetry` `ManagedRuntime`.
 Inbound W3C `traceparent` continued as BFF parent span *only when sampled* (unsampled Faro
 non-recording injects are ignored). BFF propagates its span into gRPC metadata so Tempo shows
 browser → web → API trace chains.
@@ -285,7 +285,7 @@ bases (no shell, no package manager):
 **`mtgfr-web` (`docker/web/Dockerfile`):**
 1. Deps: `oven/bun` — `bun install --frozen-lockfile`.
 2. Build: `node:22-bookworm` — `bun run gen` (Effect-gRPC codegen from `.proto` into gitignored
-   `client/src/wire/generated/`), `tsc` + `vinxi build` → `.output/`.
+   `client/lib/wire/generated/`), `bun run build` → `.output/`.
 3. Runtime: `gcr.io/distroless/nodejs22-debian12:nonroot` — copy `.output/`; `CMD [".output/server/index.mjs"]`.
 
 Both images are pushed to public GHCR (`ghcr.io/<owner>/mtgfr-server`, `mtgfr-web`) tagged with
