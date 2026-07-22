@@ -110,6 +110,61 @@ function className(node: unknown): string {
     .join(" ");
 }
 
+function treeHasClass(node: unknown, token: string): boolean {
+  if (className(node).split(/\s+/).includes(token)) return true;
+  if (node == null || typeof node !== "object") return false;
+  const n = node as { children?: unknown[] };
+  return (n.children ?? []).some((child) => treeHasClass(child, token));
+}
+
+describe("handView unplayable brightness", () => {
+  it("does not darken unplayable hand tiles (borders carry castability)", () => {
+    const castable = object(42, { name: "Lightning Bolt" });
+    const uncastable = object(43, { name: "Cancel" });
+    const tree = renderHand(state({ objects: [castable, uncastable], actions: [action(7, { object: 42 })] }));
+
+    const unplayableFace = findTestId(tree, "hand-card-face-43");
+    expect(unplayableFace).not.toBeNull();
+    expect(treeHasClass(unplayableFace, "brightness-[0.55]")).toBe(false);
+    expect(className(unplayableFace)).not.toContain("ring-playable-border");
+  });
+
+  it("does not darken unplayable command tiles", () => {
+    const commander = object(9, {
+      name: "Atraxa",
+      zone: ZONE.Command,
+      is_commander: true,
+      kind: { kind: "creature" },
+    });
+    const tree = renderHand(state({ objects: [commander], actions: [] }));
+    const face = findTestId(tree, "hand-card-face-9");
+    expect(face).not.toBeNull();
+    expect(treeHasClass(face, "brightness-[0.55]")).toBe(false);
+  });
+
+  it("still fades the drag-source hand tile", () => {
+    const castable = object(42, { name: "Lightning Bolt" });
+    const cast = action(7, { object: 42 });
+    const tree = handView({
+      state: state({ objects: [castable], actions: [cast] }),
+      hiddenId: null,
+      flyingIds: new Set(),
+      hiddenIds: new Set(),
+      handDrag: {
+        action: cast,
+        name: "Lightning Bolt",
+        print: "",
+        manaCost: cost(),
+        x: 10,
+        y: 10,
+      },
+    });
+    const face = findTestId(tree, "hand-card-face-42");
+    expect(face).not.toBeNull();
+    expect(treeHasClass(face, "opacity-25")).toBe(true);
+  });
+});
+
 describe("handView playable outlines", () => {
   it("adds the playable border to castable hand tiles only", () => {
     const castable = object(42, { name: "Lightning Bolt" });

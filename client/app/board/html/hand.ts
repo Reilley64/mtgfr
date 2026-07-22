@@ -75,7 +75,7 @@ function tile(args: {
   objectKind?: string;
   manaCost: WireCost;
   action: ActionView | null;
-  dimmed: boolean;
+  slotInert: boolean;
   /** Action id of the in-flight hand drag ghost — fades the source tile (Solid parity). */
   draggingActionId?: number | null;
   caption?: string;
@@ -91,13 +91,13 @@ function tile(args: {
     objectKind,
     manaCost,
     action,
-    dimmed,
+    slotInert,
     draggingActionId,
     caption,
     index,
     count,
   } = args;
-  const playable = action != null && !dimmed;
+  const playable = action != null && !slotInert;
   const testId = objectId != null ? `hand-card-${objectId}` : undefined;
   const hitW = handBarHitWidth(index, count, HAND_CARD_PEEK, HAND_CARD_W);
   const restHitH = handBarHitHeight(false, HAND_VISIBLE_H, HAND_CARD_H);
@@ -109,11 +109,10 @@ function tile(args: {
     "group-hover/hand-tile:z-30 group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
   ].join(" ");
 
-  // Solid `dimmedness`: inert tiles darken; the drag source fades so the ghost carries the face.
+  // Solid parity: the drag source fades so the ghost carries the face; inert slots stay non-interactive.
   const dragSource = playable && draggingActionId != null && action?.id === draggingActionId;
   const artClass = [
     "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
-    dimmed ? "brightness-[0.55]" : "",
     dragSource ? "opacity-25" : "",
     playable && !dragSource ? "group-hover/hand-tile:brightness-110" : "",
   ]
@@ -210,7 +209,13 @@ function tile(args: {
     : h.div(
         [
           h.Class(
-            `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand ${dimmed ? "brightness-[0.55]" : ""}`,
+            [
+              "flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
+              dragSource ? "opacity-25" : "",
+              playable && !dragSource ? "group-hover/hand-tile:brightness-110" : "",
+            ]
+              .filter((v) => v !== "")
+              .join(" "),
           ),
           h.Style(cardBoxStyle),
         ],
@@ -340,7 +345,7 @@ export function handView(inputs: HandViewInputs): Html {
   const commanderTax = state.players.find((p) => p.player === viewer)?.commander_tax ?? 0;
   const objectsById = new Map(state.objects.map((o) => [o.id, o]));
 
-  const slotDimmed = (id: number) => id === hiddenId || flyingIds.has(id);
+  const slotInert = (id: number) => id === hiddenId || flyingIds.has(id);
 
   const metaFor = (id: number | undefined | null) => {
     const obj = id != null ? objectsById.get(id) : undefined;
@@ -365,7 +370,7 @@ export function handView(inputs: HandViewInputs): Html {
       objectKind: c.kind.kind,
       manaCost: c.mana_cost,
       action: commandActionByObject.get(c.id) ?? null,
-      dimmed: !commandActionByObject.get(c.id) || slotDimmed(c.id),
+      slotInert: slotInert(c.id),
       draggingActionId,
       caption: c.is_commander && commanderTax > 0 ? `Tax +{${commanderTax}}` : undefined,
       index,
@@ -381,7 +386,7 @@ export function handView(inputs: HandViewInputs): Html {
     objectKind?: string;
     manaCost: WireCost;
     action: ActionView | null;
-    dimmed: boolean;
+    slotInert: boolean;
     caption?: string;
   };
   const handSlots: HandSlot[] = [];
@@ -396,7 +401,7 @@ export function handView(inputs: HandViewInputs): Html {
       objectKind: c.kind.kind,
       manaCost: c.mana_cost,
       action,
-      dimmed: !action || slotDimmed(c.id),
+      slotInert: slotInert(c.id),
       caption: actionCaption(action?.kind ?? ""),
     });
   }
@@ -410,7 +415,7 @@ export function handView(inputs: HandViewInputs): Html {
       objectKind: meta.kind,
       manaCost: meta.manaCost,
       action: extra,
-      dimmed: false,
+      slotInert: false,
       caption: actionCaption(extra.kind),
     });
   }
@@ -436,7 +441,7 @@ export function handView(inputs: HandViewInputs): Html {
         objectKind: meta.kind,
         manaCost: meta.manaCost,
         action: a,
-        dimmed: false,
+        slotInert: false,
         draggingActionId,
         index,
         count: arr.length,
