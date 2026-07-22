@@ -41,3 +41,17 @@ The client talks to the BFF at `client/src/routes/api/rpc/[...path].ts`, which d
 - Auto-advance means turns fly: a player with no meaningful action is passed instantly, so "wait a step" states are hard to park on. Anything on the stack holds ~2s (`STACK_HOLD`) before auto-resolving — that's the window to screenshot.
 - Bare `engine::Game::new()` tables die fast under auto-advance (empty libraries → draw-out deaths). Seed real decks.
 - Test tables/users linger in the dev DB and in-memory registry until game over; use recognizable throwaway names.
+
+## Interaction checklist
+
+Required before claiming done when the PR is flagged **Interaction / UI**
+(PR template checkbox / AGENTS.md). Always available otherwise.
+
+Drive via browser (`agent-browser`) and/or BFF curls against the running
+`just dev` stack. Note which items you exercised in the PR or agent summary.
+
+1. **Host a table** with local defaults after `just migrate` / `just client-migrate` — create succeeds; not a generic “Couldn't reach the table.”
+2. **Alt-hold** over a face-up board or hand card — inspect opens; release Alt — inspect closes.
+3. **Drag a playable hand card** above the bar — after commit the hand no longer shows a duplicate tile while the flight plays.
+4. **Deck builder hover** — move across two pool cards; preview art changes; no native title tooltip.
+5. **Lobby with a pre-picked deck** (`/play?deck=…`) — shown deck matches the pick (select value today; Bring text/card once that UX lands).
