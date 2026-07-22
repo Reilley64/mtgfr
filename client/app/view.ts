@@ -130,7 +130,8 @@ function portraitGate() {
 
 function routeBody(model: Model) {
   if (isProtectedRoute(model.route) && (!model.sessionLoaded || model.session.me == null)) {
-    return h.main([h.Class("min-h-screen bg-forest-floor text-snow")], [nav(model)]);
+    // Spec: no persistent nav chrome. Blank gate until session resolves (avoids Play/Sign in flash).
+    return h.main([h.Class("min-h-screen bg-forest-floor"), h.DataAttribute("testid", "session-gate")], []);
   }
 
   return (() => {

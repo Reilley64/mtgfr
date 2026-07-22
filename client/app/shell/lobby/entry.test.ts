@@ -41,11 +41,38 @@ function tableLobbyModel(overrides: Partial<Model>): Model {
 const lobbyAppView = (model: Model) =>
   lobbyView(model.lobby, model.decks.list.decks, model.decks.list.loading, model.apiVersion);
 
-test("shows empty copy when no deck is selected", () => {
+test("shows deck picker when no deck is selected yet", () => {
   Scene.scene(
     { update, view: lobbyAppView },
-    Scene.with(playLobbyModel({ lobby: { ...initialLobbySlice(), selectedDeckId: null } })),
-    Scene.expect(Scene.text("Pick a deck to play first (Your decks → Play).")).toExist(),
+    Scene.with(
+      playLobbyModel({
+        lobby: { ...initialLobbySlice(), selectedDeckId: null },
+        decks: {
+          ...init()[0].decks,
+          list: { ...init()[0].decks.list, decks: [deck] },
+        },
+      }),
+    ),
+    Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
+    Scene.expect(Scene.text("Pick a deck to play first (Your decks → Play).")).not.toExist(),
+  );
+});
+
+test("shows build-a-deck copy when the player has no decks", () => {
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(
+      playLobbyModel({
+        lobby: { ...initialLobbySlice(), selectedDeckId: null },
+        decks: {
+          ...init()[0].decks,
+          list: { ...init()[0].decks.list, decks: [], loading: false },
+        },
+      }),
+    ),
+    Scene.expect(Scene.text("Build a deck first (Your decks → New deck).")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-host"]')).not.toExist(),
   );
 });
 
@@ -64,7 +91,7 @@ test("keeps entry visible while decks load when a deck is selected", () => {
   );
 });
 
-test("shows the locked deck name once decks resolve", () => {
+test("shows deck picker once decks resolve", () => {
   Scene.scene(
     { update, view: lobbyAppView },
     Scene.with(
@@ -77,7 +104,8 @@ test("shows the locked deck name once decks resolve", () => {
       }),
     ),
     Scene.expect(Scene.text("Superfriends")).toExist(),
-    Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).not.toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
   );
 });
 

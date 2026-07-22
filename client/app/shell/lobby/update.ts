@@ -31,11 +31,8 @@ function viewResult(view: LobbyView | null): typeof ReceivedLobbyView.Type | typ
 }
 
 function selectedDeckId(model: LobbySlice, deckIds: ReadonlyArray<number>): number | null {
-  // Prefer the deck chosen on Your decks (or via share-link picker). Only fall back to the first
-  // owned deck when claiming a seat from a bare share link with no selection yet.
   if (model.selectedDeckId != null) return model.selectedDeckId;
-  if (model.tableId != null) return deckIds[0] ?? null;
-  return null;
+  return deckIds[0] ?? null;
 }
 
 function tableForJoin(model: LobbySlice): string | null {
@@ -118,7 +115,10 @@ function joinCommand(
     return [{ ...model, tableId, error: "Pick a deck to bring first.", submitting: false }, []];
   }
 
-  return [{ ...model, tableId, error: null, submitting: true }, [JoinLobbyTable({ tableId, deckId })]];
+  return [
+    { ...model, tableId, selectedDeckId: deckId, error: null, submitting: true },
+    [JoinLobbyTable({ tableId, deckId })],
+  ];
 }
 
 export const update = (
@@ -132,10 +132,11 @@ export const update = (
       ChangedLobbyDeck: ({ deckId }) => [{ ...model, selectedDeckId: deckId }, []],
       ChangedLobbyCode: ({ code }) => [{ ...model, code }, []],
       RequestedLobbyHost: () => {
-        if (selectedDeckId(model, deckIds) == null) {
+        const deckId = selectedDeckId(model, deckIds);
+        if (deckId == null) {
           return [{ ...model, error: "Pick a deck to bring first." }, []];
         }
-        return [{ ...model, error: null, submitting: true }, [CreateLobbyTable()]];
+        return [{ ...model, selectedDeckId: deckId, error: null, submitting: true }, [CreateLobbyTable()]];
       },
       LobbyTableCreated: ({ tableId }) => joinCommand({ ...model, tableId }, deckIds),
       RequestedLobbyJoin: () => joinCommand(model, deckIds),

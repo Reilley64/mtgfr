@@ -61,6 +61,9 @@ describe("foldkit scaffold", () => {
       { update, view },
       Scene.with(playModel({ sessionLoaded: false, session: { me: null } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="session-gate"]')).toExist(),
+      Scene.expect(Scene.text("Sign in")).not.toExist(),
+      Scene.expect(Scene.text("Play")).not.toExist(),
     );
   });
 
@@ -69,6 +72,8 @@ describe("foldkit scaffold", () => {
       { update, view },
       Scene.with(playModel({ sessionLoaded: true, session: { me: null } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).not.toExist(),
+      Scene.expect(Scene.selector('[data-testid="session-gate"]')).toExist(),
+      Scene.expect(Scene.text("Sign in")).not.toExist(),
     );
   });
 

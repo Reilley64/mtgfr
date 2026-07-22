@@ -56,24 +56,27 @@ function deckPicker(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): Html 
   );
 }
 
-function entry(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): Html {
-  // Deck is chosen on Your decks (Play) — host/join only, never a deck picker.
-  if (model.selectedDeckId == null) {
-    return h.div([h.Class("text-caution-amber text-label")], ["Pick a deck to play first (Your decks → Play)."]);
+function entry(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLoading: boolean): Html {
+  if (decksLoading && decks.length === 0 && model.selectedDeckId == null) {
+    return h.div([h.Class("text-label text-lichen")], ["Loading decks…"]);
   }
+
+  if (!decksLoading && decks.length === 0 && model.selectedDeckId == null) {
+    return h.div([h.Class("text-caution-amber text-label")], ["Build a deck first (Your decks → New deck)."]);
+  }
+
+  const deckRow =
+    decks.length > 0
+      ? deckPicker(model, decks)
+      : h.span(
+          [h.Class("text-label text-lichen"), h.DataAttribute("testid", "lobby-bring")],
+          ["Bring: ", h.b([], [pickedDeckName(model, decks)])],
+        );
 
   return h.div(
     [h.Class("flex flex-col gap-md")],
     [
-      h.div(
-        [h.Class("flex items-center gap-sm")],
-        [
-          h.span(
-            [h.Class("text-label text-lichen"), h.DataAttribute("testid", "lobby-bring")],
-            ["Bring: ", h.b([], [pickedDeckName(model, decks)])],
-          ),
-        ],
-      ),
+      h.div([h.Class("flex items-center gap-sm")], [deckRow]),
       h.div(
         [h.Class("flex items-center gap-sm")],
         [
@@ -320,7 +323,7 @@ export function view(
                   h.h1([h.Class("m-0 text-lichen text-title")], ["Lobby"]),
                 ],
               ),
-              model.tableId == null ? entry(model, decks) : tableLobby(model, decks, decksLoading),
+              model.tableId == null ? entry(model, decks, decksLoading) : tableLobby(model, decks, decksLoading),
               model.error == null
                 ? null
                 : h.div(
