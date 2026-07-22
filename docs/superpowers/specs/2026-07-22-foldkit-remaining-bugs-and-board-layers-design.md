@@ -1,6 +1,6 @@
 # Foldkit remaining bugs + board layer lock
 
-**Status:** Draft  
+**Status:** Done  
 **Date:** 2026-07-22  
 **PR:** [#74](https://github.com/Reilley64/mtgfr/pull/74) (`cursor/foldkit-migration-design-1ef0`)
 
