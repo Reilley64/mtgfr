@@ -11548,6 +11548,22 @@ fn legal_actions_does_not_list_study_hall_paid_from_its_own_free_c() {
 }
 
 #[test]
+fn legal_actions_does_not_list_tap_cost_activate_paid_by_its_own_mana() {
+    // Arcane Lighthouse's own {T}: {C} cannot pay its {1}, {T} non-mana ability.
+    let mut game = Game::new();
+    let lighthouse = game.spawn_on_battlefield(PlayerId(0), card("Arcane Lighthouse"));
+    game.begin_first_turn();
+
+    assert!(
+        !game.legal_actions().iter().any(|a| matches!(
+            a.kind,
+            MeaningfulAction::Activate { source, .. } if source == lighthouse
+        )),
+        "the source is excluded from the auto-tap payment plan because the activation taps it",
+    );
+}
+
+#[test]
 fn take_action_activate_pays_a_filter_land_from_the_pool() {
     // Float {{R}} from Mountain (also refreshes actions), then take Ferrous Lake's paid activate.
     let mut game = Game::new();

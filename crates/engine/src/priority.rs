@@ -676,7 +676,11 @@ impl Game {
             && at_zero.colorless == 0
             && at_zero.hybrid.is_empty()
         {
-            return at_zero.additional.pay_life_x.then_some(life).unwrap_or(0);
+            return if at_zero.additional.pay_life_x {
+                life
+            } else {
+                0
+            };
         }
         if !Self::affordable_from(available, at_zero, spell) {
             return 0;
