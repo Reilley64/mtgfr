@@ -3,6 +3,7 @@ import { appVersionBadge } from "../../../lib/ui/app-version";
 import { buttonClass } from "../../../lib/ui/buttonClass";
 import { feltClass, fieldClass, panelClass } from "../../../lib/ui/surfaces";
 import type { DeckSummary } from "../../../lib/wire/types";
+import { HomeRoute, routePath } from "../../routes";
 import {
   ChangedLobbyCode,
   ChangedLobbyDeck,
@@ -41,6 +42,26 @@ function pickedDeckName(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): s
   return decks.find((deck) => deck.id === model.selectedDeckId)?.name ?? "your deck";
 }
 
+function bringAndBack(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): Html {
+  return h.div(
+    [h.Class("flex flex-wrap items-center gap-sm")],
+    [
+      h.span(
+        [h.Class("text-label text-lichen"), h.DataAttribute("testid", "lobby-bring")],
+        ["Bring: ", h.b([], [pickedDeckName(model, decks)])],
+      ),
+      h.a(
+        [
+          h.Href(routePath(HomeRoute())),
+          h.DataAttribute("testid", "lobby-back"),
+          h.Class(buttonClass("ghost")),
+        ],
+        ["Back"],
+      ),
+    ],
+  );
+}
+
 function deckPicker(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): Html {
   const selected = model.selectedDeckId ?? decks[0]?.id ?? "";
 
@@ -66,12 +87,11 @@ function entry(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLoadin
   }
 
   const deckRow =
-    decks.length > 0
-      ? deckPicker(model, decks)
-      : h.span(
-          [h.Class("text-label text-lichen"), h.DataAttribute("testid", "lobby-bring")],
-          ["Bring: ", h.b([], [pickedDeckName(model, decks)])],
-        );
+    model.selectedDeckId != null
+      ? bringAndBack(model, decks)
+      : decks.length > 0
+        ? deckPicker(model, decks)
+        : null;
 
   return h.div(
     [h.Class("flex flex-col gap-md")],
@@ -179,10 +199,7 @@ function claimSeat(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLo
     return h.div(
       [h.Class("flex flex-wrap items-center gap-sm")],
       [
-        h.span(
-          [h.Class("text-label text-lichen"), h.DataAttribute("testid", "lobby-bring")],
-          ["Bring: ", h.b([], [pickedDeckName(model, decks)])],
-        ),
+        bringAndBack(model, decks),
         h.button(
           [
             h.Type("button"),

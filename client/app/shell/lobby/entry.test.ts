@@ -91,25 +91,7 @@ test("keeps entry visible while decks load when a deck is selected", () => {
   );
 });
 
-test("shows deck picker once decks resolve", () => {
-  Scene.scene(
-    { update, view: lobbyAppView },
-    Scene.with(
-      playLobbyModel({
-        lobby: { ...initialLobbySlice(), selectedDeckId: 7 },
-        decks: {
-          ...init()[0].decks,
-          list: { ...init()[0].decks.list, decks: [deck] },
-        },
-      }),
-    ),
-    Scene.expect(Scene.text("Superfriends")).toExist(),
-    Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toExist(),
-    Scene.expect(Scene.selector('[data-testid="lobby-host"]')).toExist(),
-  );
-});
-
-test("entry select shows the pre-picked deck among multiple decks", () => {
+test("entry with pre-picked deck shows Bring text and Back, not a select", () => {
   const other = {
     id: 9,
     name: "Tokens",
@@ -127,9 +109,11 @@ test("entry select shows the pre-picked deck among multiple decks", () => {
         },
       }),
     ),
-    Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toExist(),
-    Scene.expect(Scene.selector('[data-testid="lobby-deck"] option[value="9"][selected]')).toExist(),
-    Scene.expect(Scene.selector('[data-testid="lobby-deck"] option[value="7"][selected]')).toBeAbsent(),
+    Scene.expect(Scene.testId("lobby-bring")).toExist(),
+    Scene.expect(Scene.text("Tokens")).toExist(),
+    Scene.expect(Scene.testId("lobby-back")).toExist(),
+    Scene.expect(Scene.text("Back")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toBeAbsent(),
   );
 });
 
@@ -169,9 +153,49 @@ test("claim seat with a pre-chosen deck has no picker", () => {
       }),
     ),
     Scene.expect(Scene.selector('[data-testid="lobby-bring"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-back"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-claim"]')).toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).not.toExist(),
     Scene.expect(Scene.selector('[data-testid="lobby-ready"]')).not.toExist(),
+  );
+});
+
+test("claim seat pre-pick includes Back to decks", () => {
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(
+      tableLobbyModel({
+        lobby: {
+          ...initialLobbySlice(),
+          tableId: "ABC123",
+          selectedDeckId: 7,
+          view: {
+            table_id: "ABC123",
+            you: null,
+            started: false,
+            error: null,
+            start_error: null,
+            seats: [
+              {
+                player: 0,
+                claimed: false,
+                username: null,
+                deck_name: null,
+                deck_id: null,
+                ready: false,
+                is_host: false,
+                is_you: false,
+              },
+            ],
+          },
+        },
+        decks: {
+          ...init()[0].decks,
+          list: { ...init()[0].decks.list, decks: [deck] },
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("lobby-back")).toExist(),
   );
 });
 
