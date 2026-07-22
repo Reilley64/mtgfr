@@ -24,6 +24,19 @@ impl Game {
                     source: Some(source),
                 }]
             }
+            // Invigorate's alternative-cost rider (CR 601.2f — see `Effect::OpponentGainsLife`'s
+            // own doc for the deterministic-opponent-pick ponytail note).
+            Effect::OpponentGainsLife { amount } => {
+                let Some(opponent) = self.living_players().find(|&p| p != controller) else {
+                    return Vec::new();
+                };
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                vec![Event::LifeChanged {
+                    player: opponent,
+                    amount: self.life_gain_after_replacements(opponent, amount),
+                    source: Some(source),
+                }]
+            }
             Effect::LoseLife { amount } => vec![Event::LifeChanged {
                 player: controller,
                 amount: -self.resolve_amount(amount, controller, source, target, x),

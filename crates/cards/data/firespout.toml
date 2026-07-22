@@ -1,0 +1,32 @@
+# Firespout deals 3 damage to each creature without flying if {R} was spent to cast this spell and 3 damage to each
+# creature with flying if {G} was spent to cast this spell. (Do both if {R}{G} was spent.)
+name = "Firespout"
+id = "eb2524ae-899a-4f91-9feb-0716cf689db3"
+default_print = "a7abbd14-936e-4b46-8d5b-9071990bdcf6"
+otags = ["burn-any", "color-spent-matters", "sweeper"]
+set = "clu"
+oracle = "Firespout deals 3 damage to each creature without flying if {R} was spent to cast this spell and 3 damage to each creature with flying if {G} was spent to cast this spell. (Do both if {R}{G} was spent.)"
+
+[cost]
+generic = 2
+hybrid = [["red", "green"]]
+
+[kind]
+type = "sorcery"
+
+# Firespout deals 3 damage to each creature without flying if {R} was spent to cast this spell and 3 damage to each
+# creature with flying if {G} was spent to cast this spell. (Do both if {R}{G} was spent.)
+[[abilities]]
+timing = "spell"
+
+# deals 3 damage to each creature without flying if {R} was spent to cast this spell
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "color_was_spent_to_cast_this", color = "red" }
+then = [{ type = "damage_each_creature", amount = 3, filter = { without_flying = true } }]
+
+# and 3 damage to each creature with flying if {G} was spent to cast this spell.
+[[abilities.effects]]
+type = "conditional"
+condition = { type = "color_was_spent_to_cast_this", color = "green" }
+then = [{ type = "damage_each_creature", amount = 3, filter = { with_flying = true } }]

@@ -28,6 +28,35 @@ fn multi_target_steps(a: Ability, targets: TargetList) -> Vec<(Ability, Option<T
     Vec::new()
 }
 
+/// Split a modal mode's multi-clause ability (Hull Breach mode 2's `Sequence` of two independent
+/// `destroy_target` steps — CR 601.2c) into one `(ability, target)` step per targeted `Sequence`
+/// step, each reading its own clause's chosen targets: the first targeted step from `targets`
+/// (clause 0), the second from `targets_second` (clause 1). An untargeted step (none in the pool
+/// today) keeps `None` and shares no clause. Mirrors the non-modal per-ability clause alternation
+/// just above this function, scoped to one mode's own `Sequence` instead of a spell's separate
+/// abilities.
+fn ability_clause_steps(
+    a: Ability,
+    targets: TargetList,
+    targets_second: TargetList,
+) -> Vec<(Ability, Option<Target>)> {
+    let Effect::Sequence { steps } = a.effect else {
+        return vec![(a, targets.primary())];
+    };
+    let mut clause = 0usize;
+    steps
+        .iter()
+        .map(|&step| {
+            if step.target() == TargetSpec::None {
+                return (Ability { effect: step, ..a }, None);
+            }
+            let target = if clause == 0 { targets } else { targets_second }.primary();
+            clause += 1;
+            (Ability { effect: step, ..a }, target)
+        })
+        .collect()
+}
+
 impl Game {
     /// Resolve the top item of the stack, applying its events into `events`. Resolution
     /// applies incrementally so newly-minted object ids stay in sync with the arena.
@@ -100,6 +129,10 @@ impl Game {
     /// effects then goes to the graveyard.
     pub(crate) fn resolve_spell(&mut self, object: ObjectId, events: &mut Vec<Event>) {
         let spell = *self.spell(object);
+        // Resolution-scoped scratch: a *fizzled* graveyard-return clause never writes this, so it
+        // has to be cleared here or Vengeful Rebirth's damage clause would read the mana value an
+        // earlier resolution recorded (CR 608.2b — an illegal target's step simply doesn't happen).
+        self.resolution_frame.returned_nonland_card_mana_value = None;
         // A bestowed spell (CR 702.103d) resolves as an Aura — it enters attached to its target
         // through the same path a `CardKind::Aura` spell uses, not as a creature (its printed
         // `kind` stays `Creature` for when it later stops being attached, CR 702.103i).
@@ -176,16 +209,20 @@ impl Game {
                 // non-modal spell runs every one of its spell abilities against its single target.
                 let steps: Vec<(Ability, Option<Target>)> = if spell.def.modal {
                     // A chosen mode's own effect may itself be multi-target (Prismari Charm
-                    // mode 1's "one or two targets"): its per-mode `target` slot is `None` (the
-                    // cast gate routed its targets through `spell.targets` instead — see
-                    // `Game::modal_multi_target`), so expand it the same way the non-modal branch
-                    // below expands a multi-target spell.
+                    // mode 1's "one or two targets") or carry more than one independent target
+                    // clause (Hull Breach mode 2's "target artifact and target enchantment"):
+                    // either way its per-mode `target` slot is `None` (the cast gate routed its
+                    // targets through `spell.targets`/`spell.targets_second` instead — see
+                    // `Game::modal_target_clauses`), so expand it the same way the non-modal
+                    // branch below expands a multi-target/multi-clause spell.
                     spell
                         .modes
                         .chosen()
                         .filter_map(|(i, target)| nth_mode(spell.def, i).map(|a| (a, target)))
                         .flat_map(|(a, target)| {
-                            if a.effect.target_count().is_single() {
+                            if ability_target_clauses(a).len() > 1 {
+                                ability_clause_steps(a, spell.targets, spell.targets_second)
+                            } else if a.effect.target_count().is_single() {
                                 vec![(a, target)]
                             } else {
                                 multi_target_steps(a, spell.targets)
@@ -199,7 +236,10 @@ impl Game {
                     // resolution loop below re-checks each for legality (CR 608.2b) and applies
                     // the effect independently; a single-target ability keeps its lone target.
                     // Each multi-target ability, in printed order, reads its *own* independent
-                    // target clause (Magma Opus's damage clause 0, tap clause 1).
+                    // target clause (Magma Opus's damage clause 0, tap clause 1) — as does each
+                    // clause of a single ability that carries more than one (Vengeful Rebirth's
+                    // graveyard-return clause 0 and "any target" damage clause 1), split the same
+                    // way the modal branch above splits Hull Breach's third mode.
                     let mut clause = 0usize;
                     spell
                         .def
@@ -208,6 +248,14 @@ impl Game {
                         .copied()
                         .filter(|a| matches!(a.timing, Timing::Spell))
                         .flat_map(|a| {
+                            if ability_target_clauses(a).len() > 1 {
+                                clause += ability_target_clauses(a).len();
+                                return ability_clause_steps(
+                                    a,
+                                    spell.targets,
+                                    spell.targets_second,
+                                );
+                            }
                             if a.effect.target_count().is_single() {
                                 return vec![(a, spell.targets.primary())];
                             }
@@ -371,46 +419,16 @@ impl Game {
                 return;
             }
         }
-        // "Enters with N +1/+1 counters" (hydras: N = the spell's {X}) — placed as the
-        // permanent enters and grown by any counter-replacement static (Hardened Scales,
-        // a doubler), reading the just-entered permanent's controller. "Enters with N
-        // `kind` counters" (mana_bloom/astral_cornucopia) instead places the raw amount
-        // in the kind-keyed map — no replacement static touches a named kind.
-        if let Some((amount, kind)) = enters_with_counters(spell.def) {
-            let counters = self.resolve_count(
-                amount,
-                spell.controller,
-                entered,
-                spell.targets.primary(),
-                spell.x,
-            );
-            match kind {
-                None => {
-                    let n = self.counters_after_replacements(entered, counters as i32);
-                    if n > 0 {
-                        self.push_apply(
-                            events,
-                            Event::CountersPlaced {
-                                object: entered,
-                                count: n,
-                                source_name: spell.def.name,
-                            },
-                        );
-                    }
-                }
-                Some(kind) if counters > 0 => {
-                    self.push_apply(
-                        events,
-                        Event::KindCountersPlaced {
-                            object: entered,
-                            kind,
-                            count: counters as i32,
-                        },
-                    );
-                }
-                Some(_) => {}
-            }
-        }
+        // "Enters with N +1/+1 counters" (hydras: N = the spell's {X}) / "Enters with N
+        // `kind` counters" (mana_bloom/astral_cornucopia) — see `Game::push_enters_with_counters`.
+        self.push_enters_with_counters(
+            spell.def,
+            entered,
+            spell.controller,
+            spell.targets.primary(),
+            spell.x,
+            events,
+        );
         // "Nontoken creatures you control enter with an additional +1/+1 counter on
         // them for each creature that died under your control this turn." (Gorma, the
         // Gullet, CR 614.1c): scan the caster's own battlefield for every static
@@ -479,6 +497,58 @@ impl Game {
         }
     }
 
+    /// "Enters with N +1/+1 counters" (hydras: N = `x`) / "Enters with N `kind` counters"
+    /// (mana_bloom/astral_cornucopia, Vivid Crag's own "two charge counters") — a card's own
+    /// [`Effect::EntersWithCounters`] static (CR 616.1) or its [`CardDef::vanishing`] time counters
+    /// (CR 702.63a), placed as `perm` enters the battlefield. A `None` kind (+1/+1) is grown by any
+    /// counter-replacement static (Hardened Scales, a doubler) reading `controller`; a named `kind`
+    /// instead places the raw amount — no replacement static touches a named kind. Shared by
+    /// [`Self::resolve_permanent_enter`]'s cast-resolution choke and [`Self::play_land`], the land
+    /// special action's own ETB site with no spell/target context (`target = None`, `x = 0`).
+    /// ponytail: those two are the only entry sites — a permanent reanimated, blinked, or searched
+    /// straight onto the battlefield still enters with no counters. Wire the remaining
+    /// `*ToBattlefield` events through here when a pool card needs it.
+    pub(crate) fn push_enters_with_counters(
+        &mut self,
+        def: CardDef,
+        perm: ObjectId,
+        controller: PlayerId,
+        target: Option<Target>,
+        x: u32,
+        events: &mut Vec<Event>,
+    ) {
+        let Some((amount, kind)) = enters_with_counters(def) else {
+            return;
+        };
+        let counters = self.resolve_count(amount, controller, perm, target, x);
+        match kind {
+            None => {
+                let n = self.counters_after_replacements(perm, counters as i32);
+                if n > 0 {
+                    self.push_apply(
+                        events,
+                        Event::CountersPlaced {
+                            object: perm,
+                            count: n,
+                            source_name: def.name,
+                        },
+                    );
+                }
+            }
+            Some(kind) if counters > 0 => {
+                self.push_apply(
+                    events,
+                    Event::KindCountersPlaced {
+                        object: perm,
+                        kind,
+                        count: counters as i32,
+                    },
+                );
+            }
+            Some(_) => {}
+        }
+    }
+
     /// Move a resolved instant/sorcery `object` to its post-resolution zone: ceases to exist if
     /// it's a copy (CR 707.10a), exile if it was cast via flashback/escape (CR 702.34e/702.19d),
     /// its owner's hand if it was bought back (CR 702.27d), the bottom of its owner's library if
@@ -495,11 +565,13 @@ impl Game {
         // A copy ceases to exist (CR 707.10a); a cast instant/sorcery goes to the graveyard.
         if spell.copy {
             // A copy that ran a self-move rider (Spell Crumple's `TuckSelfToLibraryBottom`,
-            // Rousing Refrain's `ExileSelfWithTimeCounters`) never reaches a library/exile — it
-            // just ceases to exist. Discard those scratch marks here so they can't leak past this
-            // resolution and redirect the *next* spell that finishes.
+            // Rousing Refrain's `ExileSelfWithTimeCounters`, Vengeful Rebirth's
+            // `ExileSelfOnResolve`) never reaches a library/exile — it just ceases to exist.
+            // Discard those scratch marks here so they can't leak past this resolution and
+            // redirect the *next* spell that finishes.
             self.self_tuck_to_library_bottom = false;
             self.self_exile_time_counters = None;
+            self.self_exile_on_resolve = false;
             self.push_apply(events, Event::SpellCeasedToExist { spell: object });
             return;
         }
@@ -570,6 +642,20 @@ impl Game {
         // itself (with counters) rather than reach the graveyard below.
         if let Some(counters) = self.self_exile_time_counters.take() {
             self.push_exile_with_time_counters(object, counters, events);
+            return;
+        }
+        // Vengeful Rebirth's own "Exile Vengeful Rebirth" rider: an `Effect::ExileSelfOnResolve`
+        // step this resolution ran marked the spell to exile itself (plain, no time counters)
+        // rather than reach the graveyard below — the counter-less sibling of the time-counter
+        // fork above.
+        if std::mem::take(&mut self.self_exile_on_resolve) {
+            self.push_apply(
+                events,
+                Event::MovedToExile {
+                    card: self.next_object_id(),
+                    from: object,
+                },
+            );
             return;
         }
         // Quintorius, Loremaster's CR 614.6 rider: "If that spell would be put into a graveyard,
@@ -757,6 +843,8 @@ impl Game {
             | Effect::CasterKeepsOneOfEachTypePerPlayer
             | Effect::EachPlayerControllerChoosesCounterTarget
             | Effect::CouncilsDilemmaVote { .. }
+            | Effect::JoinForcesPayMana
+            | Effect::EachPlayerNamesCardThenRevealsTop
             | Effect::EachOtherTokenBecomesCopyOfChosen
             | Effect::PutCounterThenMayBecomeCopyOfCardFromList { .. }
             | Effect::SacrificeOwn { .. }
@@ -789,6 +877,7 @@ impl Game {
             | Effect::MayDiscard { .. }
             | Effect::MayDrawUnlessPays { .. }
             | Effect::TargetPlayerMayDraw { .. }
+            | Effect::DamagingCreatureControllerMayDraw { .. }
             | Effect::MayDrawUpTo { .. }
             | Effect::MayDrawUpToThenOpponentMayRepeat { .. }
             | Effect::SacrificeSelfUnlessPay { .. } => self.run_may_pause(effect, ctx),
@@ -869,7 +958,9 @@ impl Game {
             // now (mid-resolution), sharing this target/{X}. Reuses the same intervening-if
             // evaluator triggers use, except `TargetPowerAtLeast` (Yavimaya Bloomsage's power-7
             // check), `SourceEnteredWithXAtLeast` (Kinetic Ooze's X-threshold riders),
-            // `ColorWasSpentToCastThis` (Court Hussar's "unless {W} was spent to cast it"), and
+            // `ColorWasSpentToCastThis` (Court Hussar's "unless {W} was spent to cast it" off a
+            // resolved permanent, Firespout's "if {R} was spent to cast this spell" off the
+            // still-on-the-stack spell), and
             // `SourceUntapped` (Howling Mine's CR 603.4 *second* check): `TriggerContext` carries
             // neither a target nor a source id, so those are special-cased directly against the
             // shared `target`/this resolution's own `source` here — the same "condition_holds
@@ -897,7 +988,8 @@ impl Game {
                     }
                     Condition::ColorWasSpentToCastThis { color } => self
                         .as_permanent(source)
-                        .is_some_and(|p| p.spent_colors[color.index()]),
+                        .map(|p| p.spent_colors[color.index()])
+                        .unwrap_or_else(|| self.spell_spent_colors(source)[color.index()]),
                     // Howling Mine's CR 603.4 *second* check: re-read the source's own tapped
                     // state fresh at resolution, not the placement-time snapshot — the ability may
                     // have triggered while untapped but had this intervening-if falsified by a
@@ -955,11 +1047,11 @@ impl Game {
             Effect::MillSelf { count } => {
                 self.resolve_mill_self(count, controller, source, target, x, events)
             }
-            // Rousing Refrain / Spell Crumple self-move riders — see
+            // Rousing Refrain / Spell Crumple / Vengeful Rebirth self-move riders — see
             // `resolution/resolve_misc.rs`.
-            Effect::ExileSelfWithTimeCounters { .. } | Effect::TuckSelfToLibraryBottom => {
-                self.run_misc_choreo(effect, ctx, events)
-            }
+            Effect::ExileSelfWithTimeCounters { .. }
+            | Effect::TuckSelfToLibraryBottom
+            | Effect::ExileSelfOnResolve => self.run_misc_choreo(effect, ctx, events),
             // Oversimplify — see `resolution/resolve_misc.rs`.
             Effect::EachPlayerCreatesFractalFromExiledPower { .. } => {
                 self.run_misc_choreo(effect, ctx, events)

@@ -67,6 +67,12 @@ pub enum TargetSpec {
     CardInGraveyard {
         whose: GraveyardScope,
         filter: CardFilter,
+        /// "another target creature card" (Deadwood Treefolk) — excludes the ability's own
+        /// source card, the same "each other" carve-out [`PermanentFilter::other`] gives
+        /// battlefield targets. Needs a source to exclude (the source itself, once it's the
+        /// dying/leaving card sitting in the graveyard); without one it restricts nothing.
+        #[cfg_attr(feature = "card-dsl", serde(default))]
+        other: bool,
     },
     /// An instant or sorcery *spell* currently on the stack (Twincast). Targets the stack
     /// object, not a card in a zone.
@@ -293,6 +299,10 @@ pub enum CardFilter {
     /// A creature card with mana value at most `N` (Teshar, Ancestor's Apostle: "target creature
     /// card with mana value 3 or less").
     CreatureWithManaValueAtMost(u8),
+    /// A creature card with mana value at least `N` (Fierce Empath: "search your library for a
+    /// creature card with mana value 6 or greater"). The inclusive-lower-bound twin of
+    /// [`CreatureWithManaValueAtMost`](Self::CreatureWithManaValueAtMost).
+    CreatureWithManaValueAtLeast(u8),
     /// An artifact, creature, or non-Aura enchantment card with mana value at most `N` (Excava,
     /// the Risen Past: "target artifact, creature, or non-Aura enchantment card with mana value 3
     /// or less"). Reads [`CardKind`] directly rather than [`CardKind::types`] so an Aura — which
@@ -305,6 +315,13 @@ pub enum CardFilter {
     /// A sorcery card, no instants (Anarchist: "target sorcery card from your graveyard").
     /// [`InstantOrSorcery`](Self::InstantOrSorcery) minus the instant half.
     Sorcery,
+    /// A sorcery card of a given color (Nucklavee: "target red sorcery card from your
+    /// graveyard"). [`Sorcery`](Self::Sorcery) plus a CR 105.2a color check, read off the card's
+    /// own characteristics via [`color_identity`] — a hybrid pip counts as both its colors.
+    SorceryWithColor(Color),
+    /// An instant card of a given color (Nucklavee: "target blue instant card from your
+    /// graveyard"). The instant-half twin of [`SorceryWithColor`](Self::SorceryWithColor).
+    InstantWithColor(Color),
     /// An enchantment card, no mana-value bound (Replenish: "return all enchantment cards from
     /// your graveyard to the battlefield" — Eiganjo Dynastorian's back face). Counts an Aura, like
     /// [`CardKind::types`] does.
@@ -394,6 +411,9 @@ impl CardFilter {
             CardFilter::CreatureWithManaValueAtMost(max) => {
                 matches!(def.kind, CardKind::Creature { .. }) && def.mana_value() <= max as u32
             }
+            CardFilter::CreatureWithManaValueAtLeast(min) => {
+                matches!(def.kind, CardKind::Creature { .. }) && def.mana_value() >= min as u32
+            }
             CardFilter::ArtifactCreatureOrNonAuraEnchantmentWithManaValueAtMost(max) => {
                 matches!(
                     def.kind,
@@ -408,6 +428,22 @@ impl CardFilter {
                         speed: SpellSpeed::Sorcery
                     }
                 )
+            }
+            CardFilter::SorceryWithColor(color) => {
+                matches!(
+                    def.kind,
+                    CardKind::Spell {
+                        speed: SpellSpeed::Sorcery
+                    }
+                ) && color_identity(def)[color.index()]
+            }
+            CardFilter::InstantWithColor(color) => {
+                matches!(
+                    def.kind,
+                    CardKind::Spell {
+                        speed: SpellSpeed::Instant
+                    }
+                ) && color_identity(def)[color.index()]
             }
             CardFilter::Enchantment => def.kind.types().intersects(TypeSet::ENCHANTMENT),
             CardFilter::Permanent => !def.kind.types().is_empty(),
@@ -458,6 +494,9 @@ pub enum SearchDest {
     /// use — the arrival is never "put into a graveyard from the battlefield" (CR 700.4), so it
     /// can't fire Dies.
     Graveyard,
+    /// Into exile (Trench Gorger: "exile them"), routed through the same [`Event::MovedToExile`]
+    /// choke a graveyard-to-exile move uses.
+    Exile,
 }
 
 /// Where a card selected by [`Effect::LookAtTop`] goes (the "put that card into …" destination).
@@ -517,6 +556,11 @@ pub enum SearchScope {
     /// rider — read via [`Game::controller_of`], which follows the owner chain even after the
     /// target has left the battlefield).
     TargetController,
+    /// Every living player, each searching their own library in turn (Veteran Explorer's "each
+    /// player may search their library…") — one search per player, chained in APNAP order (CR
+    /// 101.4) starting with the active player; each shuffles their own library once (CR 701.19f)
+    /// before the next player's search begins.
+    AllPlayers,
 }
 
 /// Which controller a [`PermanentFilter`] accepts, relative to the effect's controller ("you").
@@ -729,6 +773,11 @@ pub struct PermanentFilter {
     /// `nonbasic`/`nonlegendary`/`nonlair` above; generalize to a `without_keyword: Option<Keyword>`
     /// if a second keyword exclusion turns up.
     pub without_flying: bool,
+    /// Requires creatures with flying (Firespout's "each creature *with flying*"). `false`
+    /// (default) imposes no restriction. Reads [`Game::has_keyword`], the positive sibling of
+    /// `without_flying` above (not a second exclusion, so it stays its own bool rather than
+    /// folding into that field's ponytail note).
+    pub with_flying: bool,
     /// Requires the permanent share at least one card type with the ability's own triggering
     /// dying permanent's last-known card types (CR 603.10a) — a *dynamic* type gate whose type
     /// set isn't known until the ability actually fires (Martyr's Bond's "shares a card type with
@@ -771,6 +820,7 @@ impl PermanentFilter {
             nonlegendary: false,
             nonlair: false,
             without_flying: false,
+            with_flying: false,
             shares_type_with_dying_permanent: false,
         }
     }

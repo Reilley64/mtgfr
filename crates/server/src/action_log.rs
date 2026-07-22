@@ -244,6 +244,7 @@ fn intent_str(w: &WireIntent) -> String {
         WireIntent::ChooseManaColor { color, .. } => format!("mana-color {color}"),
         WireIntent::ChooseCreatureType { subtype, .. } => format!("creature-type {subtype}"),
         WireIntent::ChooseColor { color, .. } => format!("color {color}"),
+        WireIntent::ChooseCardName { name, .. } => format!("card-name {name}"),
         WireIntent::ChooseAttachHost { host, .. } => format!("attach-host {}", opt_id(host)),
         WireIntent::ChooseCopyTarget { copy, .. } => format!("copy-target {}", opt_id(copy)),
         WireIntent::ChooseTopOrBottom { top, .. } => format!("top-or-bottom {top}"),
@@ -258,6 +259,14 @@ fn intent_str(w: &WireIntent) -> String {
         }
         WireIntent::CastAdventure { source, target, .. } => {
             format!("cast-adventure {source}>{}", opt(target))
+        }
+        WireIntent::CastSplitHalf {
+            source,
+            half,
+            target,
+            ..
+        } => {
+            format!("cast-split-half {source}#{half}>{}", opt(target))
         }
         WireIntent::CastBestow { object, target, .. } => {
             format!("cast-bestow {object}>{}", opt(target))

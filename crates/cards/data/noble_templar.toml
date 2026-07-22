@@ -21,7 +21,7 @@ toughness = 6
 
 # Plainscycling {2} ({2}, Discard this card: Search your library for a Plains card, reveal it, put
 # it into your hand, then shuffle.)
-[hand_ability]
+[[hand_ability]]
 
 [hand_ability.cost]
 generic = 2

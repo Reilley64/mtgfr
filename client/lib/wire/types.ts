@@ -190,7 +190,9 @@ export type StackObjectView = {
   source: number;
   target?: null | { id: U32; kind: "object" } | { kind: "player"; player: number };
 };
-export type WireAttack = { attacker: U32; defender: number };
+// `defender` is always the defending player's seat; `defender_planeswalker` names their
+// planeswalker being attacked, when the attack named one (CR 508.1a).
+export type WireAttack = { attacker: U32; defender: number; defender_planeswalker?: U32 | null };
 export type WireBlock = { attacker: U32; blocker: U32 };
 export type WireDamage = { amount: number; blocker: U32 };
 export type WireTarget = { id: U32; kind: "object" } | { kind: "player"; player: number };
@@ -204,6 +206,16 @@ export type VisibleEvent =
       kind: "spell_cast";
       spell: U32;
       target?: null | WireTarget;
+    }
+  // One half of a split card put on the stack (CR 709.4a); `source` is the fused card it came from.
+  | {
+      controller: number;
+      half: number;
+      kind: "split_half_spell_cast";
+      source: U32;
+      spell: U32;
+      target?: null | WireTarget;
+      x: number;
     }
   | { kind: "spell_targets_chosen"; spell: U32; targets: Array<WireTarget> }
   | { kind: "prepared_changed"; object: U32; prepared: boolean }
@@ -237,6 +249,7 @@ export type VisibleEvent =
   | { kind: "temp_boost"; object: U32; power: number; toughness: number }
   | { kind: "temp_boosts_ended"; object: U32 }
   | { kind: "base_pt_set_until_end_of_turn"; object: U32; power: number; toughness: number }
+  | { kind: "base_pt_set_indefinite"; object: U32 }
   | { kind: "types_added_until_end_of_turn"; object: U32 }
   | { kind: "reanimated_creature_became"; object: U32 }
   | { kind: "added_subtypes"; object: U32 }
@@ -249,7 +262,7 @@ export type VisibleEvent =
   | { controller: number; kind: "control_gained"; object: U32 }
   | { controller: number; kind: "conditioned_control_gained"; object: U32 }
   | { kind: "conditioned_control_ended"; object: U32 }
-  | { defender: number; kind: "attacker_declared"; object: U32 }
+  | { defender: number; defender_planeswalker?: U32 | null; kind: "attacker_declared"; object: U32 }
   | { defender: number; kind: "token_entered_attacking"; token: U32 }
   | { by: number; kind: "goaded"; object: U32 }
   | { by: number; kind: "goad_cleared" }
@@ -373,7 +386,15 @@ export type ActionView = {
 };
 export type PendingChoiceView =
   | { count: number; kind: "order_triggers"; labels: Array<string>; player: number; source: U32 }
-  | { items: Array<ChoiceItem>; kind: "choose_target"; label: string; optional: boolean; player: number; source: U32 }
+  | {
+      items: Array<ChoiceItem>;
+      kind: "choose_target";
+      label: string;
+      max: number;
+      optional: boolean;
+      player: number;
+      source: U32;
+    }
   | {
       items: Array<ChoiceItem>;
       kind: "choose_spell_targets";
@@ -499,11 +520,17 @@ export type PendingChoiceView =
   | { items: Array<ChoiceItem>; kind: "opponent_chooses_revealed_to_graveyard"; player: number; source: U32 }
   | { count: number; items: Array<ChoiceItem>; kind: "pay_cumulative_upkeep_or_sacrifice"; player: number; source: U32 }
   | { kind: "may_draw_up_to"; max: number; player: number }
+  // Join forces (Collective Voyage): pay any amount of mana toward the shared X. `max` is the
+  // largest generic cost this seat's available mana can pay right now; paying 0 declines.
+  | { kind: "pay_any_amount_of_mana"; max: number; player: number; source: U32 }
+  // Conundrum Sphinx: "each player names a card" (CR 201.2 / 703.2j) — a free-text card name.
+  | { kind: "choose_card_name"; player: number; source: U32 }
   | { kind: "trade_secrets_caster_draw"; max: number; opponent: number; player: number }
   | { caster: number; kind: "trade_secrets_repeat"; player: number };
 
 export type WireIntent =
   | {
+      alternative_cost?: boolean;
       bought_back?: boolean;
       discard_cost?: Array<U32>;
       evoked?: boolean;
@@ -535,9 +562,11 @@ export type WireIntent =
   | { blocks: Array<WireBlock>; kind: "declare_blockers"; player: number }
   | { kind: "choose_order"; order: Array<number>; player: number }
   | { kind: "choose_targets"; player: number; targets: Array<WireTarget> }
+  | { kind: "choose_card_name"; name: string; player: number }
+  | { half: number; kind: "cast_split_half"; player: number; source: U32; target?: null | WireTarget; x?: number }
   | { kind: "choose_target_players"; player: number; players: Array<number> }
   | { kind: "answer_may"; player: number; yes: boolean }
-  | { kind: "pay_optional_cost"; pay: boolean; player: number }
+  | { kind: "pay_optional_cost"; pay: boolean; player: number; x?: number }
   | { keep_tapped: Array<U32>; kind: "decline_untap"; player: number }
   | { assignment: Array<WireDamage>; kind: "assign_damage"; player: number }
   | { assignment: Array<WireSpellDamage>; kind: "divide_spell_damage"; player: number }
@@ -575,7 +604,7 @@ export type WireIntent =
   | { copy?: null | U32; kind: "choose_copy_target"; player: number }
   | { kind: "choose_top_or_bottom"; player: number; top: boolean }
   | { card: U32; kind: "cycle"; player: number; sacrifice?: null | U32 }
-  | { card: U32; kind: "activate_hand_ability"; player: number }
+  | { card: U32; index: number; kind: "activate_hand_ability"; player: number }
   | { card: U32; kind: "suspend"; player: number }
   | { card: U32; kind: "encore"; player: number }
   | { kind: "turn_face_up"; permanent: U32; player: number }

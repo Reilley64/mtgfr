@@ -1,0 +1,24 @@
+# {1}, {T}: Add {U}{R}.
+name = "Izzet Signet"
+id = "2fda4fe7-8b0c-489c-a000-6d358e614e34"
+default_print = "2c747a97-9070-4c1e-b7b7-52637fbb30e1"
+otags = ["activated-ability", "cycle-rav-signet", "mana-rock", "refund"]
+oracle = "{1}, {T}: Add {U}{R}."
+set = "tdc"
+
+[cost]
+generic = 2
+
+[kind]
+type = "artifact"
+
+# {1}, {T}: Add {U}{R}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Add {U}{R}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["blue", "red"]

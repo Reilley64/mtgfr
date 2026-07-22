@@ -207,10 +207,14 @@ impl Game {
                 sacrifice_at_next_end_step,
                 exile_at_next_end_step,
                 haste,
+                entering,
                 ..
             } => {
                 const HASTE: &[Keyword] = &[Keyword::Haste];
-                let object = expect_object_target(target, "a token copy");
+                // Riku of Two Reflections: "create a token that's a copy of that creature" reads
+                // the entering-permanent context instead of a chosen target (see `entering`'s doc).
+                let object =
+                    entering.unwrap_or_else(|| expect_object_target(target, "a token copy"));
                 let def = self.def_of(object);
                 let count = self.resolve_count(count, controller, source, target, x);
                 // Doubling Season (CR 614): the copies enter under `controller`.

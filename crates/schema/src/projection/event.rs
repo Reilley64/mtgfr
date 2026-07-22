@@ -53,6 +53,11 @@ pub(crate) fn project_event(
             // `x`/`modes` above — no UI reads it yet (it feeds a copy-per-sacrifice rider that
             // doesn't exist). Add it when that UI does.
             sacrifice_count: _,
+            // ponytail: the revealed creature card's mana value (CR 601.2g) isn't surfaced on the
+            // wire either, same reasoning as `sacrifice_count` above — no UI reads it yet (the
+            // client sees the resulting damage event instead). Add it when a UI wants to show
+            // "revealed a 3-mana-value creature."
+            revealed_creature_mana_value: _,
             // ponytail: whether the spell was kicked isn't surfaced on the wire either, same
             // reasoning as `sacrifice_count` above — no UI reads it yet. Add it when a kicker
             // card's UI wants to show "kicked."
@@ -150,6 +155,21 @@ pub(crate) fn project_event(
         } => VisibleEvent::AdventureSpellCast {
             spell,
             source,
+            controller: controller.0,
+            target: target.map(WireTarget::of),
+            x,
+        },
+        Event::SplitHalfSpellCast {
+            spell,
+            source,
+            half,
+            controller,
+            target,
+            x,
+        } => VisibleEvent::SplitHalfSpellCast {
+            spell,
+            source,
+            half,
             controller: controller.0,
             target: target.map(WireTarget::of),
             x,
@@ -266,6 +286,10 @@ pub(crate) fn project_event(
         // `ReanimatedCreatureBecame` above — the client's per-object state comes from a fresh
         // snapshot each delta.
         Event::AddedSubtypes { object, .. } => VisibleEvent::AddedSubtypes { object },
+        // ponytail: the set power/toughness aren't threaded onto the wire event, same rationale as
+        // `AddedSubtypes` above — the client's per-object state comes from a fresh snapshot each
+        // delta.
+        Event::BasePtSetIndefinite { object, .. } => VisibleEvent::BasePtSetIndefinite { object },
         // ponytail: the copied def isn't threaded onto the wire event, same rationale as
         // `AddedSubtypes` above — the client's per-object state comes from a fresh snapshot each
         // delta.
@@ -307,9 +331,14 @@ pub(crate) fn project_event(
         Event::ConditionedControlEnded { object } => {
             VisibleEvent::ConditionedControlEnded { object }
         }
-        Event::AttackerDeclared { object, defender } => VisibleEvent::AttackerDeclared {
+        Event::AttackerDeclared {
+            object,
+            defender,
+            defender_planeswalker,
+        } => VisibleEvent::AttackerDeclared {
             object,
             defender: defender.0,
+            defender_planeswalker,
         },
         Event::TokenEnteredAttacking { token, defender } => VisibleEvent::TokenEnteredAttacking {
             token,
@@ -383,6 +412,11 @@ pub(crate) fn project_event(
             card,
             from,
             until_next_turn,
+            // Per-viewer redaction of a face-down exiled card lives in the `state.objects`
+            // snapshot, not here; the permission's source-scoped duration (Intet, the Dreamer) is
+            // engine bookkeeping the client reads back as playability, not as an event field.
+            face_down: _,
+            free_while_source: _,
         } => VisibleEvent::ExiledFromLibraryMayPlay {
             player: player.0,
             card,

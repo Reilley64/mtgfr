@@ -227,11 +227,15 @@ impl Game {
     /// permission to play them until end of turn (or until the end of their next turn, if
     /// `until_next_turn` — Atsushi's exile mode) — pure (the caller applies them). Mirrors
     /// [`Self::mill_events`]: a short library exiles only what's there; each mints a new exile id.
+    /// Intet, the Dreamer's mode instead exiles face down and grants a free, source-scoped
+    /// permission — `face_down` / `free_while_source` (the granting permanent).
     pub(crate) fn exile_top_may_play_events(
         &self,
         player: PlayerId,
         count: u32,
         until_next_turn: bool,
+        face_down: bool,
+        free_while_source: Option<ObjectId>,
     ) -> Vec<Event> {
         let library = self.players[player.0 as usize].library.clone();
         let mut next = self.next_object_id();
@@ -244,6 +248,8 @@ impl Game {
                     card: next,
                     from,
                     until_next_turn,
+                    face_down,
+                    free_while_source,
                 };
                 next += 1;
                 event

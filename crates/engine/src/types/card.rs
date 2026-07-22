@@ -418,6 +418,33 @@ pub struct Ability {
     pub once_each_turn: bool,
 }
 
+/// A printed alternative cost that pays something other than mana (CR 601.2f — Invigorate: "If
+/// you control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3
+/// life"). Distinct from [`CardDef::free_cast_if`] (an unconditional-once-the-gate-holds `{0}`)
+/// and from flashback/escape/evoke (alternative costs still denominated in mana): here the
+/// replacement is a non-mana `rider` the caster pays instead, and taking it is the caster's own
+/// choice, not automatic. `condition = None` — the always-castable degenerate case, unused by any
+/// pool card today — makes the alternative available unconditionally.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "card-dsl",
+    derive(serde::Deserialize),
+    serde(deny_unknown_fields, rename_all = "snake_case")
+)]
+pub struct AlternativeCost {
+    /// The board-state gate gating the alternative (Invigorate's "if you control a Forest").
+    /// `None` if the alternative is always offered.
+    #[cfg_attr(feature = "card-dsl", serde(default))]
+    pub condition: Option<Condition>,
+    /// The non-mana cost paid instead of the printed mana cost, fired at cast time (CR 601.2f —
+    /// before the spell is put on the stack), not a resolution effect. Leaked to `'static` like
+    /// every other nested [`Effect`] a `Copy` struct holds ([`GrantedAbility::effects`],
+    /// [`Effect::ScheduleAtNextUpkeep`]'s `then`) — `Effect` can't hold itself by value, and
+    /// `CardDef` (which owns an `AlternativeCost`) has to stay `Copy`.
+    #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_effect"))]
+    pub rider: &'static Effect,
+}
+
 /// A card definition (identity + behavior). Deserializable (under the `card-dsl` feature)
 /// straight from a card's TOML file — the `cards` crate loads the pool this way.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -539,6 +566,12 @@ pub struct CardDef {
     /// [`Condition::HandHasLandWithSubtype`]'s reveal-lands already use, since nothing in this
     /// pool wants to voluntarily pay a cost it could skip.
     pub free_cast_if: Option<Condition>,
+    /// A printed alternative cost that isn't a mana cost at all (CR 601.2f — Invigorate: "If you
+    /// control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3
+    /// life"). `None` (the common case) leaves the printed cost the only option. `Some(alt)` is a
+    /// caster *choice* (unlike [`Self::free_cast_if`]'s always-take-it permission) — see
+    /// [`AlternativeCost`]. `alternative_cost = { .. }` in TOML.
+    pub alternative_cost: Option<AlternativeCost>,
     /// "Cast this spell only during combat" (CR 601.3e's named-window restriction — Cauldron
     /// Dance): legal only from begin-combat through end-of-combat inclusive ([`Step::is_combat`]),
     /// on top of (not instead of) the ordinary instant/sorcery-speed gate — an instant with this
@@ -589,10 +622,14 @@ pub struct CardDef {
     /// functions only from the hand, whose cost is "Discard this card" plus a mana cost; Magma
     /// Opus's "{U/R}{U/R}, Discard this card: Create a Treasure token."). The general sibling of
     /// [`Self::cycling`] for a card whose from-hand ability has an authored payload rather than
-    /// cycling's fixed draw-1 — do not overload `cycling` for this. `None` for a card without one.
-    /// `[hand_ability]` in TOML: `[hand_ability.cost]` (same `[cost]`-table shape as a spell's
-    /// cost) plus `[[hand_ability.effects]]` (the standard effects-array shape).
-    pub hand_ability: Option<HandActivatedAbility>,
+    /// cycling's fixed draw-1 — do not overload `cycling` for this. A slice (not `Option`) because
+    /// typecycling grants one ability *per named type* (CR 702.29d — Valley Rannet's
+    /// mountaincycling and forestcycling are two separate activated abilities, each with its own
+    /// search filter); empty for a card without one. [`Game::activate_hand_ability`] takes an
+    /// index selecting which entry to activate. `[[hand_ability]]` array-of-tables in TOML: each
+    /// entry an `[[hand_ability]]` table with its own `[hand_ability.cost]` (same `[cost]`-table
+    /// shape as a spell's cost) plus `[[hand_ability.effects]]` (the standard effects-array shape).
+    pub hand_ability: &'static [HandActivatedAbility],
     /// Forecast (CR 702.57 — Skyscribing's "Forecast — {2}{U}, Reveal this card from your hand:
     /// Each player draws a card."): a hand-activated ability that, unlike [`Self::hand_ability`],
     /// *reveals* rather than discards its card — the card stays in hand — and is activatable only
@@ -742,6 +779,12 @@ pub struct CardDef {
     /// `&'static CardDef` (not a nested `CardDef` by value), like [`Self::back`], so [`CardDef`]
     /// stays `Copy`. `[adventure]` (an inline `CardDef` table) in TOML.
     pub adventure: Option<&'static CardDef>,
+    /// A split card's two castable halves (CR 709 — Fire // Ice): this `CardDef` is the *fused*
+    /// card (the combined characteristics every zone but the stack sees, CR 709.4 — combined name,
+    /// mana cost, and colors), and `halves` holds the two faces you may actually cast. Only one
+    /// half is ever cast (CR 709.4a), so casting goes through [`Game::cast_split_half`] and the
+    /// fused def itself is not castable. Empty for every non-split card. `[[half]]` tables in TOML.
+    pub halves: &'static [CardDef],
     /// Suspend N—[cost] (CR 702.62 — Rousing Refrain): "Rather than cast this card from your
     /// hand, you may pay [cost] and exile it with N time counters on it." `None` for a card
     /// without suspend. A rules-keyword (not a `[[abilities]]`): a `Some` lets its owner pay
@@ -779,6 +822,19 @@ pub struct CardDef {
     /// dredger; `None` for every other card. `dredge = N` in TOML. Read by the single-draw choke,
     /// which offers [`PendingChoice::ChooseDredge`] when the library holds at least N (CR 702.52a).
     pub dredge: Option<u8>,
+    /// Vanishing N (CR 702.63 — Deadwood Treefolk): "This permanent enters with N time counters
+    /// on it. At the beginning of your upkeep, remove a time counter from it. When the last is
+    /// removed, sacrifice it." `None` for a card without vanishing. A rules-keyword (not
+    /// `[[abilities]]`), mirroring [`Self::suspend`]'s posture: `Some(n)` places `n` time counters
+    /// ([`CounterKind::Time`], tracked on [`Permanent::kind_counters`] — the battlefield sibling
+    /// of suspend's exile-zone time-counter store) as the permanent enters (CR 702.63a — answered
+    /// by `stack::enters_with_counters`, so it rides the ordinary enters-with-counters sites),
+    /// removes one at each of the controller's upkeeps (CR 702.63b, see `Game::advance_step`'s
+    /// `Step::Upkeep` arm), and — when the last is removed — synthesizes a real triggered "its
+    /// controller sacrifices it" ability (CR 702.63c) so responses have a window, via the
+    /// fabricated-single-ability `Game::queue_self_sacrifice_trigger` evoke also uses.
+    /// `vanishing = N` in TOML.
+    pub vanishing: Option<u8>,
 }
 
 /// The riders on an [`CardDef::enter_as_copy`] replacement (CR 706/707.2). `Copy` — all scalars,
@@ -1045,6 +1101,7 @@ fn treasure_token_builtin() -> CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -1071,6 +1128,7 @@ fn treasure_token_builtin() -> CardDef {
             track_provenance: false,
             target: TargetSpec::None,
             persist_until_end_of_turn: false,
+            recipient: None,
         },
         optional: false,
         min_level: 0,
@@ -1099,6 +1157,7 @@ fn treasure_token_builtin() -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -1124,12 +1183,14 @@ fn treasure_token_builtin() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -1164,6 +1225,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -1189,12 +1251,14 @@ pub(crate) fn rogue_token_stub() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -1231,6 +1295,7 @@ pub(crate) fn illusion_token() -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -1256,12 +1321,14 @@ pub(crate) fn illusion_token() -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -1357,6 +1424,14 @@ pub(crate) struct Spell {
     /// such cost or the caster declined. Read by a copy-per-sacrifice rider once one exists (no
     /// pool card reads it yet); recorded here the way `x` is, for the same reason.
     pub(crate) sacrifice_count: u8,
+    /// The mana value of the creature card revealed to pay this spell's
+    /// [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g — Disaster Radius's "reveal a
+    /// creature card from your hand"), 0 if the spell has no such cost. Chosen automatically at
+    /// cast time as the highest-mana-value creature card in the caster's hand (see the field's
+    /// own doc); read by [`Amount::RevealedCreatureManaValue`] via
+    /// [`Game::revealed_creature_mana_value`], the reveal-cost sibling of
+    /// [`Self::sacrifice_count`]'s read.
+    pub(crate) revealed_creature_mana_value: u8,
     /// Whether the caster paid this spell's kicker cost (CR 702.33d — [`AdditionalCost::kicker`]),
     /// `false` for a spell with no kicker or a decline. Read by [`Amount::IfSpellKicked`] (Rite
     /// of Replication's "If this spell was kicked, create five of those tokens instead") via

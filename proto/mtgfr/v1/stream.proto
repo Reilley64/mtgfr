@@ -266,6 +266,8 @@ message PendingChoiceView {
     PendingChoiceViewMayDrawUpTo may_draw_up_to = 63;
     PendingChoiceViewTradeSecretsCasterDraw trade_secrets_caster_draw = 64;
     PendingChoiceViewTradeSecretsRepeat trade_secrets_repeat = 65;
+    PendingChoiceViewChooseCardName choose_card_name = 66;
+    PendingChoiceViewPayAnyAmountOfMana pay_any_amount_of_mana = 67;
   }
 }
 
@@ -327,6 +329,14 @@ message PendingChoiceViewMayYesNo {
 message PendingChoiceViewMayDrawUpTo {
   uint32 player = 1;
   uint32 max = 2;
+}
+
+// Join forces (Collective Voyage): this player may pay any amount of mana toward the shared X.
+// `max` is the largest generic cost their available mana can pay right now; paying 0 declines.
+message PendingChoiceViewPayAnyAmountOfMana {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 max = 3;
 }
 
 // Trade Secrets' declinable draw: this player (the caster), after `opponent` drew two
@@ -739,6 +749,15 @@ message PendingChoiceViewChooseColor {
   uint32 source = 2;
 }
 
+// This player must choose a card name for `source` (CR 201.2/703.2j "choose a card name" —
+// Conundrum Sphinx's attack trigger). Free text: any name may be chosen, including one no real
+// card bears (CR 201.3), so no candidate list is carried. The choice itself is public, but the
+// name is private until the answering intent lands — it is never projected back into any view.
+message PendingChoiceViewChooseCardName {
+  uint32 player = 1;
+  uint32 source = 2;
+}
+
 // This player (an entering permanent's controller) may have `source` enter as a copy of one of
 // `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego, Cursed
 // Mirror). Answered with the chosen creature, or a decline (the "you may").
@@ -1013,6 +1032,8 @@ message VisibleEvent {
     VisibleEventNextUntapSkipMarked next_untap_skip_marked = 127;
     VisibleEventNextUntapSkipConsumed next_untap_skip_consumed = 128;
     VisibleEventPutFromHandOnTop put_from_hand_on_top = 129;
+    VisibleEventBasePtSetIndefinite base_pt_set_indefinite = 130;
+    VisibleEventSplitHalfSpellCast split_half_spell_cast = 131;
   }
 }
 
@@ -1124,6 +1145,18 @@ message VisibleEventAdventureSpellCast {
   optional WireTarget target = 4;
   // The adventure's chosen `{X}` value (0 for a non-`{X}` adventure) — public.
   uint32 x = 5;
+}
+
+// One half of a split card went on the stack (CR 709). Public — the stack is visible.
+message VisibleEventSplitHalfSpellCast {
+  uint32 spell = 1;
+  uint32 source = 2;
+  // Which of the card's halves was cast (its index in `CardDef::halves`) — public.
+  uint32 half = 3;
+  uint32 controller = 4;
+  optional WireTarget target = 5;
+  // The half's chosen `{X}` value (0 for a non-`{X}` half) — public.
+  uint32 x = 6;
 }
 
 message VisibleEventStepBegan {
@@ -1262,6 +1295,12 @@ message VisibleEventAddedSubtypes {
   uint32 object = 1;
 }
 
+// A permanent's base power and toughness were SET indefinitely (Trench Gorger's search-and-exile
+// ETB). Public battlefield status, like `ReanimatedCreatureBecame`.
+message VisibleEventBasePtSetIndefinite {
+  uint32 object = 1;
+}
+
 // A permanent became a copy of another creature as it entered (Altered Ego, Cursed Mirror).
 // Public — a copy is public.
 message VisibleEventBecameCopy {
@@ -1305,7 +1344,10 @@ message VisibleEventControlGained {
 
 message VisibleEventAttackerDeclared {
   uint32 object = 1;
+  // The defending player (CR 508.1a).
   uint32 defender = 2;
+  // The defending player's planeswalker being attacked, if the attack named one.
+  optional uint32 defender_planeswalker = 3;
 }
 
 // A token was put onto the battlefield already tapped and attacking `defender` (Combat

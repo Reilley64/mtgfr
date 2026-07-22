@@ -29,6 +29,10 @@ pub(crate) struct CastInputs<'a> {
     /// [`AdditionalCost::replicate`]); 0 for a spell with no Replicate, or "pay it zero times."
     /// See [`Intent::Cast`]'s own doc.
     pub replicate_count: u8,
+    /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f —
+    /// [`CardDef::alternative_cost`]) instead of its printed mana cost. See [`Intent::Cast`]'s own
+    /// doc.
+    pub alternative_cost: bool,
 }
 
 /// Which cast legality surface is asking — list, one-click execute, or full execute.
@@ -103,6 +107,7 @@ impl Game {
                 evoked: false,
                 strive_count: 0,
                 replicate_count: 0,
+                alternative_cost: false,
             },
             kind,
         )
@@ -124,6 +129,11 @@ impl Game {
         if matches!(card.def.kind, CardKind::Land { .. }) {
             return Err(Reject::NotCastable);
         }
+        // A split card is cast as one of its halves (CR 709.4a — `Intent::CastSplitHalf`), never
+        // as the fused card this `CardDef` describes.
+        if !card.def.halves.is_empty() {
+            return Err(Reject::NotCastable);
+        }
         let Some(zone) = self.playable_zone(object, player) else {
             return Err(Reject::NotCastable);
         };
@@ -138,9 +148,11 @@ impl Game {
         let cast_via_flashback = from_graveyard && card.def.flashback.is_some();
         let cast_via_escape = from_graveyard && card.def.escape.is_some();
 
-        let mut multi_target = (!card.def.modal)
-            .then(|| self.spell_multi_target(card.def))
-            .flatten();
+        // Clause 0 of the non-modal spell's post-cast target clauses (CR 601.2c) — `None` for the
+        // single-target majority, the first of one-per-multi-target-ability (Magma Opus), or the
+        // first of a single multi-clause ability's own clauses (Vengeful Rebirth's graveyard
+        // return + "any target" damage). Later clauses are chosen at their own pauses.
+        let mut multi_target = self.spell_multi_target(card.def);
 
         // CR 601.2b: {X} (and modes) are chosen before targets (CR 601.2c) — computed here,
         // ahead of every target-legality check below, so a `PermanentFilter::mv_eq_x` target
@@ -157,11 +169,15 @@ impl Game {
                 Modes::default()
             } else {
                 self.validate_modes(object, card.def, inputs.modes, player, x)?;
-                // The chosen mode may itself be multi-target (Prismari Charm's "one or two
-                // targets") — same post-cast target-choice shape as a non-modal multi-target
-                // spell, just scoped to the mode that was picked.
-                multi_target = self.modal_multi_target(card.def, inputs.modes);
-                if let Some((spec, count)) = multi_target {
+                // The chosen mode may need post-cast target selection — either a same-spec
+                // multi-target mode (Prismari Charm's "one or two targets") or a multi-clause
+                // mode (Hull Breach's "target artifact and target enchantment", two independent
+                // single-target clauses) — same post-cast target-choice shape as a non-modal
+                // multi-target spell, just scoped to the mode that was picked. Every clause the
+                // mode carries needs at least one legal target, not just the first.
+                let clauses = self.modal_target_clauses(card.def, inputs.modes);
+                multi_target = clauses.first().copied();
+                for (spec, count) in clauses {
                     let n = self
                         .legal_targets_for(spec, object, player, color_identity(card.def), x)
                         .len();
@@ -222,6 +238,7 @@ impl Game {
             inputs.evoked,
             inputs.strive_count,
             inputs.replicate_count,
+            inputs.alternative_cost,
         );
 
         if kind.is_enumeration() {
@@ -242,8 +259,16 @@ impl Game {
             });
         }
 
-        self.cast_additional_cost_gate(player, object, cost, x)?;
-        self.validate_cast_cost_picks(player, object, card.def, cost, cast_via_escape, inputs)?;
+        self.cast_additional_cost_gate(player, object, cost, x, zone)?;
+        self.validate_cast_cost_picks(
+            player,
+            object,
+            card.def,
+            cost,
+            zone,
+            cast_via_escape,
+            inputs,
+        )?;
 
         Ok(ValidatedCast {
             zone,
@@ -331,11 +356,11 @@ impl Game {
         let spell = Some(def.spell_characteristics());
         let affordable = |target: Option<Target>, delve: u8| {
             let cost = self.cast_cost(
-                player, object, def, target, 0, zone, delve, false, false, false, 0, 0,
+                player, object, def, target, 0, zone, delve, false, false, false, 0, 0, false,
             );
             Self::affordable_from(available, cost, spell)
                 && self
-                    .cast_additional_cost_gate(player, object, cost, 0)
+                    .cast_additional_cost_gate(player, object, cost, 0, zone)
                     .is_ok()
         };
         let any_delve = |target: Option<Target>| (0..=max_delve).any(|d| affordable(target, d));
@@ -345,8 +370,9 @@ impl Game {
         if def.modal {
             return any_delve(None) && self.modal_modes_listable(object, player, def);
         }
-        // Multi-target: need at least `count.min` legal targets (an "up to N" with min 0 stays
-        // listable on an empty board; Ashes to Ashes with one creature does not).
+        // Post-cast target clauses: clause 0 needs at least `count.min` legal targets (an "up to
+        // N" with min 0 stays listable on an empty board; Ashes to Ashes with one creature does
+        // not). Only clause 0 is gated, matching `validate_cast`'s own clause-0-only check.
         if let Some((spec, count)) = self.spell_multi_target(def) {
             let n = self
                 .legal_targets_for(spec, object, player, color_identity(def), 0)
@@ -375,19 +401,22 @@ impl Game {
         available >= def.modal_choose as usize
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn validate_cast_cost_picks(
         &self,
         player: PlayerId,
         object: ObjectId,
         def: CardDef,
         cost: Cost,
+        zone: Zone,
         cast_via_escape: bool,
         inputs: &CastInputs<'_>,
     ) -> Result<(), Reject> {
         // Retrace's discard-a-land rider (CR 702.83a) shares the same discard-cost slot as the
-        // unfiltered `discard` count — no pool card carries both, so the one slot suffices.
-        let discard_n =
-            cost.additional.discard as usize + usize::from(cost.additional.discard_land);
+        // unfiltered `discard` count — no pool card carries both, so the one slot suffices. It's
+        // only actually owed when casting from the graveyard (see `cast_additional_cost_gate`).
+        let retrace_discard = cost.additional.discard_land && zone == Zone::Graveyard;
+        let discard_n = cost.additional.discard as usize + usize::from(retrace_discard);
         let hand = self.hand_of(player);
         let distinct_discards = inputs
             .discard_cost
@@ -402,7 +431,7 @@ impl Game {
             // Wrong or missing discard picks — not a mana shortfall.
             return Err(Reject::IllegalChoice);
         }
-        if cost.additional.discard_land
+        if retrace_discard
             && !inputs
                 .discard_cost
                 .iter()
@@ -497,6 +526,19 @@ impl Game {
         if inputs.replicate_count > 0 && cost.additional.replicate.is_none() {
             return Err(Reject::CannotPayCost);
         }
+        // Alternative cost (CR 601.2f — Invigorate): only declarable if the card actually has one,
+        // mirroring evoke's own gate above, *and* only if its printed condition holds right now
+        // ("If you control a Forest") — unlike evoke, which has no condition to re-check here.
+        if inputs.alternative_cost {
+            let Some(alt) = def.alternative_cost else {
+                return Err(Reject::CannotPayCost);
+            };
+            if let Some(condition) = alt.condition
+                && !self.condition_holds(condition, TriggerContext::of(player))
+            {
+                return Err(Reject::CannotPayCost);
+            }
+        }
         Ok(())
     }
 }
@@ -509,6 +551,7 @@ mod tests {
     const NO_ADD: AdditionalCost = AdditionalCost {
         discard: 0,
         discard_land: false,
+        reveal_creature_from_hand: false,
         pay_life_x: false,
         pay_life: 0,
         sacrifice: None,
@@ -592,6 +635,7 @@ mod tests {
             enters_tapped: false,
             enters_tapped_unless: None,
             free_cast_if: None,
+            alternative_cost: None,
             cast_only_during_combat: false,
             approximates: None,
             oracle: None,
@@ -617,12 +661,14 @@ mod tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
+            halves: &[],
             suspend: None,
+            vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: None,
+            hand_ability: &[],
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -682,6 +728,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         };
         assert!(
             game.validate_cast(P0, object, &inputs, CastPlayKind::OneClick)
@@ -717,6 +764,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         };
         assert!(matches!(
             game.validate_cast(P0, spell, &inputs, CastPlayKind::OneClick),
@@ -745,6 +793,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         };
         assert!(
             game.validate_cast(P0, spell, &inputs, CastPlayKind::Full)
@@ -831,6 +880,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         };
         assert!(matches!(
             game.validate_cast(P0, object, &empty, CastPlayKind::OneClick),

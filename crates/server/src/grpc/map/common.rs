@@ -78,6 +78,7 @@ pub fn wire_attack_to_pb(attack: WireAttack) -> pb::WireAttack {
     pb::WireAttack {
         attacker: attack.attacker,
         defender: u32::from(attack.defender),
+        defender_planeswalker: attack.defender_planeswalker,
     }
 }
 
@@ -85,6 +86,7 @@ pub fn wire_attack_from_pb(attack: pb::WireAttack) -> WireAttack {
     WireAttack {
         attacker: attack.attacker,
         defender: u8_trunc(attack.defender),
+        defender_planeswalker: attack.defender_planeswalker,
     }
 }
 

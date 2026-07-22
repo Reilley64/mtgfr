@@ -41,6 +41,7 @@ fn amount_label(amount: Amount) -> String {
                 CounterKind::MinusOneMinusOne => "-1/-1",
                 CounterKind::Strife => "strife",
                 CounterKind::Age => "age",
+                CounterKind::Storage => "storage",
             };
             format!("1 per {kind_name} counter on it")
         }
@@ -73,6 +74,7 @@ fn amount_label(amount: Amount) -> String {
             "the amount of mana spent to cast that spell".to_string()
         }
         Amount::SpellSacrificeCount => "1 per creature sacrificed this way".to_string(),
+        Amount::RevealedCreatureManaValue => "the revealed card's mana value".to_string(),
         Amount::PermanentsDiedThisTurn => {
             "1 per permanent put into a graveyard from the battlefield this turn".to_string()
         }
@@ -83,12 +85,15 @@ fn amount_label(amount: Amount) -> String {
             )
         }
         Amount::NonlandCardsExiledThisWay => "1 per nonland card exiled this way".to_string(),
+        Amount::CardsExiledBySearchThisWay => "1 per card exiled this way".to_string(),
+        Amount::ManaPaidThisWay => "the total mana paid this way".to_string(),
         Amount::PastVotes => "1 per past vote".to_string(),
         Amount::PresentVotes => "1 per present vote".to_string(),
         Amount::TotalManaValueMilledThisWay => {
             "the total mana value of cards milled this way".to_string()
         }
         Amount::ExiledCardManaValueThisWay => "that card's mana value".to_string(),
+        Amount::ReturnedNonlandCardManaValue => "that card's mana value".to_string(),
         Amount::AurasYouControlledAttachedToDyingCreature => {
             "1 per Aura you controlled that was attached to it".to_string()
         }
@@ -248,6 +253,16 @@ fn permanent_filter_label(filter: PermanentFilter) -> String {
 
 /// A short human-readable description of a [`CardFilter`], shared by a library search's payoff
 /// (`SearchLibrary`) and a mass graveyard-return's ("Return all …") disambiguation.
+fn color_word(color: Color) -> &'static str {
+    match color {
+        Color::White => "white",
+        Color::Blue => "blue",
+        Color::Black => "black",
+        Color::Red => "red",
+        Color::Green => "green",
+    }
+}
+
 fn card_filter_label(filter: CardFilter) -> String {
     match filter {
         CardFilter::BasicLand => "a basic land".to_string(),
@@ -271,11 +286,20 @@ fn card_filter_label(filter: CardFilter) -> String {
         CardFilter::CreatureWithManaValueAtMost(max) => {
             format!("a creature card with mana value {max} or less")
         }
+        CardFilter::CreatureWithManaValueAtLeast(min) => {
+            format!("a creature card with mana value {min} or greater")
+        }
         CardFilter::ArtifactCreatureOrNonAuraEnchantmentWithManaValueAtMost(max) => format!(
             "an artifact, creature, or non-Aura enchantment card with mana value {max} or less"
         ),
         CardFilter::InstantOrSorcery => "an instant or sorcery card".to_string(),
         CardFilter::Sorcery => "a sorcery card".to_string(),
+        CardFilter::SorceryWithColor(color) => {
+            format!("a {} sorcery card", color_word(color))
+        }
+        CardFilter::InstantWithColor(color) => {
+            format!("a {} instant card", color_word(color))
+        }
         CardFilter::Enchantment => "enchantment cards".to_string(),
         CardFilter::Permanent => "a permanent card".to_string(),
         CardFilter::NoncreatureNonland => "a noncreature, nonland card".to_string(),
@@ -328,6 +352,7 @@ impl Effect {
                     SearchDest::Battlefield => "onto the battlefield",
                     SearchDest::LibraryTop => "on top of your library",
                     SearchDest::Graveyard => "into your graveyard",
+                    SearchDest::Exile => "into exile",
                 };
                 format!(
                     "Reveal cards from the top of your library until you reveal {} {}, put them {}, and put the rest on the bottom of your library",
@@ -362,6 +387,7 @@ impl Effect {
                     SearchDest::Battlefield => "onto the battlefield",
                     SearchDest::LibraryTop => "on top of your library",
                     SearchDest::Graveyard => "into your graveyard",
+                    SearchDest::Exile => "into exile",
                 };
                 format!(
                     "Reveal the top {} cards of your library, put all cards among them that are {} {}, and put the rest on the bottom of your library",
@@ -371,6 +397,9 @@ impl Effect {
                 )
             }
             Effect::GainLife { amount } => format!("Gain {} life", amount_label(amount)),
+            Effect::OpponentGainsLife { amount } => {
+                format!("An opponent gains {} life", amount_label(amount))
+            }
             Effect::LoseLife { amount } => format!("Lose {} life", amount_label(amount)),
             Effect::DealDamageToSelf { amount } => {
                 format!("Deals {} damage to you", amount_label(amount))
@@ -492,6 +521,12 @@ impl Effect {
             } => {
                 format!(
                     "Becomes a {base_power}/{base_toughness} creature until end of turn"
+                )
+            }
+            Effect::SetOwnBasePtFromAmount { amount } => {
+                format!(
+                    "This creature has base power and toughness each equal to {}",
+                    amount_label(amount)
                 )
             }
             Effect::PumpOtherAttackersAttackingYourOpponents { power, toughness } => {
@@ -675,19 +710,30 @@ impl Effect {
                 amount,
                 opponents_only,
                 filter,
+                include_planeswalkers,
             } => {
-                let mut subject = if opponents_only {
-                    "each creature your opponents control".to_string()
+                let noun = if include_planeswalkers {
+                    "creature and planeswalker"
                 } else {
-                    "each creature".to_string()
+                    "creature"
+                };
+                let mut subject = if opponents_only {
+                    format!("each {noun} your opponents control")
+                } else {
+                    format!("each {noun}")
                 };
                 if filter.is_some_and(|f| f.without_flying) {
                     subject.push_str(" without flying");
+                } else if filter.is_some_and(|f| f.with_flying) {
+                    subject.push_str(" with flying");
                 }
                 format!("Deal {} damage to {subject}", amount_label(amount))
             }
             Effect::DamageEachPlayer { amount } => {
                 format!("Deal {} damage to each player", amount_label(amount))
+            }
+            Effect::DamageEachOtherOpponent { amount, .. } => {
+                format!("Deal {} damage to each other opponent", amount_label(amount))
             }
             Effect::WeakenEachCreature {
                 power,
@@ -726,6 +772,7 @@ impl Effect {
                     CounterKind::MinusOneMinusOne => "-1/-1",
                     CounterKind::Strife => "strife",
                     CounterKind::Age => "age",
+                    CounterKind::Storage => "storage",
                 };
                 format!("Put {} {kind_name} counters", amount_label(count))
             }
@@ -776,6 +823,7 @@ impl Effect {
                     CounterKind::MinusOneMinusOne => "-1/-1",
                     CounterKind::Strife => "strife",
                     CounterKind::Age => "age",
+                    CounterKind::Storage => "storage",
                 };
                 format!("Enters with {} {kind_name} counters", amount_label(amount))
             }
@@ -804,10 +852,16 @@ impl Effect {
                 count,
                 sacrifice_at_next_end_step,
                 exile_at_next_end_step,
+                entering,
                 ..
             } => {
+                let of_what = if entering.is_some() {
+                    "that creature"
+                } else {
+                    "target creature"
+                };
                 let mut label = format!(
-                    "Create {} token copy/copies of target creature",
+                    "Create {} token copy/copies of {of_what}",
                     amount_label(count)
                 );
                 if sacrifice_at_next_end_step {
@@ -905,14 +959,24 @@ impl Effect {
             Effect::ExileTopMayPlay {
                 count,
                 until_next_turn,
+                face_down,
+                free_while_source,
             } => {
-                let duration = if until_next_turn {
+                let duration = if free_while_source {
+                    "for as long as this permanent remains on the battlefield"
+                } else if until_next_turn {
                     "until the end of your next turn"
                 } else {
                     "until end of turn"
                 };
+                let face = if face_down { " face down" } else { "" };
+                let cost = if free_while_source {
+                    " without paying its mana cost"
+                } else {
+                    ""
+                };
                 format!(
-                    "Exile the top {} card(s); play {duration}",
+                    "Exile the top {} card(s){face}; play {duration}{cost}",
                     amount_label(count)
                 )
             }
@@ -1296,6 +1360,9 @@ impl Effect {
             Effect::AttackingPlayerDraws { count, .. } => {
                 format!("The attacking player draws {count}")
             }
+            Effect::DamagingCreatureControllerMayDraw { count, .. } => {
+                format!("That creature's controller may draw {count}")
+            }
             Effect::EachDrawStepPlayerDraws { count, .. } => {
                 format!("That player draws {count}")
             }
@@ -1329,6 +1396,7 @@ impl Effect {
                     SearchDest::Battlefield => "onto the battlefield",
                     SearchDest::LibraryTop => "on top of your library, revealing it",
                     SearchDest::Graveyard => "into your graveyard",
+                    SearchDest::Exile => "into exile",
                 };
                 format!("Search your library for {what}, put it {dest}")
             }
@@ -1361,8 +1429,18 @@ impl Effect {
                 "For each player, put a +1/+1 counter on up to one creature that player controls"
                     .to_string()
             }
+            Effect::JoinForcesPayMana => {
+                "Starting with you, each player may pay any amount of mana".to_string()
+            }
             Effect::CouncilsDilemmaVote { options } => {
                 format!("Starting with you, each player votes for {}", options.join(" or "))
+            }
+            Effect::EachPlayerNamesCardThenRevealsTop => {
+                "Each player chooses a card name. Then each player reveals the top card of their \
+                 library. If the card a player revealed has the name they chose, that player puts \
+                 it into their hand. If it doesn't, that player puts it on the bottom of their \
+                 library"
+                    .to_string()
             }
             Effect::EachPlayerCreatesFractalFromExiledPower { token } => format!(
                 "Each player creates a {} token with +1/+1 counters equal to the total power of \
@@ -1429,6 +1507,9 @@ impl Effect {
             Effect::GainControlAllUntilEndOfTurn { .. } => {
                 "Untap all creatures and gain control of them until end of turn".to_string()
             }
+            Effect::RevertAllCreaturesToOwners => {
+                "Each player gains control of all creatures they own".to_string()
+            }
             Effect::GrantSourceAbilitiesUntilEndOfTurn => {
                 "It gains this creature's other abilities until end of turn".to_string()
             }
@@ -1464,6 +1545,7 @@ impl Effect {
             Effect::TuckSelfToLibraryBottom => {
                 "Put this on the bottom of its owner's library".to_string()
             }
+            Effect::ExileSelfOnResolve => "Exile this".to_string(),
             Effect::BecomePrepared => "Become prepared".to_string(),
             Effect::FlipSource => "Flip this permanent".to_string(),
             Effect::LevelUp { level } => format!("Level {level}"),

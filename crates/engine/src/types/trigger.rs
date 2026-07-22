@@ -138,6 +138,15 @@ pub enum Trigger {
     /// [`Upkeep`](Self::Upkeep). Distinct from `BeginCombat` — this is `Step::Main1`, not
     /// `Step::BeginCombat`. Spelled `"first_main_phase"` in TOML.
     FirstMainPhase,
+    /// At the beginning of *every* player's first main phase, not just the controller's — CR
+    /// "at the beginning of each player's first main phase" (Magus of the Vineyard). Fires under
+    /// the ability's own controller regardless of whose turn it is, the first-main-phase twin of
+    /// [`EachUpkeep`](Self::EachUpkeep)/[`EachEndStep`](Self::EachEndStep) — but like
+    /// [`EachDrawStep`](Self::EachDrawStep) and unlike those two, its payoff ("**that player**
+    /// adds {G}{G}") needs to know whose first main phase this is, so
+    /// [`Game::queue_each_player_first_main_phase_triggers`] threads the active player into
+    /// [`TriggerContext::active_player`]. Spelled `"each_player_first_main_phase"` in TOML.
+    EachPlayerFirstMainPhase,
     /// At the beginning of combat on the controller's turn (Leonin Vanguard). Fires for the
     /// active player's own permanents only — an "each player" variant (Combat Celebrant-style)
     /// is a distinct, unlanded trigger.
@@ -173,10 +182,8 @@ pub enum Trigger {
     /// counts don't combine across different attacking opponents. The attacking opponent rides
     /// in [`TriggerContext`]'s `attack` tuple (Tomik's punisher addresses "that opponent"). See
     /// [`Game::queue_batch_attack_triggers`].
-    // ponytail: "and/or planeswalkers you control" reduces to "attacking you" — no pool card
-    // attacks a planeswalker (`Event::AttackerDeclared.defender` is always a `PlayerId`, per the
-    // existing creature-or-player ponytail note on `TargetSpec`), so the planeswalker half is
-    // moot until planeswalkers-as-attack-targets land.
+    /// "And/or planeswalkers you control" is covered: `Event::AttackerDeclared.defender` is the
+    /// defending *player*, which an attack on one of their planeswalkers resolves to (CR 508.1a).
     OpponentAttacksYouWithCreatures { at_least: u8 },
     /// Whenever another player attacks with `at_least` or more creatures this combat,
     /// regardless of defender, *if none of those creatures attacked this permanent's
@@ -570,6 +577,10 @@ pub enum CombatDamageScope {
     YourCreatures,
     /// Any creature *token* the ability's controller controls.
     YourTokens,
+    /// Any creature at all — whoever controls it — but only when the damage was dealt to one of
+    /// the ability's controller's opponents (Edric, Spymaster of Trest: "Whenever a creature deals
+    /// combat damage to one of your opponents"). The only scope that reads the damaged player.
+    AnyCreatureDamagingYourOpponent,
 }
 
 /// What a triggering event exposes to an intervening-if condition and to a watch-others effect:
@@ -580,8 +591,10 @@ pub(crate) struct TriggerContext {
     pub(crate) controller: PlayerId,
     /// The active player, for a [`Trigger::EachDrawStep`] ability's "**that player** draws an
     /// additional card" payoff (Howling Mine) — the player whose draw step this is, which need
-    /// not be this ability's controller. `None` for every other trigger; set by
-    /// [`Game::queue_each_draw_step_triggers`].
+    /// not be this ability's controller — or a [`Trigger::EachPlayerFirstMainPhase`] ability's
+    /// "**that player** adds {G}{G}" payoff (Magus of the Vineyard), same shape one step over.
+    /// `None` for every other trigger; set by [`Game::queue_each_draw_step_triggers`]/
+    /// [`Game::queue_each_player_first_main_phase_triggers`].
     pub(crate) active_player: Option<PlayerId>,
     /// `(attacking player, attacked player)` for a `PlayerAttacksYourOpponent` trigger.
     pub(crate) attack: Option<(PlayerId, PlayerId)>,
@@ -642,6 +655,18 @@ pub(crate) struct TriggerContext {
     /// other trigger, same shape as `dying_source_stats` above. See
     /// [`Game::queue_combat_damage_triggers`] for where this is captured.
     pub(crate) combat_damage: Option<i32>,
+    /// CR 510.2/603.10a last-known information: the player the source just dealt combat damage
+    /// to, for a [`Trigger::DealsCombatDamageToPlayer`] watch whose payoff excludes them (Hydra
+    /// Omnivore: "it deals that much damage to each **other** opponent"). `None` for every other
+    /// trigger, same shape as `combat_damage` above. See
+    /// [`Game::queue_combat_damage_triggers`] for where this is captured.
+    pub(crate) combat_damage_recipient: Option<PlayerId>,
+    /// CR 510.2/603.10a last-known information: who controlled the creature that just dealt the
+    /// combat damage, for a [`Trigger::DealsCombatDamageToPlayer`] watch whose payoff belongs to
+    /// that player rather than the watcher's controller (Edric, Spymaster of Trest: "**its
+    /// controller** may draw a card"). `None` for every other trigger, same shape as
+    /// `combat_damage_recipient` above.
+    pub(crate) combat_damage_source_controller: Option<PlayerId>,
     /// CR 609.7/603.10a last-known information: the amount of damage the enchanted host just
     /// dealt (combat or noncombat alike), for a [`Trigger::EnchantedCreatureDealsDamage`] watch's
     /// `Amount::TriggeringDamageDealt` reads (Armadillo Cloak's "you gain that much life"). `None`
@@ -752,6 +777,8 @@ impl TriggerContext {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
+            combat_damage_recipient: None,
+            combat_damage_source_controller: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
             damaged_creature: None,

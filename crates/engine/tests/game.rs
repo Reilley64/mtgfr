@@ -465,6 +465,7 @@ fn casting_pays_the_spells_cost_from_the_pool() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -494,6 +495,7 @@ const fn flash_cost(generic: u8, colored: [u8; 5], additional: AdditionalCost) -
 const NO_ADD: AdditionalCost = AdditionalCost {
     discard: 0,
     discard_land: false,
+    reveal_creature_from_hand: false,
     pay_life_x: false,
     pay_life: 0,
     sacrifice: None,
@@ -525,6 +527,7 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -555,12 +558,14 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -589,6 +594,7 @@ const COMBAT_ONLY_INSTANT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: true,
     approximates: None,
     oracle: None,
@@ -619,12 +625,14 @@ const COMBAT_ONLY_INSTANT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -678,6 +686,7 @@ fn flashback_casts_a_spell_from_the_graveyard_then_exiles_it() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a flashback card is castable from its owner's graveyard");
     resolve_top_of_stack(&mut game);
@@ -721,12 +730,14 @@ fn flashback_rejected_when_card_lacks_flashback() {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -749,6 +760,7 @@ fn flashback_rejected_when_card_lacks_flashback() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::NotCastable));
 }
@@ -773,12 +785,14 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -801,6 +815,7 @@ fn flashback_pays_the_flashback_cost_not_the_printed_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the flashback cost {1}, not the printed {5}, is charged");
     assert_eq!(game.zone_of(object), Zone::Stack);
@@ -816,6 +831,7 @@ fn flashback_with_pay_life_additional_cost() {
             AdditionalCost {
                 discard: 0,
                 discard_land: false,
+                reveal_creature_from_hand: false,
                 pay_life_x: false,
                 pay_life: 3,
                 sacrifice: None,
@@ -830,12 +846,14 @@ fn flashback_with_pay_life_additional_cost() {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -862,6 +880,7 @@ fn flashback_with_pay_life_additional_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a player with 3+ life can pay the flashback's Pay 3 life rider");
     assert_eq!(
@@ -889,6 +908,7 @@ fn flashback_with_pay_life_additional_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::CannotPayCost));
     assert_eq!(game.life(PlayerId(0)), 2, "the rejected cast spent no life");
@@ -935,6 +955,7 @@ fn raffines_guidance_casts_from_graveyard_for_alt_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Raffine's Guidance is castable from its owner's graveyard for {2}{W}");
     resolve_top_of_stack(&mut game);
@@ -977,6 +998,7 @@ fn raffines_guidance_graveyard_cast_charges_the_alt_cost_not_the_printed_cost() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(
         result,
@@ -1008,6 +1030,7 @@ fn retrace_recasts_from_graveyard_by_discarding_a_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("retrace lets Throes of Chaos be cast from the graveyard by discarding a land");
     resolve_top_of_stack(&mut game); // the cascade trigger (empty library — whiffs)
@@ -1047,6 +1070,7 @@ fn retrace_requires_a_land_in_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::CannotPayCost));
 
@@ -1065,6 +1089,7 @@ fn retrace_requires_a_land_in_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(result, Err(Reject::CannotPayCost));
 }
@@ -1090,6 +1115,7 @@ fn retrace_is_repeatable() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("first retrace cast");
     resolve_top_of_stack(&mut game); // cascade trigger (empty library — whiffs)
@@ -1115,12 +1141,144 @@ fn retrace_is_repeatable() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("retrace is repeatable — the spell was never exiled");
     resolve_top_of_stack(&mut game); // cascade trigger (empty library — whiffs)
     resolve_top_of_stack(&mut game); // Throes of Chaos itself
 
     assert_eq!(game.zone_of(throes_again), Zone::Graveyard);
+}
+
+#[test]
+fn call_the_skybreaker_retrace_casts_from_graveyard_by_discarding_a_land() {
+    let mut game = Game::new();
+    let skybreaker = game.spawn_in_graveyard(PlayerId(0), card("Call the Skybreaker"));
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: skybreaker,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![forest],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("retrace lets Call the Skybreaker be cast from the graveyard by discarding a land");
+    resolve_top_of_stack(&mut game);
+
+    let elemental = battlefield_named(&game, PlayerId(0), "Elemental");
+    assert_eq!(elemental.len(), 1, "one 5/5 Elemental token entered");
+    let elemental = elemental[0];
+    assert_eq!(game.power(elemental), 5);
+    assert_eq!(game.toughness(elemental), 5);
+    assert!(game.has_keyword(elemental, Keyword::Flying));
+    assert!(game.colors_of(elemental)[Color::Blue.index()]);
+    assert!(game.colors_of(elemental)[Color::Red.index()]);
+
+    assert_eq!(
+        game.zone_of(skybreaker),
+        Zone::Graveyard,
+        "CR 702.83a: a retrace spell goes to the graveyard as normal, not exiled"
+    );
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Graveyard,
+        "the named land paid retrace's discard-a-land additional cost"
+    );
+}
+
+#[test]
+fn call_the_skybreaker_retrace_requires_a_land_in_hand() {
+    let mut game = Game::new();
+    let skybreaker = game.spawn_in_graveyard(PlayerId(0), card("Call the Skybreaker"));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    game.fund_mana(PlayerId(0));
+
+    // No land named at all is short on the required count.
+    let result = game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: skybreaker,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    });
+    assert_eq!(result, Err(Reject::CannotPayCost));
+
+    // Naming a nonland card doesn't satisfy "discard a land card" either.
+    let result = game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: skybreaker,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![bear],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    });
+    assert_eq!(result, Err(Reject::CannotPayCost));
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the rejected cast must not discard the nonland card"
+    );
+}
+
+#[test]
+fn call_the_skybreaker_casts_from_hand_normally_with_no_discard() {
+    let mut game = Game::new();
+    let skybreaker = game.spawn_in_hand(PlayerId(0), card("Call the Skybreaker"));
+    game.fund_mana(PlayerId(0));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: skybreaker,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("casting from hand pays only the printed cost — no discard required");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        battlefield_named(&game, PlayerId(0), "Elemental").len(),
+        1,
+        "the Elemental token still entered"
+    );
+    assert_eq!(game.zone_of(skybreaker), Zone::Graveyard);
 }
 
 // ── Delve (CR 702.66) / Escape (CR 702.19) — graveyard-exile payment ─────────────────────
@@ -1160,6 +1318,7 @@ fn treasure_cruise_delve_reduces_generic_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("delving 5 cards reduces {7}{U} to {2}{U}, payable with the 3 mana tapped");
 
@@ -1326,6 +1485,7 @@ fn serra_paragon_plays_a_land_from_graveyard_once_per_turn() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::NotCastable),
         "the once-per-turn graveyard-play permission was already spent on the land this turn"
@@ -1358,6 +1518,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::NotCastable),
         "mana value 4 is too high for Serra Paragon's graveyard-cast permission"
@@ -1378,6 +1539,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::NotCastable),
         "an instant is not a permanent spell — Serra Paragon can't cast it from the graveyard"
@@ -1397,6 +1559,7 @@ fn serra_paragon_casts_permanent_spell_mv_le_3_from_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a mana value 2 permanent spell is castable from the graveyard via Serra Paragon");
     resolve_top_of_stack(&mut game);
@@ -1424,6 +1587,7 @@ fn serra_paragon_recursion_card_exiles_and_gains_2_on_death() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable from the graveyard via Serra Paragon");
     let events = resolve_top_of_stack_events(&mut game);
@@ -1453,6 +1617,7 @@ fn serra_paragon_recursion_card_exiles_and_gains_2_on_death() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Destroy targets the recurred creature");
     // Destroy resolves (the creature genuinely dies, CR 603.6), then the granted rider's own
@@ -1496,6 +1661,7 @@ fn serra_paragon_recursion_death_fires_a_death_watch_before_the_exile() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable from the graveyard via Serra Paragon");
     let events = resolve_top_of_stack_events(&mut game);
@@ -1580,6 +1746,7 @@ fn serra_paragon_recursion_rider_is_a_noop_if_the_card_already_left_the_graveyar
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable from the graveyard via Serra Paragon");
     let events = resolve_top_of_stack_events(&mut game);
@@ -1619,6 +1786,7 @@ fn serra_paragon_recursion_rider_is_a_noop_if_the_card_already_left_the_graveyar
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Lorehold Charm's reanimate mode legally targets the mv2 recurred creature card");
     resolve_top_of_stack(&mut game); // the charm resolves first (last on, first off)
@@ -1696,6 +1864,7 @@ fn a_normally_cast_permanent_dies_to_the_graveyard_without_serra_rider() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Destroy targets the bear");
     resolve_top_of_stack(&mut game);
@@ -1727,6 +1896,7 @@ const TWO_ETB: CardDef = CardDef {
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
+            reveal_creature_from_hand: false,
             pay_life_x: false,
             pay_life: 0,
             sacrifice: None,
@@ -1754,6 +1924,7 @@ const TWO_ETB: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -1805,12 +1976,14 @@ const TWO_ETB: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -1841,6 +2014,7 @@ const PINGER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -1888,12 +2062,14 @@ const PINGER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -1922,6 +2098,7 @@ const MAY_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -1960,12 +2137,14 @@ const MAY_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -1994,6 +2173,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -2020,6 +2200,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
             additional: AdditionalCost {
                 discard: 0,
                 discard_land: false,
+                reveal_creature_from_hand: false,
                 pay_life_x: false,
                 pay_life: 0,
                 sacrifice: None,
@@ -2050,12 +2231,14 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -2086,6 +2269,7 @@ const LOOK_DIG: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -2131,12 +2315,14 @@ const LOOK_DIG: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -2167,6 +2353,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -2212,12 +2399,14 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -2249,6 +2438,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -2294,12 +2484,14 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -2374,6 +2566,7 @@ const fn creature(
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -2402,12 +2595,14 @@ const fn creature(
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -2528,7 +2723,10 @@ fn attack_with(game: &mut Game, attackers: Vec<ObjectId>) {
     advance_until(game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: attackers.into_iter().map(|a| (a, PlayerId(1))).collect(),
+        attackers: attackers
+            .into_iter()
+            .map(|a| (a, Defender::Player(PlayerId(1))))
+            .collect(),
     })
     .unwrap();
 }
@@ -2593,6 +2791,7 @@ impl TestGame {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }
     }
 }
@@ -2614,6 +2813,7 @@ struct Casting<'g> {
     evoked: bool,
     strive_count: u8,
     replicate_count: u8,
+    alternative_cost: bool,
 }
 
 impl Casting<'_> {
@@ -2692,6 +2892,13 @@ impl Casting<'_> {
         self
     }
 
+    /// Cast for the spell's printed alternative cost (CR 601.2f — [`CardDef::alternative_cost`])
+    /// instead of its printed mana cost. Unset (`false` — cast normally) for a spell with none.
+    fn alternative_cost(mut self, alternative_cost: bool) -> Self {
+        self.alternative_cost = alternative_cost;
+        self
+    }
+
     /// Submit the `Cast` and return the raw result, after auto-funding player 0's mana.
     fn try_submit(self) -> Result<Vec<Event>, Reject> {
         self.game.fund_mana(PlayerId(0));
@@ -2709,6 +2916,7 @@ impl Casting<'_> {
             evoked: self.evoked,
             strive_count: self.strive_count,
             replicate_count: self.replicate_count,
+            alternative_cost: self.alternative_cost,
         })
     }
 
@@ -2734,6 +2942,7 @@ impl Casting<'_> {
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
         } = self;
         game.fund_mana(PlayerId(0));
         game.submit(Intent::Cast {
@@ -2750,6 +2959,7 @@ impl Casting<'_> {
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
         })
         .expect("the spell is castable");
         resolve_top_of_stack(game);
@@ -2764,7 +2974,10 @@ fn attackers_can_be_split_across_multiple_opponents() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(to_p1, PlayerId(1)), (to_p2, PlayerId(2))],
+        attackers: vec![
+            (to_p1, Defender::Player(PlayerId(1))),
+            (to_p2, Defender::Player(PlayerId(2))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
@@ -2800,7 +3013,7 @@ fn attack_tax_blocks_declaration_without_mana() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "can't attack the Ghostly Prison controller without paying the {{2}} tax",
@@ -2824,7 +3037,7 @@ fn attack_tax_paid_allows_attack() {
 
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .expect("paying {2} lets the creature attack through Ghostly Prison");
     assert_eq!(
@@ -2852,7 +3065,10 @@ fn attack_tax_scales_per_attacker() {
         float_green(&mut game, PlayerId(0), floated);
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(a, PlayerId(1)), (b, PlayerId(1))],
+            attackers: vec![
+                (a, Defender::Player(PlayerId(1))),
+                (b, Defender::Player(PlayerId(1))),
+            ],
         })
     };
     assert_eq!(
@@ -2878,7 +3094,7 @@ fn attack_tax_only_taxes_the_taxing_defender() {
         // No mana at all, but the lone attacker is aimed at untaxed P2.
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(x, PlayerId(2))],
+            attackers: vec![(x, Defender::Player(PlayerId(2)))],
         })
     };
     assert!(
@@ -2894,7 +3110,10 @@ fn attack_tax_only_taxes_the_taxing_defender() {
     float_green(&mut game, PlayerId(0), 2);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(x, PlayerId(2)), (y, PlayerId(1))],
+        attackers: vec![
+            (x, Defender::Player(PlayerId(2))),
+            (y, Defender::Player(PlayerId(1))),
+        ],
     })
     .expect("only the P1-bound attacker owes {2}; {2} total covers both");
     assert_eq!(
@@ -2922,7 +3141,7 @@ fn nils_counter_taxes_attackers_with_counters() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(taxed, PlayerId(1))],
+            attackers: vec![(taxed, Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "a creature with two counters owes {{2}}; unpaid is illegal",
@@ -2930,7 +3149,7 @@ fn nils_counter_taxes_attackers_with_counters() {
     // The counterless creature attacks for free.
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(free, PlayerId(1))],
+        attackers: vec![(free, Defender::Player(PlayerId(1)))],
     })
     .expect("a creature with no counters isn't taxed");
 }
@@ -2948,7 +3167,7 @@ fn nils_counter_tax_is_paid_with_mana() {
 
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(taxed, PlayerId(1))],
+        attackers: vec![(taxed, Defender::Player(PlayerId(1)))],
     })
     .expect("paying {2} lets the two-counter creature attack");
     assert_eq!(
@@ -2982,6 +3201,7 @@ fn declare_attackers_survives_a_ceased_token() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -2996,7 +3216,7 @@ fn declare_attackers_survives_a_ceased_token() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "a ceased token must not panic; the {{2}} tax still blocks an unpaid attack",
@@ -3004,7 +3224,7 @@ fn declare_attackers_survives_a_ceased_token() {
     float_green(&mut game, PlayerId(0), 2);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .expect("paying the tax still works with a ceased token in the arena");
 }
@@ -3017,7 +3237,7 @@ fn a_player_who_is_not_attacked_cannot_declare_blocks() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))], // only P1 is attacked
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))], // only P1 is attacked
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -3041,7 +3261,10 @@ fn each_defender_blocks_only_the_attacker_aimed_at_them() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(to_p1, PlayerId(1)), (to_p2, PlayerId(2))],
+        attackers: vec![
+            (to_p1, Defender::Player(PlayerId(1))),
+            (to_p2, Defender::Player(PlayerId(2))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -3077,7 +3300,7 @@ fn an_eliminated_player_leaves_the_game_and_the_others_play_on() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.has_lost(PlayerId(1)));
@@ -3162,6 +3385,7 @@ fn capstone_a_scripted_game_plays_to_a_win() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -3176,7 +3400,7 @@ fn capstone_a_scripted_game_plays_to_a_win() {
         });
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(serra, PlayerId(1))],
+            attackers: vec![(serra, Defender::Player(PlayerId(1)))],
         })
         .unwrap();
         advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
@@ -3215,6 +3439,7 @@ fn casting_the_commander_from_the_command_zone_taxes_each_recast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -3250,6 +3475,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // P0.command_casts == 1; priority returns to active player P0. (CR 117)
@@ -3282,6 +3508,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // priority returns to active player P0. (CR 117)
@@ -3314,6 +3541,7 @@ fn commander_casts_amount_scales_draw_commanders_insight() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -3344,6 +3572,7 @@ fn a_dying_commander_returns_to_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -3363,6 +3592,7 @@ fn a_dying_commander_returns_to_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -4182,6 +4412,7 @@ fn leitmotif_copies_self_on_big_instant_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a funded MV-5 instant is castable");
     resolve_top_of_stack(&mut game); // the copy trigger resolves.
@@ -4223,6 +4454,7 @@ fn leitmotif_does_not_copy_on_small_instant_or_creature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a funded MV-4 instant is castable");
     resolve_top_of_stack(&mut game); // no trigger queued: the instant itself resolves.
@@ -4256,6 +4488,7 @@ fn leitmotif_does_not_copy_on_small_instant_or_creature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a funded MV-5 creature is castable");
     resolve_top_of_stack(&mut game); // no trigger queued: the creature itself resolves.
@@ -4427,6 +4660,7 @@ fn venerable_warsinger_pumped_reanimates_higher_mv() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Venerable Warsinger is now 5/3 until end of turn.
@@ -4544,6 +4778,7 @@ fn guardian_scalelord_pumped_reanimates_higher_mv() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Guardian Scalelord is now 5/4 until end of turn.
@@ -4586,6 +4821,7 @@ fn guardian_scalelord_backup_grants_flying_and_attack_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Guardian enters; its Backup ETB triggers.
@@ -4665,6 +4901,7 @@ fn guardian_scalelord_backup_on_itself_grants_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -4856,6 +5093,7 @@ fn a_pump_lasts_until_end_of_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -4929,6 +5167,7 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -4970,12 +5209,14 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5004,6 +5245,7 @@ const GRANT_FLYING: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5045,12 +5287,14 @@ const GRANT_FLYING: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5077,6 +5321,7 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5118,12 +5363,14 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5151,6 +5398,7 @@ const DESTROY: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5197,12 +5445,14 @@ const DESTROY: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5230,6 +5480,7 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5280,12 +5531,14 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5313,6 +5566,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5359,12 +5613,14 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5392,6 +5648,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5441,12 +5698,14 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5474,6 +5733,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5519,12 +5779,14 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5553,6 +5815,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5567,6 +5830,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Any,
                 filter: CardFilter::AnyCard,
+                other: false,
             },
             count: TargetCount {
                 min: 1,
@@ -5601,12 +5865,14 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5634,6 +5900,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5682,12 +5949,14 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5715,6 +5984,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5763,12 +6033,14 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5796,6 +6068,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5841,12 +6114,14 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5874,6 +6149,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5919,12 +6195,14 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -5954,6 +6232,7 @@ const SHROUD_CREATURE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -5982,12 +6261,14 @@ const SHROUD_CREATURE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -6017,6 +6298,7 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -6045,12 +6327,14 @@ const HEXPROOF_CREATURE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -6079,6 +6363,7 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -6120,12 +6405,14 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -6153,6 +6440,7 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -6194,12 +6482,14 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -6228,6 +6518,7 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -6269,12 +6560,14 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -6682,6 +6975,7 @@ const GROWTH: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -6730,12 +7024,14 @@ const GROWTH: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -6761,6 +7057,7 @@ fn a_counter_effect_permanently_grows_the_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -6799,6 +7096,7 @@ const INKLING: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -6827,12 +7125,14 @@ const INKLING: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -6859,6 +7159,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -6905,12 +7206,14 @@ const MAKE_INKLINGS: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -6935,6 +7238,7 @@ fn a_token_effect_puts_tokens_onto_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -6980,6 +7284,7 @@ fn make_inklings_and_count(game: &mut Game, player: PlayerId) -> usize {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game);
@@ -7395,6 +7700,7 @@ const X_DRAW_PERMANENT: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -7426,6 +7732,7 @@ const FIXED_DRAW_PERMANENT: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -7718,6 +8025,7 @@ fn elementalists_palette_restricted_mana_funds_nins_x_activation() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the cast_spell trigger places the counters
@@ -8132,6 +8440,7 @@ fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // `resolve_top_of_stack` assumes a 2-player table (two passes empties the stack); a
@@ -8205,6 +8514,7 @@ fn eccentric_pestfinder_mints_one_pest_per_opponent_under_you() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     while !game.stack().is_empty() {
@@ -8252,6 +8562,7 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     while !game.stack().is_empty() {
@@ -8276,6 +8587,7 @@ fn eccentric_pestfinders_pest_death_trigger_gains_the_caster_life_not_an_opponen
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     while !game.stack().is_empty() {
@@ -8312,6 +8624,7 @@ fn death_by_dragons_each_other_player_gets_dragons_except_the_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // A 4-player table needs a pass from everyone in turn to empty the stack (see
@@ -8364,6 +8677,7 @@ fn death_by_dragons_skips_an_already_eliminated_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     assert!(
@@ -8411,6 +8725,7 @@ fn a_token_ceases_to_exist_when_it_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -8439,6 +8754,7 @@ fn a_token_ceases_to_exist_when_it_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -8479,6 +8795,7 @@ const PEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -8517,12 +8834,14 @@ const PEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -8549,6 +8868,7 @@ const MAKE_PEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -8595,12 +8915,14 @@ const MAKE_PEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -8626,6 +8948,7 @@ fn a_token_with_a_death_trigger_fires_it_when_it_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the Pest enters.
@@ -8646,6 +8969,7 @@ fn a_token_with_a_death_trigger_fires_it_when_it_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → SBA kills the Pest, which ceases to exist. (CR 704, CR 111.7)
@@ -8740,6 +9064,7 @@ fn cast_twinflame_and_resolve(game: &mut Game, twinflame: ObjectId, strive_count
         evoked: false,
         strive_count,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the spell is castable");
     resolve_top_of_stack(game);
@@ -8827,6 +9152,7 @@ fn a_token_copy_fires_the_originals_etb_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Rite resolves: the token copy enters, its ETB hits the stack.
@@ -8882,6 +9208,7 @@ const HERALD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -8920,12 +9247,14 @@ const HERALD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -9288,7 +9617,7 @@ fn combat_calligrapher_inklings_cant_attack_you() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(inkling, PlayerId(1))],
+            attackers: vec![(inkling, Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "an Inkling can't attack the Calligrapher's controller",
@@ -9296,7 +9625,7 @@ fn combat_calligrapher_inklings_cant_attack_you() {
     assert!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(bear, PlayerId(1))],
+            attackers: vec![(bear, Defender::Player(PlayerId(1)))],
         })
         .is_ok(),
         "a non-Inkling can still attack the Calligrapher's controller",
@@ -9310,7 +9639,7 @@ fn combat_calligrapher_inklings_cant_attack_you() {
     assert!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(inkling, PlayerId(2))],
+            attackers: vec![(inkling, Defender::Player(PlayerId(2)))],
         })
         .is_ok(),
         "only the Calligrapher's controller is protected — P2 isn't",
@@ -9329,7 +9658,7 @@ fn combat_calligrapher_mints_attacking_inkling_under_attacker() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
 
@@ -9370,7 +9699,7 @@ fn combat_calligrapher_mints_attacking_inkling_under_attacker() {
             .iter()
             .find(|&&(a, _)| a == token)
             .map(|&(_, d)| d),
-        Some(PlayerId(1)),
+        Some(Defender::Player(PlayerId(1))),
         "attacking the same opponent P0 attacked",
     );
 
@@ -9422,7 +9751,7 @@ fn setup_redoubled_stormsinger_attack() -> (Game, ObjectId, Vec<ObjectId>, Objec
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(redoubled, PlayerId(1))],
+        attackers: vec![(redoubled, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     advance_until(&mut game, |g| {
@@ -9459,7 +9788,7 @@ fn redoubled_stormsinger_copies_each_token_entered_this_turn_tapped_and_attackin
                 .iter()
                 .find(|&&(a, _)| a == copy)
                 .map(|&(_, d)| d),
-            Some(PlayerId(1)),
+            Some(Defender::Player(PlayerId(1))),
             "attacking the same defender Redoubled itself attacks"
         );
     }
@@ -9543,6 +9872,7 @@ fn fire_muddle_magecraft(game: &mut Game, dummy: ObjectId, yes: bool, bear: Opti
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let Some(PendingChoice::MayYesNo {
@@ -9649,7 +9979,7 @@ fn setup_muddle_myriad_attack() -> (Game, ObjectId, ObjectId) {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(muddle, PlayerId(1))],
+        attackers: vec![(muddle, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     (game, muddle, bear)
@@ -9687,7 +10017,7 @@ fn muddle_copy_has_myriad_mints_tapped_attacking_copies_per_opponent() {
             "each token joins combat as an attacker"
         );
     }
-    let defenders: std::collections::HashSet<PlayerId> = tokens
+    let defenders: std::collections::HashSet<Defender> = tokens
         .iter()
         .map(|&t| {
             game.attack_targets()
@@ -9699,7 +10029,9 @@ fn muddle_copy_has_myriad_mints_tapped_attacking_copies_per_opponent() {
         .collect();
     assert_eq!(
         defenders,
-        [PlayerId(2), PlayerId(3)].into_iter().collect(),
+        [Defender::Player(PlayerId(2)), Defender::Player(PlayerId(3))]
+            .into_iter()
+            .collect(),
         "one token attacking each opponent other than P1, the declared defender"
     );
 
@@ -9773,7 +10105,7 @@ fn eriette_enchanted_creature_cant_attack_you() {
         advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(1),
-            attackers: vec![(attacker, PlayerId(0))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(0)))],
         })
     };
     assert!(
@@ -9811,14 +10143,14 @@ fn vow_enchanted_creature_cant_attack_its_controller_but_can_attack_others() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "the Vow forbids attacking its own controller",
     );
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(2))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(2)))],
     })
     .expect("the same enchanted creature can still attack a different opponent");
 }
@@ -9849,7 +10181,40 @@ fn vow_of_duty_is_faithful() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(bear, PlayerId(1))],
+            attackers: vec![(bear, Defender::Player(PlayerId(1)))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "the Vow forbids attacking its own controller",
+    );
+}
+
+#[test]
+fn vow_of_wildness_pumps_and_grants_trample_and_bans_attacking_you() {
+    // Vow of Wildness: "Enchant creature\nEnchanted creature gets +3/+3, has trample, and can't
+    // attack you or planeswalkers you control." P1 enchants P0's creature.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA]);
+    let bear = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear")); // 2/2
+    let vow = game.spawn_in_hand(PlayerId(1), card("Vow of Wildness"));
+
+    pass_until_next_turn(&mut game); // → P1's turn, so P1 can cast the sorcery-speed Aura
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    fund_cast_resolve(&mut game, PlayerId(1), vow, Some(Target::Object(bear)));
+
+    assert_eq!(game.power(bear), 5, "+3/+3 from the Vow");
+    assert_eq!(game.toughness(bear), 5);
+    assert!(
+        game.has_keyword(bear, Keyword::Trample),
+        "the Vow grants trample"
+    );
+
+    pass_until_next_turn(&mut game); // → P0's turn
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(bear, Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "the Vow forbids attacking its own controller",
@@ -9904,6 +10269,7 @@ const LIFELINK_PINGER: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -10047,6 +10413,7 @@ fn damage_each_player_with_lifelink_gains_life_once_per_player_hit() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the test blast is castable");
     resolve_whole_stack(&mut game);
@@ -10087,7 +10454,7 @@ fn a_creature_with_defender_cannot_attack() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     let res = game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(wall, PlayerId(1))],
+        attackers: vec![(wall, Defender::Player(PlayerId(1)))],
     });
     assert!(
         res.is_err(),
@@ -10129,6 +10496,7 @@ fn effective_toughness_governs_lethal_damage() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -10214,6 +10582,7 @@ fn a_nonbasic_dual_sharing_a_basic_land_type_does_not_count_as_basic() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -10261,6 +10630,7 @@ fn natures_lore_fetches_any_forest_typed_card_not_just_the_basic() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -10308,6 +10678,7 @@ fn three_visits_fetches_a_nonbasic_forest_typed_land_not_just_the_basic() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -10513,6 +10884,7 @@ fn a_summoning_sick_creature_cannot_use_a_tap_ability() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -10555,6 +10927,7 @@ fn a_freshly_cast_noncreature_artifact_is_not_summoning_sick() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -10597,6 +10970,7 @@ fn the_untap_step_clears_summoning_sickness() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -10730,6 +11104,7 @@ fn cast_intent(player: PlayerId, object: ObjectId, target: Option<Target>) -> In
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     }
 }
 
@@ -10985,6 +11360,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 sorcery_speed: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
+                remove_counters_x: false,
                 return_self: false,
                 mill_self: 0,
                 discard_cost: 0,
@@ -11029,6 +11405,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -11049,14 +11426,16 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         functions_in_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         uncounterable: false,
         conditional_keywords: &[],
         colors: &[],
@@ -11085,6 +11464,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -11105,14 +11485,16 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         functions_in_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         uncounterable: false,
         conditional_keywords: &[],
         colors: &[],
@@ -11323,6 +11705,7 @@ fn conceding_while_you_owe_the_game_a_choice_drops_that_choice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the Owl enters; its ETB scry trigger goes on the stack
@@ -11887,6 +12270,7 @@ fn an_etb_trigger_goes_on_the_stack_and_resolves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Visionary resolves; its ETB trigger goes on the stack.
@@ -11925,6 +12309,7 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -11944,6 +12329,7 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -12195,6 +12581,7 @@ fn nonbasic_filter_matches_nonbasic_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -12244,6 +12631,7 @@ fn white_orchid_phantom_cannot_target_basic_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the creature enters; its optional ETB pauses
@@ -12303,6 +12691,7 @@ fn damage_events_carry_their_source_for_the_log() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
     let spell = cast
@@ -12361,6 +12750,7 @@ fn fund_cast_resolve(game: &mut Game, player: PlayerId, object: ObjectId, target
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the spell is castable");
     resolve_top_of_stack(game);
@@ -12441,6 +12831,7 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -12480,12 +12871,14 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -12556,6 +12949,7 @@ fn a_creature_only_spell_rejects_a_player_target() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
         "a player isn't a legal target for a creature-only spell",
@@ -12582,6 +12976,7 @@ fn a_targeted_etb_trigger_pauses_for_a_target_then_deals_damage() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Pinger enters; its targeted ETB must choose a target.
@@ -12641,6 +13036,7 @@ fn an_optional_trigger_fires_only_when_accepted() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Enters; the optional ETB pauses for yes/no.
@@ -12687,6 +13083,7 @@ fn a_declined_optional_trigger_is_skipped() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -12730,6 +13127,7 @@ fn a_pay_cost_trigger_fires_only_after_paying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Enters; the optional pay-{1} ETB pauses.
@@ -12800,6 +13198,7 @@ fn trudge_gardens_pay_2_trigger_creates_a_fungus_beast_only_after_paying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Creature enters.
@@ -12878,6 +13277,7 @@ fn simultaneous_triggers_from_one_permanent_are_ordered_by_their_controller() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Resolves; two ETB triggers demand an order.
@@ -12945,6 +13345,7 @@ fn stonecloaker_both_ordered_etbs_choose_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Stonecloaker resolves; two ETB triggers demand an order.
@@ -13040,6 +13441,7 @@ fn a_creature_cannot_be_cast_at_instant_speed() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
 
     assert_eq!(result, Err(Reject::WrongTiming));
@@ -13068,6 +13470,7 @@ fn cast_only_during_combat_rejects_in_main_phase() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
 
     assert_eq!(result, Err(Reject::WrongTiming));
@@ -13096,6 +13499,7 @@ fn cast_only_during_combat_allows_in_combat() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
 
     assert!(
@@ -13129,6 +13533,7 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(
         blocked,
@@ -13162,6 +13567,7 @@ fn alchemists_refuge_grants_flash_permission_for_the_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert!(
         granted.is_ok(),
@@ -13209,6 +13615,7 @@ fn alchemists_refuge_flash_permission_expires_at_the_next_untap() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(
         result,
@@ -13239,6 +13646,7 @@ fn an_instant_can_be_cast_outside_the_main_phase() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
 
     assert!(
@@ -13267,6 +13675,7 @@ fn a_targeted_spell_requires_a_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
 
     assert_eq!(result, Err(Reject::IllegalTarget));
@@ -13294,6 +13703,7 @@ fn a_creature_targeting_spell_rejects_a_non_creature_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
 
     assert_eq!(result, Err(Reject::IllegalTarget));
@@ -13318,6 +13728,7 @@ fn casting_without_enough_mana_is_rejected() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
 
     assert_eq!(result, Err(Reject::CannotPayCost));
@@ -13349,6 +13760,7 @@ fn casting_a_creature_moves_it_to_the_stack() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect("cast should be legal");
 
@@ -13380,6 +13792,7 @@ fn passing_priority_in_succession_resolves_a_creature_onto_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -13420,6 +13833,7 @@ fn creature_on_battlefield(game: &mut Game, controller: PlayerId) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     game.submit(Intent::PassPriority {
@@ -13455,6 +13869,7 @@ fn lethal_damage_kills_the_creature_via_a_state_based_action() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     game.submit(Intent::PassPriority {
@@ -13707,6 +14122,7 @@ fn state_based_actions_spare_undamaged_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     game.submit(Intent::PassPriority {
@@ -13755,6 +14171,7 @@ const ANTHEM_LORD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -13808,12 +14225,14 @@ const ANTHEM_LORD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -14126,6 +14545,7 @@ fn feral_appetite_pest_dies_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → SBA kills the Pest.
@@ -14416,6 +14836,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             enters_tapped: false,
             enters_tapped_unless: None,
             free_cast_if: None,
+            alternative_cost: None,
             cast_only_during_combat: false,
             approximates: None,
             oracle: None,
@@ -14444,12 +14865,14 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
             enchant_graveyard: false,
             back: None,
             adventure: None,
+            halves: &[],
             suspend: None,
+            vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: None,
+            hand_ability: &[],
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -14568,6 +14991,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -14601,6 +15025,7 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
                 sorcery_speed: false,
                 remove_counters: 2,
                 remove_counters_kind: None,
+                remove_counters_x: false,
                 return_self: false,
                 mill_self: 0,
                 discard_cost: 0,
@@ -14636,12 +15061,14 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -14667,6 +15094,7 @@ const TEST_FOOD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -14695,12 +15123,14 @@ const TEST_FOOD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -14730,6 +15160,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -14756,6 +15187,7 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -14790,12 +15222,14 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -14821,6 +15255,7 @@ const TEST_SAC_A_CREATURE: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -14942,6 +15377,7 @@ const TEST_NONTOKEN_COUNTER: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -15001,6 +15437,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -15019,6 +15456,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -15037,6 +15475,7 @@ fn nontoken_creatures_entered_this_turn_counts_cast_creatures_but_not_tokens() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -15084,6 +15523,7 @@ fn nontoken_creatures_entered_this_turn_resets_at_the_next_untap() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -15154,6 +15594,7 @@ fn nev_trample_grant_drops_once_the_last_counter_is_removed() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the static enters-with-counters ability places 2 counters
@@ -15259,6 +15700,7 @@ fn ohran_frostfang_deathtouch_gone_once_ohran_leaves_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -15382,6 +15824,7 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let events = resolve_top_of_stack_events(&mut game);
@@ -15422,6 +15865,7 @@ fn yavimaya_enchantress_counts_opponents_enchantments() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -15589,6 +16033,7 @@ fn cast_red_spell_triggers_balefire_damage() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Shock is castable");
     let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
@@ -15633,6 +16078,7 @@ fn cast_red_spell_triggers_balefire_damage() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Wave of Reckoning is castable");
     resolve_top_of_stack(&mut game); // Balefire's gain-3-life trigger resolves.
@@ -15687,6 +16133,7 @@ fn patchwork_banner_buffs_only_chosen_type() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Banner enters; its ETB choose-a-type trigger goes on stack.
@@ -15753,6 +16200,7 @@ fn patchwork_banner_offers_newly_printed_creature_types() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Banner enters; its ETB choose-a-type trigger goes on stack.
@@ -15895,6 +16343,7 @@ fn eidolon_cast_normally_is_a_0_0_creature_pumped_by_its_own_buff() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Eidolon is castable for its {1}{W}{W} creature cost");
     resolve_top_of_stack(&mut game);
@@ -15987,6 +16436,7 @@ fn bestowed_eidolon_becomes_a_creature_when_its_host_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Destroy targets the enchanted creature");
     resolve_top_of_stack(&mut game);
@@ -16073,6 +16523,7 @@ fn vanguard_spirit_anthem_scales_with_commander_casts_from_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // command_casts == 1.
@@ -16154,6 +16605,7 @@ fn study_hall_scries_when_its_mana_casts_your_commander() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // The spend-to-cast trigger sits on the stack above the commander spell; resolve it.
@@ -16197,6 +16649,7 @@ fn study_hall_does_not_scry_from_untagged_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // resolves the commander spell — no trigger sat above it
@@ -16250,6 +16703,7 @@ fn study_hall_does_not_scry_when_its_mana_casts_a_noncommander_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the noncommander creature resolves — no trigger above it
@@ -16305,6 +16759,7 @@ fn study_hall_provenance_is_cleared_when_the_pool_empties() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -16374,6 +16829,7 @@ fn path_of_ancestry_scries_on_a_typal_creature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the spend-to-cast scry trigger resolves
@@ -16432,6 +16888,7 @@ fn path_of_ancestry_does_not_scry_on_an_unshared_or_noncreature_spell() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         resolve_top_of_stack(&mut game);
@@ -16500,6 +16957,7 @@ fn cast_commander_with_opal_mana(game: &mut Game, cmd: ObjectId) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // the spend-to-cast trigger records the bonus counters
@@ -16542,6 +17000,7 @@ fn opal_palace_commander_enters_with_command_zone_counters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the commander dies and returns to the command zone
@@ -16579,6 +17038,7 @@ fn opal_palace_no_bonus_counters_from_untagged_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // resolves the commander spell — no trigger sat above it
@@ -16696,6 +17156,7 @@ fn an_instant_stops_auto_pass_while_the_stack_is_not_empty() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -16729,6 +17190,7 @@ fn a_sorcery_speed_spell_is_never_a_reaction() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -16763,6 +17225,7 @@ fn casting_requires_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // After casting, the caster retains priority (CR 117.3c) — P1 must wait for it.
@@ -16781,6 +17244,7 @@ fn casting_requires_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(
         out_of_turn,
@@ -16808,6 +17272,7 @@ fn casting_requires_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("with priority, the reaction cast is accepted");
 }
@@ -16838,6 +17303,7 @@ fn next_pass_resolves_stack_flags_only_the_final_pass() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     assert!(
@@ -17191,6 +17657,7 @@ fn cast_altered_ego(game: &mut Game, x: u32) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Altered Ego resolves and enters; pauses on the copy choice.
@@ -17301,6 +17768,7 @@ fn cursed_mirror_becomes_a_copy_until_end_of_turn_with_haste() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Mirror enters; pauses on the copy choice.
@@ -17363,6 +17831,7 @@ fn cursed_mirror_declined_stays_a_mana_rock() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -17402,6 +17871,7 @@ fn enter_as_copy_no_battlefield_creature_no_pause() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -17433,6 +17903,7 @@ fn cast_copy_enchantment(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Copy Enchantment resolves and enters; pauses on the copy choice.
@@ -18022,6 +18493,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
+            reveal_creature_from_hand: false,
             pay_life_x: false,
             pay_life: 0,
             sacrifice: None,
@@ -18045,6 +18517,7 @@ const COLORLESS_ROCK: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -18073,12 +18546,14 @@ const COLORLESS_ROCK: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -18139,6 +18614,7 @@ fn colorless_mana_pays_a_colorless_cost_pip() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -18182,6 +18658,7 @@ fn colorless_mana_cannot_pay_a_colored_pip() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "two colorless can't pay the {{G}} in {{1}}{{G}}"
@@ -18225,6 +18702,7 @@ fn any_color_mana_pays_a_colored_and_a_generic_pip() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -18676,6 +19154,7 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -18704,12 +19183,14 @@ const fn dual_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -18731,6 +19212,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
             additional: AdditionalCost {
                 discard: 0,
                 discard_land: false,
+                reveal_creature_from_hand: false,
                 pay_life_x: false,
                 pay_life: 0,
                 sacrifice: None,
@@ -18758,6 +19240,7 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -18786,12 +19269,14 @@ const fn vanilla(name: &'static str, generic: u8, colored: [u8; 5]) -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -18814,6 +19299,7 @@ fn cast_plain(game: &mut Game, player: PlayerId, object: ObjectId) -> Result<Vec
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
 }
 
@@ -19008,6 +19494,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
                 additional: AdditionalCost {
                     discard: 0,
                     discard_land: false,
+                    reveal_creature_from_hand: false,
                     pay_life_x: false,
                     pay_life: 0,
                     sacrifice: None,
@@ -19027,6 +19514,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -19043,6 +19531,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             track_provenance: false,
             target: TargetSpec::None,
             persist_until_end_of_turn: false,
+            recipient: None,
         },
         optional: false,
         min_level: 0,
@@ -19072,6 +19561,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -19100,12 +19590,14 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -19285,6 +19777,7 @@ fn biomass_mutation_hybrid_cost_payable_by_either_color() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("two green sources pay both {G/U} hybrid pips");
 }
@@ -19327,6 +19820,7 @@ const DIES_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -19365,12 +19859,14 @@ const DIES_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -19398,6 +19894,7 @@ fn a_dies_trigger_fires_when_the_creature_is_destroyed() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → lethal damage → SBA kills the 1/1. (CR 704, CR 120.3)
@@ -19432,6 +19929,7 @@ fn shock_to_death(game: &mut Game, victim: ObjectId, drain_target: PlayerId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Shock resolves → lethal → SBA kills the creature. (CR 704)
@@ -19552,6 +20050,7 @@ fn shock_and_settle(game: &mut Game, victim: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Shock resolves → lethal → SBA kills the creature. (CR 704)
@@ -19646,6 +20145,7 @@ fn fracture_to_death(game: &mut Game, victim: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Fracture resolves → destroys the enchantment.
@@ -19908,6 +20408,7 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -19947,12 +20448,14 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -19980,6 +20483,7 @@ fn plain_creature_dies_still_excludes_self() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → lethal → SBA kills the watcher. (CR 704)
@@ -20022,6 +20526,7 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -20060,12 +20565,14 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -20173,6 +20680,7 @@ const CREATURE_MV3: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -20201,12 +20709,14 @@ const CREATURE_MV3: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -20289,6 +20799,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -20342,12 +20853,14 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -20702,6 +21215,7 @@ fn dina_drains_each_opponent_on_lifegain_without_looping() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // Pass priority (all four seats) until the whole chain resolves: gainer enters → its ETB (CR 117)
@@ -20879,6 +21393,7 @@ const UPKEEP_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -20917,12 +21432,14 @@ const UPKEEP_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -20976,6 +21493,7 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -21012,12 +21530,14 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -21033,12 +21553,14 @@ const BATTLEFIELD_UPKEEP_RETURN: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -21168,6 +21690,7 @@ fn nether_traitor_returns_itself_from_graveyard_when_your_creature_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock kills the bear → Nether Traitor's graveyard trigger.
@@ -21225,6 +21748,7 @@ fn nether_traitor_declining_the_cost_leaves_it_in_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock kills the bear → Nether Traitor's graveyard trigger.
@@ -21271,6 +21795,7 @@ fn punishing_fire_returns_from_graveyard_when_an_opponent_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Punishing Fire deals 2 damage, then hits the graveyard.
@@ -21301,6 +21826,7 @@ fn punishing_fire_returns_from_graveyard_when_an_opponent_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Creature enters.
@@ -21354,6 +21880,7 @@ fn punishing_fire_does_not_trigger_when_its_controller_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Creature enters.
@@ -21526,6 +22053,7 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -21564,12 +22092,14 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -21642,6 +22172,7 @@ const END_STEP_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -21680,12 +22211,14 @@ const END_STEP_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -21730,6 +22263,7 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -21768,12 +22302,14 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -21850,6 +22386,7 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -21888,12 +22425,14 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -21919,6 +22458,7 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -21957,12 +22497,14 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -21990,6 +22532,7 @@ fn a_you_gain_life_trigger_fires_when_the_controller_gains_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Creature enters; its ETB gain-life trigger goes on the stack.
@@ -22042,6 +22585,7 @@ fn arbiter_sets_each_player_life_to_highest_cr_118_5() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Arbiter of Knollridge is castable");
     // Drain the stack fully (a 4-player table needs all 4 to pass in succession per item, not
@@ -22097,6 +22641,7 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -22135,12 +22680,14 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -22169,6 +22716,7 @@ fn a_magecraft_trigger_fires_when_the_controller_casts_an_instant_or_sorcery() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // Casting Shock triggered magecraft: its draw is on the stack above Shock itself.
@@ -22208,6 +22756,7 @@ fn prowess_pumps_on_noncreature_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // The prowess trigger sits above Shock on the stack; resolve it first.
@@ -22248,6 +22797,7 @@ fn prowess_does_not_pump_on_creature_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Grizzly Bear resolves onto the battlefield.
@@ -22287,6 +22837,7 @@ fn prowess_only_fires_for_its_own_controllers_casts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves; no prowess trigger was queued.
@@ -22325,6 +22876,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -22342,6 +22894,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -22372,6 +22925,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -22401,6 +22955,7 @@ fn monologue_tax_makes_treasure_on_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_whole_stack(&mut game); // Monologue Tax's Treasure trigger, then the filler spell.
@@ -22436,6 +22991,7 @@ fn cast_and_reach_rhystic_may_draw_pause(game: &mut Game, controller: PlayerId, 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Rhystic Study's trigger resolves: pauses on MayYesNo.
@@ -22547,6 +23103,7 @@ fn rhystic_study_ignores_your_own_casts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // The spell resolves; no Rhystic Study trigger was queued.
@@ -22584,6 +23141,7 @@ const INSTANT_FILLER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -22622,12 +23180,14 @@ const INSTANT_FILLER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -22659,6 +23219,7 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -22699,12 +23260,14 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -22767,6 +23330,7 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -22810,12 +23374,14 @@ const AURA_CAST_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -22854,6 +23420,7 @@ fn cast_spell_trigger_respects_spell_filter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Flight is castable");
     resolve_top_of_stack(&mut game); // the CastSpell trigger resolves: draw a card.
@@ -22886,6 +23453,7 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -22924,12 +23492,14 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -22955,6 +23525,7 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -22983,12 +23554,14 @@ const HISTORIC_TEST_ARTIFACT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -23156,6 +23729,42 @@ fn zimone_infinite_analyst_puts_two_counters_on_first_x_spell_each_turn() {
 }
 
 #[test]
+fn animar_grows_when_you_cast_a_creature_spell() {
+    // Animar, Soul of Elements: "Whenever you cast a creature spell, put a +1/+1 counter on
+    // Animar." CR 601.2i: the trigger goes on the stack above the spell that caused it, so it
+    // resolves (and the counter lands) before the creature spell itself resolves.
+    let mut g = TestGame::new();
+    let animar = g.spawn_on_battlefield(PlayerId(0), card("Animar, Soul of Elements"));
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+
+    g.cast(bear).submit();
+    assert_eq!(
+        g.stack().len(),
+        2,
+        "the cast trigger stacks above the creature spell it watched"
+    );
+    assert!(
+        matches!(g.stack()[1], StackEntry::Ability { .. }),
+        "the triggered ability is on top, resolving first"
+    );
+
+    resolve_top_of_stack(&mut g); // Animar's cast trigger resolves: a +1/+1 counter on itself.
+    assert_eq!(
+        g.plus_counters(animar),
+        1,
+        "the counter lands from the trigger, independent of (and before) the spell resolving"
+    );
+    assert_eq!(
+        g.zone_of(bear),
+        Zone::Stack,
+        "the creature spell itself hasn't resolved yet"
+    );
+
+    resolve_top_of_stack(&mut g);
+    assert_eq!(g.zone_of(bear), Zone::Battlefield);
+}
+
+#[test]
 fn elementalists_palette_gains_two_charge_counters_on_every_x_spell_cast() {
     // Elementalist's Palette: "Whenever you cast a spell with {X} in its mana cost, put two
     // charge counters on this artifact." No `nth_each_turn` gate — unlike Nev/Zimone's "first"
@@ -23200,6 +23809,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the cast_spell trigger, above the spell — places the counters
@@ -23242,6 +23852,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "plenty of restricted mana is floating, but a non-{{X}} spell can't spend it"
@@ -23263,6 +23874,7 @@ fn elementalists_palette_charge_mana_only_pays_x_costs() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
     assert_eq!(
@@ -23300,6 +23912,7 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -23328,6 +23941,7 @@ fn mangara_the_diplomat_draws_on_an_opponents_second_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_whole_stack(&mut game); // Mangara's draw trigger, then the filler spell.
@@ -23361,6 +23975,7 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -23400,12 +24015,14 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -23548,6 +24165,7 @@ fn a_copied_burn_spell_deals_its_damage_twice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("bolt is castable");
     let bolt_on_stack = top_spell(&game);
@@ -23565,6 +24183,7 @@ fn a_copied_burn_spell_deals_its_damage_twice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Twincast can target the bolt on the stack");
 
@@ -23611,6 +24230,7 @@ fn a_copied_spell_may_be_retargeted() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("bolt is castable");
     let bolt_on_stack = top_spell(&game);
@@ -23628,6 +24248,7 @@ fn a_copied_spell_may_be_retargeted() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Twincast can target the bolt on the stack");
 
@@ -23690,6 +24311,7 @@ fn a_copied_draw_spell_draws_twice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Ancestral Recall is castable");
     let recall_on_stack = top_spell(&game);
@@ -23707,6 +24329,7 @@ fn a_copied_draw_spell_draws_twice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Twincast can copy Ancestral Recall");
 
@@ -23751,6 +24374,7 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("bolt is castable");
     // P0 passes so P1 gets priority to respond with Twincast. (CR 117)
@@ -23773,6 +24397,7 @@ fn a_copy_is_controlled_by_the_copier_and_leaves_no_graveyard_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("P1 can copy P0's bolt");
 
@@ -23839,6 +24464,7 @@ fn a_countered_copy_of_a_spell_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("bolt is castable");
     let bolt_on_stack = top_spell(&game);
@@ -23860,6 +24486,7 @@ fn a_countered_copy_of_a_spell_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("P1 can copy P0's bolt");
 
@@ -23886,6 +24513,7 @@ fn a_countered_copy_of_a_spell_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the copy is a legal counter target");
     let events = resolve_top_of_stack_events(&mut game); // the counter resolves, countering the copy
@@ -23950,6 +24578,7 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("bolt is castable");
     let bolt_on_stack = top_spell(&game);
@@ -23967,6 +24596,7 @@ fn copying_an_instant_or_sorcery_fires_the_copiers_magecraft() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Twincast can copy the bolt");
 
@@ -24015,6 +24645,7 @@ const COUNTER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -24055,12 +24686,14 @@ const COUNTER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -24089,6 +24722,7 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(&game);
@@ -24110,6 +24744,7 @@ fn a_countered_spell_goes_to_its_owners_graveyard_and_never_resolves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a hard counter can target a creature spell on the stack");
 
@@ -24155,6 +24790,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(&game);
@@ -24177,6 +24813,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("first counter targets the bear");
     game.submit(Intent::Cast {
@@ -24193,6 +24830,7 @@ fn countering_a_spell_that_already_left_the_stack_does_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("second counter also targets the bear");
 
@@ -24238,6 +24876,7 @@ fn a_spell_that_cant_be_countered_stays_on_the_stack_against_a_hard_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Altered Ego is castable");
     let altered_ego_on_stack = top_spell(&game);
@@ -24259,6 +24898,7 @@ fn a_spell_that_cant_be_countered_stays_on_the_stack_against_a_hard_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a hard counter can still legally target an uncounterable spell");
 
@@ -24312,6 +24952,7 @@ fn counter_unless_pays_none_is_hard_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(&game);
@@ -24333,6 +24974,7 @@ fn counter_unless_pays_none_is_hard_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a hard counter can target a creature spell on the stack");
 
@@ -24371,6 +25013,7 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(game);
@@ -24392,6 +25035,7 @@ fn cast_quandrix_charm_counter_mode(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Quandrix Charm mode 0 can target the bear on the stack");
 
@@ -24523,6 +25167,7 @@ fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(game);
@@ -24544,6 +25189,7 @@ fn cast_hinder_countering_bear(game: &mut Game, filler: CardDef) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Hinder can target the bear on the stack");
 
@@ -24648,6 +25294,7 @@ fn hinder_countering_flashback_spell_exiles_it() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a flashback card is castable from its owner's graveyard");
     let looting_on_stack = top_spell(&game);
@@ -24669,6 +25316,7 @@ fn hinder_countering_flashback_spell_exiles_it() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Hinder can target the flashback spell on the stack");
 
@@ -24716,6 +25364,7 @@ fn spell_crumple_counters_a_spell_to_the_bottom_of_its_owners_library() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(&game);
@@ -24737,6 +25386,7 @@ fn spell_crumple_counters_a_spell_to_the_bottom_of_its_owners_library() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Spell Crumple can target the bear on the stack");
     let crumple_on_stack = top_spell(&game);
@@ -24811,6 +25461,7 @@ fn spell_crumple_countering_a_copy_makes_it_cease_to_exist_cr_707_10a() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let filler_on_stack = top_spell(&game);
@@ -24836,6 +25487,7 @@ fn spell_crumple_countering_a_copy_makes_it_cease_to_exist_cr_707_10a() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Flusterstorm can target the still-on-stack instant");
 
@@ -24873,6 +25525,7 @@ fn spell_crumple_countering_a_copy_makes_it_cease_to_exist_cr_707_10a() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the storm copy is a legal counter target");
     let crumple_on_stack = top_spell(&game);
@@ -24966,6 +25619,164 @@ fn a_copy_of_spell_crumple_ceasing_to_exist_does_not_leak_its_self_tuck_onto_the
         game.zone_of(crumple_on_stack),
         Zone::Graveyard,
         "a fizzled Spell Crumple goes to the graveyard — the copy's self-tuck mark must not leak onto it"
+    );
+}
+
+// ── Vengeful Rebirth's self-exile rider (CR 406, exile_self_on_resolve) ──────────────
+
+/// A test-only free instant whose only effect is `Effect::ExileSelfOnResolve` — the exact twin
+/// of `X_INSTANT_FILLER` above, but for the self-exile rider instead of a `GainLife` filler.
+const X_EXILE_SELF_ON_RESOLVE: CardDef = CardDef {
+    name: "Exile Self On Resolve Filler (test)",
+    id: "",
+    default_print: "",
+    cost: Cost::FREE,
+    kind: CardKind::Spell {
+        speed: SpellSpeed::Instant,
+    },
+    legendary: false,
+    uncounterable: false,
+    modal: false,
+    modal_choose: 1,
+    modal_choose_max: None,
+    modal_choose_max_if_commander: false,
+    identity_pips: &[],
+    colors: &[],
+    devoid: false,
+    enters_tapped: false,
+    enters_tapped_unless: None,
+    free_cast_if: None,
+    alternative_cost: None,
+    cast_only_during_combat: false,
+    approximates: None,
+    oracle: None,
+    set: "",
+    subtypes: &[],
+    otags: &[],
+    keywords: &[],
+    conditional_keywords: &[],
+    abilities: &[Ability {
+        timing: Timing::Spell,
+        effect: Effect::ExileSelfOnResolve,
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    cycling: None,
+    cycling_sacrifice: SacrificeCost::None,
+    flashback: None,
+    echo: None,
+    cumulative_upkeep: None,
+    recover: None,
+    bestow: None,
+    morph: None,
+    evoke: None,
+    delve: false,
+    escape: None,
+    retrace: false,
+    graveyard_cast_cost: None,
+    cascade: false,
+    functions_in_graveyard: false,
+    enchant: None,
+    enchant_graveyard: false,
+    back: None,
+    adventure: None,
+    halves: &[],
+    suspend: None,
+    vanishing: None,
+    devour: None,
+    demonstrate: false,
+    enter_as_copy: None,
+    encore: None,
+    hand_ability: &[],
+    forecast: None,
+    may_choose_not_to_untap: false,
+    dredge: None,
+};
+
+#[test]
+fn exile_self_on_resolve_exiles_the_resolving_sorcery_instead_of_the_graveyard() {
+    // The engine's exact twin of `Effect::TuckSelfToLibraryBottom` for the exile-flavored rider
+    // (Vengeful Rebirth's "Exile Vengeful Rebirth"): the resolving instant/sorcery exiles itself
+    // instead of going to the graveyard.
+    let mut game = Game::new();
+    let spell = game.spawn_in_hand(PlayerId(0), X_EXILE_SELF_ON_RESOLVE);
+
+    game.submit(cast_intent(PlayerId(0), spell, None))
+        .expect("the free filler instant is castable");
+    let spell_on_stack = top_spell(&game);
+
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(spell_on_stack),
+        Zone::Exile,
+        "an `ExileSelfOnResolve` step sends the resolving spell to exile, not the graveyard"
+    );
+}
+
+#[test]
+fn a_copy_of_an_exile_self_spell_ceases_to_exist_cr_707_10a() {
+    // CR 707.10a: a copy of an `ExileSelfOnResolve` spell runs the rider (setting the self-exile
+    // mark), then ceases to exist rather than reaching any exile zone. That mark must not survive
+    // into the next spell's resolution — regression twin of
+    // `a_copy_of_spell_crumple_ceasing_to_exist_does_not_leak_its_self_tuck_onto_the_next_spell`.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+
+    let exile_self = game.spawn_in_hand(PlayerId(0), X_EXILE_SELF_ON_RESOLVE);
+    let twincast = game.spawn_in_hand(PlayerId(0), card("Twincast"));
+    let filler = game.spawn_in_hand(PlayerId(0), X_INSTANT_FILLER);
+
+    // Stack (bottom → top): filler, exile-self spell, Twincast (copies the exile-self spell).
+    game.submit(cast_intent(PlayerId(0), filler, None))
+        .expect("the gain-life filler instant is castable");
+    let filler_on_stack = top_spell(&game);
+    game.submit(cast_intent(PlayerId(0), exile_self, None))
+        .expect("the exile-self filler instant is castable");
+    let exile_self_on_stack = top_spell(&game);
+    game.submit(cast_intent(
+        PlayerId(0),
+        twincast,
+        Some(Target::Object(exile_self_on_stack)),
+    ))
+    .expect("Twincast can copy the exile-self instant");
+
+    resolve_top_of_stack(&mut game); // Twincast resolves: mints a copy of the exile-self spell.
+    let copy = top_spell(&game);
+
+    // The copy resolves: sets the self-exile mark, then ceases to exist without ever reaching
+    // exile — CR 707.10a.
+    let events = resolve_top_of_stack_events(&mut game);
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::SpellCeasedToExist { spell } if *spell == copy)),
+        "the copy ceases to exist (CR 707.10a) rather than reaching exile, got {events:?}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::MovedToExile { from, .. } if *from == copy)),
+        "the copy must never actually reach exile, got {events:?}"
+    );
+
+    // The original exile-self spell resolves next — its own mark, not any leaked copy mark.
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(exile_self_on_stack),
+        Zone::Exile,
+        "the original exile-self spell still exiles itself"
+    );
+
+    // The filler below resolves last — untouched by either exile-self resolution.
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(filler_on_stack),
+        Zone::Graveyard,
+        "the unrelated filler spell went to the graveyard as usual, no leaked self-exile mark"
     );
 }
 
@@ -25657,6 +26468,7 @@ fn mulldrifter_evoke_charges_the_evoke_cost() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "{{2}}{{U}} isn't enough to pay the printed {{4}}{{U}} cost"
@@ -25677,6 +26489,7 @@ fn mulldrifter_evoke_charges_the_evoke_cost() {
             evoked: true,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect("the same {{2}}{{U}} in the pool fully funds the evoke cost");
     assert!(
@@ -25771,6 +26584,7 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Lightning Bolt is castable");
     let bolt_on_stack = top_spell(&game);
@@ -25792,6 +26606,7 @@ fn arcane_denial_counters_then_schedules_both_draws() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Arcane Denial can counter the bolt");
 
@@ -25881,6 +26696,7 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Lightning Bolt is castable");
     let bolt_on_stack = top_spell(&game);
@@ -25902,6 +26718,7 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Arcane Denial can counter the bolt");
     resolve_top_of_stack(&mut game); // counters the bolt, schedules both delayed draws.
@@ -26374,6 +27191,7 @@ fn next_cast_trigger_ignores_opponents_and_non_x_spells() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("P1's {X} spell is castable");
     resolve_top_of_stack(&mut g);
@@ -26462,6 +27280,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut g); // command_casts == 1
@@ -26482,6 +27301,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut g); // the commander dies and returns to the command zone
@@ -26503,6 +27323,7 @@ fn thunderclap_drake_copies_next_instant_per_commander_cast() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut g); // command_casts == 2
@@ -26590,6 +27411,7 @@ fn thunderclap_drake_only_copies_instant_or_sorcery() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut g); // command_casts == 1
@@ -26644,6 +27466,7 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut g); // command_casts == 1
@@ -26686,6 +27509,7 @@ fn thunderclap_drake_copy_noops_if_spell_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the counter can target the filler spell");
 
@@ -27013,6 +27837,7 @@ const FLIGHT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -27061,12 +27886,14 @@ const FLIGHT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -27090,6 +27917,7 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
         sorcery_speed: false,
         remove_counters: 0,
         remove_counters_kind: None,
+        remove_counters_x: false,
         return_self: false,
         mill_self: 0,
         discard_cost: 0,
@@ -27178,6 +28006,7 @@ const MUTATION: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -27217,12 +28046,14 @@ const MUTATION: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -27450,6 +28281,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -27482,6 +28314,7 @@ const MUTABLE_FLYER: CardDef = CardDef {
                 sorcery_speed: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
+                remove_counters_x: false,
                 return_self: false,
                 mill_self: 0,
                 discard_cost: 0,
@@ -27517,12 +28350,14 @@ const MUTABLE_FLYER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -27719,6 +28554,7 @@ fn modifier_sources_attributes_a_pump_to_the_spell_card_def() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -27804,6 +28640,7 @@ fn modifier_sources_clears_eot_pump_at_cleanup() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -28098,6 +28935,7 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Chains of Custody can target a creature P0 still controls");
     game.submit(Intent::PassPriority {
@@ -28118,6 +28956,7 @@ fn chains_of_custody_fizzles_to_the_graveyard_if_its_host_leaves_your_control() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Changing Loyalty has flash, so P1 can cast it in response");
     resolve_whole_stack(&mut game);
@@ -28443,6 +29282,7 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // Respond with a lethal bolt at the would-be host (instant speed, caster keeps priority). (CR 117)
@@ -28460,6 +29300,7 @@ fn an_aura_with_an_illegal_target_on_resolution_goes_to_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // bolt resolves; the bear dies to an SBA (CR 704)
@@ -28537,6 +29378,7 @@ fn coercive_impetus_fires_under_its_own_controller_on_an_opponents_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Coercive Impetus can enchant an opponent's creature");
     resolve_top_of_stack(&mut game);
@@ -28552,7 +29394,7 @@ fn coercive_impetus_fires_under_its_own_controller_on_an_opponents_creature() {
 
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(host, PlayerId(0))],
+        attackers: vec![(host, Defender::Player(PlayerId(0)))],
     })
     .expect("the goaded host must attack its only opponent");
     resolve_top_of_stack(&mut game); // the enchanted-creature-attacks trigger resolves
@@ -28597,6 +29439,7 @@ fn parasitic_impetus_drains_its_hosts_controller_when_it_attacks() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Parasitic Impetus can enchant an opponent's creature");
     resolve_top_of_stack(&mut game);
@@ -28614,7 +29457,7 @@ fn parasitic_impetus_drains_its_hosts_controller_when_it_attacks() {
 
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(host, PlayerId(0))],
+        attackers: vec![(host, Defender::Player(PlayerId(0)))],
     })
     .expect("the goaded host must attack its only opponent");
     resolve_top_of_stack(&mut game); // the enchanted-creature-attacks drain resolves (before combat damage) (CR 510, CR 120.3, CR 506)
@@ -28687,6 +29530,7 @@ fn martial_impetus_does_not_pump_attackers_of_its_controller_or_non_attackers() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Martial Impetus can enchant an opponent's creature");
     resolve_top_of_stack(&mut game);
@@ -28698,7 +29542,10 @@ fn martial_impetus_does_not_pump_attackers_of_its_controller_or_non_attackers() 
         player: PlayerId(1),
         // host is goaded by P0 (the Aura's controller) and must attack the non-goader P2;
         // b freely attacks P0 (the Aura's controller) directly, not one of P0's opponents.
-        attackers: vec![(host, PlayerId(2)), (b, PlayerId(0))],
+        attackers: vec![
+            (host, Defender::Player(PlayerId(2))),
+            (b, Defender::Player(PlayerId(0))),
+        ],
     })
     .expect("the goaded host attacks P2; b attacks the Aura's controller P0");
     resolve_top_of_stack(&mut game); // the enchanted-creature-attacks trigger resolves
@@ -28735,6 +29582,7 @@ fn cast_scriv_targeting(game: &mut Game, caster: PlayerId, scriv: ObjectId, vict
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Scriv is castable");
     // Resolve Scriv (multi-player: pass priority all the way around), landing on its ETB trigger's (CR 117, CR 603)
@@ -28806,7 +29654,7 @@ fn contract_pumps_the_enchanted_creature_attacking_one_of_your_opponents() {
     });
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(victim, PlayerId(2))], // attacking P2, an opponent of Scriv's controller
+        attackers: vec![(victim, Defender::Player(PlayerId(2)))], // attacking P2, an opponent of Scriv's controller
     })
     .expect("P1 attacks P2");
     // Resolve the enchanted-creature-attacks trigger (3-player: pass priority all the way around). (CR 117, CR 508, CR 603)
@@ -28843,7 +29691,7 @@ fn contract_drains_the_hosts_controller_when_not_attacking_your_opponents() {
     let hosts_controller_life = game.life(PlayerId(1));
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(victim, PlayerId(0))], // attacking Scriv's controller, not their opponent
+        attackers: vec![(victim, Defender::Player(PlayerId(0)))], // attacking Scriv's controller, not their opponent
     })
     .expect("P1 attacks P0");
     resolve_top_of_stack(&mut game); // the enchanted-creature-attacks trigger resolves
@@ -28884,7 +29732,7 @@ fn scriv_attack_trigger_mints_another_contract() {
     });
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(game.current_id(scriv), PlayerId(1))], // Scriv's battlefield id
+        attackers: vec![(game.current_id(scriv), Defender::Player(PlayerId(1)))], // Scriv's battlefield id
     })
     .expect("Scriv attacks P1");
     // Scriv's attack trigger pauses to choose its Contract target.
@@ -28939,6 +29787,7 @@ fn scriv_with_no_opponent_creature_leaves_no_phantom_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Scriv is castable");
     resolve_top_of_stack(&mut game); // Scriv enters; the ETB trigger has no legal target
@@ -29014,6 +29863,7 @@ fn angelic_destiny_returns_to_hand_when_its_host_dies_in_a_board_wipe() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the spell is castable");
     resolve_top_of_stack(&mut game);
@@ -29120,6 +29970,7 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -29158,12 +30009,14 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -29216,6 +30069,7 @@ const PLAIN_AURA: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -29244,12 +30098,14 @@ const PLAIN_AURA: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -29361,6 +30217,7 @@ fn hateful_eidolon_survives_own_death_in_batch() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the spell is castable");
     game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
@@ -30276,7 +31133,10 @@ fn aura_owner_losing_in_the_same_sweep_the_host_dies_does_not_panic() {
     });
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(2),
-        attackers: vec![(swing_at_p0, PlayerId(0)), (swing_at_p1, PlayerId(1))],
+        attackers: vec![
+            (swing_at_p0, Defender::Player(PlayerId(0))),
+            (swing_at_p1, Defender::Player(PlayerId(1))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -30452,6 +31312,7 @@ fn skyclave_apparition_leaves_mints_owner_illusion() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let entered = resolve_top_of_stack_events(&mut game); // the creature enters; its ETB pauses
@@ -30561,6 +31422,7 @@ fn skyclave_apparition_leaves_with_nothing_exiled_mints_no_illusion() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let entered = resolve_top_of_stack_events(&mut game); // the creature enters; its ETB pauses
@@ -30613,6 +31475,7 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -30649,12 +31512,14 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -31148,6 +32013,7 @@ fn cast_tragic_arrogance(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Tragic Arrogance is castable");
     while game.pending_choice().is_none() && !game.stack_is_empty() {
@@ -31411,6 +32277,7 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -31439,12 +32306,14 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -31484,6 +32353,7 @@ fn each_player_exiles_from_graveyard_in_apnap_order() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the spell is castable");
     // Resolve the spell — every player must pass priority (a 3-player table, not just two passes). (CR 117, CR 601)
@@ -31678,6 +32548,7 @@ fn cast_fateful_tempest_to_vote(game: &mut Game) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Fateful Tempest is castable");
     while game.pending_choice().is_none() && !game.stack_is_empty() {
@@ -31896,6 +32767,139 @@ fn fateful_tempest_vote_order_is_apnap_starting_with_you() {
         game.submit(Intent::ChooseMode { player, mode: 1 }).unwrap();
     }
     assert!(game.pending_choice().is_none(), "every seat has voted");
+}
+
+// ── Join forces (Collective Voyage): a shared X funded by every player (CR 101.4, CR 701.19) ──
+
+/// Cast Collective Voyage for P0 and pass priority until the join-forces payment round begins
+/// (the first `JoinForcesPayment` pause).
+fn cast_collective_voyage_to_payment(game: &mut Game) {
+    let spell = game.spawn_in_hand(PlayerId(0), card("Collective Voyage"));
+    for player in 0..game.player_count() as u8 {
+        game.fund_mana(PlayerId(player));
+    }
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Collective Voyage is castable");
+    while game.pending_choice().is_none() && !game.stack_is_empty() {
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
+}
+
+/// Answer the current join-forces pause: `amount` mana, or `None` to pay nothing.
+fn pay_join_forces(game: &mut Game, payer: PlayerId, amount: Option<u32>) {
+    let Some(PendingChoice::JoinForcesPayment { player, .. }) = game.pending_choice() else {
+        panic!("expected a join-forces payment pause");
+    };
+    assert_eq!(
+        player, payer,
+        "join forces pays in turn order starting with the caster"
+    );
+    game.submit(Intent::PayOptionalCostX {
+        player: payer,
+        pay: amount.is_some(),
+        x: amount.unwrap_or(0),
+    })
+    .expect("a legal join-forces payment");
+}
+
+#[test]
+fn collective_voyage_x_is_the_total_mana_every_player_paid() {
+    // "Join forces — Starting with you, each player may pay any amount of mana. Each player
+    // searches their library for up to X basic land cards, where X is the total amount of mana
+    // paid this way" — 2 + 1 + 0 = 3, and the searches are offered up to that shared X.
+    let mut game = Game::with_players(3, 0);
+    for player in [PlayerId(0), PlayerId(1), PlayerId(2)] {
+        game.stack_library(player, &[card("Forest"); 4]);
+    }
+    cast_collective_voyage_to_payment(&mut game);
+
+    pay_join_forces(&mut game, PlayerId(0), Some(2));
+    pay_join_forces(&mut game, PlayerId(1), Some(1));
+    pay_join_forces(&mut game, PlayerId(2), None);
+
+    let Some(PendingChoice::SearchLibrary {
+        player, remaining, ..
+    }) = game.pending_choice()
+    else {
+        panic!("the search round begins once every seat has paid");
+    };
+    assert_eq!(
+        player,
+        PlayerId(0),
+        "searches run in APNAP order (CR 101.4)"
+    );
+    assert_eq!(remaining, 3, "X is the total mana paid this way, 2 + 1 + 0");
+}
+
+#[test]
+fn collective_voyage_puts_each_players_basics_onto_the_battlefield_tapped() {
+    // "Each player searches their library for up to X basic land cards … puts them onto the
+    // battlefield tapped, then shuffles." Every seat searches, not just the caster.
+    let mut game = Game::with_players(3, 0);
+    let libraries: Vec<Vec<ObjectId>> = [PlayerId(0), PlayerId(1), PlayerId(2)]
+        .iter()
+        .map(|&p| game.stack_library(p, &[card("Forest"); 3]))
+        .collect();
+    cast_collective_voyage_to_payment(&mut game);
+
+    pay_join_forces(&mut game, PlayerId(0), Some(1));
+    pay_join_forces(&mut game, PlayerId(1), None);
+    pay_join_forces(&mut game, PlayerId(2), None);
+
+    for (seat, library) in libraries.iter().enumerate() {
+        let found = library[0];
+        game.submit(Intent::SearchLibrary {
+            player: PlayerId(seat as u8),
+            choice: Some(found),
+        })
+        .expect("each player searches their own library");
+        assert_eq!(
+            game.zone_of(found),
+            Zone::Battlefield,
+            "the found basic enters the battlefield"
+        );
+        assert!(game.is_tapped(game.current_id(found)), "it enters tapped");
+    }
+    assert!(game.pending_choice().is_none(), "every seat has searched");
+}
+
+#[test]
+fn collective_voyage_paying_more_mana_than_you_have_is_rejected() {
+    // "each player may pay any amount of mana" — any amount they can actually pay (CR 601.2h).
+    let mut game = Game::with_players(3, 0);
+    for player in [PlayerId(0), PlayerId(1), PlayerId(2)] {
+        game.stack_library(player, &[card("Forest"); 2]);
+    }
+    cast_collective_voyage_to_payment(&mut game);
+
+    let pool = game.mana_pool(PlayerId(0)).total();
+    assert_eq!(
+        game.submit(Intent::PayOptionalCostX {
+            player: PlayerId(0),
+            pay: true,
+            x: pool + 1,
+        }),
+        Err(Reject::CannotPayCost),
+        "a payment beyond the payer's mana is illegal"
+    );
 }
 
 /// Activate Priest of Forgotten Gods (paying its "sacrifice two other creatures" cost with
@@ -32162,6 +33166,7 @@ fn rootha_return_self_cost_bounces_source() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("bolt is castable");
     let bolt_on_stack = top_spell(&game);
@@ -32514,6 +33519,7 @@ const RELIC_SHAPED_TARGET_EXILE: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -32677,6 +33683,7 @@ fn exile_removes_a_creature_to_the_exile_zone_not_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -32711,6 +33718,7 @@ fn exiling_a_commander_diverts_it_to_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -32741,6 +33749,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -32760,6 +33769,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -32779,6 +33789,7 @@ fn a_commander_diverted_from_exile_can_still_be_recast_from_the_command_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -32816,6 +33827,7 @@ fn bounce_returns_a_creature_to_its_owners_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -32857,6 +33869,7 @@ fn bouncing_a_token_makes_it_cease_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -32885,6 +33898,7 @@ fn bouncing_a_token_makes_it_cease_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -32920,6 +33934,7 @@ fn mill_moves_the_top_cards_from_library_to_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -32958,6 +33973,7 @@ fn milling_more_than_the_library_holds_is_safe_and_causes_no_loss() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33007,6 +34023,7 @@ fn blaze_deals_x_damage_to_a_creature_then_to_a_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33033,6 +34050,7 @@ fn blaze_deals_x_damage_to_a_creature_then_to_a_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33073,6 +34091,7 @@ fn blaze_with_insufficient_mana_for_the_chosen_x_is_rejected() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(rejected, Err(Reject::CannotPayCost));
 
@@ -33091,6 +34110,7 @@ fn blaze_with_insufficient_mana_for_the_chosen_x_is_rejected() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert!(accepted.is_ok(), "X=2 fits the three mana available");
 }
@@ -33119,6 +34139,7 @@ fn tyvars_stand_pumps_by_x_and_grants_hexproof_and_indestructible_until_end_of_t
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33163,6 +34184,7 @@ fn primal_might_pumps_the_chosen_creature_by_x_until_end_of_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33195,6 +34217,7 @@ fn primal_might_pumped_creature_fights_chosen_enemy() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33248,6 +34271,7 @@ fn primal_might_fight_declined_leaves_creature_pumped() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33292,6 +34316,7 @@ fn primal_might_no_enemy_no_pause() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33572,7 +34597,7 @@ fn restless_spire_scries_when_it_attacks() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(spire, PlayerId(1))],
+        attackers: vec![(spire, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33608,7 +34633,7 @@ fn tanazir_attack_sets_other_creatures_base_pt_to_its_own() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(tanazir, PlayerId(1))],
+        attackers: vec![(tanazir, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     assert!(
@@ -33666,7 +34691,7 @@ fn tanazir_attack_snapshot_does_not_track_later_pt() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(tanazir, PlayerId(1))],
+        attackers: vec![(tanazir, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     game.submit(Intent::AnswerMay {
@@ -33716,6 +34741,7 @@ fn stroke_of_genius_makes_the_target_player_draw_x() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33754,6 +34780,7 @@ fn the_mana_paid_scales_with_the_chosen_x() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         before - total_mana(&game, PlayerId(0))
@@ -33790,6 +34817,7 @@ fn raise_dead_returns_a_creature_from_your_graveyard_to_your_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -33827,6 +34855,7 @@ fn reanimate_puts_a_creature_onto_the_battlefield_and_fires_its_etb() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Reanimate resolves; the creature enters, ETB triggers.
@@ -33878,6 +34907,7 @@ fn animate_dead_targets_graveyard_creature_at_cast() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
     };
     assert!(
@@ -33935,6 +34965,7 @@ fn animate_dead_fizzles_if_target_exiled_in_response() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -34072,6 +35103,7 @@ fn reanimate_can_target_an_opponents_graveyard_under_your_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -34107,6 +35139,7 @@ fn a_declined_sun_titan_trigger_reanimates_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Titan enters; its optional ETB reanimate pauses for yes/no.
@@ -34159,6 +35192,7 @@ fn an_accepted_sun_titan_trigger_pauses_to_choose_its_reanimation_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Titan enters; optional ETB reanimate pauses for yes/no.
@@ -34223,6 +35257,7 @@ fn finality_counter_exiles_instead_of_dying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → SBA sweep finds lethal damage. (CR 704, CR 120.3)
@@ -34253,6 +35288,7 @@ fn finality_counter_exiles_instead_of_dying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -34280,6 +35316,7 @@ fn finality_counter_exiles_instead_of_dying() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -34365,6 +35402,7 @@ fn excava_reanimates_with_finality_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -34496,6 +35534,7 @@ fn plain_reanimate_does_not_set_type() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -34537,6 +35576,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
         "casting with no target is illegal when the effect requires one",
@@ -34559,6 +35599,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
         "a non-creature graveyard card is not a legal target",
@@ -34581,6 +35622,7 @@ fn raise_dead_rejects_illegal_graveyard_targets() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
         "the your-graveyard scope can't reach an opponent's graveyard",
@@ -34602,6 +35644,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
+            reveal_creature_from_hand: false,
             pay_life_x: false,
             pay_life: 0,
             sacrifice: None,
@@ -34625,6 +35668,7 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -34653,12 +35697,14 @@ const NONCREATURE_PERMANENT_MV2: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -34678,6 +35724,7 @@ const NONCREATURE_PERMANENT_MV4: CardDef = CardDef {
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
+            reveal_creature_from_hand: false,
             pay_life_x: false,
             pay_life: 0,
             sacrifice: None,
@@ -34732,6 +35779,7 @@ fn reanimate_noncreature_permanent_under_mv_sevinnes() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -34931,6 +35979,7 @@ fn primary_research_reanimates_a_nonland_permanent_gated_by_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Primary Research enters; its mandatory ETB pauses to target.
@@ -34979,6 +36028,7 @@ const NONCREATURE_PERMANENT_MV5: CardDef = CardDef {
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
+            reveal_creature_from_hand: false,
             pay_life_x: false,
             pay_life: 0,
             sacrifice: None,
@@ -35017,6 +36067,7 @@ fn angel_of_indemnity_reanimates_permanent_card_mv_four() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Angel enters; its mandatory ETB pauses to target.
@@ -35071,6 +36122,7 @@ fn angel_of_indemnity_permanent_card_target_includes_lands_but_not_mv_five() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Angel enters; its mandatory ETB pauses to target.
@@ -35114,6 +36166,7 @@ fn sun_titan_can_reanimate_a_land_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Titan enters; its optional ETB reanimate pauses for yes/no.
@@ -35157,6 +36210,7 @@ fn karmic_guide_reanimates_only_from_your_own_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Karmic Guide enters; its mandatory ETB pauses to target.
@@ -35244,6 +36298,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -35258,6 +36313,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Yours,
                 filter: CardFilter::Land,
+                other: false,
             },
             count: TargetCount {
                 min: 1,
@@ -35292,12 +36348,14 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -35334,6 +36392,7 @@ fn return_land_from_graveyard_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -35368,6 +36427,7 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -35382,6 +36442,7 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Yours,
                 filter: CardFilter::Sorcery,
+                other: false,
             },
             count: TargetCount {
                 min: 1,
@@ -35416,12 +36477,14 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -35476,6 +36539,7 @@ fn life_from_the_loam_returns_up_to_three_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Life from the Loam is castable at sorcery speed with an empty stack");
 
@@ -35543,6 +36607,7 @@ fn life_from_the_loam_returns_just_one_land_when_only_one_is_available() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Life from the Loam is castable at sorcery speed with an empty stack");
 
@@ -35584,6 +36649,7 @@ fn raise_dead_still_returns_exactly_one_card_with_default_count() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Raise Dead is castable with a single legal graveyard target");
     assert!(
@@ -35623,6 +36689,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -35637,6 +36704,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Opponents,
                 filter: CardFilter::AnyCard,
+                other: false,
             },
             count: TargetCount {
                 min: 1,
@@ -35671,12 +36739,14 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -35820,6 +36890,7 @@ const REPLENISH: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -35859,12 +36930,14 @@ const REPLENISH: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -35893,6 +36966,7 @@ fn mass_return_enchantments_from_graveyard_replenish() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -35948,6 +37022,7 @@ const MASS_RETURN_ALL_CREATURES: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -35987,12 +37062,14 @@ const MASS_RETURN_ALL_CREATURES: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -36024,6 +37101,7 @@ fn mass_return_creatures_from_all_graveyards() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -36086,6 +37164,7 @@ fn all_hallows_eve_returns_all_graveyard_creatures_on_expiry() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -36228,6 +37307,7 @@ fn scry_pauses_on_an_arrange_top_choice_and_reorders_the_library() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Owl enters; its ETB scry-3 trigger goes on the stack.
@@ -36309,6 +37389,7 @@ fn surveil_puts_the_bottom_pile_into_the_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Informant enters; its ETB surveil-2 trigger goes on stack.
@@ -36375,6 +37456,7 @@ fn resolve_look_dig(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Look-Dig enters; its ETB look-at-top trigger goes on the stack.
@@ -36576,6 +37658,7 @@ fn resolve_look_dig_to_battlefield(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Look-Dig enters; its ETB look-at-top trigger goes on the stack.
@@ -37007,6 +38090,7 @@ fn expressive_iteration_routes_top_three() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // resolves → pause on DistributeTop
@@ -37096,6 +38180,7 @@ fn resolve_look_dig_mandatory(game: &mut Game) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Look-Dig enters; its ETB look-at-top trigger goes on the stack.
@@ -37178,6 +38263,93 @@ fn dig_through_time_min_bounded_by_short_look() {
     assert_eq!(game.zone_of(lib[0]), Zone::Hand);
 }
 
+// ── Prophetic Bolt: damage then a mandatory look-at-top-four (#181) ────────────────────
+
+#[test]
+fn prophetic_bolt_deals_four_then_puts_one_of_top_four_in_hand() {
+    // Prophetic Bolt: "Prophetic Bolt deals 4 damage to any target. Look at the top four cards
+    // of your library. Put one of those cards into your hand and the rest on the bottom of your
+    // library in any order."
+    let mut game = TestGame::new();
+    let bolt = game.spawn_in_hand(PlayerId(0), card("Prophetic Bolt"));
+    // Top four (looked at) plus one untouched remainder below them.
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Forest"),
+            card("Grizzly Bear"),
+            card("Island"),
+            card("Mountain"),
+            card("Swamp"),
+        ],
+    );
+
+    game.cast(bolt).at(Target::Player(PlayerId(1))).submit();
+    resolve_top_of_stack(&mut game); // the damage resolves, then the look-at-top pauses
+
+    assert_eq!(game.life(PlayerId(1)), 16, "4 damage dealt to the target");
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::SelectFromTop {
+            player: PlayerId(0),
+            cards: vec![lib[0], lib[1], lib[2], lib[3]],
+            filter: CardFilter::AnyCard,
+            up_to: 1,
+            min: 1,
+            dest: TopDest::Hand,
+            dest_tapped: false,
+            rest: RestDest::Bottom,
+            mv_budget: None,
+        }),
+        "look at the top four, any card is eligible",
+    );
+
+    // Declining entirely falls short of the mandatory minimum of one.
+    assert_eq!(
+        game.submit(Intent::SelectFromTop {
+            player: PlayerId(0),
+            cards: vec![],
+        }),
+        Err(Reject::IllegalChoice),
+        "the pick is mandatory, not a \"may\""
+    );
+
+    game.submit(Intent::SelectFromTop {
+        player: PlayerId(0),
+        cards: vec![lib[1]],
+    })
+    .unwrap();
+    assert_eq!(game.pending_choice(), None, "the look-at-top is resolved");
+
+    assert_eq!(
+        game.zone_of(lib[1]),
+        Zone::Hand,
+        "the chosen Grizzly Bear is now in hand",
+    );
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        4,
+        "one card left the library for hand; the other four remain",
+    );
+    // The untouched remainder Swamp is still on top; the three non-selected cards land on the
+    // bottom, below it, in a random (PRNG-shuffled) order — same cards, order unasserted.
+    assert_eq!(
+        draw_top_from(&mut game, PlayerId(0)),
+        lib[4],
+        "the untouched remainder Swamp is on top",
+    );
+    let mut bottomed: Vec<ObjectId> = (0..3)
+        .map(|_| draw_top_from(&mut game, PlayerId(0)))
+        .collect();
+    bottomed.sort();
+    let mut expected = vec![lib[0], lib[2], lib[3]];
+    expected.sort();
+    assert_eq!(
+        bottomed, expected,
+        "the three unselected cards land on the bottom, below the untouched remainder"
+    );
+}
+
 #[test]
 fn scry_for_more_than_the_library_holds_is_safe() {
     let mut game = Game::new();
@@ -37200,6 +38372,7 @@ fn scry_for_more_than_the_library_holds_is_safe() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -37290,6 +38463,7 @@ fn an_arrange_top_answer_must_partition_the_shown_cards() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -37342,6 +38516,7 @@ fn a_creature_cost_reducer_shaves_generic_from_a_creature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a {1}{G} creature is castable for {G} under a {1}-less reducer");
     assert_eq!(game.zone_of(bear), Zone::Stack);
@@ -37379,6 +38554,7 @@ fn a_creature_cost_reducer_leaves_noncreature_spells_alone() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "a creature-only reducer must not shave a noncreature spell's generic",
@@ -37406,6 +38582,7 @@ fn cost_reduction_never_removes_a_colored_pip() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "reduction floors at 0 generic and never touches the {{G}} pip",
@@ -37428,6 +38605,7 @@ fn cost_reduction_never_removes_a_colored_pip() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("{G} pays for the {G} creature");
 }
@@ -37461,6 +38639,7 @@ fn cost_reducers_stack() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("{3}{W}{W} reduced by two {1}-off reducers is castable for {1}{W}{W}");
     assert_eq!(
@@ -37592,6 +38771,7 @@ fn killian_reduces_only_spells_that_target_a_creature() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "a player-targeting spell is outside Killian's filter",
@@ -37612,6 +38792,7 @@ fn killian_reduces_only_spells_that_target_a_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a creature-targeting spell gets Killian's {2} off");
     assert_eq!(game.zone_of(blaze), Zone::Stack);
@@ -37647,6 +38828,7 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the Aura reducer shaves the generic off an Aura spell");
     resolve_top_of_stack(&mut game); // empty the stack — the next spell is sorcery-speed
@@ -37670,6 +38852,7 @@ fn aura_cost_reducer_only_discounts_aura_spells_transcendent_envoy() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "an Aura-only reducer must not shave a noncreature, non-Aura spell's generic",
@@ -37701,6 +38884,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the instant/sorcery reducer shaves the generic off an instant spell");
     // Stormcatch Mentor also has prowess (#61): its own pump trigger sits above Infernal
@@ -37730,6 +38914,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the instant/sorcery reducer shaves the generic off a sorcery spell");
     // Besmirch is noncreature too, so it also fires prowess — drain the whole stack again.
@@ -37758,6 +38943,7 @@ fn instant_or_sorcery_reducer_stormcatch_mentor() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "an instant/sorcery-only reducer must not shave an enchantment spell's generic",
@@ -37798,6 +38984,7 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("{8}{R} reduced by 3 live creatures is castable for {5}{R}");
     assert_eq!(game.zone_of(act), Zone::Stack);
@@ -37830,6 +39017,7 @@ fn blasphemous_act_costs_one_less_per_creature_on_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("8 creatures floor the {8} generic at 0 — only the {R} pip is owed");
     assert_eq!(game.zone_of(act), Zone::Stack);
@@ -37863,6 +39051,7 @@ fn self_reduction_absent_leaves_cost_unchanged() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "3 creatures on the battlefield must not shave Grizzly Bear's generic — it has no self reduction",
@@ -37896,6 +39085,7 @@ fn tomik_has_affinity_for_planeswalkers_they_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("one planeswalker you control drops the {1} generic to {0} — {W}{B} alone pays it");
     assert_eq!(game.zone_of(tomik), Zone::Stack);
@@ -37922,6 +39112,7 @@ fn tomik_has_affinity_for_planeswalkers_they_control() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "with zero planeswalkers controlled, the {{1}} generic is still owed",
@@ -37963,6 +39154,7 @@ fn volcanic_salvo_costs_one_less_per_total_power_you_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("7 total power drops the {10} generic to {3} — {3}{R}{R} (5 mana) pays it");
     assert_eq!(game.zone_of(salvo), Zone::Stack);
@@ -38013,6 +39205,7 @@ fn furygale_flocking_costs_one_less_per_graveyard_instant_or_sorcery() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("2 instant/sorcery cards in the graveyard drop the {8} generic to {6} — {6}{R}{R} (8 mana) pays it");
     assert_eq!(
@@ -38044,6 +39237,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the creature enters
@@ -38069,6 +39263,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("having gained life this turn, the {2} generic drops to {0} — {B}{G} alone pays it");
     assert_eq!(game.zone_of(spear), Zone::Stack);
@@ -38096,6 +39291,7 @@ fn mortality_spear_costs_less_if_you_gained_life_this_turn() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "with no life gained this turn, the {{2}} generic is still owed",
@@ -38137,6 +39333,7 @@ fn avatar_of_woe_costs_six_less_with_ten_creature_cards_in_all_graveyards() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "nine creature cards across all graveyards is short of the threshold",
@@ -38159,11 +39356,88 @@ fn avatar_of_woe_costs_six_less_with_ten_creature_cards_in_all_graveyards() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect(
         "ten creature cards across all graveyards reduces {6}{B}{B} to {B}{B} — two Swamps pay it",
     );
     assert_eq!(game.zone_of(avatar), Zone::Stack);
+}
+
+#[test]
+fn avatar_of_fury_costs_six_less_when_one_opponent_has_seven_lands() {
+    // "If an opponent controls seven or more lands, this spell costs {6} less to cast."
+    // Avatar of Fury's {6}{R}{R} drops to {R}{R} once a single opponent controls seven lands.
+    let mut game = Game::with_players(4, 0);
+    let avatar = game.spawn_in_hand(PlayerId(0), card("Avatar of Fury"));
+    let mountain1 = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    let mountain2 = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    tap(&mut game, PlayerId(0), mountain1);
+    tap(&mut game, PlayerId(0), mountain2);
+
+    for _ in 0..7 {
+        game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    }
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: avatar,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("one opponent with seven lands reduces {6}{R}{R} to {R}{R} — two Mountains pay it");
+    assert_eq!(game.zone_of(avatar), Zone::Stack);
+}
+
+#[test]
+fn avatar_of_fury_summed_opponent_lands_do_not_trigger_the_discount() {
+    // Three opponents controlling three lands each sum to nine — enough to satisfy
+    // `OpponentsControlLands`, the *summed* condition — but "an opponent controls seven or
+    // more lands" holds only when a single opponent individually clears seven. No opponent here
+    // does, so the discount must not apply and the full {6}{R}{R} is still owed.
+    let mut game = Game::with_players(4, 0);
+    let avatar = game.spawn_in_hand(PlayerId(0), card("Avatar of Fury"));
+    let mountain1 = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    let mountain2 = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    tap(&mut game, PlayerId(0), mountain1);
+    tap(&mut game, PlayerId(0), mountain2);
+
+    for opponent in [PlayerId(1), PlayerId(2), PlayerId(3)] {
+        for _ in 0..3 {
+            game.spawn_on_battlefield(opponent, card("Forest"));
+        }
+    }
+
+    assert_eq!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: avatar,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        }),
+        Err(Reject::CannotPayCost),
+        "nine lands summed across three opponents doesn't satisfy the per-opponent threshold",
+    );
 }
 
 // ── Goad (CR 701.38) ─────────────────────────────────────────────────────────────
@@ -38178,7 +39452,7 @@ fn a_goaded_creature_must_attack_and_may_hit_a_nongoader() {
 
     assert_eq!(
         game.required_attacks(PlayerId(0)),
-        vec![(c, PlayerId(2))],
+        vec![(c, Defender::Player(PlayerId(2)))],
         "required_attacks suggests the non-goader defender"
     );
 
@@ -38194,7 +39468,7 @@ fn a_goaded_creature_must_attack_and_may_hit_a_nongoader() {
     // Sending it at a non-goader (P2) satisfies goad. (CR 701.38)
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(c, PlayerId(2))],
+        attackers: vec![(c, Defender::Player(PlayerId(2)))],
     })
     .expect("attacking a non-goader satisfies goad");
 }
@@ -38269,7 +39543,7 @@ fn a_goaded_creature_must_avoid_its_goader_when_a_nongoader_is_available() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(c, PlayerId(1))],
+            attackers: vec![(c, Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "a goaded creature must attack a non-goader if able",
@@ -38277,7 +39551,7 @@ fn a_goaded_creature_must_avoid_its_goader_when_a_nongoader_is_available() {
     // The non-goader P2 is a legal target.
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(c, PlayerId(2))],
+        attackers: vec![(c, Defender::Player(PlayerId(2)))],
     })
     .expect("attacking a non-goader is legal");
 }
@@ -38293,7 +39567,7 @@ fn a_goaded_creature_may_attack_a_goader_when_every_opponent_goaded_it() {
     // With no non-goader opponent, attacking a goader (P1) is allowed ("if able").
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(c, PlayerId(1))],
+        attackers: vec![(c, Defender::Player(PlayerId(1)))],
     })
     .expect("with every opponent a goader, attacking one is legal");
 }
@@ -38355,6 +39629,7 @@ fn a_summoning_sick_goaded_creature_is_not_required_to_attack() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     for p in [PlayerId(0), PlayerId(1), PlayerId(2)] {
@@ -38398,6 +39673,7 @@ fn furygale_flocking_tokens_must_attack_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Furygale Flocking is castable with a funded pool");
     let events = resolve_top_of_stack_events(&mut game);
@@ -38417,7 +39693,7 @@ fn furygale_flocking_tokens_must_attack_this_turn() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(tokens[0], PlayerId(1))],
+            attackers: vec![(tokens[0], Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "an able must-attack token that isn't declared is an illegal declaration",
@@ -38425,7 +39701,10 @@ fn furygale_flocking_tokens_must_attack_this_turn() {
     // Declaring both as attackers against the required opponent satisfies the requirement.
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(tokens[0], PlayerId(1)), (tokens[1], PlayerId(1))],
+        attackers: vec![
+            (tokens[0], Defender::Player(PlayerId(1))),
+            (tokens[1], Defender::Player(PlayerId(1))),
+        ],
     })
     .expect("declaring the required tokens as attackers is legal");
 }
@@ -38452,6 +39731,7 @@ fn furygale_must_attack_requirement_expires_at_the_turn_boundary() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -38520,6 +39800,7 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let mut events = Vec::new();
@@ -38582,6 +39863,7 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let mut events = Vec::new();
@@ -38643,10 +39925,10 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
             attackers: vec![
-                (tokens_for_p1[0], PlayerId(2)),
-                (tokens_for_p1[1], PlayerId(2)),
-                (tokens_for_p2[0], PlayerId(2)),
-                (tokens_for_p2[1], PlayerId(2)),
+                (tokens_for_p1[0], Defender::Player(PlayerId(2))),
+                (tokens_for_p1[1], Defender::Player(PlayerId(2))),
+                (tokens_for_p2[0], Defender::Player(PlayerId(2))),
+                (tokens_for_p2[1], Defender::Player(PlayerId(2))),
             ],
         }),
         Err(Reject::IllegalDeclaration),
@@ -38656,10 +39938,10 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
         attackers: vec![
-            (tokens_for_p1[0], PlayerId(1)),
-            (tokens_for_p1[1], PlayerId(1)),
-            (tokens_for_p2[0], PlayerId(2)),
-            (tokens_for_p2[1], PlayerId(2)),
+            (tokens_for_p1[0], Defender::Player(PlayerId(1))),
+            (tokens_for_p1[1], Defender::Player(PlayerId(1))),
+            (tokens_for_p2[0], Defender::Player(PlayerId(2))),
+            (tokens_for_p2[1], Defender::Player(PlayerId(2))),
         ],
     })
     .expect("declaring each pair against its own required opponent is legal");
@@ -38700,7 +39982,12 @@ fn ruhan_attacks_a_random_opponent_each_combat() {
         );
         let target = required[0].1;
         assert!(
-            [PlayerId(1), PlayerId(2), PlayerId(3)].contains(&target),
+            [
+                Defender::Player(PlayerId(1)),
+                Defender::Player(PlayerId(2)),
+                Defender::Player(PlayerId(3))
+            ]
+            .contains(&target),
             "the chosen opponent is a living opponent, seed {seed}"
         );
         chosen_by_seed.insert(target);
@@ -38717,6 +40004,7 @@ fn ruhan_attacks_a_random_opponent_each_combat() {
         // Attacking a different, non-chosen opponent is also illegal.
         let wrong = [PlayerId(1), PlayerId(2), PlayerId(3)]
             .into_iter()
+            .map(Defender::Player)
             .find(|&p| p != target)
             .unwrap();
         assert_eq!(
@@ -38772,6 +40060,7 @@ fn cast_promise_keeping_one_each(game: &mut Game) -> [ObjectId; 3] {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Promise of Loyalty ({4}{W}) is castable with a funded pool");
     advance_until(game, |g| g.pending_choice().is_some());
@@ -38804,7 +40093,7 @@ fn promise_of_loyalty_marks_survivor_with_vow_and_forbids_attacking_caster() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(1),
-            attackers: vec![(p1_keep, PlayerId(0))],
+            attackers: vec![(p1_keep, Defender::Player(PlayerId(0)))],
         }),
         Err(Reject::IllegalDeclaration),
         "a vow-marked creature can't attack the player it's vowed to",
@@ -38812,7 +40101,7 @@ fn promise_of_loyalty_marks_survivor_with_vow_and_forbids_attacking_caster() {
     // …but it's free to attack a different opponent (P2).
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(p1_keep, PlayerId(2))],
+        attackers: vec![(p1_keep, Defender::Player(PlayerId(2)))],
     })
     .expect("the vow only forbids attacking its recorded player");
 }
@@ -38832,7 +40121,7 @@ fn promise_of_loyalty_restriction_lifts_when_the_vow_counter_is_removed() {
     assert_eq!(game.counters_of_kind(p1_keep, CounterKind::Vow), 0);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(p1_keep, PlayerId(0))],
+        attackers: vec![(p1_keep, Defender::Player(PlayerId(0)))],
     })
     .expect("with no vow counter, the creature can attack the former caster");
 }
@@ -38861,6 +40150,7 @@ fn an_ordinary_keep_one_edict_places_no_vow_counters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the creature enters
@@ -38907,6 +40197,7 @@ fn casting_besmirch_goads_the_target_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Besmirch ({1}{R}{R}) is castable with a funded pool");
     for p in [PlayerId(0), PlayerId(1), PlayerId(2)] {
@@ -38949,6 +40240,7 @@ fn goad_on_attached_forces_attack_and_avoids_the_goader_martial_impetus() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Martial Impetus is castable");
     for p in [PlayerId(0), PlayerId(1), PlayerId(2)] {
@@ -38982,14 +40274,14 @@ fn goad_on_attached_forces_attack_and_avoids_the_goader_martial_impetus() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(1),
-            attackers: vec![(enchanted, PlayerId(0))],
+            attackers: vec![(enchanted, Defender::Player(PlayerId(0)))],
         }),
         Err(Reject::IllegalDeclaration),
         "must attack a non-goader if able",
     );
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(enchanted, PlayerId(2))],
+        attackers: vec![(enchanted, Defender::Player(PlayerId(2)))],
     })
     .expect("attacking the non-goader P2 satisfies the continuous goad");
 }
@@ -39014,6 +40306,7 @@ fn goad_on_attached_ends_when_the_aura_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Martial Impetus is castable");
     for p in [PlayerId(0), PlayerId(1), PlayerId(2)] {
@@ -39040,6 +40333,7 @@ fn goad_on_attached_ends_when_the_aura_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Fracture is castable");
     for p in [PlayerId(0), PlayerId(1), PlayerId(2)] {
@@ -39101,7 +40395,7 @@ fn faiths_fetters_host_cant_attack_or_block() {
     assert_eq!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(1),
-            attackers: vec![(host, PlayerId(0))],
+            attackers: vec![(host, Defender::Player(PlayerId(0)))],
         }),
         Err(Reject::IllegalDeclaration),
         "Faith's Fetters' host can't attack"
@@ -39241,6 +40535,7 @@ fn prison_term_reattaches_to_entering_opponent_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // host_b enters, pausing the "may attach" trigger for P0.
@@ -39363,6 +40658,7 @@ fn reattach_effect_rechecks_the_auras_enchant_filter_at_the_move() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the Angel enters, pausing the "may attach" trigger for P0.
@@ -39413,6 +40709,7 @@ fn pacifism_restriction_lifts_when_aura_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Fracture is castable");
     resolve_top_of_stack(&mut game);
@@ -39464,7 +40761,7 @@ fn pacifism_restriction_lifts_when_aura_leaves() {
     assert!(
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(1),
-            attackers: vec![(host, PlayerId(0))],
+            attackers: vec![(host, Defender::Player(PlayerId(0)))],
         })
         .is_ok(),
         "removing Faith's Fetters lifts the can't-attack restriction"
@@ -39495,6 +40792,7 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -39533,12 +40831,14 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -39612,6 +40912,7 @@ const RUBINIA: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -39783,6 +41084,7 @@ fn besmirch_untaps_steals_hastes_and_goads() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Besmirch ({1}{R}{R}) is castable with a funded pool");
     for p in [PlayerId(0), PlayerId(1), PlayerId(2)] {
@@ -39852,6 +41154,7 @@ const MELODY: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -39893,12 +41196,14 @@ const MELODY: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -40082,7 +41387,10 @@ fn a_stolen_creature_blocks_for_its_thief_not_its_owner_cr_509_1a() {
     });
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(2),
-        attackers: vec![(atk_p0, PlayerId(0)), (atk_p1, PlayerId(1))],
+        attackers: vec![
+            (atk_p0, Defender::Player(PlayerId(0))),
+            (atk_p1, Defender::Player(PlayerId(1))),
+        ],
     })
     .expect("P2 swings one attacker at each opponent");
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -40555,6 +41863,7 @@ fn cast_vedalken_and_exchange(
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("cast Vedalken Plotter");
     // Resolve the creature spell around the table; its ETB then pauses on the first land clause.
@@ -40901,7 +42210,7 @@ fn a_stolen_creature_from_reins_can_attack_for_its_thief() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(stolen, PlayerId(1))],
+        attackers: vec![(stolen, Defender::Player(PlayerId(1)))],
     })
     .expect("the hasted, swapped creature attacks for its new controller");
 }
@@ -41083,7 +42392,7 @@ fn a_stolen_creature_from_insurrection_can_attack_for_its_thief() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(stolen, PlayerId(1))],
+        attackers: vec![(stolen, Defender::Player(PlayerId(1)))],
     })
     .expect("the hasted, stolen creature attacks for its new controller");
 }
@@ -41111,6 +42420,204 @@ fn entrancing_melody_gains_permanent_control_of_a_mana_value_x_creature() {
         game.controller_of(mv3),
         PlayerId(0),
         "the steal is permanent, not until end of turn"
+    );
+}
+
+// ── Board-wide control reset (CR 720 — Homeward Path) ───────────────────────────────
+
+/// A test proxy for Homeward Path's `{T}: Each player gains control of all creatures they own.`
+/// — isolates `Effect::RevertAllCreaturesToOwners` from the land's mana ability and real TOML.
+const REVERT_ALL_TEST: CardDef = CardDef {
+    name: "Revert All Creatures To Owners (test)",
+    abilities: &[Ability {
+        timing: Timing::Activated(ActivationCost {
+            taps_self: true,
+            mana: Cost::FREE,
+            sacrifice: SacrificeCost::None,
+            pay_life: Amount::Fixed(0),
+            self_damage: 0,
+            loyalty: None,
+            once_each_turn: false,
+            sorcery_speed: false,
+            remove_counters: 0,
+            remove_counters_kind: None,
+            remove_counters_x: false,
+            return_self: false,
+            mill_self: 0,
+            discard_cost: 0,
+            exile_self: false,
+            graveyard_exile_target_count: 0,
+        }),
+        effect: Effect::RevertAllCreaturesToOwners,
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    ..creature("Revert All Creatures To Owners (test)", 0, 4, &[])
+};
+
+/// Activate `object`'s `{T}: Each player gains control of all creatures they own` ability for
+/// `player` and resolve it, returning the resolution's own events.
+fn activate_revert_all(game: &mut Game, player: PlayerId, object: ObjectId) -> Vec<Event> {
+    let index = only_activated_ability_index(game, object);
+    game.submit(Intent::ActivateAbility {
+        player,
+        object,
+        ability_index: index,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Homeward Path's {T} control reset is activatable");
+    resolve_top_of_stack_events(game)
+}
+
+#[test]
+fn homeward_path_returns_stolen_creatures_to_their_owners() {
+    // "Each player gains control of all creatures they own" (CR 720): P0 steals P1's creature,
+    // then P1 activates the reset and gets it back.
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA]);
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve(&mut game, steal, Some(Target::Object(creature)));
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(0),
+        "P0's steal takes control before the reset"
+    );
+
+    let reset = game.spawn_on_battlefield(PlayerId(1), REVERT_ALL_TEST);
+    activate_revert_all(&mut game, PlayerId(1), reset);
+
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(1),
+        "the reset hands the creature back to its owner"
+    );
+}
+
+#[test]
+fn homeward_path_leaves_creatures_already_controlled_by_their_owners_alone() {
+    // An untouched board is a no-op: no spurious `ControlGained` events, no control churn.
+    let mut game = Game::new();
+    let p0_creature = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let p1_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let reset = game.spawn_on_battlefield(PlayerId(0), REVERT_ALL_TEST);
+
+    let events = activate_revert_all(&mut game, PlayerId(0), reset);
+
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::ControlGained { .. })),
+        "no creature needs reverting, so no control-change events fire: {events:?}"
+    );
+    assert_eq!(game.controller_of(p0_creature), PlayerId(0));
+    assert_eq!(game.controller_of(p1_creature), PlayerId(1));
+}
+
+#[test]
+fn homeward_path_reverts_every_players_stolen_creatures_not_just_the_activators() {
+    // "Each player gains control of all creatures they own", not "you": P0 steals P1's creature,
+    // then (on a later turn) P2 steals P0's creature, then P2 activates the reset. Both stolen
+    // creatures must go home, even the one P2 never touched and doesn't own.
+    let mut game = Game::with_players(3, 0);
+    for s in 0..3 {
+        game.stack_library(PlayerId(s), &[VANILLA; 8]);
+    }
+    let p0_creature = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let p1_creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    let steal_p1s = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(0),
+        3,
+        steal_p1s,
+        Some(Target::Object(p1_creature)),
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(2) && g.current_step() == Step::Main1
+    });
+    let steal_p0s = game.spawn_in_hand(PlayerId(2), STEAL_PERMANENT);
+    cast_and_resolve_seated(
+        &mut game,
+        PlayerId(2),
+        3,
+        steal_p0s,
+        Some(Target::Object(p0_creature)),
+    );
+    assert_eq!(game.controller_of(p1_creature), PlayerId(0));
+    assert_eq!(game.controller_of(p0_creature), PlayerId(2));
+
+    let reset = game.spawn_on_battlefield(PlayerId(2), REVERT_ALL_TEST);
+    let index = only_activated_ability_index(&game, reset);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(2),
+        object: reset,
+        ability_index: index,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Homeward Path's {T} control reset is activatable");
+    for _ in 0..3 {
+        // A 3-player table needs all three passes to resolve, unlike `resolve_top_of_stack`'s
+        // 2-player-only two passes.
+        game.submit(Intent::PassPriority {
+            player: game.priority_holder(),
+        })
+        .unwrap();
+    }
+
+    assert_eq!(
+        game.controller_of(p1_creature),
+        PlayerId(1),
+        "P1's stolen creature goes home even though P0 (not P2) stole it"
+    );
+    assert_eq!(
+        game.controller_of(p0_creature),
+        PlayerId(0),
+        "P0's stolen creature also goes home, though P2 was the one activating the reset"
+    );
+}
+
+#[test]
+fn homeward_path_card_reverts_all_stolen_creatures() {
+    // Homeward Path (soc reprint): "{T}: Add {C}. {T}: Each player gains control of all
+    // creatures they own." (CR 720)
+    let mut game = Game::new();
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA]);
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let steal = game.spawn_in_hand(PlayerId(0), STEAL_PERMANENT);
+    cast_and_resolve(&mut game, steal, Some(Target::Object(creature)));
+    assert_eq!(game.controller_of(creature), PlayerId(0));
+
+    let homeward_path = game.spawn_on_battlefield(PlayerId(1), card("Homeward Path"));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: homeward_path,
+        ability_index: 0, // the `produces` sugar's base tap isn't in `abilities`; this is it
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("Homeward Path's {T} control reset is activatable");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.controller_of(creature),
+        PlayerId(1),
+        "Homeward Path hands P1's creature back"
     );
 }
 
@@ -41629,6 +43136,7 @@ const CHOOSE_TWO: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -41713,12 +43221,14 @@ const CHOOSE_TWO: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -41981,6 +43491,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -42041,12 +43552,14 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -42371,6 +43884,7 @@ const FIGHT_SPELL: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -42410,12 +43924,14 @@ const FIGHT_SPELL: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -42555,6 +44071,7 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(&g);
@@ -42575,6 +44092,7 @@ fn decisive_denial_mode1_counters_only_a_noncreature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the test counter can target the bear spell");
     let counter_on_stack = top_spell(&g);
@@ -42613,6 +44131,7 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(&g);
@@ -42645,6 +44164,7 @@ fn quandrix_command_mode1_counters_only_an_artifact_or_enchantment_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Arcane Signet is castable");
     let signet_on_stack = top_spell(&g);
@@ -42682,6 +44202,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the enchantment reducer shaves the generic off an enchantment spell");
     resolve_top_of_stack(&mut game); // empty the stack — the next spell is sorcery-speed
@@ -42706,6 +44227,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the enchantment reducer shaves the generic off an Aura spell too");
     resolve_top_of_stack(&mut game); // empty the stack — the next spell is sorcery-speed
@@ -42729,6 +44251,7 @@ fn starfield_mystic_reducer_only_discounts_enchantment_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "an enchantment-only reducer must not shave a noncreature artifact spell's generic",
@@ -42766,6 +44289,7 @@ fn pearl_ear_affinity_for_auras_grants_no_reduction_with_zero_auras() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "with 0 Auras controlled, affinity for Auras grants no reduction",
@@ -42801,6 +44325,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the first Darksteel Mutation is castable at its full {1}{W}");
     resolve_top_of_stack(&mut game); // attaches to host_a — 1 Aura now controlled.
@@ -42824,6 +44349,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("with 1 Aura controlled, a second Aura spell costs just {W} — its {1} is shaved off");
     resolve_top_of_stack(&mut game); // attaches to host_b — 2 Auras now controlled.
@@ -42853,6 +44379,7 @@ fn pearl_ear_affinity_for_auras_reduces_enchantment_spells_per_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("2 Auras controlled shave exactly {2} generic off an enchantment spell");
     assert_eq!(game.zone_of(season), Zone::Stack);
@@ -42884,6 +44411,7 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Darksteel Mutation is castable");
     resolve_top_of_stack(&mut game); // 1 Aura now controlled.
@@ -42908,6 +44436,7 @@ fn pearl_ear_affinity_for_auras_does_not_reduce_creature_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "affinity for Auras is enchantment-only — it must not shave a creature spell's generic",
@@ -42944,6 +44473,7 @@ fn zimone_reduces_first_x_spell_each_turn_per_counter() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "one generic short of the reduced {{2}} cost still fails to pay",
@@ -42966,6 +44496,7 @@ fn zimone_reduces_first_x_spell_each_turn_per_counter() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("3 +1/+1 counters on Zimone shave {3} off the {X}-chosen {5}, to exactly {2}");
 }
@@ -42998,6 +44529,7 @@ fn zimone_reduces_only_the_first_x_spell_each_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the first {X} spell this turn is fully reduced by 2 counters, to {0}");
 
@@ -43018,6 +44550,7 @@ fn zimone_reduces_only_the_first_x_spell_each_turn() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "a second {{X}} spell the same turn is no longer \"first\" and gets no reduction",
@@ -43052,6 +44585,7 @@ fn zimone_x_spell_reduction_resets_next_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the first {X} spell this turn is fully reduced by 2 counters, to {0}");
     resolve_top_of_stack(&mut game);
@@ -43083,6 +44617,7 @@ fn zimone_x_spell_reduction_resets_next_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the {X}-spell tally reset at the turn boundary, so the reduction applies again");
 }
@@ -43114,10 +44649,121 @@ fn zimone_does_not_reduce_non_x_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "a spell with no {{X}} in its mana cost gets no reduction, even as the turn's first spell",
     );
+}
+
+#[test]
+fn animar_reduces_creature_spells_by_one_generic_per_counter() {
+    // Animar, Soul of Elements: "Creature spells you cast cost {1} less to cast for each +1/+1
+    // counter on Animar."
+    let mut game = Game::new();
+    let animar = game.spawn_on_battlefield(PlayerId(0), card("Animar, Soul of Elements"));
+    for _ in 0..3 {
+        game.add_plus_counter(animar);
+    }
+    // Serra Angel is {3}{W}{W}; 3 counters shave exactly {3} off, to {W}{W}. Two Plains — no
+    // extra generic mana — is exactly the reduced cost.
+    let plains_a = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let serra = game.spawn_in_hand(PlayerId(0), card("Serra Angel"));
+    tap(&mut game, PlayerId(0), plains_a);
+
+    assert_eq!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: serra,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        }),
+        Err(Reject::CannotPayCost),
+        "one white pip short of {{W}}{{W}} still fails to pay, even with all generic waived",
+    );
+
+    let plains_b = game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    tap(&mut game, PlayerId(0), plains_b);
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: serra,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("3 +1/+1 counters on Animar shave all 3 generic off Serra Angel, to exactly {W}{W}");
+}
+
+#[test]
+fn animar_reduction_floors_at_zero_generic_and_never_touches_colored_pips() {
+    // CR 118.9: a cost reduction never reduces a spell's mana cost below {0} for any given
+    // component — excess counters can't turn a creature spell free or eat its colored pip.
+    let mut game = Game::new();
+    let animar = game.spawn_on_battlefield(PlayerId(0), card("Animar, Soul of Elements"));
+    for _ in 0..3 {
+        game.add_plus_counter(animar);
+    }
+    // Grizzly Bear is {1}{G}: only 1 generic to shave, even though Animar carries 3 counters.
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+    assert_eq!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: bear,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        }),
+        Err(Reject::CannotPayCost),
+        "the {{G}} pip is still owed even though 3 counters outnumber the {{1}} generic",
+    );
+
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    tap(&mut game, PlayerId(0), forest);
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: bear,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("the reduction floors at 0 generic; one green pays the fully-reduced cost");
 }
 
 #[test]
@@ -43154,6 +44800,7 @@ fn sram_senior_edificer_draws_on_casting_an_aura_but_not_a_plain_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Darksteel Mutation is castable");
     resolve_top_of_stack(&mut game); // Sram's cast trigger resolves: draw a card.
@@ -43424,6 +45071,7 @@ fn witch_of_the_moors_single_trigger_edict_then_optional_return() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the creature enters
@@ -43499,6 +45147,7 @@ fn relic_retriever_makes_a_treasure_only_after_a_card_left_your_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the creature leaves P0's graveyard → the flag is set
@@ -43555,6 +45204,7 @@ fn relic_retriever_fires_on_each_players_end_step() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the creature leaves P0's graveyard → the flag is set
@@ -43645,6 +45295,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -43691,12 +45342,14 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -43725,6 +45378,7 @@ fn cards_leaving_graveyard_fires_the_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Reanimate resolves: the creature leaves the graveyard.
@@ -43792,6 +45446,7 @@ fn only_your_graveyard_counts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Reanimate resolves: the creature leaves P1's graveyard.
@@ -43823,6 +45478,7 @@ fn spirit_reanimate_and_resolve_trigger(game: &mut Game, corpse: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Reanimate resolves: the creature leaves P0's graveyard.
@@ -43986,6 +45642,7 @@ static PACK_A_PUNCH: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -44047,12 +45704,14 @@ static PACK_A_PUNCH: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -44086,6 +45745,7 @@ static KIROL: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -44121,7 +45781,7 @@ static KIROL: CardDef = CardDef {
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -44130,7 +45790,9 @@ static KIROL: CardDef = CardDef {
     enchant_graveyard: false,
     back: Some(&PACK_A_PUNCH),
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
 };
 
 /// Reanimate a Grizzly Bear out of P0's own graveyard (one card leaving) to fire Kirol's
@@ -44152,6 +45814,7 @@ fn prepare_kirol_via_graveyard_exit(game: &mut Game, kirol: ObjectId) -> ObjectI
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Reanimate resolves: the bear leaves the graveyard.
@@ -44352,6 +46015,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -44400,12 +46064,14 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -44439,6 +46105,7 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -44467,12 +46134,14 @@ static BRAZEN_BORROWER_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: Some(&PETTY_THEFT_TEST),
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -44506,6 +46175,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -44557,12 +46227,14 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -44595,6 +46267,7 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -44623,12 +46296,14 @@ static ELUSIVE_OTTER_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: Some(&GROVES_BOUNTY_TEST),
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -44649,6 +46324,7 @@ fn cast_from_exile(game: &mut Game, player: PlayerId, card: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("an adventure card is castable from exile at its normal cost");
 }
@@ -44719,6 +46395,7 @@ fn adventure_creature_cast_directly_from_hand_still_works() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the creature half is castable straight from hand for {1}{U}{U}");
     resolve_top_of_stack(&mut game);
@@ -45082,6 +46759,7 @@ fn inspired_skypainter_becomes_prepared_on_etb() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Skypainter resolves; its ETB trigger goes on the stack.
@@ -45141,6 +46819,7 @@ fn inspired_skypainter_maestros_gift_copies_target_creature_with_haste() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Skypainter enters; ETB trigger goes on the stack.
@@ -45209,6 +46888,7 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -45248,12 +46928,14 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -45284,6 +46966,7 @@ static DIRGUR_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -45324,7 +47007,7 @@ static DIRGUR_TEST: CardDef = CardDef {
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -45333,7 +47016,9 @@ static DIRGUR_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: Some(&BRAINGEYSER_TEST),
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
 };
 
 #[test]
@@ -45358,6 +47043,7 @@ fn dirgur_becomes_prepared_on_mv5_instant_cast_from_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a funded MV-5 instant is castable from hand");
     resolve_top_of_stack(&mut game); // the prepare trigger resolves.
@@ -45389,6 +47075,7 @@ fn dirgur_does_not_prepare_on_small_instant() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a funded MV-4 instant is castable from hand");
     resolve_top_of_stack(&mut game); // no trigger queued: the spell itself resolves.
@@ -45425,6 +47112,7 @@ fn dirgur_does_not_prepare_on_flashback_instant() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a flashback card is castable from the graveyard");
     resolve_top_of_stack(&mut game); // no trigger queued: the spell itself resolves.
@@ -45453,6 +47141,7 @@ fn prepare_dirgur(game: &mut Game, dirgur: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // the prepare trigger resolves.
@@ -45523,6 +47212,7 @@ fn real_dirgur_focusmage_from_the_pool_prepares_and_casts_braingeyser() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a funded MV-5 instant is castable from hand");
     resolve_top_of_stack(&mut game); // the prepare trigger resolves.
@@ -45700,6 +47390,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -45743,12 +47434,14 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -45778,6 +47471,7 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a flashback card is castable from the graveyard");
     resolve_top_of_stack(&mut game); // the unfiltered trigger resolves.
@@ -45995,6 +47689,7 @@ fn pest_rescuer_pest_token_dies_gain_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → SBA kills the Pest, which ceases to exist.
@@ -46038,6 +47733,7 @@ fn pest_rescuer_makes_pest_on_each_players_upkeep() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → SBA kills the Pest.
@@ -46183,7 +47879,7 @@ fn breena_rewards_the_attacker_when_the_attacked_opponent_has_the_most_life() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
 
@@ -46229,7 +47925,7 @@ fn breena_counters_only_on_your_own_creature() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
 
@@ -46279,7 +47975,7 @@ fn breena_does_nothing_when_the_attacked_opponent_is_not_ahead() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
 
@@ -46303,7 +47999,7 @@ fn watch_attack_ignores_attacks_against_the_watchers_own_controller() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(2))], // attacking Breena's controller
+        attackers: vec![(attacker, Defender::Player(PlayerId(2)))], // attacking Breena's controller
     })
     .unwrap();
 
@@ -46366,7 +48062,10 @@ fn tomik_opponent_attacks_you_with_two_draws_and_drains() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(a1, PlayerId(2)), (a2, PlayerId(2))],
+        attackers: vec![
+            (a1, Defender::Player(PlayerId(2))),
+            (a2, Defender::Player(PlayerId(2))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -46392,7 +48091,7 @@ fn tomik_opponent_attacks_you_with_two_draws_and_drains() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(a1, PlayerId(2))],
+        attackers: vec![(a1, Defender::Player(PlayerId(2)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -46421,14 +48120,14 @@ fn tomik_opponent_attacks_you_with_two_draws_and_drains() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(from_p0, PlayerId(2))],
+        attackers: vec![(from_p0, Defender::Player(PlayerId(2)))],
     })
     .unwrap();
     pass_until_next_turn(&mut game); // P0's turn ends; P1 becomes active.
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(from_p1, PlayerId(2))],
+        attackers: vec![(from_p1, Defender::Player(PlayerId(2)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -46456,7 +48155,10 @@ fn mangara_opponent_attacks_you_with_two_draws() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(a1, PlayerId(2)), (a2, PlayerId(2))],
+        attackers: vec![
+            (a1, Defender::Player(PlayerId(2))),
+            (a2, Defender::Player(PlayerId(2))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -46484,7 +48186,10 @@ fn firemane_commando_lets_attacker_draw_when_they_dont_attack_you() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(a1, PlayerId(2)), (a2, PlayerId(2))],
+        attackers: vec![
+            (a1, Defender::Player(PlayerId(2))),
+            (a2, Defender::Player(PlayerId(2))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -46511,7 +48216,10 @@ fn firemane_commando_lets_attacker_draw_when_they_dont_attack_you() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(a1, PlayerId(2)), (a2, PlayerId(1))],
+        attackers: vec![
+            (a1, Defender::Player(PlayerId(2))),
+            (a2, Defender::Player(PlayerId(1))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -46531,7 +48239,7 @@ fn firemane_commando_lets_attacker_draw_when_they_dont_attack_you() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(a1, PlayerId(2))],
+        attackers: vec![(a1, Defender::Player(PlayerId(2)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -46559,6 +48267,7 @@ const fn loyalty_ability(loyalty: i32, effect: Effect) -> Ability {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -46594,6 +48303,7 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -46622,12 +48332,14 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -46670,6 +48382,7 @@ fn a_planeswalker_cast_onto_the_battlefield_has_its_starting_loyalty() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the planeswalker resolves and enters the battlefield (CR 603.6a, CR 403.5)
@@ -46891,6 +48604,220 @@ fn lethal_damage_to_planeswalker_destroys_it() {
     );
 }
 
+// ── Planeswalkers as attack defenders (CR 506.2/508.1a, damage redirect CR 120.3c/306.8) ──
+
+#[test]
+fn creature_can_attack_an_opponents_planeswalker() {
+    // CR 508.1a: each attacking creature chooses a defending player, a planeswalker that player
+    // controls, or a battle. The declaration records the planeswalker itself as the defender.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(bear, Defender::Planeswalker(pw))],
+    })
+    .expect("a creature may attack an opponent's planeswalker");
+
+    assert_eq!(
+        game.attack_targets(),
+        vec![(bear, Defender::Planeswalker(pw))],
+        "the planeswalker, not its controller, is the recorded defender"
+    );
+}
+
+#[test]
+fn combat_damage_to_an_attacked_planeswalker_removes_loyalty() {
+    // CR 120.3c/306.8: combat damage dealt to a planeswalker removes that many loyalty counters;
+    // its controller loses no life.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA); // 2/2
+    let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(bear, Defender::Planeswalker(pw))],
+    })
+    .unwrap();
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.loyalty(pw), 3, "2 combat damage removes 2 loyalty");
+    assert_eq!(
+        game.life(PlayerId(1)),
+        20,
+        "the defending player takes none of it"
+    );
+}
+
+#[test]
+fn cant_attack_a_planeswalker_you_control() {
+    // CR 508.1a: the defender must be an opponent's planeswalker — your own is never a legal
+    // attack target, and neither is a nonplaneswalker permanent.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let own_pw = game.spawn_on_battlefield(PlayerId(0), test_planeswalker("Your Walker", 5));
+    let creature = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(bear, Defender::Planeswalker(own_pw))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "your own planeswalker isn't a legal defender",
+    );
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(bear, Defender::Planeswalker(creature))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "a creature isn't a planeswalker defender",
+    );
+}
+
+#[test]
+fn blocking_a_creature_attacking_your_planeswalker_is_legal() {
+    // CR 509.1a: the defending player (the planeswalker's controller) declares blockers against
+    // creatures attacking their planeswalkers, exactly as against creatures attacking them.
+    let mut game = Game::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA); // 2/2
+    let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(bear, Defender::Planeswalker(pw))],
+    })
+    .unwrap();
+
+    block_with(&mut game, vec![(blocker, bear)]).expect("the walker's controller may block");
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.loyalty(pw), 5, "the block kept the loyalty intact");
+}
+
+#[test]
+fn trample_over_a_blocker_spills_onto_the_attacked_planeswalker() {
+    // CR 510.1c: excess damage from a trampling attacker is assigned to the *defender* it's
+    // attacking — the planeswalker, not the defending player.
+    let mut game = Game::new();
+    let trampler = game.spawn_on_battlefield(PlayerId(0), TRAMPLER); // 4/4 trample
+    let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
+    let blocker = game.spawn_on_battlefield(PlayerId(1), VANILLA); // 2/2
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(trampler, Defender::Planeswalker(pw))],
+    })
+    .unwrap();
+    block_with(&mut game, vec![(blocker, trampler)]).unwrap();
+
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(game.loyalty(pw), 3, "the 2 trample overflow hit the walker");
+    assert_eq!(game.life(PlayerId(1)), 20, "not the defending player");
+}
+
+#[test]
+fn vow_aura_stops_an_attack_on_the_enchanters_planeswalker() {
+    // The Vow cycle's "can't attack you or planeswalkers you control": the restriction is scoped
+    // to the Aura's controller, so it covers an attack aimed at a planeswalker they control.
+    let mut game = Game::with_players(3, 0);
+    game.stack_library(PlayerId(0), &[VANILLA, VANILLA, VANILLA]);
+    game.stack_library(PlayerId(1), &[VANILLA, VANILLA, VANILLA]);
+    game.stack_library(PlayerId(2), &[VANILLA, VANILLA, VANILLA]);
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
+    let other_pw = game.spawn_on_battlefield(PlayerId(2), test_planeswalker("Other Walker", 5));
+
+    pass_until_next_turn(&mut game); // → P1's turn, so P1 can cast the sorcery-speed Aura
+    advance_until(&mut game, |g| g.current_step() == Step::Main1);
+    let vow = game.spawn_in_hand(PlayerId(1), VOW_TEST);
+    fund_cast_resolve(&mut game, PlayerId(1), vow, Some(Target::Object(bear)));
+
+    pass_until_next_turn(&mut game); // → P2's turn
+    pass_until_next_turn(&mut game); // → P0's turn
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(bear, Defender::Planeswalker(pw))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "the Vow forbids attacking its controller's planeswalker too",
+    );
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(bear, Defender::Planeswalker(other_pw))],
+    })
+    .expect("a third player's planeswalker is still fair game");
+}
+
+#[test]
+fn nils_counter_tax_applies_to_an_attack_on_his_planeswalker() {
+    // Nils, Discipline Enforcer: "Each creature with one or more counters on it can't attack you
+    // or planeswalkers you control unless its controller pays {X}" — the tax follows the
+    // defending planeswalker's controller.
+    let mut game = Game::with_players(2, 0);
+    let taxed = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
+    game.spawn_on_battlefield(PlayerId(1), card("Nils, Discipline Enforcer"));
+    game.add_plus_counter(taxed);
+    game.add_plus_counter(taxed);
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+
+    assert_eq!(
+        game.submit(Intent::DeclareAttackers {
+            player: PlayerId(0),
+            attackers: vec![(taxed, Defender::Planeswalker(pw))],
+        }),
+        Err(Reject::IllegalDeclaration),
+        "attacking Nils' planeswalker owes the same {{2}}",
+    );
+    float_green(&mut game, PlayerId(0), 2);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(taxed, Defender::Planeswalker(pw))],
+    })
+    .expect("paying {2} lets it through");
+}
+
+#[test]
+fn soul_snare_exiles_a_creature_attacking_your_planeswalker() {
+    // Soul Snare: "Exile target creature that's attacking you or a planeswalker you control."
+    let mut game = Game::with_players(2, 0);
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
+    let snare = game.spawn_on_battlefield(PlayerId(1), card("Soul Snare"));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(bear, Defender::Planeswalker(pw))],
+    })
+    .unwrap();
+
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(1),
+        object: snare,
+        ability_index: 0,
+        target: Some(Target::Object(bear)),
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("a creature attacking your planeswalker is a legal Soul Snare target");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.zone_of(bear), Zone::Exile, "the attacker is exiled");
+}
+
 #[test]
 fn cast_red_spell_triggers_balefire_damage_at_a_planeswalker() {
     // Balefire Liege's red-spell trigger: "deals 3 damage to target player or planeswalker" — a
@@ -46916,6 +48843,7 @@ fn cast_red_spell_triggers_balefire_damage_at_a_planeswalker() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Shock is castable");
 
@@ -46978,6 +48906,7 @@ fn rip_apart_mode_0_damages_a_creature_or_a_planeswalker() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("mode 0 targeting the planeswalker is castable");
     resolve_top_of_stack(&mut game);
@@ -47016,6 +48945,7 @@ fn magma_opus_divides_damage_onto_a_planeswalker_and_a_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Magma Opus is castable");
     game.submit(Intent::ChooseTargets {
@@ -47064,6 +48994,7 @@ fn put_two_counters(game: &mut Game, caster: PlayerId, creature: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game);
@@ -47881,6 +49812,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -47897,6 +49829,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
             tapped: false,
             searcher: SearchScope::You,
             count: 1,
+            count_amount: None,
             overflow: None,
         },
         optional: false,
@@ -47924,12 +49857,14 @@ const CREATURE_TUTOR: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -47966,6 +49901,7 @@ fn a_tutor_finds_a_card_puts_it_in_hand_and_shuffles() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Diabolic Tutor resolves → pause on the search choice.
@@ -48005,6 +49941,107 @@ fn a_tutor_finds_a_card_puts_it_in_hand_and_shuffles() {
         game.library_size(PlayerId(0)),
         before - 1,
         "the library is one card smaller",
+    );
+}
+
+#[test]
+fn fierce_empath_tutors_only_creatures_with_mana_value_six_or_greater() {
+    // Fierce Empath: "When this creature enters, you may search your library for a creature card
+    // with mana value 6 or greater, reveal it, put it into your hand, then shuffle." The offered
+    // matches exclude the lower-MV creature, include the MV-6 boundary creature ("or greater" is
+    // inclusive), and exclude the MV-8 noncreature.
+    let mut game = TestGame::new();
+    let mv5 = recur_permanent("MV5 Creature", 5);
+    let mv6 = recur_permanent("MV6 Creature", 6);
+    let mv7 = recur_permanent("MV7 Creature", 7);
+    let mv8_noncreature = CardDef {
+        cost: flash_cost(8, [0; 5], NO_ADD),
+        kind: CardKind::Artifact,
+        ..creature("MV8 Noncreature", 0, 0, &[])
+    };
+    let lib = game.stack_library(PlayerId(0), &[mv5, mv6, mv7, mv8_noncreature]);
+    let mv6_card = lib[1];
+    let mv7_card = lib[2];
+    let empath = game.spawn_in_hand(PlayerId(0), card("Fierce Empath"));
+    game.cast(empath).resolve();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the optional ETB search pauses on a yes/no, got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "accepting pauses on the library search, got {:?}",
+            game.pending_choice(),
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand, "the found card goes to hand");
+    assert_eq!(
+        matches,
+        vec![mv6_card, mv7_card],
+        "only the MV-6-or-greater creatures are offered",
+    );
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(mv6_card),
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(mv6_card),
+        Zone::Hand,
+        "the boundary MV-6 creature is a legal fetch"
+    );
+}
+
+#[test]
+fn fierce_empath_etb_search_is_optional_and_declining_leaves_library_unchanged() {
+    // The "you may" pauses first; declining ends the ability with no search and no shuffle crash.
+    let mut game = TestGame::new();
+    let mv6 = recur_permanent("MV6 Creature", 6);
+    let lib = game.stack_library(PlayerId(0), &[mv6]);
+    let mv6_card = lib[0];
+    let before = game.library_size(PlayerId(0));
+    let empath = game.spawn_in_hand(PlayerId(0), card("Fierce Empath"));
+    game.cast(empath).resolve();
+
+    let Some(PendingChoice::MayYesNo { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the optional ETB search pause, got {:?}",
+            game.pending_choice(),
+        );
+    };
+    game.submit(Intent::AnswerMay { player, yes: false })
+        .unwrap();
+
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "declining ends the ability with no further pause"
+    );
+    assert_eq!(
+        game.zone_of(mv6_card),
+        Zone::Library,
+        "the candidate creature stays in the library when the search is declined"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        before,
+        "the library is untouched"
     );
 }
 
@@ -48183,6 +50220,7 @@ fn buried_alive_puts_up_to_three_creatures_into_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Buried Alive resolves → pause on the search choice.
@@ -48259,6 +50297,7 @@ fn buried_alive_up_to_three_allows_fewer_or_zero_picks() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -48296,6 +50335,7 @@ fn buried_alive_up_to_three_allows_fewer_or_zero_picks() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -48342,6 +50382,7 @@ fn search_up_to_two_declining_the_first_pick_still_shuffles_and_finds_nothing() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the artifact resolves and its ETB trigger goes on the stack
@@ -48621,6 +50662,7 @@ fn cultivate_finds_two_lands_one_to_battlefield_tapped_one_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Cultivate resolves → pause on the search.
@@ -48771,6 +50813,7 @@ fn ramp_puts_a_basic_land_onto_the_battlefield_tapped() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Rampant Growth resolves → pause on the search.
@@ -49664,6 +51707,7 @@ fn magma_opus_hand_ability_makes_treasure() {
     game.submit(Intent::ActivateHandAbility {
         player: PlayerId(0),
         card: opus,
+        index: 0,
     })
     .unwrap();
 
@@ -49690,6 +51734,7 @@ fn magma_opus_hand_ability_rejected_without_mana() {
         game.submit(Intent::ActivateHandAbility {
             player: PlayerId(0),
             card: opus,
+            index: 0,
         }),
         Err(Reject::CannotActivate),
         "no mana to pay {{U/R}}{{U/R}} — nothing is paid",
@@ -49715,6 +51760,7 @@ fn magma_opus_hand_ability_rejected_from_wrong_zone() {
         game.submit(Intent::ActivateHandAbility {
             player: PlayerId(0),
             card: opus,
+            index: 0,
         }),
         Err(Reject::CannotActivate),
         "the ability functions only from hand (CR 113.6)",
@@ -49945,6 +51991,7 @@ fn failing_to_find_is_legal_and_still_shuffles() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -49996,6 +52043,7 @@ fn a_creature_search_cannot_find_a_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -50142,6 +52190,221 @@ fn assassins_trophy_destroys_any_opponents_permanent_and_ramps_its_controller() 
     );
 }
 
+/// Veteran Explorer (cmd): "When this creature dies, each player may search their library for up
+/// to two basic land cards, put them onto the battlefield, then shuffle." — an all-players
+/// fan-out of `Effect::SearchLibrary` (`searcher = "all_players"`): one search per player in
+/// APNAP order (CR 101.4), each under that player's own control (CR 701.19), not the Explorer's
+/// controller's.
+#[test]
+fn veteran_explorer_dies_each_player_may_search_two_basics() {
+    let seed = 11;
+    let mut game = TestGame {
+        game: Game::with_players(4, seed),
+    };
+    let explorer = game.spawn_on_battlefield(PlayerId(0), card("Veteran Explorer"));
+    // Every player's library: two basics among two off-filter fillers, in library order.
+    let libs: Vec<Vec<ObjectId>> = (0..4)
+        .map(|p| {
+            game.stack_library(
+                PlayerId(p),
+                &[
+                    card("Forest"),
+                    card("Shock"),
+                    card("Plains"),
+                    card("Grizzly Bear"),
+                ],
+            )
+        })
+        .collect();
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+    game.cast(destroy).at(Target::Object(explorer)).submit();
+    // `resolve_top_of_stack` assumes a 2-player table; a 4-player table needs a pass from
+    // everyone in turn to resolve both the Destroy spell and (once it dies) the dies trigger —
+    // loop until the stack empties, which happens the instant the trigger's own resolution
+    // raises the fan-out's first pause.
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+    assert_eq!(game.zone_of(explorer), Zone::Graveyard, "the Explorer died");
+
+    // APNAP order starting from the active player (P0): each player searches their own library,
+    // offered only their own two basics, before the next player's search begins.
+    for p in 0..4u8 {
+        let player = PlayerId(p);
+        let forest = libs[p as usize][0];
+        let plains = libs[p as usize][2];
+        assert_eq!(
+            game.pending_choice(),
+            Some(PendingChoice::SearchLibrary {
+                player,
+                matches: vec![forest, plains],
+                dest: SearchDest::Battlefield,
+                tapped: false,
+                remaining: 2,
+                overflow: None,
+            }),
+            "player {p} searches their own library in APNAP order"
+        );
+        game.submit(Intent::SearchLibrary {
+            player,
+            choice: Some(forest),
+        })
+        .unwrap();
+        game.submit(Intent::SearchLibrary {
+            player,
+            choice: Some(plains),
+        })
+        .unwrap();
+    }
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "the fan-out ends after the last player's search"
+    );
+
+    for p in 0..4u8 {
+        let player = PlayerId(p);
+        let forest = libs[p as usize][0];
+        let plains = libs[p as usize][2];
+        assert_eq!(game.zone_of(forest), Zone::Battlefield);
+        assert_eq!(
+            game.controller_of(forest),
+            player,
+            "each basic enters under the searching player's own control, not the Explorer's controller's"
+        );
+        assert_eq!(game.zone_of(plains), Zone::Battlefield);
+        assert_eq!(game.controller_of(plains), player);
+    }
+
+    // P0's library was shuffled exactly once (CR 701.19f): a fresh game replaying only its
+    // post-pick remainder (Shock, Grizzly Bear) through a single `shuffle()` call, from the same
+    // seed, reproduces the exact draw order iff P0's search also shuffled exactly once — no other
+    // randomness is consumed before the very first player's shuffle in the fan-out.
+    let mut reference = Game::with_seed(seed);
+    reference.stack_library(PlayerId(0), &[card("Shock"), card("Grizzly Bear")]);
+    reference.shuffle(PlayerId(0));
+    let expected_order: Vec<&str> = (0..2)
+        .map(|_| {
+            let id = draw_top_from(&mut reference, PlayerId(0));
+            reference.def_of(id).name
+        })
+        .collect();
+    let actual_order: Vec<&str> = (0..2)
+        .map(|_| {
+            let id = draw_top_from(&mut game, PlayerId(0));
+            game.def_of(id).name
+        })
+        .collect();
+    assert_eq!(
+        actual_order, expected_order,
+        "P0's library was shuffled exactly once, of its post-pick remainder",
+    );
+}
+
+/// Veteran Explorer: a player may decline their search (CR 701.19c — "fail to find" is always
+/// legal) even with matches on offer, and the fan-out still continues to the next player in APNAP
+/// order instead of aborting the whole chain.
+#[test]
+fn veteran_explorer_search_may_be_declined_per_player() {
+    let mut game = TestGame {
+        game: Game::with_players(4, 0),
+    };
+    let explorer = game.spawn_on_battlefield(PlayerId(0), card("Veteran Explorer"));
+    let libs: Vec<Vec<ObjectId>> = (0..4)
+        .map(|p| {
+            game.stack_library(
+                PlayerId(p),
+                &[
+                    card("Forest"),
+                    card("Shock"),
+                    card("Plains"),
+                    card("Grizzly Bear"),
+                ],
+            )
+        })
+        .collect();
+
+    let destroy = game.spawn_in_hand(PlayerId(0), DESTROY);
+    game.cast(destroy).at(Target::Object(explorer)).submit();
+    // See the sibling test: a 4-player table needs a pass from everyone in turn, not just two.
+    while !game.stack().is_empty() {
+        let p = game.priority_holder();
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+
+    // P0 declines despite having two basics on offer.
+    let Some(PendingChoice::SearchLibrary {
+        player: PlayerId(0),
+        ..
+    }) = game.pending_choice()
+    else {
+        panic!("P0 searches first, got {:?}", game.pending_choice());
+    };
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: None,
+    })
+    .unwrap();
+
+    // The chain didn't abort: P1 is offered their own search next.
+    let forest = libs[1][0];
+    let plains = libs[1][2];
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::SearchLibrary {
+            player: PlayerId(1),
+            matches: vec![forest, plains],
+            dest: SearchDest::Battlefield,
+            tapped: false,
+            remaining: 2,
+            overflow: None,
+        }),
+        "P0 declining doesn't abort the fan-out — P1 still searches"
+    );
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(1),
+        choice: Some(forest),
+    })
+    .unwrap();
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(1),
+        choice: Some(plains),
+    })
+    .unwrap();
+
+    // P2 and P3 decline too; the fan-out still ends cleanly after the last seat.
+    for p in [PlayerId(2), PlayerId(3)] {
+        assert_eq!(
+            game.pending_choice(),
+            Some(PendingChoice::SearchLibrary {
+                player: p,
+                matches: vec![libs[p.0 as usize][0], libs[p.0 as usize][2]],
+                dest: SearchDest::Battlefield,
+                tapped: false,
+                remaining: 2,
+                overflow: None,
+            }),
+        );
+        game.submit(Intent::SearchLibrary {
+            player: p,
+            choice: None,
+        })
+        .unwrap();
+    }
+    assert_eq!(game.pending_choice(), None, "the fan-out ends after P3");
+
+    // Only P1 actually found and kept their basics.
+    assert_eq!(game.zone_of(forest), Zone::Battlefield);
+    assert_eq!(game.controller_of(forest), PlayerId(1));
+    assert_eq!(game.zone_of(plains), Zone::Battlefield);
+    assert_eq!(game.controller_of(plains), PlayerId(1));
+    // P0's basics stayed in its library (its decline "fails to find" everything).
+    assert_eq!(game.zone_of(libs[0][0]), Zone::Library);
+    assert_eq!(game.zone_of(libs[0][2]), Zone::Library);
+}
+
 // ── Mass destruction / mass damage / mass weaken / noncreature removal ────────────────
 
 /// A test-only sorcery dealing 2 damage to each creature — no real fixed-N-to-each card smaller
@@ -50166,6 +52429,7 @@ const MASS_SHOCK: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -50180,6 +52444,7 @@ const MASS_SHOCK: CardDef = CardDef {
             amount: Amount::Fixed(2),
             opponents_only: false,
             filter: None,
+            include_planeswalkers: false,
         },
         optional: false,
         min_level: 0,
@@ -50206,12 +52471,14 @@ const MASS_SHOCK: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -50239,6 +52506,7 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -50277,12 +52545,14 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -50393,6 +52663,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -50416,6 +52687,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
             sacrifice_at_next_end_step: false,
             exile_at_next_end_step: false,
             haste: false,
+            entering: None,
         },
         optional: false,
         min_level: 0,
@@ -50442,12 +52714,14 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -50473,6 +52747,7 @@ fn populate_creates_a_copy_of_a_creature_token_you_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -50523,6 +52798,7 @@ fn delayed_sacrifice_next_end_step_determined_iteration() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -50595,6 +52871,7 @@ fn determined_iteration_populated_token_gains_haste() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -50630,7 +52907,7 @@ fn determined_iteration_populated_token_gains_haste() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(minted, PlayerId(1))],
+        attackers: vec![(minted, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
 }
@@ -50656,6 +52933,7 @@ fn create_token_copy_without_haste_rider_grants_no_haste() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -50719,6 +52997,7 @@ fn impulse_play_until_end_of_next_turn_atsushi() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Infernal Grasp resolves: destroy + life loss; dies queued
@@ -50907,6 +53186,7 @@ fn mass_weaken_kills_low_toughness_and_survivors_recover_next_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Toxic Deluge is castable for X=2");
     resolve_top_of_stack(&mut game);
@@ -50987,6 +53267,7 @@ fn breath_of_darigaaz_unkicked_deals_one_to_nonfliers_and_each_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Breath of Darigaaz is castable unkicked");
     resolve_whole_stack(&mut game);
@@ -51040,6 +53321,7 @@ fn breath_of_darigaaz_kicked_deals_four_to_nonfliers_and_each_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Breath of Darigaaz is castable kicked");
     resolve_whole_stack(&mut game);
@@ -51100,6 +53382,7 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
         "a creature isn't a legal Fracture target",
@@ -51119,6 +53402,7 @@ fn noncreature_removal_enumerates_only_valid_permanents_and_destroys_one() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the artifact is a legal target");
     resolve_top_of_stack(&mut game);
@@ -51154,6 +53438,7 @@ const MAKE_TREASURES: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -51194,12 +53479,14 @@ const MAKE_TREASURES: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -51223,6 +53510,7 @@ fn a_create_treasure_effect_puts_artifact_tokens_onto_the_battlefield() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -51262,6 +53550,7 @@ fn a_treasure_sacrifices_for_mana_of_any_color_and_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -51309,6 +53598,7 @@ fn a_treasure_sacrifices_for_mana_of_any_color_and_ceases_to_exist() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the Treasure's any-color mana pays Shock's {R}");
 }
@@ -51337,6 +53627,7 @@ fn magecraft_makes_a_treasure_with_storm_kiln_artist_out() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the magecraft Treasure trigger resolves
@@ -51380,6 +53671,7 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -51408,12 +53700,14 @@ const fn instant_with_mana_value(generic: u8) -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -51449,6 +53743,7 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -51477,12 +53772,14 @@ const fn instant_with_generic_and_x(generic: u8) -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -51513,6 +53810,7 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the CastSpell trigger resolves: mana value 2, one token
@@ -51537,6 +53835,7 @@ fn prismari_pianist_creates_three_tokens_when_the_cast_spells_mana_value_is_five
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the CastSpell trigger resolves: mana value 5, three more
@@ -51573,6 +53872,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -51619,12 +53919,14 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -51651,6 +53953,7 @@ fn magecraft_fractal_enters_with_counters_equal_to_spell_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the Magecraft trigger resolves: mints the Fractal
@@ -51695,6 +53998,7 @@ fn hardened_scales_grows_a_magecraft_tokens_entry_counters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the Magecraft trigger resolves: mints the Fractal
@@ -51730,6 +54034,7 @@ fn renegade_bull_gets_plus_x_until_end_of_turn_where_x_is_the_cast_spells_mana_v
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the CastSpell trigger resolves: +4/+0 until end of turn
@@ -51772,6 +54077,7 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -51800,12 +54106,14 @@ const MANAFORM_DRAGON_TOKEN: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -51837,6 +54145,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -51888,12 +54197,14 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -51923,6 +54234,7 @@ fn manaform_hellkite_token_pt_equals_mana_spent_printed_cost() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the CastSpell trigger resolves: mints the Dragon Illusion
@@ -51976,6 +54288,7 @@ fn manaform_hellkite_token_pt_reflects_actual_mana_spent() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the CastSpell trigger resolves: mints the Dragon Illusion
@@ -52016,6 +54329,7 @@ fn manaform_dragon_token_exiled_at_next_end_step() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the CastSpell trigger resolves: mints the Dragon Illusion,
@@ -52064,6 +54378,7 @@ fn create_token_without_set_base_pt_uses_printed_pt() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -52103,6 +54418,7 @@ fn manaform_hellkite_pool_card_creates_the_dragon_illusion() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the CastSpell trigger resolves: mints the Dragon Illusion
@@ -52139,6 +54455,7 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -52167,12 +54484,14 @@ const ROOTHA_ELEMENTAL_TOKEN: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -52204,6 +54523,7 @@ const ROOTHA_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -52250,12 +54570,14 @@ const ROOTHA_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -52284,6 +54606,7 @@ fn rootha_makes_x_x_elemental_where_x_is_the_greatest_instant_or_sorcery_mana_va
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the mana-value-2 instant resolves: draws a card
@@ -52303,6 +54626,7 @@ fn rootha_makes_x_x_elemental_where_x_is_the_greatest_instant_or_sorcery_mana_va
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the mana-value-5 instant resolves: draws a card
@@ -52358,6 +54682,7 @@ fn rootha_mastering_the_moment_pool_card_creates_the_elemental() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the instant resolves (draws a card)
@@ -52397,6 +54722,7 @@ const RIONYA_TEST: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -52424,6 +54750,7 @@ const RIONYA_TEST: CardDef = CardDef {
             sacrifice_at_next_end_step: true,
             exile_at_next_end_step: false,
             haste: true,
+            entering: None,
         },
         optional: false,
         min_level: 0,
@@ -52450,12 +54777,14 @@ const RIONYA_TEST: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -52484,6 +54813,7 @@ fn rionya_count_is_one_plus_instants_and_sorceries_cast_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the first instant resolves (draws a card)
@@ -52503,6 +54833,7 @@ fn rionya_count_is_one_plus_instants_and_sorceries_cast_this_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the second instant resolves (draws a card)
@@ -52643,6 +54974,7 @@ const IMPULSE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -52663,6 +54995,7 @@ const IMPULSE: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -52672,6 +55005,8 @@ const IMPULSE: CardDef = CardDef {
         effect: Effect::ExileTopMayPlay {
             count: Amount::Fixed(1),
             until_next_turn: false,
+            face_down: false,
+            free_while_source: false,
         },
         optional: false,
         min_level: 0,
@@ -52698,12 +55033,14 @@ const IMPULSE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -52851,6 +55188,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -52871,6 +55209,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -52903,12 +55242,14 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -53091,6 +55432,7 @@ fn laelia_grows_when_cards_exiled_from_your_library_or_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -53127,6 +55469,7 @@ const MODAL_DRAGON: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -53142,6 +55485,8 @@ const MODAL_DRAGON: CardDef = CardDef {
                 Effect::ExileTopMayPlay {
                     count: Amount::Fixed(2),
                     until_next_turn: false,
+                    face_down: false,
+                    free_while_source: false,
                 },
                 Effect::CreateTreasure {
                     count: Amount::Fixed(3),
@@ -53175,12 +55520,14 @@ const MODAL_DRAGON: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -53206,6 +55553,7 @@ fn kill_modal_dragon(game: &mut Game) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Shock resolves → SBA kills the dragon. (CR 704)
@@ -53300,6 +55648,7 @@ fn atsushi_dies_trigger_offers_a_two_mode_choose_one() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the destroy resolves → Atsushi dies → dies trigger placed. (CR 603.6, CR 603)
@@ -53339,6 +55688,7 @@ fn discard_one(game: &mut Game, target_card: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // the spell resolves, pausing on a DiscardCards choice
@@ -53557,6 +55907,7 @@ fn conspiracy_theorist_discard_lets_you_impulse_the_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the exiled card is castable from exile this turn");
 }
@@ -53924,6 +56275,7 @@ fn free_cast_from_exile_pays_no_mana_quintorius_loremaster() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Shock is castable from exile under the free-cast permission");
     assert_eq!(
@@ -53985,6 +56337,7 @@ fn free_cast_permission_expires_at_cleanup_quintorius_loremaster() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::NotCastable),
         "a card left in exile can't be free-cast next turn — the permission expired at cleanup",
@@ -54031,6 +56384,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_on_resolve() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -54103,6 +56457,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let shock_on_stack = top_spell(&game);
@@ -54124,6 +56479,7 @@ fn quintorius_free_cast_spell_goes_to_library_bottom_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_whole_stack(&mut game);
@@ -54168,6 +56524,7 @@ fn massacre_casts_free_when_opponent_controls_plains_and_you_control_swamp() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the free-cast permission holds — Massacre is castable with no mana in the pool");
     assert_eq!(
@@ -54214,6 +56571,7 @@ fn massacre_requires_full_payment_without_a_qualifying_opponent_land() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "no opponent Plains — the free-cast permission doesn't hold and the printed cost still applies"
@@ -54234,6 +56592,7 @@ fn massacre_requires_full_payment_without_a_qualifying_opponent_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Massacre is still castable by paying its printed {2}{B}{B} cost");
     assert!(
@@ -54264,6 +56623,7 @@ fn normal_spell_still_goes_to_graveyard_quintorius_loremaster() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -54471,6 +56831,7 @@ fn an_equip_ability_fizzles_when_its_creature_dies_in_response() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Infernal Grasp can destroy the equip target in response");
     resolve_whole_stack(&mut game);
@@ -54658,6 +57019,7 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -54694,12 +57056,14 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -54759,6 +57123,7 @@ macro_rules! amount_spell {
             enters_tapped: false,
             enters_tapped_unless: None,
             free_cast_if: None,
+            alternative_cost: None,
             cast_only_during_combat: false,
             approximates: None,
             oracle: None,
@@ -54795,12 +57160,14 @@ macro_rules! amount_spell {
             enchant_graveyard: false,
             back: None,
             adventure: None,
+            halves: &[],
             suspend: None,
+            vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: None,
+            hand_ability: &[],
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -54916,6 +57283,7 @@ macro_rules! hydra_with_etb {
             enters_tapped: false,
             enters_tapped_unless: None,
             free_cast_if: None,
+            alternative_cost: None,
             cast_only_during_combat: false,
             approximates: None,
             oracle: None,
@@ -54970,12 +57338,14 @@ macro_rules! hydra_with_etb {
             enchant_graveyard: false,
             back: None,
             adventure: None,
+            halves: &[],
             suspend: None,
+            vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: None,
+            hand_ability: &[],
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -55124,6 +57494,7 @@ fn cast_and_collect(game: &mut Game, spell: ObjectId, target: Option<Target>) ->
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect("castable");
     for _ in 0..2 {
@@ -55378,6 +57749,7 @@ fn enter_counters_static_ignores_opponents() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("VANILLA is castable by P1");
     resolve_top_of_stack(&mut game);
@@ -55583,6 +57955,151 @@ fn volcanic_torrent_deals_spell_count_to_opponents_creatures() {
         game.marked_damage(mine),
         0,
         "the caster's own creature is untouched — the sweep is opponents-only",
+    );
+}
+
+#[test]
+fn volcanic_torrent_damages_opponents_planeswalkers_and_creatures() {
+    // "... to each creature and planeswalker your opponents control ...": a planeswalker is
+    // swept alongside creatures, taking loyalty loss instead of marked damage (CR 120.3c/306.9).
+    let mut game = TestGame::new();
+    let opp_creature = game.spawn_on_battlefield(PlayerId(1), creature("Small (test)", 1, 1, &[]));
+    let opp_pw = game.spawn_on_battlefield(PlayerId(1), card("Garruk Wildspeaker")); // loyalty 3
+
+    let filler = game.spawn_in_hand(PlayerId(0), FILLER);
+    game.cast(filler).resolve();
+    let torrent = game.spawn_in_hand(PlayerId(0), card("Volcanic Torrent"));
+    game.cast(torrent).resolve(); // resolves the cascade trigger (empty library — whiffs)
+    resolve_top_of_stack(&mut game); // Volcanic Torrent itself — 2 spells cast this turn
+
+    assert_eq!(
+        game.zone_of(opp_creature),
+        Zone::Graveyard,
+        "the opponent's 1/1 took 2 damage — lethal",
+    );
+    assert_eq!(
+        game.loyalty(opp_pw),
+        1,
+        "Garruk's loyalty drops by X (2 spells cast), from 3 to 1",
+    );
+    assert_eq!(
+        game.zone_of(opp_pw),
+        Zone::Battlefield,
+        "1 loyalty remaining — Garruk survives",
+    );
+}
+
+#[test]
+fn volcanic_torrent_lethal_loyalty_loss_sends_planeswalker_to_graveyard() {
+    // Three spells cast this turn deals 3 damage — Garruk's loyalty (3) hits 0 and an SBA moves
+    // it to the graveyard (CR 704.5i), the same as a creature dying to lethal damage.
+    let mut game = TestGame::new();
+    let opp_pw = game.spawn_on_battlefield(PlayerId(1), card("Garruk Wildspeaker")); // loyalty 3
+
+    let filler_one = game.spawn_in_hand(PlayerId(0), FILLER);
+    game.cast(filler_one).resolve();
+    let filler_two = game.spawn_in_hand(PlayerId(0), FILLER);
+    game.cast(filler_two).resolve();
+    let torrent = game.spawn_in_hand(PlayerId(0), card("Volcanic Torrent"));
+    game.cast(torrent).resolve(); // resolves the cascade trigger (empty library — whiffs)
+    resolve_top_of_stack(&mut game); // Volcanic Torrent itself — 3 spells cast this turn
+
+    assert_eq!(
+        game.zone_of(opp_pw),
+        Zone::Graveyard,
+        "3 damage drops Garruk's loyalty to 0 — an SBA puts it in the graveyard",
+    );
+}
+
+#[test]
+fn mass_damage_leaves_planeswalkers_alone_by_default() {
+    // Blasphemous Act's `DamageEachCreature` doesn't set `include_planeswalkers` — the
+    // default-false regression guard for every other mass-damage sweeper in the pool.
+    let mut game = TestGame::new();
+    let pw = game.spawn_on_battlefield(PlayerId(1), card("Garruk Wildspeaker")); // loyalty 3
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let act = game.spawn_in_hand(PlayerId(0), card("Blasphemous Act"));
+
+    game.cast(act).resolve();
+
+    assert_eq!(
+        game.loyalty(pw),
+        3,
+        "no loyalty lost — planeswalkers aren't swept unless include_planeswalkers is set",
+    );
+    assert_eq!(
+        game.zone_of(pw),
+        Zone::Battlefield,
+        "the planeswalker survives untouched by a creature-only sweep",
+    );
+    assert_eq!(
+        game.zone_of(victim),
+        Zone::Graveyard,
+        "the creature still dies to 13 damage",
+    );
+}
+
+#[test]
+fn volcanic_torrent_opponents_only_leaves_casters_own_planeswalker_untouched() {
+    // "... your opponents control ...": `opponents_only` scopes the planeswalker half of the
+    // sweep too — the caster's own planeswalker is untouched.
+    let mut game = TestGame::new();
+    let mine_pw = game.spawn_on_battlefield(PlayerId(0), card("Garruk Wildspeaker")); // loyalty 3
+    game.spawn_on_battlefield(PlayerId(1), VANILLA);
+
+    let torrent = game.spawn_in_hand(PlayerId(0), card("Volcanic Torrent"));
+    game.cast(torrent).resolve(); // resolves the cascade trigger (empty library — whiffs)
+    resolve_top_of_stack(&mut game); // Volcanic Torrent itself
+
+    assert_eq!(
+        game.loyalty(mine_pw),
+        3,
+        "the caster's own planeswalker is untouched — the sweep is opponents-only",
+    );
+    assert_eq!(game.zone_of(mine_pw), Zone::Battlefield);
+}
+
+#[test]
+fn disaster_radius_cant_be_cast_without_a_creature_card_in_hand() {
+    // "As an additional cost to cast this spell, reveal a creature card from your hand." An
+    // unpayable additional cost makes the cast illegal (CR 601.2f) — with no other creature card
+    // in hand, there's nothing to reveal.
+    let mut game = TestGame::new();
+    let radius = game.spawn_in_hand(PlayerId(0), card("Disaster Radius"));
+
+    let result = game.cast(radius).try_submit();
+
+    assert_eq!(result, Err(Reject::CannotPayCost));
+}
+
+#[test]
+fn disaster_radius_deals_revealed_creatures_mana_value_to_each_opponents_creature() {
+    // "As an additional cost to cast this spell, reveal a creature card from your hand. Disaster
+    // Radius deals X damage to each creature your opponents control, where X is the revealed
+    // card's mana value." Grizzly Bear (mana value 2, the only creature card in hand) is the
+    // automatic reveal — no genuine choice to make when revealing has no downside.
+    let mut game = TestGame::new();
+    let opp_creature = game.spawn_on_battlefield(PlayerId(1), creature("Opp (test)", 3, 3, &[]));
+    let mine = game.spawn_on_battlefield(PlayerId(0), creature("Mine (test)", 3, 3, &[]));
+    let bear = game.spawn_in_hand(PlayerId(0), card("Grizzly Bear")); // {1}{G}, MV 2
+    let radius = game.spawn_in_hand(PlayerId(0), card("Disaster Radius"));
+
+    game.cast(radius).resolve();
+
+    assert_eq!(
+        game.marked_damage(opp_creature),
+        2,
+        "the revealed card's mana value (2) hit the opponent's creature",
+    );
+    assert_eq!(
+        game.marked_damage(mine),
+        0,
+        "the caster's own creature is untouched — the sweep is opponents-only",
+    );
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the revealed card stays in hand — a reveal, not a discard (CR 601.2g)",
     );
 }
 
@@ -55830,6 +58347,7 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -55858,12 +58376,14 @@ const fn sorcery(name: &'static str, abilities: &'static [Ability]) -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -56395,6 +58915,7 @@ fn take_action_casts_exactly_like_the_equivalent_cast_intent() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
 
@@ -56657,6 +59178,7 @@ fn cycling_requires_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     game.submit(Intent::PassPriority {
@@ -56707,6 +59229,7 @@ fn cycling_with_a_spell_on_the_stack_resets_passes_and_keeps_priority() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     assert_eq!(game.zone_of(shock), Zone::Stack);
@@ -56854,6 +59377,7 @@ fn edge_of_autumn_searches_a_basic_land_when_controlling_four_or_fewer_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Edge of Autumn resolves → pause on the search.
@@ -56909,6 +59433,7 @@ fn edge_of_autumn_does_nothing_when_controlling_five_or_more_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -57060,6 +59585,7 @@ fn legal_actions_is_empty_while_a_choice_is_pending() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Pinger enters; its targeted ETB pauses on ChooseTarget.
@@ -57106,6 +59632,7 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // a creature (not an enchantment) resolves onto the battlefield.
@@ -57129,6 +59656,7 @@ fn killian_taps_and_goads_when_your_enchantment_enters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Glorious Anthem resolves; the enchantment-enters trigger pauses for a target.
@@ -57179,6 +59707,7 @@ fn killian_decisive_mentor_tap_and_goad_target_is_declinable() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Glorious Anthem resolves; the enchantment-enters trigger pauses for a target.
@@ -57222,6 +59751,7 @@ fn killian_own_entry_does_not_fire_his_enchantment_watch() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Killian's creature spell resolves onto the battlefield.
@@ -57323,6 +59853,7 @@ fn beledros_pest_token_dies_gain_life() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → SBA kills the Pest, which ceases to exist.
@@ -57659,6 +60190,7 @@ fn storm_copies_survive_countered_original() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // one spell cast before Reaping the Graves this turn
@@ -57680,6 +60212,7 @@ fn storm_copies_survive_countered_original() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Reaping the Graves is castable");
     let reap_on_stack = top_spell(&game);
@@ -57702,6 +60235,7 @@ fn storm_copies_survive_countered_original() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a hard counter can target Reaping the Graves under its own storm trigger");
 
@@ -57766,6 +60300,7 @@ fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let filler_on_stack = top_spell(&game);
@@ -57791,6 +60326,7 @@ fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Flusterstorm can target the still-on-stack instant");
 
@@ -57829,6 +60365,7 @@ fn flusterstorm_storm_copy_ceases_to_exist_when_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the storm copy is a legal counter target");
     let events = resolve_top_of_stack_events(&mut game); // the counter resolves, countering the copy
@@ -58811,6 +61348,7 @@ const TEST_STEELBANE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -58843,6 +61381,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                     additional: AdditionalCost {
                         discard: 0,
                         discard_land: false,
+                        reveal_creature_from_hand: false,
                         pay_life_x: false,
                         pay_life: 0,
                         sacrifice: None,
@@ -58862,6 +61401,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                 sorcery_speed: false,
                 remove_counters: 1,
                 remove_counters_kind: None,
+                remove_counters_x: false,
                 return_self: false,
                 mill_self: 0,
                 discard_cost: 0,
@@ -58905,12 +61445,14 @@ const TEST_STEELBANE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -58934,6 +61476,7 @@ fn remove_counter_cost_destroys_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the static enters-with-counters ability places 2 counters
@@ -59036,6 +61579,7 @@ fn remove_counter_cost_lethal_shrink_dies_to_state_based_actions() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -59182,6 +61726,7 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -59210,12 +61755,14 @@ const TEST_ENCHANTMENT: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -59243,6 +61790,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -59279,6 +61827,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 enters_tapped: false,
                 enters_tapped_unless: None,
                 free_cast_if: None,
+                alternative_cost: None,
                 cast_only_during_combat: false,
                 approximates: None,
                 oracle: None,
@@ -59307,12 +61856,14 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
                 enchant_graveyard: false,
                 back: None,
                 adventure: None,
+                halves: &[],
                 suspend: None,
+                vanishing: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: None,
+                hand_ability: &[],
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
@@ -59351,12 +61902,14 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -59388,6 +61941,7 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -59429,12 +61983,14 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -59949,6 +62505,7 @@ fn moldervine_reclamation_gains_life_and_draws_from_a_single_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock resolves → lethal damage → SBA kills the 1/1. (CR 704, CR 120.3)
@@ -60001,6 +62558,7 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -60029,12 +62587,14 @@ const fn of_colors_land(name: &'static str, mask: u8) -> CardDef {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -60388,6 +62948,7 @@ fn goldspan_grant_disappears_when_goldspan_leaves() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // Targeting Goldspan triggers its own "becomes the target of a spell" Treasure-maker, which
@@ -60439,6 +63000,7 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -60469,12 +63031,14 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -60558,6 +63122,7 @@ fn troyan_mana_only_pays_expensive_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "mana value 4 doesn't qualify Troyan's mana — only 3 plain green is spendable, one short"
@@ -60579,6 +63144,7 @@ fn troyan_mana_only_pays_expensive_spells() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
     assert!(
@@ -60621,6 +63187,7 @@ fn troyan_mana_pays_x_spell() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
     assert_eq!(
@@ -60671,6 +63238,7 @@ fn galazeth_grants_restricted_treasure_mana() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::CannotPayCost),
         "a creature spell isn't an instant or sorcery — the granted mana can't fund it"
@@ -60692,6 +63260,7 @@ fn galazeth_grants_restricted_treasure_mana() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
     assert_eq!(game.zone_of(instant_spell), Zone::Stack);
@@ -60726,6 +63295,7 @@ fn cast_aether_gale(game: &mut Game) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Aether Gale is castable at sorcery speed with an empty stack");
     gale
@@ -60877,6 +63447,7 @@ fn aether_gale_skips_a_target_that_became_illegal_before_resolution() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a free instant is a legal reaction");
     resolve_top_of_stack(&mut game); // Destroy resolves
@@ -60935,6 +63506,7 @@ fn aether_gale_is_a_no_op_when_all_targets_became_illegal() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Destroy resolves — the sole target dies
@@ -61199,6 +63771,7 @@ fn quandrix_command_three_mode_combination_is_unperturbed_by_the_fourth_mode() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Arcane Signet is castable");
     let signet_on_stack = top_spell(&g);
@@ -61386,6 +63959,7 @@ fn replication_technique_copies_a_noncreature_permanent_you_control() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the spell is castable");
     decline_demonstrate(&mut game); // not exercising the Demonstrate rider here — see #83
@@ -61439,6 +64013,7 @@ fn white_orchid_phantom_etb_destroys_a_target_land() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the creature enters; its optional ETB pauses
@@ -61498,6 +64073,7 @@ fn white_orchid_phantom_lets_destroyed_lands_controller_ramp() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the creature enters; its optional ETB pauses
@@ -61580,6 +64156,7 @@ fn white_orchid_phantom_ramp_search_can_be_declined() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -61792,6 +64369,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -61845,12 +64423,14 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -61911,6 +64491,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -61956,12 +64537,14 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -61990,6 +64573,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -62038,12 +64622,14 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -62077,6 +64663,7 @@ fn magma_opus_divides_damage_among_two_chosen_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Magma Opus is castable at instant speed with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -62130,6 +64717,7 @@ fn magma_opus_division_must_cover_each_target_and_sum_to_the_total() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     game.submit(Intent::ChooseTargets {
@@ -62197,6 +64785,7 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_chosen_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -62249,6 +64838,7 @@ fn magma_opus_divides_damage_across_a_creature_and_a_player() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Magma Opus is castable at instant speed with an empty stack");
 
@@ -62299,6 +64889,7 @@ fn magma_opus_auto_assigns_the_whole_amount_to_a_single_player_target() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -62354,6 +64945,7 @@ fn magma_opus_divides_damage_and_taps_two_permanents() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Magma Opus is castable at instant speed with an empty stack");
 
@@ -62426,6 +65018,7 @@ fn volcanic_salvo_deals_full_damage_to_each_of_two_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Volcanic Salvo is castable at sorcery speed with an empty stack");
     // "Up to two" (min 0) is never forced — the caster always chooses how many, even with
@@ -62474,6 +65067,7 @@ fn prismari_charm_mode_1_damages_one_or_two_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect(
         "mode 1 is castable, choosing its targets after cast like a non-modal multi-target spell",
@@ -62515,6 +65109,7 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("mode 0 needs no target");
     assert!(
@@ -62543,6 +65138,7 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("mode 2 targets a single nonland permanent directly, no post-cast target choice");
     assert!(
@@ -62554,6 +65150,219 @@ fn prismari_charm_modes_0_and_2_are_not_dragged_into_multi_target_selection() {
         game.zone_of(permanent),
         Zone::Hand,
         "mode 2 bounced the permanent"
+    );
+}
+
+// ── Hull Breach: two independent target clauses inside one modal mode (#189) ───────────
+
+/// A test-only enchantment with the given generic mana value, otherwise vanilla — the
+/// [`artifact`] helper's enchantment twin, for Hull Breach's third mode.
+const fn enchantment(name: &'static str, mv: u8) -> CardDef {
+    CardDef {
+        name,
+        id: "",
+        default_print: "",
+        cost: Cost {
+            generic: mv,
+            ..Cost::FREE
+        },
+        kind: CardKind::Enchantment,
+        ..creature("unused", 0, 0, &[])
+    }
+}
+
+/// "Destroy target artifact and target enchantment" (Hull Breach mode 2): two independent
+/// single-target `destroy_target` clauses inside one modal mode, chained the same way Magma
+/// Opus's two independent spell-level clauses are — clause 0 (artifact) then clause 1
+/// (enchantment), each with its own decoy so the choice is observable.
+#[test]
+fn hull_breach_third_mode_destroys_target_artifact_and_target_enchantment() {
+    let mut game = TestGame::new();
+    let art = game.spawn_on_battlefield(PlayerId(1), artifact("Artifact", 1));
+    let art_decoy = game.spawn_on_battlefield(PlayerId(1), artifact("Decoy Artifact", 1));
+    let ench = game.spawn_on_battlefield(PlayerId(1), enchantment("Enchantment", 1));
+    let ench_decoy = game.spawn_on_battlefield(PlayerId(1), enchantment("Decoy Enchantment", 1));
+    let breach = game.spawn_in_hand(PlayerId(0), card("Hull Breach"));
+
+    game.cast(breach)
+        .mode(2, None)
+        .try_submit()
+        .expect("mode 2 needs both targets chosen after cast");
+
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseSpellTargets {
+            min,
+            max,
+            legal,
+            clause,
+            ..
+        }) => {
+            assert_eq!(
+                (min, max, clause),
+                (1, 1, 0),
+                "clause 0 is the artifact clause"
+            );
+            assert_eq!(
+                legal,
+                vec![Target::Object(art), Target::Object(art_decoy)],
+                "only artifacts are legal for clause 0"
+            );
+        }
+        other => panic!("expected clause 0's ChooseSpellTargets pause, got {other:?}"),
+    }
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(art)],
+    })
+    .expect("the real artifact is a legal clause-0 target");
+
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseSpellTargets {
+            min,
+            max,
+            legal,
+            clause,
+            ..
+        }) => {
+            assert_eq!(
+                (min, max, clause),
+                (1, 1, 1),
+                "clause 1 is the enchantment clause"
+            );
+            assert_eq!(
+                legal,
+                vec![Target::Object(ench), Target::Object(ench_decoy)],
+                "only enchantments are legal for clause 1"
+            );
+        }
+        other => panic!("expected clause 1's ChooseSpellTargets pause, got {other:?}"),
+    }
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(ench)],
+    })
+    .expect("the real enchantment is a legal clause-1 target");
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "both clauses are settled, nothing left to choose"
+    );
+
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(art),
+        Zone::Graveyard,
+        "the artifact was destroyed"
+    );
+    assert_eq!(
+        game.zone_of(ench),
+        Zone::Graveyard,
+        "the enchantment was destroyed"
+    );
+    assert_eq!(
+        game.zone_of(art_decoy),
+        Zone::Battlefield,
+        "the decoy artifact was never targeted"
+    );
+    assert_eq!(
+        game.zone_of(ench_decoy),
+        Zone::Battlefield,
+        "the decoy enchantment was never targeted"
+    );
+}
+
+/// Mode 0 ("Destroy target artifact") is untouched by the third mode's two-clause plumbing —
+/// it still takes its one target synchronously at cast, like every other single-target mode.
+#[test]
+fn hull_breach_first_mode_still_takes_one_target() {
+    let mut game = TestGame::new();
+    let art = game.spawn_on_battlefield(PlayerId(1), artifact("Artifact", 1));
+    let ench = game.spawn_on_battlefield(PlayerId(1), enchantment("Enchantment", 1));
+    let breach = game.spawn_in_hand(PlayerId(0), card("Hull Breach"));
+
+    game.cast(breach)
+        .mode(0, Some(Target::Object(art)))
+        .try_submit()
+        .expect("mode 0's single target is chosen directly at cast");
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "a single-target mode needs no post-cast pause"
+    );
+
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(art),
+        Zone::Graveyard,
+        "the artifact was destroyed"
+    );
+    assert_eq!(
+        game.zone_of(ench),
+        Zone::Battlefield,
+        "mode 0 never touches the enchantment"
+    );
+}
+
+/// CR 608.2b: if one of mode 2's two independently-chosen targets becomes illegal before Hull
+/// Breach resolves, only that clause's step is skipped — the other still resolves.
+#[test]
+fn hull_breach_third_mode_resolves_when_one_target_became_illegal() {
+    let mut game = TestGame::new();
+    let art = game.spawn_on_battlefield(PlayerId(1), artifact("Artifact", 1));
+    let ench = game.spawn_on_battlefield(PlayerId(1), enchantment("Enchantment", 1));
+    let breach = game.spawn_in_hand(PlayerId(0), card("Hull Breach"));
+
+    // With no decoy of either type, both clauses have exactly one legal target — a forced
+    // choice (CR 601.2c's "maximum possible number") auto-fills both, no pause needed.
+    game.cast(breach)
+        .mode(2, None)
+        .try_submit()
+        .expect("mode 2's two forced single-legal-target clauses auto-fill");
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "both clauses were forced, nothing left to choose"
+    );
+
+    // In response, P1 destroys the targeted artifact with a real "Destroy target artifact" spell.
+    game.submit(Intent::PassPriority {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    let grudge = game.spawn_in_hand(PlayerId(1), card("Ancient Grudge"));
+    game.fund_mana(PlayerId(1));
+    game.submit(Intent::Cast {
+        player: PlayerId(1),
+        object: grudge,
+        target: Some(Target::Object(art)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Ancient Grudge is a legal response");
+    resolve_top_of_stack(&mut game); // Ancient Grudge resolves, killing the artifact early.
+    assert_eq!(
+        game.zone_of(art),
+        Zone::Graveyard,
+        "the artifact is already dead before Hull Breach resolves"
+    );
+
+    resolve_top_of_stack(&mut game); // Hull Breach resolves.
+
+    assert_eq!(
+        game.zone_of(ench),
+        Zone::Graveyard,
+        "clause 1's enchantment still dies — only the illegal clause 0 target is skipped"
     );
 }
 
@@ -62580,6 +65389,7 @@ fn tap_two_target_permanents() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable with an empty stack");
     // Three legal permanents, exactly two required ⇒ a real choice.
@@ -62621,6 +65431,7 @@ fn put_a_counter_on_each_of_up_to_two_target_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable with an empty stack");
     // Three legal creatures, up to two chosen ⇒ a real choice (not the forced 0==0==0 case).
@@ -62676,6 +65487,7 @@ fn silkguard_puts_a_counter_on_each_of_up_to_x_target_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable at X=2 with an empty stack");
     // Three legal creatures, X=2 ⇒ a real "up to 2" choice.
@@ -62726,6 +65538,7 @@ fn silkguard_at_x_zero_chooses_no_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable at X=0 with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -62773,6 +65586,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -62818,12 +65632,14 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -62854,6 +65670,7 @@ fn silkguard_grants_hexproof_to_modified_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -62909,6 +65726,7 @@ fn modified_includes_equipped_and_aura_enchanted_creatures() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -62965,6 +65783,7 @@ fn modified_excludes_a_creature_enchanted_by_an_opponents_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("an instant is castable on the opponent's turn");
     resolve_top_of_stack(&mut game);
@@ -62998,6 +65817,7 @@ fn silkguard_grants_hexproof_to_the_creatures_it_just_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable at X=1 with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -63067,6 +65887,7 @@ fn silkguard_grants_hexproof_to_your_auras_and_equipment() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable at X=1 with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -63130,6 +65951,7 @@ fn silkguard_hexproof_on_equipment_wears_off_at_cleanup() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable at X=0 with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -63245,6 +66067,7 @@ fn pearl_ear_does_not_draw_when_an_opponent_casts_the_aura() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Shielded by Faith is castable by P1 targeting their own creature");
     resolve_top_of_stack(&mut game);
@@ -63280,6 +66103,7 @@ fn curse_of_the_swine_exiles_x_target_creatures_and_makes_a_boar_per_exile() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable at X=2 with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -63372,6 +66196,7 @@ fn pest_infestation_destroys_up_to_x_targets_and_creates_twice_x_pests() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable at X=2 with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -63649,6 +66474,7 @@ fn twinflame_strive_scales_cost_by_targets() {
         evoked: false,
         strive_count: 3,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(
         underfunded,
@@ -63673,6 +66499,7 @@ fn twinflame_strive_scales_cost_by_targets() {
             evoked: false,
             strive_count: 3,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect("fully funding the Strive cost for 3 targets is legal");
     let spent = events
@@ -63951,6 +66778,7 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Hydroid Krasis is castable");
     let hydroid_on_stack = top_spell(&game);
@@ -63977,6 +66805,7 @@ fn hydroid_krasis_cast_trigger_resolves_even_if_countered() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a hard counter can target the Hydroid spell under its own cast trigger");
 
@@ -64033,6 +66862,7 @@ fn astral_cornucopia_x3_cost_pays_x_thrice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("6 green mana pays {X}{X}{X} with X = 2");
     assert_eq!(
@@ -64066,6 +66896,7 @@ fn astral_cornucopia_x3_cost_pays_x_thrice() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(
         rejected,
@@ -64101,6 +66932,7 @@ fn single_x_spell_still_pays_x_once() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("4 mana (3 generic + {G}) pays {X}{G} with X = 3");
     assert_eq!(
@@ -64367,6 +67199,7 @@ fn staff_of_the_storyteller_does_not_accrue_when_an_opponent_creates_a_token() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     while !g.stack().is_empty() {
@@ -64377,6 +67210,232 @@ fn staff_of_the_storyteller_does_not_accrue_when_an_opponent_creates_a_token() {
         g.counters_of_kind(staff, CounterKind::Story),
         0,
         "an opponent creating creature tokens doesn't accrue your Staff's story counter"
+    );
+}
+
+/// Roll `g` forward to `player`'s next upkeep, crossing their own untap step (so a tapped
+/// permanent of theirs is untapped again) without landing back on the *same* upkeep it's
+/// already sitting on — advances to the End step first, then on to the next Upkeep.
+fn advance_to_next_upkeep(g: &mut Game, player: PlayerId) {
+    advance_until(g, |g| {
+        g.current_step() == Step::End && g.active_player() == player
+    });
+    advance_until(g, |g| {
+        g.current_step() == Step::Upkeep && g.active_player() == player
+    });
+}
+
+/// Total `{R}`-or-`{G}` credits (`Mana::Either(Red, Green)`) a resolution's own events added to
+/// `player`'s pool.
+fn either_red_green_added(events: &[Event], player: PlayerId) -> u32 {
+    events
+        .iter()
+        .filter_map(|e| match e {
+            Event::ManaAdded {
+                player: p,
+                mana: Mana::Either(Color::Red, Color::Green),
+                amount,
+                ..
+            } if *p == player => Some(*amount as u32),
+            _ => None,
+        })
+        .sum()
+}
+
+#[test]
+fn fungal_reaches_stores_a_counter() {
+    // "{1}, {T}: Put a storage counter on this land." CR 122.1e: a storage land's ability adds
+    // exactly one storage counter per activation, and tapping to pay the cost precludes doing it
+    // (or tapping for mana) again until the land untaps.
+    let mut g = TestGame::new();
+    g.fund_mana(PlayerId(0));
+    let land = g.spawn_on_battlefield(PlayerId(0), card("Fungal Reaches"));
+
+    g.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: land,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    while !g.stack().is_empty() {
+        resolve_top_of_stack(&mut g); // not a mana ability — it uses the stack (CR 605.1a, 601.2i)
+    }
+
+    assert_eq!(g.counters_of_kind(land, CounterKind::Storage), 1);
+    assert!(
+        g.is_tapped(land),
+        "tapping to store the counter taps the land"
+    );
+    assert_eq!(
+        g.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: land,
+            ability_index: 1,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        }),
+        Err(Reject::CannotActivate),
+        "already tapped this turn — can't store a second counter"
+    );
+}
+
+#[test]
+fn fungal_reaches_removes_x_storage_counters_for_x_mana() {
+    // "{1}, Remove X storage counters from this land: Add X mana in any combination of {R}
+    // and/or {G}." CR 107.3h/CR 605.3a: X is chosen at activation, and the ability produces
+    // exactly X mana credits, spending only the storage counters actually named.
+    let mut g = TestGame::new();
+    // Enough library on both sides to survive the draw steps crossed rolling forward three full
+    // rounds (mirrors `mana_bloom_returns_to_hand_with_no_charge_counters`'s setup).
+    g.stack_library(PlayerId(0), &[card("Forest"); 5]);
+    g.stack_library(PlayerId(1), &[card("Forest"); 5]);
+    let land = g.spawn_on_battlefield(PlayerId(0), card("Fungal Reaches"));
+
+    for _ in 0..3 {
+        // Floating mana empties at the end of every step/phase (CR 500.4) — fund each round's
+        // {1} generic cost fresh rather than once up front.
+        g.fund_mana(PlayerId(0));
+        g.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: land,
+            ability_index: 1,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 0,
+        })
+        .unwrap();
+        while !g.stack().is_empty() {
+            resolve_top_of_stack(&mut g); // not a mana ability — uses the stack (CR 605.1a, 601.2i)
+        }
+        advance_to_next_upkeep(&mut g, PlayerId(0));
+    }
+    assert_eq!(g.counters_of_kind(land, CounterKind::Storage), 3);
+
+    g.fund_mana(PlayerId(0)); // for this activation's own {1} generic cost
+    let events = g
+        .submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: land,
+            ability_index: 2,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 2,
+        })
+        .unwrap();
+
+    assert_eq!(
+        g.counters_of_kind(land, CounterKind::Storage),
+        1,
+        "removed exactly 2 of the 3 storage counters"
+    );
+    assert_eq!(
+        either_red_green_added(&events, PlayerId(0)),
+        2,
+        "added X=2 mana in any combination of {{R}} and/or {{G}}"
+    );
+}
+
+#[test]
+fn fungal_reaches_x_mana_can_be_split_between_red_and_green() {
+    // "Add X mana in any combination of {R} and/or {G}." Not pinned to one color at activation —
+    // a real dual credit that resolves its color at payment time ([`Mana::Either`], same as any
+    // other dual land) — so the same two credits pay a {R}{G} cost in one game and a {R}{R} cost
+    // in another.
+    for cost in [[0u8, 0, 0, 1, 1], [0, 0, 0, 2, 0]] {
+        let mut g = TestGame::new();
+        // Enough library on both sides to survive the draw steps crossed rolling forward two
+        // full rounds (mirrors `mana_bloom_returns_to_hand_with_no_charge_counters`'s setup).
+        g.stack_library(PlayerId(0), &[card("Forest"); 3]);
+        g.stack_library(PlayerId(1), &[card("Forest"); 3]);
+        let land = g.spawn_on_battlefield(PlayerId(0), card("Fungal Reaches"));
+        let forest = g.spawn_on_battlefield(PlayerId(0), card("Forest"));
+
+        // Build up 2 storage counters, paying each {1} activation cost from freshly-tapped
+        // Forest mana (no `fund_mana` — this test proves the *two Fungal Reaches credits*, and
+        // no other floating mana, cover the spell below).
+        for _ in 0..2 {
+            g.submit(Intent::TapForMana {
+                player: PlayerId(0),
+                object: forest,
+            })
+            .unwrap();
+            g.submit(Intent::ActivateAbility {
+                player: PlayerId(0),
+                object: land,
+                ability_index: 1,
+                target: None,
+                sacrifice: vec![],
+                discard_cost: vec![],
+                x: 0,
+            })
+            .unwrap();
+            while !g.stack().is_empty() {
+                resolve_top_of_stack(&mut g); // not a mana ability — uses the stack (CR 605.1a, 601.2i)
+            }
+            advance_to_next_upkeep(&mut g, PlayerId(0));
+        }
+        // Reach a sorcery-speed window (Main1) to cast the test spell below — and stay there for
+        // every remaining step: mana empties at the end of a step/phase (CR 500.4), so the
+        // removal ability's own two credits must be produced and spent in the same step as the
+        // cast.
+        advance_until(&mut g, |g| {
+            g.current_step() == Step::Main1 && g.active_player() == PlayerId(0)
+        });
+        assert_eq!(g.counters_of_kind(land, CounterKind::Storage), 2);
+
+        g.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: forest,
+        })
+        .unwrap();
+        g.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: land,
+            ability_index: 2,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 2,
+        })
+        .unwrap();
+
+        let spell = g.spawn_in_hand(PlayerId(0), vanilla("Test Fungal Payment Spell", 0, cost));
+        cast_plain(&mut g, PlayerId(0), spell).unwrap_or_else(|e| {
+            panic!("{cost:?} should be payable from the two RG credits: {e:?}")
+        });
+        assert_eq!(g.zone_of(spell), Zone::Stack);
+    }
+}
+
+#[test]
+fn fungal_reaches_cant_remove_more_counters_than_it_has() {
+    // CR 602.2b: an activation cost that can't be fully paid is illegal — removing more storage
+    // counters than the land has is uncompletable, same as Mana Bloom's fixed-count charge-counter
+    // cost.
+    let mut g = TestGame::new();
+    g.fund_mana(PlayerId(0));
+    let land = g.spawn_on_battlefield(PlayerId(0), card("Fungal Reaches"));
+
+    assert_eq!(
+        g.submit(Intent::ActivateAbility {
+            player: PlayerId(0),
+            object: land,
+            ability_index: 2,
+            target: None,
+            sacrifice: vec![],
+            discard_cost: vec![],
+            x: 1,
+        }),
+        Err(Reject::CannotActivate),
+        "no storage counters yet to remove"
     );
 }
 
@@ -64400,6 +67459,7 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -64439,12 +67499,14 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -65120,6 +68182,7 @@ fn grow_ancient_by_two(g: &mut TestGame, ancient: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     g.submit(Intent::AnswerMay {
@@ -65241,6 +68304,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     assert!(
@@ -65286,6 +68350,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     assert!(
@@ -65327,6 +68392,7 @@ fn forgotten_ancient_gains_counter_when_any_player_casts_a_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     g.submit(Intent::AnswerMay {
@@ -65685,6 +68751,7 @@ fn open_the_way_reveals_until_x_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let events = resolve_top_of_stack_events(&mut game);
@@ -65740,6 +68807,7 @@ fn open_the_way_short_library_puts_every_land_found() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -65790,6 +68858,7 @@ fn songbirds_blessing_attaches_deployed_aura_to_chosen_creature() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Songbirds' Blessing can enchant a creature you control");
     resolve_top_of_stack(&mut game);
@@ -65910,6 +68979,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -65940,12 +69010,14 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
@@ -65970,6 +69042,7 @@ fn songbirds_blessing_no_legal_host_sweeps_aura_to_graveyard() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -66033,6 +69106,7 @@ fn songbirds_blessing_declining_goes_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -66092,6 +69166,7 @@ fn songbirds_blessing_no_aura_in_library_is_a_noop() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -66140,6 +69215,7 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -66211,6 +69287,7 @@ fn songbirds_blessing_bottoms_rest_in_prng_order() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
     resolve_top_of_stack(&mut control);
@@ -66311,6 +69388,7 @@ fn creative_technique_reveals_until_nonland_exiles_and_casts_free() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect("the exiled nonland is castable for free, unfunded");
     let spent = events
@@ -66491,6 +69569,7 @@ fn animists_awakening_reveals_top_x_and_deploys_all_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let events = resolve_top_of_stack_events(&mut game);
@@ -66551,6 +69630,7 @@ fn animists_awakening_reveals_exactly_x() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let events = resolve_top_of_stack_events(&mut game);
@@ -66597,6 +69677,7 @@ fn animists_awakening_reveals_as_many_as_possible() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -66631,6 +69712,7 @@ fn animists_awakening_spell_mastery_untaps_deployed_lands() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -66666,6 +69748,7 @@ fn animists_awakening_no_spell_mastery_leaves_lands_tapped() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -66822,6 +69905,7 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -66863,12 +69947,14 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -66928,6 +70014,7 @@ fn arcane_lighthouse_strips_hexproof_and_shroud_and_blocks_a_fresh_grant_this_tu
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -67109,6 +70196,7 @@ const SACRIFICE_A_CREATURE_OUTLET: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -67236,6 +70324,7 @@ fn wheel_of_fortune_each_player_discards_then_draws() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the spell is castable");
     advance_until(&mut game, |g| g.stack_is_empty()); // every seat passes in turn to resolve it.
@@ -67363,6 +70452,7 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -67402,12 +70492,14 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -67434,6 +70526,7 @@ fn cast_x_and_resolve(game: &mut Game, def: CardDef, x: u32, name: &str) -> Obje
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap_or_else(|e| panic!("{name} is castable: {e:?}"));
     advance_until(game, |g| g.stack_is_empty());
@@ -67537,7 +70630,10 @@ fn primo_the_unbounded_batch_fires_once_per_defending_player() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(primo, PlayerId(1)), (zero_power, PlayerId(2))],
+        attackers: vec![
+            (primo, Defender::Player(PlayerId(1))),
+            (zero_power, Defender::Player(PlayerId(2))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
@@ -67690,6 +70786,7 @@ fn gyome_master_chef_end_step_creates_food_equal_to_nontoken_creatures_entered()
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -67708,6 +70805,7 @@ fn gyome_master_chef_end_step_creates_food_equal_to_nontoken_creatures_entered()
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -67812,6 +70910,7 @@ fn gilded_goose_sac_a_food_adds_one_mana_of_any_color() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the sacrificed Food's any-color mana pays Shock's {R}");
 }
@@ -67934,6 +71033,7 @@ fn herald_of_amity_etb_exiles_top_eight_and_casts_chosen_aura_free() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the Aura is castable from exile under the free-cast permission, unfunded");
     assert_eq!(
@@ -68115,6 +71215,7 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect(
             "the cascade hit is castable from exile for free, even with the sorcery on the stack",
@@ -68246,13 +71347,12 @@ fn a_spell_without_cascade_places_no_cascade_trigger() {
 #[test]
 fn throes_of_chaos_cascades_on_cast() {
     // Throes of Chaos ({3}{R} sorcery, mana value 4) has Cascade; casting it places the cascade
-    // trigger above the spell. (Casting from hand pays its retrace discard-a-land cost — see the
-    // note in the return summary; unrelated to cascade.)
+    // trigger above the spell. Cast from hand, retrace's discard-a-land rider (CR 702.83a) does
+    // not apply — it's owed only when casting from the graveyard.
     let mut game = TestGame::new();
     game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
-    let land = game.spawn_in_hand(PlayerId(0), card("Forest"));
     let throes = game.spawn_in_hand(PlayerId(0), card("Throes of Chaos"));
-    game.cast(throes).discarding(vec![land]).submit();
+    game.cast(throes).submit();
 
     let stack = game.stack();
     assert_eq!(stack.len(), 2, "cascade trigger + Throes of Chaos");
@@ -68635,6 +71735,7 @@ fn renegade_bull_free_cast_fires_own_cast_trigger() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the free-cast permission makes Big Score castable from exile");
     assert_eq!(
@@ -68697,6 +71798,7 @@ fn renegade_bull_free_cast_fires_other_cast_watchers() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_whole_stack(&mut game);
@@ -69081,6 +72183,7 @@ fn cast_devour_creature(game: &mut Game, card_name: &str) -> ObjectId {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the devour creature is castable");
     resolve_top_of_stack(game); // it enters → pauses on the devour sacrifice choice
@@ -69264,6 +72367,7 @@ fn ribtruss_roaster_end_step_makes_pests_with_dies_lifegain() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable");
     resolve_whole_stack(&mut game); // the destroy, then the Pest's own dies trigger (CR 603.6, CR 603)
@@ -69400,6 +72504,7 @@ fn abstract_performance_opponent_picks_pile_controller_casts_one_free_rest_to_ha
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the kept-pile creature is castable from exile for free");
     assert_eq!(
@@ -69582,6 +72687,7 @@ fn plargg_and_nassari_upkeep_opponent_picks_a_nonland_controller_casts_up_to_two
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect("each other exiled card casts from exile for free");
         assert_eq!(
@@ -69652,6 +72758,7 @@ fn plargg_and_nassari_casts_only_what_is_available_when_fewer_than_two_others() 
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the lone other exiled card casts for free");
     assert_eq!(game.zone_of(mystic), Zone::Stack);
@@ -69743,6 +72850,7 @@ fn abstract_performance_controller_chooses_which_opponent_splits() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the flash permission lets P2 cast a sorcery on P0's turn");
     while game.pending_choice().is_none() && !game.stack_is_empty() {
@@ -69911,6 +73019,7 @@ fn fact_or_fiction_controller_chooses_which_opponent_splits() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     while game.pending_choice().is_none() && !game.stack_is_empty() {
@@ -70106,6 +73215,7 @@ fn plargg_and_nassari_offers_up_to_two_free_casts_from_the_other_exiled_nonlands
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect("the granted free-cast permission casts without paying the mana cost");
         assert_eq!(game.zone_of(creature), Zone::Stack);
@@ -70448,7 +73558,7 @@ fn guardian_of_faith_phases_out_your_creatures_which_cannot_attack() {
     assert_eq!(
         g.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(bear, PlayerId(1))],
+            attackers: vec![(bear, Defender::Player(PlayerId(1)))],
         }),
         Err(Reject::IllegalDeclaration),
         "a phased-out creature can't be declared as an attacker",
@@ -70567,7 +73677,7 @@ fn phased_out_creatures_phase_in_at_their_controllers_next_untap() {
     assert!(!g.is_phased_out(bear), "phased in at P0's next untap");
     g.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(bear, PlayerId(1))],
+        attackers: vec![(bear, Defender::Player(PlayerId(1)))],
     })
     .expect("a phased-in creature can attack again");
 }
@@ -70848,6 +73958,7 @@ fn dance_with_calamity_casts_exiled_free_when_total_mv_at_most_13() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the exiled Bear is castable for free");
     assert_eq!(
@@ -70914,6 +74025,7 @@ fn dance_with_calamity_bust_over_13_grants_no_free_cast() {
                 evoked: false,
                 strive_count: 0,
                 replicate_count: 0,
+                alternative_cost: false,
             }),
             Err(Reject::NotCastable),
             "a busted exiled card has no free-cast permission"
@@ -71163,6 +74275,7 @@ const fn level_up_ability(level: u8) -> Ability {
             sorcery_speed: true,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -71198,6 +74311,7 @@ const TEST_CLASS: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -71251,12 +74365,14 @@ const TEST_CLASS: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -71278,6 +74394,7 @@ const TEST_LOSE_1_LIFE: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -71442,6 +74559,7 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -71482,6 +74600,7 @@ fn advanced_reconstruction_level_two_burns_each_opponent_on_graveyard_leave() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Reanimate resolves; the leaves-graveyard trigger queues
@@ -71534,6 +74653,7 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a graveyard cast is legal");
     assert_eq!(
@@ -71564,6 +74684,7 @@ fn advanced_reconstruction_level_three_reduces_non_hand_casts() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("a {2} artifact is castable from a full pool");
     assert_eq!(
@@ -71613,6 +74734,7 @@ fn intermediate_chirography_level_two_counters_on_first_life_loss() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Class enters; ETB queues
@@ -71712,6 +74834,7 @@ const TEST_MODIFIED_DEATH_WATCHER: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -71905,6 +75028,7 @@ fn cast_chirography(game: &mut Game) -> (ObjectId, ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // Class enters; ETB queues
@@ -72159,6 +75283,7 @@ fn rousing_refrain_adds_red_per_card_in_target_opponent_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -72217,6 +75342,7 @@ fn rousing_refrain_suspend_cast_exiles_with_time_counters() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert!(cast.is_err(), "a still-suspended card can't be cast yet");
 }
@@ -72275,6 +75401,7 @@ fn rousing_refrain_suspend_ticks_and_casts_free_at_zero() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert!(
         cast.is_ok(),
@@ -72312,6 +75439,7 @@ const SCREAM_EXILE_RETURN_CREATURES: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -72354,12 +75482,14 @@ const SCREAM_EXILE_RETURN_CREATURES: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -72392,6 +75522,7 @@ fn scream_counter_expiry_moves_to_graveyard_and_runs_payload() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -72452,6 +75583,7 @@ fn rousing_refrain_mana_persists_across_step() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
 
@@ -72521,6 +75653,7 @@ fn ordinary_mana_empties_at_step_boundary() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     game.submit(Intent::PassPriority {
@@ -73326,6 +76459,7 @@ fn wild_ricochet_may_retarget_a_multi_target_spell_then_copies_with_new_targets(
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -73453,6 +76587,7 @@ fn wild_ricochet_declining_retarget_leaves_original_targets() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -73530,6 +76665,7 @@ fn wild_ricochet_card_is_faithful() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("castable with an empty stack");
     game.submit(Intent::ChooseTargets {
@@ -74043,7 +77179,7 @@ fn illusionary_mask_creature_flips_when_assigning_combat_damage() {
     });
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(attacker, PlayerId(0))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(0)))],
     })
     .unwrap();
     // The defending player (P0) declares the block with its masked creature.
@@ -74212,6 +77348,7 @@ fn cast_free(game: &mut Game, player: PlayerId, object: ObjectId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the free spell is castable");
 }
@@ -74405,7 +77542,7 @@ fn inkshield_prevents_combat_damage_to_you_and_creates_inklings() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(attacker, PlayerId(0))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(0)))],
     })
     .unwrap();
     // P0 responds during combat, before the combat-damage step.
@@ -74482,7 +77619,7 @@ fn inkshield_shield_expires_next_turn() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(attacker, PlayerId(0))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(0)))],
     })
     .unwrap();
 
@@ -74515,7 +77652,10 @@ fn inkshield_prevents_each_attacker_and_tallies_tokens() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(a2, PlayerId(0)), (a3, PlayerId(0))],
+        attackers: vec![
+            (a2, Defender::Player(PlayerId(0))),
+            (a3, Defender::Player(PlayerId(0))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.priority_holder() == PlayerId(0));
@@ -74551,7 +77691,7 @@ fn moments_peace_prevents_combat_damage_to_creatures() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -74597,7 +77737,7 @@ fn moments_peace_prevents_combat_damage_to_a_player() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     fund_cast_resolve(&mut game, PlayerId(0), moments_peace, None);
@@ -74651,7 +77791,7 @@ fn moments_peace_shield_expires_next_turn() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
 
@@ -74679,7 +77819,7 @@ fn moments_peace_flashback_from_graveyard() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(attacker, PlayerId(0))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(0)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.priority_holder() == PlayerId(0));
@@ -74954,6 +78094,7 @@ fn phantom_centaur_prevents_at_zero_counters_removing_nothing() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let events = resolve_top_of_stack_events(&mut game);
@@ -75970,6 +79111,7 @@ fn capsize_buyback_requires_the_extra_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     });
     assert_eq!(rejected, Err(Reject::CannotPayCost));
     assert_eq!(
@@ -76058,7 +79200,7 @@ fn constant_mists_bought_back_returns_to_hand_and_fogs() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(attacker, PlayerId(1))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -76083,6 +79225,7 @@ fn constant_mists_bought_back_returns_to_hand_and_fogs() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -76224,6 +79367,7 @@ const OPPONENT_DAMAGE_WATCHER: CardDef = CardDef {
                 sorcery_speed: false,
                 remove_counters: 0,
                 remove_counters_kind: None,
+                remove_counters_x: false,
                 return_self: false,
                 mill_self: 0,
                 discard_cost: 0,
@@ -76329,6 +79473,7 @@ fn noble_templar_plainscycling_fetches_any_plains_typed_land() {
     game.submit(Intent::ActivateHandAbility {
         player: PlayerId(0),
         card: templar,
+        index: 0,
     })
     .unwrap();
 
@@ -76381,6 +79526,7 @@ fn shoreline_ranger_islandcycling_fetches_any_island_typed_land() {
     game.submit(Intent::ActivateHandAbility {
         player: PlayerId(0),
         card: ranger,
+        index: 0,
     })
     .unwrap();
 
@@ -76421,6 +79567,7 @@ fn wirewood_guardian_forestcycling_fetches_any_forest_typed_land() {
     game.submit(Intent::ActivateHandAbility {
         player: PlayerId(0),
         card: guardian,
+        index: 0,
     })
     .unwrap();
 
@@ -76509,6 +79656,7 @@ fn twisted_abomination_swampcycling_fetches_any_swamp_typed_land() {
     game.submit(Intent::ActivateHandAbility {
         player: PlayerId(0),
         card: abomination,
+        index: 0,
     })
     .unwrap();
 
@@ -76887,6 +80035,339 @@ fn anarchist_etb_returns_a_sorcery_card_but_not_an_instant_card() {
     );
 }
 
+// ── Nucklavee (two simultaneous optional targeted ETB triggers, color-filtered) ─────────
+
+#[test]
+fn nucklavee_etb_triggers_target_a_red_sorcery_and_a_blue_instant_separately() {
+    // "When this creature enters, you may return target red sorcery card from your graveyard
+    // to your hand." / "… target blue instant card …" — two separate triggers off one event
+    // (CR 603.3b ordering), each with its own "may" gate and its own color-filtered target.
+    let mut game = TestGame::new();
+    let red_sorcery = game.spawn_in_graveyard(PlayerId(0), card("Blasphemous Act"));
+    let blue_instant = game.spawn_in_graveyard(PlayerId(0), card("Brainstorm"));
+    let red_instant = game.spawn_in_graveyard(PlayerId(0), card("Lightning Bolt"));
+    let blue_sorcery = game.spawn_in_graveyard(PlayerId(0), card("Compulsive Research"));
+    let nucklavee = game.spawn_in_hand(PlayerId(0), card("Nucklavee"));
+    game.cast(nucklavee).resolve();
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::OrderTriggers {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "two simultaneous triggers are ordered by their controller; got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::ChooseOrder {
+        player: PlayerId(0),
+        order: vec![0, 1],
+    })
+    .unwrap();
+
+    // First ordered trigger: the "may" gate survives ordering (CR 603.3c).
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "each ordered trigger keeps its own optional gate; got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the red-sorcery trigger pauses to target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        legal,
+        vec![Target::Object(red_sorcery)],
+        "only a red sorcery card is a legal target for the first trigger"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(red_sorcery)],
+    })
+    .unwrap();
+
+    // Second ordered trigger: same shape, the other color/type axis.
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the blue-instant trigger pauses to target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(
+        legal,
+        vec![Target::Object(blue_instant)],
+        "only a blue instant card is a legal target for the second trigger"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(blue_instant)],
+    })
+    .unwrap();
+
+    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.zone_of(red_sorcery), Zone::Hand);
+    assert_eq!(game.zone_of(blue_instant), Zone::Hand);
+    assert_eq!(
+        game.zone_of(red_instant),
+        Zone::Graveyard,
+        "a red instant matches neither trigger"
+    );
+    assert_eq!(
+        game.zone_of(blue_sorcery),
+        Zone::Graveyard,
+        "a blue sorcery matches neither trigger"
+    );
+}
+
+// ── Fire // Ice (split card — one card, two independently castable halves, CR 709) ──────
+
+#[test]
+fn fire_half_of_a_split_card_deals_its_divided_damage_and_the_whole_card_hits_the_graveyard() {
+    // "Fire deals 2 damage divided as you choose among one or two targets." Casting one half
+    // (CR 709.4a) puts only that half on the stack; the card is the whole split card again in
+    // every other zone (CR 709.4).
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear1 = game.spawn_on_battlefield(PlayerId(1), VANILLA); // 2/2
+    let bear2 = game.spawn_on_battlefield(PlayerId(1), VANILLA); // 2/2
+    let split = game.spawn_in_hand(PlayerId(0), card("Fire // Ice"));
+
+    // The fused card itself is never cast — only a half is (CR 709.4a).
+    assert_eq!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: split,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        }),
+        Err(Reject::NotCastable),
+        "a split card can only be cast as one of its halves"
+    );
+
+    game.submit(Intent::CastSplitHalf {
+        player: PlayerId(0),
+        source: split,
+        half: 0,
+        target: None,
+        x: 0,
+    })
+    .unwrap();
+    let Some(PendingChoice::ChooseSpellTargets { .. }) = game.pending_choice() else {
+        panic!(
+            "Fire chooses one or two targets, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear1), Target::Object(bear2)],
+    })
+    .unwrap();
+    game.submit(Intent::DivideSpellDamage {
+        player: PlayerId(0),
+        assignment: vec![(Target::Object(bear1), 1), (Target::Object(bear2), 1)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(game.marked_damage(bear1), 1);
+    assert_eq!(game.marked_damage(bear2), 1);
+    assert_eq!(game.zone_of(split), Zone::Graveyard);
+    let def = game.def_of(split);
+    assert_eq!(
+        def.name, "Fire // Ice",
+        "off the stack the card is the whole split card again"
+    );
+    assert_eq!(
+        def.mana_value(),
+        4,
+        "the combined mana value of both halves (CR 709.4)"
+    );
+}
+
+#[test]
+fn ice_half_of_a_split_card_taps_a_permanent_and_draws() {
+    // "Tap target permanent. Draw a card." — the other half of the same card, cast for its own
+    // cost with its own targets.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let split = game.spawn_in_hand(PlayerId(0), card("Fire // Ice"));
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+
+    game.submit(Intent::CastSplitHalf {
+        player: PlayerId(0),
+        source: split,
+        half: 1,
+        target: Some(Target::Object(bear)),
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // "Tap target permanent."
+    resolve_top_of_stack(&mut game); // "Draw a card."
+
+    assert!(game.is_tapped(bear), "Ice taps its target");
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "Ice replaced itself: -1 from casting, +1 from the draw"
+    );
+    assert_eq!(game.zone_of(split), Zone::Graveyard);
+    assert_eq!(game.def_of(split).name, "Fire // Ice");
+}
+
+#[test]
+fn casting_a_second_half_of_the_same_split_card_still_leaves_the_whole_card_behind() {
+    // Regression: the fused-card restore must survive a round trip. Cast Fire, return the card to
+    // hand, cast Ice — the graveyard card is still the whole "Fire // Ice" (CR 709.4), not "Ice".
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let other = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let split = game.spawn_in_hand(PlayerId(0), card("Fire // Ice"));
+
+    game.submit(Intent::CastSplitHalf {
+        player: PlayerId(0),
+        source: split,
+        half: 0,
+        target: None,
+        x: 0,
+    })
+    .unwrap();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear), Target::Object(other)],
+    })
+    .unwrap();
+    game.submit(Intent::DivideSpellDamage {
+        player: PlayerId(0),
+        assignment: vec![(Target::Object(bear), 1), (Target::Object(other), 1)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    // Back to hand — Recollect: "Return target card from your graveyard to your hand." — then cast
+    // the *other* half of the same card.
+    let recollect = game.spawn_in_hand(PlayerId(0), card("Recollect"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: recollect,
+        target: Some(Target::Object(game.current_id(split))),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    let split = game.current_id(split);
+    assert_eq!(game.zone_of(split), Zone::Hand);
+
+    game.fund_mana(PlayerId(0));
+    let permanent = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    game.submit(Intent::CastSplitHalf {
+        player: PlayerId(0),
+        source: split,
+        half: 1,
+        target: Some(Target::Object(permanent)),
+        x: 0,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game);
+
+    let split = game.current_id(split);
+    assert_eq!(game.zone_of(split), Zone::Graveyard);
+    assert_eq!(
+        game.def_of(split).name,
+        "Fire // Ice",
+        "the second cast must not leave the bare half behind"
+    );
+}
+
+#[test]
+fn a_split_card_in_hand_lists_one_castable_action_per_half() {
+    // CR 709.4a: only a half is ever cast, so the action list must offer *each* half — the fused
+    // card itself is never a `Cast` action. This is what gives a client two hand affordances.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.spawn_on_battlefield(PlayerId(1), VANILLA); // a legal target for Ice
+    let split = game.spawn_in_hand(PlayerId(0), card("Fire // Ice"));
+
+    let actions = game.meaningful_actions(PlayerId(0));
+    assert!(
+        !actions
+            .iter()
+            .any(|a| matches!(a, MeaningfulAction::Cast { card, .. } if *card == split)),
+        "the fused split card is not castable as itself"
+    );
+    for half in 0..2u8 {
+        assert!(
+            actions.iter().any(
+                |a| matches!(a, MeaningfulAction::CastSplitHalf { card, half: h } if *card == split && *h == half)
+            ),
+            "half {half} should be listed, got {actions:?}"
+        );
+    }
+
+    // …and taking one casts that half.
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let tapland = game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    refresh_via_mana_tap(&mut game, tapland);
+    let id = game
+        .legal_actions()
+        .iter()
+        .find(
+            |a| matches!(a.kind, MeaningfulAction::CastSplitHalf { card, half } if card == split && half == 1),
+        )
+        .expect("Ice is listed")
+        .id;
+    game.submit(take(PlayerId(0), id, Some(Target::Object(bear))))
+        .unwrap();
+    resolve_top_of_stack(&mut game); // "Tap target permanent."
+    assert!(game.is_tapped(bear), "TakeAction cast the Ice half");
+}
+
 // ── Enchantress/Rubinia wave: Dismantling Blow, Oblivion Ring, Overwhelming Intellect,
 // Resurrection, Seal of Cleansing ──────────────────────────────────────────────────────────
 
@@ -77054,6 +80535,7 @@ fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Auramancer is castable");
     let mancer_on_stack = top_spell(&game);
@@ -77075,6 +80557,7 @@ fn overwhelming_intellect_counters_a_creature_spell_and_draws_its_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Overwhelming Intellect can counter a creature spell");
     resolve_top_of_stack(&mut game);
@@ -77118,6 +80601,7 @@ fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Lightning Bolt is castable");
     let bolt_on_stack = top_spell(&game);
@@ -77140,6 +80624,7 @@ fn overwhelming_intellect_cannot_target_a_noncreature_spell() {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         }),
         Err(Reject::IllegalTarget),
         "a noncreature spell is not a legal target for Overwhelming Intellect"
@@ -77259,6 +80744,7 @@ fn momentary_blink_flickers_creature_you_control_immediately() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_whole_stack(&mut game); // the spell, then its fresh object's own ETB trigger
@@ -77368,6 +80854,7 @@ fn enlightened_tutor_reveals_and_puts_an_artifact_or_enchantment_card_on_top() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Enlightened Tutor resolves → pause on the search choice.
@@ -77570,6 +81057,7 @@ fn cast_court_hussar_funding_generic_with(game: &mut Game, generic_source: &str)
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(game); // the spell resolves → the creature enters, two ETB triggers queue
@@ -77644,6 +81132,119 @@ fn court_hussar_looks_at_top_three_and_puts_one_in_hand() {
     );
 }
 
+// ── Firespout (fidelity increment #188, color-spent-to-cast-accounting) ────────────────
+
+/// Cast Firespout (`{2}{R/G}`), funding its hybrid `{R/G}` pip and generic `{2}` from
+/// `red_sources` Mountains and `green_sources` Forests (whichever supplies the hybrid pip is
+/// forced by leaving the other color's supply exactly enough for the generic — see
+/// `ManaPool::spend_plan_unrestricted`'s "scarcer color first" hybrid-pip pick).
+fn cast_firespout_funding_hybrid_with(game: &mut Game, red_sources: u8, green_sources: u8) {
+    let firespout = game.spawn_in_hand(PlayerId(0), card("Firespout"));
+    for _ in 0..red_sources {
+        let mountain = game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: mountain,
+        })
+        .unwrap();
+    }
+    for _ in 0..green_sources {
+        let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: forest,
+        })
+        .unwrap();
+    }
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: firespout,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("Firespout is castable off its funded hybrid pip");
+    resolve_whole_stack(game);
+}
+
+#[test]
+fn firespout_red_only_damages_creatures_without_flying() {
+    // "deals 3 damage to each creature without flying if {R} was spent to cast this spell" —
+    // funding the hybrid `{R/G}` pip from 1 Mountain and the generic `{2}` from 2 more Mountains
+    // means only red was ever spent, so only the ground creature is hit.
+    let mut game = Game::new();
+    let ground = game.spawn_on_battlefield(PlayerId(1), card("Jotun Grunt")); // 4/4, no flying
+    let flier = game.spawn_on_battlefield(PlayerId(1), card("Shoreline Ranger")); // 3/4 flying
+
+    cast_firespout_funding_hybrid_with(&mut game, 3, 0);
+
+    assert_eq!(
+        game.marked_damage(ground),
+        3,
+        "{{R}} was spent, so the ground creature takes the without-flying half"
+    );
+    assert_eq!(
+        game.marked_damage(flier),
+        0,
+        "no {{G}} was spent, so the with-flying half never fires"
+    );
+}
+
+#[test]
+fn firespout_green_only_damages_creatures_with_flying() {
+    // The mirror: "3 damage to each creature with flying if {G} was spent". Funding entirely
+    // from Forests means only green was spent, so only the flier is hit.
+    let mut game = Game::new();
+    let ground = game.spawn_on_battlefield(PlayerId(1), card("Jotun Grunt")); // 4/4, no flying
+    let flier = game.spawn_on_battlefield(PlayerId(1), card("Shoreline Ranger")); // 3/4 flying
+
+    cast_firespout_funding_hybrid_with(&mut game, 0, 3);
+
+    assert_eq!(
+        game.marked_damage(flier),
+        3,
+        "{{G}} was spent, so the flier takes the with-flying half"
+    );
+    assert_eq!(
+        game.marked_damage(ground),
+        0,
+        "no {{R}} was spent, so the without-flying half never fires"
+    );
+}
+
+#[test]
+fn firespout_paid_with_both_colors_damages_every_creature() {
+    // "(Do both if {R}{G} was spent.)" — 1 Mountain forces the hybrid pip to red (the scarcer
+    // supply, see the helper's doc), leaving 2 Forests to fund the generic `{2}` in green: both
+    // colors were spent, so both halves fire and every creature is hit regardless of flying.
+    let mut game = Game::new();
+    let ground = game.spawn_on_battlefield(PlayerId(1), card("Jotun Grunt")); // 4/4, no flying
+    let flier = game.spawn_on_battlefield(PlayerId(1), card("Shoreline Ranger")); // 3/4 flying
+
+    cast_firespout_funding_hybrid_with(&mut game, 1, 2);
+
+    assert_eq!(
+        game.marked_damage(ground),
+        3,
+        "{{R}}{{G}} was spent, so the without-flying half hits the ground creature"
+    );
+    assert_eq!(
+        game.marked_damage(flier),
+        3,
+        "{{R}}{{G}} was spent, so the with-flying half hits the flier too"
+    );
+}
+
 // ── Armadillo Cloak (fidelity increment #151, attached-host damage watch) ───────────────
 
 /// [`cast_and_resolve`], but for a game seated with more than two players: passes priority once
@@ -77672,6 +81273,7 @@ fn cast_and_resolve_seated(
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the spell is castable");
     for _ in 0..seats {
@@ -77705,7 +81307,7 @@ fn armadillo_cloak_gains_life_on_combat_damage() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(host, PlayerId(2))],
+        attackers: vec![(host, Defender::Player(PlayerId(2)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
@@ -77947,6 +81549,7 @@ fn cast_aura_at(game: &mut Game, player: PlayerId, aura: ObjectId, host: ObjectI
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("the Aura is castable at its host");
     resolve_top_of_stack(game);
@@ -78264,6 +81867,7 @@ fn ashes_to_ashes_deals_real_damage_to_you() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Ashes to Ashes is castable");
     // Exactly two legal targets exist for a "choose exactly two" clause (CR 601.2c's "maximum
@@ -78691,6 +82295,7 @@ fn chartooth_cougar_mountaincycling_fetches_any_mountain_typed_land() {
     game.submit(Intent::ActivateHandAbility {
         player: PlayerId(0),
         card: cougar,
+        index: 0,
     })
     .unwrap();
     assert_eq!(
@@ -78723,6 +82328,94 @@ fn chartooth_cougar_mountaincycling_fetches_any_mountain_typed_land() {
     })
     .unwrap();
     assert_eq!(game.zone_of(lib[2]), Zone::Hand);
+}
+
+#[test]
+fn valley_rannet_mountaincycling_fetches_a_mountain() {
+    // Valley Rannet: "Mountaincycling {2}, forestcycling {2} ({2}, Discard this card: Search your
+    // library for a Mountain or Forest card, reveal it, put it into your hand, then shuffle.)" —
+    // CR 702.29d: typecycling grants one ability per named type, so mountaincycling (index 0) can
+    // only find a Mountain.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(PlayerId(0), &[card("Forest"), card("Mountain")]);
+    let rannet = game.spawn_in_hand(PlayerId(0), card("Valley Rannet"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: rannet,
+        index: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(rannet),
+        Zone::Graveyard,
+        "the card was discarded as part of the ability's cost, not cast"
+    );
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "mountaincycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand, "the found card goes to hand");
+    assert!(
+        !matches.contains(&lib[0]),
+        "a Forest has no Mountain subtype — mountaincycling can't find it"
+    );
+    assert!(matches.contains(&lib[1]), "the Mountain matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[1]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[1]), Zone::Hand);
+}
+
+#[test]
+fn valley_rannet_forestcycling_fetches_a_forest() {
+    // Valley Rannet's second landcycling ability (index 1): forestcycling can only find a Forest,
+    // the mirror of mountaincycling above — CR 702.29d's one-ability-per-type again.
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(PlayerId(0), &[card("Mountain"), card("Forest")]);
+    let rannet = game.spawn_in_hand(PlayerId(0), card("Valley Rannet"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: rannet,
+        index: 1,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(rannet),
+        Zone::Graveyard,
+        "the card was discarded as part of the ability's cost, not cast"
+    );
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "forestcycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand, "the found card goes to hand");
+    assert!(
+        !matches.contains(&lib[0]),
+        "a Mountain has no Forest subtype — forestcycling can't find it"
+    );
+    assert!(matches.contains(&lib[1]), "the Forest matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[1]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[1]), Zone::Hand);
 }
 
 #[test]
@@ -79279,6 +82972,7 @@ const MAY_DRAW_UPKEEP: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -79317,12 +83011,14 @@ const MAY_DRAW_UPKEEP: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -79477,6 +83173,7 @@ fn skullclamp_draws_two_when_the_equipped_creature_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the removal resolves; the bear dies
@@ -79795,6 +83492,7 @@ fn grim_harvest_recover_offers_a_pay_or_exile_choice_when_a_creature_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Shock is castable");
     resolve_top_of_stack(&mut game); // Shock resolves → lethal damage → SBA kills the bear.
@@ -79836,6 +83534,7 @@ fn grim_harvest_recover_paid_returns_it_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -79879,6 +83578,7 @@ fn grim_harvest_recover_declined_exiles_it() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -79952,6 +83652,7 @@ fn grim_harvest_returns_a_creature_card_from_the_graveyard_to_hand() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grim Harvest is castable targeting the graveyard bear");
     resolve_top_of_stack(&mut game);
@@ -79990,6 +83691,7 @@ fn tutored_to_graveyard_creature_does_not_fire_dies() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Buried Alive resolves → pause on the search choice.
@@ -80052,6 +83754,7 @@ const TEST_MINUS_ONE_COUNTER_CREATURE: CardDef = CardDef {
                 sorcery_speed: false,
                 remove_counters: 1,
                 remove_counters_kind: Some(CounterKind::MinusOneMinusOne),
+                remove_counters_x: false,
                 return_self: false,
                 mill_self: 0,
                 discard_cost: 0,
@@ -80101,6 +83804,7 @@ fn minus_one_counter_reduces_power_and_toughness() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // the static enters-with-counters ability places 1 counter
@@ -80139,6 +83843,7 @@ fn removing_a_minus_one_counter_restores_power_and_toughness() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -80255,6 +83960,7 @@ const DRAW_ONE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -80285,12 +83991,14 @@ const DRAW_ONE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -80318,6 +84026,7 @@ const DRAW_THREE: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -80348,12 +84057,14 @@ const DRAW_THREE: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -80380,6 +84091,7 @@ const DREDGER_3: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -80408,12 +84120,14 @@ const DREDGER_3: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: Some(3),
@@ -80443,6 +84157,7 @@ const DIES_FODDER: CardDef = CardDef {
     enters_tapped: false,
     enters_tapped_unless: None,
     free_cast_if: None,
+    alternative_cost: None,
     cast_only_during_combat: false,
     approximates: None,
     oracle: None,
@@ -80481,12 +84196,14 @@ const DIES_FODDER: CardDef = CardDef {
     enchant_graveyard: false,
     back: None,
     adventure: None,
+    halves: &[],
     suspend: None,
+    vanishing: None,
     devour: None,
     demonstrate: false,
     enter_as_copy: None,
     encore: None,
-    hand_ability: None,
+    hand_ability: &[],
     forecast: None,
     may_choose_not_to_untap: false,
     dredge: None,
@@ -80510,6 +84227,7 @@ fn cast_and_resolve_draw_one(game: &mut Game, player: PlayerId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("free sorcery is castable in main phase");
     resolve_top_of_stack(game);
@@ -80692,6 +84410,7 @@ fn cast_and_resolve_draw_three(game: &mut Game, player: PlayerId) {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("free sorcery is castable in main phase");
     resolve_top_of_stack(game);
@@ -80961,6 +84680,7 @@ fn golgari_thug_dies_tucks_a_creature_to_top_of_library() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game); // Shock kills the Thug; its mandatory dies trigger pauses to target.
@@ -81094,6 +84814,7 @@ static FLIPPER_FRONT: CardDef = CardDef {
             sorcery_speed: false,
             remove_counters: 0,
             remove_counters_kind: None,
+            remove_counters_x: false,
             return_self: false,
             mill_self: 0,
             discard_cost: 0,
@@ -81370,7 +85091,10 @@ fn death_watch_fires_for_survivor_when_owner_is_eliminated() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(killer, PlayerId(1)), (finisher, PlayerId(1))],
+        attackers: vec![
+            (killer, Defender::Player(PlayerId(1))),
+            (finisher, Defender::Player(PlayerId(1))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -81421,7 +85145,10 @@ fn dead_creatures_own_dies_still_suppressed_on_owner_loss() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
-        attackers: vec![(killer, PlayerId(1)), (finisher, PlayerId(1))],
+        attackers: vec![
+            (killer, Defender::Player(PlayerId(1))),
+            (finisher, Defender::Player(PlayerId(1))),
+        ],
     })
     .unwrap();
     advance_until(&mut game, |g| g.current_step() == Step::DeclareBlockers);
@@ -81483,6 +85210,7 @@ fn two_controllers_death_watch_orders_apnap() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     // Destroy resolves (the bear dies, both watches fire); a 3-player table needs every player's
@@ -81965,6 +85693,7 @@ fn plumeveil_flashes_in_on_an_opponents_turn() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Flash lets Plumeveil be cast on the active player's turn");
     let events = resolve_top_of_stack_events(&mut game);
@@ -81988,7 +85717,7 @@ fn defender_walls_cannot_be_declared_as_attackers() {
         assert_eq!(
             game.submit(Intent::DeclareAttackers {
                 player: PlayerId(0),
-                attackers: vec![(wall, PlayerId(1))],
+                attackers: vec![(wall, Defender::Player(PlayerId(1)))],
             }),
             Err(Reject::IllegalDeclaration),
             "{name} has defender and can't attack",
@@ -82049,7 +85778,7 @@ fn windborn_muse_and_propaganda_tax_each_attacker() {
         assert_eq!(
             game.submit(Intent::DeclareAttackers {
                 player: PlayerId(0),
-                attackers: vec![(attacker, PlayerId(1))],
+                attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
             }),
             Err(Reject::IllegalDeclaration),
             "{name}: can't attack its controller without paying the {{2}} tax",
@@ -82058,7 +85787,7 @@ fn windborn_muse_and_propaganda_tax_each_attacker() {
         float_green(&mut game, PlayerId(0), 2);
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         })
         .unwrap_or_else(|e| panic!("{name}: paying {{2}} makes the attack legal, got {e:?}"));
         assert_eq!(
@@ -82275,6 +86004,7 @@ fn skyscribing_forecast_each_player_draws_a_card_only_during_your_upkeep_once_pe
         game.submit(Intent::ActivateHandAbility {
             player: PlayerId(0),
             card: skyscribing,
+            index: 0,
         }),
         Err(Reject::CannotActivate),
         "Forecast activates only during your own upkeep",
@@ -82294,6 +86024,7 @@ fn skyscribing_forecast_each_player_draws_a_card_only_during_your_upkeep_once_pe
     game.submit(Intent::ActivateHandAbility {
         player: PlayerId(0),
         card: skyscribing,
+        index: 0,
     })
     .unwrap();
 
@@ -82320,6 +86051,7 @@ fn skyscribing_forecast_each_player_draws_a_card_only_during_your_upkeep_once_pe
         game.submit(Intent::ActivateHandAbility {
             player: PlayerId(0),
             card: skyscribing,
+            index: 0,
         }),
         Err(Reject::CannotActivate),
         "Forecast activates only once each turn",
@@ -82367,8 +86099,8 @@ fn soul_snare_only_hits_attacker_of_its_controller() {
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(0),
         attackers: vec![
-            (attacks_snare_controller, PlayerId(1)),
-            (attacks_someone_else, PlayerId(2)),
+            (attacks_snare_controller, Defender::Player(PlayerId(1))),
+            (attacks_someone_else, Defender::Player(PlayerId(2))),
         ],
     })
     .unwrap();
@@ -82482,6 +86214,128 @@ fn numot_choosing_zero_lands_is_legal() {
     );
 }
 
+// ── Intet, the Dreamer (exile face down, play it free while Intet remains) ────────────
+
+/// Attack with Intet, pay the {2}{U} rider, and resolve the trigger. Returns the exiled card's
+/// current id.
+fn intet_exile_top(game: &mut Game, intet: ObjectId, top: ObjectId) -> ObjectId {
+    attack_with(game, vec![intet]);
+    advance_until(game, |g| g.pending_choice().is_some());
+    // Mana empties at each step's end (CR 500.4), so fund right before paying.
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(game);
+    game.current_id(top)
+}
+
+#[test]
+fn intet_exiles_the_top_card_face_down_and_lets_you_cast_it_free() {
+    // "Whenever Intet deals combat damage to a player, you may pay {2}{U}. If you do, exile the
+    // top card of your library face down. You may look at that card for as long as it remains
+    // exiled. You may play that card without paying its mana cost for as long as Intet remains
+    // on the battlefield."
+    let mut game = Game::new();
+    let intet = game.spawn_on_battlefield(PlayerId(0), card("Intet, the Dreamer"));
+    let top = game.stack_library(PlayerId(0), &[VANILLA])[0];
+
+    let exiled = intet_exile_top(&mut game, intet, top);
+    assert_eq!(game.zone_of(exiled), Zone::Exile, "the top card is exiled");
+    assert!(
+        game.is_card_face_down(exiled),
+        "\"exile the top card of your library face down\" (CR 701.9)"
+    );
+
+    // The creature card is cast from exile at sorcery speed, with an empty mana pool.
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: exiled,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .expect("\"play that card without paying its mana cost\" — no mana in pool");
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(game.current_id(exiled)),
+        Zone::Battlefield,
+        "the free cast resolved"
+    );
+}
+
+#[test]
+fn intets_play_permission_ends_when_intet_leaves_the_battlefield() {
+    // "for as long as Intet remains on the battlefield" — the permission is read live off the
+    // source, so it stops the moment Intet dies (unlike an impulse permission's turn expiry).
+    let mut game = Game::new();
+    let intet = game.spawn_on_battlefield(PlayerId(0), card("Intet, the Dreamer"));
+    let top = game.stack_library(PlayerId(0), &[VANILLA])[0];
+
+    let exiled = intet_exile_top(&mut game, intet, top);
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+
+    // Terror: "Destroy target nonartifact, nonblack creature."
+    let terror = game.spawn_in_hand(PlayerId(0), card("Terror"));
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: terror,
+        target: Some(Target::Object(intet)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(game.current_id(intet)),
+        Zone::Graveyard,
+        "Intet died"
+    );
+
+    assert_eq!(
+        game.submit(Intent::Cast {
+            player: PlayerId(0),
+            object: exiled,
+            target: None,
+            x: 0,
+            modes: vec![],
+            discard_cost: vec![],
+            graveyard_exile: vec![],
+            sacrifice_cost: vec![],
+            kicked: false,
+            bought_back: false,
+            evoked: false,
+            strive_count: 0,
+            replicate_count: 0,
+            alternative_cost: false,
+        }),
+        Err(Reject::NotCastable),
+        "the permission lapses with Intet"
+    );
+}
+
 // ── Activated-ability independent second target clause (CR 601.2c, #218) ──────────────
 
 #[test]
@@ -82503,7 +86357,7 @@ fn spurnmage_advocate_two_target_clauses() {
     advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
     game.submit(Intent::DeclareAttackers {
         player: PlayerId(1),
-        attackers: vec![(attacker, PlayerId(0))],
+        attackers: vec![(attacker, Defender::Player(PlayerId(0)))],
     })
     .unwrap();
     advance_until(&mut game, |g| g.priority_holder() == PlayerId(0));
@@ -82582,6 +86436,7 @@ fn cast_lash_out_keep_tops(
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Lash Out is castable");
     resolve_top_of_stack(game); // resolves the clash step → pauses on P0's keep/bottom scry
@@ -82727,6 +86582,7 @@ fn clash_keep_or_bottom_moves_the_revealed_card() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -82831,6 +86687,7 @@ fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Grizzly Bear is castable");
     let bear_on_stack = top_spell(&game);
@@ -82854,6 +86711,7 @@ fn scattering_stroke_win_adds_colorless_for_countered_spell_mana_value() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Scattering Stroke is castable");
     resolve_top_of_stack(&mut game); // clash step → pauses on P0's scry
@@ -82904,6 +86762,7 @@ fn scattering_stroke_loss_counters_but_schedules_no_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     let bear_on_stack = top_spell(&game);
@@ -82925,6 +86784,7 @@ fn scattering_stroke_loss_counters_but_schedules_no_mana() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -82972,6 +86832,7 @@ fn pollen_lullaby_win_keeps_opponents_creatures_tapped_through_their_untap() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Pollen Lullaby is castable");
     resolve_top_of_stack(&mut game);
@@ -83019,6 +86880,7 @@ fn whirlpool_whelm_loss_puts_creature_on_top_win_second_from_top() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .expect("Whirlpool Whelm is castable");
     resolve_top_of_stack(&mut game);
@@ -83065,6 +86927,7 @@ fn whirlpool_whelm_win_puts_creature_second_from_top() {
         evoked: false,
         strive_count: 0,
         replicate_count: 0,
+        alternative_cost: false,
     })
     .unwrap();
     resolve_top_of_stack(&mut game);
@@ -83694,4 +87557,2299 @@ fn goblin_cadets_donates_itself_to_target_opponent_when_it_becomes_blocked() {
         !game.blocks().iter().any(|&(_, a)| a == cadets),
         "CR 506.4c: the control change removes it from combat"
     );
+}
+// ── Mirror Mastery (Commander 2011) ────────────────────────────────────────────────
+
+#[test]
+fn izzet_signet_pays_one_and_adds_blue_red() {
+    // Izzet Signet "{1}, {T}: Add {U}{R}." — a Forest funds the {1}; the output is one blue
+    // and one red.
+    let mut game = Game::new();
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let signet = game.spawn_on_battlefield(PlayerId(0), card("Izzet Signet"));
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .unwrap();
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: signet,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Blue),
+        1,
+        "Izzet Signet adds one blue"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Red),
+        1,
+        "Izzet Signet adds one red"
+    );
+    assert_eq!(
+        game.floating_mana(PlayerId(0)),
+        2,
+        "the Forest's green paid the {{1}} activation cost"
+    );
+    assert!(game.is_tapped(signet));
+}
+
+#[test]
+fn kazandu_refuge_enters_tapped_gains_one_life_and_taps_for_r_or_g() {
+    // Kazandu Refuge — gainland. "This land enters tapped. When this land enters, you gain 1
+    // life. {T}: Add {R} or {G}."
+    let mut game = Game::new();
+    let refuge = game.spawn_in_hand(PlayerId(0), card("Kazandu Refuge"));
+    let life_before = game.life(PlayerId(0));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: refuge,
+        })
+        .unwrap();
+    let perm = land_permanent(&events);
+    assert!(game.is_tapped(perm), "enters tapped");
+
+    resolve_top_of_stack(&mut game); // the ETB gain-life trigger resolves
+    assert_eq!(
+        game.life(PlayerId(0)),
+        life_before + 1,
+        "gained 1 life on ETB"
+    );
+
+    // "{T}: Add {R} or {G}" — one credit chosen between two colors. Spawn-on-battlefield an
+    // untapped copy and verify the tap-mana ability is recognized.
+    let mut g = Game::new();
+    let land = g.spawn_on_battlefield(PlayerId(0), card("Kazandu Refuge"));
+    assert!(
+        g.taps_for_mana(land),
+        "Kazandu Refuge has a free tap-for-mana ability"
+    );
+}
+
+#[test]
+fn vivid_crag_enters_tapped_with_two_charge_counters_and_taps_for_red() {
+    // Vivid Crag "This land enters tapped with two charge counters on it. {T}: Add {R}. {T},
+    // Remove a charge counter from this land: Add one mana of any color."
+    let mut game = Game::new();
+    let crag = game.spawn_in_hand(PlayerId(0), card("Vivid Crag"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: crag,
+        })
+        .unwrap();
+    let perm = land_permanent(&events);
+    assert!(game.is_tapped(perm), "enters tapped");
+    assert_eq!(
+        game.counters_of_kind(perm, CounterKind::Charge),
+        2,
+        "enters with two charge counters"
+    );
+
+    game.untap(perm);
+    game.submit(Intent::TapForMana {
+        player: PlayerId(0),
+        object: perm,
+    })
+    .unwrap();
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Red),
+        1,
+        "taps for one red"
+    );
+}
+
+#[test]
+fn vivid_crag_removes_a_charge_counter_for_any_color() {
+    // Vivid Crag's second ability: "{T}, Remove a charge counter from this land: Add one mana of
+    // any color."
+    let mut game = Game::new();
+    let crag = game.spawn_in_hand(PlayerId(0), card("Vivid Crag"));
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: crag,
+        })
+        .unwrap();
+    let perm = land_permanent(&events);
+    assert_eq!(
+        game.counters_of_kind(perm, CounterKind::Charge),
+        2,
+        "enters with two charge counters"
+    );
+
+    game.untap(perm);
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: perm,
+        ability_index: 2, // the charge-counter-removal ability (after the ETB + tap-for-red)
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.counters_of_kind(perm, CounterKind::Charge),
+        1,
+        "a charge counter was removed as a cost"
+    );
+    assert!(game.is_tapped(perm), "the Crag tapped to activate");
+}
+
+#[test]
+fn vivid_creek_and_vivid_grove_mirror_vivid_crag() {
+    // Vivid Creek ({U}) and Vivid Grove ({G}) share Vivid Crag's template, just different
+    // intrinsic colors.
+    for (name, color) in [("Vivid Creek", Color::Blue), ("Vivid Grove", Color::Green)] {
+        let mut game = Game::new();
+        let land = game.spawn_in_hand(PlayerId(0), card(name));
+        let events = game
+            .submit(Intent::PlayLand {
+                player: PlayerId(0),
+                object: land,
+            })
+            .unwrap();
+        let perm = land_permanent(&events);
+        assert!(game.is_tapped(perm), "{name} enters tapped");
+        assert_eq!(
+            game.counters_of_kind(perm, CounterKind::Charge),
+            2,
+            "{name} enters with two charge counters"
+        );
+
+        game.untap(perm);
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: perm,
+        })
+        .unwrap();
+        assert_eq!(
+            game.mana_in_pool(PlayerId(0), color),
+            1,
+            "{name} taps for one {color:?}"
+        );
+    }
+}
+
+/// A test-only land with a printed as-enters static: "This land enters with two charge
+/// counters on it" — isolated exercise of `enters_with_counters` firing off `LandPlayed`
+/// rather than only a spell's cast-resolution choke (Vivid Crag/Creek/Grove's real ability).
+const TEST_LAND_WITH_CHARGE_COUNTERS: CardDef = CardDef {
+    name: "Test Land With Charge Counters",
+    id: "",
+    default_print: "",
+    cost: Cost::FREE,
+    kind: CardKind::Land {
+        produces: None,
+        subtypes: &[],
+        basic: false,
+    },
+    legendary: false,
+    uncounterable: false,
+    modal: false,
+    modal_choose: 1,
+    modal_choose_max: None,
+    modal_choose_max_if_commander: false,
+    identity_pips: &[],
+    colors: &[],
+    devoid: false,
+    enters_tapped: false,
+    enters_tapped_unless: None,
+    free_cast_if: None,
+    alternative_cost: None,
+    cast_only_during_combat: false,
+    approximates: None,
+    oracle: None,
+    set: "",
+    subtypes: &[],
+    otags: &[],
+    keywords: &[],
+    conditional_keywords: &[],
+    abilities: &[Ability {
+        timing: Timing::Static,
+        effect: Effect::EntersWithCounters {
+            amount: Amount::Fixed(2),
+            kind: Some(CounterKind::Charge),
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        condition: None,
+        cost: Cost::FREE,
+    }],
+    cycling: None,
+    cycling_sacrifice: SacrificeCost::None,
+    flashback: None,
+    echo: None,
+    cumulative_upkeep: None,
+    recover: None,
+    bestow: None,
+    morph: None,
+    evoke: None,
+    delve: false,
+    escape: None,
+    retrace: false,
+    graveyard_cast_cost: None,
+    cascade: false,
+    functions_in_graveyard: false,
+    enchant: None,
+    enchant_graveyard: false,
+    back: None,
+    adventure: None,
+    halves: &[],
+    suspend: None,
+    vanishing: None,
+    devour: None,
+    demonstrate: false,
+    enter_as_copy: None,
+    encore: None,
+    hand_ability: &[],
+    forecast: None,
+    may_choose_not_to_untap: false,
+    dredge: None,
+};
+
+#[test]
+fn land_enters_with_charge_counters_from_its_static_ability() {
+    // CR 616.1's as-enters static fires at `LandPlayed`, the land special action's own ETB
+    // site — no stack resolution to hang the counter placement off, unlike a spell's
+    // `enters_with_counters` (hydras, mana_bloom).
+    let mut game = Game::new();
+    let land = game.spawn_in_hand(PlayerId(0), TEST_LAND_WITH_CHARGE_COUNTERS);
+    let events = game
+        .submit(Intent::PlayLand {
+            player: PlayerId(0),
+            object: land,
+        })
+        .unwrap();
+    let perm = land_permanent(&events);
+    assert_eq!(
+        game.counters_of_kind(perm, CounterKind::Charge),
+        2,
+        "the land's static places its counters as it enters, with no trigger to resolve"
+    );
+}
+
+// ── Mirror Mastery wave 2 — instants & sorceries ──────────────────────────────────
+
+#[test]
+fn colossal_might_pumps_plus_four_plus_two_with_trample() {
+    // Colossal Might "{R}{G} Instant: Target creature gets +4/+2 and gains trample until EOT."
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA); // 2/2
+    let spell = game.spawn_in_hand(PlayerId(0), card("Colossal Might"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: Some(Target::Object(bear)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(game.power(bear), 6, "the 2/2 becomes 6/4 until end of turn");
+    assert_eq!(game.toughness(bear), 4);
+    assert!(
+        game.has_keyword(bear, Keyword::Trample),
+        "the creature gains trample"
+    );
+}
+
+#[test]
+fn electrolyze_deals_two_divided_and_draws_a_card() {
+    // Electrolyze "{1}{U}{R} Instant: Electrolyze deals 2 damage divided as you choose among one
+    // or two targets. Draw a card."
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    game.stack_library(PlayerId(0), &[card("Forest"), card("Forest")]);
+    let bear1 = game.spawn_on_battlefield(PlayerId(1), VANILLA); // 2/2
+    let bear2 = game.spawn_on_battlefield(PlayerId(1), VANILLA); // 2/2
+    let spell = game.spawn_in_hand(PlayerId(0), card("Electrolyze"));
+    let hand_before = hand_ids(&game, PlayerId(0)).len();
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    // Pause on the divided-damage target choice (one or two targets).
+    let legal = match game.pending_choice() {
+        Some(PendingChoice::ChooseSpellTargets { legal, .. }) => legal.clone(),
+        other => panic!("expected a targets pause for divided damage, got {other:?}"),
+    };
+    assert!(
+        legal.contains(&Target::Object(bear1)) && legal.contains(&Target::Object(bear2)),
+        "both opposing creatures are legal targets"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear1), Target::Object(bear2)],
+    })
+    .unwrap();
+    // Then the division of 2 damage across the two chosen targets.
+    let division_legal = match game.pending_choice() {
+        Some(PendingChoice::DivideSpellDamage { .. }) => true,
+        other => panic!("expected a DivideSpellDamage pause, got {other:?}"),
+    };
+    assert!(division_legal, "Electrolyze pauses on damage division");
+    game.submit(Intent::DivideSpellDamage {
+        player: PlayerId(0),
+        assignment: vec![(Target::Object(bear1), 1), (Target::Object(bear2), 1)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // Electrolyze resolves, dealing 1 to each bear
+    resolve_top_of_stack(&mut game); // the cantrip draw resolves
+    assert_eq!(
+        game.marked_damage(bear1),
+        1,
+        "first bear takes 1 of the 2 divided damage"
+    );
+    assert_eq!(
+        game.marked_damage(bear2),
+        1,
+        "second bear takes the other 1"
+    );
+    assert_eq!(
+        hand_ids(&game, PlayerId(0)).len(),
+        hand_before,
+        "Electrolyze replaced itself: -1 from cast, +1 from cantrip"
+    );
+}
+
+#[test]
+fn ray_of_command_steals_gains_haste_and_untaps() {
+    // Ray of Command "{3}{U} Instant: Untap target creature an opponent controls and gain control
+    // of it until end of turn. That creature gains haste until end of turn."
+    // ponytail: the printed "When you lose control of the creature, tap it" delayed trigger is
+    // dropped — see ray_of_command.toml.
+    let mut game = Game::with_players(2, 0);
+    let victim = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    game.tap(victim);
+    game.fund_mana(PlayerId(0));
+    let spell = game.spawn_in_hand(PlayerId(0), card("Ray of Command"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: Some(Target::Object(victim)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    for p in [PlayerId(0), PlayerId(1)] {
+        game.submit(Intent::PassPriority { player: p }).unwrap();
+    }
+    assert!(!game.is_tapped(victim), "the stolen creature untaps");
+    assert_eq!(
+        game.controller_of(victim),
+        PlayerId(0),
+        "Ray of Command steals the creature until end of turn"
+    );
+    assert!(game.has_haste(victim), "the stolen creature gains haste");
+}
+
+#[test]
+fn ruination_destroys_all_nonbasic_lands_only() {
+    // Ruination "{3}{R} Sorcery: Destroy all nonbasic lands."
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let forest = game.spawn_on_battlefield(PlayerId(0), card("Forest")); // basic
+    let command_tower = game.spawn_on_battlefield(PlayerId(0), card("Command Tower")); // nonbasic
+    let boilerworks = game.spawn_on_battlefield(PlayerId(0), card("Izzet Boilerworks")); // nonbasic
+    let spell = game.spawn_in_hand(PlayerId(0), card("Ruination"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Battlefield,
+        "the basic Forest survives"
+    );
+    assert_eq!(
+        game.zone_of(command_tower),
+        Zone::Graveyard,
+        "Command Tower is destroyed"
+    );
+    assert_eq!(
+        game.zone_of(boilerworks),
+        Zone::Graveyard,
+        "Izzet Boilerworks is destroyed"
+    );
+}
+
+#[test]
+fn savage_twister_deals_x_damage_to_each_creature() {
+    // Savage Twister "{X}{R}{G} Sorcery: Savage Twister deals X damage to each creature."
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA); // 2/2
+    let angel = game.spawn_on_battlefield(PlayerId(1), card("Serra Angel")); // 4/4
+    let spell = game.spawn_in_hand(PlayerId(0), card("Savage Twister"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 3,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Graveyard,
+        "the 2/2 dies to 3 damage"
+    );
+    assert_eq!(
+        game.zone_of(angel),
+        Zone::Battlefield,
+        "the 4/4 survives 3 damage"
+    );
+    assert_eq!(
+        game.marked_damage(angel),
+        3,
+        "the survivor keeps 3 marked damage"
+    );
+}
+
+#[test]
+fn tribute_to_the_wild_makes_each_opponent_sacrifice_artifact_or_enchantment() {
+    // Tribute to the Wild "{1}{G} Instant: Each opponent sacrifices an artifact or enchantment of
+    // their choice."
+    let mut game = Game::with_players(2, 0);
+    game.fund_mana(PlayerId(0));
+    let signet = game.spawn_on_battlefield(PlayerId(1), card("Izzet Signet")); // artifact
+    let prism = game.spawn_on_battlefield(PlayerId(1), card("Prophetic Prism")); // artifact
+    let bear = game.spawn_on_battlefield(PlayerId(1), VANILLA); // creature — not legal
+    let spell = game.spawn_in_hand(PlayerId(0), card("Tribute to the Wild"));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game); // the edict pauses on opponent's choice
+    let legal = match game.pending_choice() {
+        Some(PendingChoice::SacrificeEdict { options, .. }) => options.clone(),
+        other => panic!("expected a SacrificeEdict, got {other:?}"),
+    };
+    assert!(
+        legal.contains(&signet) && legal.contains(&prism),
+        "the opponent's artifacts are legal sacrifices"
+    );
+    assert!(
+        !legal.contains(&bear),
+        "a creature is not a legal choice for Tribute to the Wild"
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![signet],
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(signet),
+        Zone::Graveyard,
+        "the chosen artifact is sacrificed"
+    );
+    assert_eq!(
+        game.zone_of(prism),
+        Zone::Battlefield,
+        "the other artifact survives"
+    );
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "the creature is untouched"
+    );
+}
+
+// ── Mirror Mastery: evoke Elementals, landfall, landcycling, and Garruk Wildspeaker ──
+
+#[test]
+fn aethersnipe_evoked_bounces_a_nonland_permanent_then_is_sacrificed() {
+    // Aethersnipe: "When this creature enters, return target nonland permanent to its owner's
+    // hand." + "Evoke {1}{U}{U}" (CR 702.74a — sacrificed the instant it enters, under its own
+    // ETB trigger on the stack).
+    let mut game = TestGame::new();
+    let snipe = game.spawn_in_hand(PlayerId(0), card("Aethersnipe"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    game.cast(snipe).evoked(true).resolve();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .expect("the opponent's creature is a legal nonland permanent");
+    resolve_top_of_stack(&mut game); // the ETB bounce resolves above evoke's sacrifice
+
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the targeted nonland permanent goes to its owner's hand"
+    );
+
+    resolve_top_of_stack(&mut game); // evoke's self-sacrifice (CR 702.74a)
+    assert_eq!(
+        game.zone_of(game.current_id(snipe)),
+        Zone::Graveyard,
+        "evoke sacrifices Aethersnipe once its ETB has resolved"
+    );
+}
+
+#[test]
+fn aethersnipe_etb_cannot_target_a_land() {
+    // "target nonland permanent" — a land on the battlefield is not a legal target.
+    let mut game = TestGame::new();
+    let snipe = game.spawn_in_hand(PlayerId(0), card("Aethersnipe"));
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    game.cast(snipe).resolve();
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the ETB bounce pauses on a target choice, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        !legal.contains(&Target::Object(forest)),
+        "a land is excluded by the nonland filter"
+    );
+    assert!(
+        legal.contains(&Target::Object(bear)),
+        "a creature is a legal target"
+    );
+}
+
+#[test]
+fn baloth_woodcrasher_landfall_pumps_it_and_grants_trample() {
+    // Baloth Woodcrasher: "Landfall — Whenever a land you control enters, this creature gets
+    // +4/+4 and gains trample until end of turn."
+    let mut game = TestGame::new();
+    let baloth = game.spawn_on_battlefield(PlayerId(0), card("Baloth Woodcrasher"));
+    assert!(
+        !game.has_keyword(baloth, Keyword::Trample),
+        "no trample before landfall"
+    );
+
+    let forest = game.spawn_in_hand(PlayerId(0), card("Forest"));
+    game.submit(Intent::PlayLand {
+        player: PlayerId(0),
+        object: forest,
+    })
+    .expect("playing a land is legal");
+    resolve_top_of_stack(&mut game); // the landfall trigger
+
+    assert_eq!(
+        (game.power(baloth), game.toughness(baloth)),
+        (8, 8),
+        "+4/+4 until end of turn"
+    );
+    assert!(
+        game.has_keyword(baloth, Keyword::Trample),
+        "and gains trample"
+    );
+
+    pass_until_next_turn(&mut game);
+    assert_eq!(
+        (game.power(baloth), game.toughness(baloth)),
+        (4, 4),
+        "the pump wore off at cleanup"
+    );
+    assert!(
+        !game.has_keyword(baloth, Keyword::Trample),
+        "so did the trample grant"
+    );
+}
+
+#[test]
+fn baloth_woodcrasher_landfall_ignores_an_opponents_land() {
+    // "a land *you control* enters" — an opponent's land doesn't trigger it.
+    let mut game = TestGame::new();
+    let baloth = game.spawn_on_battlefield(PlayerId(0), card("Baloth Woodcrasher"));
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+
+    let forest = game.spawn_in_hand(PlayerId(1), card("Forest"));
+    game.submit(Intent::PlayLand {
+        player: PlayerId(1),
+        object: forest,
+    })
+    .expect("playing a land is legal on its controller's turn");
+
+    assert!(
+        game.stack().is_empty(),
+        "an opponent's land doesn't fire the landfall watch"
+    );
+    assert_eq!(
+        (game.power(baloth), game.toughness(baloth)),
+        (4, 4),
+        "unpumped"
+    );
+}
+
+#[test]
+fn elvish_aberration_taps_for_three_green() {
+    // Elvish Aberration: "{T}: Add {G}{G}{G}."
+    let mut game = Game::new();
+    let aberration = game.spawn_on_battlefield(PlayerId(0), card("Elvish Aberration"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: aberration,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        3,
+        "one tap, three green"
+    );
+    assert!(game.is_tapped(aberration), "the mana ability taps it");
+}
+
+#[test]
+fn elvish_aberration_forestcycling_fetches_a_forest_to_hand() {
+    // Elvish Aberration: "Forestcycling {2} ({2}, Discard this card: Search your library for a
+    // Forest card, reveal it, put it into your hand, then shuffle.)"
+    let mut game = Game::new();
+    game.fund_mana(PlayerId(0));
+    let lib = game.stack_library(PlayerId(0), &[card("Island"), card("Forest")]);
+    let aberration = game.spawn_in_hand(PlayerId(0), card("Elvish Aberration"));
+
+    game.submit(Intent::ActivateHandAbility {
+        player: PlayerId(0),
+        card: aberration,
+        index: 0,
+    })
+    .unwrap();
+    assert_eq!(
+        game.zone_of(aberration),
+        Zone::Graveyard,
+        "the card is discarded as part of the ability's cost"
+    );
+    resolve_top_of_stack(&mut game);
+
+    let Some(PendingChoice::SearchLibrary { matches, dest, .. }) = game.pending_choice() else {
+        panic!(
+            "forestcycling pauses on a library search, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert_eq!(dest, SearchDest::Hand, "the found card goes to hand");
+    assert!(
+        !matches.contains(&lib[0]),
+        "an Island has no Forest subtype"
+    );
+    assert!(matches.contains(&lib[1]), "the Forest matches");
+
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(lib[1]),
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(lib[1]), Zone::Hand);
+}
+
+#[test]
+fn faultgrinder_evoked_destroys_target_land_then_is_sacrificed() {
+    // Faultgrinder: "Trample" + "When this creature enters, destroy target land." +
+    // "Evoke {4}{R}".
+    let mut game = TestGame::new();
+    let grinder = game.spawn_in_hand(PlayerId(0), card("Faultgrinder"));
+    let forest = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+
+    game.cast(grinder).evoked(true).resolve();
+    let on_battlefield = game.current_id(grinder);
+    assert!(
+        game.has_keyword(on_battlefield, Keyword::Trample),
+        "printed trample"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(forest)],
+    })
+    .expect("the opponent's land is a legal target");
+    resolve_top_of_stack(&mut game); // the ETB land destruction
+
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Graveyard,
+        "the targeted land is destroyed"
+    );
+
+    resolve_top_of_stack(&mut game); // evoke's self-sacrifice
+    assert_eq!(
+        game.zone_of(on_battlefield),
+        Zone::Graveyard,
+        "evoke sacrifices Faultgrinder once its ETB has resolved"
+    );
+}
+
+#[test]
+fn simic_sky_swallower_has_flying_trample_and_shroud() {
+    // Simic Sky Swallower: "Flying, trample" + "Shroud (This creature can't be the target of
+    // spells or abilities.)"
+    let mut game = TestGame::new();
+    let swallower = game.spawn_on_battlefield(PlayerId(0), card("Simic Sky Swallower"));
+
+    assert_eq!((game.power(swallower), game.toughness(swallower)), (6, 6));
+    assert!(game.has_keyword(swallower, Keyword::Flying));
+    assert!(game.has_keyword(swallower, Keyword::Trample));
+    assert!(game.has_keyword(swallower, Keyword::Shroud));
+
+    // CR 702.18a: shroud stops even its own controller's targeted spell.
+    let shock = game.spawn_in_hand(PlayerId(0), card("Shock"));
+    assert_eq!(
+        game.cast(shock).at(Target::Object(swallower)).try_submit(),
+        Err(Reject::IllegalTarget),
+        "shroud forbids targeting it at all"
+    );
+}
+
+#[test]
+fn spitebellows_deals_six_damage_when_it_leaves_the_battlefield() {
+    // Spitebellows: "When this creature leaves the battlefield, it deals 6 damage to target
+    // creature." + "Evoke {1}{R}{R}" — evoke's own sacrifice is what makes it leave.
+    let mut game = TestGame::new();
+    let bellows = game.spawn_in_hand(PlayerId(0), card("Spitebellows"));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+
+    game.cast(bellows).evoked(true).resolve();
+    resolve_top_of_stack(&mut game); // evoke's self-sacrifice — the permanent leaves
+    assert_eq!(
+        game.zone_of(game.current_id(bellows)),
+        Zone::Graveyard,
+        "evoke sacrificed it"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .expect("the opponent's creature is a legal target");
+    resolve_top_of_stack(&mut game); // the leaves-the-battlefield damage trigger
+
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Graveyard,
+        "6 damage kills the 2/2 it was pointed at"
+    );
+}
+
+#[test]
+fn garruk_wildspeaker_plus_one_untaps_two_target_lands() {
+    // Garruk Wildspeaker: "+1: Untap two target lands." — exactly two, each chosen as the
+    // ability goes on the stack (CR 601.2c).
+    let mut game = Game::new();
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk Wildspeaker"));
+    let lands: Vec<ObjectId> = (0..3)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Forest")))
+        .collect();
+    for &land in &lands {
+        game.submit(Intent::TapForMana {
+            player: PlayerId(0),
+            object: land,
+        })
+        .unwrap();
+    }
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(game.loyalty(garruk), 4, "the +1 is paid on activation");
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(lands[0]), Target::Object(lands[1])],
+    })
+    .expect("two distinct legal lands, exactly the required count");
+    resolve_top_of_stack(&mut game);
+    resolve_top_of_stack(&mut game);
+
+    assert!(!game.is_tapped(lands[0]), "the first chosen land untaps");
+    assert!(!game.is_tapped(lands[1]), "the second chosen land untaps");
+    assert!(game.is_tapped(lands[2]), "the untargeted land stays tapped");
+}
+
+#[test]
+fn garruk_wildspeaker_minus_one_creates_a_three_three_beast() {
+    // Garruk Wildspeaker: "−1: Create a 3/3 green Beast creature token."
+    let mut game = Game::new();
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk Wildspeaker"));
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 1,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    assert_eq!(game.loyalty(garruk), 2, "the −1 is paid on activation");
+    resolve_top_of_stack(&mut game);
+
+    let beasts = battlefield_named(&game, PlayerId(0), "Beast");
+    assert_eq!(beasts.len(), 1, "one Beast token");
+    assert_eq!((game.power(beasts[0]), game.toughness(beasts[0])), (3, 3));
+}
+
+#[test]
+fn garruk_wildspeaker_minus_four_pumps_your_creatures_and_grants_trample() {
+    // Garruk Wildspeaker: "−4: Creatures you control get +3/+3 and gain trample until end of
+    // turn."
+    let mut game = Game::new();
+    // Stock both libraries so the draw steps over the intervening turns don't deck anyone.
+    game.stack_library(PlayerId(0), &[VANILLA; 5]);
+    game.stack_library(PlayerId(1), &[VANILLA; 5]);
+    let garruk = game.spawn_on_battlefield(PlayerId(0), card("Garruk Wildspeaker"));
+    let mine = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    let theirs = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    let lands: Vec<ObjectId> = (0..2)
+        .map(|_| game.spawn_on_battlefield(PlayerId(0), card("Forest")))
+        .collect();
+
+    // Starting loyalty 3 can't pay −4 (CR 606.3), and only one loyalty ability may be activated
+    // per turn (CR 606.3) — tick up once, then come back next turn.
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 0,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .unwrap();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: lands.iter().copied().map(Target::Object).collect(),
+    })
+    .unwrap();
+    pass_until_next_turn(&mut game); // player 1's turn
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    assert_eq!(game.loyalty(garruk), 4, "the +1 left enough loyalty for −4");
+
+    game.submit(Intent::ActivateAbility {
+        player: PlayerId(0),
+        object: garruk,
+        ability_index: 2,
+        target: None,
+        sacrifice: vec![],
+        discard_cost: vec![],
+        x: 0,
+    })
+    .expect("4 loyalty pays the −4");
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!((game.power(mine), game.toughness(mine)), (5, 5), "+3/+3");
+    assert!(game.has_keyword(mine, Keyword::Trample));
+    assert_eq!(
+        (game.power(theirs), game.toughness(theirs)),
+        (2, 2),
+        "an opponent's creature is untouched"
+    );
+}
+
+// ── Increment #196: `each_player_first_main_phase` trigger + `add_mana`'s `recipient` axis. ──
+
+#[test]
+fn magus_of_the_vineyard_adds_gg_to_each_players_own_first_main_phase() {
+    // Magus of the Vineyard: "At the beginning of each player's first main phase, that player
+    // adds {G}{G}." Player 0 controls it; the mana must land in whichever player's first main
+    // phase it is, not always the controller's.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Magus of the Vineyard"));
+    // Deep enough decks to survive both players' draw steps across the two turns this test spans.
+    game.stack_library(PlayerId(0), &[card("Forest"); 4]);
+    game.stack_library(PlayerId(1), &[card("Forest"); 4]);
+    game.begin_first_turn();
+
+    // Turn 1, P0's own first main phase — "each player" includes the controller.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "Magus's each-player-first-main trigger fires on the controller's own turn too"
+    );
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        2,
+        "the controller's own first main phase credits the controller"
+    );
+
+    // Turn 2, P1's first main phase — the mana lands in P1's pool, not P0's. P0's turn-1 mana is
+    // gone too (CR 500.4 — unspent mana empties as steps/phases end).
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Main1
+    });
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        0,
+        "P0's earlier mana emptied at the next step/phase boundary (CR 500.4)"
+    );
+    assert_eq!(
+        game.stack().len(),
+        1,
+        "Magus's trigger fires on P1's first main phase too, still under P0's control"
+    );
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.mana_in_pool(PlayerId(1), Color::Green),
+        2,
+        "the mana lands in the active player (P1), not the ability's controller"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        0,
+        "the controller (P0) gets none of P1's main-phase mana"
+    );
+}
+
+#[test]
+fn magus_of_the_vineyard_does_not_trigger_on_postcombat_main_phase() {
+    // "each player's first main phase" — Main2 (the postcombat main phase) is excluded; the
+    // trigger fires once per turn, not on both of a turn's main phases.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Magus of the Vineyard"));
+    game.begin_first_turn();
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    resolve_top_of_stack(&mut game);
+
+    advance_until(&mut game, |g| g.current_step() == Step::Main2);
+    assert!(
+        game.stack().is_empty(),
+        "Magus's each-player-first-main trigger does not fire again on the postcombat main phase"
+    );
+    assert_eq!(
+        game.mana_in_pool(PlayerId(0), Color::Green),
+        0,
+        "no second batch of mana was added on Main2"
+    );
+}
+
+#[test]
+fn magmatic_force_deals_three_at_the_beginning_of_each_upkeep() {
+    // Magmatic Force: "At the beginning of each upkeep, this creature deals 3 damage to any
+    // target." Fires on both players' upkeeps, not just its controller's.
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Magmatic Force"));
+    game.begin_first_turn();
+
+    // Turn 1: P0's own upkeep — the ability's controller is also the active player.
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseTarget { .. })
+        ),
+        "Magmatic Force's each-upkeep trigger pauses to choose its any-target"
+    );
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        17,
+        "3 damage dealt on P0's own upkeep"
+    );
+
+    // Turn 2: P1's upkeep — "each upkeep," not just the controller's own.
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.life(PlayerId(1)),
+        14,
+        "3 more damage dealt on P1's upkeep too, not just the controller's own"
+    );
+}
+
+/// A test-only artifact whose ETB is "Create a 1/1 Squirrel token" — plain single-token maker
+/// under the controller's own control, isolated to prove a `PermanentEnters` watch's
+/// `token = "nontoken"` filter excludes a token entering (Riku of Two Reflections' second
+/// ability). An artifact (not an instant/sorcery) on purpose: casting it must not also trip
+/// Riku's *first* ability ("whenever you cast an instant or sorcery spell").
+const MAKE_TEST_TOKEN: CardDef = CardDef {
+    abilities: &[Ability {
+        timing: Timing::Triggered(Trigger::Etb),
+        effect: Effect::CreateToken {
+            token: creature("Squirrel", 1, 1, &[]),
+            count: Amount::Fixed(1),
+            controller: TokenController::You,
+            enters_with: Amount::Fixed(0),
+            set_base_pt: None,
+            exile_at_next_end_step: false,
+            enters_tapped_and_attacking: false,
+            attacking_context: None,
+            must_attack_defender: false,
+        },
+        optional: false,
+        min_level: 0,
+        once_each_turn: false,
+        cost: Cost::FREE,
+        condition: None,
+    }],
+    ..artifact("Make Test Token (test)", 0)
+};
+
+#[test]
+fn riku_copies_your_instant_when_you_pay_ur() {
+    // Riku of Two Reflections: "Whenever you cast an instant or sorcery spell, you may pay
+    // {U}{R}. If you do, copy that spell. You may choose new targets for the copy."
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(0), card("Riku of Two Reflections"));
+    let blaze = g.spawn_in_hand(PlayerId(0), card("Blaze"));
+    let before_p0 = g.life(PlayerId(0));
+    let before_p1 = g.life(PlayerId(1));
+
+    g.cast(blaze).x(3).at(Target::Player(PlayerId(1))).submit();
+    assert!(
+        matches!(
+            g.pending_choice(),
+            Some(PendingChoice::PayCost {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "casting an instant or sorcery offers the pay-{{U}}{{R}}-to-copy trigger"
+    );
+    g.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+
+    resolve_top_of_stack(&mut g); // the paid copy ability resolves: mints a copy, pauses to retarget
+    let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = g.pending_choice() else {
+        panic!("paying the cost pauses on \"you may choose new targets for the copy\"");
+    };
+    assert!(
+        legal.contains(&Target::Player(PlayerId(0))),
+        "the controller is a legal new target for Blaze's \"any target\""
+    );
+    g.submit(Intent::ChooseTargets {
+        player,
+        targets: vec![Target::Player(PlayerId(0))],
+    })
+    .unwrap();
+
+    resolve_whole_stack(&mut g); // the retargeted copy, then the original
+    assert_eq!(
+        g.life(PlayerId(0)),
+        before_p0 - 3,
+        "the retargeted copy hit the controller"
+    );
+    assert_eq!(
+        g.life(PlayerId(1)),
+        before_p1 - 3,
+        "the original still hit its own target"
+    );
+}
+
+#[test]
+fn riku_declines_the_pay_and_mints_no_copy() {
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(0), card("Riku of Two Reflections"));
+    let blaze = g.spawn_in_hand(PlayerId(0), card("Blaze"));
+    let before_p1 = g.life(PlayerId(1));
+
+    g.cast(blaze).x(3).at(Target::Player(PlayerId(1))).submit();
+    g.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: false,
+    })
+    .unwrap();
+    resolve_whole_stack(&mut g);
+
+    assert_eq!(
+        g.life(PlayerId(1)),
+        before_p1 - 3,
+        "only the original Blaze resolved — no copy was minted"
+    );
+}
+
+#[test]
+fn riku_does_not_trigger_on_your_creature_spell() {
+    // The backlog originally misquoted Riku as copying creature spells (it doesn't — that's
+    // ability two's "create a token copy," not a spell copy). Casting a creature spell must not
+    // offer ability one's pay-{U}{R}-to-copy trigger.
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(0), card("Riku of Two Reflections"));
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+
+    g.cast(bear).submit();
+    assert!(
+        g.pending_choice().is_none(),
+        "a creature spell doesn't match ability one's instant-or-sorcery filter; got {:?}",
+        g.pending_choice()
+    );
+}
+
+#[test]
+fn riku_token_copies_another_nontoken_creature_that_enters_when_you_pay_gu() {
+    // Riku's second ability: "Whenever another nontoken creature you control enters, you may pay
+    // {G}{U}. If you do, create a token that's a copy of that creature."
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(0), card("Riku of Two Reflections"));
+    let bear = g.spawn_in_hand(PlayerId(0), card("Grizzly Bear"));
+
+    g.cast(bear).submit();
+    resolve_top_of_stack(&mut g); // Grizzly Bear enters, Riku's watch raises the pay-or-decline
+    assert!(
+        matches!(
+            g.pending_choice(),
+            Some(PendingChoice::PayCost {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "another nontoken creature you control entering offers the pay-{{G}}{{U}}-to-copy \
+         trigger; got {:?}",
+        g.pending_choice()
+    );
+    g.submit(Intent::PayOptionalCost {
+        player: PlayerId(0),
+        pay: true,
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut g);
+
+    assert_eq!(
+        battlefield_named(&g, PlayerId(0), "Grizzly Bear").len(),
+        2,
+        "the original Grizzly Bear plus a token copy"
+    );
+}
+
+#[test]
+fn riku_does_not_trigger_on_itself() {
+    // "Another … creature you control enters" excludes Riku's own entry — CR 603.3's implicit
+    // self-exclusion (an ability that comes into being as its permanent enters never watches its
+    // own entry).
+    let mut g = TestGame::new();
+    let riku = g.spawn_in_hand(PlayerId(0), card("Riku of Two Reflections"));
+
+    g.cast(riku).resolve();
+    assert!(
+        g.pending_choice().is_none(),
+        "Riku entering never fires its own \"another creature enters\" watch; got {:?}",
+        g.pending_choice()
+    );
+}
+
+#[test]
+fn riku_does_not_trigger_on_a_token() {
+    let mut g = TestGame::new();
+    g.spawn_on_battlefield(PlayerId(0), card("Riku of Two Reflections"));
+    let maker = g.spawn_in_hand(PlayerId(0), MAKE_TEST_TOKEN);
+
+    g.cast(maker).resolve();
+    assert!(
+        g.pending_choice().is_none(),
+        "a token creature entering doesn't match the \"nontoken\" filter; got {:?}",
+        g.pending_choice()
+    );
+}
+
+// ── Vanishing (CR 702.63, deadwood_treefolk) ───────────────────────────────────────────
+
+/// Stack both libraries deep enough that neither player decks out while a test rolls through
+/// several whole turns of upkeeps.
+fn stack_filler_libraries(game: &mut Game, cards: usize) {
+    let filler: Vec<CardDef> = (0..cards).map(|_| card("Grizzly Bear")).collect();
+    game.stack_library(PlayerId(0), &filler);
+    game.stack_library(PlayerId(1), &filler);
+}
+
+#[test]
+fn deadwood_treefolk_enters_with_three_time_counters() {
+    // Deadwood Treefolk: "Vanishing 3 (This creature enters with three time counters on it. …)"
+    let mut game = TestGame::new();
+    let treefolk = game.spawn_in_hand(PlayerId(0), card("Deadwood Treefolk"));
+    game.cast(treefolk).resolve();
+
+    let treefolk = game.current_id(treefolk);
+    assert_eq!(
+        game.zone_of(treefolk),
+        Zone::Battlefield,
+        "Deadwood Treefolk resolved onto the battlefield"
+    );
+    assert_eq!(
+        game.counters_of_kind(treefolk, CounterKind::Time),
+        3,
+        "vanishing 3 places three time counters as it enters (CR 702.63a)"
+    );
+}
+
+#[test]
+fn deadwood_treefolk_loses_a_time_counter_at_each_of_its_controllers_upkeeps() {
+    // "At the beginning of your upkeep, remove a time counter from it." — only *your* upkeep,
+    // so an opponent's upkeep in between doesn't tick it.
+    let mut game = TestGame::new();
+    stack_filler_libraries(&mut game, 8);
+    let treefolk = game.spawn_in_hand(PlayerId(0), card("Deadwood Treefolk"));
+    game.cast(treefolk).resolve();
+    let treefolk = game.current_id(treefolk);
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1) && g.current_step() == Step::Upkeep
+    });
+    assert_eq!(
+        game.counters_of_kind(game.current_id(treefolk), CounterKind::Time),
+        3,
+        "an opponent's upkeep removes nothing — vanishing ticks only at its controller's upkeep"
+    );
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    assert_eq!(
+        game.counters_of_kind(game.current_id(treefolk), CounterKind::Time),
+        2,
+        "the controller's own upkeep removes exactly one time counter (CR 702.63b)"
+    );
+}
+
+#[test]
+fn deadwood_treefolk_is_sacrificed_when_its_last_time_counter_is_removed() {
+    // "When the last is removed, sacrifice it." (CR 702.63c) — a real triggered ability, so it
+    // goes on the stack and is sacrificed only once that resolves.
+    let mut game = TestGame::new();
+    stack_filler_libraries(&mut game, 12);
+    let treefolk = game.spawn_in_hand(PlayerId(0), card("Deadwood Treefolk"));
+    game.cast(treefolk).resolve();
+    let treefolk = game.current_id(treefolk);
+
+    for expected in [2u8, 1, 0] {
+        advance_until(&mut game, |g| {
+            g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+        });
+        assert_eq!(
+            game.counters_of_kind(game.current_id(treefolk), CounterKind::Time),
+            expected,
+            "one time counter comes off per controller upkeep"
+        );
+        if expected > 0 {
+            pass_until_next_turn(&mut game);
+        }
+    }
+
+    assert_eq!(
+        game.zone_of(game.current_id(treefolk)),
+        Zone::Battlefield,
+        "the sacrifice waits on its trigger — the permanent is still there while it's on the stack"
+    );
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(game.current_id(treefolk)),
+        Zone::Graveyard,
+        "removing the last time counter sacrifices the vanishing permanent (CR 702.63c)"
+    );
+}
+
+#[test]
+fn deadwood_treefolk_returns_another_creature_card_when_it_enters() {
+    // "When this creature enters or leaves the battlefield, return another target creature card
+    // from your graveyard to your hand."
+    let mut game = TestGame::new();
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let sorcery = game.spawn_in_graveyard(PlayerId(0), card("Recollect"));
+    let treefolk = game.spawn_in_hand(PlayerId(0), card("Deadwood Treefolk"));
+    game.cast(treefolk).resolve();
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the enters trigger pauses to target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(bear)),
+        "a creature card in your own graveyard is a legal target"
+    );
+    assert!(
+        !legal.contains(&Target::Object(sorcery)),
+        "a sorcery card is not a creature card"
+    );
+
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Hand,
+        "the targeted creature card returned to hand"
+    );
+}
+
+#[test]
+fn deadwood_treefolk_leaving_cannot_target_itself() {
+    // "return *another* target creature card from your graveyard" — once vanishing's own
+    // sacrifice has put the Treefolk into that graveyard, its own card is not a legal target for
+    // the leaves-the-battlefield half of its trigger.
+    let mut game = TestGame::new();
+    stack_filler_libraries(&mut game, 12);
+    let first_bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let second_bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+    let treefolk = game.spawn_in_hand(PlayerId(0), card("Deadwood Treefolk"));
+
+    game.cast(treefolk).resolve();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(first_bear)],
+    })
+    .expect("the enters half of the trigger returns one of the two creature cards");
+    resolve_top_of_stack(&mut game);
+
+    // Two whole turn cycles take it from three time counters down to one …
+    for _ in 0..2 {
+        advance_until(&mut game, |g| {
+            g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+        });
+        pass_until_next_turn(&mut game);
+    }
+    // … and the third upkeep removes the last one.
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
+    });
+    resolve_top_of_stack(&mut game); // vanishing's sacrifice trigger
+    assert_eq!(
+        game.zone_of(game.current_id(treefolk)),
+        Zone::Graveyard,
+        "the last time counter came off, so it was sacrificed"
+    );
+
+    let Some(PendingChoice::ChooseTarget { legal, .. }) = game.pending_choice() else {
+        panic!(
+            "the leaves-the-battlefield trigger pauses to target, got {:?}",
+            game.pending_choice()
+        );
+    };
+    assert!(
+        legal.contains(&Target::Object(second_bear)),
+        "another creature card in the graveyard is a legal target"
+    );
+    assert!(
+        !legal.contains(&Target::Object(game.current_id(treefolk))),
+        "Deadwood Treefolk's own card is excluded by \"another\""
+    );
+}
+
+#[test]
+fn hunting_pack_storm_copies_for_each_earlier_spell_this_turn() {
+    // Hunting Pack: "Create a 4/4 green Beast creature token. Storm (When you cast this spell,
+    // copy it for each spell cast before it this turn.)" Two earlier spells this turn give a
+    // storm count of 2 — the original plus two copies, each independently creating a token.
+    let mut game = TestGame::new();
+    let filler1 = game.spawn_in_hand(PlayerId(0), X_INSTANT_FILLER);
+    game.cast(filler1).resolve();
+    let filler2 = game.spawn_in_hand(PlayerId(0), X_INSTANT_FILLER);
+    game.cast(filler2).resolve();
+
+    let pack = game.spawn_in_hand(PlayerId(0), card("Hunting Pack"));
+    game.cast(pack).resolve();
+    resolve_whole_stack(&mut game); // the storm trigger's 2 copies, then the original
+
+    let beasts = battlefield_named(&game, PlayerId(0), "Beast");
+    assert_eq!(
+        beasts.len(),
+        3,
+        "storm count is 2 — the original plus two copies, each making a Beast token"
+    );
+    for beast in beasts {
+        assert_eq!(
+            (game.power(beast), game.toughness(beast)),
+            (4, 4),
+            "each Beast token is 4/4"
+        );
+    }
+}
+
+#[test]
+fn hunting_pack_with_no_earlier_spells_creates_one_beast() {
+    // Storm counts "spell cast before it this turn" — cast as the very first spell of the turn,
+    // the count is 0, so only the original's own token is created.
+    let mut game = TestGame::new();
+    let pack = game.spawn_in_hand(PlayerId(0), card("Hunting Pack"));
+    game.cast(pack).resolve();
+    resolve_whole_stack(&mut game);
+
+    let beasts = battlefield_named(&game, PlayerId(0), "Beast");
+    assert_eq!(
+        beasts.len(),
+        1,
+        "zero storm copies — only the original's token"
+    );
+}
+
+#[test]
+fn trench_gorger_exiles_any_number_of_lands_and_sets_base_pt_to_that_count() {
+    // Trench Gorger: "When this creature enters, you may search your library for any number of
+    // land cards, exile them, then shuffle. If you do, this creature has base power and base
+    // toughness each equal to the number of cards exiled this way." Three lands among the top
+    // cards are all fetched and exiled; the printed 6/6 becomes a 3/3 (CR 613.3(7b) base set).
+    let mut game = TestGame::new();
+    let lib = game.stack_library(
+        PlayerId(0),
+        &[
+            card("Forest"),
+            card("Grizzly Bear"),
+            card("Plains"),
+            card("Shock"),
+            card("Swamp"),
+        ],
+    );
+    let forest = lib[0];
+    let plains = lib[2];
+    let swamp = lib[4];
+
+    let gorger = game.spawn_in_hand(PlayerId(0), card("Trench Gorger"));
+    game.cast(gorger).resolve(); // the creature spell resolves — it enters the battlefield.
+
+    let Some(PendingChoice::MayYesNo { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the optional ETB search pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::AnswerMay { player, yes: true })
+        .unwrap();
+    resolve_top_of_stack(&mut game); // the accepted trigger resolves → pause on the search.
+
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::SearchLibrary {
+            player: PlayerId(0),
+            matches: vec![forest, plains, swamp],
+            dest: SearchDest::Exile,
+            tapped: false,
+            remaining: u8::MAX,
+            overflow: None,
+        }),
+        "every land in the library is offered, with no bound on how many can be taken",
+    );
+
+    for land in [forest, plains, swamp] {
+        game.submit(Intent::SearchLibrary {
+            player: PlayerId(0),
+            choice: Some(land),
+        })
+        .unwrap();
+    }
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "the search ends on its own once every land has been taken"
+    );
+
+    for land in [forest, plains, swamp] {
+        assert_eq!(
+            game.zone_of(land),
+            Zone::Exile,
+            "each fetched land is exiled"
+        );
+    }
+
+    let gorger = game.current_id(gorger);
+    assert_eq!(
+        (game.power(gorger), game.toughness(gorger)),
+        (3, 3),
+        "base power and toughness are SET to 3, the number of lands exiled this way"
+    );
+}
+
+#[test]
+fn trench_gorger_declined_search_keeps_printed_six_six() {
+    // "You may search ..." — declining the search never triggers "if you do," leaving the
+    // printed 6/6 untouched.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let forest = lib[0];
+
+    let gorger = game.spawn_in_hand(PlayerId(0), card("Trench Gorger"));
+    game.cast(gorger).resolve();
+
+    let Some(PendingChoice::MayYesNo { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the optional ETB search pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::AnswerMay { player, yes: false })
+        .unwrap();
+
+    assert_eq!(
+        game.pending_choice(),
+        None,
+        "declining ends the ability with no further pause"
+    );
+    assert_eq!(
+        game.zone_of(forest),
+        Zone::Library,
+        "the library is untouched when the search is declined"
+    );
+
+    let gorger = game.current_id(gorger);
+    assert_eq!(
+        (game.power(gorger), game.toughness(gorger)),
+        (6, 6),
+        "the printed 6/6 is unaffected — \"if you do\" never triggers on a decline"
+    );
+}
+
+#[test]
+fn trench_gorger_exiling_zero_lands_makes_it_zero_zero_and_it_dies() {
+    // "If you do" is satisfied by performing the search at all — a search that finds zero
+    // matching lands still sets base P/T to 0/0 (CR 613.3(7b)), which then dies to the CR 704.5f
+    // zero-toughness state-based action.
+    let mut game = TestGame::new();
+    game.stack_library(PlayerId(0), &[card("Grizzly Bear"), card("Shock")]);
+
+    let gorger = game.spawn_in_hand(PlayerId(0), card("Trench Gorger"));
+    game.cast(gorger).resolve();
+
+    let Some(PendingChoice::MayYesNo { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the optional ETB search pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::AnswerMay { player, yes: true })
+        .unwrap();
+    resolve_top_of_stack(&mut game); // the accepted trigger resolves → pause on the (empty) search.
+
+    assert_eq!(
+        game.pending_choice(),
+        Some(PendingChoice::SearchLibrary {
+            player: PlayerId(0),
+            matches: vec![],
+            dest: SearchDest::Exile,
+            tapped: false,
+            remaining: u8::MAX,
+            overflow: None,
+        }),
+        "the search still pauses with no lands on offer — fail to find is the only legal answer",
+    );
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: None,
+    })
+    .unwrap();
+
+    let gorger = game.current_id(gorger);
+    assert_eq!(
+        game.zone_of(gorger),
+        Zone::Graveyard,
+        "a 0/0 dies to the zero-toughness state-based action, even though the search was accepted"
+    );
+}
+
+#[test]
+fn trench_gorger_base_pt_survives_a_plus_one_counter() {
+    // A +1/+1 counter layers on top of the SET base (CR 613: 7b base-set, then 7c delta) — the
+    // same ordering proof Excava's reanimated base-P/T set already covers.
+    let mut game = TestGame::new();
+    let lib = game.stack_library(PlayerId(0), &[card("Forest")]);
+    let forest = lib[0];
+
+    let gorger = game.spawn_in_hand(PlayerId(0), card("Trench Gorger"));
+    game.cast(gorger).resolve();
+
+    let Some(PendingChoice::MayYesNo { player, .. }) = game.pending_choice() else {
+        panic!(
+            "expected the optional ETB search pause, got {:?}",
+            game.pending_choice()
+        );
+    };
+    game.submit(Intent::AnswerMay { player, yes: true })
+        .unwrap();
+    resolve_top_of_stack(&mut game);
+    game.submit(Intent::SearchLibrary {
+        player: PlayerId(0),
+        choice: Some(forest),
+    })
+    .unwrap();
+
+    let gorger = game.current_id(gorger);
+    assert_eq!(
+        (game.power(gorger), game.toughness(gorger)),
+        (1, 1),
+        "base P/T is SET to 1, the single land exiled"
+    );
+
+    game.add_plus_counter(gorger);
+    assert_eq!(
+        (game.power(gorger), game.toughness(gorger)),
+        (2, 2),
+        "a +1/+1 counter adds on top of the set 1/1 base"
+    );
+}
+
+// ── Vengeful Rebirth: two independent single-target clauses on one non-modal spell (#203) ──
+
+/// "Return target card from your graveyard to your hand. If you return a nonland card to your
+/// hand this way, Vengeful Rebirth deals damage equal to that card's mana value to any target."
+/// Two independent single-target clauses (CR 601.2c) on one non-modal spell — the graveyard
+/// card is clause 0, the "any target" is clause 1, both declared at cast.
+#[test]
+fn vengeful_rebirth_returns_a_nonland_card_and_deals_its_mana_value_to_any_target() {
+    let mut game = TestGame::new();
+    let relic = game.spawn_in_graveyard(PlayerId(0), artifact("Relic", 3));
+    let decoy = game.spawn_in_graveyard(PlayerId(0), artifact("Decoy Relic", 5));
+    let rebirth = game.spawn_in_hand(PlayerId(0), card("Vengeful Rebirth"));
+
+    game.cast(rebirth)
+        .try_submit()
+        .expect("both clauses are chosen after the cast, not in the intent");
+
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseSpellTargets { clause, legal, .. }) => {
+            assert_eq!(clause, 0, "clause 0 is the graveyard-return clause");
+            assert_eq!(
+                legal,
+                vec![Target::Object(relic), Target::Object(decoy)],
+                "every card in the caster's graveyard is a legal clause-0 target"
+            );
+        }
+        other => panic!("expected clause 0's ChooseSpellTargets pause, got {other:?}"),
+    }
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(relic)],
+    })
+    .expect("the graveyard card is a legal clause-0 target");
+
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseSpellTargets { clause, .. }) => {
+            assert_eq!(clause, 1, "clause 1 is the damage clause's any target");
+        }
+        other => panic!("expected clause 1's ChooseSpellTargets pause, got {other:?}"),
+    }
+    let life_before = game.life(PlayerId(1));
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .expect("a player is a legal 'any target'");
+
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(game.current_id(relic)),
+        Zone::Hand,
+        "the targeted graveyard card went to its owner's hand"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before - 3,
+        "the damage equals the returned card's mana value"
+    );
+}
+
+/// "If you return a **nonland** card" — returning a land deals no damage, but the damage
+/// clause's target is still declared at cast (CR 601.2c: targets are chosen as the spell is
+/// cast, before anyone knows whether the condition will hold).
+#[test]
+fn vengeful_rebirth_returning_a_land_deals_no_damage() {
+    let mut game = TestGame::new();
+    let forest = game.spawn_in_graveyard(PlayerId(0), card("Forest"));
+    // A decoy so clause 0 is a real choice (a lone legal target auto-fills, CR 601.2c).
+    game.spawn_in_graveyard(PlayerId(0), artifact("Decoy Relic", 5));
+    let rebirth = game.spawn_in_hand(PlayerId(0), card("Vengeful Rebirth"));
+
+    game.cast(rebirth).try_submit().expect("cast is legal");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(forest)],
+    })
+    .expect("the land card is a legal clause-0 target");
+    let life_before = game.life(PlayerId(1));
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .expect("the damage clause's target is declared even though a land was chosen");
+
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(game.current_id(forest)),
+        Zone::Hand,
+        "the land still came back"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        life_before,
+        "a returned land is not a nonland card — no damage"
+    );
+}
+
+/// "Exile Vengeful Rebirth." (#192) — the spell exiles itself instead of going to the
+/// graveyard, and still does so once its second clause is in play.
+#[test]
+fn vengeful_rebirth_exiles_itself_on_resolve() {
+    let mut game = TestGame::new();
+    let relic = game.spawn_in_graveyard(PlayerId(0), artifact("Relic", 3));
+    // A decoy so clause 0 is a real choice (a lone legal target auto-fills, CR 601.2c).
+    game.spawn_in_graveyard(PlayerId(0), artifact("Decoy Relic", 5));
+    let rebirth = game.spawn_in_hand(PlayerId(0), card("Vengeful Rebirth"));
+
+    game.cast(rebirth).try_submit().expect("cast is legal");
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(relic)],
+    })
+    .unwrap();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Player(PlayerId(1))],
+    })
+    .unwrap();
+
+    resolve_top_of_stack(&mut game);
+
+    assert_eq!(
+        game.zone_of(game.current_id(rebirth)),
+        Zone::Exile,
+        "Vengeful Rebirth exiles itself on resolve"
+    );
+}
+
+// ── Printed alternative cost with a non-mana rider (#190, CR 601.2f, Invigorate) ────────────
+// "If you control a Forest, rather than pay this spell's mana cost, you may have an opponent
+// gain 3 life. Target creature gets +4/+4 until end of turn."
+
+#[test]
+fn invigorate_alternative_cost_requires_a_forest() {
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Invigorate"));
+
+    assert_eq!(
+        game.cast(spell)
+            .at(Target::Object(bear))
+            .alternative_cost(true)
+            .try_submit(),
+        Err(Reject::CannotPayCost),
+        "no Forest controlled — the alternative cost isn't offered"
+    );
+
+    let events = game.cast(spell).at(Target::Object(bear)).submit();
+    assert!(
+        events.iter().any(|e| matches!(e, Event::SpellCast { .. })),
+        "the ordinary {{2}}{{G}} cast still goes through"
+    );
+}
+
+#[test]
+fn invigorate_cast_for_its_alternative_cost_pays_no_mana_and_an_opponent_gains_three_life() {
+    let mut game = Game::new();
+    game.spawn_on_battlefield(PlayerId(0), card("Forest"));
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Invigorate"));
+    // No `fund_mana` — the alternative cost must pay nothing at all (CR 601.2f).
+    let opponent_life_before = game.life(PlayerId(1));
+
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: spell,
+        target: Some(Target::Object(bear)),
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: true,
+    })
+    .expect("a Forest on the battlefield offers the alternative cost");
+
+    assert_eq!(
+        game.floating_mana(PlayerId(0)),
+        0,
+        "the alternative cost pays no mana at all — none was ever floated"
+    );
+    assert_eq!(
+        game.life(PlayerId(1)),
+        opponent_life_before + 3,
+        "an opponent gains 3 life as the rider"
+    );
+    assert_eq!(game.stack().len(), 1, "the spell is on the stack");
+}
+
+#[test]
+fn invigorate_pumps_target_creature() {
+    let mut game = TestGame::new();
+    let bear = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let spell = game.spawn_in_hand(PlayerId(0), card("Invigorate"));
+
+    game.cast(spell).at(Target::Object(bear)).resolve();
+
+    assert_eq!(game.power(bear), 6, "the 2/2 becomes 6/6 until end of turn");
+    assert_eq!(game.toughness(bear), 6);
+
+    pass_until_next_turn(&mut game);
+    assert_eq!(game.power(bear), 2, "the pump wears off at cleanup");
+    assert_eq!(game.toughness(bear), 2);
+}
+
+// ── Conundrum Sphinx: attack trigger's "choose a card name" fan-out ────────────────────
+
+#[test]
+fn conundrum_sphinx_attack_makes_each_player_choose_a_card_name() {
+    // "Whenever this creature attacks, each player chooses a card name." Starting with the
+    // Sphinx's controller (CR 101.4 APNAP), each seat pauses on a ChooseCardName in turn.
+    let mut game = Game::new();
+    let sphinx = game.spawn_on_battlefield(PlayerId(0), card("Conundrum Sphinx"));
+
+    attack_with(&mut game, vec![sphinx]);
+    resolve_top_of_stack(&mut game);
+
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseCardName {
+            player, remaining, ..
+        }) => {
+            assert_eq!(player, PlayerId(0), "the controller chooses first (APNAP)");
+            assert_eq!(
+                remaining,
+                vec![PlayerId(1)],
+                "the other seat still to choose"
+            );
+        }
+        other => panic!("expected a ChooseCardName pause, got {other:?}"),
+    }
+}
+
+#[test]
+fn conundrum_sphinx_correct_guess_puts_the_revealed_card_in_hand() {
+    // "Then each player reveals the top card of their library. If the card a player revealed
+    // has the name they chose, that player puts it into their hand."
+    let mut game = Game::new();
+    let sphinx = game.spawn_on_battlefield(PlayerId(0), card("Conundrum Sphinx"));
+    let top = game.stack_library(PlayerId(0), &[card("Forest"), VANILLA])[0];
+
+    attack_with(&mut game, vec![sphinx]);
+    resolve_top_of_stack(&mut game);
+
+    game.submit(Intent::ChooseCardName {
+        player: PlayerId(0),
+        name: "Forest".to_string(),
+    })
+    .expect("naming the true top card is a legal answer");
+
+    assert_eq!(
+        game.zone_of(game.current_id(top)),
+        Zone::Hand,
+        "the correctly named card goes to hand"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        1,
+        "only the revealed card left the library"
+    );
+}
+
+#[test]
+fn conundrum_sphinx_wrong_guess_puts_the_revealed_card_on_the_bottom() {
+    // "If it doesn't [match], that player puts it on the bottom of their library."
+    let mut game = Game::new();
+    let sphinx = game.spawn_on_battlefield(PlayerId(0), card("Conundrum Sphinx"));
+    let top = game.stack_library(PlayerId(0), &[card("Forest"), VANILLA])[0];
+
+    attack_with(&mut game, vec![sphinx]);
+    resolve_top_of_stack(&mut game);
+
+    game.submit(Intent::ChooseCardName {
+        player: PlayerId(0),
+        name: "Island".to_string(),
+    })
+    .expect("naming any card is a legal answer, even a wrong one");
+
+    assert_eq!(
+        game.zone_of(game.current_id(top)),
+        Zone::Library,
+        "a wrongly named card stays in the library"
+    );
+    assert_eq!(
+        game.library_size(PlayerId(0)),
+        2,
+        "the revealed card only moved within the library"
+    );
+}
+
+#[test]
+fn conundrum_sphinx_resolves_independently_per_player() {
+    // Each player's guess is scored against their own top card independently — one right, one
+    // wrong, in the same trigger.
+    let mut game = Game::new();
+    let sphinx = game.spawn_on_battlefield(PlayerId(0), card("Conundrum Sphinx"));
+    let p0_top = game.stack_library(PlayerId(0), &[card("Forest"), VANILLA])[0];
+    let p1_top = game.stack_library(PlayerId(1), &[card("Forest"), VANILLA])[0];
+
+    attack_with(&mut game, vec![sphinx]);
+    resolve_top_of_stack(&mut game);
+
+    // P0 (the controller) chooses first and guesses correctly.
+    game.submit(Intent::ChooseCardName {
+        player: PlayerId(0),
+        name: "Forest".to_string(),
+    })
+    .unwrap();
+    // P1 chooses next and guesses wrong.
+    match game.pending_choice() {
+        Some(PendingChoice::ChooseCardName { player, .. }) => {
+            assert_eq!(player, PlayerId(1), "P1 chooses next")
+        }
+        other => panic!("expected P1's ChooseCardName pause, got {other:?}"),
+    }
+    game.submit(Intent::ChooseCardName {
+        player: PlayerId(1),
+        name: "Island".to_string(),
+    })
+    .unwrap();
+
+    assert!(game.pending_choice().is_none(), "the fan-out completes");
+    assert_eq!(
+        game.zone_of(game.current_id(p0_top)),
+        Zone::Hand,
+        "P0's correct guess goes to hand"
+    );
+    assert_eq!(
+        game.zone_of(game.current_id(p1_top)),
+        Zone::Library,
+        "P1's wrong guess stays in the library"
+    );
+}
+
+#[test]
+fn conundrum_sphinx_choose_card_name_rejects_a_blank_name() {
+    // Free-text input is a trust boundary: an empty (or whitespace-only) name is not a legal
+    // card name to choose (CR 201.2 — a real name is never blank).
+    let mut game = Game::new();
+    let sphinx = game.spawn_on_battlefield(PlayerId(0), card("Conundrum Sphinx"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+
+    attack_with(&mut game, vec![sphinx]);
+    resolve_top_of_stack(&mut game);
+
+    let result = game.submit(Intent::ChooseCardName {
+        player: PlayerId(0),
+        name: "   ".to_string(),
+    });
+    assert_eq!(result, Err(Reject::IllegalChoice));
+}
+
+#[test]
+fn edric_spymaster_of_trest_draws_the_damaging_creatures_controller() {
+    // Edric, Spymaster of Trest (cmd): "Whenever a creature deals combat damage to one of your
+    // opponents, its controller may draw a card." Edric's own controller attacking an opponent
+    // routes the draw back to themself (CR 510.2).
+    let mut game = Game::with_players(4, 0);
+    game.spawn_on_battlefield(PlayerId(0), card("Edric, Spymaster of Trest"));
+    let attacker = game.spawn_on_battlefield(PlayerId(0), VANILLA);
+    let library = game.stack_library(PlayerId(0), &[card("Grizzly Bear")]);
+
+    attack_with(&mut game, vec![attacker]);
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(0),
+                ..
+            })
+        ),
+        "the attacking creature's controller answers the \"may draw\"; got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+
+    assert_eq!(
+        game.zone_of(library[0]),
+        Zone::Hand,
+        "accepting the trigger drew a card"
+    );
+}
+
+#[test]
+fn edric_spymaster_of_trest_draws_an_opponent_who_attacks_another_opponent() {
+    // "its controller may draw a card" — the draw follows the *damaging creature's* controller,
+    // not Edric's controller, and the watch only fires on damage dealt to one of Edric's
+    // controller's opponents: a creature hitting Edric's own controller draws nobody.
+    let mut game = Game::with_players(4, 0);
+    game.spawn_on_battlefield(PlayerId(0), card("Edric, Spymaster of Trest"));
+    let at_opponent = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    let at_edric = game.spawn_on_battlefield(PlayerId(1), VANILLA);
+    // library[0] feeds P1's own draw step; library[1] is the only card the trigger can draw.
+    let library = game.stack_library(
+        PlayerId(1),
+        &[card("Forest"), card("Grizzly Bear"), card("Elvish Mystic")],
+    );
+
+    pass_until_next_turn(&mut game);
+    advance_until(&mut game, |g| {
+        g.current_step() == Step::DeclareAttackers && !g.attackers_declared()
+    });
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(1),
+        attackers: vec![
+            (at_opponent, Defender::Player(PlayerId(2))),
+            (at_edric, Defender::Player(PlayerId(0))),
+        ],
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.pending_choice().is_some());
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::MayYesNo {
+                player: PlayerId(1),
+                ..
+            })
+        ),
+        "the attacking opponent — not Edric's controller — answers; got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(1),
+        yes: true,
+    })
+    .unwrap();
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.zone_of(library[1]),
+        Zone::Hand,
+        "the creature that hit another opponent drew its controller a card"
+    );
+    assert_eq!(
+        game.zone_of(library[2]),
+        Zone::Library,
+        "the creature that hit Edric's own controller is not \"one of your opponents\" and drew \
+         nothing"
+    );
+}
+
+#[test]
+fn hydra_omnivore_splashes_its_combat_damage_onto_each_other_opponent() {
+    // Hydra Omnivore (cmd): "Whenever this creature deals combat damage to an opponent, it deals
+    // that much damage to each other opponent." The damaged opponent takes combat damage once
+    // (CR 510.2); the other two opponents take the same amount from the trigger, and the Hydra's
+    // own controller — not an opponent — takes nothing.
+    let mut game = Game::with_players(4, 0);
+    let hydra = game.spawn_on_battlefield(PlayerId(0), card("Hydra Omnivore"));
+
+    attack_with(&mut game, vec![hydra]);
+    advance_until(&mut game, |g| g.current_step() == Step::EndCombat);
+
+    assert_eq!(
+        game.life(PlayerId(0)),
+        20,
+        "its controller is not an opponent"
+    );
+    assert_eq!(game.life(PlayerId(1)), 12, "combat damage, dealt once");
+    assert_eq!(game.life(PlayerId(2)), 12, "each other opponent");
+    assert_eq!(game.life(PlayerId(3)), 12, "each other opponent");
+}
+
+#[test]
+fn artisan_of_kozilek_reanimates_a_creature_card_when_cast() {
+    // Artisan of Kozilek (cmd): "When you cast this spell, you may return target creature card from
+    // your graveyard to the battlefield." The trigger resolves before the Artisan itself
+    // (CR 601.2i/603.3), so the reanimated creature arrives first.
+    let mut game = Game::new();
+    let artisan = game.spawn_in_hand(PlayerId(0), card("Artisan of Kozilek"));
+    let bear = game.spawn_in_graveyard(PlayerId(0), card("Grizzly Bear"));
+
+    game.fund_mana(PlayerId(0));
+    game.submit(Intent::Cast {
+        player: PlayerId(0),
+        object: artisan,
+        target: None,
+        x: 0,
+        modes: vec![],
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        sacrifice_cost: vec![],
+        kicked: false,
+        bought_back: false,
+        evoked: false,
+        strive_count: 0,
+        replicate_count: 0,
+        alternative_cost: false,
+    })
+    .unwrap();
+    // The cast trigger goes on the stack above the spell (CR 601.2i/603.3): "you may" is answered
+    // first, then the reanimation target is chosen.
+    game.submit(Intent::AnswerMay {
+        player: PlayerId(0),
+        yes: true,
+    })
+    .unwrap();
+    game.submit(Intent::ChooseTargets {
+        player: PlayerId(0),
+        targets: vec![Target::Object(bear)],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+    assert_eq!(
+        game.zone_of(bear),
+        Zone::Battlefield,
+        "the cast trigger reanimated the targeted creature card"
+    );
+}
+
+#[test]
+fn artisan_of_kozilek_annihilates_the_planeswalkers_controller() {
+    // CR 702.86a: annihilator's "defending player" is the player being attacked — when the attack
+    // is aimed at a planeswalker (CR 508.1a), that's the planeswalker's controller.
+    let mut game = Game::new();
+    let artisan = game.spawn_on_battlefield(PlayerId(0), card("Artisan of Kozilek"));
+    let pw = game.spawn_on_battlefield(PlayerId(1), test_planeswalker("Test Walker", 5));
+    let bear = game.spawn_on_battlefield(PlayerId(1), card("Grizzly Bear"));
+    game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+    advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+    game.submit(Intent::DeclareAttackers {
+        player: PlayerId(0),
+        attackers: vec![(artisan, Defender::Planeswalker(pw))],
+    })
+    .unwrap();
+    resolve_top_of_stack(&mut game);
+
+    assert!(
+        matches!(
+            game.pending_choice(),
+            Some(PendingChoice::ChooseOwnSacrifices {
+                player: PlayerId(1),
+                count: 2,
+                ..
+            })
+        ),
+        "the attacked planeswalker's controller is the defending player; got {:?}",
+        game.pending_choice(),
+    );
+    game.submit(Intent::ChooseSacrifices {
+        player: PlayerId(1),
+        sacrifices: vec![pw, bear],
+    })
+    .unwrap();
+    assert_eq!(game.zone_of(pw), Zone::Graveyard);
+    assert_eq!(game.zone_of(bear), Zone::Graveyard);
 }

@@ -149,6 +149,12 @@ impl Game {
             Effect::TuckSelfToLibraryBottom => {
                 self.self_tuck_to_library_bottom = true;
             }
+            // "Exile [this card]" (Vengeful Rebirth): mark the resolving spell so
+            // `finish_instant_sorcery_resolution` sends it to exile instead of the graveyard
+            // (`source`, the resolving spell itself, is the card exiled).
+            Effect::ExileSelfOnResolve => {
+                self.self_exile_on_resolve = true;
+            }
             // Opal Palace's spend-to-cast rider: the commander spell (baked in as
             // `triggering_spell` when the `SpendManaToCast` trigger fired) is still on the stack, so
             // record the additional-counter count keyed by its id for `resolve_spell` to place as it

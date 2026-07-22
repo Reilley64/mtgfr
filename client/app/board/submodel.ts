@@ -1217,22 +1217,27 @@ function combatDropModel(
       blockersDeclared: model.blockersConfirmed || state.combat.blockers_declared.includes(state.viewer),
     },
   );
-  const attackerCard = blockAttackerId != null ? (state.objects.find((o) => o.id === blockAttackerId) ?? null) : null;
+  const dropOn = blockAttackerId != null ? (state.objects.find((o) => o.id === blockAttackerId) ?? null) : null;
+  // ObjectView.kind is a WireKind object; RenderCard.kind (what attackablePlaneswalker reads) is the
+  // bare tag string — normalize so the planeswalker check is live, not a runtime type mismatch.
+  const dropTarget = dropOn != null ? { ...dropOn, kind: dropOn.kind.kind } : null;
   const cardShape = {
     id: from.id,
     tapped: from.tapped,
     summoningSick: from.summoning_sick,
     hasHaste: from.has_haste,
   };
+  const opponents = state.players.map((p) => p.player).filter((p) => p !== state.viewer);
   const result = handleCombatDrop(
     mode,
     model.combatAttackers,
     model.combatBlocks,
     cardShape as unknown as Parameters<typeof handleCombatDrop>[3],
     defenderSeat,
-    attackerCard as unknown as Parameters<typeof handleCombatDrop>[5],
+    dropTarget as unknown as Parameters<typeof handleCombatDrop>[5],
     state.combat.attackers,
     state.viewer,
+    opponents,
   );
   if (result.kind === "attackers") return [{ ...model, combatAttackers: result.value }, []];
   if (result.kind === "blockers") return [{ ...model, combatBlocks: result.value }, []];
@@ -1566,6 +1571,11 @@ export function updateBoard(
         },
         [],
       ];
+    }
+    case "PromptStringSet": {
+      const synced = syncPromptDraft(model, fold);
+      if (synced.promptDraft?.kind !== "string") return [synced, []];
+      return [{ ...synced, promptDraft: { kind: "string", value: message.value } }, []];
     }
     case "PromptModeChoiceToggled": {
       const synced = syncPromptDraft(model, fold);

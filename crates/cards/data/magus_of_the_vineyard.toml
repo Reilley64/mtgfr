@@ -1,0 +1,24 @@
+# At the beginning of each player's first main phase, that player adds {G}{G}.
+name = "Magus of the Vineyard"
+id = "e6788809-6b34-4701-89af-b422ba35efb2"
+default_print = "63005c92-fc0b-45dc-b488-489350527453"
+oracle = "At the beginning of each player's first main phase, that player adds {G}{G}."
+set = "cmd"
+subtypes = ["Human", "Wizard"]
+
+[cost]
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# At the beginning of each player's first main phase, that player adds {G}{G}.
+[[abilities]]
+timing = "each_player_first_main_phase"
+
+# that player adds {G}{G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["green", "green"]

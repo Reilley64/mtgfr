@@ -1,6 +1,7 @@
-# Nils, Discipline Enforcer (soc).
-# ponytail: "or planeswalkers you control" is unreachable — the pool has no planeswalker permanent
-# type (same posture as #91/#110). Only "can't attack you" is enforced.
+# At the beginning of your end step, for each player, put a +1/+1 counter on up to one target
+# creature that player controls.
+# Each creature with one or more counters on it can't attack you or planeswalkers you control
+# unless its controller pays {X}, where X is the number of counters on that creature.
 name = "Nils, Discipline Enforcer"
 id = "ff6b52b7-ae3c-465b-b10e-901160e5230e"
 default_print = "c34cff04-01b0-4849-85bf-9e0b034be0e6"
@@ -33,7 +34,7 @@ type = "each_player_controller_chooses_counter_target"
 [[abilities]]
 timing = "static"
 
-# Each creature with one or more counters on it can't attack you … unless its controller pays {X},
-# where X is the number of counters on that creature.
+# Each creature with one or more counters on it can't attack you or planeswalkers you control
+# unless its controller pays {X}, where X is the number of counters on that creature.
 [[abilities.effects]]
 type = "counter_scaled_attack_tax"

@@ -43,6 +43,10 @@ the wrap-up report as its body.
   hundreds of add/add ones. Before grafting, find the rewritten commit equivalent to your
   branch's base and prove the graft point with `git diff <old> <new>` — an empty diff means
   the 3-way will contain only genuinely-new work from each side.
+- **`bun install --frozen-lockfile` in `<worktree>/client` before anything else.** A fresh
+  worktree has no `client/node_modules`, and the miss only surfaces in Phase 5 when
+  `just server-codegen` and `npx tsc --noEmit` both fail for a reason that looks like real
+  wire drift.
 - All agent briefs must name the worktree root and forbid touching the main checkout.
 
 ## Phase 1 — Deck intake
@@ -138,7 +142,23 @@ Hard-won loop rules (already baked into the script — do not soften them):
   fetch fails (rate limit 403, timeout), use the Archidekt deck JSON as the id source of
   truth — every card has `card.oracleCard.id` (oracle id) and `card.uid` (print id). Never
   commit placeholder uuids; they break the frame audit and deck fixtures. Verify stages catch
-  real rules bugs (~1 every 3 waves in practice) — never skip.
+  real rules bugs (~1 per wave in the mirror-mastery grind) — never skip.
+- **Re-verify the backlog's own premise, not just the card.** The intake author paraphrases
+  from memory and gets cards wrong; a brief that inherits the paraphrase builds the wrong
+  card and its tests agree with it. Eight of ~36 mirror-mastery increments described a card
+  that does not exist (a free cast that is really a conditional {6} reduction; "copies
+  creature spells" for a card that copies instants and sorceries; an exile clause on a card
+  with none; a forced-attack clause invented whole). Every implementer must open live
+  Scryfall for its increment's *Cards:* line and, when the premise is wrong, **correct that
+  backlog section in place** before writing code.
+- **When the orchestrator stalls, rescue then abandon it.** A stalled implement stage
+  ("no progress for 180000ms") leaves the shared tree RED mid-edit — a half-added `CardDef`
+  field is 157 compile errors, a half-added enum variant is a non-exhaustive `match` in
+  `crates/schema`. Recovery is always the same: dispatch one opus agent to finish *or revert*
+  that one increment and then run the verify stage by hand. After the second stall, stop using
+  the workflow orchestrator for this grind and dispatch the three stages as direct agents —
+  in the mirror-mastery grind that converted three consecutive stalled waves into three clean
+  ones with no other change.
 - When a wave goes red or a bug resists a first glance, use **`systematic-debugging`**
   (root cause before fix) rather than patching symptoms.
 - **Commit per green wave**; on a red wave stop and surface it to the user.
@@ -152,8 +172,10 @@ Engine waves accrue wire debt. After the grind (or mid-grind if large):
 every `PendingChoiceView` needs a form in `client/src/components/molecules/prompt-forms.tsx` (reuse an existing
 form when the answer shape matches; the engine dispatches by pending-choice kind), every
 `VisibleEvent` an arm in `client/src/store.ts` (effect/Match, exhaustive), and new
-`MeaningfulAction`s surface via the existing generic tiles/radial. Gate:
-`npx tsc --noEmit` clean + client tests green.
+`MeaningfulAction`s surface via the existing generic tiles/radial. Gate: `npx tsc --noEmit` clean + client tests green via **`just client-test`** — that recipe
+is `bun run test` (vitest). Plain `bun test` runs Bun's own runner over the same files and
+reports dozens of phantom failures; the mirror-mastery grind lost a cycle "fixing" 50 tests
+that were never broken. Only the recipe's output counts as evidence.
 
 ## Phase 5.5 — Ship the deck as a precon
 
@@ -188,6 +210,13 @@ pool that supports it. After client catch-up (the wire is settled by then):
    with the actual decklist over the HTTP/SSE surface. Saving the deck exercises deck
    legality (itself a frame gate — this is what exposed the hallucinated frames); the drive
    loop should answer every pending-choice kind it meets and log which new kinds fired live.
+   **Bias the driver toward this grind's new surfaces and report coverage honestly** — a
+   random-play driver reaches the common ones and misses the rest. Mirror mastery drove six
+   games (one to game over, 42 turns) and still never saw retrace, storm, vanishing or an
+   attack on a planeswalker, because no seat ever drew the mana for them; those stay
+   engine-test-only, and the report says so rather than implying they were exercised. What
+   the live drive *did* catch was invisible to every unit test: a mandatory two-target prompt
+   the client could only ever answer with one id, wedging all four seats forever.
    Fix what it finds with regression tests at the lowest layer (`test-driven-development`).
    If the local environment
    cannot boot server+client (missing DB, port conflicts, etc.), delegate the smoke game to a

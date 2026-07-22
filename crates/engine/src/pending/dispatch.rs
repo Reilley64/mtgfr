@@ -212,8 +212,18 @@ pub(crate) fn answer(game: &mut Game, intent: Intent) -> Result<Vec<Event>, Reje
             }
             _ => Err(Reject::IllegalChoice),
         },
+        PendingChoice::JoinForcesPayment { .. } => match intent {
+            Intent::PayOptionalCostX { player, pay, x } => {
+                game.answer_join_forces_payment(player, pay, x)
+            }
+            _ => Err(Reject::IllegalChoice),
+        },
         PendingChoice::CastVote { .. } => match intent {
             Intent::ChooseMode { player, mode } => game.answer_vote(player, mode),
+            _ => Err(Reject::IllegalChoice),
+        },
+        PendingChoice::ChooseCardName { .. } => match intent {
+            Intent::ChooseCardName { player, name } => game.answer_choose_card_name(player, name),
             _ => Err(Reject::IllegalChoice),
         },
         PendingChoice::MaySacrifice { .. } => match intent {
@@ -470,6 +480,8 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
         | PendingChoice::CasterKeepPermanents { .. }
         | PendingChoice::ChooseCounterTargetForPlayer { .. }
         | PendingChoice::CastVote { .. }
+        | PendingChoice::JoinForcesPayment { .. }
+        | PendingChoice::ChooseCardName { .. }
         | PendingChoice::MaySacrifice { .. }
         | PendingChoice::MayReturnFromGraveyard { .. }
         | PendingChoice::MayDiscard { .. }

@@ -26,6 +26,7 @@ const DECKS = [
   { file: "political_puppets.json", archidekt: 2209176 },
   { file: "enchantress_rubinia.json", archidekt: 2209180 },
   { file: "deathdancer_xira.json", archidekt: 2209179 },
+  { file: "mirror_mastery.json", archidekt: 2209174 },
 ];
 
 function loadPool() {

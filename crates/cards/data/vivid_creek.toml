@@ -1,0 +1,45 @@
+# This land enters tapped with two charge counters on it.
+# {T}: Add {U}.
+# {T}, Remove a charge counter from this land: Add one mana of any color.
+name = "Vivid Creek"
+id = "2da7c49f-cc1e-45d9-9cbf-067e92b0daef"
+default_print = "c9082527-aa88-42f7-b2f2-de21878cb179"
+otags = ["activated-ability", "counters-matter", "charge-counter-land"]
+oracle = "This land enters tapped with two charge counters on it.\n{T}: Add {U}.\n{T}, Remove a charge counter from this land: Add one mana of any color."
+set = "ncc"
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# This land enters tapped with two charge counters on it.
+[[abilities]]
+timing = "static"
+
+# This land enters tapped with two charge counters on it.
+[[abilities.effects]]
+type = "enters_with_counters"
+count = 2
+kind = "charge"
+
+# {T}: Add {U}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {U}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["blue"]
+
+# {T}, Remove a charge counter from this land: Add one mana of any color.
+[[abilities]]
+timing = "activated"
+taps_self = true
+remove_counters = 1
+remove_counters_kind = "charge"
+
+# Add one mana of any color.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["any"]

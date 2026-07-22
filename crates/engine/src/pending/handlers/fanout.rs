@@ -127,6 +127,59 @@ impl Game {
         );
     }
 
+    /// Pause on the next seat in a join-forces payment round, or — when none remain — return,
+    /// letting the enclosing sequence resume.
+    pub(crate) fn prompt_next_join_forces_payment(
+        &mut self,
+        remaining: Vec<PlayerId>,
+        source: ObjectId,
+    ) {
+        crate::pending::raise(
+            self,
+            crate::pending::ChoiceRequest::NextJoinForcesPayment { remaining, source },
+        );
+    }
+
+    /// Answer a [`PendingChoice::JoinForcesPayment`]: pay `x` mana into the round's total, or
+    /// decline (`pay: false`) and add nothing. An unaffordable amount leaves the choice pending
+    /// with nothing spent, so the payer can answer again with less.
+    pub(crate) fn answer_join_forces_payment(
+        &mut self,
+        player: PlayerId,
+        pay: bool,
+        x: u32,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::JoinForcesPayment {
+            player: payer,
+            source,
+            remaining,
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if player != payer {
+            return Err(Reject::NotYourPriority);
+        }
+        // "Any amount of mana" is paid as that much generic (CR 202.2 — generic accepts any type).
+        let amount = if pay { x } else { 0 };
+        if amount > u8::MAX as u32 {
+            return Err(Reject::CannotPayCost);
+        }
+
+        let mut events = Vec::new();
+        if amount > 0 {
+            let cost = Cost {
+                generic: amount as u8,
+                ..Default::default()
+            };
+            self.settle_payment(player, cost, None, None, &mut events)?;
+        }
+        self.finish_answer();
+        self.resolution_frame.join_forces_mana += amount;
+        self.prompt_next_join_forces_payment(remaining, source);
+        Ok(events)
+    }
+
     /// Answer a [`PendingChoice::CastVote`]: `choice` is the index into the ballot's `options`
     /// (0 = past, 1 = present). Tally the vote, then move on to the next player.
     pub(crate) fn answer_vote(
@@ -160,6 +213,73 @@ impl Game {
         }
         self.prompt_next_vote(remaining, source, options);
         Ok(Vec::new())
+    }
+
+    /// Pause on the next seat in Conundrum Sphinx's name-a-card fan-out, or — when none remain —
+    /// return, letting the enclosing sequence resume. Naming is mandatory (CR 201.2), so unlike a
+    /// graveyard fan-out no seat is ever skipped.
+    pub(crate) fn prompt_next_card_name(&mut self, remaining: Vec<PlayerId>, source: ObjectId) {
+        crate::pending::raise(
+            self,
+            crate::pending::ChoiceRequest::NextCardName { remaining, source },
+        );
+    }
+
+    /// Answer a [`PendingChoice::ChooseCardName`] (Conundrum Sphinx's attack trigger — CR
+    /// 201.2/703.2j "choose a card name"): `name` is the freely chosen card name, only checked
+    /// for shape (trimmed non-empty, bounded length) at this trust boundary — never validated
+    /// against any real card list (CR 201.3 lets a player name a nonexistent card). Reveals the
+    /// answering player's own top library card and resolves the match immediately: a name match
+    /// puts it into their hand, a miss puts it on the bottom of their library (CR 201.2/703.2j) —
+    /// before advancing to the next seat. An empty library reveals nothing, so naming still
+    /// consumes the seat but nothing moves.
+    pub(crate) fn answer_choose_card_name(
+        &mut self,
+        player: PlayerId,
+        name: String,
+    ) -> Result<Vec<Event>, Reject> {
+        let Some(PendingChoice::ChooseCardName {
+            player: chooser,
+            source,
+            remaining,
+        }) = self.pending_choice.clone()
+        else {
+            return Err(Reject::IllegalChoice);
+        };
+        if player != chooser {
+            return Err(Reject::NotYourPriority);
+        }
+        // Trust boundary: bounded, non-blank shape only (CR 201.2 — a real name is never blank);
+        // the longest printed card name to date is well under this bound.
+        let chosen = name.trim();
+        if chosen.is_empty() || chosen.chars().count() > 200 {
+            return Err(Reject::IllegalChoice);
+        }
+        self.finish_answer();
+
+        let mut events = Vec::new();
+        if let Some(&card) = self.players[player.0 as usize].library.first() {
+            let def = self.def_of(card);
+            self.push_apply(
+                &mut events,
+                Event::RevealedTopOfLibrary { player, card, def },
+            );
+            if def.name == chosen {
+                self.push_apply(
+                    &mut events,
+                    Event::SearchedToHand {
+                        player,
+                        object: self.next_object_id(),
+                        from: card,
+                        card: def,
+                    },
+                );
+            } else {
+                self.push_apply(&mut events, Event::PutOnBottomOfLibrary { player, card });
+            }
+        }
+        self.prompt_next_card_name(remaining, source);
+        Ok(events)
     }
 
     /// Answer a [`PendingChoice::MaySacrifice`]: `sacrifices` is empty to decline, or names the

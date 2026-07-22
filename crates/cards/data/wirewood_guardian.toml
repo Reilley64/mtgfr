@@ -19,7 +19,7 @@ toughness = 6
 
 # Forestcycling {2} ({2}, Discard this card: Search your library for a Forest card, reveal it, put
 # it into your hand, then shuffle.)
-[hand_ability]
+[[hand_ability]]
 
 [hand_ability.cost]
 generic = 2

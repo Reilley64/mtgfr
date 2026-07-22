@@ -1,0 +1,49 @@
+# Choose one —
+# • Destroy target artifact.
+# • Destroy target enchantment.
+# • Destroy target artifact and target enchantment.
+name = "Hull Breach"
+id = "2da232d8-580f-4116-b977-2c59cd21b5a4"
+default_print = "772c0618-b805-4a5a-b5bc-7086b3b7f9df"
+oracle = "Choose one —\n• Destroy target artifact.\n• Destroy target enchantment.\n• Destroy target artifact and target enchantment."
+set = "cmd"
+modal = true
+
+[cost]
+red = 1
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Mode 0 — "Destroy target artifact."
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact" } }
+
+# Mode 1 — "Destroy target enchantment."
+[[abilities]]
+timing = "spell"
+
+# Destroy target enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "enchantment" } }
+
+# Mode 2 — "Destroy target artifact and target enchantment."
+[[abilities]]
+timing = "spell"
+
+# Destroy target artifact and target enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "artifact" } }
+
+# Destroy target artifact and target enchantment.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "enchantment" } }

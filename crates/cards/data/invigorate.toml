@@ -1,0 +1,42 @@
+# If you control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3
+# life.
+# Target creature gets +4/+4 until end of turn.
+name = "Invigorate"
+id = "9264c198-76c7-4ac0-9334-37c691de1b54"
+default_print = "e0899da3-7beb-4161-81a3-e2d694e5b8a5"
+oracle = "If you control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3 life.\nTarget creature gets +4/+4 until end of turn."
+set = "2xm"
+approximates = "\"have an opponent gain 3 life\" always picks the lowest-seat-index living opponent instead of letting the caster choose which one — observable only with more than one opponent."
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "instant"
+
+# If you control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3
+# life.
+[alternative_cost]
+
+[alternative_cost.condition]
+type = "controls_lands_with_subtype"
+subtypes = ["Forest"]
+count = 1
+
+[alternative_cost.rider]
+# ponytail: untargeted and un-chosen — the lowest-seat-index living opponent gains the life. Grow a
+# PendingChoice::ChooseOpponent when a card's effect depends on *which* opponent gained.
+type = "opponent_gains_life"
+amount = 3
+
+# Target creature gets +4/+4 until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Target creature gets +4/+4 until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 4
+toughness = 4
+target = "creature"

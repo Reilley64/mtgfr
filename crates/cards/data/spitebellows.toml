@@ -1,0 +1,32 @@
+# When this creature leaves the battlefield, it deals 6 damage to target creature.
+# Evoke {1}{R}{R} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)
+name = "Spitebellows"
+id = "fee18f57-4ae5-4df8-af3b-f82ed2157ac3"
+default_print = "e35c0bea-c956-412a-b30b-9f75207cd493"
+otags = ["cycle-evoke-elemental", "leaves-trigger-self", "removal-creature", "spot-removal"]
+oracle = "When this creature leaves the battlefield, it deals 6 damage to target creature.\nEvoke {1}{R}{R} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)"
+set = "cmm"
+subtypes = ["Elemental"]
+
+[cost]
+generic = 5
+red = 1
+
+[evoke]
+generic = 1
+red = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 1
+
+# When this creature leaves the battlefield, it deals 6 damage to target creature.
+[[abilities]]
+timing = "this_leaves_battlefield"
+
+# it deals 6 damage to target creature.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 6
+target = "creature"

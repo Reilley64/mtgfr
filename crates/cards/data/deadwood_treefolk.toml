@@ -1,0 +1,40 @@
+# Vanishing 3 (This creature enters with three time counters on it. At the beginning of your upkeep, remove a time
+# counter from it. When the last is removed, sacrifice it.)
+# When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your
+# hand.
+name = "Deadwood Treefolk"
+id = "b7efcb42-aa52-4d13-8c7c-b2db2dd51afd"
+default_print = "90614b59-5d3e-4f78-8e40-c25209103f44"
+oracle = "Vanishing 3 (This creature enters with three time counters on it. At the beginning of your upkeep, remove a time counter from it. When the last is removed, sacrifice it.)\nWhen this creature enters or leaves the battlefield, return another target creature card from your graveyard to your hand."
+set = "cmd"
+subtypes = ["Treefolk"]
+vanishing = 3
+
+[cost]
+generic = 5
+green = 1
+
+[kind]
+type = "creature"
+power = 3
+toughness = 6
+
+# When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your
+# hand.
+[[abilities]]
+timing = "etb"
+
+# return another target creature card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "creature", other = true } }
+
+# When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your
+# hand.
+[[abilities]]
+timing = "this_leaves_battlefield"
+
+# return another target creature card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = "creature", other = true } }

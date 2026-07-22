@@ -30,6 +30,7 @@ impl Game {
             | Effect::GrantSourceAbilitiesUntilEndOfTurn
             | Effect::RegenerateShield { .. }
             | Effect::RemoveFromCombat { .. }
+            | Effect::RevertAllCreaturesToOwners
             | Effect::TapTarget { .. }
             | Effect::UntapAll { .. }
             | Effect::UntapTarget { .. } => {
@@ -49,6 +50,7 @@ impl Game {
             // Damage family
             Effect::DamageEachCreature { .. }
             | Effect::DamageEachPlayer { .. }
+            | Effect::DamageEachOtherOpponent { .. }
             | Effect::DealDamage { .. }
             | Effect::DealDamageToSelf { .. }
             | Effect::DealDamageToTargetController { .. }
@@ -90,6 +92,7 @@ impl Game {
             | Effect::GainLife { .. }
             | Effect::GainLifeTargetController { .. }
             | Effect::LoseLife { .. }
+            | Effect::OpponentGainsLife { .. }
             | Effect::TargetPlayerGainsLife { .. }
             | Effect::TargetPlayerLosesLife { .. } => {
                 self.mint_life_family(effect, controller, source, target, x)
@@ -133,6 +136,7 @@ impl Game {
             | Effect::PumpUntilEndOfTurn { .. }
             | Effect::SetBasePtCreaturesYouControlUntilEndOfTurn { .. }
             | Effect::SetBasePtTargetUntilEndOfTurn { .. }
+            | Effect::SetOwnBasePtFromAmount { .. }
             | Effect::StripKeywordsFromOpponentsCreatures { .. }
             | Effect::WeakenEachCreature { .. } => {
                 self.mint_pump_family(effect, controller, source, target, x)
@@ -224,6 +228,8 @@ impl Game {
             | Effect::CasterKeepsOneOfEachTypePerPlayer
             | Effect::EachPlayerControllerChoosesCounterTarget
             | Effect::CouncilsDilemmaVote { .. }
+            | Effect::JoinForcesPayMana
+            | Effect::EachPlayerNamesCardThenRevealsTop
             | Effect::OpponentSplitsExilePiles
             | Effect::RevealTopSplitPiles
             | Effect::RevealTopOpponentPicksOneToGraveyard { .. }
@@ -243,6 +249,9 @@ impl Game {
             // Needs `&mut self` to pause the targeted player on a MayYesNo — only resolves via
             // `Game::run`, never this pure path.
             | Effect::TargetPlayerMayDraw { .. }
+            // Needs `&mut self` to pause the damaging creature's controller on a MayYesNo — only
+            // resolves via `Game::run`, never this pure path.
+            | Effect::DamagingCreatureControllerMayDraw { .. }
             // Needs `&mut self` to pause the controller on a MayDrawUpTo count choice — only
             // resolves via `Game::run`, never this pure path.
             | Effect::MayDrawUpTo { .. }
@@ -331,6 +340,9 @@ impl Game {
             // Needs `&mut self` to mark `Game::self_tuck_to_library_bottom` — only resolves via
             // `Game::run`, never this pure path.
             | Effect::TuckSelfToLibraryBottom
+            // Needs `&mut self` to mark `Game::self_exile_on_resolve` — only resolves via
+            // `Game::run`, never this pure path.
+            | Effect::ExileSelfOnResolve
             // Needs `&mut self` to mint the free copy (`Game::mint_spell_copies`) — only
             // resolves via `Game::run`, never this pure path.
             | Effect::MintFreeCopyOfExiledCard { .. }

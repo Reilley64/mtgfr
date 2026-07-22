@@ -28,10 +28,12 @@ message WireBlock {
   uint32 attacker = 2;
 }
 
-// One declared attack: `attacker` attacks player `defender`.
+// One declared attack (CR 508.1a): `attacker` attacks the player `defender`, or that player's
+// planeswalker `defender_planeswalker` when it is set. `defender` is always the defending player.
 message WireAttack {
   uint32 attacker = 1;
   uint32 defender = 2;
+  optional uint32 defender_planeswalker = 3;
 }
 
 // One combat-damage assignment: `amount` of an attacker's damage dealt to `blocker`.

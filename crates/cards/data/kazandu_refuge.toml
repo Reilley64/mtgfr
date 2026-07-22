@@ -1,0 +1,32 @@
+# This land enters tapped.
+# When this land enters, you gain 1 life.
+# {T}: Add {R} or {G}.
+name = "Kazandu Refuge"
+id = "03332772-18b0-446a-a7e2-a4bdf38c4f0c"
+default_print = "6ca097f1-eef0-4e18-ab5d-49bb4aeb74e2"
+otags = ["cycle-zen-gainland", "lifegain", "triggered-ability"]
+oracle = "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {R} or {G}."
+set = "c19"
+enters_tapped = true
+
+[kind]
+type = "land"
+
+# When this land enters, you gain 1 life.
+[[abilities]]
+timing = "etb"
+
+# you gain 1 life.
+[[abilities.effects]]
+type = "gain_life"
+amount = 1
+
+# {T}: Add {R} or {G}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {R} or {G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["red", "green"]]

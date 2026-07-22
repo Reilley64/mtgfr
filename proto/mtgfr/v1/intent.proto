@@ -74,6 +74,8 @@ message WireIntent {
     WireIntentChooseDrawCount choose_draw_count = 53;
     WireIntentKeepHand keep_hand = 54;
     WireIntentMulligan mulligan = 55;
+    WireIntentChooseCardName choose_card_name = 56;
+    WireIntentCastSplitHalf cast_split_half = 57;
   }
 }
 
@@ -110,6 +112,9 @@ message WireIntentCast {
   // Whether the caster is casting the spell for its evoke cost (CR 702.74a); `false` for a
   // spell with no evoke, or to cast it normally.
   bool evoked = 13;
+  // Whether the caster is casting the spell for its printed alternative cost (CR 601.2f);
+  // `false` for a spell with none, or to cast it normally.
+  bool alternative_cost = 14;
 }
 
 message WireIntentPlayLand {
@@ -177,9 +182,11 @@ message WireIntentChooseDrawCount {
   uint32 count = 2;
 }
 
+// `x` is set only when the cost has an X the payer chooses (join forces' "any amount of mana").
 message WireIntentPayOptionalCost {
   uint32 player = 1;
   bool pay = 2;
+  optional uint32 x = 3;
 }
 
 message WireIntentAssignDamage {
@@ -321,6 +328,14 @@ message WireIntentChooseColor {
   uint32 color = 2;
 }
 
+// Answer a choose-a-card-name choice (CR 201.2/703.2j — Conundrum Sphinx's attack trigger):
+// `name` is the freely chosen card name. Free text — the engine checks only its shape (trimmed
+// non-empty, bounded length), never against a real card list (CR 201.3).
+message WireIntentChooseCardName {
+  uint32 player = 1;
+  string name = 2;
+}
+
 // Answer a choose-attach-host choice: `host` is the chosen creature the deployed Aura (CR
 // 303.4f) or Equipment (CR 301.5c) attaches to, or absent to decline (Equipment only — an Aura
 // host is mandatory).
@@ -352,6 +367,10 @@ message WireIntentCycle {
 message WireIntentActivateHandAbility {
   uint32 player = 1;
   uint32 card = 2;
+  // Which `CardDef::hand_ability` entry to activate (Valley Rannet's mountaincycling vs
+  // forestcycling are two separate abilities, CR 702.29d). Ignored — always 0 — for a card
+  // whose only hand-activated ability is `CardDef::forecast`.
+  uint32 index = 3;
 }
 
 // Suspend a hand card (CR 702.62): pay its suspend cost and exile it with time counters rather
@@ -393,6 +412,17 @@ message WireIntentCastAdventure {
   optional WireTarget target = 3;
   // The adventure's chosen `{X}` value (absent/0 for an adventure with no `{X}`).
   uint32 x = 4;
+}
+
+// Cast one half of a split card from hand (CR 709.4a): pay that half's cost, put only that half
+// on the stack. `half` is the index into the card's halves (0 = left, 1 = right).
+message WireIntentCastSplitHalf {
+  uint32 player = 1;
+  uint32 source = 2;
+  uint32 half = 3;
+  optional WireTarget target = 4;
+  // The half's chosen `{X}` value (absent/0 for a half with no `{X}`).
+  uint32 x = 5;
 }
 
 // Cast a card for its bestow cost (CR 702.103): pay the bestow cost, put it on the stack as an

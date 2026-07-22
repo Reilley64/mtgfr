@@ -1,0 +1,26 @@
+# At the beginning of each upkeep, this creature deals 3 damage to any target.
+name = "Magmatic Force"
+id = "ea73153b-1ecb-4593-a9ec-ce4f54e69824"
+default_print = "e98eb29b-af03-4a96-b84c-a0bd51f80f03"
+oracle = "At the beginning of each upkeep, this creature deals 3 damage to any target."
+set = "bbd"
+subtypes = ["Elemental"]
+
+[cost]
+generic = 5
+red = 3
+
+[kind]
+type = "creature"
+power = 7
+toughness = 7
+
+# At the beginning of each upkeep, this creature deals 3 damage to any target.
+[[abilities]]
+timing = "each_upkeep"
+
+# this creature deals 3 damage to any target.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 3
+target = "any"

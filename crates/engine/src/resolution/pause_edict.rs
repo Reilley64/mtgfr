@@ -84,27 +84,46 @@ impl Game {
                     source,
                 },
             ),
+            // Join forces (Collective Voyage): "Starting with you, each player may pay any amount
+            // of mana." A per-player payment round; the X-scaled payoff rides in the enclosing
+            // `Sequence`, resumed once every player has answered — the vote round's twin.
+            Effect::JoinForcesPayMana => {
+                self.resolution_frame.join_forces_mana = 0;
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::NextJoinForcesPayment {
+                        remaining: self.turn_order_from(controller),
+                        source,
+                    },
+                )
+            }
             // Council's dilemma (Fateful Tempest): a per-player vote round pauses each seat on a
             // CastVote choice; the tally-scaled payoff rides in the enclosing `Sequence`, resumed
             // once every player has voted (the same deferred-tail path as the graveyard fan-out).
             Effect::CouncilsDilemmaVote { options } => {
                 self.resolution_frame.council_past_votes = 0;
                 self.resolution_frame.council_present_votes = 0;
-                let n = self.players.len();
-                let start = controller.0 as usize;
-                let remaining: Vec<PlayerId> = (0..n)
-                    .map(|i| PlayerId(((start + i) % n) as u8))
-                    .filter(|&p| !self.players[p.0 as usize].lost)
-                    .collect();
                 pending::raise(
                     self,
                     pending::ChoiceRequest::NextVote {
-                        remaining,
+                        remaining: self.turn_order_from(controller),
                         source,
                         options,
                     },
                 )
             }
+            // Conundrum Sphinx's attack trigger: "each player chooses a card name" (CR 101.4
+            // default APNAP order — the trigger carries no "starting with you," but its
+            // controller is always the active player, since only the active player's creatures
+            // attack). Each seat pauses on a ChooseCardName; the reveal-and-match resolves inside
+            // that seat's own answer (see `PendingChoice::ChooseCardName`'s doc), not here.
+            Effect::EachPlayerNamesCardThenRevealsTop => pending::raise(
+                self,
+                pending::ChoiceRequest::NextCardName {
+                    remaining: self.apnap_order(),
+                    source,
+                },
+            ),
             // Brudiclad: "you may choose a token you control; if you do, each other token you
             // control becomes a copy of that token." Pauses on a ChooseTokenToCopy choice; with no
             // token to choose there's nothing to convert (guarded like MaySacrifice).

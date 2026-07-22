@@ -112,9 +112,7 @@ impl Game {
                         if self.cycle_listable(player, id, available) {
                             actions.push(MeaningfulAction::Cycle { card: id });
                         }
-                        if self.hand_ability_listable(player, id, available) {
-                            actions.push(MeaningfulAction::ActivateHandAbility { card: id });
-                        }
+                        self.push_hand_ability_actions(&mut actions, player, id, available);
                         continue;
                     };
                     // Lands are *played* (a land drop), not cast — their `Cost::FREE` would
@@ -130,20 +128,17 @@ impl Game {
                         if self.cycle_listable(player, id, available) {
                             actions.push(MeaningfulAction::Cycle { card: id });
                         }
-                        if self.hand_ability_listable(player, id, available) {
-                            actions.push(MeaningfulAction::ActivateHandAbility { card: id });
-                        }
+                        self.push_hand_ability_actions(&mut actions, player, id, available);
                         continue;
                     }
                     if let Some(zone) = self.cast_listable(player, id) {
                         actions.push(MeaningfulAction::Cast { card: id, zone });
                     }
+                    self.push_split_half_actions(&mut actions, player, id, available);
                     if self.cycle_listable(player, id, available) {
                         actions.push(MeaningfulAction::Cycle { card: id });
                     }
-                    if self.hand_ability_listable(player, id, available) {
-                        actions.push(MeaningfulAction::ActivateHandAbility { card: id });
-                    }
+                    self.push_hand_ability_actions(&mut actions, player, id, available);
                     if self.suspend_listable(player, id, available) {
                         actions.push(MeaningfulAction::Suspend { card: id });
                     }
@@ -211,29 +206,42 @@ impl Game {
         Self::affordable_from(available, cost, None)
     }
 
-    /// Whether `card` may be offered as an ActivateHandAbility action: priority holder, in hand,
-    /// with either a [`CardDef::hand_ability`] (CR 113.6/602.5e — affordable cost, no further
-    /// gate) or a [`CardDef::forecast`] (CR 702.57 — affordable cost, plus the controller's own
-    /// upkeep and once-each-turn gates [`Game::activate_hand_ability`] itself enforces). The
+    /// Push an ActivateHandAbility action per affordable [`CardDef::hand_ability`] entry (CR
+    /// 113.6/602.5e — one per typecycling type, CR 702.29d: Valley Rannet's mountaincycling and
+    /// forestcycling are separate entries, each independently affordable), or one for
+    /// [`CardDef::forecast`] (CR 702.57 — affordable cost, plus the controller's own upkeep and
+    /// once-each-turn gates [`Game::activate_hand_ability`] itself enforces) when the card has no
+    /// `hand_ability` entries. Requires priority and the card in this player's hand. The
     /// `hand_ability`/`forecast` sibling of [`Self::cycle_listable`].
-    fn hand_ability_listable(&self, player: PlayerId, card: ObjectId, available: ManaPool) -> bool {
+    fn push_hand_ability_actions(
+        &self,
+        actions: &mut Vec<MeaningfulAction>,
+        player: PlayerId,
+        card: ObjectId,
+        available: ManaPool,
+    ) {
         if player != self.priority {
-            return false;
+            return;
         }
         let Object::Card(c) = &self.objects[card as usize] else {
-            return false;
+            return;
         };
         if c.zone != Zone::Hand || c.owner != player {
-            return false;
+            return;
         }
-        if let Some(ability) = c.def.hand_ability {
-            return Self::affordable_from(available, ability.cost, None);
+        for (index, ability) in c.def.hand_ability.iter().enumerate() {
+            if Self::affordable_from(available, ability.cost, None) {
+                actions.push(MeaningfulAction::ActivateHandAbility { card, index });
+            }
+        }
+        if !c.def.hand_ability.is_empty() {
+            return;
         }
         let Some(ability) = c.def.forecast else {
-            return false;
+            return;
         };
         if self.step != Step::Upkeep || self.active_player != player {
-            return false;
+            return;
         }
         if self
             .once_per_turn
@@ -241,9 +249,11 @@ impl Game {
             .iter()
             .any(|&(o, i)| o == card && i == 0)
         {
-            return false;
+            return;
         }
-        Self::affordable_from(available, ability.cost, None)
+        if Self::affordable_from(available, ability.cost, None) {
+            actions.push(MeaningfulAction::ActivateHandAbility { card, index: 0 });
+        }
     }
 
     /// Whether `card` may be offered as a Suspend action (CR 702.62): priority holder, in hand
@@ -387,6 +397,7 @@ impl Game {
                 false,
                 0,
                 0,
+                false,
             );
             return Self::affordable_from(available, cost, spell);
         }
@@ -406,9 +417,74 @@ impl Game {
                     false,
                     0,
                     0,
+                    false,
                 );
                 Self::affordable_from(available, cost, spell)
             })
+    }
+
+    /// Push one [`MeaningfulAction::CastSplitHalf`] per affordable, timing-legal half of a split
+    /// card in hand (CR 709.4a) — the fused card itself is never castable, so this is the only way
+    /// a split card shows up as a play. Mirrors [`Self::cast_prepared_listable`]'s gates.
+    fn push_split_half_actions(
+        &self,
+        actions: &mut Vec<MeaningfulAction>,
+        player: PlayerId,
+        card: ObjectId,
+        available: ManaPool,
+    ) {
+        if player != self.priority {
+            return;
+        }
+        if self.playable_zone(card, player) != Some(Zone::Hand) {
+            return;
+        }
+        for (index, face) in self.def_of(card).halves.iter().enumerate() {
+            let face = *face;
+            if face.is_instant_speed() {
+                if !self.can_take_sorcery_speed_action(player)
+                    && self.stack.is_empty()
+                    && !self.in_attack_response_window(player)
+                {
+                    continue;
+                }
+            } else if !self.can_take_sorcery_speed_action(player) {
+                continue;
+            }
+            let spell = Some(face.spell_characteristics());
+            let cost_for = |target| {
+                self.cast_cost(
+                    player,
+                    card,
+                    face,
+                    target,
+                    0,
+                    Zone::Hand,
+                    0,
+                    false,
+                    false,
+                    false,
+                    0,
+                    0,
+                    false,
+                )
+            };
+            let spec = self.required_target(face, None);
+            let affordable = if spec == TargetSpec::None || self.spell_multi_target(face).is_some()
+            {
+                Self::affordable_from(available, cost_for(None), spell)
+            } else {
+                self.legal_targets_for(spec, card, player, color_identity(face), 0)
+                    .into_iter()
+                    .any(|t| Self::affordable_from(available, cost_for(Some(t)), spell))
+            };
+            if affordable {
+                actions.push(MeaningfulAction::CastSplitHalf {
+                    card,
+                    half: index as u8,
+                });
+            }
+        }
     }
 
     /// Push every non-mana activated ability of `abilities` (a permanent's or a
@@ -897,12 +973,22 @@ impl Game {
             TargetSpec::CreatureCardInAnyGraveyard => graveyard_creatures(None).collect(),
             // Composable graveyard filter (Sevinne's Reclamation): any graveyard card whose
             // `CardDef` matches `filter`, scoped to `whose`'s graveyard(s).
-            TargetSpec::CardInGraveyard { whose, filter } => self
+            TargetSpec::CardInGraveyard {
+                whose,
+                filter,
+                other,
+            } => self
                 .live_object_ids()
                 .into_iter()
                 .filter(|&id| {
                     self.zone_of(id) == Zone::Graveyard
                         && filter.matches(self.def_of(id))
+                        // "another target creature card" (Deadwood Treefolk). Compared through
+                        // `current_id` because the excluded source is the ability's *battlefield*
+                        // id while its card now sits in the graveyard under a fresh id — a
+                        // leaves-the-battlefield trigger is exactly the case this carve-out exists
+                        // for (CR 400.7).
+                        && (!other || self.current_id(id) != self.current_id(source))
                         && match whose {
                             GraveyardScope::Any => true,
                             GraveyardScope::Yours => self.owner_of(id) == controller,
@@ -1384,9 +1470,10 @@ impl Game {
         if filter.attacking && !self.combat.attackers.contains(&id) {
             return false;
         }
-        // Attacking this filter's own controller (Soul Snare's "attacking you") — the attacker's
-        // declared defender must be `you`, not merely any player.
-        if filter.attacking_you && self.defender_of(id) != Some(you) {
+        // Attacking this filter's own controller (Soul Snare's "attacking you or a planeswalker
+        // you control") — the attacker's declared defender must resolve to `you`, not merely to
+        // any player.
+        if filter.attacking_you && self.defending_player_of(id) != Some(you) {
             return false;
         }
         // Nonlegendary exclusion (CR 205.4a — Muddle, the Ever-Changing's "nonlegendary
@@ -1413,6 +1500,10 @@ impl Game {
         }
         // Without flying (Breath of Darigaaz's "each creature without flying").
         if filter.without_flying && self.has_keyword(id, Keyword::Flying) {
+            return false;
+        }
+        // With flying (Firespout's "each creature with flying").
+        if filter.with_flying && !self.has_keyword(id, Keyword::Flying) {
             return false;
         }
         true
@@ -1478,6 +1569,7 @@ mod permanent_filter_tests {
             enters_tapped: false,
             enters_tapped_unless: None,
             free_cast_if: None,
+            alternative_cost: None,
             cast_only_during_combat: false,
             approximates: None,
             oracle: None,
@@ -1503,12 +1595,14 @@ mod permanent_filter_tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
+            halves: &[],
             suspend: None,
+            vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: None,
+            hand_ability: &[],
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,

@@ -1,0 +1,13 @@
+# Token: Elemental
+# Sources: call_the_skybreaker.toml
+name = "Elemental"
+id = "66b91a2c-d5ac-421e-b210-039a20c71b16"
+default_print = "160579e7-4563-4576-84d7-56643217096e"
+colors = ["blue", "red"]
+subtypes = ["Elemental"]
+keywords = ["flying"]
+
+[kind]
+type = "creature"
+power = 5
+toughness = 5

@@ -134,6 +134,21 @@ impl Game {
                     toughness: self.resolve_amount(toughness, controller, source, target, x),
                 }]
             }
+            // Indefinite self base-P/T SET (Trench Gorger's "this creature has base power and
+            // toughness each equal to the number of cards exiled this way", CR 613.3(7b)): unlike
+            // `SetBasePtTargetUntilEndOfTurn` above, this is never cleared at cleanup. Nothing to
+            // do if the source has already left (CR 608.2c).
+            Effect::SetOwnBasePtFromAmount { amount } => {
+                if self.as_permanent(source).is_none() {
+                    return Vec::new();
+                }
+                let value = self.resolve_amount(amount, controller, source, target, x);
+                vec![Event::BasePtSetIndefinite {
+                    object: source,
+                    power: value,
+                    toughness: value,
+                }]
+            }
             // Manland self-animation (Restless Spire): the source land becomes a creature until end
             // of turn — an added type/subtype (613.4), a base-P/T SET (613.3(7b)), and granted
             // keywords, all on the source. Nothing to do if the source has left (CR 608.2c).
@@ -185,7 +200,7 @@ impl Game {
                     .copied()
                     .filter(|&a| a != host)
                     .filter(|&a| self.is_creature_on_battlefield(a))
-                    .filter(|&a| self.defender_of(a).is_some_and(|d| d != controller))
+                    .filter(|&a| self.defending_player_of(a).is_some_and(|d| d != controller))
                     .map(|object| Event::TempBoost {
                         object,
                         power,
@@ -209,8 +224,9 @@ impl Game {
                 let Some(host) = self.attached_to(source) else {
                     return Vec::new();
                 };
-                let attacking_your_opponent =
-                    self.defender_of(host).is_some_and(|d| d != controller);
+                let attacking_your_opponent = self
+                    .defending_player_of(host)
+                    .is_some_and(|d| d != controller);
                 if attacking_your_opponent {
                     return vec![Event::TempBoost {
                         object: host,

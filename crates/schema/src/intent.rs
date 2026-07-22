@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use engine::{Defender, Game, PlayerId};
+
 use crate::ObjectId;
 
 /// A player's requested action (client → server, POST body payload).
@@ -49,12 +51,42 @@ pub struct WireBlock {
     pub attacker: ObjectId,
 }
 
-/// One declared attack: `attacker` attacks player `defender`. (A named struct so the
-/// generated TypeScript/OpenAPI stays an object, like [`WireBlock`].)
+/// One declared attack (CR 508.1a): `attacker` attacks the player `defender`, or — when
+/// `defender_planeswalker` is set — that player's planeswalker of that id. `defender` is always
+/// the defending *player*, so a client that predates planeswalker defenders still renders the
+/// right seat. (A named struct so the generated TypeScript/OpenAPI stays an object, like
+/// [`WireBlock`].)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireAttack {
     pub attacker: ObjectId,
     pub defender: u8,
+    #[serde(default)]
+    pub defender_planeswalker: Option<ObjectId>,
+}
+
+impl WireAttack {
+    /// The engine attack pair this names. A planeswalker defender wins over `defender`, whose
+    /// controller the engine re-derives during validation — a client can't launder an illegal
+    /// attack by naming the wrong seat.
+    pub fn to_engine(self) -> (ObjectId, Defender) {
+        match self.defender_planeswalker {
+            Some(planeswalker) => (self.attacker, Defender::Planeswalker(planeswalker)),
+            None => (self.attacker, Defender::Player(PlayerId(self.defender))),
+        }
+    }
+
+    /// The wire form of an engine attack pair, resolving a planeswalker defender to its
+    /// controller for `defender`. `game` is needed only for that lookup.
+    pub fn of(game: &Game, (attacker, defender): (ObjectId, Defender)) -> Self {
+        WireAttack {
+            attacker,
+            defender: game.defender_controller(defender).map_or(0, |p| p.0),
+            defender_planeswalker: match defender {
+                Defender::Player(_) => None,
+                Defender::Planeswalker(planeswalker) => Some(planeswalker),
+            },
+        }
+    }
 }
 
 /// One combat-damage assignment: `amount` of an attacker's damage dealt to `blocker`.
@@ -130,6 +162,10 @@ pub enum WireIntent {
         /// for a spell with no Replicate, or "pay it zero times." See [`engine::Intent::Cast`].
         #[serde(default)]
         replicate_count: u8,
+        /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f);
+        /// `false` for a spell with none, or to cast it normally. See [`engine::Intent::Cast`].
+        #[serde(default)]
+        alternative_cost: bool,
     },
     PlayLand {
         player: u8,
@@ -191,9 +227,13 @@ pub enum WireIntent {
         player: u8,
         count: u8,
     },
+    /// Accept or decline an optional cost. `x` is set only when the cost has an X the payer
+    /// chooses (join forces' "any amount of mana") — see [`engine::Intent::PayOptionalCostX`].
     PayOptionalCost {
         player: u8,
         pay: bool,
+        #[serde(default)]
+        x: Option<u32>,
     },
     AssignDamage {
         player: u8,
@@ -365,6 +405,14 @@ pub enum WireIntent {
         player: u8,
         color: u8,
     },
+    /// Answer a choose-a-card-name choice (CR 201.2/703.2j — Conundrum Sphinx's attack trigger):
+    /// `name` is the freely chosen card name. Free text — the engine checks only its shape
+    /// (trimmed non-empty, bounded length), never against a real card list (CR 201.3).
+    /// See [`engine::Intent::ChooseCardName`].
+    ChooseCardName {
+        player: u8,
+        name: String,
+    },
     /// Answer a choose-attach-host choice: `host` is the chosen creature the deployed Aura (CR
     /// 303.4f) or Equipment (CR 301.5c) attaches to, or `None` to decline (Equipment only — an
     /// Aura host is mandatory). See [`engine::Intent::ChooseAttachHost`].
@@ -397,11 +445,16 @@ pub enum WireIntent {
         sacrifice: Option<ObjectId>,
     },
     /// Activate a hand card's hand-activated, discard-this-card ability (CR 113.6/602.5e —
-    /// Magma Opus's "{U/R}{U/R}, Discard this card: Create a Treasure token."). See
+    /// Magma Opus's "{U/R}{U/R}, Discard this card: Create a Treasure token."). `index` selects
+    /// which [`engine::CardDef::hand_ability`] entry (CR 702.29d — Valley Rannet's
+    /// mountaincycling and forestcycling are two separate entries); ignored — always 0 — for a
+    /// card whose only hand-activated ability is `forecast`. See
     /// [`engine::Intent::ActivateHandAbility`].
     ActivateHandAbility {
         player: u8,
         card: ObjectId,
+        #[serde(default)]
+        index: u32,
     },
     /// Suspend a hand card (CR 702.62): pay its suspend cost and exile it with time counters
     /// rather than casting it. See [`engine::Intent::Suspend`].
@@ -448,6 +501,19 @@ pub enum WireIntent {
         #[serde(default)]
         target: Option<WireTarget>,
         /// The adventure's chosen `{X}` value (absent/0 for an adventure with no `{X}`).
+        #[serde(default)]
+        x: u32,
+    },
+    /// Cast one half of a split card from hand (CR 709.4a): pay that half's cost and put it on
+    /// the stack targeting `target`. `half` indexes the card's halves. See
+    /// [`engine::Intent::CastSplitHalf`].
+    CastSplitHalf {
+        player: u8,
+        source: ObjectId,
+        half: u8,
+        #[serde(default)]
+        target: Option<WireTarget>,
+        /// The half's chosen `{X}` value (absent/0 for a half with no `{X}`).
         #[serde(default)]
         x: u32,
     },
@@ -524,6 +590,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
             ..
         } => Cast {
             player,
@@ -539,6 +606,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
         },
         PlayLand { object, .. } => PlayLand { player, object },
         TapForMana { object, .. } => TapForMana { player, object },
@@ -566,7 +634,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ChooseTargetPlayers { players, .. } => ChooseTargetPlayers { player, players },
         AnswerMay { yes, .. } => AnswerMay { player, yes },
         ChooseDrawCount { count, .. } => ChooseDrawCount { player, count },
-        PayOptionalCost { pay, .. } => PayOptionalCost { player, pay },
+        PayOptionalCost { pay, x, .. } => PayOptionalCost { player, pay, x },
         AssignDamage { assignment, .. } => AssignDamage { player, assignment },
         DivideSpellDamage { assignment, .. } => DivideSpellDamage { player, assignment },
         ArrangeTop { top, bottom, .. } => ArrangeTop {
@@ -610,6 +678,7 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         ChooseManaColor { color, .. } => ChooseManaColor { player, color },
         ChooseCreatureType { subtype, .. } => ChooseCreatureType { player, subtype },
         ChooseColor { color, .. } => ChooseColor { player, color },
+        ChooseCardName { name, .. } => ChooseCardName { player, name },
         ChooseAttachHost { host, .. } => ChooseAttachHost { player, host },
         ChooseCopyTarget { copy, .. } => ChooseCopyTarget { player, copy },
         ChooseTopOrBottom { top, .. } => ChooseTopOrBottom { player, top },
@@ -622,7 +691,11 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
             card,
             sacrifice,
         },
-        ActivateHandAbility { card, .. } => ActivateHandAbility { player, card },
+        ActivateHandAbility { card, index, .. } => ActivateHandAbility {
+            player,
+            card,
+            index,
+        },
         Suspend { card, .. } => Suspend { player, card },
         Encore { card, .. } => Encore { player, card },
         TurnFaceUp { permanent, .. } => TurnFaceUp { player, permanent },
@@ -640,6 +713,19 @@ fn with_player(wire: WireIntent, player: u8) -> WireIntent {
         } => CastAdventure {
             player,
             source,
+            target,
+            x,
+        },
+        CastSplitHalf {
+            source,
+            half,
+            target,
+            x,
+            ..
+        } => CastSplitHalf {
+            player,
+            source,
+            half,
             target,
             x,
         },
@@ -696,6 +782,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
         } => Intent::Cast {
             player: PlayerId(player),
             object,
@@ -713,6 +800,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
         },
         WireIntent::PlayLand { player, object } => Intent::PlayLand {
             player: PlayerId(player),
@@ -741,10 +829,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         },
         WireIntent::DeclareAttackers { player, attackers } => Intent::DeclareAttackers {
             player: PlayerId(player),
-            attackers: attackers
-                .into_iter()
-                .map(|a| (a.attacker, PlayerId(a.defender)))
-                .collect(),
+            attackers: attackers.into_iter().map(WireAttack::to_engine).collect(),
         },
         WireIntent::DeclareBlockers { player, blocks } => Intent::DeclareBlockers {
             player: PlayerId(player),
@@ -773,9 +858,16 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             count,
         },
-        WireIntent::PayOptionalCost { player, pay } => Intent::PayOptionalCost {
-            player: PlayerId(player),
-            pay,
+        WireIntent::PayOptionalCost { player, pay, x } => match x {
+            None => Intent::PayOptionalCost {
+                player: PlayerId(player),
+                pay,
+            },
+            Some(x) => Intent::PayOptionalCostX {
+                player: PlayerId(player),
+                pay,
+                x,
+            },
         },
         WireIntent::AssignDamage { player, assignment } => Intent::AssignDamage {
             player: PlayerId(player),
@@ -914,6 +1006,10 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             player: PlayerId(player),
             subtype,
         },
+        WireIntent::ChooseCardName { player, name } => Intent::ChooseCardName {
+            player: PlayerId(player),
+            name,
+        },
         WireIntent::ChooseColor { player, color } => Intent::ChooseColor {
             player: PlayerId(player),
             // ponytail: an out-of-range wire index (>4) clamps to White rather than panicking — a
@@ -945,9 +1041,14 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             card,
             sacrifice,
         },
-        WireIntent::ActivateHandAbility { player, card } => Intent::ActivateHandAbility {
+        WireIntent::ActivateHandAbility {
+            player,
+            card,
+            index,
+        } => Intent::ActivateHandAbility {
             player: PlayerId(player),
             card,
+            index: index as usize,
         },
         WireIntent::Suspend { player, card } => Intent::Suspend {
             player: PlayerId(player),
@@ -984,6 +1085,19 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
         } => Intent::CastAdventure {
             player: PlayerId(player),
             source,
+            target: target.map(WireTarget::to_engine),
+            x,
+        },
+        WireIntent::CastSplitHalf {
+            player,
+            source,
+            half,
+            target,
+            x,
+        } => Intent::CastSplitHalf {
+            player: PlayerId(player),
+            source,
+            half,
             target: target.map(WireTarget::to_engine),
             x,
         },
@@ -1031,10 +1145,7 @@ pub fn to_intent(wire: WireIntent) -> engine::Intent {
             sacrifice,
             discard_cost,
             graveyard_exile,
-            attackers: attackers
-                .into_iter()
-                .map(|a| (a.attacker, PlayerId(a.defender)))
-                .collect(),
+            attackers: attackers.into_iter().map(WireAttack::to_engine).collect(),
             blocks: blocks
                 .into_iter()
                 .map(|b| (b.blocker, b.attacker))

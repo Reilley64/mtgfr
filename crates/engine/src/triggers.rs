@@ -54,7 +54,7 @@ impl Game {
                     // without pausing. Grow into a real `OrderTriggers` choice if an evoke card
                     // ever needs the controller to choose the other order.
                     if self.as_permanent(permanent).is_some_and(|p| p.evoked) {
-                        self.queue_evoke_sacrifice(permanent);
+                        self.queue_self_sacrifice_trigger(permanent);
                     }
                     self.queue_self_trigger(permanent, Trigger::Etb);
                     // ponytail: watch-others companion to the self `Etb` above — constellation/
@@ -88,7 +88,10 @@ impl Game {
                             .push(controller);
                     }
                 }
-                Event::AttackerDeclared { object, defender } => {
+                // Every attack watcher is scoped to the defending *player* (CR 508.1a), which
+                // is exactly what the event's `defender` is — an attack on a planeswalker reads
+                // as an attack on its controller.
+                Event::AttackerDeclared { object, defender, .. } => {
                     // Self-referential "whenever this creature attacks" carries the attack
                     // context too (Goblin Guide's `RevealTopToHand.defender`) — every other
                     // consumer's effect ignores `ctx.attack`, so this is a no-op for them.
@@ -321,7 +324,13 @@ impl Game {
                 Event::StepBegan {
                     step: Step::Main1,
                     active_player,
-                } => self.queue_controller_triggers(active_player, Trigger::FirstMainPhase, None),
+                } => {
+                    self.queue_controller_triggers(active_player, Trigger::FirstMainPhase, None);
+                    // Every-player, first-main-phase flavor: fires under its own controller
+                    // regardless of whose first main phase this is (Magus of the Vineyard), the
+                    // first-main-phase twin of the `EachUpkeep`/`EachDrawStep` arms above.
+                    self.queue_each_player_first_main_phase_triggers(active_player);
+                }
                 Event::StepBegan {
                     step: Step::BeginCombat,
                     active_player,
@@ -529,7 +538,7 @@ impl Game {
                     player,
                     amount,
                 } => {
-                    self.queue_combat_damage_triggers(source, amount);
+                    self.queue_combat_damage_triggers(source, player, amount);
                     // Armadillo Cloak's attached-host damage watch: this creature dealt combat
                     // damage to a player. See `queue_enchanted_creature_deals_damage_triggers`.
                     self.queue_enchanted_creature_deals_damage_triggers(source, amount);
@@ -752,20 +761,22 @@ impl Game {
         self.queue_trigger_group(ctx, source, self.def_of(source), trigger);
     }
 
-    /// Queue evoke's "sacrificed when it enters" (CR 702.74a) as its own single-ability
-    /// [`TriggerGroup`], reusing [`Effect::SacrificeObject`] against `evoked_permanent` itself —
-    /// the same synthetic-`then` shape a delayed sacrifice trigger uses (see that variant's doc),
-    /// fabricated here since it isn't one of the permanent's own printed abilities. Its
-    /// `timing`/`condition` are inert placeholders, like [`Game::fire_delayed_triggers`]'s.
-    pub(crate) fn queue_evoke_sacrifice(&mut self, evoked_permanent: ObjectId) {
+    /// Queue "its controller sacrifices it" as `permanent`'s own single-ability [`TriggerGroup`],
+    /// reusing [`Effect::SacrificeObject`] against `permanent` itself — the same synthetic-`then`
+    /// shape a delayed sacrifice trigger uses (see that variant's doc), fabricated here since it
+    /// isn't one of the permanent's own printed abilities. Its `timing`/`condition` are inert
+    /// placeholders, like [`Game::fire_delayed_triggers`]'s. Shared by evoke's "sacrificed when it
+    /// enters" (CR 702.74a) and vanishing's "when the last time counter is removed, sacrifice it"
+    /// (CR 702.63c).
+    pub(crate) fn queue_self_sacrifice_trigger(&mut self, permanent: ObjectId) {
         self.pending_trigger_groups.push(TriggerGroup {
             expanded: false,
-            controller: self.owner_of(evoked_permanent),
-            source: evoked_permanent,
+            controller: self.owner_of(permanent),
+            source: permanent,
             abilities: vec![Ability {
                 timing: Timing::Triggered(Trigger::Etb),
                 effect: Effect::SacrificeObject {
-                    object: Some(evoked_permanent),
+                    object: Some(permanent),
                 },
                 optional: false,
                 min_level: 0,
@@ -1314,6 +1325,25 @@ impl Game {
         }
     }
 
+    /// Queue every battlefield permanent's [`Trigger::EachPlayerFirstMainPhase`] ability at the
+    /// beginning of *any* player's first main phase (CR "at the beginning of each player's first
+    /// main phase") — the first-main-phase twin of
+    /// [`queue_each_upkeep_triggers`](Self::queue_each_upkeep_triggers)/
+    /// [`queue_each_end_step_triggers`](Self::queue_each_end_step_triggers), except its payoff (CR
+    /// "that player adds {G}{G}" — Magus of the Vineyard) needs to know whose first main phase
+    /// this is, so `active_player` rides along on [`TriggerContext::active_player`] just like
+    /// [`queue_each_draw_step_triggers`](Self::queue_each_draw_step_triggers).
+    pub(crate) fn queue_each_player_first_main_phase_triggers(&mut self, active_player: PlayerId) {
+        for id in self.battlefield() {
+            let controller = self.owner_of(id);
+            let ctx = TriggerContext {
+                active_player: Some(active_player),
+                ..TriggerContext::of(controller)
+            };
+            self.queue_trigger_group(ctx, id, self.def_of(id), Trigger::EachPlayerFirstMainPhase);
+        }
+    }
+
     /// Queue every battlefield permanent's [`Trigger::EachOtherPlayerUntapStep`] ability at the
     /// beginning of `untapping_player`'s untap step (CR "during each other player's untap
     /// step") — the mirror image of
@@ -1472,6 +1502,8 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
+                combat_damage_recipient: None,
+                combat_damage_source_controller: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
                 damaged_creature: None,
@@ -1630,6 +1662,8 @@ impl Game {
                 cast_x: None,
                 auras_you_controlled_attached_to_dying_creature: None,
                 combat_damage: None,
+                combat_damage_recipient: None,
+                combat_damage_source_controller: None,
                 triggering_damage_dealt: None,
                 dying_enchanted_creature: None,
                 damaged_creature: None,
@@ -1889,6 +1923,8 @@ impl Game {
             cast_x: None,
             auras_you_controlled_attached_to_dying_creature: None,
             combat_damage: None,
+            combat_damage_recipient: None,
+            combat_damage_source_controller: None,
             triggering_damage_dealt: None,
             dying_enchanted_creature: None,
             damaged_creature: None,
@@ -2072,7 +2108,9 @@ impl Game {
     /// dealt `amount` combat damage to a player. Scans every battlefield permanent's
     /// `DealsCombatDamageToPlayer{who}` ability and fires it when `who` matches: `This` only for
     /// `source`'s own ability, `YourCreatures` for any battlefield permanent that shares
-    /// `source`'s controller, `YourTokens` the same but only when `source` is a token. Bespoke
+    /// `source`'s controller, `YourTokens` the same but only when `source` is a token,
+    /// `AnyCreatureDamagingYourOpponent` for any creature at all as long as `player` (the damaged
+    /// player) is one of the watcher's opponents (Edric). Bespoke
     /// rather than routed through [`queue_trigger_group`](Self::queue_trigger_group), like the
     /// sacrifice-watch and attack-watch triggers, because each watcher's `who` must be checked
     /// against `source` individually rather than matched against one fixed `Trigger` value.
@@ -2083,13 +2121,20 @@ impl Game {
     /// ponytail: `amount` is only threaded for `who = This` (the pool's one consumer); a future
     /// `YourCreatures`/`YourTokens` amount-reading card needs a per-watcher sum, not this event's
     /// single `amount`. (CR 510, CR 111, CR 108.3)
-    pub(crate) fn queue_combat_damage_triggers(&mut self, source: ObjectId, amount: i32) {
+    pub(crate) fn queue_combat_damage_triggers(
+        &mut self,
+        source: ObjectId,
+        player: PlayerId,
+        amount: i32,
+    ) {
         let source_controller = self.controller_of(source);
         let source_is_token = self.permanent(source).token;
         for id in self.battlefield() {
             let controller = self.owner_of(id);
             let ctx = TriggerContext {
                 combat_damage: (id == source).then_some(amount),
+                combat_damage_recipient: Some(player),
+                combat_damage_source_controller: Some(source_controller),
                 ..TriggerContext::of(controller)
             };
             let abilities: Vec<Ability> = self
@@ -2102,6 +2147,9 @@ impl Game {
                         CombatDamageScope::YourTokens => {
                             controller == source_controller && source_is_token
                         }
+                        // Edric: any creature's damage counts, but only when it landed on one of
+                        // the watcher's own opponents (CR 102.3 — every other player).
+                        CombatDamageScope::AnyCreatureDamagingYourOpponent => player != controller,
                     },
                     _ => false,
                 })
@@ -2988,6 +3036,12 @@ impl Game {
             Condition::OpponentsControlLands { count } => {
                 self.lands_controlled_by_others(ctx.controller) as u32 >= count
             }
+            // "an opponent controls seven or more lands": holds when *some* living opponent
+            // individually meets the threshold (unlike `OpponentsControlLands`, which sums).
+            Condition::AnOpponentControlsLands { at_least } => self
+                .living_players()
+                .filter(|&p| p != ctx.controller)
+                .any(|p| self.lands_controlled(p) as u32 >= at_least),
             Condition::HandHasLandWithSubtype { subtypes } => {
                 self.hand_has_land_with_subtype(ctx.controller, subtypes)
             }
@@ -3345,15 +3399,17 @@ impl Game {
                 return;
             }
             if group.abilities.len() >= 2 {
-                let group = self.pending_trigger_groups.remove(0);
-                // ponytail: multi-ability groups order first; per-effect optional/target choice
-                // for a group with several such triggers isn't wired yet (no such card).
+                // The group stays queued while the ordering choice is pending: `choose_order`
+                // pops it back off the front and re-splits its *real* abilities, so each one
+                // keeps its own `optional` / `cost` / `condition` (Nucklavee's two "you may
+                // return target …" ETB triggers).
                 let effects = group.abilities.iter().map(|a| a.effect).collect();
+                let (controller, source) = (group.controller, group.source);
                 crate::pending::raise_choice(
                     self,
                     PendingChoice::OrderTriggers {
-                        player: group.controller,
-                        source: group.source,
+                        player: controller,
+                        source,
                         effects,
                     },
                 );

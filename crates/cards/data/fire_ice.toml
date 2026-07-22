@@ -1,0 +1,76 @@
+# [Fire]
+# Fire deals 2 damage divided as you choose among one or two targets.
+# [Ice]
+# Tap target permanent.
+# Draw a card.
+name = "Fire // Ice"
+id = "ae92942b-919c-4ea9-b693-85fcef765d5a"
+default_print = "230e65b2-a908-4418-8ef9-ecc475ff0b27"
+oracle = "Fire deals 2 damage divided as you choose among one or two targets. // Tap target permanent.\nDraw a card."
+set = "cmd"
+
+# Off the stack a split card has the combined characteristics of both halves (CR 709.4): the fused
+# card is a red-and-blue instant with mana value 4. Only a half is ever cast (CR 709.4a).
+[cost]
+generic = 2
+red = 1
+blue = 1
+
+[kind]
+type = "instant"
+
+# Fire {1}{R} instant: "Fire deals 2 damage divided as you choose among one or two targets."
+[[half]]
+name = "Fire"
+oracle = "Fire deals 2 damage divided as you choose among one or two targets."
+set = "cmd"
+
+[half.cost]
+generic = 1
+red = 1
+
+[half.kind]
+type = "instant"
+
+# Fire deals 2 damage divided as you choose among one or two targets.
+[[half.abilities]]
+timing = "spell"
+
+# Fire deals 2 damage divided as you choose among one or two targets.
+[[half.abilities.effects]]
+type = "deal_damage"
+amount = 2
+target = "any"
+count = { min = 1, max = 2 }
+divided = true
+
+# Ice {1}{U} instant: "Tap target permanent. Draw a card."
+[[half]]
+name = "Ice"
+oracle = "Tap target permanent.\nDraw a card."
+set = "cmd"
+
+[half.cost]
+generic = 1
+blue = 1
+
+[half.kind]
+type = "instant"
+
+# Tap target permanent.
+[[half.abilities]]
+timing = "spell"
+
+# Tap target permanent.
+[[half.abilities.effects]]
+type = "tap_target"
+target = { permanent = {} }
+
+# Draw a card.
+[[half.abilities]]
+timing = "spell"
+
+# Draw a card.
+[[half.abilities.effects]]
+type = "draw_cards"
+count = 1

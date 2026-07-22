@@ -119,6 +119,7 @@ impl Game {
                 amount,
                 opponents_only,
                 filter,
+                include_planeswalkers,
             } => {
                 // `Amount::IfSpellKicked` (CR 702.33d) reads the resolving *spell's* own kicked
                 // flag, not any one creature's — pick the kicked/unkicked branch once here
@@ -135,11 +136,27 @@ impl Game {
                             *else_
                         }
                     }
+                    // Disaster Radius's "X is the revealed card's mana value" (CR 601.2g) reads
+                    // the resolving *spell's* own reveal-cost record, not any one creature's —
+                    // same "pick it once against the true source" reasoning as `IfSpellKicked`
+                    // above, before the per-creature substitution below stands a creature in for
+                    // `source`.
+                    Amount::RevealedCreatureManaValue => {
+                        Amount::Fixed(self.revealed_creature_mana_value(source) as i32)
+                    }
                     other => other,
                 };
+                // Volcanic Torrent's "and planeswalker" (CR 120.3c/306.9) — `include_planeswalkers`
+                // widens the sweep beyond creatures; `false` preserves every other consumer's
+                // creature-only sweep unchanged.
+                let is_planeswalker =
+                    |id: ObjectId| matches!(self.def_of(id).kind, CardKind::Planeswalker { .. });
                 self.battlefield()
                     .into_iter()
-                    .filter(|&id| self.is_creature_on_battlefield(id))
+                    .filter(|&id| {
+                        self.is_creature_on_battlefield(id)
+                            || (include_planeswalkers && is_planeswalker(id))
+                    })
                     .filter(|&id| !opponents_only || self.controller_of(id) != controller)
                     // Breath of Darigaaz's "without flying" (or any future filter axis) — `None`
                     // preserves every existing consumer's unfiltered "every creature" sweep.
@@ -148,14 +165,28 @@ impl Game {
                             self.permanent_matches(&f, id, controller, Some(source))
                         })
                     })
-                    // Protection from the source's color prevents that creature's share (CR 702.16d).
+                    // Protection from the source's color prevents that permanent's share (CR 702.16d).
                     .filter(|&id| !self.damage_prevented_by_protection(id, Some(source)))
-                    // Tajic prevents noncombat damage to its controller's other creatures (CR 615).
-                    .filter(|&id| !self.noncombat_damage_prevented_to_creature(id))
-                    // Phantom Centaur's self-shield prevents its own share and removes one of its
-                    // own +1/+1 counters instead (CR 615) — a shielded creature swaps its
-                    // `DamageMarked` for that counter removal rather than being filtered out outright.
+                    // Tajic prevents noncombat damage to its controller's OTHER CREATURES (CR
+                    // 615) — a planeswalker is never "another creature", so it's exempt (mirrors
+                    // the single-target ordering comment above).
+                    .filter(|&id| {
+                        is_planeswalker(id) || !self.noncombat_damage_prevented_to_creature(id)
+                    })
                     .flat_map(|object| {
+                        // Damage to a planeswalker removes that many loyalty counters instead of
+                        // being marked (CR 120.3c/306.9), ahead of Phantom Centaur's shield below
+                        // since a planeswalker can never carry that creature-only static.
+                        if is_planeswalker(object) {
+                            return vec![Event::LoyaltyChanged {
+                                object,
+                                amount: -self.resolve_amount(amount, controller, object, target, x),
+                            }];
+                        }
+                        // Phantom Centaur's self-shield prevents its own share and removes one of
+                        // its own +1/+1 counters instead (CR 615) — a shielded creature swaps its
+                        // `DamageMarked` for that counter removal rather than being filtered out
+                        // outright.
                         if self.phantom_shield_active(object) {
                             return self
                                 .phantom_shield_counter_removal(object)
@@ -179,6 +210,35 @@ impl Game {
             Effect::DamageEachPlayer { amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 self.living_players()
+                    .flat_map(|player| {
+                        let mut events = vec![Event::LifeChanged {
+                            player,
+                            amount: -amount,
+                            source: Some(source),
+                        }];
+                        // 0 damage is never dealt (CR 120.8) — no marker, no trigger.
+                        if amount > 0 {
+                            events.push(Event::DamageDealtToPlayer {
+                                source,
+                                player,
+                                amount,
+                            });
+                            // Lifelink (CR 702.15e): a source dealing damage to multiple players
+                            // gains life separately for each.
+                            events.extend(self.lifelink_gain(source, amount));
+                        }
+                        events
+                    })
+                    .collect()
+            }
+            // Hydra Omnivore's splash: same per-player damage events as `DamageEachPlayer` above,
+            // but only to opponents of the ability's controller (CR 102.3) other than the one who
+            // already took the combat damage — that player is baked in at trigger placement.
+            Effect::DamageEachOtherOpponent { amount, damaged } => {
+                let damaged = damaged.expect("the damaged opponent is filled in at placement");
+                let amount = self.resolve_amount(amount, controller, source, target, x);
+                self.living_players()
+                    .filter(|&player| player != controller && player != damaged)
                     .flat_map(|player| {
                         let mut events = vec![Event::LifeChanged {
                             player,

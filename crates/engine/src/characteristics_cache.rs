@@ -96,6 +96,7 @@ impl Game {
             Event::CountersPlaced { object, .. }
             | Event::TempBoost { object, .. }
             | Event::BasePtSetUntilEndOfTurn { object, .. }
+            | Event::BasePtSetIndefinite { object, .. }
             | Event::TypesAddedUntilEndOfTurn { object, .. }
             | Event::TempBoostsEnded { object }
             | Event::KeywordsStripped { object, .. } => {

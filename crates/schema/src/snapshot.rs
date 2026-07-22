@@ -332,6 +332,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                         false,
                         0,
                         0,
+                        false,
                     )
                 },
             );
@@ -421,30 +422,45 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: Vec::new(),
             taps_self: false,
         },
-        MeaningfulAction::ActivateHandAbility { card } => ActionView {
-            id: action.id,
-            kind: "activate_hand_ability".to_string(),
-            object: Some(card),
-            ability_index: None,
-            section: "hand".to_string(),
-            label: format!("Discard: {}", game.def_of(card).name),
-            needs_target: false,
-            targets: Vec::new(),
-            modal: None,
-            sacrifice_choices: None,
-            discard_choices: None,
-            discard_count: 0,
-            graveyard_exile_choices: None,
-            graveyard_exile_min: 0,
-            graveyard_exile_max: 0,
-            has_x: false,
-            min_x: 0,
-            max_x: 0,
-            x_cost: None,
-            auto_tap: Vec::new(),
-            required_attacks: Vec::new(),
-            taps_self: false,
-        },
+        MeaningfulAction::ActivateHandAbility { card, index } => {
+            let def = game.def_of(card);
+            // Distinguish which entry (Valley Rannet's mountaincycling vs forestcycling, CR
+            // 702.29d) by its own effect, since both otherwise share the same "Discard: {name}".
+            let detail = match def.hand_ability.get(index).copied().or(def.forecast) {
+                Some(ability) => match ability.effects {
+                    [single] => Some(single.label()),
+                    _ => None,
+                },
+                None => None,
+            };
+            ActionView {
+                id: action.id,
+                kind: "activate_hand_ability".to_string(),
+                object: Some(card),
+                ability_index: Some(index as u32),
+                section: "hand".to_string(),
+                label: match detail {
+                    Some(detail) => format!("Discard: {detail}"),
+                    None => format!("Discard: {}", def.name),
+                },
+                needs_target: false,
+                targets: Vec::new(),
+                modal: None,
+                sacrifice_choices: None,
+                discard_choices: None,
+                discard_count: 0,
+                graveyard_exile_choices: None,
+                graveyard_exile_min: 0,
+                graveyard_exile_max: 0,
+                has_x: false,
+                min_x: 0,
+                max_x: 0,
+                x_cost: None,
+                auto_tap: Vec::new(),
+                required_attacks: Vec::new(),
+                taps_self: false,
+            }
+        }
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Cast face down".
         MeaningfulAction::CastFaceDown { card } => ActionView {
             id: action.id,
@@ -583,6 +599,47 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 taps_self: false,
             }
         }
+        // One action per half of a split card (CR 709.4a) — the label is the half's own name, which
+        // is the only per-half text the client has to tell "Fire" from "Ice".
+        MeaningfulAction::CastSplitHalf { card, half } => {
+            let face = *game
+                .def_of(card)
+                .halves
+                .get(half as usize)
+                .expect("CastSplitHalf implies the half exists");
+            let (spec, legal) = game.split_half_cast_targets(card, half);
+            let (has_x, min_x, max_x, x_cost) = x_choice_fields(
+                game,
+                action.player,
+                face.cost,
+                Some(face.spell_characteristics()),
+                |x| face.cost.with_x(x),
+            );
+            ActionView {
+                id: action.id,
+                kind: "cast_split_half".to_string(),
+                object: Some(card),
+                ability_index: Some(half as u32),
+                section: "hand".to_string(),
+                label: face.name.to_string(),
+                needs_target: spec != TargetSpec::None,
+                targets: legal.into_iter().map(WireTarget::of).collect(),
+                modal: None,
+                sacrifice_choices: None,
+                discard_choices: None,
+                discard_count: 0,
+                graveyard_exile_choices: None,
+                graveyard_exile_min: 0,
+                graveyard_exile_max: 0,
+                has_x,
+                min_x,
+                max_x,
+                x_cost,
+                auto_tap: Vec::new(),
+                required_attacks: Vec::new(),
+                taps_self: false,
+            }
+        }
         MeaningfulAction::DeclareAttackers => ActionView {
             id: action.id,
             kind: "declare_attackers".to_string(),
@@ -607,10 +664,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             required_attacks: game
                 .required_attacks(action.player)
                 .into_iter()
-                .map(|(attacker, defender)| WireAttack {
-                    attacker,
-                    defender: defender.0,
-                })
+                .map(|pair| WireAttack::of(game, pair))
                 .collect(),
             taps_self: false,
         },
@@ -834,10 +888,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         attackers: game
             .attack_targets()
             .into_iter()
-            .map(|(attacker, defender)| WireAttack {
-                attacker,
-                defender: defender.0,
-            })
+            .map(|pair| WireAttack::of(game, pair))
             .collect(),
         blocks: game
             .blocks()
@@ -898,7 +949,7 @@ mod tests {
     use crate::dto::{CommanderDamageView, PendingChoiceView, WireKind};
     use crate::intent::{WireAttack, WireTarget};
     use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
-    use engine::{Effect, Game, ObjectId, PlayerId};
+    use engine::{Defender, Effect, Game, ObjectId, PlayerId};
 
     use super::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
 
@@ -909,6 +960,37 @@ mod tests {
 
     fn spectator_snapshot(game: &Game) -> crate::dto::VisibleState {
         complete_visible(game, None, &ViewExtras::default())
+    }
+
+    /// CR 709.4a: a split card is cast one half at a time, so the client needs one labelled
+    /// affordance per half — the fused card's own name is never enough to tell them apart.
+    #[test]
+    fn a_split_card_projects_one_named_action_per_half() {
+        let mut game = Game::new();
+        let p0 = PlayerId(0);
+        game.fund_mana(p0);
+        game.spawn_on_battlefield(PlayerId(1), def("Grizzly Bear"));
+        let split = game.spawn_in_hand(p0, def("Fire // Ice"));
+        let tapland = game.spawn_on_battlefield(p0, def("Island"));
+        refresh_via_mana_tap(&mut game, tapland);
+
+        let halves: Vec<_> = snapshot(&game, p0)
+            .actions
+            .into_iter()
+            .filter(|a| a.kind == "cast_split_half" && a.object == Some(split))
+            .collect();
+        assert_eq!(
+            halves
+                .iter()
+                .map(|a| (a.label.as_str(), a.ability_index, a.section.as_str()))
+                .collect::<Vec<_>>(),
+            vec![("Fire", Some(0), "hand"), ("Ice", Some(1), "hand")],
+        );
+        assert!(
+            !halves[0].needs_target,
+            "Fire picks its targets after the cast"
+        );
+        assert!(halves[1].needs_target, "Ice targets a permanent up front");
     }
 
     #[test]
@@ -1091,6 +1173,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         resolve_top_of_stack(&mut game);
@@ -1714,6 +1797,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         resolve_top_of_stack(&mut game);
@@ -1839,6 +1923,7 @@ mod tests {
             enters_tapped: false,
             enters_tapped_unless: None,
             free_cast_if: None,
+            alternative_cost: None,
             cast_only_during_combat: false,
             approximates: None,
             oracle: None,
@@ -1867,12 +1952,14 @@ mod tests {
             enchant_graveyard: false,
             back: None,
             adventure: None,
+            halves: &[],
             suspend: None,
+            vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: None,
+            hand_ability: &[],
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -1904,6 +1991,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         // Shock resolves, lethal damage kills the Bear via SBA, and the two abilities
@@ -1976,6 +2064,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         resolve_top_of_stack(&mut game);
@@ -2093,6 +2182,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .expect("cast Martial Impetus");
         resolve_top_of_stack(&mut game);
@@ -2299,7 +2389,8 @@ mod tests {
             action.required_attacks,
             vec![WireAttack {
                 attacker: c,
-                defender: 2
+                defender: 2,
+                defender_planeswalker: None
             }],
             "goaded creature must attack a non-goader when one is available"
         );
@@ -2318,7 +2409,7 @@ mod tests {
         }
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(bear, PlayerId(1))],
+            attackers: vec![(bear, Defender::Player(PlayerId(1)))],
         })
         .unwrap();
         while game.current_step() != Step::DeclareBlockers {
@@ -2361,6 +2452,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
 
@@ -2397,6 +2489,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         resolve_top_of_stack(&mut game); // The Owl enters; its ETB scry-3 trigger goes on the stack.
@@ -2454,6 +2547,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         resolve_top_of_stack(&mut game); // Diabolic Tutor resolves → pause on the search choice.
@@ -2563,6 +2657,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
         .unwrap();
         resolve_top_of_stack(&mut game); // resolves, pausing on the opponent's pile choice
