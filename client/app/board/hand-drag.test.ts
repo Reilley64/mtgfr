@@ -128,7 +128,7 @@ describe("hand drag submodel", () => {
     expect(commands).toHaveLength(1);
   });
 
-  it("hides the hand card and seeds a flight when drag-play commits (Solid seedDrop)", () => {
+  it("hides the hand card and seeds a flight when drag-play commits", () => {
     const board = initialBoardModel();
     const [dragging] = updateBoard(
       board,

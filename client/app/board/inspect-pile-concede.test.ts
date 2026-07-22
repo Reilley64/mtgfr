@@ -88,7 +88,7 @@ function update(model: BoardModel, message: Message): BoardModel {
   return next;
 }
 
-// ── AltDown / AltUp (Solid parity: hold Alt over a card to pin; release clears) ─
+// ── AltDown / AltUp (hold Alt over a card to pin; release clears) ─
 
 function battlefieldCreature(id: number, name: string, overrides: Partial<ObjectView> = {}): ObjectView {
   return {
