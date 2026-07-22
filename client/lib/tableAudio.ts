@@ -69,6 +69,11 @@ function tone(
   osc.stop(start + dur);
 }
 
+/** Test-only: current shared context, if any. */
+export function audioContextForTests(): AudioContext | null {
+  return sharedCtx;
+}
+
 /** Call from a user gesture (lobby Ready up). Creates + resumes the shared context. */
 export function unlockTableAudio(): void {
   const ac = audioContext();
@@ -77,6 +82,14 @@ export function unlockTableAudio(): void {
   void ac.resume().catch(() => {
     // Closed / autoplay-blocked — play will no-op until another gesture unlocks.
   });
+}
+
+/** Short confirmation when the player unmutes (Sound toggle on). */
+export function playUnmuteTick(): void {
+  const ac = canPlay();
+  if (!ac) return;
+  const t = ac.currentTime;
+  tone(ac, 660, t, 0.05, 0.04, "sine");
 }
 
 /** Short attention ping when you gain priority. */
