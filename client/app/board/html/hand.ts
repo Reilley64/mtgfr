@@ -13,7 +13,7 @@ import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
 import { ZONE } from "../geometry/layout";
-import { HandActionActivated, type Message } from "../messages";
+import { HandActionActivated, InspectAuxHovered, type Message } from "../messages";
 import { HAND_FACE_W } from "../motion/flights";
 import type { HandDragState } from "../submodel";
 import { barZoneAura, byObject, bySection, handExtras } from "./actions";
@@ -67,6 +67,7 @@ function costPipView(ms: string, code: string, sizePx: number): Html {
 function tile(args: {
   name: string;
   print: string;
+  cardId?: string;
   zone: "hand" | "command" | "graveyard" | "exile";
   objectId?: number;
   objectKind?: string;
@@ -77,7 +78,7 @@ function tile(args: {
   index: number;
   count: number;
 }): Html {
-  const { name, print, zone, objectId, objectKind, manaCost, action, dimmed, caption, index, count } = args;
+  const { name, print, cardId, zone, objectId, objectKind, manaCost, action, dimmed, caption, index, count } = args;
   const playable = action != null && !dimmed;
   const testId = objectId != null ? `hand-card-${objectId}` : undefined;
   const hitW = handBarHitWidth(index, count, HAND_CARD_PEEK, HAND_CARD_W);
@@ -120,6 +121,20 @@ function tile(args: {
   if (testId) hitAttrs.push(h.DataAttribute("testid", testId));
   hitAttrs.push(h.DataAttribute("bar-zone", zone));
   if (objectKind) hitAttrs.push(h.DataAttribute("object-kind", objectKind));
+  // Alt-inspect aux hover (Solid `onHoverCard`) — every face-up bar tile, playable or not.
+  hitAttrs.push(
+    h.OnMouseEnter(
+      InspectAuxHovered({
+        source: "hand",
+        card: {
+          name,
+          ...(cardId ? { cardId } : {}),
+          ...(print ? { print } : {}),
+        },
+      }),
+    ),
+  );
+  hitAttrs.push(h.OnMouseLeave(InspectAuxHovered({ source: "hand", card: null })));
   if (playable && action != null) {
     hitAttrs.push(h.DataAttribute("action-id", String(action.id)));
     hitAttrs.push(h.DataAttribute("action-payload", JSON.stringify(action)));
@@ -304,6 +319,7 @@ export function handView(inputs: HandViewInputs): Html {
     const obj = id != null ? objectsById.get(id) : undefined;
     return {
       print: obj?.print ?? "",
+      cardId: obj?.card_id,
       kind: obj?.kind?.kind,
       manaCost: obj?.mana_cost ?? emptyCost(),
     };
@@ -314,6 +330,7 @@ export function handView(inputs: HandViewInputs): Html {
     tile({
       name: c.name,
       print: c.print ?? "",
+      cardId: c.card_id,
       zone: "command",
       objectId: c.id,
       objectKind: c.kind.kind,
@@ -329,6 +346,7 @@ export function handView(inputs: HandViewInputs): Html {
   type HandSlot = {
     name: string;
     print: string;
+    cardId?: string;
     objectId?: number;
     objectKind?: string;
     manaCost: WireCost;
@@ -343,6 +361,7 @@ export function handView(inputs: HandViewInputs): Html {
     handSlots.push({
       name: c.name,
       print: c.print ?? "",
+      cardId: c.card_id,
       objectId: c.id,
       objectKind: c.kind.kind,
       manaCost: c.mana_cost,
@@ -356,6 +375,7 @@ export function handView(inputs: HandViewInputs): Html {
     handSlots.push({
       name: extra.label.replace(/^[^:]+:\s*/, ""),
       print: meta.print,
+      cardId: meta.cardId,
       objectId: extra.object ?? undefined,
       objectKind: meta.kind,
       manaCost: meta.manaCost,
@@ -379,6 +399,7 @@ export function handView(inputs: HandViewInputs): Html {
       return tile({
         name: a.label,
         print: meta.print,
+        cardId: meta.cardId,
         zone,
         objectId: a.object ?? undefined,
         objectKind: meta.kind,

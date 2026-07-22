@@ -124,8 +124,8 @@ export type BoardModel = {
   priorStep: number | null;
   // Local reject text (mirrored from fold.reject on IntentRejected but kept separately for board-only rejects).
   reject: string | null;
-  // Alt-pin inspect.
-  /** Alt key is currently held down — next click will pin inspect instead of select. */
+  // Alt-pin inspect (Solid parity: Alt-down pins under cursor / aux hover; Alt-up dismisses).
+  /** Alt key is currently held — also gates Alt+click pin as a secondary path. */
   altDown: boolean;
   /** The card pinned in the inspect overlay; null when no overlay is shown. */
   inspectPin: InspectPin | null;
@@ -133,6 +133,10 @@ export type BoardModel = {
   inspectCard: CatalogCard | null | undefined;
   /** Which face of a DFC to show in the inspect overlay. */
   inspectFace: "front" | "back";
+  /** Hand-bar card under the pointer (DOM overlay above the canvas). */
+  handInspectHover: InspectAuxCard | null;
+  /** Stack overlay card under the pointer. */
+  stackInspectHover: InspectAuxCard | null;
   // Pile (GY/exile) overlay.
   /** Non-null when the pile overlay is open. */
   pileExpand: { zone: number; owner: number } | null;
@@ -193,6 +197,8 @@ export function initialBoardModel(): BoardModel {
     inspectPin: null,
     inspectCard: undefined,
     inspectFace: "front",
+    handInspectHover: null,
+    stackInspectHover: null,
     pileExpand: null,
     stackExpand: false,
     stackHoldPeak: 0,
@@ -719,6 +725,58 @@ function tickedFrameModel(model: BoardModel, now: number, reducedMotion: boolean
 type Vec = { x: number; y: number };
 type BoardCmd = FoldkitCommand.Command<Message, never, RpcClient>;
 type BoardReturn = readonly [BoardModel, ReadonlyArray<BoardCmd>];
+
+/** DOM overlay hover for Alt-inspect — hand preferred over stack (Solid `setAuxHover`). */
+export type InspectAuxCard = {
+  name: string;
+  cardId?: string;
+  print?: string;
+};
+
+function applyInspectPin(model: BoardModel, pin: InspectPin | null): BoardReturn {
+  if (pin == null) return [model, []];
+  const changed = inspectPinChanged(model.inspectPin, pin);
+  if (!changed) return [model, []];
+  const cmds: BoardCmd[] = pin.cardId ? [FetchInspectCard({ cardId: pin.cardId }) as unknown as BoardCmd] : [];
+  return [
+    {
+      ...model,
+      inspectPin: pin,
+      inspectCard: undefined,
+      inspectFace: "front",
+    },
+    cmds,
+  ];
+}
+
+/** Pin from hand/stack aux hover, else the face-up canvas card under `model.cursor`. */
+function tryPinInspect(model: BoardModel, fold: GameFoldState): InspectPin | null {
+  const aux = model.handInspectHover ?? model.stackInspectHover;
+  if (aux != null) {
+    return {
+      name: aux.name,
+      prepared: false,
+      ...(aux.cardId ? { cardId: aux.cardId } : {}),
+      ...(aux.print ? { print: aux.print } : {}),
+    };
+  }
+  const hit = cardAt(fold, model, model.cursor.x, model.cursor.y);
+  if (hit == null) return null;
+  return pinFromCard(
+    true,
+    {
+      name: hit.name,
+      faceDown: hit.faceDown,
+      prepared: hit.prepared,
+      id: hit.id,
+      zone: hit.zone,
+      pile: hit.pile,
+      cardId: hit.cardId || undefined,
+      print: hit.print || undefined,
+    },
+    ZONE.Battlefield,
+  );
+}
 
 function objectByAction(fold: GameFoldState, action: ActionView): ObjectView | null {
   if (action.object == null) return null;
@@ -1529,10 +1587,18 @@ export function updateBoard(
       return [next, []];
     }
     // ── Alt-pin inspect ─────────────────────────────────────────────────────
-    case "AltDown":
-      return [{ ...model, altDown: true }, []];
+    case "AltDown": {
+      const withAlt = { ...model, altDown: true };
+      return applyInspectPin(withAlt, tryPinInspect(withAlt, fold));
+    }
     case "AltUp":
-      return [{ ...model, altDown: false }, []];
+      return [{ ...model, altDown: false, inspectPin: null, inspectCard: undefined }, []];
+    case "InspectAuxHovered": {
+      if (message.source === "hand") {
+        return [{ ...model, handInspectHover: message.card }, []];
+      }
+      return [{ ...model, stackInspectHover: message.card }, []];
+    }
     case "InspectCardFetched":
       return [{ ...model, inspectCard: message.card }, []];
     case "InspectFlipFace":

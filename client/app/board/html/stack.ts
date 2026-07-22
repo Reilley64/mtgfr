@@ -23,7 +23,13 @@ import {
   stackStripPeek,
   TARGET_COLOR,
 } from "../geometry/stackLayout";
-import { type Message, StackCollapseClicked, StackDwellChanged, StackExpandClicked } from "../messages";
+import {
+  InspectAuxHovered,
+  type Message,
+  StackCollapseClicked,
+  StackDwellChanged,
+  StackExpandClicked,
+} from "../messages";
 import type { BoardModel } from "../submodel";
 
 const h = html<Message>();
@@ -33,13 +39,17 @@ type StackItem = {
   source: number;
   imageName: string | null;
   print: string;
+  cardId?: string;
   label: string;
   staged: boolean;
 };
 
-function objectMeta(state: VisibleState, source: number): { print: string; name: string | null } {
+function objectMeta(
+  state: VisibleState,
+  source: number,
+): { print: string; name: string | null; cardId?: string } {
   const obj = state.objects.find((o) => o.id === source);
-  return { print: obj?.print ?? "", name: obj?.name ?? null };
+  return { print: obj?.print ?? "", name: obj?.name ?? null, cardId: obj?.card_id };
 }
 
 function targetLabel(target: StackObjectView["target"], state: VisibleState): string {
@@ -61,6 +71,7 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
       source: entry.source,
       imageName: entry.kind === "spell" ? entry.label : meta.name,
       print: meta.print,
+      cardId: meta.cardId,
       label: entry.label,
       staged: false,
     };
@@ -72,6 +83,7 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
       source: card.id,
       imageName: card.name,
       print: card.print ?? "",
+      cardId: card.card_id,
       label: card.name,
       staged: true,
     });
@@ -83,6 +95,7 @@ function stackFace(opts: {
   row: number;
   imageName: string | null;
   print: string;
+  cardId?: string;
   label: string;
   isTop: boolean;
   staged?: boolean;
@@ -119,15 +132,30 @@ function stackFace(opts: {
           [opts.label],
         );
 
-  return h.div(
-    [
-      h.Class(faceClass),
-      h.Style(faceStyle),
-      h.DataAttribute("testid", `stack-face-${opts.row}`),
-      h.Attribute("title", opts.imageName ?? opts.label),
-    ],
-    [art],
-  );
+  const faceAttrs: Attribute<Message>[] = [
+    h.Class(faceClass),
+    h.Style(faceStyle),
+    h.DataAttribute("testid", `stack-face-${opts.row}`),
+    h.Attribute("title", opts.imageName ?? opts.label),
+  ];
+  // Solid stack overlay: hover a face → Alt-inspect aux for that card.
+  if (opts.imageName) {
+    faceAttrs.push(
+      h.OnMouseEnter(
+        InspectAuxHovered({
+          source: "stack",
+          card: {
+            name: opts.imageName,
+            ...(opts.cardId ? { cardId: opts.cardId } : {}),
+            ...(opts.print ? { print: opts.print } : {}),
+          },
+        }),
+      ),
+    );
+    faceAttrs.push(h.OnMouseLeave(InspectAuxHovered({ source: "stack", card: null })));
+  }
+
+  return h.div(faceAttrs, [art]);
 }
 
 function holdBar(holdMs: number, holdPeak: number, show: boolean): Html | null {
@@ -206,6 +234,7 @@ function pileView(
         row: item.row,
         imageName: item.imageName,
         print: item.print,
+        cardId: item.cardId,
         label: item.label,
         isTop,
         staged: item.staged,
@@ -297,6 +326,7 @@ function stripView(
         row: item.row,
         imageName: item.imageName,
         print: item.print,
+        cardId: item.cardId,
         label: item.label,
         isTop,
         staged: item.staged,

@@ -8,9 +8,11 @@ import type { Message } from "./messages";
 import {
   AltDown,
   AltUp,
+  BoardPointerMove,
   ConcedeCancelled,
   ConcedeClicked,
   ConcedeConfirmed,
+  InspectAuxHovered,
   InspectCardFetched,
   InspectDismissed,
   InspectFlipFace,
@@ -21,7 +23,10 @@ import {
   RadialWedgeArmed,
   ResultSeen,
 } from "./messages";
+import { layout } from "./geometry/layout";
+import { worldToScreen } from "./geometry/camera";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
+import type { ObjectView } from "~/wire/types";
 
 function twoPlayerState(): VisibleState {
   return {
@@ -84,16 +89,97 @@ function update(model: BoardModel, message: Message): BoardModel {
   return next;
 }
 
-// ── AltDown / AltUp ────────────────────────────────────────────────────────────
+// ── AltDown / AltUp (Solid parity: hold Alt over a card to pin; release clears) ─
+
+function battlefieldCreature(id: number, name: string, overrides: Partial<ObjectView> = {}): ObjectView {
+  return {
+    controller: 0,
+    has_haste: false,
+    id,
+    is_commander: false,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
+    marked_damage: 0,
+    name,
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 2,
+    print: "print-1",
+    card_id: "card-1",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 2,
+    zone: 2,
+    ...overrides,
+  };
+}
 
 test("AltDown sets altDown flag", () => {
   const model = update(initialBoardModel(), AltDown());
   expect(model.altDown).toBe(true);
 });
 
-test("AltUp clears altDown flag", () => {
-  const model = update({ ...initialBoardModel(), altDown: true }, AltUp());
+test("AltDown pins the face-up card under the cursor (no click)", () => {
+  const creature = battlefieldCreature(7, "Sol Ring");
+  const fold = gameFold({ objects: [creature] });
+  const cards = layout(fold.state!, 0);
+  const card = cards.find((c) => c.id === 7);
+  expect(card).toBeTruthy();
+  const screen = worldToScreen(initialBoardModel().camera, card!.x + card!.w / 2, card!.y + card!.h / 2);
+
+  let model = initialBoardModel();
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+  const [pinned, cmds] = updateBoard(model, AltDown(), fold, "table-1");
+
+  expect(pinned.altDown).toBe(true);
+  expect(pinned.inspectPin).toEqual(
+    expect.objectContaining({ name: "Sol Ring", objectId: 7, cardId: "card-1", print: "print-1" }),
+  );
+  expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
+});
+
+test("AltDown prefers hand aux hover over the battlefield hit under the cursor", () => {
+  const creature = battlefieldCreature(7, "Board Bolt");
+  const fold = gameFold({ objects: [creature] });
+  const cards = layout(fold.state!, 0);
+  const card = cards.find((c) => c.id === 7)!;
+  const screen = worldToScreen(initialBoardModel().camera, card.x + card.w / 2, card.y + card.h / 2);
+
+  let model = initialBoardModel();
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  const [pinned] = updateBoard(model, AltDown(), fold, "table-1");
+
+  expect(pinned.inspectPin).toEqual({
+    name: "Hand Shock",
+    prepared: false,
+    cardId: "shock-id",
+    print: "shock-print",
+  });
+});
+
+test("AltUp clears altDown and dismisses the inspect pin", () => {
+  const model = update(
+    {
+      ...initialBoardModel(),
+      altDown: true,
+      inspectPin: { name: "Sol Ring", prepared: false },
+      inspectCard: null,
+    },
+    AltUp(),
+  );
   expect(model.altDown).toBe(false);
+  expect(model.inspectPin).toBeNull();
+  expect(model.inspectCard).toBeUndefined();
 });
 
 // ── Inspect ────────────────────────────────────────────────────────────────────

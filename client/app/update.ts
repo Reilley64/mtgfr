@@ -262,6 +262,7 @@ export const update = (
       RadialDismissed: (boardMessage) => foldBoard(model, boardMessage),
       AltDown: (boardMessage) => foldBoard(model, boardMessage),
       AltUp: (boardMessage) => foldBoard(model, boardMessage),
+      InspectAuxHovered: (boardMessage) => foldBoard(model, boardMessage),
       InspectCardFetched: (boardMessage) => foldBoard(model, boardMessage),
       InspectFlipFace: (boardMessage) => foldBoard(model, boardMessage),
       InspectDismissed: (boardMessage) => foldBoard(model, boardMessage),

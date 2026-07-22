@@ -19,9 +19,9 @@ type KeyMessage =
  * board-global shortcuts: Alt (inspect pin), Space (primary/pass), Enter (end turn),
  * Escape (cancel / dismiss).
  *
- * The element receiving this mount must be non-interactive itself so Space / Enter
- * don't fire while the player is typing in an input.  The handlers guard against
- * interactive controls (inputs, buttons, textareas, selects).
+ * Alt-down pins the card under the cursor (or hand/stack aux hover); Alt-up dismisses —
+ * same as the Solid board. The element receiving this mount must be non-interactive itself
+ * so Space / Enter don't fire while typing; handlers also guard interactive controls.
  */
 export const MountBoardKeyboard = Mount.defineStream(
   "MountBoardKeyboard",

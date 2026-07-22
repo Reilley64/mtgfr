@@ -131,10 +131,21 @@ export const RadialOptionPicked = m("RadialOptionPicked", { index: S.Number });
 export const RadialDismissed = m("RadialDismissed");
 
 // ── Inspect (Alt-pin card preview) ────────────────────────────────────────────
-/** Alt key held: track state to enable Alt+click inspect-pin. */
+/** Alt key held: pin the face-up card under the cursor / hand-stack aux hover (Solid parity). */
 export const AltDown = m("AltDown");
-/** Alt key released: clear inspect if it was alt-only (not pinned). */
+/** Alt key released: dismiss the inspect dock. */
 export const AltUp = m("AltUp");
+/** Hand or stack DOM overlay hover — preferred over canvas hit when Alt-pinning. */
+export const InspectAuxHovered = m("InspectAuxHovered", {
+  source: S.Union([S.Literal("hand"), S.Literal("stack")]),
+  card: S.NullOr(
+    S.Struct({
+      name: S.String,
+      cardId: S.optional(S.String),
+      print: S.optional(S.String),
+    }),
+  ),
+});
 /** Catalog lookup returned for the current inspect pin. */
 export const InspectCardFetched = m("InspectCardFetched", { card: CatalogCard });
 /** Toggle DFC face in the inspect overlay. */
@@ -228,6 +239,7 @@ export const Message = S.Union([
   RadialDismissed,
   AltDown,
   AltUp,
+  InspectAuxHovered,
   InspectCardFetched,
   InspectFlipFace,
   InspectDismissed,
