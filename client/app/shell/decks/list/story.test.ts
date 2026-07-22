@@ -1,7 +1,7 @@
 import { Submodel } from "foldkit";
 import { Scene } from "foldkit/test";
 import { test } from "vitest";
-import { BindCardArt } from "../../../../lib/ui/card-art";
+import { BindCardArt, CardArtTick } from "../../../../lib/ui/card-art";
 import { ClearedDeckListHover } from "./messages";
 import { initialDeckListSubmodel } from "./submodel";
 import { BindDeckListCommanderHover, view } from "./view";
@@ -48,8 +48,8 @@ test("commander hover preview renders when model carries hover state", () => {
       ClearedDeckListHover(),
     ),
     Scene.Mount.resolveAll(
-      [BindCardArt, ClearedDeckListHover()],
-      [BindCardArt, ClearedDeckListHover()],
+      [BindCardArt, CardArtTick()],
+      [BindCardArt, CardArtTick()],
     ),
   );
 });

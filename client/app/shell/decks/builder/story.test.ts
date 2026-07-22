@@ -165,8 +165,8 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
     Scene.Mount.resolveAll(
-      [BindCardArt, ClearedBuilderHover()],
-      [BindCardArt, ClearedBuilderHover()],
+      [BindCardArt, ClearedBuilderHover() as never],
+      [BindCardArt, ClearedBuilderHover() as never],
     ),
     Scene.expect(Scene.selector('[data-testid="print-sol-ring"]')).not.toExist(),
     Scene.expect(Scene.text("Choose printing")).toExist(),
@@ -278,7 +278,7 @@ test("hover preview and context menu render when present in the model", () => {
     Scene.expect(Scene.text("Choose print")).not.toExist(),
     // Acknowledge the continuous pointer Mount without asserting its stream events.
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
-    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover() as never),
     Scene.Mount.expectEnded(BindCardArt),
   );
 });

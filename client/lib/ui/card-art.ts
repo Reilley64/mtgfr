@@ -68,14 +68,16 @@ export function cardArt<M>(
   },
 ): Html {
   const url = cardArtUrl(opts.print, opts.size ?? "large", opts.face ?? "front");
-  const attrs = [
-    h.Class(`${opts.className} relative overflow-hidden`),
-    h.DataAttribute("art-url", url),
-    h.DataAttribute("art-alt", opts.alt),
-    h.DataAttribute("art-class", opts.className),
-    h.OnMount(BindCardArt() as never),
-  ];
-  if (opts.style) attrs.push(h.Style(opts.style));
-  if (opts.testId) attrs.push(h.DataAttribute("testid", opts.testId));
-  return h.div(attrs, []);
+  return h.div(
+    [
+      h.Class(`${opts.className} relative overflow-hidden`),
+      h.DataAttribute("art-url", url),
+      h.DataAttribute("art-alt", opts.alt),
+      h.DataAttribute("art-class", opts.className),
+      h.OnMount(BindCardArt() as never),
+      ...(opts.style ? [h.Style(opts.style)] : []),
+      ...(opts.testId ? [h.DataAttribute("testid", opts.testId)] : []),
+    ],
+    [],
+  );
 }
