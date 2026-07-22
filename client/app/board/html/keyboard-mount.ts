@@ -14,6 +14,11 @@ type KeyMessage =
   | typeof KeyboardEnterPressed.Type
   | typeof KeyboardSpacePressed.Type;
 
+export function isAltKeyEvent(e: KeyboardEvent): boolean {
+  if (e.code === "AltLeft" || e.code === "AltRight") return true;
+  return e.key === "Alt";
+}
+
 /**
  * Attach this to any long-lived board element. Emits keyboard Messages for the
  * board-global shortcuts: Alt (inspect pin), Space (primary/pass), Enter (end turn),
@@ -40,7 +45,7 @@ export const MountBoardKeyboard = Mount.defineStream(
             // Don't intercept board shortcuts while typing in an interactive control.
             if (isInteractiveControl(e.target)) return;
 
-            if (e.key === "Alt") {
+            if (isAltKeyEvent(e)) {
               e.preventDefault();
               Queue.offerUnsafe(queue, AltDown());
               return;
@@ -63,7 +68,7 @@ export const MountBoardKeyboard = Mount.defineStream(
 
           const onKeyUp = (e: Event): void => {
             if (!(e instanceof KeyboardEvent)) return;
-            if (e.key === "Alt") {
+            if (isAltKeyEvent(e)) {
               Queue.offerUnsafe(queue, AltUp());
             }
           };
