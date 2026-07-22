@@ -188,6 +188,7 @@ Create `client/lib/tableAudio.test.ts`:
 ```ts
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  audioContextForTests,
   playUnmuteTick,
   resetTableAudioForTests,
   setSoundEnabledForTests,
