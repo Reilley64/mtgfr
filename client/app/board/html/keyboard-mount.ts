@@ -43,7 +43,7 @@ export const MountBoardKeyboard = Mount.defineStream(
           const onKeyDown = (e: Event): void => {
             if (!(e instanceof KeyboardEvent)) return;
             // Don't intercept board shortcuts while typing in an interactive control.
-            if (isInteractiveControl(e.target)) return;
+            if (shouldIgnoreBoardShortcut(e)) return;
 
             if (isAltKeyEvent(e)) {
               e.preventDefault();
@@ -89,8 +89,13 @@ export const MountBoardKeyboard = Mount.defineStream(
   ),
 );
 
-function isInteractiveControl(target: EventTarget | null): boolean {
+export function shouldIgnoreBoardShortcut(e: KeyboardEvent): boolean {
+  const target = e.target;
   if (!(target instanceof Element)) return false;
+
   const tag = target.tagName.toLowerCase();
-  return tag === "input" || tag === "textarea" || tag === "select" || tag === "button";
+  if (tag === "input" || tag === "textarea" || tag === "select") return true;
+  if (tag !== "button") return false;
+
+  return e.key === " " || e.key === "Enter";
 }
