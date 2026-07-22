@@ -109,6 +109,30 @@ test("shows deck picker once decks resolve", () => {
   );
 });
 
+test("entry select shows the pre-picked deck among multiple decks", () => {
+  const other = {
+    id: 9,
+    name: "Tokens",
+    commander: "rhys",
+    commander_print: undefined as string | undefined,
+  };
+  Scene.scene(
+    { update, view: lobbyAppView },
+    Scene.with(
+      playLobbyModel({
+        lobby: { ...initialLobbySlice(), selectedDeckId: 9 },
+        decks: {
+          ...init()[0].decks,
+          list: { ...init()[0].decks.list, decks: [deck, other] },
+        },
+      }),
+    ),
+    Scene.expect(Scene.selector('[data-testid="lobby-deck"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-deck"] option[value="9"][selected]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="lobby-deck"] option[value="7"][selected]')).toBeAbsent(),
+  );
+});
+
 test("claim seat with a pre-chosen deck has no picker", () => {
   Scene.scene(
     { update, view: lobbyAppView },
