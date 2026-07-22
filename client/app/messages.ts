@@ -2,6 +2,7 @@ import { Schema as S } from "effect";
 import { m } from "foldkit/message";
 import { UrlRequest } from "foldkit/navigation";
 import { Url } from "foldkit/url";
+import { CardArtTick } from "../lib/ui/card-art";
 import { ModalOpened } from "../lib/ui/confirmDialog";
 import { Message as BoardMessage } from "./board/messages";
 import { Message as GameMessage } from "./game/messages";
@@ -17,7 +18,7 @@ export const NavigationCompleted = m("NavigationCompleted");
 export const PortraitGateChanged = m("PortraitGateChanged", { open: S.Boolean });
 export const PortraitGateCancelled = m("PortraitGateCancelled");
 export const CompletedPortraitGateModal = m("CompletedPortraitGateModal");
-export { ModalOpened };
+export { ModalOpened, CardArtTick };
 
 export const Message = S.Union([
   Booted,
@@ -29,6 +30,7 @@ export const Message = S.Union([
   PortraitGateCancelled,
   CompletedPortraitGateModal,
   ModalOpened,
+  CardArtTick,
   BoardMessage,
   AuthMessage,
   DecksMessage,

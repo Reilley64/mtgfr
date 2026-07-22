@@ -10,7 +10,7 @@ export function cardArtUrl(print: string, size: ImageSize = "large", face: Image
   return imageUrlByPrint(print, size, face);
 }
 
-/** Dispatched when card art mounts — handled as a no-op by update. */
+/** Dispatched when card art mounts — handled as a no-op by the app update (see messages.ts). */
 export const CardArtTick = m("CardArtTick");
 
 /** Mount: host is a sized box; paints skeleton then img when sharedImageCache is ready. */

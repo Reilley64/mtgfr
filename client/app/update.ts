@@ -215,6 +215,7 @@ export const update = (
       PortraitGateCancelled: () => [model, []],
       CompletedPortraitGateModal: () => [model, []],
       ModalOpened: () => [model, []],
+      CardArtTick: () => [model, []],
       ArtLoaded: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerDown: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerMove: (boardMessage) => foldBoard(model, boardMessage),

@@ -1,7 +1,7 @@
 import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
 import { init, Model, update } from "./main-exports";
-import { PortraitGateCancelled } from "./messages";
+import { CardArtTick, PortraitGateCancelled } from "./messages";
 import type { Model as AppModel } from "./model";
 import { PlayRoute } from "./routes";
 import { view } from "./view";
@@ -49,6 +49,13 @@ describe("foldkit scaffold", () => {
       Scene.with(playModel({ sessionLoaded: true, session: { me } })),
       Scene.expect(Scene.selector('[data-testid="lobby"]')).toExist(),
     );
+  });
+
+  it("treats CardArtTick as a no-op so BindCardArt mounts do not crash", () => {
+    const [model] = init();
+    const [next, commands] = update(model, CardArtTick());
+    expect(next).toBe(model);
+    expect(commands).toEqual([]);
   });
 
   it("opens the portrait gate through a mount instead of an open attribute", () => {
