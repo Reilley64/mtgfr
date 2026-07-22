@@ -52,10 +52,16 @@ describe("radialScreenCenter", () => {
 });
 
 describe("radialOptions", () => {
-  it("includes tap-for-mana only when canAct and the permanent can and is untapped", () => {
-    expect(radialOptions(7, [], true, false, true)).toEqual([{ kind: "tap_for_mana", label: "Tap for mana" }]);
-    expect(radialOptions(7, [], true, false, false)).toEqual([]);
-    expect(radialOptions(7, [], true, true, true)).toEqual([]);
+  it("always includes tap-for-mana for mana sources and disables it when unusable", () => {
+    expect(radialOptions(7, [], true, false, true)).toEqual([
+      { kind: "tap_for_mana", label: "Tap for mana", disabled: false },
+    ]);
+    expect(radialOptions(7, [], true, false, false)).toEqual([
+      { kind: "tap_for_mana", label: "Tap for mana", disabled: true },
+    ]);
+    expect(radialOptions(7, [], true, true, true)).toEqual([
+      { kind: "tap_for_mana", label: "Tap for mana", disabled: true },
+    ]);
   });
 
   it("lists each battlefield action for that object", () => {
@@ -65,7 +71,7 @@ describe("radialOptions", () => {
       activate({ id: 3, section: "hand", label: "Cast" }),
     ];
     expect(radialOptions(7, actions, false, false, true)).toEqual([
-      { kind: "action", action: actions[0], label: "Pump" },
+      { kind: "action", action: actions[0], label: "Pump", disabled: false },
     ]);
   });
 
@@ -78,7 +84,7 @@ describe("radialOptions", () => {
       targets: [{ kind: "object", id: 3 }],
     });
     expect(radialOptions(7, [prepared], false, false, true)).toEqual([
-      { kind: "action", action: prepared, label: "Pack a Punch" },
+      { kind: "action", action: prepared, label: "Pack a Punch", disabled: false },
     ]);
   });
 
@@ -94,7 +100,7 @@ describe("radialOptions", () => {
       label: "Add {U}{R}",
     });
     expect(radialOptions(7, [filter], false, false, true)).toEqual([
-      { kind: "action", action: filter, label: "Add {U}{R}" },
+      { kind: "action", action: filter, label: "Add {U}{R}", disabled: false },
     ]);
   });
 });
@@ -160,11 +166,12 @@ describe("wedgePath / wedgeLabelPoint", () => {
 
 describe("radialOptionKey", () => {
   it("keys tap-for-mana and actions stably", () => {
-    expect(radialOptionKey({ kind: "tap_for_mana", label: "Tap for mana" })).toBe("tap_for_mana");
+    expect(radialOptionKey({ kind: "tap_for_mana", label: "Tap for mana", disabled: false })).toBe("tap_for_mana");
     expect(
       radialOptionKey({
         kind: "action",
         label: "Pump",
+        disabled: false,
         action: activate({ id: 42 }),
       }),
     ).toBe("action:42");

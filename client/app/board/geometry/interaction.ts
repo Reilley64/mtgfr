@@ -5,7 +5,7 @@
 // hit-tests and executes the intents it returns. Payment (which lands to tap, commander tax,
 // pain modes) is the engine's, settled inside the cast — the client plans no taps.
 
-import type { ObjectView, VisibleState, WireAttack, WireBlock, WireIntent, WireTarget } from "~/wire/types";
+import type { ActionView, ObjectView, VisibleState, WireAttack, WireBlock, WireIntent, WireTarget } from "~/wire/types";
 import type { Camera } from "./camera";
 import { boardBounds, type RenderCard, STEP, ZONE } from "./layout";
 
@@ -264,6 +264,11 @@ export interface ClickContext {
   blocks: WireBlock[]; // creatures staged as blockers this declaration
 }
 
+export function canSelectPermanent(objectId: number, tapsForMana: boolean, actions: ActionView[] | undefined): boolean {
+  if (tapsForMana) return true;
+  return (actions ?? []).some((a) => a.section === "battlefield" && a.object === objectId && a.kind === "activate");
+}
+
 export function resolveClick(state: VisibleState | null, me: number, card: RenderCard, ctx: ClickContext): ClickResult {
   // A pile (graveyard/exile stand-in) expands for anyone, spectators included.
   if (card.pile > 0) return { kind: "expand", zone: card.zone, owner: card.owner };
@@ -301,5 +306,6 @@ export function resolveClick(state: VisibleState | null, me: number, card: Rende
 
   // Select your permanent — tap-for-mana and activates live on the activation radial, not as a
   // raw board click (one-click auto-tap fought select + on-permanent chips).
+  if (!canSelectPermanent(card.id, card.tapsForMana, state?.actions)) return { kind: "none" };
   return { kind: "select", id: card.id };
 }

@@ -5,8 +5,8 @@ import { type Camera, worldToScreen } from "./camera";
 import { CARD_H, CARD_W, type RenderCard } from "./layout";
 
 export type RadialOption =
-  | { kind: "tap_for_mana"; label: string }
-  | { kind: "action"; action: ActionView; label: string };
+  | { kind: "tap_for_mana"; label: string; disabled: boolean }
+  | { kind: "action"; action: ActionView; label: string; disabled: boolean };
 
 const INNER_GAP_PX = 4;
 const MIN_RING_PX = 36;
@@ -135,10 +135,10 @@ export function radialOptions(
   canAct: boolean,
 ): RadialOption[] {
   const out: RadialOption[] = [];
-  if (canAct && tapsForMana && !tapped) out.push({ kind: "tap_for_mana", label: "Tap for mana" });
+  if (tapsForMana) out.push({ kind: "tap_for_mana", label: "Tap for mana", disabled: !canAct || tapped });
   for (const a of actions ?? []) {
     if (a.section !== "battlefield" || a.object !== objectId) continue;
-    out.push({ kind: "action", action: a, label: a.label });
+    out.push({ kind: "action", action: a, label: a.label, disabled: false });
   }
   return out;
 }

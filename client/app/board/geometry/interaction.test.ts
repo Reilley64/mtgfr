@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ObjectView, VisibleState } from "~/wire/types";
+import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import { worldToScreen } from "./camera";
 import {
   attackDrop,
@@ -273,6 +273,16 @@ describe("resolveClick", () => {
     };
   }
   const noCtx = { spectating: false, staged: null, stagedTargets: new Set<number>(), attackers: [], blocks: [] };
+  const activate = (over: Partial<ActionView> = {}): ActionView =>
+    ({
+      id: 1,
+      kind: "activate",
+      label: "Activate",
+      needs_target: false,
+      object: 6,
+      section: "battlefield",
+      ...over,
+    }) as ActionView;
   const commander: ObjectView = {
     controller: 0,
     has_haste: false,
@@ -312,6 +322,7 @@ describe("resolveClick", () => {
       zone: ZONE.Battlefield,
       cluster: 4,
       clusterMembers: [10, 11, 12, 13],
+      tapsForMana: true,
     });
     expect(resolveClick(state(), 0, cluster, noCtx)).toEqual({ kind: "select", id: 10 });
   });
@@ -395,12 +406,20 @@ describe("resolveClick", () => {
     expect(resolveClick(state(), 0, ring, noCtx)).toEqual({ kind: "select", id: 5 });
   });
 
-  it("selects a permanent you control that makes no mana", () => {
-    const creature = card({ id: 6, zone: ZONE.Battlefield, controller: 0, kind: "creature" });
-    expect(resolveClick(state(), 0, creature, noCtx)).toEqual({ kind: "select", id: 6 });
+  it("does not select a permanent with no mana ability or legal battlefield activate", () => {
+    const land = card({ id: 4, zone: ZONE.Battlefield, controller: 0, kind: "land", tapsForMana: false });
+    expect(resolveClick(state(), 0, land, noCtx)).toEqual({ kind: "none" });
   });
 
-  it("selects an already-tapped mana source (radial omits tap)", () => {
+  it("selects a permanent you control with a legal battlefield activate", () => {
+    const creature = card({ id: 6, zone: ZONE.Battlefield, controller: 0, kind: "creature" });
+    expect(resolveClick(state({ actions: [activate({ object: 6 })] }), 0, creature, noCtx)).toEqual({
+      kind: "select",
+      id: 6,
+    });
+  });
+
+  it("selects an already-tapped mana source (radial disables tap)", () => {
     const land = card({ id: 4, zone: ZONE.Battlefield, controller: 0, kind: "land", tapsForMana: true, tapped: true });
     expect(resolveClick(state(), 0, land, noCtx)).toEqual({ kind: "select", id: 4 });
   });

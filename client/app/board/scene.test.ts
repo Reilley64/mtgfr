@@ -469,6 +469,25 @@ test("selected permanent with tap-for-mana shows a single-option activation radi
   );
 });
 
+test("selected tapped mana source keeps its disabled tap-for-mana wedge visible", () => {
+  const land = creature(5, 0, {
+    name: "Forest",
+    kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
+    taps_for_mana: true,
+    power: 0,
+    tapped: true,
+    toughness: 0,
+  });
+  const base = viewModel(fold(state({ objects: [land], can_act: true })));
+  const selected: ViewModel = { ...base, board: { ...base.board, selectedId: 5 } };
+  overlayScene(
+    selected,
+    Scene.expect(Scene.testId("activation-radial")).toExist(),
+    Scene.expect(Scene.testId("radial-wedge-tap_for_mana")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="radial-wedge-tap_for_mana"] path')).toHaveClass("cursor-not-allowed"),
+  );
+});
+
 test("activation radial svg is centered on the selected card screen center", () => {
   const land = creature(5, 0, {
     name: "Forest",
@@ -511,6 +530,46 @@ test("RadialOptionPicked tap_for_mana submits tap_for_mana intent", () => {
   expect(next.selectedId).toBeNull();
   expect(commands).toHaveLength(1);
   expect(commands[0]?.name).toBe(SubmitIntent.name);
+});
+
+test("RadialOptionPicked ignores a disabled tap_for_mana option", () => {
+  const land = creature(5, 0, {
+    name: "Forest",
+    kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
+    taps_for_mana: true,
+    power: 0,
+    toughness: 0,
+  });
+  const board: BoardModel = { ...initialBoardModel(), selectedId: 5 };
+  const gameFold = fold(state({ objects: [land], can_act: false }));
+  const [next, commands] = updateBoard(board, RadialOptionPicked({ index: 0 }), gameFold, "T1");
+  expect(next.selectedId).toBe(5);
+  expect(commands).toEqual([]);
+});
+
+test("pointer click does not select a permanent with no radial option", () => {
+  const vanilla = creature(5, 0, {
+    name: "Vanilla Land",
+    kind: { kind: "land", colors: [] },
+    power: 0,
+    toughness: 0,
+  });
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pointer: {
+      kind: "drag",
+      card: { ...renderStub(vanilla.id), kind: "land", tapsForMana: false },
+      x: 100,
+      y: 100,
+      moved: false,
+    },
+  };
+  const gameFold = fold(state({ objects: [vanilla], actions: [], can_act: true }));
+
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+
+  expect(next.selectedId).toBeNull();
+  expect(commands).toEqual([]);
 });
 
 test("RadialOptionPicked submits the selected activate action id", () => {

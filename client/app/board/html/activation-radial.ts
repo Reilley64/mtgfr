@@ -67,7 +67,7 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
   const wedges = options.map((opt, i) => {
     const d = wedgePath(i, n, inner, outer);
     const label = wedgeLabelPoint(i, n, inner, outer);
-    const active = hover === i || armed === i;
+    const active = !opt.disabled && (hover === i || armed === i);
     return h.g(
       [h.DataAttribute("wedge", String(i)), h.DataAttribute("testid", `radial-wedge-${radialOptionKey(opt)}`)],
       [
@@ -77,12 +77,13 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
             h.Tabindex(0),
             h.Role("button"),
             h.AriaLabel(opt.label),
+            h.Attribute("aria-disabled", opt.disabled ? "true" : "false"),
             h.FillRule("evenodd"),
-            h.Fill(active ? "#276B3C" : "#15241c"),
-            h.Stroke("#FFD76A"),
+            h.Fill(opt.disabled ? "#26302a" : active ? "#276B3C" : "#15241c"),
+            h.Stroke(opt.disabled ? "#7a6a3a" : "#FFD76A"),
             h.StrokeWidth(active ? "2.5" : "2"),
-            h.StrokeOpacity("1"),
-            h.Class("cursor-pointer outline-none"),
+            h.StrokeOpacity(opt.disabled ? "0.55" : "1"),
+            h.Class(opt.disabled ? "cursor-not-allowed opacity-60 outline-none" : "cursor-pointer outline-none"),
             h.OnPointerDown((_pt, _button, _sx, _sy, _ts, _cx, _cy) => Option.some(RadialWedgeArmed({ index: i }))),
             h.OnPointerUp((_sx, _sy, _pt, _ts) => Option.some(RadialWedgeReleased({ index: i }))),
             h.OnMouseEnter(RadialWedgeHovered({ index: i })),
@@ -101,7 +102,7 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
             h.TextAnchor("middle"),
             h.DominantBaseline("middle"),
             h.Class("pointer-events-none font-semibold"),
-            h.Fill("#EEFFFF"),
+            h.Fill(opt.disabled ? "#9aa39d" : "#EEFFFF"),
             h.FontSize("11px"),
           ],
           [truncateLabel(opt.label)],

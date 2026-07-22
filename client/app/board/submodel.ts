@@ -53,7 +53,15 @@ import {
   stagedAttackersForDisplay,
 } from "./geometry/combat-staging";
 import { hitAvatar, hitTest } from "./geometry/hit-test";
-import { combatMode, fitCamera, type PointerPhase, pointerDown, pointerMove, pointerUp } from "./geometry/interaction";
+import {
+  canSelectPermanent,
+  combatMode,
+  fitCamera,
+  type PointerPhase,
+  pointerDown,
+  pointerMove,
+  pointerUp,
+} from "./geometry/interaction";
 import { avatarPos, CARD_H, CARD_W, layout, type RenderCard, STEP, ZONE } from "./geometry/layout";
 import { type RadialPress, radialPressDown, radialPressUp } from "./geometry/radial";
 import {
@@ -659,6 +667,7 @@ function pointerUpModel(
       }
       return [idle, []];
     }
+    if (!canSelectPermanent(release.card.id, release.card.tapsForMana, fold.state?.actions)) return [idle, []];
     return [{ ...idle, selectedId: release.card.id, radialPress: { armed: null }, radialHover: null }, []];
   }
 
@@ -1093,6 +1102,7 @@ function commitRadialIndex(model: BoardModel, fold: GameFoldState, tableId: stri
   const options = selectedRadialOptions(model, fold.state);
   const opt = options[index];
   if (opt == null) return [clearRadial(model), []];
+  if (opt.disabled) return [model, []];
   const cleared = clearRadial(model);
   if (opt.kind === "tap_for_mana") {
     return [cleared, boardIntentSubmit(tableId, { kind: "tap_for_mana", player: fold.state.viewer, object: id })];
