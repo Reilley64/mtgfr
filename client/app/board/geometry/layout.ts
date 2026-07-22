@@ -320,10 +320,12 @@ function pileCard(cards: ObjectView[], zone: number): RenderCard | null {
   return { ...toCard(cards[cards.length - 1]), zone, pile: cards.length };
 }
 
-/** Shrink a card to the left-column size (deck/graveyard/exile/commander render smaller). */
+/** Shrink a card to the left-column size (deck/graveyard/exile/commander render smaller).
+ * Clears P/T so combat chrome does not sit on the half-size face (command/GY/exile art). */
 function colCard(card: RenderCard): RenderCard {
   card.w = COL_W;
   card.h = COL_H;
+  card.pt = "";
   return card;
 }
 

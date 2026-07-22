@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { emptyManaPool } from "~/manaPips";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
-import { avatarPos, boardBounds, layout, manaTrayPos, STEP, STEP_NAMES, seatBand, ZONE } from "./layout";
+import {
+  AVATAR_R,
+  avatarPos,
+  boardBounds,
+  layout,
+  manaTrayPos,
+  STEP,
+  STEP_NAMES,
+  seatBand,
+  ZONE,
+} from "./layout";
 
 // Geometry constants mirrored from layout.ts (CARD_W=96, CARD_H=134, GAP=8, AVATAR_R=40):
 // STEP=104, ROW_H=142, BATTLE_H=426, BAND_GAP=8, BAND_STRIDE=434, COL_X=-64, COL_STRIDE=106.5.
@@ -139,6 +149,154 @@ describe("boardBounds", () => {
 });
 
 describe("layout", () => {
+  // Board layout collisions (foldkit remaining-bugs task 9): zone-column faces are half-size art;
+  // combat chrome (P/T) on those faces shares the art AABB. Prefer face-only in the column —
+  // P/T belongs on battlefield permanents (and inspect), not on command/GY/exile miniatures.
+  it("omits P/T chrome on zone-column cards for a 2-player fixture", () => {
+    const state = mkState({
+      viewer: 0,
+      players: [mkPlayer({ player: 0, library_count: 30 }), mkPlayer({ player: 1, library_count: 25 })],
+      objects: [
+        mkObject({
+          id: 1,
+          name: "Grizzly Bears",
+          controller: 0,
+          owner: 0,
+          zone: ZONE.Battlefield,
+          kind: { kind: "creature", power: 2, toughness: 2 },
+          power: 2,
+          toughness: 2,
+        }),
+        mkObject({
+          id: 3,
+          name: "Atraxa, Praetors' Voice",
+          controller: 0,
+          owner: 0,
+          zone: ZONE.Command,
+          is_commander: true,
+          kind: { kind: "creature", power: 4, toughness: 4 },
+          power: 4,
+          toughness: 4,
+        }),
+        mkObject({
+          id: 4,
+          name: "Dead Bear",
+          controller: 0,
+          owner: 0,
+          zone: ZONE.Graveyard,
+          kind: { kind: "creature", power: 2, toughness: 2 },
+          power: 2,
+          toughness: 2,
+        }),
+        mkObject({
+          id: 5,
+          name: "Opposing Bear",
+          controller: 1,
+          owner: 1,
+          zone: ZONE.Battlefield,
+          kind: { kind: "creature", power: 3, toughness: 3 },
+          power: 3,
+          toughness: 3,
+        }),
+        mkObject({
+          id: 6,
+          name: "Opposing Commander",
+          controller: 1,
+          owner: 1,
+          zone: ZONE.Command,
+          is_commander: true,
+          kind: { kind: "creature", power: 5, toughness: 5 },
+          power: 5,
+          toughness: 5,
+        }),
+      ],
+    });
+
+    const cards = layout(state, 0);
+    const byId = new Map(cards.map((c) => [c.id, c]));
+
+    expect(byId.get(3)?.pt).toBe("");
+    expect(byId.get(4)?.pt).toBe("");
+    expect(byId.get(6)?.pt).toBe("");
+    // Battlefield creatures keep combat chrome.
+    expect(byId.get(1)?.pt).toBe("2/2");
+    expect(byId.get(5)?.pt).toBe("3/3");
+  });
+
+  it("keeps zone-column cards and avatars free of AABB collisions on a 2-player table", () => {
+    const state = mkState({
+      viewer: 0,
+      players: [mkPlayer({ player: 0, library_count: 30 }), mkPlayer({ player: 1, library_count: 25 })],
+      objects: [
+        mkObject({
+          id: 3,
+          name: "Atraxa, Praetors' Voice",
+          controller: 0,
+          owner: 0,
+          zone: ZONE.Command,
+          is_commander: true,
+        }),
+        mkObject({ id: 4, name: "Doom Blade", controller: 0, owner: 0, zone: ZONE.Graveyard }),
+        mkObject({ id: 7, name: "Exiled Spell", controller: 0, owner: 0, zone: ZONE.Exile }),
+        mkObject({
+          id: 1,
+          name: "Grizzly Bears",
+          controller: 0,
+          owner: 0,
+          zone: ZONE.Battlefield,
+          kind: { kind: "creature", power: 2, toughness: 2 },
+          power: 2,
+          toughness: 2,
+        }),
+        mkObject({
+          id: 6,
+          name: "Opposing Commander",
+          controller: 1,
+          owner: 1,
+          zone: ZONE.Command,
+          is_commander: true,
+        }),
+        mkObject({
+          id: 5,
+          name: "Opposing Bear",
+          controller: 1,
+          owner: 1,
+          zone: ZONE.Battlefield,
+          kind: { kind: "creature", power: 3, toughness: 3 },
+          power: 3,
+          toughness: 3,
+        }),
+      ],
+    });
+
+    const cards = layout(state, 0);
+    const boxes = cards.map((c) => ({ id: c.id, x: c.x, y: c.y, r: c.x + c.w, b: c.y + c.h }));
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i];
+        const b = boxes[j];
+        const overlap = a.x < b.r && a.r > b.x && a.y < b.b && a.b > b.y;
+        expect(overlap, `cards ${a.id} and ${b.id} overlap`).toBe(false);
+      }
+    }
+
+    // Layer-2 avatar clear bands: packing must not cover the life-orb disk.
+    for (const seat of [0, 1]) {
+      const a = avatarPos(seat, 0, 2);
+      for (const c of cards) {
+        const cx = Math.max(c.x, Math.min(a.x, c.x + c.w));
+        const cy = Math.max(c.y, Math.min(a.y, c.y + c.h));
+        const d = Math.hypot(cx - a.x, cy - a.y);
+        expect(d, `card ${c.id} intersects avatar ${seat}`).toBeGreaterThanOrEqual(AVATAR_R);
+      }
+    }
+
+    // Seat mats stay landscape (not tall/narrow portrait strips).
+    const band = seatBand(0, 0, 2);
+    expect(band.w / band.h).toBeGreaterThanOrEqual(1.5);
+    expect(band.w / band.h).toBeLessThanOrEqual(2.5);
+  });
+
   it("positions a 2-player table: viewer's board upright, opponent's flipped", () => {
     const state = mkState({
       viewer: 0,

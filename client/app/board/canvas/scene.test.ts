@@ -130,6 +130,23 @@ function collectTextShapes(shapes: ReadonlyArray<Shape>): Canvas.Text[] {
   return texts;
 }
 
+function shapeHasFill(shape: Shape, fill: string): boolean {
+  switch (shape._tag) {
+    case "Rect":
+    case "Circle":
+      return shape.fill === fill;
+    case "Group":
+      return shape.shapes.some((child) => shapeHasFill(child, fill));
+    case "Text":
+    case "Path":
+      return false;
+    default: {
+      const exhaustive: never = shape;
+      return exhaustive;
+    }
+  }
+}
+
 function lastIndexWhere(shapes: ReadonlyArray<Shape>, predicate: (shape: Shape) => boolean): number {
   for (let i = shapes.length - 1; i >= 0; i--) {
     if (predicate(shapes[i])) {
@@ -162,6 +179,29 @@ describe("sceneShapes", () => {
 
     expect(texts.some((text) => text.content === "Grizzly Bears")).toBe(false);
     expect(texts.some((text) => text.content === "Forest")).toBe(false);
+  });
+
+  it("does not paint command-zone name or P/T labels over the commander face", () => {
+    const state = boardFixture();
+    state.objects = [
+      ...state.objects,
+      object({
+        id: 10,
+        name: "Atraxa, Praetors' Voice",
+        zone: ZONE.Command,
+        is_commander: true,
+        kind: { kind: "creature", power: 4, toughness: 4 },
+        power: 4,
+        toughness: 4,
+      }),
+    ];
+    const shapes = sceneShapes(state);
+    const texts = collectTextShapes(shapes);
+
+    expect(texts.some((text) => text.content === "Atraxa, Praetors' Voice")).toBe(false);
+    expect(texts.some((text) => text.content === "4/4")).toBe(false);
+    // Vestigial name-plate rect left over from under-card labels — must not cover zone art.
+    expect(shapes.some((shape) => shapeHasFill(shape, "rgba(0,0,0,0.28)"))).toBe(false);
   });
 
   it("still paints creature power/toughness on resting cards", () => {

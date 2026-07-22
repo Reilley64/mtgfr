@@ -105,13 +105,6 @@ function cardShapes(
         stroke: targeted ? TARGET_COLOR : selected ? "#ffd76a" : seatColor(card.controller, 0.75),
         lineWidth: targeted || selected ? 3 : 1.5,
       }),
-      Canvas.Rect({
-        x: left + 4 * camera.zoom,
-        y: top + 4 * camera.zoom,
-        width: Math.max(1, width - 8 * camera.zoom),
-        height: Math.max(1, CARD_H * 0.28 * camera.zoom),
-        fill: "rgba(0,0,0,0.28)",
-      }),
     );
 
     if (card.pt !== "") {
