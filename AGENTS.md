@@ -61,7 +61,8 @@ Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic 
 - **Guard-return-first (early return) style.** Handle error/edge/invalid cases up front and `return` (or `?` / `continue`) immediately.
 - **TDD is the default workflow.** Use the `test-driven-development` skill (obra/superpowers). Red → green → review. The engine is testable via direct API calls with no UI or network.
 - **Every bug fix gets a regression test.** When you find a bug, add a test that fails on the broken behavior and passes with the fix — in the same change if you can. Place it at the lowest layer that catches the failure (engine unit test, schema projection test, client mapping test, HTTP integration test). Use `systematic-debugging` when the cause is unclear.
-- **Verify before claiming done.** Use `verification-before-completion` (and the project `verify` skill for live games).
+- **Client UI: every surface gets a Scene test.** Shell routes and board overlays must be covered by `data-testid` Scene assertions in `client/app/shell/surfaces.test.ts` and `client/app/board/html/surfaces.test.ts` (plus focused tests). Do not ship a user-visible panel that only has update/logic tests. When adding a surface, add or extend those suites in the same change.
+- **Verify before claiming done.** Use `verification-before-completion` (and the project `verify` skill for live games). Live or Scene checks must exercise the surfaces you changed (cold load, route entry), not only unit green.
 - **Keep the engine pure.** No I/O, no networking, no wall-clock or randomness that isn't injected.
 - **Use Magic terminology and semantics wherever possible.** The ubiquitous language lives in `CONTEXT.md`; keep code and glossary aligned. When rules and simplicity genuinely conflict, name the rule approximated in a `ponytail:` comment.
 

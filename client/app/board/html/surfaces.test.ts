@@ -1,5 +1,9 @@
 /**
  * @vitest-environment happy-dom
+ *
+ * Board overlay surface coverage — every chrome/prompt/overlay panel must appear here
+ * (or in a focused sibling Scene test) with a data-testid assertion.
+ * See AGENTS.md: "Client UI: every surface gets a Scene test."
  */
 import { Submodel } from "foldkit";
 import { html } from "foldkit/html";

@@ -1,18 +1,23 @@
+/**
+ * Shell surface coverage — every auth / decks / lobby / 404 panel must appear here
+ * (or in a focused sibling Scene test) with a data-testid or unique-copy assertion.
+ * See AGENTS.md: "Client UI: every surface gets a Scene test."
+ */
 import { Scene } from "foldkit/test";
 import { describe, it } from "vitest";
 import { BindCardArt, CardArtTick } from "../../lib/ui/card-art";
 import { ModalOpened, OpenDialogAsModal } from "../../lib/ui/confirmDialog";
+import type { CatalogCard } from "../../lib/wire/types";
 import { init, update } from "../main-exports";
 import type { Model as AppModel } from "../model";
 import { HomeRoute, LoginRoute, NewDeckRoute, NotFoundRoute, PlayRoute, TableRoute } from "../routes";
-import { ClearedDeckListHover } from "./decks/list/messages";
-import { BindDeckListCommanderHover } from "./decks/list/view";
+import { view } from "../view";
 import { ClearedBuilderHover } from "./decks/builder/messages";
 import { initialDeckBuilderSubmodel } from "./decks/builder/submodel";
 import { BindBuilderCardPointer } from "./decks/builder/view";
+import { ClearedDeckListHover } from "./decks/list/messages";
+import { BindDeckListCommanderHover } from "./decks/list/view";
 import { initialLobbySlice } from "./lobby/submodel";
-import { view } from "../view";
-import type { CatalogCard } from "../../lib/wire/types";
 
 const me = { id: 1, email: "alice@example.com", username: "alice" };
 
