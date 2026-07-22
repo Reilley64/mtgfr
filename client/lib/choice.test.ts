@@ -225,6 +225,30 @@ describe("answerFromDraft builds accepted intents", () => {
     );
   });
 
+  test("allows zero damage on some divide spell targets", () => {
+    expectDraftIntent(
+      {
+        kind: "divide_spell_damage",
+        items: [
+          { id: 7, label: "Target A" },
+          { id: 11, label: "Target B" },
+        ],
+        player: 0,
+        spell: 99,
+        total: 4,
+      },
+      { kind: "divide", amounts: { 0: 4, 1: 0 } },
+      {
+        kind: "divide_spell_damage",
+        assignment: [
+          { amount: 4, target: { kind: "object", id: 7 } },
+          { amount: 0, target: { kind: "object", id: 11 } },
+        ],
+        player: 0,
+      },
+    );
+  });
+
   test("builds a divide counters assignment", () => {
     expectDraftIntent(
       {

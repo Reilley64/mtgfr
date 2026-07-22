@@ -280,7 +280,7 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
         amount: draft.amounts[index] ?? 0,
         target: choiceItemTarget(item),
       }));
-      if (assignment.some((entry) => entry.amount <= 0)) return null;
+      if (assignment.some((entry) => entry.amount < 0)) return null;
       const total = assignment.reduce((sum, entry) => sum + entry.amount, 0);
       if (total !== pc.total) return null;
       return { kind: "divide_spell", assignment };
