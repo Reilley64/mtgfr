@@ -6,8 +6,8 @@ import { NavigationCompleted, ReceivedMe } from "./messages";
 import {
   DeckRoute,
   HomeRoute,
-  pathWithSearch,
   PlayRoute,
+  pathWithSearch,
   routeFromUrl,
   routePath,
   TableRoute,
