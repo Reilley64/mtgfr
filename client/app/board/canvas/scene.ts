@@ -112,15 +112,6 @@ function cardShapes(
         height: Math.max(1, CARD_H * 0.28 * camera.zoom),
         fill: "rgba(0,0,0,0.28)",
       }),
-      Canvas.Text({
-        x: 0,
-        y: top + 18 * camera.zoom,
-        content: card.name,
-        font: `${Math.max(1, Math.round(11 * camera.zoom))}px system-ui, sans-serif`,
-        fill: "#eaf7ef",
-        align: "Center",
-        baseline: "Middle",
-      }),
     );
 
     if (card.pt !== "") {

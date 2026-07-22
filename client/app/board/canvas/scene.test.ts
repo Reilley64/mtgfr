@@ -107,6 +107,29 @@ function firstGroupContainingText(shapes: ReadonlyArray<Shape>, content: string)
   return null;
 }
 
+function collectTextShapes(shapes: ReadonlyArray<Shape>): Canvas.Text[] {
+  const texts: Canvas.Text[] = [];
+  for (const shape of shapes) {
+    switch (shape._tag) {
+      case "Text":
+        texts.push(shape);
+        break;
+      case "Group":
+        texts.push(...collectTextShapes(shape.shapes));
+        break;
+      case "Rect":
+      case "Circle":
+      case "Path":
+        break;
+      default: {
+        const exhaustive: never = shape;
+        return exhaustive;
+      }
+    }
+  }
+  return texts;
+}
+
 function lastIndexWhere(shapes: ReadonlyArray<Shape>, predicate: (shape: Shape) => boolean): number {
   for (let i = shapes.length - 1; i >= 0; i--) {
     if (predicate(shapes[i])) {
@@ -132,11 +155,27 @@ describe("sceneShapes", () => {
     expect(circles.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("does not paint resting card names as canvas text", () => {
+    const state = boardFixture();
+    const shapes = sceneShapes(state);
+    const texts = collectTextShapes(shapes);
+
+    expect(texts.some((text) => text.content === "Grizzly Bears")).toBe(false);
+    expect(texts.some((text) => text.content === "Forest")).toBe(false);
+  });
+
+  it("still paints creature power/toughness on resting cards", () => {
+    const shapes = sceneShapes(boardFixture());
+    const texts = collectTextShapes(shapes);
+
+    expect(texts.some((text) => text.content === "2/2")).toBe(true);
+  });
+
   it("rotates tapped card groups around their center", () => {
     const state = boardFixture();
     const shapes = sceneShapes({ ...state, objects: [object({ tapped: true })] });
 
-    const group = firstGroupContainingText(shapes, "Grizzly Bears");
+    const group = firstGroupContainingText(shapes, "2/2");
 
     expect(group).not.toBeNull();
     if (group == null) {
@@ -154,7 +193,7 @@ describe("sceneShapes", () => {
     });
 
     const feltIndex = shapes.findIndex((shape) => shape._tag === "Rect" && shape.fill === "#0B1310");
-    const cardIndex = shapes.findIndex((shape) => shapeContainsText(shape, "Grizzly Bears"));
+    const cardIndex = shapes.findIndex((shape) => shapeContainsText(shape, "2/2"));
     const avatarIndex = shapes.findIndex((shape) => shape._tag === "Circle");
     const arrowIndex = lastIndexWhere(shapes, (shape) => shape._tag === "Path" && shape.stroke === "#ff6b6b");
 
@@ -189,7 +228,7 @@ describe("sceneShapes", () => {
       },
     });
 
-    const bearGroup = firstGroupContainingText(shapes, "Grizzly Bears");
+    const bearGroup = firstGroupContainingText(shapes, "2/2");
     expect(bearGroup).not.toBeNull();
     if (bearGroup == null) return;
     const bearRect = bearGroup.shapes.find((shape) => shape._tag === "Rect");
