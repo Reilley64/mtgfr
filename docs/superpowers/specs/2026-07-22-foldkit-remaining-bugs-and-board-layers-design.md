@@ -10,11 +10,7 @@ Close the remaining Foldkit **product** bugs on PR #74 — not more process-only
 
 ## Approach
 
-**Live triage, then known UX, then board** (chosen):
-
-1. Run the Interaction checklist live; code only what still fails (+ outcome tests). Treat **Alt/Option inspect as known-broken** (not merely “re-verify”).
-2. Ship Lobby Bring + shared dock preview + drag threshold + under-card name removal.
-3. Lock the layer stack in `docs/client-canvas-map.md` (authoritative) while fixing declare-arrow / flight order to match it; then remaining layout collisions.
+**Live triage, then known UX, then board** (chosen). Execution order is listed under Delivery order below: live triage (Alt/Option first) → dock preview → drag threshold + under-card names → layer-stack lock with arrow/flight fixes → layout collisions → Lobby Bring + Back.
 
 ## Scope
 
