@@ -118,6 +118,20 @@ function legendPanelView(): Html {
   );
 }
 
+function legendToggleButton(expanded: boolean): Html {
+  return h.button(
+    [
+      h.Type("button"),
+      h.DataAttribute("testid", "board-legend-toggle"),
+      h.Attribute("aria-label", "Board legend"),
+      h.Attribute("aria-expanded", expanded ? "true" : "false"),
+      h.OnClick(LegendToggled()),
+      h.Class(buttonClass("ghost", "pointer-events-auto px-md py-xs")),
+    ],
+    ["?"],
+  );
+}
+
 /** Hint strip, legend toggle, and legend panel for seated active players. */
 export function discoverabilityView(board: BoardModel, state: VisibleState): Html | null {
   if (!seatedPlayer(state)) return null;
@@ -126,43 +140,13 @@ export function discoverabilityView(board: BoardModel, state: VisibleState): Htm
   const showLegend = board.legendOpen;
 
   if (!showHint && !showLegend) {
-    return h.div(
-      [h.Class("pointer-events-none fixed top-md left-md z-25")],
-      [
-        h.button(
-          [
-            h.Type("button"),
-            h.DataAttribute("testid", "board-legend-toggle"),
-            h.Attribute("aria-label", "Board legend"),
-            h.Attribute("aria-expanded", "false"),
-            h.OnClick(LegendToggled()),
-            h.Class(buttonClass("ghost", "pointer-events-auto px-md py-xs")),
-          ],
-          ["?"],
-        ),
-      ],
-    );
+    return legendToggleButton(false);
   }
 
   return h.div(
     [],
     [
-      h.div(
-        [h.Class("pointer-events-none fixed top-md left-md z-25 flex items-center gap-xs")],
-        [
-          h.button(
-            [
-              h.Type("button"),
-              h.DataAttribute("testid", "board-legend-toggle"),
-              h.Attribute("aria-label", "Board legend"),
-              h.Attribute("aria-expanded", showLegend ? "true" : "false"),
-              h.OnClick(LegendToggled()),
-              h.Class(buttonClass("ghost", "pointer-events-auto px-md py-xs")),
-            ],
-            ["?"],
-          ),
-        ],
-      ),
+      h.div([h.Class("pointer-events-none flex items-center gap-xs")], [legendToggleButton(showLegend)]),
       showLegend ? legendPanelView() : null,
       showHint
         ? h.div(

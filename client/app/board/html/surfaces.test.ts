@@ -31,6 +31,33 @@ function collectTestIds(node: unknown, out: string[] = []): string[] {
   return out;
 }
 
+function testId(node: unknown): string | null {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { data?: { attrs?: Record<string, string> } };
+  const id = n.data?.attrs?.["data-testid"];
+  return typeof id === "string" ? id : null;
+}
+
+function className(node: unknown): string {
+  if (node == null || typeof node !== "object") return "";
+  const n = node as { data?: { class?: Record<string, boolean> } };
+  return Object.entries(n.data?.class ?? {})
+    .filter(([, active]) => active)
+    .map(([name]) => name)
+    .join(" ");
+}
+
+function findParentOfTestId(node: unknown, id: string): unknown | null {
+  if (node == null || typeof node !== "object") return null;
+  const n = node as { children?: unknown[] };
+  for (const child of n.children ?? []) {
+    if (testId(child) === id) return node;
+    const parent = findParentOfTestId(child, id);
+    if (parent != null) return parent;
+  }
+  return null;
+}
+
 const h = html<Message>();
 
 beforeAll(() => {
@@ -270,6 +297,24 @@ test("smoke scene keeps existing chrome visible", () => {
     Scene.expect(Scene.testId("mana-tray")).toBeAbsent(),
     Scene.expect(Scene.testId("board-log")).toExist(),
     Scene.expect(Scene.testId("priority-context-bar")).toExist(),
+  );
+});
+
+test("top-left toolbar keeps legend toggle and sound as in-flow siblings", () => {
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), hintDismissed: true, hintAutoHidden: true }),
+    Scene.tap((sim) => {
+      const toolbar = findParentOfTestId(sim.html, "board-legend-toggle");
+      expect(toolbar).not.toBeNull();
+      expect(className(toolbar)).toContain("fixed top-md left-md");
+      expect(className(toolbar)).toContain("flex items-center gap-xs");
+
+      const children = (toolbar as { children?: unknown[] }).children ?? [];
+      expect(children.map(testId)).toEqual(expect.arrayContaining(["board-legend-toggle", "board-sound-toggle"]));
+      expect(className(children.find((child) => testId(child) === "board-legend-toggle"))).not.toContain("left-md");
+    }),
+    Scene.expect(Scene.testId("board-concede")).toHaveClass("right-md"),
+    Scene.expect(Scene.testId("board-concede")).not.toHaveClass("left-md"),
   );
 });
 

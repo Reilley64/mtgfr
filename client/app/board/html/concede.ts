@@ -2,6 +2,7 @@
 // Conceding is a real game action (CR 104.3a), not navigation.
 
 import { type Html, html } from "foldkit/html";
+import { cn } from "~/cn";
 import { buttonClass } from "~/ui/buttonClass";
 import { ConcedeCancelled, ConcedeClicked, ConcedeConfirmed, type Message } from "../messages";
 
@@ -14,8 +15,7 @@ export function concedeButtonView(): Html {
       h.Type("button"),
       h.DataAttribute("testid", "board-concede"),
       h.OnClick(ConcedeClicked()),
-      h.Class("pointer-events-auto fixed top-md right-md z-20"),
-      h.Class(buttonClass("ghost")),
+      h.Class(cn("pointer-events-auto fixed top-md right-md z-20", buttonClass("ghost"))),
     ],
     ["Concede"],
   );
