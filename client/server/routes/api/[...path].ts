@@ -39,7 +39,7 @@ function json(data: unknown, status = 200): Response {
 }
 
 function webDb() {
-  return createWebDb(process.env.WEB_DATABASE_URL);
+  return createWebDb();
 }
 
 function unknownLobby(tableId: string): LobbySnapshot {
@@ -76,10 +76,6 @@ async function handleLobby(event: H3Event, path: string, env: GrpcRequestEnv): P
   const lobbyGet = method === "GET" && /^tables\/[^/]+\/lobby\/v1$/.test(path);
 
   if (!routeDelete && !isCreate && !isJoin && !isReady && !isStart && !lobbyGet) return null;
-
-  if (!process.env.WEB_DATABASE_URL) {
-    return json({ error: "WebDbNotConfigured" }, 503);
-  }
 
   const me = await fetchMe(env);
   if (!me) return new Response("Unauthorized", { status: 401 });

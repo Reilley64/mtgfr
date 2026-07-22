@@ -27,14 +27,13 @@ Live games stay **in memory per API process**. Concurrent pods pin each table vi
 ## Local development
 
 ```bash
-docker compose up -d          # Postgres on :5432 (mtgfr)
-# create mtgfr_web if you need lobby persistence locally, then:
+docker compose up -d          # Postgres on :5432 (`mtgfr` + `mtgfr_web`)
 just migrate                  # Toasty → mtgfr
-just client-migrate           # Drizzle → mtgfr_web (needs WEB_DATABASE_URL)
+just client-migrate           # Drizzle → mtgfr_web (defaults WEB_DATABASE_URL to local compose)
 just dev                      # tmux: bacon server (:8080) + Foldkit/Vite client (default :3000)
 ```
 
-Without `WEB_DATABASE_URL`, the BFF falls back to localhost for game paths (lobby DB features need the web DB).
+`WEB_DATABASE_URL` defaults to `postgresql://mtgfr:mtgfr@127.0.0.1:5432/mtgfr_web` (same pattern as the API’s `config/mtgfr.toml`). Override when pointing at a remote DB.
 
 Useful checks:
 

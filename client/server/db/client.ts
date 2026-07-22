@@ -9,8 +9,10 @@ import * as Redacted from "effect/Redacted";
 import * as Result from "effect/Result";
 import { SqlClient } from "effect/unstable/sql";
 import * as schema from "../../db/schema";
+import { webDatabaseUrl } from "./url";
 
 export type WebDb = PgRemoteDatabase<typeof schema>;
+export { DEFAULT_WEB_DATABASE_URL, webDatabaseUrl } from "./url";
 
 type SqlRuntime = ManagedRuntime.ManagedRuntime<SqlClient.SqlClient | PgClient.PgClient, unknown>;
 
@@ -54,10 +56,7 @@ function remoteCallback(runtime: SqlRuntime) {
   };
 }
 
-export function createWebDb(url = process.env.WEB_DATABASE_URL): WebDb {
-  if (!url) {
-    throw new Error("WEB_DATABASE_URL is required");
-  }
+export function createWebDb(url = webDatabaseUrl()): WebDb {
   if (cache?.url === url) {
     return cache.db;
   }

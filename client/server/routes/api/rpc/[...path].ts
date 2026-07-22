@@ -39,8 +39,7 @@ function cookieOptions() {
  * falls back to the default (unrouted) address in dev, where every table lives in one process —
  * same semantics as the retired HTTP `resolveGameUpstream`. */
 async function resolveTableAddress(tableId: string): Promise<string | null> {
-  if (!process.env.WEB_DATABASE_URL) return grpcUpstream();
-  const db = createWebDb(process.env.WEB_DATABASE_URL);
+  const db = createWebDb();
   const pod = await lookupTableRoute(db, tableId);
   if (!pod) return null;
   // Legacy seed fallback wrote bare `instance_id` ("local"); that is not DNS.
