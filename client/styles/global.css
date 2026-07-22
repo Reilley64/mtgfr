@@ -91,7 +91,10 @@
   --color-glass: #ffffff0f;
   --color-glass-dim: #ffffff0d;
   --color-priority-gold: #ffd76a;
+  --color-playable-border: #eafff0;
   --color-commander-gold: #e9b84a;
+  --color-graveyard-outline: #7b5cff;
+  --color-exile-outline: #3ddc97;
   --color-oracle-ivory: #e8e4d8;
   --color-morph-slate: #2a3742;
   --color-mountain-red: #ff5555;

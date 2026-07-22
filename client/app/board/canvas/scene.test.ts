@@ -1,6 +1,6 @@
 import type { Canvas } from "foldkit";
 import { describe, expect, it } from "vitest";
-import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
+import type { ActionView, ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
 import { ZONE } from "../geometry/layout";
 import { sceneShapes } from "./scene";
@@ -42,6 +42,17 @@ function object(overrides: Partial<ObjectView> = {}): ObjectView {
     toughness: 2,
     zone: ZONE.Battlefield,
     ...overrides,
+  };
+}
+
+function battlefieldAction(objectId: number): ActionView {
+  return {
+    id: objectId + 100,
+    kind: "activate",
+    label: "Activate",
+    needs_target: false,
+    object: objectId,
+    section: "battlefield",
   };
 }
 
@@ -128,6 +139,42 @@ function collectTextShapes(shapes: ReadonlyArray<Shape>): Canvas.Text[] {
     }
   }
   return texts;
+}
+
+function groupWithRectFill(shape: Shape, fill: string): Group | null {
+  if (shape._tag !== "Group") {
+    return null;
+  }
+
+  if (shape.shapes.some((child) => child._tag === "Rect" && child.fill === fill)) {
+    return shape;
+  }
+
+  for (const child of shape.shapes) {
+    const group = groupWithRectFill(child, fill);
+    if (group != null) {
+      return group;
+    }
+  }
+
+  return null;
+}
+
+function firstGroupWithRectFill(shapes: ReadonlyArray<Shape>, fill: string): Group | null {
+  for (const shape of shapes) {
+    const group = groupWithRectFill(shape, fill);
+    if (group != null) {
+      return group;
+    }
+  }
+
+  return null;
+}
+
+function firstRect(group: Group | null): Canvas.Rect | null {
+  if (group == null) return null;
+  const shape = group.shapes.find((child) => child._tag === "Rect");
+  return shape?._tag === "Rect" ? shape : null;
 }
 
 function shapeHasFill(shape: Shape, fill: string): boolean {
@@ -278,5 +325,27 @@ describe("sceneShapes", () => {
 
     const aimArrow = shapes.find((shape) => shape._tag === "Path" && shape.stroke === TARGET_COLOR);
     expect(aimArrow).toBeDefined();
+  });
+
+  it("uses playable strokes for battlefield actions without outlining tap-only lands", () => {
+    const state = boardFixture();
+    state.actions = [battlefieldAction(1)];
+
+    const shapes = sceneShapes(state);
+    const bearRect = firstRect(firstGroupContainingText(shapes, "2/2"));
+    const forestRect = firstRect(firstGroupWithRectFill(shapes, "#223820"));
+
+    expect(bearRect?.stroke).toBe("#EAFFF0");
+    expect(forestRect?.stroke).toBe("#1a1a1a");
+  });
+
+  it("keeps commander gold instead of controller seat strokes", () => {
+    const state = boardFixture();
+    state.objects = [object({ id: 9, is_commander: true })];
+
+    const shapes = sceneShapes(state);
+    const commanderRect = firstRect(firstGroupContainingText(shapes, "2/2"));
+
+    expect(commanderRect?.stroke).toBe("#E9B84A");
   });
 });

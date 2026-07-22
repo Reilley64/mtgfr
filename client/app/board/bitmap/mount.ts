@@ -1,10 +1,11 @@
 import { Effect, type Queue as EffectQueue, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
-import type { PlayerView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
+import type { ActionView, PlayerView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { cardBackUrl, imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
 import { type ImageCache, sharedImageCache } from "../../../lib/image-cache";
 import type { Vec } from "../action/targeting";
 import { TARGET_COLOR } from "../action/targeting";
+import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
 import { ArtLoaded, TickedFrame } from "../messages";
@@ -33,6 +34,7 @@ export type BitmapFrame = {
   combatDragFrom: Vec | null;
   combatDragStroke: string | null;
   paymentPreviewIds: ReadonlySet<number>;
+  actions?: readonly ActionView[];
 };
 
 type LayerQueue = EffectQueue.Enqueue<typeof ArtLoaded.Type | typeof TickedFrame.Type>;
@@ -85,9 +87,11 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
   const ctx = prepareLayerCtx(canvas, frame);
   if (ctx == null) return;
 
+  const playableObjects = playableBattlefieldObjectIds(frame.actions);
   for (const card of frame.cards) {
     if (frame.hideCardIds.has(card.id)) continue;
-    paintCard(ctx, frame.camera, card, cache, frame.viewer);
+    const outline = playableObjects.has(card.id) ? { color: PLAYABLE_BORDER, dash: [] } : null;
+    paintCard(ctx, frame.camera, card, cache, frame.viewer, { outline });
     if (frame.paymentPreviewIds.has(card.id)) {
       paintAutoTapPreview(ctx, frame.camera, card, frame.viewer);
     }

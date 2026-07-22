@@ -7,11 +7,15 @@ export type BarZone = "hand" | "command" | "graveyard" | "exile";
 export type GroupedActions = Record<Section, ActionView[]>;
 
 /** Zone aura on bar faces — Arena gap + colour, no section captions. */
-export function barZoneAura(zone: BarZone): string {
-  if (zone === "hand") return "";
+export function barZoneAura(zone: BarZone, playable = false): string {
+  if (zone === "hand") {
+    return playable ? "ring-2 ring-playable-border shadow-[0_0_12px_rgba(234,255,240,0.42)]" : "";
+  }
   if (zone === "command") return "ring-2 ring-commander-gold shadow-[0_0_12px_rgba(233,184,74,0.45)]";
-  if (zone === "graveyard") return "ring-2 ring-note-gold shadow-[0_0_12px_rgba(240,198,116,0.4)]";
-  return "ring-2 ring-island-blue shadow-[0_0_12px_rgba(119,204,255,0.45)]";
+  if (zone === "graveyard") {
+    return playable ? "ring-2 ring-graveyard-outline shadow-[0_0_12px_rgba(123,92,255,0.45)]" : "";
+  }
+  return playable ? "ring-2 ring-exile-outline shadow-[0_0_12px_rgba(61,220,151,0.45)]" : "";
 }
 
 export function bySection(actions: readonly ActionView[] | undefined): GroupedActions {

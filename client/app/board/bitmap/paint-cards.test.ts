@@ -37,13 +37,14 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
   };
 }
 
-function mockCtx(): CanvasRenderingContext2D {
-  return {
+function mockCtx(calls: string[] = []): CanvasRenderingContext2D {
+  const state = { fillStyle: "", strokeStyle: "" };
+  const ctx = {
     arc: vi.fn(),
     beginPath: vi.fn(),
     clip: vi.fn(),
     drawImage: vi.fn(),
-    fill: vi.fn(),
+    fill: vi.fn(() => calls.push(`fill:${state.fillStyle}`)),
     fillText: vi.fn(),
     measureText: vi.fn(() => ({ width: 0 })),
     restore: vi.fn(),
@@ -51,10 +52,23 @@ function mockCtx(): CanvasRenderingContext2D {
     roundRect: vi.fn(),
     save: vi.fn(),
     setLineDash: vi.fn(),
-    stroke: vi.fn(),
+    stroke: vi.fn(() => calls.push(`stroke:${state.strokeStyle}`)),
     strokeText: vi.fn(),
     translate: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
+  Object.defineProperty(ctx, "fillStyle", {
+    get: () => state.fillStyle,
+    set: (value) => {
+      state.fillStyle = String(value);
+    },
+  });
+  Object.defineProperty(ctx, "strokeStyle", {
+    get: () => state.strokeStyle,
+    set: (value) => {
+      state.strokeStyle = String(value);
+    },
+  });
+  return ctx;
 }
 
 describe("paintCardTargetHighlight", () => {
@@ -78,5 +92,19 @@ describe("paintCard", () => {
     paintCard(ctx, { panX: 0, panY: 0, zoom: 1 }, card(), cache, 0);
 
     expect(ctx.drawImage).toHaveBeenCalledWith(image, 10, 20, 96, 134);
+  });
+
+  it("keeps commander gold when adding a playable outline", () => {
+    const calls: string[] = [];
+    const ctx = mockCtx(calls);
+    const cache = { get: vi.fn(() => undefined) };
+
+    paintCard(ctx, { panX: 0, panY: 0, zoom: 1 }, card({ isCommander: true, pt: "" }), cache, 0, {
+      outline: { color: "#EAFFF0", dash: [] },
+    });
+
+    expect(calls).toContain("stroke:#E9B84A");
+    expect(calls).toContain("stroke:#EAFFF0");
+    expect(calls).not.toContain("fill:rgba(0,0,0,0.45)");
   });
 });

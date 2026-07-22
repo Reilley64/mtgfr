@@ -1,5 +1,6 @@
 import { cardBackUrl, imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
 import type { ImageCache } from "../../../lib/image-cache";
+import { CARD_RESTING_OUTLINE, COMMANDER_GOLD } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { type RenderCard, seatColor, ZONE } from "../geometry/layout";
 
@@ -8,7 +9,7 @@ export interface Stroke {
   dash: number[];
 }
 
-export const CARD_OUTLINE = "#1a1a1a";
+export const CARD_OUTLINE = CARD_RESTING_OUTLINE;
 export const DIM_CARD_VEIL = 0.45;
 export const TAP_GLYPH = "\ue61a";
 export const TARGET_STROKE: Stroke = { color: "#77CCFF", dash: [2, 6] };
@@ -104,9 +105,10 @@ export function paintCard(
   ctx.fillStyle = card.faceDown ? "#2a3742" : "#e8e4d8";
   ctx.fill();
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = outline?.color ?? (card.isCommander ? "#e9b84a" : CARD_OUTLINE);
+  const baseStroke = card.isCommander ? COMMANDER_GOLD : (outline?.color ?? CARD_OUTLINE);
+  ctx.strokeStyle = baseStroke;
   ctx.lineWidth = Math.max(1, (outline || card.isCommander ? 3 : 2) * cam.zoom);
-  ctx.setLineDash(outline?.dash ?? []);
+  ctx.setLineDash(card.isCommander ? [] : (outline?.dash ?? []));
   ctx.stroke();
   ctx.setLineDash([]);
 
@@ -114,6 +116,15 @@ export function paintCard(
     paintFaceDown(ctx, cam, card, cache, tl.x, tl.y, w, h, r);
   } else {
     paintFaceUp(ctx, cam, card, cache, tl.x, tl.y, w, h, r);
+  }
+
+  if (card.isCommander && outline != null) {
+    roundRect(ctx, tl.x, tl.y, w, h, r);
+    ctx.strokeStyle = outline.color;
+    ctx.lineWidth = Math.max(1, 2 * cam.zoom);
+    ctx.setLineDash(outline.dash);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   if (options.dim) {
@@ -446,7 +457,7 @@ function drawStatusBadges(
     badge(ctx, x + w - pad - 14 * zoom, y + pad, 14 * zoom, 12 * zoom, "P", zoom, "#55cc99", "#0c1412");
   }
   if (card.isCommander) {
-    dot(ctx, x + w - pad - 4 * zoom, y + pad + 4 * zoom + (card.prepared ? 14 * zoom : 0), 4 * zoom, "#e9b84a");
+    dot(ctx, x + w - pad - 4 * zoom, y + pad + 4 * zoom + (card.prepared ? 14 * zoom : 0), 4 * zoom, COMMANDER_GOLD);
   }
   if (card.zone === ZONE.Battlefield && card.owner !== card.controller) {
     ctx.fillStyle = seatColor(card.owner, 0.95);

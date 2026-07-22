@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PlayerView } from "~/wire/types";
+import type { ActionView, PlayerView } from "~/wire/types";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
 import { spawnFlight } from "../motion/flights";
@@ -58,7 +58,7 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
 }
 
 function mockCtx(calls: string[]): CanvasRenderingContext2D {
-  const state = { fillStyle: "" };
+  const state = { fillStyle: "", strokeStyle: "" };
   const ctx = {
     arc: vi.fn(() => calls.push("avatar")),
     beginPath: vi.fn(),
@@ -80,7 +80,10 @@ function mockCtx(calls: string[]): CanvasRenderingContext2D {
       if (dash.join(",") === "2,6") calls.push("target-highlight");
     }),
     setTransform: vi.fn(),
-    stroke: vi.fn(() => calls.push("stroke")),
+    stroke: vi.fn(() => {
+      calls.push("stroke");
+      calls.push(`stroke:${state.strokeStyle}`);
+    }),
     strokeText: vi.fn(),
     translate: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
@@ -90,7 +93,25 @@ function mockCtx(calls: string[]): CanvasRenderingContext2D {
       state.fillStyle = String(value);
     },
   });
+  Object.defineProperty(ctx, "strokeStyle", {
+    get: () => state.strokeStyle,
+    set: (value) => {
+      state.strokeStyle = String(value);
+    },
+  });
   return ctx;
+}
+
+function battlefieldAction(objectId: number, overrides: Partial<ActionView> = {}): ActionView {
+  return {
+    id: objectId + 100,
+    kind: "activate",
+    label: "Activate",
+    needs_target: false,
+    object: objectId,
+    section: "battlefield",
+    ...overrides,
+  };
 }
 
 describe("paintBitmapLayer", () => {
@@ -324,6 +345,49 @@ describe("paintBitmapLayer", () => {
     );
 
     expect(calls).toContain("auto-tap-glyph");
+  });
+
+  it("outlines only battlefield permanents with playable actions and leaves tap-only lands undimmed", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const cache = { get: vi.fn(() => undefined) };
+    const frame = {
+      width: 800,
+      height: 600,
+      camera: { panX: 0, panY: 0, zoom: 1 },
+      cards: [
+        card({ id: 7, pt: "", name: "Timberwatch Elf" }),
+        card({ id: 8, kind: "land", name: "Forest", pt: "", tapsForMana: true, x: 130 }),
+      ],
+      viewer: 0,
+      players: [player()],
+      priority: 0,
+      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+      stagedAttackers: [],
+      stagedBlocks: [],
+      flights: [],
+      hideCardIds: new Set<number>(),
+      targetObjects: new Set<number>(),
+      targetPlayers: new Set<number>(),
+      aimFrom: null,
+      cursor: { x: 0, y: 0 },
+      combatDragFrom: null,
+      combatDragStroke: null,
+      paymentPreviewIds: new Set<number>(),
+      actions: [battlefieldAction(7)],
+    };
+
+    paintBitmapLayer(canvas, frame, cache);
+
+    expect(calls).toContain("stroke:#EAFFF0");
+    expect(calls).toContain("stroke:#1a1a1a");
+    expect(calls).not.toContain("fill:rgba(0,0,0,0.45)");
   });
 
   it("paints target highlights and an aim arrow while staged spell targeting", () => {

@@ -5,6 +5,7 @@ import { cn } from "~/cn";
 import { isActivePlayer } from "~/spectator";
 import { buttonClass } from "~/ui/buttonClass";
 import type { VisibleState } from "~/wire/types";
+import { EXILE_OUTLINE, GRAVEYARD_OUTLINE, PLAYABLE_BORDER } from "../chrome";
 import { HintDismissed, LegendToggled, type Message } from "../messages";
 import type { BoardModel } from "../submodel";
 import { HAND_BAR_H } from "./hand";
@@ -13,22 +14,20 @@ const h = html<Message>();
 
 export const HINT_DISMISSED_KEY = "mtgfr.hintDismissed";
 
-/** Canvas paint colours for legend swatches — same values as Solid board-discoverability. */
-const RESPONSE_COLOR = "#EAFFF0";
-
 const LEGEND_ITEMS: ReadonlyArray<{ color: string; shape: "dot" | "badge" | "outline"; label: string }> = [
   { color: "#e8b24a", shape: "badge", label: "Summoning sick" },
   { color: "#7a3b13", shape: "dot", label: "Goaded" },
   { color: "#0c1412", shape: "dot", label: "Keyword / ability (Mana font)" },
   { color: "#55cc99", shape: "badge", label: "Prepared (P)" },
-  { color: "#e9b84a", shape: "dot", label: "Commander" },
+  { color: "#e9b84a", shape: "outline", label: "Commander" },
+  { color: PLAYABLE_BORDER, shape: "outline", label: "Playable action" },
+  { color: GRAVEYARD_OUTLINE, shape: "outline", label: "Playable from graveyard" },
+  { color: EXILE_OUTLINE, shape: "outline", label: "Playable from exile" },
   { color: "#2f7d46", shape: "badge", label: "+1/+1 counters" },
   { color: "#8f2f2f", shape: "badge", label: "Marked damage" },
   { color: "#f4efe2", shape: "badge", label: "Power / toughness / loyalty" },
   { color: "#FF5555", shape: "outline", label: "Attacking" },
   { color: "#66FF99", shape: "outline", label: "Blocking" },
-  { color: "rgba(0,0,0,0.45)", shape: "badge", label: "Dimmed — not usable at instant speed" },
-  { color: RESPONSE_COLOR, shape: "badge", label: "Bright — usable at instant speed" },
 ];
 
 export function readHintDismissed(): boolean {

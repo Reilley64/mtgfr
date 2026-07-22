@@ -107,6 +107,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     combatDragFrom: combatDrag?.from ?? null,
     combatDragStroke: combatDrag == null ? null : combatDrag.declaringBlock ? "#66ff99" : "#ff6b6b",
     paymentPreviewIds,
+    actions: state.actions,
   });
 
   const stagedTargeting =

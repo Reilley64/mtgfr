@@ -113,11 +113,13 @@ function tile(args: {
   const dragSource = playable && draggingActionId != null && action?.id === draggingActionId;
   const artClass = [
     "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
-    barZoneAura(zone),
     dimmed ? "brightness-[0.55]" : "",
     dragSource ? "opacity-25" : "",
     playable && !dragSource ? "group-hover/hand-tile:brightness-110" : "",
   ]
+    .filter((v) => v !== "")
+    .join(" ");
+  const faceChromeClass = ["relative origin-bottom rounded-game", barZoneAura(zone, playable)]
     .filter((v) => v !== "")
     .join(" ");
 
@@ -193,6 +195,10 @@ function tile(args: {
     width: `${HAND_CARD_W}px`,
     height: `${HAND_CARD_H}px`,
   };
+  const cardFaceAttrs: Attribute<Message>[] = [h.Class(faceChromeClass), h.Style(cardBoxStyle)];
+  if (objectId != null) {
+    cardFaceAttrs.push(h.DataAttribute("testid", `hand-card-face-${objectId}`));
+  }
 
   const art: Html = print
     ? cardArt(h, {
@@ -204,7 +210,7 @@ function tile(args: {
     : h.div(
         [
           h.Class(
-            `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand ${barZoneAura(zone)} ${dimmed ? "brightness-[0.55]" : ""}`,
+            `flex items-center justify-center rounded-game bg-forest-shadow p-1 text-center text-caption text-snow shadow-hand ${dimmed ? "brightness-[0.55]" : ""}`,
           ),
           h.Style(cardBoxStyle),
         ],
@@ -229,7 +235,7 @@ function tile(args: {
         [
           pipRow,
           h.div(
-            [h.Class("relative origin-bottom rounded-game"), h.Style(cardBoxStyle)],
+            cardFaceAttrs,
             [
               art,
               caption

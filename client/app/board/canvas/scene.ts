@@ -1,6 +1,7 @@
 import { Canvas } from "foldkit";
 import type { VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
+import { CARD_RESTING_OUTLINE, COMMANDER_GOLD, PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { fitCamera } from "../geometry/interaction";
 import { CARD_H, CARD_W, layout, type RenderCard, seatBand, seatColor } from "../geometry/layout";
@@ -83,6 +84,7 @@ function cardShapes(
   selectedId: number | null,
   viewer: number,
   targetObjects: ReadonlySet<number>,
+  playableObjects: ReadonlySet<number>,
 ): Shape[] {
   const shapes: Shape[] = [];
   for (const card of cards) {
@@ -93,6 +95,7 @@ function cardShapes(
     const top = -height / 2;
     const selected = card.id === selectedId;
     const targeted = targetObjects.has(card.id);
+    const playable = playableObjects.has(card.id);
     const cardParts: Shape[] = [];
 
     cardParts.push(
@@ -102,8 +105,16 @@ function cardShapes(
         width,
         height,
         fill: card.faceDown ? "#1a1623" : kindFill(card),
-        stroke: targeted ? TARGET_COLOR : selected ? "#ffd76a" : seatColor(card.controller, 0.75),
-        lineWidth: targeted || selected ? 3 : 1.5,
+        stroke: targeted
+          ? TARGET_COLOR
+          : selected
+            ? "#ffd76a"
+            : card.isCommander
+              ? COMMANDER_GOLD
+              : playable
+                ? PLAYABLE_BORDER
+                : CARD_RESTING_OUTLINE,
+        lineWidth: targeted || selected || card.isCommander || playable ? 3 : 1.5,
       }),
     );
 
@@ -155,11 +166,12 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
   const avatars = avatarScreenPositions(state.players, state.viewer, count, camera);
   const targeting = options.stagedTargeting ?? null;
   const targetObjects = targeting?.targetObjects ?? new Set<number>();
+  const playableObjects = playableBattlefieldObjectIds(state.actions);
 
   return [
     ...feltShapes(width, height),
     ...seatShapes(state, camera),
-    ...cardShapes(cards, camera, options.selectedId ?? null, state.viewer, targetObjects),
+    ...cardShapes(cards, camera, options.selectedId ?? null, state.viewer, targetObjects, playableObjects),
     ...avatarShapes(state.players, avatars, state.priority, camera.zoom, targeting?.targetPlayers ?? new Set()),
     ...arrowShapes({
       camera,
