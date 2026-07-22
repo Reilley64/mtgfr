@@ -97,6 +97,15 @@ function cardShapes(
     const targeted = targetObjects.has(card.id);
     const playable = playableObjects.has(card.id);
     const cardParts: Shape[] = [];
+    const cardStroke = targeted
+      ? TARGET_COLOR
+      : selected
+        ? "#ffd76a"
+        : card.isCommander
+          ? COMMANDER_GOLD
+          : playable
+            ? PLAYABLE_BORDER
+            : CARD_RESTING_OUTLINE;
 
     cardParts.push(
       Canvas.Rect({
@@ -105,18 +114,24 @@ function cardShapes(
         width,
         height,
         fill: card.faceDown ? "#1a1623" : kindFill(card),
-        stroke: targeted
-          ? TARGET_COLOR
-          : selected
-            ? "#ffd76a"
-            : card.isCommander
-              ? COMMANDER_GOLD
-              : playable
-                ? PLAYABLE_BORDER
-                : CARD_RESTING_OUTLINE,
+        stroke: cardStroke,
         lineWidth: targeted || selected || card.isCommander || playable ? 3 : 1.5,
       }),
     );
+
+    if (card.isCommander && playable) {
+      cardParts.push(
+        Canvas.Rect({
+          x: left,
+          y: top,
+          width,
+          height,
+          fill: "transparent",
+          stroke: PLAYABLE_BORDER,
+          lineWidth: 2,
+        }),
+      );
+    }
 
     if (card.pt !== "") {
       cardParts.push(

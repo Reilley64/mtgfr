@@ -2,6 +2,7 @@ import type { Canvas } from "foldkit";
 import { describe, expect, it } from "vitest";
 import type { ActionView, ObjectView, PlayerView, VisibleState } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
+import { COMMANDER_GOLD, PLAYABLE_BORDER } from "../chrome";
 import { ZONE } from "../geometry/layout";
 import { sceneShapes } from "./scene";
 
@@ -347,5 +348,20 @@ describe("sceneShapes", () => {
     const commanderRect = firstRect(firstGroupContainingText(shapes, "2/2"));
 
     expect(commanderRect?.stroke).toBe("#E9B84A");
+  });
+
+  it("layers playable and commander outlines on playable commanders", () => {
+    const state = boardFixture();
+    state.objects = [object({ id: 9, is_commander: true })];
+    state.actions = [battlefieldAction(9)];
+
+    const shapes = sceneShapes(state);
+    const commanderGroup = firstGroupContainingText(shapes, "2/2");
+    const strokes = commanderGroup?.shapes
+      .filter((shape) => shape._tag === "Rect")
+      .map((shape) => shape.stroke);
+
+    expect(strokes).toContain(COMMANDER_GOLD);
+    expect(strokes).toContain(PLAYABLE_BORDER);
   });
 });
