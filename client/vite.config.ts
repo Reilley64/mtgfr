@@ -22,7 +22,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    foldkit(),
+    foldkit({ devToolsMcpPort: 9988 }),
     nitro({
       renderer: {
         static: true,

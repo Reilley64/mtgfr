@@ -87,3 +87,4 @@ The image already has Rust stable (rustfmt/clippy), Bun 1.3.14, `protoc`, `just`
 - Before DB-touching work: `just migrate` (Toasty / `mtgfr`) and/or `just client-migrate` (Drizzle / `mtgfr_web`).
 - Prefer `just server-check` / `just client-check` (or `just check`) for verification.
 - Put secrets in the Cursor Cloud Agents Secrets UI — do not bake credentials into the image or commit `.env` files.
+- Foldkit DevTools MCP uses Vite relay port `9988`; `foldkit_list_runtimes` only sees a runtime while a browser tab has the app open (`devTools: { Message }` in `client/app/entry.ts`).
