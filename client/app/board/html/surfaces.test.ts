@@ -508,3 +508,12 @@ test("full board view mounts the bitmap layer", () => {
     Scene.expect(Scene.testId("board-bitmap-layer")).toExist(),
   );
 });
+
+test("full board view mounts the flight layer above the hand bar", () => {
+  liveBoardScene(
+    fullBoardModel(initialBoardModel(), gameState()),
+    Scene.expect(Scene.testId("board-flight-layer")).toExist(),
+    // z-30 sits above the hand bar (z-20) and below prompts (z-40).
+    Scene.expect(Scene.testId("board-flight-layer")).toHaveClass("z-30"),
+  );
+});

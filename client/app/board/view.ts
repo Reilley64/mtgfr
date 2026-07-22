@@ -5,7 +5,7 @@ import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { stagingOverlay } from "./action/targeting";
-import { MountBitmapLayer, publishBitmapFrame } from "./bitmap/mount";
+import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap/mount";
 import { sceneShapes } from "./canvas/scene";
 import { worldToScreen } from "./geometry/camera";
 import { layout, STEP } from "./geometry/layout";
@@ -95,6 +95,8 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     players: state.players,
     priority: state.priority,
     combat: state.combat,
+    stagedAttackers: model.board.combatAttackers,
+    stagedBlocks: model.board.combatBlocks,
     flights: [...model.board.flights.values()],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,
@@ -167,6 +169,17 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
         [],
       ),
       boardOverlays(model.board, state, model.tableId, model.fold.log),
+      // Layer 6: flights ride their own canvas above the hand/stack HTML (z-30) but below prompts.
+      h.canvas(
+        [
+          h.Width(String(model.board.viewport.width)),
+          h.Height(String(model.board.viewport.height)),
+          h.Class("pointer-events-none absolute inset-0 z-30 block h-full w-full"),
+          h.DataAttribute("testid", "board-flight-layer"),
+          h.OnMount(MountFlightLayer()),
+        ],
+        [],
+      ),
       model.connected
         ? null
         : h.div(

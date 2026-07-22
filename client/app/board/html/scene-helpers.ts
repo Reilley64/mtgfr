@@ -1,6 +1,6 @@
 import { Scene } from "foldkit/test";
 import { BindCardArt } from "~/ui/card-art";
-import { MountBitmapLayer } from "../bitmap/mount";
+import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
 import { ArtLoaded, HandActionHovered, HintAutoHidden, PriorityElapsed } from "../messages";
 import { MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
 import { MountHandBarDrag } from "./hand-drag-mount";
@@ -23,6 +23,7 @@ export function resolveLiveBoardMounts() {
   return Scene.Mount.resolveAll(
     [MountHintAutoHide(), HintAutoHidden()],
     [MountBitmapLayer(), ArtLoaded()],
+    [MountFlightLayer(), ArtLoaded()],
     [MountPriorityWatch(), PriorityElapsed({ seconds: 0 })],
     [MountHandBarDrag(), HandActionHovered({ actionId: null })],
   );

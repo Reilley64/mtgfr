@@ -109,7 +109,8 @@ export function manaTrayView(board: BoardModel, state: VisibleState): Html | nul
   if (trays.length === 0) return null;
 
   return h.div(
-    [h.DataAttribute("testid", "mana-tray"), h.Class("pointer-events-none fixed inset-0 z-[18]")],
+    // Battlefield in-play mana is layer 2 — the lowest overlay, under hand/stack (canvas map).
+    [h.DataAttribute("testid", "mana-tray"), h.Class("pointer-events-none fixed inset-0 z-[5]")],
     trays.map(seatView),
   );
 }

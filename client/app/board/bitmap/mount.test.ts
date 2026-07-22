@@ -3,7 +3,7 @@ import type { PlayerView } from "~/wire/types";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
 import { spawnFlight } from "../motion/flights";
-import { bitmapFrameNeedsRaf, paintBitmapLayer } from "./mount";
+import { bitmapFrameNeedsRaf, paintBitmapLayer, paintFlightLayer } from "./mount";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -86,7 +86,7 @@ function mockCtx(calls: string[]): CanvasRenderingContext2D {
 }
 
 describe("paintBitmapLayer", () => {
-  it("layers resting art below avatars, arrows, and flights", () => {
+  it("layers resting art below avatars and committed combat arrows", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
     const canvas = {
@@ -99,7 +99,6 @@ describe("paintBitmapLayer", () => {
     const cache = {
       get: vi.fn((url: string) => {
         if (url.includes("resting-print")) return image("resting");
-        if (url.includes("flight-print")) return image("flight");
         return undefined;
       }),
     };
@@ -120,20 +119,9 @@ describe("paintBitmapLayer", () => {
           attackers_declared: true,
           blockers_declared: [],
         },
-        flights: [
-          spawnFlight({
-            id: 99,
-            kind: "battlefield",
-            name: "Flight",
-            print: "flight-print",
-            scale: 1,
-            targetScale: 1,
-            targetX: 200,
-            targetY: 200,
-            x: 100,
-            y: 100,
-          }),
-        ],
+        stagedAttackers: [],
+        stagedBlocks: [],
+        flights: [],
         hideCardIds: new Set(),
         targetObjects: new Set(),
         targetPlayers: new Set(),
@@ -149,7 +137,51 @@ describe("paintBitmapLayer", () => {
     expect(calls.indexOf("image:resting")).toBeGreaterThan(calls.indexOf("clear"));
     expect(calls.indexOf("avatar")).toBeGreaterThan(calls.indexOf("image:resting"));
     expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
-    expect(calls.indexOf("image:flight")).toBeGreaterThan(calls.indexOf("arrow"));
+  });
+
+  it("paints staged declare-attackers arrows above resting cards", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const image = (label: string) => ({ label }) as unknown as HTMLImageElement;
+    const cache = {
+      get: vi.fn((url: string) => (url.includes("resting-print") ? image("resting") : undefined)),
+    };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card()],
+        viewer: 0,
+        players: [player(), player({ player: 1, username: "Bob" })],
+        priority: 0,
+        // Nothing committed yet — the arrow only exists in staging.
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [{ attacker: 1, defender: 1 }],
+        stagedBlocks: [],
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        targetPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls.includes("arrow")).toBe(true);
+    expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("image:resting"));
   });
 
   it("paints a combat drag arrow while dragging a creature", () => {
@@ -174,6 +206,8 @@ describe("paintBitmapLayer", () => {
         players: [player()],
         priority: 0,
         combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
         flights: [],
         hideCardIds: new Set(),
         targetObjects: new Set(),
@@ -215,6 +249,8 @@ describe("paintBitmapLayer", () => {
         players: [player()],
         priority: 0,
         combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
         flights: [],
         hideCardIds: new Set(),
         targetObjects: new Set(),
@@ -253,6 +289,8 @@ describe("paintBitmapLayer", () => {
         players: [player()],
         priority: 0,
         combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
         flights: [],
         hideCardIds: new Set(),
         targetObjects: new Set([22]),
@@ -269,6 +307,119 @@ describe("paintBitmapLayer", () => {
     expect(calls.some((call) => call === "target-highlight")).toBe(true);
     expect(calls.filter((call) => call === "stroke").length).toBeGreaterThan(0);
     expect(calls.indexOf("target-highlight")).toBeGreaterThan(calls.indexOf("image:unknown"));
+  });
+
+  it("does not paint flights on the resting-permanent layer", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const image = (label: string) => ({ label }) as unknown as HTMLImageElement;
+    const cache = { get: vi.fn((url: string) => (url.includes("flight-print") ? image("flight") : undefined)) };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [],
+        viewer: 0,
+        players: [player()],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
+        flights: [
+          spawnFlight({
+            id: 99,
+            kind: "battlefield",
+            name: "Flight",
+            print: "flight-print",
+            scale: 1,
+            targetScale: 1,
+            targetX: 200,
+            targetY: 200,
+            x: 100,
+            y: 100,
+          }),
+        ],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        targetPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls.includes("image:flight")).toBe(false);
+  });
+});
+
+describe("paintFlightLayer", () => {
+  it("clears and paints in-flight card art above the hand", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const image = (label: string) => ({ label }) as unknown as HTMLImageElement;
+    const cache = { get: vi.fn((url: string) => (url.includes("flight-print") ? image("flight") : undefined)) };
+
+    paintFlightLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card()],
+        viewer: 0,
+        players: [player()],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
+        flights: [
+          spawnFlight({
+            id: 99,
+            kind: "battlefield",
+            name: "Flight",
+            print: "flight-print",
+            scale: 1,
+            targetScale: 1,
+            targetX: 200,
+            targetY: 200,
+            x: 100,
+            y: 100,
+          }),
+        ],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        targetPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    // Flight layer paints only flights — no resting permanents leak onto it.
+    expect(calls.includes("image:flight")).toBe(true);
+    expect(calls.includes("image:resting")).toBe(false);
+    expect(calls.indexOf("image:flight")).toBeGreaterThan(calls.indexOf("clear"));
   });
 });
 

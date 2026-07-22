@@ -1,6 +1,6 @@
-import { Effect, Queue, Stream } from "effect";
+import { Effect, type Queue as EffectQueue, Queue, Stream } from "effect";
 import * as Mount from "foldkit/mount";
-import type { PlayerView, VisibleState } from "~/wire/types";
+import type { PlayerView, VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { cardBackUrl, imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
 import { type ImageCache, sharedImageCache } from "../../../lib/image-cache";
 import type { Vec } from "../action/targeting";
@@ -21,6 +21,9 @@ export type BitmapFrame = {
   players: readonly PlayerView[];
   priority: number;
   combat: VisibleState["combat"];
+  /** Attackers/blocks declared during the current staging session but not yet committed. */
+  stagedAttackers: readonly WireAttack[];
+  stagedBlocks: readonly WireBlock[];
   flights: readonly CardFlight[];
   hideCardIds: ReadonlySet<number>;
   targetObjects: ReadonlySet<number>;
@@ -32,11 +35,17 @@ export type BitmapFrame = {
   paymentPreviewIds: ReadonlySet<number>;
 };
 
+type LayerQueue = EffectQueue.Enqueue<typeof ArtLoaded.Type | typeof TickedFrame.Type>;
+
 let currentFrame: BitmapFrame | null = null;
 const mountedLayers = new Set<BitmapMountHandle>();
 
 type BitmapMountHandle = {
   canvas: HTMLCanvasElement;
+  /** Paints this layer's slice of the current frame onto its canvas. */
+  render: (canvas: HTMLCanvasElement) => void;
+  /** Only the flight layer self-animates; the permanents/arrows layer repaints on publish. */
+  animates: boolean;
   unsubscribe: () => void;
   rafId: number;
   kickRaf: () => void;
@@ -46,7 +55,7 @@ export function publishBitmapFrame(frame: BitmapFrame): void {
   currentFrame = frame;
   preloadFrameArt(frame, sharedImageCache);
   for (const handle of mountedLayers) {
-    paintCurrentFrame(handle.canvas);
+    handle.render(handle.canvas);
     handle.kickRaf();
   }
 }
@@ -55,7 +64,8 @@ export function bitmapFrameNeedsRaf(frame: Pick<BitmapFrame, "flights"> | null):
   return (frame?.flights.length ?? 0) > 0;
 }
 
-export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
+/** Size the backing store to the DPR, reset the transform, and clear. Returns the 2D context. */
+function prepareLayerCtx(canvas: HTMLCanvasElement, frame: BitmapFrame): CanvasRenderingContext2D | null {
   const dpr = window.devicePixelRatio || 1;
   const targetWidth = Math.max(1, Math.floor(frame.width * dpr));
   const targetHeight = Math.max(1, Math.floor(frame.height * dpr));
@@ -63,10 +73,17 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
   if (canvas.height !== targetHeight) canvas.height = targetHeight;
 
   const ctx = canvas.getContext("2d");
-  if (ctx == null) return;
+  if (ctx == null) return null;
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, frame.width, frame.height);
+  return ctx;
+}
+
+/** Layer 3 + 4: resting permanents with card chrome, then avatars and arrows on top. No flights. */
+export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
+  const ctx = prepareLayerCtx(canvas, frame);
+  if (ctx == null) return;
 
   for (const card of frame.cards) {
     if (frame.hideCardIds.has(card.id)) continue;
@@ -85,67 +102,92 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
   if (frame.combatDragFrom != null && frame.combatDragStroke != null) {
     paintArrow(ctx, frame.combatDragFrom, frame.cursor, frame.combatDragStroke);
   }
+}
+
+/** Layer 6: in-flight cards only, on a canvas above the hand/stack HTML. */
+export function paintFlightLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, cache: Pick<ImageCache, "get">): void {
+  const ctx = prepareLayerCtx(canvas, frame);
+  if (ctx == null) return;
 
   for (const flight of frame.flights) {
     paintFlightCard(ctx, flight, frame.camera.zoom, cache);
   }
 }
 
-export const MountBitmapLayer = Mount.defineStream(
-  "MountBitmapLayer",
-  ArtLoaded,
-  TickedFrame,
-)((element) =>
-  Stream.callback<typeof ArtLoaded.Type | typeof TickedFrame.Type>((queue) =>
-    Effect.gen(function* () {
-      yield* Effect.acquireRelease(
-        Effect.sync(() => {
-          if (!(element instanceof HTMLCanvasElement)) return null;
-
-          let handle: BitmapMountHandle | null = null;
-          const unsubscribe = sharedImageCache.subscribe(() => {
-            Queue.offerUnsafe(queue, ArtLoaded());
-            paintCurrentFrame(element);
-            handle?.kickRaf();
-          });
-          const frame = (now: number): void => {
-            if (handle == null) return;
-            handle.rafId = 0;
-            Queue.offerUnsafe(queue, TickedFrame({ now, reducedMotion: prefersReducedMotion() }));
-            paintCurrentFrame(element);
-            handle.kickRaf();
-          };
-          const kickRaf = (): void => {
-            if (handle == null) return;
-            if (handle.rafId !== 0) return;
-            if (!bitmapFrameNeedsRaf(currentFrame)) return;
-            handle.rafId = requestAnimationFrame(frame);
-          };
-          handle = { canvas: element, unsubscribe, rafId: 0, kickRaf };
-          mountedLayers.add(handle);
-          paintCurrentFrame(element);
-          kickRaf();
-
-          return handle;
-        }),
-        (handle) =>
-          Effect.sync(() => {
-            if (handle == null) return;
-            mountedLayers.delete(handle);
-            handle.unsubscribe();
-            if (handle.rafId !== 0) cancelAnimationFrame(handle.rafId);
-          }),
-      );
-
-      return yield* Effect.never;
-    }),
-  ),
-);
-
-function paintCurrentFrame(canvas: HTMLCanvasElement): void {
+function renderBoardLayer(canvas: HTMLCanvasElement): void {
   if (currentFrame == null) return;
   paintBitmapLayer(canvas, currentFrame, sharedImageCache);
 }
+
+function renderFlightLayer(canvas: HTMLCanvasElement): void {
+  if (currentFrame == null) return;
+  paintFlightLayer(canvas, currentFrame, sharedImageCache);
+}
+
+function registerLayer(
+  element: unknown,
+  render: (canvas: HTMLCanvasElement) => void,
+  animates: boolean,
+  queue: LayerQueue,
+): BitmapMountHandle | null {
+  if (!(element instanceof HTMLCanvasElement)) return null;
+
+  let handle: BitmapMountHandle | null = null;
+  const unsubscribe = sharedImageCache.subscribe(() => {
+    Queue.offerUnsafe(queue, ArtLoaded());
+    if (handle != null) render(handle.canvas);
+    handle?.kickRaf();
+  });
+  const frame = (now: number): void => {
+    if (handle == null) return;
+    handle.rafId = 0;
+    Queue.offerUnsafe(queue, TickedFrame({ now, reducedMotion: prefersReducedMotion() }));
+    render(handle.canvas);
+    handle.kickRaf();
+  };
+  const kickRaf = (): void => {
+    if (handle == null) return;
+    if (!animates) return;
+    if (handle.rafId !== 0) return;
+    if (!bitmapFrameNeedsRaf(currentFrame)) return;
+    handle.rafId = requestAnimationFrame(frame);
+  };
+  handle = { canvas: element, render, animates, unsubscribe, rafId: 0, kickRaf };
+  mountedLayers.add(handle);
+  render(handle.canvas);
+  kickRaf();
+
+  return handle;
+}
+
+function releaseLayer(handle: BitmapMountHandle | null): void {
+  if (handle == null) return;
+  mountedLayers.delete(handle);
+  handle.unsubscribe();
+  if (handle.rafId !== 0) cancelAnimationFrame(handle.rafId);
+}
+
+function defineLayerMount(name: string, render: (canvas: HTMLCanvasElement) => void, animates: boolean) {
+  return Mount.defineStream(
+    name,
+    ArtLoaded,
+    TickedFrame,
+  )((element) =>
+    Stream.callback<typeof ArtLoaded.Type | typeof TickedFrame.Type>((queue) =>
+      Effect.gen(function* () {
+        yield* Effect.acquireRelease(
+          Effect.sync(() => registerLayer(element, render, animates, queue)),
+          (handle) => Effect.sync(() => releaseLayer(handle)),
+        );
+
+        return yield* Effect.never;
+      }),
+    ),
+  );
+}
+
+export const MountBitmapLayer = defineLayerMount("MountBitmapLayer", renderBoardLayer, false);
+export const MountFlightLayer = defineLayerMount("MountFlightLayer", renderFlightLayer, true);
 
 function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
   const count = Math.max(1, frame.players.length);
@@ -201,14 +243,15 @@ function paintCombatArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): v
     avatars.set(player.player, worldToScreen(frame.camera, pos.x, pos.y));
   }
 
-  for (const attack of frame.combat.attackers) {
+  // Declare-drag staging arrows share the arrow layer with committed arrows (canvas map layer 4).
+  for (const attack of [...frame.stagedAttackers, ...frame.combat.attackers]) {
     const from = cardsById.get(attack.attacker);
     const to = avatars.get(attack.defender);
     if (from == null || to == null) continue;
     paintArrow(ctx, cardCenter(frame.camera, from), to, "#ff6b6b");
   }
 
-  for (const block of frame.combat.blocks) {
+  for (const block of [...frame.stagedBlocks, ...frame.combat.blocks]) {
     const from = cardsById.get(block.blocker);
     const to = cardsById.get(block.attacker);
     if (from == null || to == null) continue;
