@@ -12,7 +12,7 @@ import { emptyCostPicks } from "./action/execution";
 import type { RenderCard } from "./geometry/layout";
 import { avatarPos, STEP, ZONE } from "./geometry/layout";
 import { boardOverlays } from "./html/overlays";
-import { resolveBoardOverlayMounts } from "./html/scene-helpers";
+import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./html/scene-helpers";
 import {
   BoardPointerUp,
   HandActionActivated,
@@ -486,4 +486,48 @@ test("log panel shows last lines with AUTO chip", () => {
 test("log panel hidden when log is empty", () => {
   const model = viewModel(fold(state()));
   overlayScene(model, Scene.expect(Scene.testId("board-log")).toBeAbsent());
+});
+
+test("inspect overlay docks left with backdrop when pinned", () => {
+  const model: ViewModel = {
+    board: {
+      ...initialBoardModel(),
+      inspectPin: { name: "Sol Ring", prepared: false, print: "sol-ring-print" },
+      inspectCard: {
+        approximates: null,
+        back: null,
+        color_identity: [],
+        cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
+        default_print: "sol-ring-print",
+        id: "sol-ring",
+        keywords: [],
+        kind: { kind: "artifact" },
+        legendary: false,
+        name: "Sol Ring",
+        oracle: "{T}: Add {C}.",
+        otags: [],
+        set: "soc",
+        subtypes: [],
+        summary: "Mana rock",
+      },
+    },
+    fold: fold(state()),
+    tableId: "T1",
+  };
+
+  overlayScene(
+    model,
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("bg-black/55"),
+    Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("fixed"),
+    Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("inset-0"),
+    Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("items-start"),
+    Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("z-[100]"),
+    Scene.expect(Scene.testId("inspect-overlay")).not.toHaveClass("items-center"),
+    Scene.expect(Scene.testId("inspect-overlay")).not.toHaveClass("top-(--y)"),
+    Scene.expect(Scene.testId("inspect-overlay")).not.toHaveClass("left-(--x)"),
+    Scene.expect(Scene.testId("inspect-overlay")).toContainText(": Add ."),
+    Scene.expect(Scene.selector('[aria-label="{C}"]')).toExist(),
+  );
 });

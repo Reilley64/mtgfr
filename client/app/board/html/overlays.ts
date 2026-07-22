@@ -1,5 +1,5 @@
 // Board HTML overlays: pins together hand, priority bar, turn chrome, stack, prompts,
-// inspect, pile, concede button + dialog, result overlay.
+// pile, concede button + dialog, result overlay, and inspect dock (topmost).
 
 import { type Html, html } from "foldkit/html";
 import { isActivePlayer, SPECTATOR_VIEWER } from "~/spectator";
@@ -71,9 +71,10 @@ export function boardOverlays(
     active ? activationRadialView(board, state) : null,
     active ? concedeButtonView() : null,
     concedeDialogView(board.confirmConcede),
-    inspectView(board.inspectPin, board.inspectCard, board.inspectFace, inspectObject),
     pileOverlayView(board.pileExpand, state),
     resultOverlayView(state, board.resultSeen),
+    // Inspect dock is topmost (layer 10) — above pile, concede dialog, and result.
+    inspectView(board.inspectPin, board.inspectCard, board.inspectFace, inspectObject),
   ];
 
   return h.div(
