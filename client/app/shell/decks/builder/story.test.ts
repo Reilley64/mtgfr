@@ -4,6 +4,7 @@ import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import type { ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
 import { client } from "../../../../lib/rpc-client";
+import { BindCardArt } from "../../../../lib/ui/card-art";
 import { OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
 import { type CatalogCard, CreateDeck422, type SaveDeckRequest } from "../../../../lib/wire/types";
 import { update as appUpdate, init } from "../../../main-exports";
@@ -163,6 +164,10 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
     Scene.with(model),
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "deck" }), ClearedBuilderHover()),
     Scene.Mount.resolve(OpenDialogAsModal(), ClearedBuilderHover()),
+    Scene.Mount.resolveAll(
+      [BindCardArt, ClearedBuilderHover()],
+      [BindCardArt, ClearedBuilderHover()],
+    ),
     Scene.expect(Scene.selector('[data-testid="print-sol-ring"]')).not.toExist(),
     Scene.expect(Scene.text("Choose printing")).toExist(),
     Scene.expect(Scene.selector('[data-testid="print-tile-sol-ring-alt-print"]')).toExist(),
@@ -273,6 +278,8 @@ test("hover preview and context menu render when present in the model", () => {
     Scene.expect(Scene.text("Choose print")).not.toExist(),
     // Acknowledge the continuous pointer Mount without asserting its stream events.
     Scene.Mount.resolve(BindBuilderCardPointer({ cardId: "sol-ring", kind: "pool" }), ClearedBuilderHover()),
+    Scene.Mount.resolve(BindCardArt, ClearedBuilderHover()),
+    Scene.Mount.expectEnded(BindCardArt),
   );
 });
 

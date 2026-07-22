@@ -13,7 +13,7 @@ import { STACK_EXPAND_COUNT } from "../geometry/stackLayout";
 import { type Message, StackCollapseClicked } from "../messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
-import { resolveBoardOverlayMounts } from "./scene-helpers";
+import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./scene-helpers";
 
 const h = html<Message>();
 
@@ -114,9 +114,10 @@ test("stack overlay renders card art for spells on the stack", () => {
     { update: (m) => [m, []], view: overlayView },
     Scene.with(model),
     resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
-    Scene.expect(Scene.selector("img")).toExist(),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
   );
 });
 
@@ -186,10 +187,11 @@ test("staged ghost appears on the stack during arrow targeting", () => {
     { update: (m) => [m, []], view: overlayView },
     Scene.with(model),
     resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(2),
     Scene.expect(Scene.testId("stack-overlay")).toExist(),
     Scene.expect(Scene.testId("stack-face-0")).toExist(),
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
-    Scene.expect(Scene.selector("img")).toExist(),
+    Scene.expect(Scene.selector("[data-art-url]")).toExist(),
   );
 });
 
@@ -244,6 +246,7 @@ test("expand button appears for a tall stack and opens strip view", () => {
     },
     Scene.with(model),
     resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(STACK_EXPAND_COUNT),
     Scene.expect(Scene.testId("stack-expand")).toExist(),
     Scene.click(Scene.testId("stack-expand")),
     Scene.expect(Scene.testId("stack-overlay-expanded")).toExist(),
@@ -267,6 +270,7 @@ test("hold bar renders when stack_hold_remaining_ms is positive", () => {
     { update: (m) => [m, []], view: overlayView },
     Scene.with(model),
     resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(),
     Scene.expect(Scene.testId("stack-hold-bar")).toExist(),
   );
 });

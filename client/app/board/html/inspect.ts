@@ -5,7 +5,7 @@
 
 import { type Html, html } from "foldkit/html";
 import { cn } from "~/cn";
-import { cardBackUrl, imageUrlByPrint } from "~/deck-builder/scryfall";
+import { cardArt } from "~/ui/card-art";
 import { type InspectFace, type InspectPin, shownName } from "~/inspect";
 import { splitOracleText } from "~/oracleText";
 import { buttonClass } from "~/ui/buttonClass";
@@ -73,14 +73,14 @@ function modifierLedger(modifiers: NonNullable<ObjectView["modifiers"]>): Html |
 }
 
 function artImg(print: string, face: InspectFace, alt: string): Html {
-  const url = print ? imageUrlByPrint(print, "large", face) : cardBackUrl();
-  return h.img([
-    h.Src(url),
-    h.Alt(alt),
-    h.Draggable(false),
-    h.Class("block rounded-[14px] shadow-table object-cover"),
-    h.Style({ width: `${CARD_W}px`, height: `${CARD_H}px` }),
-  ]);
+  return cardArt(h, {
+    print,
+    size: "large",
+    face,
+    alt,
+    className: "block rounded-[14px] shadow-table object-cover",
+    style: { width: `${CARD_W}px`, height: `${CARD_H}px` },
+  });
 }
 
 function loadingCard(): Html {

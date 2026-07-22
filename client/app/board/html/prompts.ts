@@ -12,7 +12,7 @@ import {
   initPromptDraft,
   isFaithfulPromptKind,
 } from "~/choice";
-import { imageUrlByPrint } from "~/deck-builder/scryfall";
+import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireIntent, WireTarget } from "~/wire/types";
 import { modeAvailable } from "../action/modal";
 import { objectName, playerSeatLabel, stagedPickTargets, stagedTargetTitle } from "../action/targeting";
@@ -100,16 +100,16 @@ function frame(testId: string, title: string, body: ReadonlyArray<Html>): Html {
   );
 }
 
-function choiceItemArt(item: ChoiceItem, state: VisibleState): string {
-  if (item.print) return imageUrlByPrint(item.print, "normal");
+function choiceItemPrint(item: ChoiceItem, state: VisibleState): string {
+  if (item.print) return item.print;
   const obj = state.objects.find((o) => o.id === item.id);
-  return obj?.print ? imageUrlByPrint(obj.print, "normal") : "";
+  return obj?.print ?? "";
 }
 
 function cardPickButton(item: ChoiceItem, state: VisibleState, picked: ReadonlyArray<number>, ordered: boolean): Html {
   const selected = picked.includes(item.id);
   const pickOrder = picked.indexOf(item.id);
-  const artUrl = choiceItemArt(item, state);
+  const print = choiceItemPrint(item, state);
   return h.button(
     [
       h.Type("button"),
@@ -125,13 +125,13 @@ function cardPickButton(item: ChoiceItem, state: VisibleState, picked: ReadonlyA
       ),
     ],
     [
-      artUrl
-        ? h.img([
-            h.Src(artUrl),
-            h.Alt(""),
-            h.Draggable(false),
-            h.Class("block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate"),
-          ])
+      print
+        ? cardArt(h, {
+            print,
+            size: "large",
+            alt: "",
+            className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
+          })
         : h.div(
             [
               h.Class(
@@ -291,7 +291,6 @@ function targetPickButton(target: WireTarget, state: VisibleState, testId: strin
   }
   const name = objectName(state, target.id);
   const obj = state.objects.find((o) => o.id === target.id);
-  const artUrl = obj?.print ? imageUrlByPrint(obj.print, "normal") : "";
   return h.button(
     [
       h.Type("button"),
@@ -303,13 +302,13 @@ function targetPickButton(target: WireTarget, state: VisibleState, testId: strin
       ),
     ],
     [
-      artUrl
-        ? h.img([
-            h.Src(artUrl),
-            h.Alt(""),
-            h.Draggable(false),
-            h.Class("block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate"),
-          ])
+      obj?.print
+        ? cardArt(h, {
+            print: obj.print,
+            size: "large",
+            alt: "",
+            className: "block aspect-[150/209] w-[150px] rounded-[9px] bg-morph-slate",
+          })
         : h.div(
             [
               h.Class(

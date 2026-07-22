@@ -3,7 +3,7 @@
 import type { Html, html } from "foldkit/html";
 import { cn } from "../cn";
 import { type OraclePart, splitOracleText } from "../oracleText";
-import { imageUrlByPrint } from "./scryfall";
+import { cardArt } from "../ui/card-art";
 
 export type CardHover = {
   id: string;
@@ -103,13 +103,13 @@ export function cardHoverPreviewView<M>(
       h.Style({ "--x": `${left}px`, "--y": `${top}px` }),
     ],
     [
-      h.img([
-        h.Src(imageUrlByPrint(print, "large")),
-        h.Alt(card?.name ?? ""),
-        h.Loading("lazy"),
-        h.Class("w-(--w) flex-none rounded-[14px] shadow-table"),
-        h.Style({ "--w": `${PREVIEW_W}px` }),
-      ]),
+      cardArt(h, {
+        print,
+        size: "large",
+        alt: card?.name ?? "",
+        className: "w-(--w) flex-none rounded-[14px] shadow-table",
+        style: { "--w": `${PREVIEW_W}px` },
+      }),
       textPanel(h, oracle, approximates, `${PREVIEW_H}px`),
     ],
   );

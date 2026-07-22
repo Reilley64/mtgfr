@@ -3,6 +3,7 @@ import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { test } from "vitest";
 import type { CatalogCard } from "~/wire/types";
+import { BindCardArt, CardArtTick } from "../ui/card-art";
 import { cardHoverPreviewView } from "./card-hover-preview";
 
 const h = html<never>();
@@ -39,5 +40,6 @@ test("card hover preview renders art and oracle text", () => {
     { update: (m) => [m, []], view },
     Scene.with({ hover: { id: "sol-ring", print: "sol-ring-print", x: 120, y: 80 }, card: solRing }),
     Scene.expect(Scene.selector('[data-testid="deck-list-hover-preview"]')).toExist(),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
   );
 });

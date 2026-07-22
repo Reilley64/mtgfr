@@ -1,5 +1,6 @@
 import { Scene } from "foldkit/test";
 import { MountBitmapLayer } from "../bitmap/mount";
+import { BindCardArt } from "~/ui/card-art";
 import { ArtLoaded, HandActionHovered, HintAutoHidden, PriorityElapsed } from "../messages";
 import { MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
 import { MountHandBarDrag } from "./hand-drag-mount";
@@ -10,6 +11,12 @@ export function resolveBoardOverlayMounts() {
     [MountPriorityWatch(), PriorityElapsed({ seconds: 0 })],
     [MountHandBarDrag(), HandActionHovered({ actionId: null })],
   );
+}
+
+/** Resolve `cardArt` hosts when the rendered overlay includes card faces. */
+export function resolveBoardCardArtMounts(count = 1) {
+  const resolvers = Array.from({ length: count }, () => [BindCardArt, ArtLoaded()] as const);
+  return Scene.Mount.resolveAll(...resolvers);
 }
 
 export function resolveLiveBoardMounts() {

@@ -63,6 +63,7 @@ export function cardArt<M>(
     face?: ImageFace;
     alt: string;
     className: string;
+    style?: Record<string, string>;
     testId?: string;
   },
 ): Html {
@@ -74,6 +75,7 @@ export function cardArt<M>(
     h.DataAttribute("art-class", opts.className),
     h.OnMount(BindCardArt() as never),
   ];
+  if (opts.style) attrs.push(h.Style(opts.style));
   if (opts.testId) attrs.push(h.DataAttribute("testid", opts.testId));
   return h.div(attrs, []);
 }

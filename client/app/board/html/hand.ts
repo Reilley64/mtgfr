@@ -9,7 +9,7 @@
 import { Option } from "effect";
 import { type Attribute, type Html, html } from "foldkit/html";
 import { type CostPip, costPipPlate, costPips } from "~/costPips";
-import { imageUrlByPrint } from "~/deck-builder/scryfall";
+import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
 import { ZONE } from "../geometry/layout";
@@ -85,8 +85,6 @@ function tile(args: {
   const raisedHitH = handBarHitHeight(true, HAND_VISIBLE_H, HAND_CARD_H);
   const raiseY = handBarRaiseTranslateY(true, HAND_VISIBLE_H, HAND_CARD_H);
   const pips = costPips(manaCost, { showZero: objectKind != null && objectKind !== "land" });
-  const artUrl = print ? imageUrlByPrint(print) : "";
-
   const faceClass = [
     "pointer-events-none absolute top-0 right-0 transition-transform duration-[120ms] ease-state",
     "group-hover/hand-tile:z-30 group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
@@ -160,8 +158,13 @@ function tile(args: {
     height: `${HAND_CARD_H}px`,
   };
 
-  const art: Html = artUrl
-    ? h.img([h.Src(artUrl), h.Alt(name), h.Draggable(false), h.Class(artClass), h.Style(cardBoxStyle)])
+  const art: Html = print
+    ? cardArt(h, {
+        print,
+        alt: name,
+        className: artClass,
+        style: cardBoxStyle,
+      })
     : h.div(
         [
           h.Class(
@@ -236,7 +239,6 @@ export type HandViewInputs = {
 
 function handDragGhost(drag: HandDragState): Html {
   const pips = costPips(drag.manaCost, { showZero: drag.kind != null && drag.kind !== "land" });
-  const artUrl = drag.print ? imageUrlByPrint(drag.print) : "";
   const artClass = `pointer-events-none block touch-none rounded-game object-cover drop-shadow-drag shadow-hand ${barZoneAura("hand")}`;
 
   return h.div(
@@ -260,14 +262,13 @@ function handDragGhost(drag: HandDragState): Html {
             pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, 17)),
           )
         : null,
-      artUrl
-        ? h.img([
-            h.Src(artUrl),
-            h.Alt(drag.name),
-            h.Draggable(false),
-            h.Class(artClass),
-            h.Style({ width: `${HAND_CARD_W}px`, height: `${HAND_CARD_H}px` }),
-          ])
+      drag.print
+        ? cardArt(h, {
+            print: drag.print,
+            alt: drag.name,
+            className: artClass,
+            style: { width: `${HAND_CARD_W}px`, height: `${HAND_CARD_H}px` },
+          })
         : h.div(
             [
               h.Class(

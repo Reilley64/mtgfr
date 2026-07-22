@@ -2,7 +2,7 @@
 // Mirrors Solid board-overlays.tsx PileOverlay.
 
 import { type Html, html } from "foldkit/html";
-import { imageUrlByPrint } from "~/deck-builder/scryfall";
+import { cardArt } from "~/ui/card-art";
 import { buttonClass } from "~/ui/buttonClass";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
@@ -22,18 +22,17 @@ function zoneName(zone: number, count: number): string {
 }
 
 function cardThumb(card: ObjectView): Html {
-  const url = card.print ? imageUrlByPrint(card.print, "normal") : "";
   return h.div(
     [h.Class("relative"), h.Attribute("title", card.name)],
     [
-      url
-        ? h.img([
-            h.Src(url),
-            h.Alt(card.name),
-            h.Draggable(false),
-            h.Class("block rounded-md"),
-            h.Style({ width: "90px" }),
-          ])
+      card.print
+        ? cardArt(h, {
+            print: card.print,
+            size: "large",
+            alt: card.name,
+            className: "block rounded-md",
+            style: { width: "90px" },
+          })
         : h.div(
             [
               h.Class("flex items-center justify-center rounded-md bg-forest-surface text-caption text-lichen"),

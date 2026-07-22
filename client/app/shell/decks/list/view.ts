@@ -2,7 +2,7 @@ import { Effect, Queue, Schema as S, Stream } from "effect";
 import { type Html, html } from "foldkit/html";
 import * as Mount from "foldkit/mount";
 import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-preview";
-import { imageUrlByPrint } from "../../../../lib/deck-builder/scryfall";
+import { cardArt } from "../../../../lib/ui/card-art";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { confirmDialog } from "../../../../lib/ui/confirmDialog";
@@ -126,12 +126,12 @@ export function view(model: DeckListSubmodel, username: string, apiVersion: stri
               [
                 commanderPrint(model, deck) === ""
                   ? h.div([h.Class("size-[56px] shrink-0 rounded-control bg-glass")], [])
-                  : h.img([
-                      h.Src(imageUrlByPrint(commanderPrint(model, deck), "art_crop")),
-                      h.Alt(""),
-                      h.Loading("lazy"),
-                      h.Class("size-[56px] shrink-0 rounded-control object-cover"),
-                    ]),
+                  : cardArt(h, {
+                      print: commanderPrint(model, deck),
+                      size: "art_crop",
+                      alt: "",
+                      className: "size-[56px] shrink-0 rounded-control object-cover",
+                    }),
                 h.div(
                   [h.Class("min-w-0 flex-1")],
                   [

@@ -5,7 +5,8 @@ import { cn } from "../../../../lib/cn";
 import { cardHoverPreviewView } from "../../../../lib/deck-builder/card-hover-preview";
 import { DECK_SIZE, deckCount, sortedDeckList } from "../../../../lib/deck-builder/cards";
 import { formatReleasedAt } from "../../../../lib/deck-builder/print";
-import { imageUrlByPrint, type ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
+import { type ScryfallPrint } from "../../../../lib/deck-builder/scryfall";
+import { cardArt } from "../../../../lib/ui/card-art";
 import { appVersionBadge } from "../../../../lib/ui/app-version";
 import { buttonClass } from "../../../../lib/ui/buttonClass";
 import { confirmDialog, OpenDialogAsModal } from "../../../../lib/ui/confirmDialog";
@@ -200,10 +201,8 @@ export const BindBuilderCardPointer = Mount.defineStream(
     ),
 );
 
-function cardArt(print: string, alt: string, className: string): Html {
-  // Solid CardArt defaults to `large` (full card face). `art_crop` is a tight illustration
-  // crop — with object-cover on a card aspect box it reads as zoomed-in.
-  return h.img([h.Src(imageUrlByPrint(print, "large")), h.Alt(alt), h.Loading("lazy"), h.Class(className)]);
+function builderCardArt(print: string, alt: string, className: string): Html {
+  return cardArt(h, { print, alt, className });
 }
 
 function hoverPreview(model: DeckBuilderSubmodel): Html | null {
@@ -274,7 +273,7 @@ function printTile(cardId: string, print: ScryfallPrint): Html {
       h.OnClick(PickedBuilderPrint({ cardId, print: print.id })),
     ],
     [
-      cardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART),
+      builderCardArt(print.id, `${print.set_name} #${print.collector_number}`, CARD_ART),
       h.div(
         [h.Class("flex w-full flex-wrap items-center justify-center gap-1")],
         [
@@ -369,7 +368,7 @@ function poolTile(model: DeckBuilderSubmodel, card: DeckBuilderSubmodel["pool"][
       h.OnMount(BindBuilderCardPointer({ cardId: card.id, kind: "pool" })),
     ],
     [
-      cardArt(print, card.name, CARD_ART),
+      builderCardArt(print, card.name, CARD_ART),
       h.span([h.Class("text-center leading-[1.1]")], [`${card.legendary ? "★ " : ""}${card.name}`]),
     ],
   );
@@ -471,7 +470,7 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
                   h.OnMount(BindBuilderCardPointer({ cardId: model.commander.id, kind: "commander" })),
                 ],
                 [
-                  cardArt(
+                  builderCardArt(
                     model.commander.print,
                     model.known[model.commander.id]?.name ?? model.commander.id,
                     "aspect-[0.72] w-10 rounded-focus object-cover",
@@ -505,7 +504,7 @@ export function view(model: DeckBuilderSubmodel, apiVersion: string | null): Htm
                     h.OnMount(BindBuilderCardPointer({ cardId: row.id, kind: "deck" })),
                   ],
                   [
-                    cardArt(row.print, "", "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"),
+                    builderCardArt(row.print, "", "aspect-[0.72] w-7 shrink-0 rounded-[3px] object-cover"),
                     h.span(
                       [h.Class("min-w-0 flex-1 truncate")],
                       [

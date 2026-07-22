@@ -5,7 +5,7 @@
 // priority (dwell-suppresses helpless auto-resolve).
 
 import { type Attribute, type Html, html } from "foldkit/html";
-import { imageUrlByPrint } from "~/deck-builder/scryfall";
+import { cardArt } from "~/ui/card-art";
 import { buttonClass } from "~/ui/buttonClass";
 import type { PlayerView, StackObjectView, VisibleState } from "~/wire/types";
 import { stagedPickTargets } from "../action/targeting";
@@ -102,13 +102,13 @@ function stackFace(opts: {
 
   const art: Html =
     opts.imageName && opts.print
-      ? h.img([
-          h.Src(imageUrlByPrint(opts.print, "normal")),
-          h.Alt(opts.imageName),
-          h.Draggable(false),
-          h.Class("block rounded-game"),
-          h.Style({ width: `${STACK_CARD_W}px`, height: `${opts.cardH}px` }),
-        ])
+      ? cardArt(h, {
+          print: opts.print,
+          size: "large",
+          alt: opts.imageName,
+          className: "block rounded-game",
+          style: { width: `${STACK_CARD_W}px`, height: `${opts.cardH}px` },
+        })
       : h.div(
           [
             h.Class(
