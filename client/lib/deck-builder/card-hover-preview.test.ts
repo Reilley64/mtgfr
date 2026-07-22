@@ -1,12 +1,14 @@
 import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
-import { test } from "vitest";
+import { expect, test } from "vitest";
 import type { CatalogCard } from "~/wire/types";
 import { BindCardArt, CardArtTick } from "../ui/card-art";
 import { cardHoverPreviewView } from "./card-hover-preview";
 
-const h = html<never>();
+type PreviewMessage = "dismiss" | "flip";
+
+const h = html<PreviewMessage>();
 
 const solRing: CatalogCard = {
   color_identity: [],
@@ -26,7 +28,7 @@ const solRing: CatalogCard = {
 
 const followView = Submodel.defineView<
   { hover: { id: string; print: string; x: number; y: number }; card?: CatalogCard },
-  never
+  PreviewMessage
 >((model) =>
   cardHoverPreviewView(h, {
     hover: model.hover,
@@ -43,7 +45,7 @@ const dockView = Submodel.defineView<
     approximates?: string | null;
     withExtras?: boolean;
   },
-  never
+  PreviewMessage
 >((model) =>
   cardHoverPreviewView(h, {
     mode: "dock",
@@ -52,8 +54,12 @@ const dockView = Submodel.defineView<
     oracle: model.oracle,
     approximates: model.approximates,
     extras: model.withExtras
-      ? [h.div([h.DataAttribute("testid", "dock-extra")], ["Extra ledger"])]
+      ? [
+          h.button([h.Type("button"), h.OnClick("flip"), h.DataAttribute("testid", "dock-flip")], ["Flip"]),
+          h.div([h.DataAttribute("testid", "dock-extra")], ["Extra ledger"]),
+        ]
       : undefined,
+    onDismiss: "dismiss",
     testId: "inspect-overlay",
   }),
 );
@@ -103,4 +109,49 @@ test("dock mode includes extras after the oracle panel", () => {
     Scene.expect(Scene.testId("dock-extra")).toHaveText("Extra ledger"),
     Scene.Mount.resolve(BindCardArt, CardArtTick()),
   );
+});
+
+test("dock mode does not dismiss when a content control is clicked", () => {
+  const messages: PreviewMessage[] = [];
+  Scene.scene(
+    {
+      update: (model, message) => {
+        if (message === "dismiss" || message === "flip") messages.push(message);
+        return [model, []];
+      },
+      view: dockView,
+    },
+    Scene.with({
+      print: "sol-ring-print",
+      name: "Sol Ring",
+      oracle: "{T}: Add {C}.",
+      withExtras: true,
+    }),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    Scene.click(Scene.testId("dock-flip")),
+  );
+
+  expect(messages).toEqual(["flip"]);
+});
+
+test("dock mode dismisses from the backdrop", () => {
+  const messages: PreviewMessage[] = [];
+  Scene.scene(
+    {
+      update: (model, message) => {
+        if (message === "dismiss" || message === "flip") messages.push(message);
+        return [model, []];
+      },
+      view: dockView,
+    },
+    Scene.with({
+      print: "sol-ring-print",
+      name: "Sol Ring",
+      oracle: "{T}: Add {C}.",
+    }),
+    Scene.Mount.resolve(BindCardArt, CardArtTick()),
+    Scene.click(Scene.testId("inspect-overlay-backdrop")),
+  );
+
+  expect(messages).toEqual(["dismiss"]);
 });

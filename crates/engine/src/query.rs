@@ -488,7 +488,7 @@ impl Game {
             let Object::Permanent(p) = o else {
                 continue;
             };
-            if p.owner != player || p.tapped {
+            if self.controller_of(id) != player || p.tapped {
                 continue;
             }
             for (i, a) in p.def.abilities.iter().enumerate() {

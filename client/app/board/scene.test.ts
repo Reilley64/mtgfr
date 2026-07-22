@@ -8,6 +8,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
+import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
@@ -737,5 +738,44 @@ test("inspect overlay docks left with backdrop when pinned", () => {
     Scene.expect(Scene.testId("inspect-overlay")).not.toHaveClass("left-(--x)"),
     Scene.expect(Scene.testId("inspect-overlay")).toContainText(": Add ."),
     Scene.expect(Scene.selector('[aria-label="{C}"]')).toExist(),
+  );
+});
+
+test("inspect Flip keeps the dock open while backdrop click dismisses it", () => {
+  const model: ViewModel = {
+    board: {
+      ...initialBoardModel(),
+      inspectPin: { name: "Front Face", prepared: false, print: "front-print" },
+      inspectCard: {
+        approximates: null,
+        back: { approximates: null, name: "Back Face", oracle: "Back oracle." },
+        color_identity: [],
+        cost: { colored: [0, 0, 0, 0, 0], generic: 1 },
+        default_print: "front-print",
+        id: "double-faced",
+        keywords: [],
+        kind: { kind: "artifact" },
+        legendary: false,
+        name: "Front Face",
+        oracle: "Front oracle.",
+        otags: [],
+        set: "soc",
+        subtypes: [],
+        summary: "DFC",
+      },
+    },
+    fold: fold(state()),
+    tableId: "T1",
+  };
+
+  overlayScene(
+    model,
+    resolveBoardCardArtMounts(),
+    Scene.click(Scene.selector('[title^="Flip"]')),
+    Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.testId("inspect-overlay")).toContainText("Back oracle."),
+    Scene.click(Scene.testId("inspect-overlay-backdrop")),
+    Scene.expect(Scene.testId("inspect-overlay")).toBeAbsent(),
+    Scene.Mount.expectEnded(BindCardArt),
   );
 });

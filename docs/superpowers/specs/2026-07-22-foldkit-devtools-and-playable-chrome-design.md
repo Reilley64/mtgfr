@@ -7,6 +7,8 @@
 
 **Task 9 limitation:** Illegal printed activates remain unselectable until the wire exposes them; current chrome can only disable actions the client receives.
 
+**Task 11 evidence note:** Status remains Done because the product path landed (pin-on-move plus Alt-through-button-focus). Unit/Scene coverage passed and the seated toolbar was live verified; live Alt-hold under automation was inconclusive through CDP, so do not cite it as live verified.
+
 ## Goal
 
 Land Foldkit agent tooling first (DevTools MCP + vendored skills) so board work can be debugged live, then fix activation radial centering, in-game Alt/Option inspect, top-left HUD control layout, pending-choice prompts shown to non-deciders, restore battlefield permanent chrome (badges / P/T / counters / planeswalker loyalty), activate rejects (`That ability isn't available`), and always-on permanent borders → Arena-style playable / zone outline language.
@@ -70,11 +72,11 @@ List known activates for that permanent; **disable** illegal wedges (no commit).
 
 ### In-game card preview / inspect
 
-Prior wave landed dock-mode wiring and AltLeft/AltRight detection. This workstream completed the live Alt/Option inspect path using Foldkit DevTools MCP once tooling landed:
+Prior wave landed dock-mode wiring and AltLeft/AltRight detection. This workstream landed the product path for Alt/Option inspect using pin-on-move plus Alt-through-button-focus:
 
 1. Confirm AltDown / pin / FetchInspectCard / InspectCardFetched / dock render in message history and model (`inspectPin`, `inspectCard`).
 2. Fix the failing layer (keyboard capture, hit→pin, catalog fetch, dock z-order / pointer-events, or layout).
-3. Success: hold Alt/Option over a face-up board, hand, or stack card → left dock + backdrop + oracle/effects; release or Esc clears. Topmost per board layer stack.
+3. Success: hold Alt/Option over a face-up board, hand, or stack card → left dock + backdrop + oracle/effects; release or Esc clears. Topmost per board layer stack. Unit/Scene evidence covers this path; live Alt-hold automation remained inconclusive through CDP.
 
 Regression tests must cover the live failure class, not only model-level AltDown.
 
@@ -160,7 +162,7 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 - No default seat stroke on resting battlefield cards.
 - Commander gold outline can coexist with playable border.
 - GY bar tile purple outline / exile green outline when those zones have playable actions.
-- Alt/Option inspect: live + unit — dock opens with backdrop and oracle; dismiss on release/Esc.
+- Alt/Option inspect: unit/Scene — dock opens with backdrop and oracle; dismiss on release/Esc. Live Alt-hold automation was inconclusive through CDP.
 - Top-left toolbar: legend and sound are siblings in one flex row (not stacked absolutes); concede at top-right.
 - Pending choice for seat A: only seat A’s Scene mounts the interactive prompt; seat B and spectator do not.
 - Bitmap resting layer: summoning-sick / keyword chips, creature P/T (modified), planeswalker loyalty, +1/+1 and marked-damage badges paint; no resting name labels.
@@ -178,7 +180,8 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 ## Success criteria
 
 - Agents have Foldkit DevTools MCP + vendored skills on PR #74.
-- Live Alt/Option inspect works (dock mode).
+- Alt/Option inspect product path is landed (pin-on-move plus Alt-through-button-focus) with unit/Scene coverage; live Alt-hold automation was inconclusive through CDP.
+- Seated toolbar was live verified: top-left controls are a single non-overlapping toolbar and concede remains top-right.
 - Top-left HUD controls are a single non-overlapping toolbar; concede remains top-right.
 - Interactive pending-choice prompts only for the awaited player (`pending_choice.player === viewer`).
 - Battlefield permanent chrome (badges, effective P/T, counters, planeswalker loyalty) matches Solid board parity on the live bitmap layer.

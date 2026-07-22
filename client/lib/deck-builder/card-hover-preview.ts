@@ -95,12 +95,7 @@ function textPanel<M>(
   );
 }
 
-function artColumn<M>(
-  h: HtmlFactory<M>,
-  print: string,
-  name: string,
-  face: "front" | "back" | undefined,
-): Html {
+function artColumn<M>(h: HtmlFactory<M>, print: string, name: string, face: "front" | "back" | undefined): Html {
   return cardArt(h, {
     print,
     size: "large",
@@ -135,46 +130,38 @@ function followPreviewView<M>(h: HtmlFactory<M>, args: FollowPreviewArgs): Html 
       ),
       h.Style({ "--x": `${left}px`, "--y": `${top}px` }),
     ],
-    [
-      artColumn(h, print, card?.name ?? "", undefined),
-      textPanel(h, oracle, approximates, `${PREVIEW_H}px`),
-    ],
+    [artColumn(h, print, card?.name ?? "", undefined), textPanel(h, oracle, approximates, `${PREVIEW_H}px`)],
   );
 }
 
 function dockPreviewView<M>(h: HtmlFactory<M>, args: DockPreviewArgs<M>): Html {
-  const {
-    print,
-    name,
-    oracle,
-    approximates,
-    face,
-    extras,
-    onDismiss,
-    testId = "card-hover-preview",
-  } = args;
+  const { print, name, oracle, approximates, face, extras, onDismiss, testId = "card-hover-preview" } = args;
 
   const text = textPanel(h, oracle, approximates, `${PREVIEW_H}px`);
   const rightColumn =
     text != null || (extras != null && extras.length > 0)
-      ? h.div(
-          [h.Class("flex min-w-0 flex-col items-start gap-3")],
-          [text, ...(extras ?? [])],
-        )
+      ? h.div([h.Class("flex min-w-0 flex-col items-start gap-3")], [text, ...(extras ?? [])])
       : null;
 
   const content = h.div(
-    [h.Class("pointer-events-auto relative m-lg flex flex-row items-start gap-3")],
+    [
+      h.DataAttribute("testid", `${testId}-content`),
+      h.Class("pointer-events-auto relative z-10 m-lg flex flex-row items-start gap-3"),
+    ],
     [artColumn(h, print, name, face), rightColumn],
+  );
+  const backdrop = h.div(
+    [
+      h.DataAttribute("testid", `${testId}-backdrop`),
+      h.Class("pointer-events-auto absolute inset-0"),
+      ...(onDismiss !== undefined ? [h.OnClick(onDismiss)] : []),
+    ],
+    [],
   );
 
   return h.div(
-    [
-      h.DataAttribute("testid", testId),
-      h.Class("fixed inset-0 z-[100] flex items-start bg-black/55"),
-      ...(onDismiss !== undefined ? [h.OnClick(onDismiss)] : []),
-    ],
-    [content],
+    [h.DataAttribute("testid", testId), h.Class("fixed inset-0 z-[100] flex items-start bg-black/55")],
+    [backdrop, content],
   );
 }
 

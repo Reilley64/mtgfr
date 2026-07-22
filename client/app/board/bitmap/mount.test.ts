@@ -137,6 +137,7 @@ describe("paintBitmapLayer", () => {
           card({ name: "Runeclaw Bear", pt: "2/2", summoningSick: true }),
           card({ id: 2, kind: "planeswalker", name: "Test Walker", pt: "4", x: 130 }),
           card({ id: 3, counters: 1, name: "Counter Bear", x: 250 }),
+          card({ id: 4, markedDamage: 3, name: "Damaged Bear", x: 370 }),
         ],
         viewer: 0,
         players: [player()],
@@ -160,10 +161,13 @@ describe("paintBitmapLayer", () => {
     expect(calls).toContain("text:2/2");
     expect(calls).toContain("text:4");
     expect(calls).toContain("text:+1");
+    expect(calls).toContain("text:3");
     expect(calls).toContain("fill:#e8b24a");
+    expect(calls).toContain("fill:#8f2f2f");
     expect(calls).not.toContain("text:Runeclaw Bear");
     expect(calls).not.toContain("text:Test Walker");
     expect(calls).not.toContain("text:Counter Bear");
+    expect(calls).not.toContain("text:Damaged Bear");
   });
 
   it("layers resting art below avatars and committed combat arrows", () => {

@@ -11532,6 +11532,53 @@ fn legal_actions_lists_a_paid_mana_activate_without_stopping_auto_pass() {
 }
 
 #[test]
+fn legal_actions_lists_paid_mana_activate_for_controller_not_owner() {
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 12]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let signet = game.spawn_on_battlefield(PlayerId(0), card("Azorius Signet"));
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let feeder = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    zedruu_donate(&mut game, zedruu, signet, PlayerId(1));
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1)
+            && g.current_step() == Step::Main1
+            && g.priority_holder() == PlayerId(1)
+    });
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: feeder,
+    })
+    .expect("the controller can float feeder mana");
+
+    assert_eq!(
+        game.owner_of(signet),
+        PlayerId(0),
+        "ownership stays with the donor",
+    );
+    assert_eq!(
+        game.controller_of(signet),
+        PlayerId(1),
+        "the recipient controls the donated signet",
+    );
+    assert!(
+        game.legal_actions().iter().any(|a| matches!(
+            a.kind,
+            MeaningfulAction::Activate { source, .. } if a.player == PlayerId(1) && source == signet
+        )),
+        "the controller sees the non-owned signet's paid mana ability",
+    );
+}
+
+#[test]
 fn legal_actions_does_not_list_study_hall_paid_from_its_own_free_c() {
     // Study Hall's free {{C}} must not make its paid {{1}},{{T}}: any look activatable alone.
     let mut game = Game::new();
