@@ -142,6 +142,7 @@ export const update = (
       RequestedLobbyJoin: () => joinCommand(model, deckIds),
       RequestedLobbyReady: ({ ready }) => {
         if (model.tableId == null) return [model, []];
+        unlockTableAudio();
         return [{ ...model, error: null, submitting: true }, [ReadyLobby({ tableId: model.tableId, ready })]];
       },
       RequestedLobbyStart: () => {
