@@ -6,11 +6,11 @@
 
 ## Goal
 
-Land Foldkit agent tooling first (DevTools MCP + vendored skills) so board work can be debugged live, then fix activation radial centering, in-game Alt/Option inspect (still broken), top-left HUD control layout, and always-on permanent borders → Arena-style playable / zone outline language.
+Land Foldkit agent tooling first (DevTools MCP + vendored skills) so board work can be debugged live, then fix activation radial centering, in-game Alt/Option inspect (still broken), top-left HUD control layout, pending-choice prompts shown to non-deciders, and always-on permanent borders → Arena-style playable / zone outline language.
 
 ## Approach
 
-**B — Tooling first, then board chrome** (chosen): MCP + skills commit before radial/selection/border/inspect/HUD work so implementers can use `foldkit_*` tools while fixing UI.
+**B — Tooling first, then board chrome** (chosen): MCP + skills commit before radial/selection/border/inspect/HUD/prompt-visibility work so implementers can use `foldkit_*` tools while fixing UI.
 
 ## Workstream 1 — Foldkit MCP + skills
 
@@ -54,6 +54,21 @@ Prior wave landed dock-mode wiring and AltLeft/AltRight detection, but **live Al
 
 Regression tests must cover the live failure class, not only model-level AltDown.
 
+### Pending-choice prompts visible to everyone (investigate and fix)
+
+**Symptom:** Interactive prompt modals (Yes/No, pay cost, card pick, etc.) appear on every seated player’s client whenever `pending_choice` is set, not only for the player who must answer.
+
+**Likely cause (client):** `boardOverlays` gates `promptsView` with `isActivePlayer` (anyone still playing, not lost/spectating) and `promptsView` renders whenever `state.pending_choice != null`. Wire projection deliberately ships `pending_choice` to all viewers (private *items* redacted for non-awaited seats — scry/search/etc.), but the **interactive formulator** must only mount for the awaited seat.
+
+**Fix:**
+
+1. Render engine pending-choice formulators only when `pending_choice.player === state.viewer` (and the viewer is still an active player). Non-deciders and spectators: **no** interactive prompt DOM.
+2. Client-local pre-submit prompts (`xPrompt`, modal modes, discard/sacrifice/gy-exile picks, staged targeting) stay local to the acting client’s `BoardModel` — confirm they never appear from shared state alone.
+3. Do **not** hide `pending_choice` on the wire for non-deciders in this wave (projection already redacts private items; other clients may still need the fact for passive chrome later). No passive “waiting for seat N” banner required unless it already exists and is wrong.
+4. Submissions from a non-awaited seat must not be offerable in the UI (server already rejects wrong-player answers; client must not present the buttons).
+
+Regression: seated non-decider Scene has no `prompt-yes` / formulator test ids while a `may_yes_no` (or similar) is pending for another seat; the awaited seat still gets the full prompt.
+
 ### Top-left HUD controls (stacked — investigate and fix)
 
 **Symptom:** Legend (`?`), sound, and related controls pile on the same top-left point (user reports concede in the stack too — verify layout; concede is authored `top-md right-md` and may be a separate bug or misread).
@@ -82,9 +97,9 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 ## Delivery order
 
 1. Tooling: MCP + Vite port + vendored skills + AGENTS note.  
-2. Board investigations (MCP-assisted): **inspect live fix**, **top-left toolbar layout**.  
+2. Board investigations (MCP-assisted): **inspect live fix**, **top-left toolbar layout**, **prompt visibility (awaited seat only)**.  
 3. Board chrome: radial center → selection + disabled wedges → strip always-on borders → playable borders + commander/GY/exile outlines → remove dim-for-unplayable.  
-4. Outcome Scene/unit tests + Interaction checklist (inspect, HUD, radial, borders).
+4. Outcome Scene/unit tests + Interaction checklist (inspect, HUD, prompts, radial, borders).
 
 ## Testing
 
@@ -97,6 +112,7 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 - GY bar tile purple outline / exile green outline when those zones have playable actions.
 - Alt/Option inspect: live + unit — dock opens with backdrop and oracle; dismiss on release/Esc.
 - Top-left toolbar: legend and sound are siblings in one flex row (not stacked absolutes); concede at top-right.
+- Pending choice for seat A: only seat A’s Scene mounts the interactive prompt; seat B and spectator do not.
 - MCP: `foldkit_list_runtimes` sees a connected tab with `just dev` + open client (manual/agent check).
 
 ## Out of scope
@@ -110,6 +126,7 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 - Agents have Foldkit DevTools MCP + vendored skills on PR #74.
 - Live Alt/Option inspect works (dock mode).
 - Top-left HUD controls are a single non-overlapping toolbar; concede remains top-right.
+- Interactive pending-choice prompts only for the awaited player (`pending_choice.player === viewer`).
 - Radial sits on the card; selection and chrome match Arena-style playable language with commander/GY/exile outline colors as specified.
 - Always-on permanent borders and unplayable dim veil are gone.
 
@@ -126,6 +143,9 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 - `client/app/board/html/discoverability.ts`  
 - `client/app/board/html/sound-chrome.ts`  
 - `client/app/board/html/concede.ts`  
+- `client/app/board/html/prompts.ts`  
+- `client/lib/spectator.ts` (`isActivePlayer` — not sufficient alone for prompt gating)  
+- Wire visibility: `docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md` (pending_choice broadcast + private-item redaction)  
 - `DESIGN.md`  
 - `docs/client-canvas-map.md` (layer stack — chrome must stay on the correct layer)  
 - Prior inspect design: `docs/superpowers/specs/2026-07-22-foldkit-remaining-bugs-and-board-layers-design.md`
