@@ -18,7 +18,7 @@ export const NavigationCompleted = m("NavigationCompleted");
 export const PortraitGateChanged = m("PortraitGateChanged", { open: S.Boolean });
 export const PortraitGateCancelled = m("PortraitGateCancelled");
 export const CompletedPortraitGateModal = m("CompletedPortraitGateModal");
-export { ModalOpened, CardArtTick };
+export { CardArtTick, ModalOpened };
 
 export const Message = S.Union([
   Booted,
