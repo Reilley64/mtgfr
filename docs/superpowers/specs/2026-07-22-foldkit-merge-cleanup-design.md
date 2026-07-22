@@ -21,7 +21,7 @@
 2. No migration-era wording in active code comments that implies SolidStart is still present.
 3. Lobby start success does not surface as a start error.
 4. Client lint is **warning-clean**; production Nitro output contains **no** `*.test.*` artifacts.
-5. Squash-merge line is release-correct: `feat:` subject + `BREAKING CHANGE:` in the PR body (no `feat!:`).
+5. Squash-merge line is release-correct: PR title `feat!: …` (major for semantic-release); branch commits stay commitlint-clean without `!`.
 
 ## Non-goals
 
@@ -80,14 +80,14 @@ Production `bun run build` currently emits `method_gate.test.mjs` under `client/
 
 ## PR metadata (squash + semantic-release)
 
-Per AGENTS.md, the squash commit message is the **PR title**. semantic-release reads that line only.
+Per AGENTS.md, the squash commit message is the **PR title** (plus `(#N)`). semantic-release analyzes that line only — branch commit bodies are not the release signal.
 
 | Field | Value |
 |---|---|
-| Title | `feat: replace solidstart client with foldkit and nitro` (no `!`) |
-| Body | Short summary + test plan, and footer: `BREAKING CHANGE: client is Foldkit SPA on Nitro; SolidStart/Vinxi removed.` |
+| Title | `feat!: replace solidstart client with foldkit and nitro` (`!` required so the squash line is a major; commitlint does **not** lint PR titles) |
+| Body | Short summary + test plan, and human-readable `BREAKING CHANGE: client is Foldkit SPA on Nitro; SolidStart/Vinxi removed.` |
 
-One commit on the branch for this entire cleanup (approach: single merge-readiness commit).
+Branch commits in this cleanup must **not** use `feat!:` (commitlint `subject-exclamation-mark`). One commit on the branch for this entire cleanup.
 
 ## Verification
 
