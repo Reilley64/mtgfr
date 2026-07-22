@@ -6,11 +6,11 @@
 
 ## Goal
 
-Land Foldkit agent tooling first (DevTools MCP + vendored skills) so board work can be debugged live, then fix activation radial centering, in-game Alt/Option inspect (still broken), top-left HUD control layout, pending-choice prompts shown to non-deciders, restore battlefield permanent chrome (badges / P/T / counters / planeswalker loyalty), and always-on permanent borders → Arena-style playable / zone outline language.
+Land Foldkit agent tooling first (DevTools MCP + vendored skills) so board work can be debugged live, then fix activation radial centering, in-game Alt/Option inspect (still broken), top-left HUD control layout, pending-choice prompts shown to non-deciders, restore battlefield permanent chrome (badges / P/T / counters / planeswalker loyalty), activate rejects (`That ability isn't available`), and always-on permanent borders → Arena-style playable / zone outline language.
 
 ## Approach
 
-**B — Tooling first, then board chrome** (chosen): MCP + skills commit before radial/selection/border/inspect/HUD/prompt-visibility/permanent-chrome work so implementers can use `foldkit_*` tools while fixing UI.
+**B — Tooling first, then board chrome** (chosen): MCP + skills commit before radial/selection/border/inspect/HUD/prompt-visibility/permanent-chrome/activate-reject work so implementers can use `foldkit_*` tools while fixing UI.
 
 ## Workstream 1 — Foldkit MCP + skills
 
@@ -43,6 +43,27 @@ SVG center = selected card’s screen-space center (`worldToScreen` of card cent
 ### Radial options
 
 List known activates for that permanent; **disable** illegal wedges (no commit). Tap-for-mana remains a wedge when applicable (enabled/disabled by tap / `can_act`).
+
+### Activates reject with “That ability isn't available” (investigate and fix)
+
+**Symptom:** Choosing an activation from the radial (and likely other activate paths) surfaces the reject toast mapped from engine `Reject::CannotActivate` via `humanReason` → `"That ability isn't available."` — reported for essentially all abilities tried, not one card.
+
+**Context:**
+
+- Client copy: `client/lib/reject.ts` (`CannotActivate`).
+- Radial commit path: `RadialOptionPicked` / `RadialWedgeReleased` → `commitRadialIndex` → `runAction` → `take_action` with `ActionView.id` (`buildTakeActionIntent`). Payment is **engine-side** (`settle_payment` / `auto_tap` preview only) — client must not pre-tap lands.
+- Engine `CannotActivate` is broad: wrong ability, summoning sick, tapped, **or unaffordable** — `activate_ability` maps `settle_payment` failures to `CannotActivate` (not `CannotPayCost`), so a broken auto-tap / payment path looks identical to “ability missing.”
+- Distinct from `UnknownAction` (“That action expired — try again”) which means a bad/stale `take_action` id.
+
+**Investigation order (MCP-assisted once tooling lands):**
+
+1. Capture the rejected intent + server `reason` for a known-good activate (e.g. untapped Llanowar / Viscera Seer with legal costs) — confirm `CannotActivate` vs `UnknownAction` / client-local reject.
+2. Verify wire round-trip: `ActionView.id` (proto `uint64` → number) → `WireIntentTakeAction.id` (`BigInt` via `takeActionValueToProto`) → engine `TakeAction` lookup succeeds.
+3. If id is live: check `settle_payment` / auto-tap for **activate** via `take_action` (casts already have engine coverage; activates must pay the same way). Confirm `auto_tap` preview ids match what the engine would tap.
+4. Client-local `planCostPipeline` reject when `sacrifice_choices` is present-and-empty (`CannotActivate` before submit) — ensure only true sacrifice costs hit that branch; do not treat absent choices as `[]`.
+5. Do not offer commit on wedges that will be disabled once selection shows illegal activates; legal listed actions must succeed when costs are payable.
+
+**Success:** A listed battlefield activate with payable cost (auto-tap or floating mana) commits without the toast; true illegals stay disabled / clear reject reasons (`CannotPayCost` only if we later split unaffordable — out of scope unless needed for diagnosis).
 
 ### In-game card preview / inspect (still broken — investigate and fix)
 
@@ -123,9 +144,9 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 ## Delivery order
 
 1. Tooling: MCP + Vite port + vendored skills + AGENTS note.  
-2. Board investigations (MCP-assisted): **inspect live fix**, **top-left toolbar layout**, **prompt visibility (awaited seat only)**.  
+2. Board investigations (MCP-assisted): **inspect live fix**, **top-left toolbar layout**, **prompt visibility (awaited seat only)**, **activate CannotActivate rejects**.  
 3. Board chrome: **restore permanent badges / P/T / counters / planeswalker loyalty** on bitmap layer → radial center → selection + disabled wedges → strip always-on borders → playable borders + commander/GY/exile outlines → remove dim-for-unplayable.  
-4. Outcome Scene/unit/bitmap tests + Interaction checklist (inspect, HUD, prompts, permanent chrome, radial, borders).
+4. Outcome Scene/unit/bitmap tests + Interaction checklist (inspect, HUD, prompts, activates, permanent chrome, radial, borders).
 
 ## Testing
 
@@ -140,6 +161,7 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 - Top-left toolbar: legend and sound are siblings in one flex row (not stacked absolutes); concede at top-right.
 - Pending choice for seat A: only seat A’s Scene mounts the interactive prompt; seat B and spectator do not.
 - Bitmap resting layer: summoning-sick / keyword chips, creature P/T (modified), planeswalker loyalty, +1/+1 and marked-damage badges paint; no resting name labels.
+- Listed activate with payable cost: radial commit succeeds (no `CannotActivate` toast); regression covers take_action id + payment for at least one mana activate and one non-mana activate.
 - MCP: `foldkit_list_runtimes` sees a connected tab with `just dev` + open client (manual/agent check).
 
 ## Out of scope
@@ -157,6 +179,7 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 - Top-left HUD controls are a single non-overlapping toolbar; concede remains top-right.
 - Interactive pending-choice prompts only for the awaited player (`pending_choice.player === viewer`).
 - Battlefield permanent chrome (badges, effective P/T, counters, planeswalker loyalty) matches Solid board parity on the live bitmap layer.
+- Legal activates from the radial commit successfully when costs are payable (no spurious “That ability isn't available”).
 - Radial sits on the card; selection and chrome match Arena-style playable language with commander/GY/exile outline colors as specified.
 - Always-on permanent borders and unplayable dim veil are gone.
 
@@ -166,6 +189,10 @@ DESIGN.md: add `graveyard-outline` / `exile-outline`; document playable-border v
 - https://foldkit.dev/ai/skills  
 - `client/app/board/html/activation-radial.ts`  
 - `client/app/board/geometry/radial.ts`  
+- `client/app/board/html/activation-radial.ts` / `submodel.ts` (`commitRadialIndex`)  
+- `client/app/board/action/execution.ts` (`buildTakeActionIntent`, `planCostPipeline`)  
+- `client/lib/reject.ts` / `client/lib/wire/protoMap.ts` (`takeActionValueToProto`)  
+- Engine: `Game::take_action` / `activate_ability` / `settle_payment` (`Reject::CannotActivate`)  
 - `client/app/board/bitmap/paint-cards.ts` (`paintCard` vs `paintCardArt`)  
 - `client/app/board/bitmap/mount.ts` (resting layer currently art-only)  
 - `client/app/board/geometry/layout.ts` (`pt()`, `toCard`)  
