@@ -2,8 +2,10 @@
 
 import { Story } from "foldkit";
 import { expect, test } from "vitest";
-import type { VisibleState } from "~/wire/types";
+import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
+import { worldToScreen } from "./geometry/camera";
+import { layout } from "./geometry/layout";
 import type { Message } from "./messages";
 import {
   AltDown,
@@ -23,10 +25,7 @@ import {
   RadialWedgeArmed,
   ResultSeen,
 } from "./messages";
-import { layout } from "./geometry/layout";
-import { worldToScreen } from "./geometry/camera";
 import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
-import type { ObjectView } from "~/wire/types";
 
 function twoPlayerState(): VisibleState {
   return {
