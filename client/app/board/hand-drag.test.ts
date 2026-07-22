@@ -9,7 +9,7 @@ import {
   HandDragMoved,
   HandDragStarted,
 } from "./messages";
-import { initialBoardModel, updateBoard } from "./submodel";
+import { BOARD_VIEWPORT, HAND_BAR_H, initialBoardModel, updateBoard } from "./submodel";
 
 function fold(objects: ObjectView[], actions: ActionView[]): GameFoldState {
   return {
@@ -208,8 +208,9 @@ describe("hand drag submodel", () => {
     expect(cancelled.flights.has(42)).toBe(false);
   });
 
-  it("ignores drag end below the hand-bar threshold", () => {
+  it("plays when drag ends in the hand-bar slack band", () => {
     const board = initialBoardModel();
+    const y = BOARD_VIEWPORT.height - HAND_BAR_H + 40;
     const [dragging] = updateBoard(
       board,
       HandDragStarted({
@@ -224,7 +225,28 @@ describe("hand drag submodel", () => {
       fold([bolt], [castAction]),
       "T1",
     );
-    const [next, commands] = updateBoard(dragging, HandDragEnded({ x: 400, y: 900 }), fold([bolt], [castAction]), "T1");
+    const [, commands] = updateBoard(dragging, HandDragEnded({ x: 400, y }), fold([bolt], [castAction]), "T1");
+    expect(commands).toHaveLength(1);
+  });
+
+  it("ignores drag end below the hand-bar threshold", () => {
+    const board = initialBoardModel();
+    const y = BOARD_VIEWPORT.height - 20;
+    const [dragging] = updateBoard(
+      board,
+      HandDragStarted({
+        action: castAction,
+        name: "Lightning Bolt",
+        print: "bolt-print",
+        manaCost: bolt.mana_cost,
+        kind: "instant",
+        x: 100,
+        y: 800,
+      }),
+      fold([bolt], [castAction]),
+      "T1",
+    );
+    const [next, commands] = updateBoard(dragging, HandDragEnded({ x: 400, y }), fold([bolt], [castAction]), "T1");
     expect(commands).toEqual([]);
     expect(next.handDrag).toBeNull();
   });

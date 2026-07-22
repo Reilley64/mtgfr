@@ -64,7 +64,7 @@ import {
 } from "./geometry/stackLayout";
 import { selectedRadialOptions } from "./html/activation-radial";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
-import { HAND_BAR_H } from "./html/hand";
+import { HAND_BAR_H, HAND_PLAY_SLACK_PX } from "./html/hand";
 import type { Message } from "./messages";
 import {
   type CardFlight,
@@ -1003,7 +1003,7 @@ function handActivated(
   x: number,
   y: number,
 ): BoardReturn {
-  const threshold = model.viewport.height - HAND_BAR_H;
+  const threshold = model.viewport.height - HAND_BAR_H + HAND_PLAY_SLACK_PX;
   const card = objectByAction(fold, action);
   const plan = planHandDrop(action, card, y, threshold);
   if (plan.kind === "ignore") return [model, []];

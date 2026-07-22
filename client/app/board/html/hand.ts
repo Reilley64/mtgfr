@@ -30,6 +30,8 @@ export const HAND_VISIBLE_H = 130;
 const HAND_PIP_ROW_H = 20;
 /** Height of the bottom action bar — tuck + pip row + padding (Solid HAND_BAR_H). */
 export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 12;
+/** How far into the hand bar a release may still count as play (px). */
+export const HAND_PLAY_SLACK_PX = 96;
 
 const emptyCost = (): WireCost => ({ generic: 0, colored: [0, 0, 0, 0, 0] });
 

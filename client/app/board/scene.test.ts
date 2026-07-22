@@ -21,7 +21,7 @@ import {
   RadialOptionPicked,
   StackDwellChanged,
 } from "./messages";
-import { type BoardModel, initialBoardModel, updateBoard } from "./submodel";
+import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 
 const h = html<Message>();
 
@@ -179,8 +179,13 @@ test("hand-drop planner ignores release below the hand-bar threshold", () => {
   const gameFold = fold(state({ objects: [object], actions: [action] }));
   const board = initialBoardModel();
 
-  // Drop below threshold (y > viewport - HAND_BAR_H) → ignore, no commands.
-  const [nextModel, commands] = updateBoard(board, HandActionActivated({ action, x: 400, y: 900 }), gameFold, "T1");
+  // Drop below threshold (y > viewport - HAND_BAR_H + HAND_PLAY_SLACK_PX) → ignore, no commands.
+  const [nextModel, commands] = updateBoard(
+    board,
+    HandActionActivated({ action, x: 400, y: BOARD_VIEWPORT.height - 20 }),
+    gameFold,
+    "T1",
+  );
   expect(commands).toEqual([]);
   expect(nextModel).toEqual(board);
 
