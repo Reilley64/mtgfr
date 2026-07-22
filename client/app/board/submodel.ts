@@ -1098,7 +1098,7 @@ function commitRadialIndex(model: BoardModel, fold: GameFoldState, tableId: stri
     return [cleared, boardIntentSubmit(tableId, { kind: "tap_for_mana", player: fold.state.viewer, object: id })];
   }
   const card = fold.state.objects.find((o) => o.id === id) ?? null;
-  return runAction(
+  return continueAfterCostPick(
     cleared,
     fold,
     tableId,

@@ -55976,6 +55976,21 @@ fn take_with_costs(
     }
 }
 
+fn take_with_sacrifice(player: PlayerId, id: u64, sacrifice: Vec<ObjectId>) -> Intent {
+    Intent::TakeAction {
+        player,
+        id,
+        target: None,
+        x: 0,
+        modes: vec![],
+        sacrifice,
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        attackers: vec![],
+        blocks: vec![],
+    }
+}
+
 /// The list of actions is recomputed only at the tail of a `submit`/`begin_first_turn`; a
 /// direct-API board parked at Main1 hasn't refreshed yet. Tapping a battlefield land is a mana
 /// ability — it keeps priority in Main1 — so it triggers a refresh without changing the phase. (CR 117, CR 403.5, CR 603)
@@ -56258,6 +56273,37 @@ fn take_action_cycles_a_hand_card() {
         hand_ids(&game, PlayerId(0)).len(),
         1,
         "cycling drew one card"
+    );
+}
+
+#[test]
+fn take_action_activates_viscera_seer_with_a_creature_sacrifice() {
+    let mut game = Game::new();
+    let seer = game.spawn_on_battlefield(PlayerId(0), card("Viscera Seer"));
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    game.begin_first_turn();
+
+    let id = game
+        .legal_actions()
+        .iter()
+        .find(|a| matches!(a.kind, MeaningfulAction::Activate { source, .. } if source == seer))
+        .expect("Viscera Seer activate is listed while a creature can pay the sacrifice")
+        .id;
+
+    game.submit(take_with_sacrifice(PlayerId(0), id, vec![fodder]))
+        .expect("TakeAction pays the chosen creature sacrifice");
+
+    assert_eq!(
+        game.zone_of(fodder),
+        Zone::Graveyard,
+        "the chosen creature was sacrificed as an activation cost",
+    );
+    assert!(
+        game.stack()
+            .iter()
+            .any(|entry| matches!(entry, StackEntry::Ability { source, .. } if *source == seer)),
+        "the non-mana activated ability was put on the stack",
     );
 }
 

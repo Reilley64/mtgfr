@@ -303,6 +303,10 @@ function renderStub(id: number): RenderCard {
   };
 }
 
+function intentFromCommand(cmd: unknown): unknown {
+  return (cmd as { args: { intent: unknown } }).args.intent;
+}
+
 test("pointer up on legal staged target emits SubmitIntent (target completion)", () => {
   const attacker = creature(11, 0);
   const target = creature(22, 1, { name: "Grizzly Bears" });
@@ -477,6 +481,60 @@ test("RadialOptionPicked tap_for_mana submits tap_for_mana intent", () => {
   expect(next.selectedId).toBeNull();
   expect(commands).toHaveLength(1);
   expect(commands[0]?.name).toBe(SubmitIntent.name);
+});
+
+test("RadialOptionPicked submits the selected activate action id", () => {
+  const seer = creature(5, 0, { name: "Viscera Seer" });
+  const action: ActionView = {
+    id: 91,
+    kind: "activate",
+    label: "Scry 1",
+    needs_target: false,
+    object: seer.id,
+    section: "battlefield",
+  };
+  const board: BoardModel = { ...initialBoardModel(), selectedId: seer.id };
+  const gameFold = fold(state({ objects: [seer], actions: [action], can_act: true }));
+
+  const [next, commands] = updateBoard(board, RadialOptionPicked({ index: 0 }), gameFold, "T1");
+
+  expect(next.selectedId).toBeNull();
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "take_action",
+    player: 0,
+    id: 91,
+    target: null,
+    x: 0,
+    modes: [],
+    sacrifice: [],
+    discard_cost: [],
+    graveyard_exile: [],
+  });
+});
+
+test("RadialOptionPicked opens sacrifice picker before submitting a payable activate", () => {
+  const seer = creature(5, 0, { name: "Viscera Seer" });
+  const fodder = creature(6, 0, { name: "Goat" });
+  const action: ActionView = {
+    id: 92,
+    kind: "activate",
+    label: "Sacrifice a creature: Scry 1",
+    needs_target: false,
+    object: seer.id,
+    sacrifice_choices: [fodder.id],
+    section: "battlefield",
+  };
+  const board: BoardModel = { ...initialBoardModel(), selectedId: seer.id };
+  const gameFold = fold(state({ objects: [seer, fodder], actions: [action], can_act: true }));
+
+  const [next, commands] = updateBoard(board, RadialOptionPicked({ index: 0 }), gameFold, "T1");
+
+  expect(next.selectedId).toBeNull();
+  expect(next.sacrificePick?.action).toBe(action);
+  expect(next.sacrificePick?.card?.id).toBe(seer.id);
+  expect(commands).toEqual([]);
 });
 
 test("StackDwellChanged emits a SetStackDwell command", () => {
