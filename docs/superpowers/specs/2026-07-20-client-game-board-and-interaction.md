@@ -17,7 +17,7 @@ A pure DOM approach collapses under the paint cost of rendering 300+ permanents 
 
 The board is a **dual-surface** Foldkit submodel (`client/app/board/`): a full-screen Foldkit **Canvas** paints vector battlefield layers (felt, seats, avatars, arrows, scene) while a Foldkit **Mount** bitmap layer paints card art and flights; thin **HTML** overlays handle hand tiles, the stack pile, the mana tray, priority chrome, and the inspect dock. A single camera transform (pan + zoom) is the shared source of truth for both surfaces so they stay aligned under scroll and resize.
 
-The living architecture map for this module is **[docs/client-canvas-map.md](../client-canvas-map.md)**. The module map, invariants, and paint/hit/flight/DOM ownership rules there are authoritative. This spec documents the behavior visible to players and the decisions behind it; the canvas map documents the code structure.
+The living architecture map for this module is **[docs/client-canvas-map.md](../client-canvas-map.md)**. The module map, invariants, and **authoritative board layer stack** (bottom→top paint/DOM order) there are the source of truth for z-index and paint order. This spec documents the behavior visible to players and the decisions behind it; the canvas map documents the code structure.
 
 ---
 
@@ -84,7 +84,7 @@ Flights paint **above** resting cards in the draw order. `flightOwnedIds` is exp
 
 ### DOM hand bar (`components/molecules/hand.tsx`)
 
-The hand bar is a DOM overlay anchored at the bottom of the viewport. Each card face is a full MTGA-sized tile (`HAND_CARD_W` from `HAND_FACE_W`), offset into a dense fan (up to ±10° tilt, center rises). Cast-cost pips sit above each face. A zone-group ordering matches Arena: command → hand → graveyard → exile, separated by aura color gaps (no section captions). Dragging a card above `HAND_BAR_H` (the play threshold) constitutes a drop; releasing below snaps back. `hiddenId` suppresses the face while a flight owns it. The hand suppresses entirely for spectators and eliminated players.
+The hand bar is a DOM overlay anchored at the bottom of the viewport. Each card face is a full MTGA-sized tile (`HAND_CARD_W` from `HAND_FACE_W`), offset into a dense fan (up to ±10° tilt, center rises). Cast-cost pips sit above each face. A zone-group ordering matches Arena: command → hand → graveyard → exile, separated by aura color gaps (no section captions). Dragging a card above the play threshold — clearance measured as `HAND_BAR_H - HAND_PLAY_SLACK_PX` above the hand bar — constitutes a drop; releasing below snaps back. `hiddenId` suppresses the face while a flight owns it. The hand suppresses entirely for spectators and eliminated players.
 
 ### Stack overlay (`components/organisms/stack-overlay.tsx`)
 
@@ -127,13 +127,15 @@ Selecting your battlefield permanent opens a **continuous SVG donut** of legal o
 on the same wedge (slide-off cancels; outside/hole dismisses). Screen center + zoom are
 frozen while open. Empty option lists do not show a hollow ring.
 
-### Inspect dock (client-game-board-and-interaction spec, `lib/inspect.ts`, `components/molecules/card-preview.tsx`)
+### Inspect dock (client-game-board-and-interaction spec, `lib/inspect.ts`, `lib/deck-builder/card-hover-preview.ts`)
 
-Alt-down over a face-up card pins it into the left inspect dock with a full-board dim scrim (modal: board/HUD clicks blocked). `InspectPin` carries `{ name, prepared, objectId?, cardId?, print? }`. The dock shows:
+Board inspect uses the shared card-preview **`dock`** mode (same module as deck-builder hover; `mode: "follow" | "dock"`). Alt-down over a face-up card pins it with a full-board dim **backdrop** (modal: board/HUD clicks blocked). `InspectPin` carries `{ name, prepared, objectId?, cardId?, print? }`. Layout:
 
-- Full card art with DFC flip for prepared permanents (opens on the play face — back when `prepared`).
-- Oracle text with inline mana pips.
-- A **modifier ledger** for battlefield permanents: continuous mods re-derived live from the snapshot, timed/stateful mods recorded by `source_name`. Contributions grouped by source card def name; each name is an underlined link that pushes that def onto the inspect **history stack**. Back control pops. Marked damage is out of scope.
+- **Left:** card art with DFC flip for prepared permanents (opens on the play face — back when `prepared`).
+- **Right:** oracle text with inline mana pips; for battlefield permanents, **modifier ledger / effects** in that column.
+- **Topmost** in the board layer stack (layer 10) — above prompts, HUD, and system modals while pinned.
+
+Modifier ledger: continuous mods re-derived live from the snapshot, timed/stateful mods recorded by `source_name`. Contributions grouped by source card def name; each name is an underlined link that pushes that def onto the inspect **history stack**. Back control pops. Marked damage is out of scope.
 
 Releasing Alt or pressing Esc dismisses. Space is blocked while the dock is open.
 

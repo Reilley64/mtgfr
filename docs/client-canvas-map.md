@@ -44,7 +44,33 @@ overall module split.
 ## Invariants (do not break)
 
 1. **Hits use logical layout**, never tweened/`drawnCards` paint positions.
-2. **Paint order:** felt → seats → resting cards (canvas + Mount bitmap) → avatars → arrows → flights on top.
+2. **Board layer stack (authoritative):** bottom → top paint/DOM order is fixed below. New board visuals must declare which layer they join; no ad-hoc `z-*` without updating this map.
+
+   **Bottom → top:**
+
+   | # | Layer | Surface | Contents |
+   |---|--------|---------|----------|
+   | 1 | Felt / seats | Canvas vector | Table, seat bands |
+   | 2 | Zone furniture | Canvas / world DOM | Avatar **paint**, library, command zone, **battlefield in-play mana** (left under your seat), GY, exile |
+   | 3 | Resting battlefield permanents | Mount bitmap (+ card chrome) | Battlefield faces |
+   | 4 | Arrows | Canvas | Committed attack/block, **declare-attackers drag aim**, spell aim — always above resting permanents |
+   | 5 | Hand / stack / spell mana | HTML | Resting hand & stack; **spell/payment mana tray** (same layer as hand, above hand cards) |
+   | 6 | Flights | Mount / motion | In-flight play cards — **above** hand and stack |
+   | 7 | Combat / life hit targets | HTML | Interactive orbs when needed (paint stays in layer 2; hits here) |
+   | 8 | Prompts / choice UI | HTML | `pending_choice` and related |
+   | 9 | Turn HUD | HTML | Phase track, Next / End Turn, discoverability |
+   | 10 | Inspect dock | HTML | Mode `dock` + backdrop — **topmost** |
+
+   **Layer rules:**
+
+   1. **Avatar paint** stays in layer 2 with **clear bands** packing must not cover; **orb hits** stay in layer 7.
+   2. **Two mana surfaces:** battlefield in-play mana (layer 2) vs spell/payment mana tray on the hand layer (5).
+   3. No resting permanent paint or DOM card face may sit above layer 4 while combat/spell arrows are active. Declare-drag arrows use the **same arrow layer** as committed arrows.
+   4. Flights paint above hand/stack (layer 6 over 5).
+   5. Prompts (8) above combat/life hits (7).
+   6. Inspect (10) above everything else on the board, including system modals, while pinned.
+   7. Under-card name labels are forbidden on resting permanents (not a separate layer — deleted).
+
 3. **Flight ownership:** while a flight owns an id, suppress duplicate HTML entrances and hide the resting face (`hideCardIds` / `flightOwnedIds`).
 4. **Hand/stack rest as HTML;** battlefield + zone piles + flights are canvas/Mount. Do not merge into one scene graph.
 5. **Canvas colors** are hex literals (see DESIGN.md); keep the legend swatches in sync when changing badge/outline colors.
