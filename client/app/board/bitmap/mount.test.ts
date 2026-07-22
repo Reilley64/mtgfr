@@ -1,0 +1,300 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PlayerView } from "~/wire/types";
+import type { RenderCard } from "../geometry/layout";
+import { ZONE } from "../geometry/layout";
+import { spawnFlight } from "../motion/flights";
+import { bitmapFrameNeedsRaf, paintBitmapLayer } from "./mount";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+function player(overrides: Partial<PlayerView> = {}): PlayerView {
+  return {
+    commander_tax: 0,
+    hand_count: 7,
+    library_count: 80,
+    life: 40,
+    lost: false,
+    mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+    player: 0,
+    username: "Alice",
+    ...overrides,
+  };
+}
+
+function card(overrides: Partial<RenderCard> = {}): RenderCard {
+  return {
+    cardId: "card",
+    cluster: 0,
+    clusterMembers: [],
+    controller: 0,
+    counters: 0,
+    faceDown: false,
+    fanAngle: 0,
+    goaded: false,
+    h: 134,
+    hasHaste: false,
+    id: 1,
+    isCommander: false,
+    keywords: [],
+    kind: "creature",
+    markedDamage: 0,
+    name: "Grizzly Bears",
+    owner: 0,
+    pile: 0,
+    prepared: false,
+    print: "resting-print",
+    pt: "2/2",
+    summoningSick: false,
+    tapped: false,
+    tapsForMana: false,
+    w: 96,
+    x: 10,
+    y: 20,
+    zone: ZONE.Battlefield,
+    ...overrides,
+  };
+}
+
+function mockCtx(calls: string[]): CanvasRenderingContext2D {
+  return {
+    arc: vi.fn(() => calls.push("avatar")),
+    beginPath: vi.fn(),
+    clearRect: vi.fn(() => calls.push("clear")),
+    clip: vi.fn(),
+    closePath: vi.fn(),
+    drawImage: vi.fn((image: { label?: string }) => calls.push(`image:${image.label ?? "unknown"}`)),
+    fill: vi.fn(),
+    fillText: vi.fn(),
+    lineTo: vi.fn(),
+    measureText: vi.fn(() => ({ width: 0 })),
+    moveTo: vi.fn(),
+    quadraticCurveTo: vi.fn(() => calls.push("arrow")),
+    restore: vi.fn(),
+    rotate: vi.fn(),
+    roundRect: vi.fn(),
+    save: vi.fn(),
+    setLineDash: vi.fn((dash: number[]) => {
+      if (dash.join(",") === "2,6") calls.push("target-highlight");
+    }),
+    setTransform: vi.fn(),
+    stroke: vi.fn(() => calls.push("stroke")),
+    strokeText: vi.fn(),
+    translate: vi.fn(),
+  } as unknown as CanvasRenderingContext2D;
+}
+
+describe("paintBitmapLayer", () => {
+  it("layers resting art below avatars, arrows, and flights", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const image = (label: string) => ({ label }) as unknown as HTMLImageElement;
+    const cache = {
+      get: vi.fn((url: string) => {
+        if (url.includes("resting-print")) return image("resting");
+        if (url.includes("flight-print")) return image("flight");
+        return undefined;
+      }),
+    };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card()],
+        viewer: 0,
+        players: [player(), player({ player: 1, username: "Bob" })],
+        priority: 0,
+        combat: {
+          attackers: [{ attacker: 1, defender: 1 }],
+          blocks: [],
+          attackers_declared: true,
+          blockers_declared: [],
+        },
+        flights: [
+          spawnFlight({
+            id: 99,
+            kind: "battlefield",
+            name: "Flight",
+            print: "flight-print",
+            scale: 1,
+            targetScale: 1,
+            targetX: 200,
+            targetY: 200,
+            x: 100,
+            y: 100,
+          }),
+        ],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        targetPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls.indexOf("image:resting")).toBeGreaterThan(calls.indexOf("clear"));
+    expect(calls.indexOf("avatar")).toBeGreaterThan(calls.indexOf("image:resting"));
+    expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
+    expect(calls.indexOf("image:flight")).toBeGreaterThan(calls.indexOf("arrow"));
+  });
+
+  it("paints a combat drag arrow while dragging a creature", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const cache = { get: vi.fn(() => undefined) };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card()],
+        viewer: 0,
+        players: [player()],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        targetPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: { x: 100, y: 100 },
+        combatDragStroke: "#ff6b6b",
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls.some((call) => call === "arrow")).toBe(true);
+  });
+
+  it("paints auto-tap glyphs on previewed lands", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const ctx = mockCtx(calls);
+    const strokeText = vi.fn(() => calls.push("auto-tap-glyph"));
+    Object.assign(ctx, { strokeText });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => ctx),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const cache = { get: vi.fn(() => undefined) };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card({ id: 5, kind: "land", pt: "" })],
+        viewer: 0,
+        players: [player()],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        targetPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set([5]),
+      },
+      cache,
+    );
+
+    expect(calls).toContain("auto-tap-glyph");
+  });
+
+  it("paints target highlights and an aim arrow while staged spell targeting", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const cache = { get: vi.fn(() => undefined) };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 1440,
+        height: 900,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card({ id: 22 }), card({ id: 99, x: 200, y: 200, name: "Forest", kind: "land", pt: "" })],
+        viewer: 0,
+        players: [player()],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set([22]),
+        targetPlayers: new Set<number>(),
+        aimFrom: { x: 1300, y: 450 },
+        cursor: { x: 500, y: 300 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls.some((call) => call === "target-highlight")).toBe(true);
+    expect(calls.filter((call) => call === "stroke").length).toBeGreaterThan(0);
+    expect(calls.indexOf("target-highlight")).toBeGreaterThan(calls.indexOf("image:unknown"));
+  });
+});
+
+describe("bitmapFrameNeedsRaf", () => {
+  it("idles while no bitmap animation is active", () => {
+    expect(bitmapFrameNeedsRaf({ flights: [] })).toBe(false);
+  });
+
+  it("requests frames while flights are active", () => {
+    expect(
+      bitmapFrameNeedsRaf({
+        flights: [
+          spawnFlight({
+            id: 1,
+            kind: "battlefield",
+            name: "",
+            print: "",
+            scale: 1,
+            targetScale: 1,
+            targetX: 0,
+            targetY: 0,
+            x: 0,
+            y: 0,
+          }),
+        ],
+      }),
+    ).toBe(true);
+  });
+});

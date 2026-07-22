@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!!**/dist", "!src/wire/generated", "!src/mana-oracle.css"]
+    "includes": ["**", "!!**/dist", "!lib/wire/generated", "!styles/mana-oracle.css"]
   },
   "formatter": {
     "enabled": true,
@@ -17,7 +17,6 @@
   "linter": {
     "enabled": true,
     "domains": {
-      "solid": "recommended",
       "test": "recommended"
     },
     "rules": {

@@ -1,0 +1,82 @@
+import { describe, expect, it, vi } from "vitest";
+import type { RenderCard } from "../geometry/layout";
+import { ZONE } from "../geometry/layout";
+import { paintCard, paintCardTargetHighlight, TARGET_COLOR } from "./paint-cards";
+
+function card(overrides: Partial<RenderCard> = {}): RenderCard {
+  return {
+    cardId: "card",
+    cluster: 0,
+    clusterMembers: [],
+    controller: 0,
+    counters: 0,
+    faceDown: false,
+    fanAngle: 0,
+    goaded: false,
+    h: 134,
+    hasHaste: false,
+    id: 1,
+    isCommander: false,
+    keywords: [],
+    kind: "creature",
+    markedDamage: 0,
+    name: "Grizzly Bears",
+    owner: 0,
+    pile: 0,
+    prepared: false,
+    print: "print-id",
+    pt: "2/2",
+    summoningSick: false,
+    tapped: false,
+    tapsForMana: false,
+    w: 96,
+    x: 10,
+    y: 20,
+    zone: ZONE.Battlefield,
+    ...overrides,
+  };
+}
+
+function mockCtx(): CanvasRenderingContext2D {
+  return {
+    arc: vi.fn(),
+    beginPath: vi.fn(),
+    clip: vi.fn(),
+    drawImage: vi.fn(),
+    fill: vi.fn(),
+    fillText: vi.fn(),
+    measureText: vi.fn(() => ({ width: 0 })),
+    restore: vi.fn(),
+    rotate: vi.fn(),
+    roundRect: vi.fn(),
+    save: vi.fn(),
+    setLineDash: vi.fn(),
+    stroke: vi.fn(),
+    strokeText: vi.fn(),
+    translate: vi.fn(),
+  } as unknown as CanvasRenderingContext2D;
+}
+
+describe("paintCardTargetHighlight", () => {
+  it("strokes a dashed glow around the card footprint", () => {
+    const ctx = mockCtx();
+
+    paintCardTargetHighlight(ctx, { panX: 0, panY: 0, zoom: 1 }, card(), 0);
+
+    expect(ctx.shadowColor).toBe(TARGET_COLOR);
+    expect(ctx.stroke).toHaveBeenCalled();
+    expect(ctx.setLineDash).toHaveBeenCalledWith([2, 6]);
+  });
+});
+
+describe("paintCard", () => {
+  it("draws the cached print image", () => {
+    const ctx = mockCtx();
+    const image = {} as HTMLImageElement;
+    const cache = { get: vi.fn(() => image) };
+
+    paintCard(ctx, { panX: 0, panY: 0, zoom: 1 }, card(), cache, 0);
+
+    expect(ctx.drawImage).toHaveBeenCalledWith(image, 10, 20, 96, 134);
+  });
+});

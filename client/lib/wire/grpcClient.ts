@@ -1,0 +1,481 @@
+// Server-only gRPC client for the BFF. Do not import from the browser bundle.
+// Channels/runtimes are cached per base URL.
+//
+// Trace parenting: the gRPC ManagedRuntime is separate from the OTEL runtime.
+// Effect parent spans live in fiber Context and do NOT survive
+// `ManagedRuntime.runPromise` into this client — always pass `outboundTraceparent`
+// explicitly (see production-topology-and-operations spec). Do not reintroduce Node ALS for this.
+
+import { GrpcClientProtocol, type GrpcStatusCode, GrpcStatusError } from "@effect-grpc/effect-grpc";
+import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
+import * as Layer from "effect/Layer";
+import * as ManagedRuntime from "effect/ManagedRuntime";
+import * as Stream from "effect/Stream";
+import {
+  AuthClient,
+  AuthClientLayer,
+  AuthGrpcRegistry,
+  CardsClient,
+  CardsClientLayer,
+  CardsGrpcRegistry,
+  DecksClient,
+  DecksClientLayer,
+  DecksGrpcRegistry,
+  GameClient,
+  GameClientLayer,
+  GameGrpcRegistry,
+  type Me as ProtoMe,
+  TablesClient,
+  TablesClientLayer,
+  TablesGrpcRegistry,
+} from "./generated/mtgfr/v1/mtgfr_effect_grpc";
+import {
+  catalogCardsFromProto,
+  deckDetailFromProto,
+  deckSummaryListFromProto,
+  intentEnvelopeToProto,
+  saveDeckToProto,
+  seedRequestToProto,
+  seedResponseFromProto,
+  streamFrameFromProto,
+} from "./protoMap";
+import type {
+  Ack,
+  CatalogCard,
+  DeckDetail,
+  IntentEnvelope,
+  Me,
+  SaveDeckRequest,
+  SeedRequest,
+  SeedResponse,
+  StreamFrame,
+} from "./types";
+
+export const SESSION_METADATA_KEY = "x-session-token";
+export const TRACEPARENT_METADATA_KEY = "traceparent";
+
+/**
+ * Per-request bag for every BFF → API gRPC call.
+ * Capture once at the HTTP edge (`currentTraceparent` under `runTracedRequest`);
+ * pass the same object into lobby helpers and `dispatchRpc`.
+ */
+export type GrpcRequestEnv = {
+  readonly sessionToken: string | null;
+  readonly traceparent: string | null;
+};
+
+const AllGrpcRegistry = new Map([
+  ...AuthGrpcRegistry,
+  ...DecksGrpcRegistry,
+  ...CardsGrpcRegistry,
+  ...GameGrpcRegistry,
+  ...TablesGrpcRegistry,
+]);
+
+function meFromProto(me: ProtoMe): Me {
+  return { id: Number(me.id), email: me.email, username: me.username };
+}
+
+/** Build gRPC call metadata: session cookie token + optional W3C traceparent. */
+export function callOpts(sessionToken: string | null, traceparent: string | null) {
+  const metadata: Array<readonly [string, string]> = [];
+  if (sessionToken) metadata.push([SESSION_METADATA_KEY, sessionToken]);
+  if (traceparent) metadata.push([TRACEPARENT_METADATA_KEY, traceparent]);
+  if (metadata.length === 0) return undefined;
+  return { metadata };
+}
+
+export class GrpcCallError extends Error {
+  readonly code: GrpcStatusCode.GrpcStatusCode;
+  constructor(code: GrpcStatusCode.GrpcStatusCode, message: string) {
+    super(message);
+    this.name = "GrpcCallError";
+    this.code = code;
+  }
+}
+
+/** Map transport / Effect failures to `GrpcCallError`. Idempotent — the game stream path runs
+ * `Stream.mapError(toCallError)` and then `Effect.catch(… toCallError)` on the same failure; a
+ * second wrap used to turn `unavailable` into `unknown` and the SSE connect into a bare 500. */
+export function toCallError(err: unknown): GrpcCallError {
+  if (err instanceof GrpcCallError) return err;
+  if (err instanceof GrpcStatusError.GrpcStatusError) {
+    return new GrpcCallError(err.code, err.message);
+  }
+  return new GrpcCallError("unknown", err instanceof Error ? err.message : String(err));
+}
+
+/** Normalize `host:port` or `http(s)://…` to the `http://host:port` baseUrl effect-grpc expects. */
+export function grpcBaseUrl(address: string): string {
+  if (address.startsWith("http://") || address.startsWith("https://")) {
+    return address.replace(/\/$/, "");
+  }
+  return `http://${address}`;
+}
+
+type Clients = AuthClient | DecksClient | CardsClient | GameClient | TablesClient;
+
+type GrpcRuntime = ManagedRuntime.ManagedRuntime<Clients, never>;
+
+const runtimeCache = new Map<string, GrpcRuntime>();
+
+function runtimeFor(address: string): GrpcRuntime {
+  const baseUrl = grpcBaseUrl(address);
+  const cached = runtimeCache.get(baseUrl);
+  if (cached) return cached;
+
+  const protocol = GrpcClientProtocol.layer({
+    baseUrl,
+    registry: AllGrpcRegistry,
+  });
+  const clients = Layer.mergeAll(
+    AuthClientLayer,
+    DecksClientLayer,
+    CardsClientLayer,
+    GameClientLayer,
+    TablesClientLayer,
+  ).pipe(Layer.provide(protocol));
+
+  const runtime = ManagedRuntime.make(clients) as GrpcRuntime;
+  runtimeCache.set(baseUrl, runtime);
+  return runtime;
+}
+
+function run<A>(address: string, effect: Effect.Effect<A, unknown, Clients>): Promise<A> {
+  return runtimeFor(address)
+    .runPromise(effect)
+    .catch((err: unknown) => {
+      throw toCallError(err);
+    });
+}
+
+export interface GrpcClient {
+  auth: {
+    signup(
+      req: { email: string; password: string; username: string },
+      sessionToken: string | null,
+    ): Promise<{ me: Me; sessionToken: string }>;
+    login(
+      req: { email: string; password: string },
+      sessionToken: string | null,
+    ): Promise<{ me: Me; sessionToken: string }>;
+    logout(sessionToken: string | null): Promise<void>;
+    getMe(sessionToken: string | null): Promise<Me>;
+  };
+  decks: {
+    create(req: SaveDeckRequest, sessionToken: string | null): Promise<DeckDetail>;
+    list(
+      sessionToken: string | null,
+    ): Promise<Array<{ commander: string; commander_print?: string; id: number; name: string }>>;
+    get(id: number, sessionToken: string | null): Promise<DeckDetail>;
+    update(id: number, req: SaveDeckRequest, sessionToken: string | null): Promise<DeckDetail>;
+    delete(id: number, sessionToken: string | null): Promise<void>;
+  };
+  cards: {
+    catalog(): Promise<Array<CatalogCard>>;
+    search(q: string, limit: number, offset: number): Promise<Array<CatalogCard>>;
+    lookup(ids: Array<string>): Promise<Array<CatalogCard>>;
+  };
+  game: {
+    submitIntent(tableId: string, envelope: IntentEnvelope, sessionToken: string | null): Promise<Ack>;
+    setYield(tableId: string, enabled: boolean, sessionToken: string | null): Promise<Ack>;
+    setTurnYield(tableId: string, enabled: boolean, sessionToken: string | null): Promise<Ack>;
+    setStackDwell(tableId: string, dwelling: boolean, sessionToken: string | null): Promise<Ack>;
+    stream(tableId: string, sessionToken: string | null): AsyncIterable<StreamFrame>;
+  };
+  tables: {
+    seed(req: SeedRequest, sessionToken: string | null): Promise<SeedResponse>;
+  };
+}
+
+const clientCache = new Map<string, GrpcClient>();
+
+/**
+ * gRPC client for one request. Parenting comes from `env.traceparent` (BFF span),
+ * never from ambient context — the gRPC ManagedRuntime is separate from OTEL (production-topology-and-operations spec).
+ */
+export function grpcClientFor(address: string, env: GrpcRequestEnv): GrpcClient {
+  return grpcClient(address, env.traceparent);
+}
+
+/**
+ * @param outboundTraceparent BFF span `traceparent` for every call on this client.
+ *   Prefer `grpcClientFor(address, env)` at call sites.
+ */
+export function grpcClient(address: string, outboundTraceparent: string | null = null): GrpcClient {
+  const key = grpcBaseUrl(address);
+  // Per-request traceparent must not be shared across concurrent callers via the address cache.
+  if (outboundTraceparent === null) {
+    const cached = clientCache.get(key);
+    if (cached) return cached;
+  }
+
+  const opts = (sessionToken: string | null) => callOpts(sessionToken, outboundTraceparent);
+
+  const client: GrpcClient = {
+    auth: {
+      signup: (req, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const auth = yield* AuthClient;
+            const res = yield* auth.signup(req, opts(sessionToken));
+            if (!res.me) throw new Error("AuthSession missing me");
+            return { me: meFromProto(res.me), sessionToken: res.sessionToken };
+          }),
+        ),
+      login: (req, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const auth = yield* AuthClient;
+            const res = yield* auth.login(req, opts(sessionToken));
+            if (!res.me) throw new Error("AuthSession missing me");
+            return { me: meFromProto(res.me), sessionToken: res.sessionToken };
+          }),
+        ),
+      logout: (sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const auth = yield* AuthClient;
+            yield* auth.logout({}, opts(sessionToken));
+          }),
+        ),
+      getMe: (sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const auth = yield* AuthClient;
+            return meFromProto(yield* auth.getMe({}, opts(sessionToken)));
+          }),
+        ),
+    },
+    decks: {
+      create: (req, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const decks = yield* DecksClient;
+            const deck = yield* decks.create(saveDeckToProto(req), opts(sessionToken));
+            return deckDetailFromProto(deck);
+          }),
+        ),
+      list: (sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const decks = yield* DecksClient;
+            const res = yield* decks.list({}, opts(sessionToken));
+            return deckSummaryListFromProto(res.decks);
+          }),
+        ),
+      get: (id, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const decks = yield* DecksClient;
+            const deck = yield* decks.get({ id: BigInt(id) }, opts(sessionToken));
+            return deckDetailFromProto(deck);
+          }),
+        ),
+      update: (id, req, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const decks = yield* DecksClient;
+            const deck = yield* decks.update({ id: BigInt(id), request: saveDeckToProto(req) }, opts(sessionToken));
+            return deckDetailFromProto(deck);
+          }),
+        ),
+      delete: (id, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const decks = yield* DecksClient;
+            yield* decks.delete({ id: BigInt(id) }, opts(sessionToken));
+          }),
+        ),
+    },
+    cards: {
+      catalog: () =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const cards = yield* CardsClient;
+            const res = yield* cards.catalog({}, opts(null));
+            return catalogCardsFromProto(res.cards);
+          }),
+        ),
+      search: (q, limit, offset) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const cards = yield* CardsClient;
+            const res = yield* cards.search({ q, limit, offset }, opts(null));
+            return catalogCardsFromProto(res.cards);
+          }),
+        ),
+      lookup: (ids) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const cards = yield* CardsClient;
+            const res = yield* cards.lookup({ ids }, opts(null));
+            return catalogCardsFromProto(res.cards);
+          }),
+        ),
+    },
+    game: {
+      submitIntent: (tableId, envelope, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const game = yield* GameClient;
+            return yield* game.submitIntent({ tableId, envelope: intentEnvelopeToProto(envelope) }, opts(sessionToken));
+          }),
+        ),
+      setYield: (tableId, enabled, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const game = yield* GameClient;
+            return yield* game.setYield({ tableId, enabled }, opts(sessionToken));
+          }),
+        ),
+      setTurnYield: (tableId, enabled, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const game = yield* GameClient;
+            return yield* game.setTurnYield({ tableId, enabled }, opts(sessionToken));
+          }),
+        ),
+      setStackDwell: (tableId, dwelling, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const game = yield* GameClient;
+            return yield* game.setStackDwell({ tableId, dwelling }, opts(sessionToken));
+          }),
+        ),
+      stream(tableId, sessionToken) {
+        // Capture metadata now — the stream fiber starts later (first `next()`).
+        const capturedOpts = opts(sessionToken);
+        // Pump the Effect stream into a buffer on a forked fiber so `return()` (SSE cancel /
+        // reconnect) can `Fiber.interrupt` and tear down the upstream tonic subscription —
+        // `Stream.toAsyncIterableEffect` alone does not interrupt when the consumer stops.
+        const runtime = runtimeFor(key);
+        let fiber: Fiber.Fiber<void, never> | undefined;
+        const buffer: StreamFrame[] = [];
+        const waiters: Array<{
+          resolve: (result: IteratorResult<StreamFrame>) => void;
+          reject: (err: unknown) => void;
+        }> = [];
+        let ended = false;
+        let failure: unknown;
+
+        const deliver = (result: IteratorResult<StreamFrame>) => {
+          const waiter = waiters.shift();
+          if (waiter) {
+            waiter.resolve(result);
+            return;
+          }
+          if (!result.done && result.value !== undefined) buffer.push(result.value);
+        };
+
+        const fail = (err: unknown) => {
+          failure = err;
+          ended = true;
+          while (waiters.length > 0) {
+            waiters.shift()?.reject(err);
+          }
+        };
+
+        const finish = () => {
+          ended = true;
+          while (waiters.length > 0) {
+            waiters.shift()?.resolve({ done: true, value: undefined });
+          }
+        };
+
+        const startFiber = () => {
+          fiber = runtime.runFork(
+            Effect.gen(function* () {
+              const game = yield* GameClient;
+              yield* game.stream({ tableId }, capturedOpts).pipe(
+                Stream.map((msg) => streamFrameFromProto(msg)),
+                Stream.mapError(toCallError),
+                Stream.runForEach((frame) => Effect.sync(() => deliver({ done: false, value: frame }))),
+              );
+            }).pipe(
+              Effect.catch((err) => Effect.sync(() => fail(toCallError(err)))),
+              Effect.ensuring(Effect.sync(finish)),
+            ) as Effect.Effect<void, never, Clients>,
+          );
+        };
+
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              async next(): Promise<IteratorResult<StreamFrame>> {
+                if (!fiber) startFiber();
+                const buffered = buffer.shift();
+                if (buffered) return { done: false, value: buffered };
+                if (failure) throw failure;
+                if (ended) return { done: true, value: undefined };
+                return new Promise<IteratorResult<StreamFrame>>((resolve, reject) => {
+                  waiters.push({ resolve, reject });
+                });
+              },
+              async return(): Promise<IteratorResult<StreamFrame>> {
+                if (fiber) {
+                  await runtime.runPromise(Fiber.interrupt(fiber));
+                  fiber = undefined;
+                }
+                ended = true;
+                return { done: true, value: undefined };
+              },
+            };
+          },
+        };
+      },
+    },
+    tables: {
+      seed: (req, sessionToken) =>
+        run(
+          key,
+          Effect.gen(function* () {
+            const tables = yield* TablesClient;
+            const response = yield* tables.seed(seedRequestToProto(req), opts(sessionToken));
+            return seedResponseFromProto(response);
+          }),
+        ),
+    },
+  };
+
+  if (outboundTraceparent === null) clientCache.set(key, client);
+  return client;
+}
+
+export function httpStatusOf(code: GrpcStatusCode.GrpcStatusCode): number {
+  switch (code) {
+    case "ok":
+      return 200;
+    case "invalid_argument":
+      return 422;
+    case "unauthenticated":
+      return 401;
+    case "permission_denied":
+      return 403;
+    case "not_found":
+      return 404;
+    case "already_exists":
+      return 409;
+    case "unavailable":
+      return 503;
+    default:
+      return 500;
+  }
+}
