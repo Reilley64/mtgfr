@@ -4,7 +4,7 @@ description: Audit an existing Foldkit program against the architecture, convent
 argument-hint: '[optional: path or focus area like a11y/effects/naming/decomposition/forms/routing/subscriptions/submodels/types/testing]'
 ---
 
-Audit an existing Foldkit program against the same bar `generate-program` targets: this code should be **indistinguishable in quality from hand-written code in `packages/typing-game/client/src/` or `packages/website/src/`**. Not "works." Not "structurally valid." Typing-game quality.
+Audit an existing Foldkit program against the same bar `generate-program` targets: this code should be **indistinguishable in quality from hand-written code in upstream [foldkit/foldkit `packages/typing-game/client/src/`](https://github.com/foldkit/foldkit/tree/main/packages/typing-game/client/src) or [`packages/website/src/`](https://github.com/foldkit/foldkit/tree/main/packages/website/src)**. Not "works." Not "structurally valid." Typing-game quality.
 
 > **Recommended setup:** grade against the snapshots in `generate-program/architecture.md` and `conventions.md`, then compare live code in `client/app/` (this project's Foldkit app) and API surfaces in `client/node_modules/foldkit/dist/`. Upstream exemplars (`examples/`, `packages/typing-game/`, `packages/website/`) are in [foldkit/foldkit](https://github.com/foldkit/foldkit) if you need additional tier-matching references. Do **not** add a Foldkit git subtree to this repo.
 
@@ -23,9 +23,9 @@ The audit's job is to surface findings the user can act on, not to act on them s
 
 Resolve `$ARGUMENTS`:
 
-- Empty → audit `src/` end-to-end against every dimension
+- Empty → audit `client/app/` end-to-end against every dimension
 - A path (file or directory) → narrow to that path, every dimension
-- A focus area (`a11y`, `effects`, `naming`, `decomposition`, `forms`, `routing`, `subscriptions`, `submodels`, `types`, `testing`) → audit `src/` along that dimension only
+- A focus area (`a11y`, `effects`, `naming`, `decomposition`, `forms`, `routing`, `subscriptions`, `submodels`, `types`, `testing`) → audit `client/app/` along that dimension only
 - A path AND a focus → narrow on both axes
 
 If the argument is ambiguous (could be a path OR a focus), ask which. Don't guess.
@@ -34,7 +34,7 @@ If the argument is ambiguous (could be a path OR a focus), ask which. Don't gues
 
 Sketch the audit plan in one sentence and confirm before reading code:
 
-> "I'll audit `src/page/room/` for naming, decomposition, and Effect-TS idiom consistency, comparing against typing-game's room page. Sound right?"
+> "I'll audit `client/app/board/` for naming, decomposition, and Effect-TS idiom consistency, comparing against upstream typing-game's room page. Sound right?"
 
 Skip this confirmation only when the scope is unambiguous (single file, single focus). For everything else, the sketch is cheap and the user can redirect before you spend cycles on the wrong target.
 
@@ -188,8 +188,8 @@ handlers that should be extracted, native methods instead of Effect
 modules in pipes, views that should be decomposed, branch keys or
 key-only wrapper elements that view identity makes redundant, etc. Should fix.
 Each item: `path/to/file.ts:line: <the gap>. Idiomatic version: <what to write>`.
-Cite the exemplar when relevant: "typing-game does this as X at
-page/home/update/handleKeyPressed.ts:33-40".
+Cite the exemplar when relevant: "upstream typing-game does this as X at
+github.com/foldkit/foldkit/packages/typing-game/client/src/page/home/update/handleKeyPressed.ts:33-40".
 If none: write `None.`
 
 ## NICE-TO-HAVE
