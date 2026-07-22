@@ -829,6 +829,63 @@ function ensureXPrompt(
   };
 }
 
+/** Solid `spawnFromHand` / `seedDrop`: hide the bar tile immediately and fly from the drop point. */
+function seedDropFromHand(
+  model: BoardModel,
+  card: ObjectView,
+  screenOrigin: Vec,
+  kind: "battlefield" | "stack",
+): BoardModel {
+  const flights = new Map(model.flights);
+  const handHidden = new Set(model.handHidden);
+  const startScale = handFlightScale(model.camera.zoom);
+  const stackAim = stackTarget(model);
+  const targetX = kind === "stack" ? stackAim.x : screenOrigin.x;
+  const targetY = kind === "stack" ? stackAim.y : screenOrigin.y;
+  const targetScale = kind === "stack" ? stackFlightScale(model.camera.zoom) : 1;
+  flights.set(
+    card.id,
+    spawnFlight({
+      id: card.id,
+      print: card.print ?? "",
+      name: card.name,
+      x: screenOrigin.x,
+      y: screenOrigin.y,
+      scale: startScale,
+      targetX,
+      targetY,
+      targetScale,
+      kind,
+      fromCardId: card.id,
+    }),
+  );
+  handHidden.add(card.id);
+  return {
+    ...model,
+    flights,
+    handHidden,
+    hideCardIds: flyingCardIds(flights),
+    ownedIds: new Set(flights.keys()),
+  };
+}
+
+/** Solid `clearPlayOrigin`: drop a seeded flight so cancel doesn't race the return animation. */
+function clearPlayOrigin(model: BoardModel, cardId: number): BoardModel {
+  const flights = new Map(model.flights);
+  for (const [id, flight] of model.flights) {
+    if (id === cardId || flight.fromCardId === cardId) flights.delete(id);
+  }
+  const handHidden = new Set(model.handHidden);
+  handHidden.delete(cardId);
+  return {
+    ...model,
+    flights,
+    handHidden,
+    hideCardIds: flyingCardIds(flights),
+    ownedIds: new Set(flights.keys()),
+  };
+}
+
 function runAction(
   model: BoardModel,
   fold: GameFoldState,
@@ -845,9 +902,10 @@ function runAction(
     return [{ ...model, reject: humanReason(plan.reason) }, []];
   }
   if (plan.kind === "stage") {
+    const seeded = seedDropFromHand(model, plan.card, screenOrigin, "stack");
     return [
       {
-        ...model,
+        ...seeded,
         staged: {
           card: plan.card,
           action: plan.action,
@@ -861,12 +919,14 @@ function runAction(
     ];
   }
   if (plan.kind === "play-land") {
-    return [model, boardIntentSubmit(tableId, takeAction(fold, action, null, 0, [], plan.picks))];
+    const seeded = card != null ? seedDropFromHand(model, card, screenOrigin, "battlefield") : model;
+    return [seeded, boardIntentSubmit(tableId, takeAction(fold, action, null, 0, [], plan.picks))];
   }
   if (plan.kind === "cast") {
+    const seeded = card != null ? seedDropFromHand(model, card, screenOrigin, "stack") : model;
     const xPrompt = ensureXPrompt(fold, plan.action, null, [], plan.picks);
-    if (xPrompt != null) return [{ ...model, xPrompt }, []];
-    return [model, boardIntentSubmit(tableId, takeAction(fold, plan.action, null, 0, [], plan.picks))];
+    if (xPrompt != null) return [{ ...seeded, xPrompt }, []];
+    return [seeded, boardIntentSubmit(tableId, takeAction(fold, plan.action, null, 0, [], plan.picks))];
   }
   // take (activate / cycle)
   if (action.has_x) {
@@ -996,8 +1056,9 @@ function handActivated(
 }
 
 function cancelAll(model: BoardModel): BoardModel {
+  const clearedOrigin = model.staged != null ? clearPlayOrigin(model, model.staged.card.id) : model;
   return {
-    ...model,
+    ...clearedOrigin,
     staged: null,
     xPrompt: null,
     modalCast: null,

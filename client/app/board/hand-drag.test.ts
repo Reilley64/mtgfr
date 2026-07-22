@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { ActionView, ObjectView } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { ZONE } from "./geometry/layout";
-import { HandActionHovered, HandDragEnded, HandDragMoved, HandDragStarted } from "./messages";
+import {
+  CancelActionClicked,
+  HandActionHovered,
+  HandDragEnded,
+  HandDragMoved,
+  HandDragStarted,
+} from "./messages";
 import { initialBoardModel, updateBoard } from "./submodel";
 
 function fold(objects: ObjectView[], actions: ActionView[]): GameFoldState {
@@ -120,6 +126,86 @@ describe("hand drag submodel", () => {
     );
     const [, commands] = updateBoard(dragging, HandDragEnded({ x: 400, y: 200 }), fold([bolt], [castAction]), "T1");
     expect(commands).toHaveLength(1);
+  });
+
+  it("hides the hand card and seeds a flight when drag-play commits (Solid seedDrop)", () => {
+    const board = initialBoardModel();
+    const [dragging] = updateBoard(
+      board,
+      HandDragStarted({
+        action: castAction,
+        name: "Lightning Bolt",
+        print: "bolt-print",
+        manaCost: bolt.mana_cost,
+        kind: "instant",
+        x: 100,
+        y: 800,
+      }),
+      fold([bolt], [castAction]),
+      "T1",
+    );
+    const [next, commands] = updateBoard(
+      dragging,
+      HandDragEnded({ x: 400, y: 200 }),
+      fold([bolt], [castAction]),
+      "T1",
+    );
+    expect(commands).toHaveLength(1);
+    expect(next.handHidden.has(42)).toBe(true);
+    expect(next.flights.get(42)).toMatchObject({
+      id: 42,
+      kind: "stack",
+      fromCardId: 42,
+      x: 400,
+      y: 200,
+    });
+  });
+
+  it("hides the hand card when a targeted cast is staged", () => {
+    const targeted: ActionView = { ...castAction, needs_target: true, targets: [{ kind: "player", player: 1 }] };
+    const board = initialBoardModel();
+    const [dragging] = updateBoard(
+      board,
+      HandDragStarted({
+        action: targeted,
+        name: "Lightning Bolt",
+        print: "bolt-print",
+        manaCost: bolt.mana_cost,
+        kind: "instant",
+        x: 100,
+        y: 800,
+      }),
+      fold([bolt], [targeted]),
+      "T1",
+    );
+    const [next] = updateBoard(dragging, HandDragEnded({ x: 400, y: 200 }), fold([bolt], [targeted]), "T1");
+    expect(next.staged?.card.id).toBe(42);
+    expect(next.handHidden.has(42)).toBe(true);
+    expect(next.flights.has(42)).toBe(true);
+  });
+
+  it("restores the hand card when a staged cast is cancelled", () => {
+    const targeted: ActionView = { ...castAction, needs_target: true, targets: [{ kind: "player", player: 1 }] };
+    const game = fold([bolt], [targeted]);
+    const [dragging] = updateBoard(
+      initialBoardModel(),
+      HandDragStarted({
+        action: targeted,
+        name: "Lightning Bolt",
+        print: "bolt-print",
+        manaCost: bolt.mana_cost,
+        kind: "instant",
+        x: 100,
+        y: 800,
+      }),
+      game,
+      "T1",
+    );
+    const [staged] = updateBoard(dragging, HandDragEnded({ x: 400, y: 200 }), game, "T1");
+    const [cancelled] = updateBoard(staged, CancelActionClicked(), game, "T1");
+    expect(cancelled.staged).toBeNull();
+    expect(cancelled.handHidden.has(42)).toBe(false);
+    expect(cancelled.flights.has(42)).toBe(false);
   });
 
   it("ignores drag end below the hand-bar threshold", () => {

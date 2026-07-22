@@ -74,11 +74,27 @@ function tile(args: {
   manaCost: WireCost;
   action: ActionView | null;
   dimmed: boolean;
+  /** Action id of the in-flight hand drag ghost — fades the source tile (Solid parity). */
+  draggingActionId?: number | null;
   caption?: string;
   index: number;
   count: number;
 }): Html {
-  const { name, print, cardId, zone, objectId, objectKind, manaCost, action, dimmed, caption, index, count } = args;
+  const {
+    name,
+    print,
+    cardId,
+    zone,
+    objectId,
+    objectKind,
+    manaCost,
+    action,
+    dimmed,
+    draggingActionId,
+    caption,
+    index,
+    count,
+  } = args;
   const playable = action != null && !dimmed;
   const testId = objectId != null ? `hand-card-${objectId}` : undefined;
   const hitW = handBarHitWidth(index, count, HAND_CARD_PEEK, HAND_CARD_W);
@@ -91,11 +107,14 @@ function tile(args: {
     "group-hover/hand-tile:z-30 group-hover/hand-tile:[transform:translateY(var(--raise-y))]",
   ].join(" ");
 
+  // Solid `dimmedness`: inert tiles darken; the drag source fades so the ghost carries the face.
+  const dragSource = playable && draggingActionId != null && action?.id === draggingActionId;
   const artClass = [
-    "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter] duration-[80ms] ease-state",
+    "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
     barZoneAura(zone),
     dimmed ? "brightness-[0.55]" : "",
-    playable ? "group-hover/hand-tile:brightness-110" : "",
+    dragSource ? "opacity-25" : "",
+    playable && !dragSource ? "group-hover/hand-tile:brightness-110" : "",
   ]
     .filter((v) => v !== "")
     .join(" ");
@@ -326,6 +345,8 @@ export function handView(inputs: HandViewInputs): Html {
   };
 
   const commandVisible = commandCards.filter((c) => !hiddenIds.has(c.id));
+  const draggingActionId = handDrag?.action.id ?? null;
+
   const commandTiles = commandVisible.map((c, index) =>
     tile({
       name: c.name,
@@ -337,6 +358,7 @@ export function handView(inputs: HandViewInputs): Html {
       manaCost: c.mana_cost,
       action: commandActionByObject.get(c.id) ?? null,
       dimmed: !commandActionByObject.get(c.id) || slotDimmed(c.id),
+      draggingActionId,
       caption: c.is_commander && commanderTax > 0 ? `Tax +{${commanderTax}}` : undefined,
       index,
       count: commandVisible.length,
@@ -388,6 +410,7 @@ export function handView(inputs: HandViewInputs): Html {
     tile({
       ...slot,
       zone: "hand",
+      draggingActionId,
       index,
       count: handSlots.length,
     }),
@@ -406,6 +429,7 @@ export function handView(inputs: HandViewInputs): Html {
         manaCost: meta.manaCost,
         action: a,
         dimmed: false,
+        draggingActionId,
         index,
         count: arr.length,
       });
