@@ -1,7 +1,8 @@
 // Legal activates for a selected permanent, including synthesized tap-for-mana.
 
 import type { ActionView } from "~/wire/types";
-import { CARD_H, CARD_W } from "./layout";
+import { type Camera, worldToScreen } from "./camera";
+import { CARD_H, CARD_W, type RenderCard } from "./layout";
 
 export type RadialOption =
   | { kind: "tap_for_mana"; label: string }
@@ -26,6 +27,13 @@ export function activationRadialInnerRadius(zoom: number): number {
 export function activationRadialOuterRadius(zoom: number): number {
   const inner = activationRadialInnerRadius(zoom);
   return Math.max(activationRadialRadius(zoom), inner + MIN_RING_PX);
+}
+
+export function radialScreenCenter(
+  camera: Camera,
+  card: Pick<RenderCard, "x" | "y" | "w" | "h">,
+): { x: number; y: number } {
+  return worldToScreen(camera, card.x + card.w / 2, card.y + card.h / 2);
 }
 
 export function radialOptionKey(opt: RadialOption): string {

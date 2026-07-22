@@ -13,6 +13,7 @@ import {
   radialOptions,
   radialPressDown,
   radialPressUp,
+  radialScreenCenter,
   radialWedgeAtPoint,
   radialWedgeFromElement,
   wedgeIndex,
@@ -38,6 +39,15 @@ describe("activationRadialRadius", () => {
     expect(activationRadialRadius(1)).toBe(CARD_H / 2 + 12);
     expect(activationRadialRadius(2)).toBe(CARD_H + 12);
     expect(activationRadialRadius(0.1)).toBe(40);
+  });
+});
+
+describe("radialScreenCenter", () => {
+  it("maps the selected card center from world to screen coordinates", () => {
+    const camera = { panX: 5, panY: -13, zoom: 2 };
+    const card = { x: 10, y: 20, w: 120, h: 80 };
+
+    expect(radialScreenCenter(camera, card)).toEqual({ x: 145, y: 107 });
   });
 });
 

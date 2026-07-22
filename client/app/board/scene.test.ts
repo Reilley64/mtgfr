@@ -12,8 +12,10 @@ import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
 import { emptyCostPicks } from "./action/execution";
+import { worldToScreen } from "./geometry/camera";
 import type { RenderCard } from "./geometry/layout";
-import { avatarPos, STEP, ZONE } from "./geometry/layout";
+import { avatarPos, layout, STEP, ZONE } from "./geometry/layout";
+import { activationRadialOuterRadius } from "./geometry/radial";
 import { boardOverlays } from "./html/overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
 import {
@@ -464,6 +466,34 @@ test("selected permanent with tap-for-mana shows a single-option activation radi
     selected,
     Scene.expect(Scene.testId("activation-radial")).toExist(),
     Scene.expect(Scene.testId("radial-wedge-tap_for_mana")).toExist(),
+  );
+});
+
+test("activation radial svg is centered on the selected card screen center", () => {
+  const land = creature(5, 0, {
+    name: "Forest",
+    kind: { kind: "land", colors: [1, 0, 0, 0, 0] },
+    taps_for_mana: true,
+    power: 0,
+    toughness: 0,
+  });
+  const gameFold = fold(state({ objects: [land], can_act: true }));
+  const board: BoardModel = { ...initialBoardModel(), selectedId: 5 };
+  const visible = gameFold.state;
+  expect(visible).not.toBeNull();
+  if (visible == null) return;
+  const card = layout(visible, visible.viewer).find((c) => c.id === land.id);
+  expect(card).toBeDefined();
+  if (card == null) return;
+  const center = worldToScreen(board.camera, card.x + card.w / 2, card.y + card.h / 2);
+  const size = activationRadialOuterRadius(board.camera.zoom) * 2 + 8;
+  const selected: ViewModel = { board, fold: gameFold, tableId: "T1" };
+
+  overlayScene(
+    selected,
+    Scene.expect(Scene.selector("svg")).toHaveStyle("left", `${center.x - size / 2}px`),
+    Scene.expect(Scene.selector("svg")).toHaveStyle("top", `${center.y - size / 2}px`),
+    Scene.expect(Scene.selector("svg")).not.toHaveStyle("transform"),
   );
 });
 

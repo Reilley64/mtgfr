@@ -7,14 +7,14 @@
 import { Option } from "effect";
 import { type Html, html } from "foldkit/html";
 import type { VisibleState } from "~/wire/types";
-import { worldToScreen } from "../geometry/camera";
-import { CARD_H, CARD_W, layout, ZONE } from "../geometry/layout";
+import { layout, ZONE } from "../geometry/layout";
 import {
   activationRadialInnerRadius,
   activationRadialOuterRadius,
   type RadialOption,
   radialOptionKey,
   radialOptions,
+  radialScreenCenter,
   wedgeLabelPoint,
   wedgePath,
 } from "../geometry/radial";
@@ -54,7 +54,7 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
   const options = radialOptions(id, state.actions, card.tapsForMana, card.tapped, state.can_act);
   if (options.length === 0) return null;
 
-  const center = worldToScreen(board.camera, card.x + CARD_W / 2, card.y + CARD_H / 2);
+  const center = radialScreenCenter(board.camera, card);
   const zoom = board.camera.zoom;
   const inner = activationRadialInnerRadius(zoom);
   const outer = activationRadialOuterRadius(zoom);
@@ -132,9 +132,8 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
           h.Width(String(size)),
           h.Height(String(size)),
           h.Style({
-            left: `${center.x}px`,
-            top: `${center.y}px`,
-            transform: "translate(-50%, -50%)",
+            left: `${center.x - size / 2}px`,
+            top: `${center.y - size / 2}px`,
           }),
         ],
         [h.g([h.Transform(`translate(${origin}, ${origin})`), h.Class("pointer-events-auto")], wedges)],
