@@ -9,7 +9,7 @@
 
 ## Goal
 
-Land Foldkit agent tooling first (DevTools MCP + vendored skills) so board work can be debugged live, then fix activation radial centering, in-game Alt/Option inspect (still broken), top-left HUD control layout, pending-choice prompts shown to non-deciders, restore battlefield permanent chrome (badges / P/T / counters / planeswalker loyalty), activate rejects (`That ability isn't available`), and always-on permanent borders → Arena-style playable / zone outline language.
+Land Foldkit agent tooling first (DevTools MCP + vendored skills) so board work can be debugged live, then fix activation radial centering, in-game Alt/Option inspect, top-left HUD control layout, pending-choice prompts shown to non-deciders, restore battlefield permanent chrome (badges / P/T / counters / planeswalker loyalty), activate rejects (`That ability isn't available`), and always-on permanent borders → Arena-style playable / zone outline language.
 
 ## Approach
 
@@ -68,9 +68,9 @@ List known activates for that permanent; **disable** illegal wedges (no commit).
 
 **Success:** A listed battlefield activate with payable cost (auto-tap or floating mana) commits without the toast; true illegals stay disabled / clear reject reasons (`CannotPayCost` only if we later split unaffordable — out of scope unless needed for diagnosis).
 
-### In-game card preview / inspect (still broken — investigate and fix)
+### In-game card preview / inspect
 
-Prior wave landed dock-mode wiring and AltLeft/AltRight detection, but **live Alt/Option inspect still fails**. Treat as an open investigation, using Foldkit DevTools MCP once tooling lands:
+Prior wave landed dock-mode wiring and AltLeft/AltRight detection. This workstream completed the live Alt/Option inspect path using Foldkit DevTools MCP once tooling landed:
 
 1. Confirm AltDown / pin / FetchInspectCard / InspectCardFetched / dock render in message history and model (`inspectPin`, `inspectCard`).
 2. Fix the failing layer (keyboard capture, hit→pin, catalog fetch, dock z-order / pointer-events, or layout).
