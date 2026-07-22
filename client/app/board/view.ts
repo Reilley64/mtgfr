@@ -12,6 +12,7 @@ import { layout, STEP } from "./geometry/layout";
 import { autoTapPreviewIds } from "./html/actions";
 import { MountBoardAudio, MountHintAutoHide } from "./html/audio-mount";
 import { MountBoardKeyboard } from "./html/keyboard-mount";
+import { manaTrayView } from "./html/mana-tray";
 import { boardOverlays } from "./html/overlays";
 import { BoardPointerDown, BoardPointerMove, BoardPointerUp, type Message } from "./messages";
 import type { BoardModel } from "./submodel";
@@ -158,6 +159,8 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
         onPointerMove: ({ x, y }) => BoardPointerMove({ x, y }),
         onPointerUp: ({ x, y }) => BoardPointerUp({ x, y }),
       }),
+      // Layer 2: in-play mana under resting permanents (DOM sibling before bitmap).
+      manaTrayView(model.board, state),
       h.canvas(
         [
           h.Width(String(model.board.viewport.width)),

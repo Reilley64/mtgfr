@@ -13,7 +13,6 @@ import { discoverabilityView } from "./discoverability";
 import { handView } from "./hand";
 import { inspectView } from "./inspect";
 import { logPanelView } from "./log-panel";
-import { manaTrayView } from "./mana-tray";
 import { pileOverlayView } from "./pile-overlay";
 import { priorityBarView } from "./priority-bar";
 import { promptsView } from "./prompts";
@@ -60,7 +59,8 @@ export function boardOverlays(
       [h.Class("pointer-events-none fixed top-md left-md z-25 flex items-center gap-xs")],
       [discoverabilityView(board, state), soundToggleView(board)].filter((v): v is Html => v !== null),
     ),
-    manaTrayView(board, state),
+    // Battlefield mana tray is composed in view.ts between vector canvas and bitmap
+    // (DOM order under resting permanents) — not here inside overlays.
     stackView(board, state),
     logPanelView(log),
     active

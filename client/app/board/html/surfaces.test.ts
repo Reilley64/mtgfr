@@ -8,7 +8,7 @@
 import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
-import { beforeAll, test } from "vitest";
+import { beforeAll, expect, test } from "vitest";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState, LogLine } from "../../game/fold";
 import { emptyCostPicks, type ModalCast, type XPromptState } from "../action/execution";
@@ -18,6 +18,18 @@ import { type BoardModel, initialBoardModel } from "../submodel";
 import { type BoardViewModel, view as boardView } from "../view";
 import { boardOverlays } from "./overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./scene-helpers";
+
+/** Preorder `data-testid` walk — later siblings paint above earlier ones under `board-mount`. */
+function collectTestIds(node: unknown, out: string[] = []): string[] {
+  if (node == null || typeof node !== "object") return out;
+  const n = node as { data?: { attrs?: Record<string, string> }; children?: unknown[] };
+  const id = n.data?.attrs?.["data-testid"];
+  if (typeof id === "string") out.push(id);
+  for (const child of n.children ?? []) {
+    if (typeof child === "object" && child != null) collectTestIds(child, out);
+  }
+  return out;
+}
 
 const h = html<Message>();
 
@@ -254,7 +266,8 @@ test("smoke scene keeps existing chrome visible", () => {
     Scene.expect(Scene.testId("board-concede")).toExist(),
     Scene.expect(Scene.testId("board-hint")).toExist(),
     Scene.expect(Scene.testId("board-sound-toggle")).toExist(),
-    Scene.expect(Scene.testId("mana-tray")).toExist(),
+    // Battlefield mana tray is composed in view.ts (under bitmap), not in boardOverlays.
+    Scene.expect(Scene.testId("mana-tray")).toBeAbsent(),
     Scene.expect(Scene.testId("board-log")).toExist(),
     Scene.expect(Scene.testId("priority-context-bar")).toExist(),
   );
@@ -514,6 +527,52 @@ test("full board view mounts the flight layer above the hand bar", () => {
     fullBoardModel(initialBoardModel(), gameState()),
     Scene.expect(Scene.testId("board-flight-layer")).toExist(),
     // z-30 sits above the hand bar (z-20) and below prompts (z-40).
+    Scene.expect(Scene.testId("board-flight-layer")).toHaveClass("z-30"),
+  );
+});
+
+test("full board view renders battlefield mana tray when a pool has mana", () => {
+  liveBoardScene(
+    fullBoardModel(
+      initialBoardModel(),
+      gameState({
+        players: [
+          player(0, {
+            mana_pool: { any: 0, colored: [1, 0, 0, 0, 0], colorless: 0, either: [], of_colors: [] },
+          }),
+          player(1),
+        ],
+      }),
+    ),
+    Scene.expect(Scene.testId("mana-tray")).toExist(),
+    Scene.expect(Scene.testId("mana-tray")).toHaveClass("pointer-events-none"),
+  );
+});
+
+test("mana tray precedes bitmap layer in board-mount composition (under permanents)", () => {
+  liveBoardScene(
+    fullBoardModel(
+      initialBoardModel(),
+      gameState({
+        players: [
+          player(0, {
+            mana_pool: { any: 0, colored: [1, 0, 0, 0, 0], colorless: 0, either: [], of_colors: [] },
+          }),
+          player(1),
+        ],
+      }),
+    ),
+    Scene.tap((sim) => {
+      const ids = collectTestIds(sim.html);
+      const tray = ids.indexOf("mana-tray");
+      const bitmap = ids.indexOf("board-bitmap-layer");
+      const flight = ids.indexOf("board-flight-layer");
+      expect(tray).toBeGreaterThan(-1);
+      expect(bitmap).toBeGreaterThan(tray);
+      expect(flight).toBeGreaterThan(bitmap);
+    }),
+    Scene.expect(Scene.testId("mana-tray")).toExist(),
+    Scene.expect(Scene.testId("board-bitmap-layer")).toExist(),
     Scene.expect(Scene.testId("board-flight-layer")).toHaveClass("z-30"),
   );
 });

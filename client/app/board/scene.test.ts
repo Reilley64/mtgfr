@@ -1,10 +1,13 @@
 // Scene tests for board overlays: primary Next button visible when empty stack + your priority,
 // and hand-bar tile activation dispatches SubmitIntent.
 
+/**
+ * @vitest-environment happy-dom
+ */
 import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
-import { expect, test } from "vitest";
+import { beforeAll, expect, test } from "vitest";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { SetStackDwell, SubmitIntent } from "../game/intents";
@@ -12,7 +15,7 @@ import { emptyCostPicks } from "./action/execution";
 import type { RenderCard } from "./geometry/layout";
 import { avatarPos, STEP, ZONE } from "./geometry/layout";
 import { boardOverlays } from "./html/overlays";
-import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./html/scene-helpers";
+import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
 import {
   BoardPointerUp,
   HandActionActivated,
@@ -22,8 +25,22 @@ import {
   StackDwellChanged,
 } from "./messages";
 import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, updateBoard } from "./submodel";
+import { type BoardViewModel, view as boardView } from "./view";
 
 const h = html<Message>();
+
+beforeAll(() => {
+  class MockImage {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    src = "";
+    addEventListener(type: string, fn: () => void): void {
+      if (type === "load") this.onload = fn;
+    }
+  }
+  // @ts-expect-error test stub
+  globalThis.Image = MockImage;
+});
 
 type ViewModel = { board: BoardModel; fold: GameFoldState; tableId: string };
 
@@ -31,6 +48,8 @@ const view = Submodel.defineView<ViewModel, Message>((model) => {
   if (model.fold.state == null) return h.div([], []);
   return boardOverlays(model.board, model.fold.state, model.tableId, model.fold.log);
 });
+
+const fullBoardView = Submodel.defineView<BoardViewModel, Message>(boardView);
 
 function player(overrides: Partial<import("~/wire/types").PlayerView> = {}): import("~/wire/types").PlayerView {
   return {
@@ -86,6 +105,10 @@ function viewModel(fold: GameFoldState): ViewModel {
   return { board: initialBoardModel(), fold, tableId: "T1" };
 }
 
+function fullBoardModel(fold: GameFoldState): BoardViewModel {
+  return { board: initialBoardModel(), fold, tableId: "T1", connected: true };
+}
+
 const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
   const [board] = updateBoard(model.board, message, model.fold, model.tableId);
   return [{ ...model, board }, []];
@@ -93,6 +116,15 @@ const update = (model: ViewModel, message: Message): readonly [ViewModel, Readon
 
 function overlayScene(model: ViewModel, ...steps: readonly unknown[]) {
   Scene.scene<ViewModel, Message>({ update, view }, Scene.with(model), resolveBoardOverlayMounts(), ...(steps as []));
+}
+
+function liveBoardScene(model: BoardViewModel, ...steps: readonly unknown[]) {
+  Scene.scene<BoardViewModel, Message>(
+    { update: (m) => [m, []], view: fullBoardView },
+    Scene.with(model),
+    resolveLiveBoardMounts(),
+    ...(steps as []),
+  );
 }
 
 test("primary Next visible when empty stack + your priority", () => {
@@ -448,6 +480,31 @@ test("StackDwellChanged emits a SetStackDwell command", () => {
 });
 
 test("mana tray renders when a player has mana in pool", () => {
+  const model = fullBoardModel(
+    fold(
+      state({
+        players: [
+          player({
+            mana_pool: { any: 0, colored: [2, 0, 0, 0, 0], colorless: 0, either: [], of_colors: [] },
+          }),
+          player({ player: 1, username: "Bob" }),
+        ],
+      }),
+    ),
+  );
+  liveBoardScene(
+    model,
+    Scene.expect(Scene.testId("mana-tray")).toExist(),
+    Scene.expect(Scene.selector('[data-mana-tray-seat="0"]')).toExist(),
+  );
+});
+
+test("mana tray hidden when all pools are empty", () => {
+  const model = fullBoardModel(fold(state()));
+  liveBoardScene(model, Scene.expect(Scene.testId("mana-tray")).toBeAbsent());
+});
+
+test("boardOverlays does not host the battlefield mana tray", () => {
   const model = viewModel(
     fold(
       state({
@@ -460,15 +517,6 @@ test("mana tray renders when a player has mana in pool", () => {
       }),
     ),
   );
-  overlayScene(
-    model,
-    Scene.expect(Scene.testId("mana-tray")).toExist(),
-    Scene.expect(Scene.selector('[data-mana-tray-seat="0"]')).toExist(),
-  );
-});
-
-test("mana tray hidden when all pools are empty", () => {
-  const model = viewModel(fold(state()));
   overlayScene(model, Scene.expect(Scene.testId("mana-tray")).toBeAbsent());
 });
 
