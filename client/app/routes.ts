@@ -25,7 +25,10 @@ const appRouter = oneOf(homeRouter, loginRouter, newDeckRouter, deckRouter, play
 export const routeFromUrl = parseUrlWithFallback(appRouter, NotFoundRoute);
 
 export function pathWithSearch(url: Url): string {
-  return `${url.pathname}${Option.getOrUndefined(url.search) ?? ""}`;
+  const search = Option.getOrUndefined(url.search);
+  if (search == null || search === "") return url.pathname;
+  const q = search.startsWith("?") ? search : `?${search}`;
+  return `${url.pathname}${q}`;
 }
 
 export function isProtectedRoute(route: AppRoute): boolean {
