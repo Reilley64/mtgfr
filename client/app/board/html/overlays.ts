@@ -43,7 +43,7 @@ export function boardOverlays(
 ): Html {
   const stagedCardId = board.staged?.card.id ?? null;
   const hiddenIds = new Set<number>([...board.handHidden, ...board.hideCardIds]);
-  const active = isActivePlayer(state.players, state.viewer);
+  const seatedViewer = isActivePlayer(state.players, state.viewer);
   const spectating = state.viewer === SPECTATOR_VIEWER;
 
   // Live object for the inspect pin's modifiers (battlefield objects only).
@@ -63,13 +63,13 @@ export function boardOverlays(
     // (DOM order under resting permanents) — not here inside overlays.
     stackView(board, state),
     logPanelView(log),
-    active
+    seatedViewer
       ? handView({ state, hiddenId: stagedCardId, flyingIds: board.hideCardIds, hiddenIds, handDrag: board.handDrag })
       : null,
-    active ? priorityBarView(board, state) : null,
-    active ? promptsView(board, state, tableId) : null,
-    active ? activationRadialView(board, state) : null,
-    active ? concedeButtonView() : null,
+    seatedViewer ? priorityBarView(board, state) : null,
+    seatedViewer ? promptsView(board, state, tableId) : null,
+    seatedViewer ? activationRadialView(board, state) : null,
+    seatedViewer ? concedeButtonView() : null,
     concedeDialogView(board.confirmConcede),
     pileOverlayView(board.pileExpand, state),
     resultOverlayView(state, board.resultSeen),

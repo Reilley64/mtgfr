@@ -14,6 +14,7 @@ import {
   FORMULATOR_FOR_KIND,
   initPromptDraft,
 } from "~/choice";
+import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { modeAvailable } from "../action/modal";
@@ -1268,6 +1269,13 @@ function pendingChoicePrompt(
   }
 }
 
+function shouldShowPendingChoice(state: VisibleState): boolean {
+  const pending = state.pending_choice;
+  if (pending == null) return false;
+  if (!isActivePlayer(state.players, state.viewer)) return false;
+  return pending.player === state.viewer;
+}
+
 export function promptsView(board: BoardModel, state: VisibleState, tableId: string | null): Html | null {
   if (board.xPrompt != null) return boardXPrompt(board.xPrompt);
   if (board.modalCast != null) return modalPrompt(board.modalCast);
@@ -1304,6 +1312,8 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
       return targetPickPrompt(stagedTargetTitle(board.staged), targets, state);
     }
   }
-  if (state.pending_choice != null) return pendingChoicePrompt(state.pending_choice, state, board, tableId);
-  return null;
+  const pending = state.pending_choice;
+  if (pending == null) return null;
+  if (!shouldShowPendingChoice(state)) return null;
+  return pendingChoicePrompt(pending, state, board, tableId);
 }

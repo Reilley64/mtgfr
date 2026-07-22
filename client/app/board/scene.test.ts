@@ -118,6 +118,10 @@ function overlayScene(model: ViewModel, ...steps: readonly unknown[]) {
   Scene.scene<ViewModel, Message>({ update, view }, Scene.with(model), resolveBoardOverlayMounts(), ...(steps as []));
 }
 
+function staticOverlayScene(model: ViewModel, ...steps: readonly unknown[]) {
+  Scene.scene<ViewModel, Message>({ update, view }, Scene.with(model), ...(steps as []));
+}
+
 function liveBoardScene(model: BoardViewModel, ...steps: readonly unknown[]) {
   Scene.scene<BoardViewModel, Message>(
     { update: (m) => [m, []], view: fullBoardView },
@@ -405,18 +409,22 @@ test("PendingChoiceAnswered folds into a SubmitIntent command", () => {
   expect(commands[0]?.name).toBe(SubmitIntent.name);
 });
 
-test("prompt Yes/No buttons appear for may_yes_no pending choice", () => {
-  const model = viewModel(
-    fold(
-      state({
-        pending_choice: { kind: "may_yes_no", label: "Cast?", player: 0, source: 1 },
-      }),
-    ),
-  );
+test("may_yes_no prompt mounts only for the awaited seat", () => {
+  const pendingChoice = { kind: "may_yes_no", label: "Cast?", player: 0, source: 1 } as const;
   overlayScene(
-    model,
+    viewModel(fold(state({ pending_choice: pendingChoice, viewer: 0 }))),
     Scene.expect(Scene.testId("prompt-yes")).toExist(),
     Scene.expect(Scene.testId("prompt-no")).toExist(),
+  );
+  overlayScene(
+    viewModel(fold(state({ pending_choice: pendingChoice, viewer: 1 }))),
+    Scene.expect(Scene.testId("prompt-yes")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-no")).toBeAbsent(),
+  );
+  staticOverlayScene(
+    viewModel(fold(state({ pending_choice: pendingChoice, viewer: 255 }))),
+    Scene.expect(Scene.testId("prompt-yes")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-no")).toBeAbsent(),
   );
 });
 
