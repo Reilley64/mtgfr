@@ -1,4 +1,4 @@
-// Cursor-follow card preview shared by deck builder and deck list commander hover.
+// Shared card preview: cursor-follow (builder/list) and left-dock inspect (board).
 
 import type { Html, html } from "foldkit/html";
 import { cn } from "../cn";
@@ -18,6 +18,31 @@ export type HoverPreviewCard = {
   name?: string;
   oracle?: string | null;
 };
+
+export type CardPreviewMode = "follow" | "dock";
+
+export type FollowPreviewArgs = {
+  mode?: "follow";
+  hover: CardHover;
+  card: HoverPreviewCard | undefined;
+  testId?: string;
+};
+
+export type DockPreviewArgs<M> = {
+  mode: "dock";
+  print: string;
+  name: string;
+  oracle?: string | null;
+  approximates?: string | null;
+  face?: "front" | "back";
+  /** Extra right-column nodes (modifier ledger Html). */
+  extras?: ReadonlyArray<Html>;
+  /** Optional; board wires backdrop click via wrapper. */
+  onDismiss?: M;
+  testId?: string;
+};
+
+export type CardPreviewArgs<M> = FollowPreviewArgs | DockPreviewArgs<M>;
 
 const PREVIEW_W = 320;
 const PREVIEW_H = Math.round(PREVIEW_W / 0.716);
@@ -70,15 +95,23 @@ function textPanel<M>(
   );
 }
 
-/** Large face + optional oracle panel following the cursor (Solid HoverPreview / CardPreview). */
-export function cardHoverPreviewView<M>(
+function artColumn<M>(
   h: HtmlFactory<M>,
-  args: {
-    hover: CardHover;
-    card: HoverPreviewCard | undefined;
-    testId?: string;
-  },
+  print: string,
+  name: string,
+  face: "front" | "back" | undefined,
 ): Html {
+  return cardArt(h, {
+    print,
+    size: "large",
+    face,
+    alt: name,
+    className: "w-(--w) flex-none rounded-[14px] shadow-table",
+    style: { "--w": `${PREVIEW_W}px` },
+  });
+}
+
+function followPreviewView<M>(h: HtmlFactory<M>, args: FollowPreviewArgs): Html {
   const { hover, card, testId = "card-hover-preview" } = args;
   const oracle = card?.oracle ?? null;
   const approximates = card?.approximates ?? null;
@@ -103,14 +136,50 @@ export function cardHoverPreviewView<M>(
       h.Style({ "--x": `${left}px`, "--y": `${top}px` }),
     ],
     [
-      cardArt(h, {
-        print,
-        size: "large",
-        alt: card?.name ?? "",
-        className: "w-(--w) flex-none rounded-[14px] shadow-table",
-        style: { "--w": `${PREVIEW_W}px` },
-      }),
+      artColumn(h, print, card?.name ?? "", undefined),
       textPanel(h, oracle, approximates, `${PREVIEW_H}px`),
     ],
   );
+}
+
+function dockPreviewView<M>(h: HtmlFactory<M>, args: DockPreviewArgs<M>): Html {
+  const {
+    print,
+    name,
+    oracle,
+    approximates,
+    face,
+    extras,
+    onDismiss,
+    testId = "card-hover-preview",
+  } = args;
+
+  const text = textPanel(h, oracle, approximates, `${PREVIEW_H}px`);
+  const rightColumn =
+    text != null || (extras != null && extras.length > 0)
+      ? h.div(
+          [h.Class("flex min-w-0 flex-col items-start gap-3")],
+          [text, ...(extras ?? [])],
+        )
+      : null;
+
+  const content = h.div(
+    [h.Class("pointer-events-auto relative m-lg flex flex-row items-start gap-3")],
+    [artColumn(h, print, name, face), rightColumn],
+  );
+
+  return h.div(
+    [
+      h.DataAttribute("testid", testId),
+      h.Class("fixed inset-0 z-[100] flex items-start bg-black/55"),
+      ...(onDismiss !== undefined ? [h.OnClick(onDismiss)] : []),
+    ],
+    [content],
+  );
+}
+
+/** Large face + optional oracle panel — `follow` (cursor) or `dock` (left + backdrop). */
+export function cardHoverPreviewView<M>(h: HtmlFactory<M>, args: CardPreviewArgs<M>): Html {
+  if (args.mode === "dock") return dockPreviewView(h, args);
+  return followPreviewView(h, args);
 }
