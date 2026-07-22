@@ -9,7 +9,7 @@ import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
 import { ArtLoaded, TickedFrame } from "../messages";
 import type { CardFlight } from "../motion/flights";
-import { paintAutoTapPreview, paintCardArt, paintCardTargetHighlight } from "./paint-cards";
+import { paintAutoTapPreview, paintCard, paintCardTargetHighlight } from "./paint-cards";
 import { paintFlightCard } from "./paint-flights";
 
 export type BitmapFrame = {
@@ -87,7 +87,7 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
 
   for (const card of frame.cards) {
     if (frame.hideCardIds.has(card.id)) continue;
-    paintCardArt(ctx, frame.camera, card, cache, frame.viewer);
+    paintCard(ctx, frame.camera, card, cache, frame.viewer);
     if (frame.paymentPreviewIds.has(card.id)) {
       paintAutoTapPreview(ctx, frame.camera, card, frame.viewer);
     }

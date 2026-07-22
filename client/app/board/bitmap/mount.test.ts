@@ -58,15 +58,16 @@ function card(overrides: Partial<RenderCard> = {}): RenderCard {
 }
 
 function mockCtx(calls: string[]): CanvasRenderingContext2D {
-  return {
+  const state = { fillStyle: "" };
+  const ctx = {
     arc: vi.fn(() => calls.push("avatar")),
     beginPath: vi.fn(),
     clearRect: vi.fn(() => calls.push("clear")),
     clip: vi.fn(),
     closePath: vi.fn(),
     drawImage: vi.fn((image: { label?: string }) => calls.push(`image:${image.label ?? "unknown"}`)),
-    fill: vi.fn(),
-    fillText: vi.fn(),
+    fill: vi.fn(() => calls.push(`fill:${state.fillStyle}`)),
+    fillText: vi.fn((text: string) => calls.push(`text:${text}`)),
     lineTo: vi.fn(),
     measureText: vi.fn(() => ({ width: 0 })),
     moveTo: vi.fn(),
@@ -83,9 +84,67 @@ function mockCtx(calls: string[]): CanvasRenderingContext2D {
     strokeText: vi.fn(),
     translate: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
+  Object.defineProperty(ctx, "fillStyle", {
+    get: () => state.fillStyle,
+    set: (value) => {
+      state.fillStyle = String(value);
+    },
+  });
+  return ctx;
 }
 
 describe("paintBitmapLayer", () => {
+  it("paints battlefield permanent chrome on the resting layer without under-card labels", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const image = (label: string) => ({ label }) as unknown as HTMLImageElement;
+    const cache = { get: vi.fn(() => image("resting")) };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [
+          card({ name: "Runeclaw Bear", pt: "2/2", summoningSick: true }),
+          card({ id: 2, kind: "planeswalker", name: "Test Walker", pt: "4", x: 130 }),
+          card({ id: 3, counters: 1, name: "Counter Bear", x: 250 }),
+        ],
+        viewer: 0,
+        players: [player()],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        targetPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls).toContain("text:2/2");
+    expect(calls).toContain("text:4");
+    expect(calls).toContain("text:+1");
+    expect(calls).toContain("fill:#e8b24a");
+    expect(calls).not.toContain("text:Runeclaw Bear");
+    expect(calls).not.toContain("text:Test Walker");
+    expect(calls).not.toContain("text:Counter Bear");
+  });
+
   it("layers resting art below avatars and committed combat arrows", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });
