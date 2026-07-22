@@ -1,7 +1,8 @@
 # Foldkit hand dim retirement + table audio unlock
 
-**Status:** Draft  
+**Status:** Done  
 **Date:** 2026-07-22  
+**Plan:** [`docs/superpowers/plans/2026-07-22-foldkit-hand-dim-and-table-audio.md`](../plans/2026-07-22-foldkit-hand-dim-and-table-audio.md)  
 **PR:** [#74](https://github.com/Reilley64/mtgfr/pull/74) (`cursor/foldkit-migration-design-1ef0`)  
 **Related:** [`2026-07-22-foldkit-devtools-and-playable-chrome-design.md`](./2026-07-22-foldkit-devtools-and-playable-chrome-design.md) (playable borders; dim veil retired), [`2026-07-20-client-game-board-and-interaction.md`](./2026-07-20-client-game-board-and-interaction.md) (table audio)
 
