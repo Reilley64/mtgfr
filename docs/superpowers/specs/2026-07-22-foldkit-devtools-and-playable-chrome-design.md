@@ -1,9 +1,11 @@
 # Foldkit DevTools tooling + Arena playable chrome
 
-**Status:** Approved  
+**Status:** Done  
 **Plan:** [`docs/superpowers/plans/2026-07-22-foldkit-devtools-and-playable-chrome.md`](../plans/2026-07-22-foldkit-devtools-and-playable-chrome.md)
 **Date:** 2026-07-22  
 **PR:** [#74](https://github.com/Reilley64/mtgfr/pull/74) (`cursor/foldkit-migration-design-1ef0`)
+
+**Task 9 limitation:** Illegal printed activates remain unselectable until the wire exposes them; current chrome can only disable actions the client receives.
 
 ## Goal
 
