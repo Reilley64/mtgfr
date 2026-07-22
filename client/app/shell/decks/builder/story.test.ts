@@ -176,7 +176,7 @@ test("print selection renders a Scryfall tile picker instead of a UUID input", (
   );
 });
 
-test("opening a pool context menu builds Solid-parity items and clears hover", () => {
+test("opening a pool context menu builds expected items and clears hover", () => {
   const [model] = init();
   const island = card({ id: "island", kind: { kind: "land", colors: [1] }, name: "Island" });
 

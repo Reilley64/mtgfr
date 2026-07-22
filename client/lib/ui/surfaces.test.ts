@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { feltClass, fieldClass, listRowClass, modalClass, panelClass } from "./surfaces";
 
-describe("surface classes (Solid atoms port)", () => {
+describe("surface classes", () => {
   it("panel is forest-surface with vine border and table shadow", () => {
     const c = panelClass();
     expect(c).toContain("bg-forest-surface");
