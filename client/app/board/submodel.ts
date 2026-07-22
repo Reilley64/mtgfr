@@ -24,7 +24,12 @@ import type {
 import type { InspectPin } from "../../lib/inspect";
 import { inspectPinChanged, pinFromCard } from "../../lib/inspect";
 import { humanReason } from "../../lib/reject";
-import { isSoundEnabled, setSoundEnabled } from "../../lib/tableAudio";
+import {
+  isSoundEnabled,
+  playUnmuteTick,
+  setSoundEnabled,
+  unlockTableAudio,
+} from "../../lib/tableAudio";
 import type { GameFoldState } from "../game/fold";
 import { FetchInspectCard, SetStackDwell, SetTurnYield, SetYield, SubmitIntent } from "../game/intents";
 import type { RpcClient } from "../resources";
@@ -1709,6 +1714,10 @@ export function updateBoard(
     case "SoundToggled": {
       const next = !model.soundOn;
       setSoundEnabled(next);
+      if (next) {
+        unlockTableAudio();
+        playUnmuteTick();
+      }
       return [{ ...model, soundOn: next }, []];
     }
     case "PriorityElapsed":
