@@ -8,7 +8,7 @@ import { isAltKeyEvent, shouldIgnoreBoardShortcut } from "./keyboard-mount"; // 
 function shortcutIgnoredBy(target: Element, init: KeyboardEventInit): boolean {
   let ignored: boolean | undefined;
   target.addEventListener("keydown", (event) => {
-    ignored = shouldIgnoreBoardShortcut(event);
+    ignored = shouldIgnoreBoardShortcut(event as KeyboardEvent);
   });
   target.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, ...init }));
   if (ignored == null) throw new Error("expected keydown listener to run");
