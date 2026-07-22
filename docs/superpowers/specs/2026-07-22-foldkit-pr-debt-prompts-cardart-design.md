@@ -1,7 +1,7 @@
 # Foldkit PR debt — pending_choice fidelity + DOM CardArt
 
 **Date:** 2026-07-22  
-**Status:** Approved for planning  
+**Status:** Done  
 **PR:** [#74](https://github.com/Reilley64/mtgfr/pull/74) (`cursor/foldkit-migration-design-1ef0`)  
 **Context:** Cutover and merge-cleanup are on the branch. PR description **Remaining debt (non-page chrome)** lists two items: ~47 lower-traffic `pending_choice` kinds still banner+stub, and shared DOM `CardArt` / `ImageCache` (raw `<img>` works). This design closes both on the same PR.
 

@@ -552,7 +552,10 @@ describe("answerFromDraft builds accepted intents", () => {
       player: 0,
       source: 1,
     };
-    expect(choiceIntent(pc, declineAnswer(pc)!)).toEqual({
+    const answer = declineAnswer(pc);
+    expect(answer).toEqual({ kind: "sacrifice", ids: [] });
+    if (answer == null) return;
+    expect(choiceIntent(pc, answer)).toEqual({
       kind: "choose_sacrifices",
       player: 0,
       sacrifices: [],
