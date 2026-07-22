@@ -5,6 +5,7 @@ import {
   buildAnswerFromDraft,
   choiceDraftKey,
   choiceIntent,
+  declineAnswer,
   FORMULATOR_FOR_KIND,
   type PromptDraft,
 } from "~/choice";
@@ -529,7 +530,7 @@ describe("answerFromDraft builds accepted intents", () => {
     );
   });
 
-  test("builds pay answers for cumulative upkeep", () => {
+  test("builds sacrifice answers for cumulative upkeep payment", () => {
     expectDraftIntent(
       {
         kind: "pay_cumulative_upkeep_or_sacrifice",
@@ -538,9 +539,24 @@ describe("answerFromDraft builds accepted intents", () => {
         player: 0,
         source: 1,
       },
-      { kind: "pay", pay: true },
-      { kind: "pay_optional_cost", player: 0, pay: true },
+      { kind: "card-pick", picked: [33] },
+      { kind: "choose_sacrifices", player: 0, sacrifices: [33] },
     );
+  });
+
+  test("declines cumulative upkeep with empty sacrifices", () => {
+    const pc = {
+      kind: "pay_cumulative_upkeep_or_sacrifice" as const,
+      count: 1,
+      items: [{ id: 33, label: "Creature" }],
+      player: 0,
+      source: 1,
+    };
+    expect(choiceIntent(pc, declineAnswer(pc)!)).toEqual({
+      kind: "choose_sacrifices",
+      player: 0,
+      sacrifices: [],
+    });
   });
 
   test("builds keep tapped answers", () => {

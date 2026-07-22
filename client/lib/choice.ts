@@ -91,7 +91,7 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   choose_attach_host: "cardPick",
   put_from_hand_on_top: "cardPick",
   opponent_chooses_revealed_to_graveyard: "cardPick",
-  pay_cumulative_upkeep_or_sacrifice: "payCost",
+  pay_cumulative_upkeep_or_sacrifice: "cardPick",
   may_draw_up_to: "numberPick",
   trade_secrets_caster_draw: "numberPick",
   trade_secrets_repeat: "yesNo",
@@ -221,7 +221,6 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
     case "pay_echo_or_sacrifice":
     case "pay_recover_or_exile":
     case "sacrifice_unless_pay":
-    case "pay_cumulative_upkeep_or_sacrifice":
       return { kind: "pay", pay: false };
     case "choose_mode":
       return { kind: "mode", mode: 0 };
@@ -297,7 +296,6 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "pay_echo_or_sacrifice":
     case "pay_recover_or_exile":
     case "sacrifice_unless_pay":
-    case "pay_cumulative_upkeep_or_sacrifice":
       if (draft.kind !== "pay") return null;
       return { kind: "pay", pay: draft.pay };
     case "choose_mode":
@@ -388,6 +386,7 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "may_return_from_graveyard":
     case "may_discard":
     case "choose_exiled_to_cast_free":
+    case "pay_cumulative_upkeep_or_sacrifice":
       if (draft.kind !== "card-pick") return null;
       return { kind: "sacrifice", ids: draft.picked };
     case "choose_target":
@@ -468,6 +467,9 @@ export function declineAnswer(pc: PendingChoiceView): AnswerInput | null {
       return pc.optional ? { kind: "attach_host", host: null } : null;
     case "choose_target":
       return pc.optional ? { kind: "targets", ids: [] } : null;
+    case "pay_cumulative_upkeep_or_sacrifice":
+      // Empty sacrifices = decline payment (engine sacrifices the permanent).
+      return { kind: "sacrifice", ids: [] };
     default:
       return null;
   }

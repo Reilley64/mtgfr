@@ -515,6 +515,8 @@ function cardPickDeclineLabel(pending: PendingChoiceView): string | null {
       return pending.optional ? "Don't attach" : null;
     case "choose_target":
       return pending.optional ? "No target" : null;
+    case "pay_cumulative_upkeep_or_sacrifice":
+      return "Don't pay";
     default:
       return null;
   }
@@ -637,6 +639,12 @@ function cardPickConfig(pending: PendingChoiceView): {
       };
     case "opponent_chooses_revealed_to_graveyard":
       return { title: "Choose a revealed card to put into the graveyard", submitLabel: "Choose", declineLabel };
+    case "pay_cumulative_upkeep_or_sacrifice":
+      return {
+        title: `Pay cumulative upkeep — choose ${pending.count} card${pending.count === 1 ? "" : "s"}`,
+        submitLabel: "Pay",
+        declineLabel,
+      };
     default:
       return { title: pendingChoiceTitle(pending), submitLabel: "Choose" };
   }
@@ -709,8 +717,7 @@ function payCostPrompt(
         | "pay_or_controller_draws"
         | "pay_echo_or_sacrifice"
         | "pay_recover_or_exile"
-        | "sacrifice_unless_pay"
-        | "pay_cumulative_upkeep_or_sacrifice";
+        | "sacrifice_unless_pay";
     }
   >,
   tableId: string | null,
@@ -1203,8 +1210,7 @@ function pendingChoicePrompt(
         pending.kind !== "pay_or_controller_draws" &&
         pending.kind !== "pay_echo_or_sacrifice" &&
         pending.kind !== "pay_recover_or_exile" &&
-        pending.kind !== "sacrifice_unless_pay" &&
-        pending.kind !== "pay_cumulative_upkeep_or_sacrifice"
+        pending.kind !== "sacrifice_unless_pay"
       ) {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
