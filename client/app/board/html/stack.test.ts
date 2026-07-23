@@ -7,10 +7,11 @@ import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
+import { SubmitIntent } from "../../game/intents";
 import { emptyCostPicks } from "../action/execution";
 import { ZONE } from "../geometry/layout";
 import { STACK_EXPAND_COUNT } from "../geometry/stackLayout";
-import { type Message, StackCollapseClicked } from "../messages";
+import { type Message, StackCollapseClicked, TargetChosen } from "../messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts } from "./scene-helpers";
@@ -193,6 +194,68 @@ test("staged ghost appears on the stack during arrow targeting", () => {
     Scene.expect(Scene.testId("stack-staged-hint")).toContainText("Choose a target"),
     Scene.expect(Scene.selector("[data-art-url]")).toExist(),
   );
+});
+
+test("legal stack face is highlighted and click submits take_action", () => {
+  const { objects, stack } = spellOnStack(42, "Lightning Bolt", "bolt-print");
+  const counter: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 7,
+    is_commander: false,
+    kind: { kind: "instant" },
+    mana_cost: { generic: 2, colored: [0, 1, 0, 0, 0] },
+    marked_damage: 0,
+    name: "Counterspell",
+    needs_target: true,
+    owner: 0,
+    plus_counters: 0,
+    power: 0,
+    print: "counter-print",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 0,
+    zone: ZONE.Hand,
+  };
+  const castAction: ActionView = {
+    id: 3,
+    kind: "cast",
+    label: "Cast Counterspell",
+    needs_target: true,
+    object: counter.id,
+    section: "hand",
+    targets: [{ kind: "object", id: 42 }],
+  };
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    staged: {
+      card: counter,
+      action: castAction,
+      picks: emptyCostPicks(),
+      preferPick: false,
+      playOrigin: { x: 0, y: 0 },
+      playOriginScreen: { x: 0, y: 0 },
+    },
+  };
+  const fold = gameFold(gameState({ objects: [...objects, counter], stack }));
+  Scene.scene(
+    {
+      update: (m, message: Message) => {
+        const [nextBoard] = updateBoard(m.board, message, m.fold, m.tableId);
+        return [{ ...m, board: nextBoard }, []];
+      },
+      view: overlayView,
+    },
+    Scene.with({ board, fold, tableId: "T1" }),
+    resolveBoardOverlayMounts(),
+    resolveBoardCardArtMounts(3),
+    Scene.expect(Scene.selector('[data-legal-target="1"]')).toExist(),
+    Scene.expect(Scene.testId("target-pick")).toBeAbsent(),
+  );
+  const [nextBoard, commands] = updateBoard(board, TargetChosen({ target: { kind: "object", id: 42 } }), fold, "T1");
+  expect(nextBoard.staged).toBeNull();
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
 });
 
 test("stack overlay hidden when stack is empty and nothing is staged", () => {
