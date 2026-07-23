@@ -7,6 +7,14 @@
         "scryfall-mcp-server"
       ],
       "env": {}
+    },
+    "foldkit-devtools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@foldkit/devtools-mcp"
+      ],
+      "env": {}
     }
   }
 }

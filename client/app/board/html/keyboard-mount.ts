@@ -1,0 +1,101 @@
+// Global keyboard event mount for the board.
+// Registers window keydown/keyup listeners while the board element is mounted,
+// emitting board Messages for the shortcuts Foldkit's built-in OnKeyDown cannot
+// cover (they only fire on focused elements, not globally).
+
+import { Effect, Queue, Stream } from "effect";
+import * as Mount from "foldkit/mount";
+import { AltDown, AltUp, KeyboardEnterPressed, KeyboardEscape, KeyboardSpacePressed } from "../messages";
+
+type KeyMessage =
+  | typeof AltDown.Type
+  | typeof AltUp.Type
+  | typeof KeyboardEscape.Type
+  | typeof KeyboardEnterPressed.Type
+  | typeof KeyboardSpacePressed.Type;
+
+export function isAltKeyEvent(e: KeyboardEvent): boolean {
+  if (e.code === "AltLeft" || e.code === "AltRight") return true;
+  return e.key === "Alt";
+}
+
+/**
+ * Attach this to any long-lived board element. Emits keyboard Messages for the
+ * board-global shortcuts: Alt (inspect pin), Space (primary/pass), Enter (end turn),
+ * Escape (cancel / dismiss).
+ *
+ * Alt-down pins the card under the cursor (or hand/stack aux hover); Alt-up dismisses —
+ * same as the Solid board. The element receiving this mount must be non-interactive itself
+ * so Space / Enter don't fire while typing; handlers also guard interactive controls.
+ */
+export const MountBoardKeyboard = Mount.defineStream(
+  "MountBoardKeyboard",
+  AltDown,
+  AltUp,
+  KeyboardEscape,
+  KeyboardEnterPressed,
+  KeyboardSpacePressed,
+)((_element) =>
+  Stream.callback<KeyMessage>((queue) =>
+    Effect.gen(function* () {
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          const onKeyDown = (e: Event): void => {
+            if (!(e instanceof KeyboardEvent)) return;
+            // Don't intercept board shortcuts while typing in an interactive control.
+            if (shouldIgnoreBoardShortcut(e)) return;
+
+            if (isAltKeyEvent(e)) {
+              e.preventDefault();
+              Queue.offerUnsafe(queue, AltDown());
+              return;
+            }
+            if (e.key === "Escape") {
+              Queue.offerUnsafe(queue, KeyboardEscape());
+              return;
+            }
+            if (e.key === "Enter") {
+              e.preventDefault();
+              Queue.offerUnsafe(queue, KeyboardEnterPressed());
+              return;
+            }
+            if (e.key === " ") {
+              e.preventDefault();
+              Queue.offerUnsafe(queue, KeyboardSpacePressed());
+              return;
+            }
+          };
+
+          const onKeyUp = (e: Event): void => {
+            if (!(e instanceof KeyboardEvent)) return;
+            if (isAltKeyEvent(e)) {
+              Queue.offerUnsafe(queue, AltUp());
+            }
+          };
+
+          window.addEventListener("keydown", onKeyDown);
+          window.addEventListener("keyup", onKeyUp);
+          return { onKeyDown, onKeyUp };
+        }),
+        ({ onKeyDown, onKeyUp }) =>
+          Effect.sync(() => {
+            window.removeEventListener("keydown", onKeyDown);
+            window.removeEventListener("keyup", onKeyUp);
+          }),
+      );
+
+      return yield* Effect.never;
+    }),
+  ),
+);
+
+export function shouldIgnoreBoardShortcut(e: KeyboardEvent): boolean {
+  const target = e.target;
+  if (!(target instanceof Element)) return false;
+
+  const tag = target.tagName.toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return true;
+  if (tag !== "button") return false;
+
+  return e.key === " " || e.key === "Enter";
+}

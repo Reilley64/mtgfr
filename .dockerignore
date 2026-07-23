@@ -2,7 +2,8 @@
 .github
 client/node_modules
 client/dist
-client/src/wire/generated
+client/.output
+client/lib/wire/generated
 openapi.json
 target
 iac/.terraform

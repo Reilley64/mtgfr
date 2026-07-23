@@ -244,6 +244,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
+            taps_self: false,
         },
         MeaningfulAction::Cast { card, zone } => {
             let def = game.def_of(card);
@@ -308,14 +309,15 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 x_cost,
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
+                taps_self: false,
             }
         }
         MeaningfulAction::Activate { source, ability } => {
             let activation = game.ability_at(source, ability);
-            let paid = activation.and_then(|a| match a.timing {
-                engine::Timing::Activated(cost) => Some(cost.mana),
-                _ => None,
-            });
+            let (paid, taps_self) = match activation.map(|a| a.timing) {
+                Some(engine::Timing::Activated(cost)) => (Some(cost.mana), cost.taps_self),
+                _ => (None, false),
+            };
             let (has_x, min_x, max_x, x_cost) = match paid {
                 Some(paid) => x_choice_fields(game, action.player, paid, None, |x| paid.with_x(x)),
                 None => (false, 0, 0, None),
@@ -342,6 +344,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 x_cost,
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
+                taps_self,
             }
         }
         MeaningfulAction::Cycle { card } => ActionView {
@@ -368,6 +371,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
+            taps_self: false,
         },
         MeaningfulAction::ActivateHandAbility { card } => ActionView {
             id: action.id,
@@ -391,6 +395,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
+            taps_self: false,
         },
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Cast face down".
         MeaningfulAction::CastFaceDown { card } => ActionView {
@@ -415,6 +420,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
+            taps_self: false,
         },
         MeaningfulAction::Suspend { card } => ActionView {
             id: action.id,
@@ -438,6 +444,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
+            taps_self: false,
         },
         MeaningfulAction::Encore { card } => ActionView {
             id: action.id,
@@ -461,6 +468,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
+            taps_self: false,
         },
         // The label must not leak the hidden card's identity (CR 708.2) — a plain "Turn face up".
         MeaningfulAction::TurnFaceUp { permanent } => ActionView {
@@ -485,6 +493,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
+            taps_self: false,
         },
         MeaningfulAction::CastPrepared { source } => {
             let back = game
@@ -523,6 +532,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                 x_cost,
                 auto_tap: Vec::new(),
                 required_attacks: Vec::new(),
+                taps_self: false,
             }
         }
         MeaningfulAction::DeclareAttackers => ActionView {
@@ -554,6 +564,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
                     defender: defender.0,
                 })
                 .collect(),
+            taps_self: false,
         },
         MeaningfulAction::DeclareBlockers => ActionView {
             id: action.id,
@@ -577,6 +588,7 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
             x_cost: None,
             auto_tap: Vec::new(),
             required_attacks: Vec::new(),
+            taps_self: false,
         },
     };
     view.auto_tap = game.auto_tap_objects(action);

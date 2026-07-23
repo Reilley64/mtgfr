@@ -1,7 +1,7 @@
 # Client Shell, Deck Builder, and Observability
 
-**Status:** Current (as of 2026-07-20)
-**Module:** `client/src/app.tsx`, `client/src/routes/`, `client/src/atoms.ts`, `client/src/store.ts`, `client/src/guard.tsx`, `client/src/net.ts`, `client/src/effect/client.ts`, `client/src/effect/stream.ts`, `client/src/effect/otel.ts`, `client/src/wire/grpcClient.ts`, `client/src/wire/rpcServer.ts`, `client/src/wire/protoMap.ts`, `client/src/lib/scryfall.ts`, `client/src/lib/cardArtFace.ts`, `client/src/lib/deckBuilderPrint.ts`, `client/src/lib/deckImagePreload.ts`, `client/src/lib/faroCollect.ts`, `client/src/lib/faroSession.ts`, `client/src/lib/buildMeta.ts`, `client/src/lib/traceContext.ts`, `client/src/lib/lobbyClient.ts`, `client/src/lib/lobbyStore.ts`, `client/src/lib/lobbyTypes.ts`, `client/src/lib/lobbyPoll.ts`, `client/src/components/organisms/auth.tsx`, `client/src/components/organisms/deck-builder.tsx`, `client/src/components/organisms/decks.tsx`, `client/src/components/organisms/lobby.tsx`, `client/src/components/organisms/play.tsx`, `client/src/components/atoms/`, `client/src/components/molecules/portrait-gate.tsx`, `client/src/global.css`, `client/src/plugins/otel.client.ts`, `client/src/plugins/otel.server.ts`
+**Status:** Current (as of 2026-07-22)
+**Module:** `client/app/` (entry, routes, update/view), `client/app/shell/**` (auth, decks, lobby), `client/lib/**` (rpc-client, wire, lobby-store, faro, ui helpers), `client/server/**` (Nitro BFF routes + Drizzle), `client/styles/global.css`
 
 ---
 
@@ -15,7 +15,7 @@ These concerns — routing, auth, deck management, card art CDN, state managemen
 
 ## Solution
 
-The client is a **SolidStart 1.3** app (`ssr: false`) with Vinxi. The shell is a thin `<Router>` in `app.tsx` wrapping file-based routes; the only global chrome is the `PortraitGate` dialog (Landscape Rule) and a `<Suspense>` boundary. All async/wire work goes through **Effect atoms** (`effect/unstable/reactivity/Atom` + `@effect/atom-solid`) per client-shell-deck-builder-and-observability spec. Solid signals/stores handle view-local state and the game fold in `store.ts`. The wire contract is a hand-written Effect HTTP client over the same-origin `/api/rpc` BFF, which dials tonic gRPC to the API server (wire-protocol-and-visibility spec). Design tokens live in the YAML frontmatter of `DESIGN.md` and are mirrored into a Tailwind v4 `@theme` in `global.css` (client-shell-deck-builder-and-observability spec). Biome handles format, lint, and import ordering (client-shell-deck-builder-and-observability spec). Observability runs Grafana Faro (browser) + `@effect/opentelemetry` (BFF) + OTLP/tonic (API), all no-op locally unless the OTLP endpoint is set (production-topology-and-operations spec).
+The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns all routes (`client/app/`: `Model` / `Message` / `update` / `view` with shell submodels). Async/wire work uses Effect at runtime boundaries (`client/lib/rpc-client.ts`, streams, BFF); Foldkit owns UI state. The wire contract is a hand-written Effect HTTP client over the same-origin `/api/rpc` BFF, which dials tonic gRPC. Design tokens live in `DESIGN.md` YAML and Tailwind v4 `@theme` in `client/styles/global.css`. Biome handles format/lint. Observability: Grafana Faro (browser) + `@effect/opentelemetry` (BFF) + OTLP/tonic (API), no-op locally unless OTLP is set.
 
 ---
 
@@ -32,18 +32,18 @@ The client is a **SolidStart 1.3** app (`ssr: false`) with Vinxi. The shell is a
 
 ## Behavior
 
-### App shell and routing (`app.tsx`, `routes/`)
+### App shell and routing (`client/app/routes.ts`, `client/app/view.ts`)
 
-The root component mounts a `<PortraitGate />` and a SolidStart `<Router>` with file-based `<FileRoutes />` inside a `<Suspense>`. No persistent nav chrome. Routes:
+A single Foldkit event-reactor owns routing: `client/app/routes.ts` maps paths to shell views; `client/app/view.ts` renders the active route. Auth-gated routes consult the auth submodel (redirect to `/login?next=…` when unsigned-in). No persistent nav chrome. Global chrome is the portrait gate (Landscape Rule). Routes:
 
-| Path | Component | Guard |
+| Path | View | Guard |
 |---|---|---|
-| `/` | `Decks` | `RequireAuth` |
-| `/login` | `Auth` | — |
-| `/decks/new` | `DeckBuilder` | `RequireAuth` |
-| `/decks/:id` | `DeckBuilder` (edit) | `RequireAuth` |
-| `/play` | `Play` (lobby/board wrapper) | — |
-| `/play/:table` | `Play` (with table id) | — |
+| `/` | Decks list | auth submodel |
+| `/login` | Auth | — |
+| `/decks/new` | Deck builder | auth submodel |
+| `/decks/:id` | Deck builder (edit) | auth submodel |
+| `/play` | Lobby / board wrapper | — |
+| `/play/:table` | Play (with table id) | — |
 | `/api/[...path]` | lobby/table HTTP passthrough | — |
 | `/api/rpc/[...path]` | Effect RPC BFF | — |
 | `/api/faro/collect` | Faro proxy | — |
@@ -179,31 +179,23 @@ Single-page login/signup (toggled, not separate routes). `authenticateFn` is an 
 
 ## Testing Decisions
 
-- `client/src/atoms.test.ts` — shared atom wiring (`meAtom`, `decksAtom`).
-- `client/src/lib/apiUpstream.test.ts`, `lib/apiUpstreamAuth.test.ts` — BFF proxy helpers.
-- `client/src/effect/client.test.ts`, `effect/api.test.ts`, `effect/api-endpoints.test.ts` — Effect HTTP client (stubbed fetch).
-- `client/src/effect/stream.test.ts` — delta stream atom behavior.
-- `client/src/effect/otel.parent.test.ts` — trace parent continuation and sampled/unsampled filtering.
-- `client/src/lib/faroCollect.test.ts`, `lib/faroSession.test.ts` — Faro proxy helpers and session repair.
-- `client/src/lib/deckBuilderPrint.test.ts` — printing preference reconciliation.
-- `client/src/lib/deckImagePreload.test.ts` — deck art preload logic.
-- `client/src/lib/scryfall.test.ts` — CDN URL construction, Scryfall API fallback.
-- `client/src/lib/traceContext.test.ts` — W3C `traceparent` parse/format.
-- `client/src/lib/buildMeta.test.ts` — version/commit env var reading.
-- `client/src/lib/lobbyStore.test.ts`, `lib/lobby.test.ts`, `lobby.test.ts` — lobby state and poll.
-- `client/src/store.test.ts` — game fold: `applyDelta`, `applySnapshot`, `extractProvenance`.
-- `client/src/net.test.ts` — `parseTableCode`, `tableId`, `setTableUrl`.
-- `client/src/wire/grpcClient.test.ts`, `wire/protoMap.test.ts`, `wire/rpcServer.test.ts` — BFF gRPC client and proto mapping.
-- `client/src/plugins/runtime.test.ts` — Nitro plugin runtime.
-- `client/src/lib/lookupCards.test.ts` — card lookup for deck hydration.
-- `client/src/components/atoms/button.test.ts`, `lib/cn.test.ts` — atom/component helpers.
+- `client/app/shell/**/*.test.ts` — auth, decks list/builder, lobby stories and helpers.
+- `client/app/routes.test.ts`, `client/app/smoke.test.ts` — routing and smoke.
+- `client/app/game/*.test.ts` — game fold, stream subscription.
+- `client/lib/rpc-client.test.ts` — Effect HTTP client (stubbed fetch).
+- `client/lib/wire/*.test.ts` — BFF gRPC / RPC method gate.
+- `client/lib/lobby-store.test.ts` — lobby state.
+- `client/lib/deck-builder/*.test.ts` — print prefs, menus, hover preview.
+- `client/lib/ui/*.test.ts`, `client/lib/cn.test.ts` — Foldkit UI helpers (`buttonClass`, surfaces).
+- `client/lib/build-meta.test.ts` — version/commit env var reading.
+- Board geometry/paint/HTML tests live under `client/app/board/**` (see board spec / `docs/client-canvas-map.md`).
 - Integration test: `just client-check` runs Biome lint + typecheck + Vitest. The full check is `just check` (server + client).
 
 ---
 
 ## Out of Scope
 
-- Server-side rendering of board state (SSR is disabled, `ssr: false`).
+- Server-side rendering of board state (SPA on Nitro; no SSR of the board).
 - Progressive Web App (PWA) / service worker / offline mode.
 - Sitemaps, SEO meta, or marketing pages (`robots.txt` disallows all crawlers).
 - Multi-account switching within one browser session.
@@ -215,10 +207,11 @@ Single-page login/signup (toggled, not separate routes). `authenticateFn` is an 
 
 ## Further Notes
 
-- **DESIGN.md is the token source.** Adding a token to `global.css` that does not exist in DESIGN.md is drift. The two must stay in sync.
-- **Effect / `@effect/atom-solid` / `@effect/sql-pg` must be pinned to the same exact beta.** Breaking the pin causes runtime type mismatches between Effect fibers from different versions.
-- **Wire codegen.** `.proto` is the sole contract (wire-protocol-and-visibility spec). After proto changes: `just server-codegen` / `bun run gen` to regenerate the gitignored `client/src/wire/generated/` directory. The BFF gRPC client imports from there.
+- **DESIGN.md is the token source.** Adding a token to `client/styles/global.css` that does not exist in DESIGN.md is drift. The two must stay in sync.
+- **Effect / `@effect/*` packages must be pinned to the same exact beta.** Breaking the pin causes runtime type mismatches between Effect fibers from different versions.
+- **Wire codegen.** `.proto` is the sole contract (wire-protocol-and-visibility spec). After proto changes: `just server-codegen` / `bun run gen` to regenerate the gitignored `client/lib/wire/generated/` directory. The BFF gRPC client imports from there.
 - **Faro size cap.** `FARO_MAX_BODY_BYTES = 512 KiB`. The `/api/faro/collect` route rejects oversized payloads with 413 before reading the full body (`contentLengthTooLarge` checks `Content-Length` header first; `readBodyCapped` streams and checks).
 - **Safe area insets.** The landscape rule applies to notched devices — `viewport-fit=cover` with safe-area insets. The portrait gate handles the notched-portrait case; landscape layout tightens padding but does not re-stack.
 - **`just client-check`** is the canonical verification: Biome format + lint (including sorted-class check) + TypeScript typecheck + Vitest. Always run before committing client changes.
-- **The lobby is on `mtgfr_web`** (SolidStart / Drizzle / Postgres `mtgfr_web`), not `mtgfr` (Toasty / game/user data). `just client-migrate` applies Drizzle migrations; `just migrate` applies Toasty migrations. Both must run before DB-touching work.
+- **The lobby is on `mtgfr_web`** (Nitro BFF / Drizzle / Postgres `mtgfr_web`), not `mtgfr` (Toasty / game/user data). `just client-migrate` applies Drizzle migrations; `just migrate` applies Toasty migrations. Both must run before DB-touching work.
+- **Historical SolidStart / Vinxi shell** — Behavior and Implementation Decisions above may still mention the pre-cutover stack; live architecture is Foldkit + Nitro. See the [Foldkit migration design](2026-07-21-foldkit-client-migration-design.md) (archive) and module split (`client/app/`, `client/lib/`, `client/server/`).

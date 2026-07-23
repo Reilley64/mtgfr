@@ -1,6 +1,5 @@
 /dist
 /node_modules
-.solid
 .output
-.vinxi
-src/wire/generated/
+.nitro
+lib/wire/generated/

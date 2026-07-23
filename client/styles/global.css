@@ -1,0 +1,356 @@
+/* The design system, as Tailwind. DESIGN.md's frontmatter is the source of truth: its `colors`,
+ * `typography`, `rounded` and `spacing` maps are the @theme below, and its `components` map is
+ * realized as Foldkit HTML helpers + utility recipes in `client/app/` — never via `@apply`.
+ * A token that exists in one and not the other is drift.
+ *
+ * House rule for the TSX: classes carry styling, `style` carries only data — a dynamic value goes
+ * in as a CSS variable (`style={{ "--x": ... }}`) and a utility reads it (`class="left-(--x)"`).
+ * One-off values that DESIGN.md doesn't name stay arbitrary at the call site (`bg-[#18221ef5]`)
+ * rather than growing the token list past its source of truth.
+ *
+ * The canvas is exempt from all of this: it paints with the hex literals in Board.tsx/layout.ts. */
+
+@import "tailwindcss";
+/* Oracle/approximates mana pips + mana-tray symbols (duo / color indicators) — subset of mana-font. */
+@import "./mana-oracle.css";
+
+/* Prefer woff2 for canvas `ctx.fillText("…", …)` with `font: … Mana` (One Face Rule exception —
+ * icon font only, never body/UI text). Overrides the package face which ships woff/ttf only. */
+@font-face {
+  font-family: "Mana";
+  src:
+    url("../node_modules/mana-font/fonts/mana.woff2") format("woff2"),
+    url("../node_modules/mana-font/fonts/mana.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+/* Oracle / approximates prose: shrink cost pips so they don't dominate the body line. */
+.ms.ms-cost.ms-oracle {
+  font-size: 0.78em;
+}
+
+/* Mana tray: drop the cost-pip glyph so a count can sit in the colored/split circle. */
+.ms.ms-cost.ms-tray-count::before,
+.ms.ms-cost.ms-tray-count::after {
+  /* biome-ignore lint/complexity/noImportantStyles: must beat mana-font's ::before content */
+  content: none !important;
+}
+
+.ms-tray-count-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: system-ui, sans-serif;
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1;
+  color: #111;
+  /* Halo so the digit stays readable on pale, dark, and split pip faces. */
+  text-shadow:
+    0 0 2px #fff,
+    0 0 2px #fff,
+    0 1px 0 #fff,
+    0 -1px 0 #fff,
+    1px 0 0 #fff,
+    -1px 0 0 #fff;
+  pointer-events: none;
+}
+
+.ms-tray-count-num.ms-tray-count-light {
+  color: #eff;
+  text-shadow:
+    0 0 2px #111,
+    0 0 2px #111,
+    0 1px 0 #111,
+    0 -1px 0 #111,
+    1px 0 0 #111,
+    -1px 0 0 #111;
+}
+
+@theme {
+  /* The One Face Rule (DESIGN.md §3): system-ui only, everywhere, including the canvas. */
+  --font-sans: system-ui, sans-serif;
+
+  --color-forest-floor: #0b1310;
+  --color-forest-surface: #101816fa;
+  --color-forest-hud: #0c1412eb;
+  --color-llanowar: #2f7d46;
+  --color-llanowar-deep: #276b3c;
+  --color-vine: #22cc44;
+  --color-vine-dim: #11cc33;
+  --color-snow: #eeffff;
+  --color-seafoam: #ddffee;
+  --color-mist: #ccddee;
+  --color-lichen: #99ccbb;
+  --color-fog: #8899aa;
+  --color-snow-mint: #eafff0;
+  --color-glass: #ffffff0f;
+  --color-glass-dim: #ffffff0d;
+  --color-priority-gold: #ffd76a;
+  --color-playable-border: #eafff0;
+  --color-commander-gold: #e9b84a;
+  --color-graveyard-outline: #7b5cff;
+  --color-exile-outline: #3ddc97;
+  --color-oracle-ivory: #e8e4d8;
+  --color-morph-slate: #2a3742;
+  --color-mountain-red: #ff5555;
+  --color-wall-green: #66ff99;
+  --color-island-blue: #77ccff;
+  --color-burn-red: #ff8888;
+  --color-caution-amber: #ffee88;
+  --color-damage-crimson: #8f2f2f;
+  --color-tapped-out: #24312b;
+  --color-tapped-ink: #66786e;
+  --color-seat-forest: #5ac88c;
+  --color-seat-island: #5a96f0;
+  --color-seat-mountain: #f0785a;
+  --color-seat-arcane: #c88cf0;
+  --color-turn-mint: #8fdcaa;
+  --color-turn-ember: #e0a878;
+  --color-phase-mint: #55cc99;
+  --color-phase-ember: #cc8855;
+  --color-note-gold: #f0c674;
+  --color-auto-moss: #3a7d52;
+  --color-reconnect-rust: #7a3b13;
+  --color-assign-clover: #99ff99;
+  --color-watch-sage: #9fb4a8;
+  --color-watch-flare: #f87171;
+  --color-ready-sprout: #8fe3a8;
+  --color-phase-fern: #8fa398;
+  --color-preview-ash: #e8e8ea;
+  /* Not in DESIGN.md: the hairline the HUD panels actually ship with (§5 calls them borderless). */
+  --color-hud-edge: #5a786966;
+  /* Yielded pass control — amber earth, not priority gold (The Gold Means Act Rule). */
+  --color-yielded: #6b5a1f;
+  --color-yielded-hover: #7d6a26;
+  --color-yielded-ink: #ffe9a8;
+  --color-quiet-hover: #2c3f35;
+
+  /* Hierarchy is size and weight only — never a second family. */
+  --text-title: 18px;
+  --text-title--font-weight: 700;
+  --text-body: 14px;
+  --text-body--line-height: 1.5;
+  --text-button: 14px;
+  --text-button--font-weight: 600;
+  --text-label: 13px;
+  --text-caption: 12px;
+  /* HUD density steps below caption — board chrome only, not prose. */
+  --text-chip: 11px;
+  --text-micro: 10px;
+  --text-game: 15px;
+  --text-game--font-weight: 600;
+  --text-display: 22px;
+  --text-display--font-weight: 700;
+
+  --radius-panel: 12px;
+  --radius-modal: 10px;
+  --radius-game: 10px;
+  --radius-hud: 8px;
+  --radius-control: 6px;
+  --radius-focus: 4px;
+
+  --spacing-xs: 6px;
+  --spacing-sm: 8px;
+  --spacing-md: 10px;
+  --spacing-lg: 14px;
+  --spacing-xl: 16px;
+  --spacing-xxl: 24px;
+
+  /* Shadows say "this floats"; glow says "the game wants you" (DESIGN.md §4). */
+  --shadow-table: 0 12px 40px rgb(0 0 0 / 0.6);
+  --shadow-hand: 0 6px 18px rgb(0 0 0 / 0.5);
+  --shadow-hud: 0 6px 20px rgb(0 0 0 / 0.45);
+  --shadow-press: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 6px 16px rgb(0 0 0 / 0.4);
+  --shadow-press-active: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 3px 10px rgb(0 0 0 / 0.4);
+  --shadow-glow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18), 0 0 0 2px rgb(90 200 140 / 0.55), 0 6px 20px rgb(47 140 90 / 0.45);
+  --shadow-pick: 0 0 0 3px #22cc44, 0 10px 24px rgb(0 0 0 / 0.6);
+  --drop-shadow-drag: 0 10px 24px rgb(0 0 0 / 0.6);
+
+  --ease-state: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Motion is state-conveying, never required to use the interface. */
+  --animate-stack-in: stack-in 0.25s ease-out;
+  --animate-stack-return: stack-return 0.22s ease-in;
+  --animate-stack-resolve: stack-resolve 0.22s ease-out;
+  --animate-breathe: breathe 1.8s ease-in-out infinite;
+  --animate-skeleton: breathe 1.2s ease-in-out infinite;
+
+  @keyframes stack-in {
+    from {
+      opacity: 0;
+      transform: translate(var(--stack-from-dx, -48px), var(--stack-from-dy, 0px)) scale(0.85);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes stack-return {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translate(var(--stack-from-dx, 0px), var(--stack-from-dy, 48px)) scale(0.85);
+    }
+  }
+  @keyframes stack-resolve {
+    from {
+      filter: brightness(1.55);
+    }
+    to {
+      filter: none;
+    }
+  }
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+}
+
+/* The interaction states the component classes don't spell out themselves: hover/active feedback,
+ * a keyboard focus ring, and dark-native form controls. One vocabulary, every surface. */
+@layer base {
+  /* Dark-native form controls, scrollbars, and native <select>/<option> popups across the app. */
+  :root {
+    color-scheme: dark;
+  }
+
+  /* Buttons and link-buttons: brightness lifts filled AND ghost variants (text + border brighten),
+   * a 1px press gives tactile feedback. 150ms ease-out per DESIGN's motion budget. */
+  button,
+  [role="button"] {
+    transition:
+      filter 0.15s var(--ease-state),
+      transform 0.06s var(--ease-state);
+  }
+  button:hover:not(:disabled),
+  [role="button"]:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+  button:active:not(:disabled),
+  [role="button"]:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  button:disabled {
+    cursor: default;
+  }
+
+  /* Inputs and selects: the green focus treatment — border shifts to vine and the ring appears.
+   * Applied on :focus (not just :focus-visible) since typing is deliberate. */
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--color-vine);
+    outline: 2px solid var(--color-vine);
+    outline-offset: 1px;
+  }
+  select option {
+    background: #101816;
+  }
+
+  /* Browser-default placeholders fail the 4.5:1 contrast floor on the dark input fill; fog clears it
+   * (opacity:1 defeats Firefox's default dimming). */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-fog);
+    opacity: 1;
+  }
+
+  /* Keyboard focus ring for anything clickable — visible for keyboard/AT users, absent on mouse. */
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--color-vine);
+    outline-offset: 2px;
+    border-radius: var(--radius-focus);
+  }
+
+  /* Coarse pointer (touch): 44×44 hit floor without changing desktop density.
+   * Skip [data-ui=link] — it sits inline in sentences and must not grow to a 44px block. */
+  @media (pointer: coarse) {
+    button:not(.hit-quiet):not([data-ui="link"]),
+    [role="button"]:not(.hit-quiet):not([data-ui="link"]) {
+      min-height: 44px;
+    }
+    .hit-quiet {
+      display: inline-flex;
+      min-width: 44px;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  /* Landscape-first: native <dialog showModal> opens this (see PortraitGate). Top-layer + inert
+   * background + focus trap come from the browser; Escape is prevented in JS. */
+  .portrait-gate {
+    margin: 0;
+    max-width: none;
+    max-height: none;
+    width: 100%;
+    height: 100%;
+    border: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    padding: max(var(--spacing-xxl), env(safe-area-inset-top)) max(var(--spacing-xxl), env(safe-area-inset-right))
+      max(var(--spacing-xxl), env(safe-area-inset-bottom)) max(var(--spacing-xxl), env(safe-area-inset-left));
+    background: var(--color-forest-floor);
+    color: var(--color-snow);
+    text-align: center;
+  }
+  .portrait-gate[open] {
+    display: flex;
+  }
+  .portrait-gate::backdrop {
+    background: var(--color-forest-floor);
+  }
+
+  /* Short landscape (phones on their side): tighten screen chrome, keep side-by-side. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    [data-ui="panel"] {
+      padding: var(--spacing-xl);
+      gap: var(--spacing-md);
+    }
+  }
+
+  a {
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+
+  ::selection {
+    background: rgb(34 204 68 / 0.35);
+  }
+
+  /* Motion is state-conveying, never required to use the interface. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: must override component-level motion for a11y */
+      transition-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: must override component-level motion for a11y */
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* DESIGN.md §5 surfaces live in `client/app/` (Foldkit HTML helpers + utility recipes).
+ * Do not reintroduce `@apply` or a parallel `@layer components` vocabulary. */

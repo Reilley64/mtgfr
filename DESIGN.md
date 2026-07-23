@@ -18,7 +18,10 @@ colors:
   glass: "#FFFFFF0F"
   glass-dim: "#FFFFFF0D"
   priority-gold: "#FFD76A"
+  playable-border: "#EAFFF0"
   commander-gold: "#E9B84A"
+  graveyard-outline: "#7B5CFF"
+  exile-outline: "#3DDC97"
   oracle-ivory: "#E8E4D8"
   morph-slate: "#2A3742"
   mountain-red: "#FF5555"
@@ -156,7 +159,7 @@ components:
 
 # Design System: mtgfr
 
-**North star:** "Arena, Unplugged" — MTGA game-client polish, zero storefront chrome (see `PRODUCT.md` anti-references). Dark green felt (`forest-floor`), translucent panels, cream cards (`oracle-ivory`) on felt. **Gold = a decision is owed** (priority gold on the orb; commander gold on commanders only). **Seat hues = identity** (forest/island/mountain/arcane), never semantics.
+**North star:** "Arena, Unplugged" — MTGA game-client polish, zero storefront chrome (see `PRODUCT.md` anti-references). Dark green felt (`forest-floor`), translucent panels, cream cards (`oracle-ivory`) on felt. **Gold = a decision is owed** (priority gold on the orb; commander gold on commanders only). **Playable border** means a card has a current action. **Zone outlines** use graveyard purple and exile green for playable bar tiles. **Seat hues = identity** (forest/island/mountain/arcane), never semantics.
 
 **Layout:** Canvas board (96×134 world-unit cards, shared camera) + thin DOM HUD. Z-order: board → HUD → backdrop (29) → modal (30). No persistent nav chrome.
 
@@ -166,10 +169,10 @@ components:
 
 **Semantic colors (combat):** Mountain Red = attack, Wall Green = block, Island Blue = targeting.
 
-**Priority readability:** Gold = a decision is owed. During **instant-priority focus**, non-usable battlefield permanents take a black veil; legal activates and untapped mana sources stay bright. Empty-stack main and declare attackers/blockers stay fully lit (see turn-priority-and-stack spec / `CONTEXT.md`). Yielded pass uses amber earth (`yielded` / `yielded-ink`) — not priority gold (The Gold Means Act Rule).
+**Priority readability:** Gold = a decision is owed. During **instant-priority focus**, playable hand cards and battlefield permanents with real action-list activates get a playable border; tap-only mana lands remain selectable without that border. The former dim-for-unplayable veil is retired. Empty-stack main and declare attackers/blockers stay fully lit (see turn-priority-and-stack spec / `CONTEXT.md`). Yielded pass uses amber earth (`yielded` / `yielded-ink`) — not priority gold (The Gold Means Act Rule).
 
-**Components:** Chunky buttons (Llanowar Deep → Llanowar on hover, inset highlight, shortens on press) via `~/components/atoms` Solid wrappers — never `@apply`. Panels: Forest Surface 98% + 1px Vine border; fluid width (`max-w` capped, no hard `min-w` that overflows landscape phones). HUD: Forest HUD 92%. Inputs: Glass fill + Vine border. Cards on canvas: tapped = 90° rotation; combat outlines red/green; life orbs are combat drop targets. Quiet HUD dismiss controls use `.hit-quiet` so coarse pointers still hit ≥44×44.
+**Components:** Chunky buttons (Llanowar Deep → Llanowar on hover, inset highlight, shortens on press) via Foldkit `client/lib/ui/` helpers (`buttonClass`, surfaces) — never `@apply`. Panels: Forest Surface 98% + 1px Vine border; fluid width (`max-w` capped, no hard `min-w` that overflows landscape phones). HUD: Forest HUD 92%. Inputs: Glass fill + Vine border. Cards on canvas: tapped = 90° rotation; combat outlines red/green; life orbs are combat drop targets. Quiet HUD dismiss controls use `.hit-quiet` so coarse pointers still hit ≥44×44.
 
 **Motion:** 150–250ms ease-out, state-only, `prefers-reduced-motion` fallback — never celebration.
 
-**Implementation:** Token values live in the YAML frontmatter above; Tailwind/theme wiring in `client/src/global.css` (client-shell-deck-builder-and-observability spec). Canvas paint hexes in `Board.tsx` / `layout.ts` are exempt from DOM tokens; keep the legend list in sync with draw.
+**Implementation:** Token values live in the YAML frontmatter above; Tailwind/theme wiring in `client/styles/global.css` (client-shell-deck-builder-and-observability spec). Canvas paint hexes in `client/app/board/` (`layout.ts` and paint modules) are exempt from DOM tokens; keep the legend list in sync with draw.

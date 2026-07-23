@@ -1,7 +1,7 @@
 # Client Game Board and Interaction
 
-**Status:** Current (as of 2026-07-20)
-**Module:** `client/src/components/organisms/board.tsx` and the full canvas/DOM board subsystem — `lib/camera`, `lib/hitTest`, `lib/boardDensity`, `lib/boardDraw`, `lib/boardScene`, `lib/boardFelt`, `lib/boardCardPaint`, `lib/boardAvatarPaint`, `lib/boardArrows`, `lib/boardPaintPrims`, `lib/stackLayout`, `lib/interaction`, `lib/tween`, `lib/cardFlight`, `lib/imageCache`, `controllers/tableSurface`, `controllers/tableEntrances`, `controllers/cardFlights` (rolled into `controllers/playMotion`), `controllers/action-session`, `controllers/combatStaging`, `components/organisms/stack-overlay`, `components/organisms/turn-chrome`, `components/organisms/priority-context-bar`, `components/organisms/board-discoverability`, `components/organisms/board-overlays`, `components/molecules/hand`, `components/molecules/mana-tray`, `components/molecules/activation-radial`, `components/molecules/prompt-forms`, `controllers/prompt-host`, `lib/tableAudio`, `lib/inspect`, `lib/targeting`, `lib/radial`, `lib/interaction`, `layout.ts`
+**Status:** Current (as of 2026-07-22)
+**Module:** `client/app/board/` — `canvas/` (vector felt/avatars/arrows/scene), `bitmap/` (Mount card art + flights), `html/` (hand, stack, prompts, chrome), `geometry/` (camera, hit-test, layout, density, interaction), `action/` (session, targeting, execution), `motion/flights.ts`, plus `submodel.ts` / `view.ts` / `messages.ts`
 
 ---
 
@@ -9,15 +9,15 @@
 
 A 4-player Commander (MTG) game requires a shared table where every player sees the battlefield from their own perspective, can drag spells from their hand, declare attackers and blockers, respond during opponent turns, and receive instant feedback when the game advances. The board must carry hundreds of permanents per seat without visual collision, support continuous card-play animation (client-game-board-and-interaction spec), synthesize audio attention cues without shipped audio files (client-game-board-and-interaction spec), and remain readable under the Landscape Rule (DESIGN.md).
 
-A pure DOM approach collapses under the paint cost of rendering 300+ permanents per frame. A pure retained-scene graph (Pixi, Konva) imposes a large dependency and opaque z-order between the canvas board and the DOM hand/stack overlays. The dual-surface architecture — canvas for the battlefield, DOM for hand/stack — was chosen deliberately and is an invariant.
+A pure DOM approach collapses under the paint cost of rendering 300+ permanents per frame. A pure retained-scene graph (Pixi, Konva) imposes a large dependency and opaque z-order between the canvas board and the HTML hand/stack overlays. The dual-surface architecture — canvas for the battlefield, HTML for hand/stack — was chosen deliberately and is an invariant.
 
 ---
 
 ## Solution
 
-The board is a **canvas/DOM split**: a full-screen `<canvas>` paints the battlefield (felt, seats, permanents, avatars, arrows, in-flight cards) while thin DOM overlays handle hand tiles, the stack pile, the mana tray, the priority chrome, and the inspect dock. A single camera transform (pan + zoom) is the shared source of truth for both surfaces so they stay aligned under scroll and resize.
+The board is a **dual-surface** Foldkit submodel (`client/app/board/`): a full-screen Foldkit **Canvas** paints vector battlefield layers (felt, seats, avatars, arrows, scene) while a Foldkit **Mount** bitmap layer paints card art and flights; thin **HTML** overlays handle hand tiles, the stack pile, the mana tray, priority chrome, and the inspect dock. A single camera transform (pan + zoom) is the shared source of truth for both surfaces so they stay aligned under scroll and resize.
 
-The living architecture map for this module is **[docs/client-canvas-map.md](../client-canvas-map.md)**. The module map, invariants, and paint/hit/flight/DOM ownership rules there are authoritative. This spec documents the behavior visible to players and the decisions behind it; the canvas map documents the code structure.
+The living architecture map for this module is **[docs/client-canvas-map.md](../client-canvas-map.md)**. The module map, invariants, and **authoritative board layer stack** (bottom→top paint/DOM order) there are the source of truth for z-index and paint order. This spec documents the behavior visible to players and the decisions behind it; the canvas map documents the code structure.
 
 ---
 
@@ -84,7 +84,7 @@ Flights paint **above** resting cards in the draw order. `flightOwnedIds` is exp
 
 ### DOM hand bar (`components/molecules/hand.tsx`)
 
-The hand bar is a DOM overlay anchored at the bottom of the viewport. Each card face is a full MTGA-sized tile (`HAND_CARD_W` from `HAND_FACE_W`), offset into a dense fan (up to ±10° tilt, center rises). Cast-cost pips sit above each face. A zone-group ordering matches Arena: command → hand → graveyard → exile, separated by aura color gaps (no section captions). Dragging a card above `HAND_BAR_H` (the play threshold) constitutes a drop; releasing below snaps back. `hiddenId` suppresses the face while a flight owns it. The hand suppresses entirely for spectators and eliminated players.
+The hand bar is a DOM overlay anchored at the bottom of the viewport. Each card face is a full MTGA-sized tile (`HAND_CARD_W` from `HAND_FACE_W`), offset into a dense fan (up to ±10° tilt, center rises). Cast-cost pips sit above each face. A zone-group ordering matches Arena: command → hand → graveyard → exile, separated by aura color gaps (no section captions). Dragging a card above the play threshold — clearance measured as `HAND_BAR_H - HAND_PLAY_SLACK_PX` above the hand bar — constitutes a drop; releasing below snaps back. `hiddenId` suppresses the face while a flight owns it. The hand suppresses entirely for spectators and eliminated players.
 
 ### Stack overlay (`components/organisms/stack-overlay.tsx`)
 
@@ -127,13 +127,15 @@ Selecting your battlefield permanent opens a **continuous SVG donut** of legal o
 on the same wedge (slide-off cancels; outside/hole dismisses). Screen center + zoom are
 frozen while open. Empty option lists do not show a hollow ring.
 
-### Inspect dock (client-game-board-and-interaction spec, `lib/inspect.ts`, `components/molecules/card-preview.tsx`)
+### Inspect dock (client-game-board-and-interaction spec, `lib/inspect.ts`, `lib/deck-builder/card-hover-preview.ts`)
 
-Alt-down over a face-up card pins it into the left inspect dock with a full-board dim scrim (modal: board/HUD clicks blocked). `InspectPin` carries `{ name, prepared, objectId?, cardId?, print? }`. The dock shows:
+Board inspect uses the shared card-preview **`dock`** mode (same module as deck-builder hover; `mode: "follow" | "dock"`). Alt-down over a face-up card pins it with a full-board dim **backdrop** (modal: board/HUD clicks blocked). `InspectPin` carries `{ name, prepared, objectId?, cardId?, print? }`. Layout:
 
-- Full card art with DFC flip for prepared permanents (opens on the play face — back when `prepared`).
-- Oracle text with inline mana pips.
-- A **modifier ledger** for battlefield permanents: continuous mods re-derived live from the snapshot, timed/stateful mods recorded by `source_name`. Contributions grouped by source card def name; each name is an underlined link that pushes that def onto the inspect **history stack**. Back control pops. Marked damage is out of scope.
+- **Left:** card art with DFC flip for prepared permanents (opens on the play face — back when `prepared`).
+- **Right:** oracle text with inline mana pips; for battlefield permanents, **modifier ledger / effects** in that column.
+- **Topmost** in the board layer stack (layer 10) — above prompts, HUD, and system modals while pinned.
+
+Modifier ledger: continuous mods re-derived live from the snapshot, timed/stateful mods recorded by `source_name`. Contributions grouped by source card def name; each name is an underlined link that pushes that def onto the inspect **history stack**. Back control pops. Marked damage is out of scope.
 
 Releasing Alt or pressing Esc dismisses. Space is blocked while the dock is open.
 
@@ -225,3 +227,4 @@ Any non-battlefield zone pile can be expanded into a `PileOverlay` by clicking i
 - **client-game-board-and-interaction spec is superseded.** Segmented DOM/canvas play-motion legs (0033) were replaced by continuous canvas flights (0035). Do not re-introduce multi-leg play motion.
 - **Mana tray** is a world-anchored DOM overlay, not part of the canvas paint — `ManaTray` receives projected screen positions from `projectManaTrays(...)` and renders CSS-positioned elements above the canvas.
 - **`data-testid` markers** on `bf-card-{id}` (pointer-events none) and `life-orb-{seat}` give Playwright real screen coordinates to aim combat/targeting gestures.
+- **Client stack is Foldkit + Nitro.** Historical Implementation Decisions may still mention the pre-cutover SolidStart tree; live board code is the Foldkit submodel (`client/app/board/`) with Canvas + Mount + HTML overlays. See the [Foldkit migration design](2026-07-21-foldkit-client-migration-design.md) (archive) and [`docs/client-canvas-map.md`](../client-canvas-map.md).

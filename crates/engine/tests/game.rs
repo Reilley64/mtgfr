@@ -11532,6 +11532,53 @@ fn legal_actions_lists_a_paid_mana_activate_without_stopping_auto_pass() {
 }
 
 #[test]
+fn legal_actions_lists_paid_mana_activate_for_controller_not_owner() {
+    let mut game = Game::with_players(4, 0);
+    for p in 0..4 {
+        game.stack_library(PlayerId(p), &[VANILLA; 12]);
+    }
+    let zedruu = game.spawn_on_battlefield(PlayerId(0), card("Zedruu the Greathearted"));
+    let signet = game.spawn_on_battlefield(PlayerId(0), card("Azorius Signet"));
+    game.spawn_on_battlefield(PlayerId(0), card("Island"));
+    game.spawn_on_battlefield(PlayerId(0), card("Mountain"));
+    game.spawn_on_battlefield(PlayerId(0), card("Plains"));
+    let feeder = game.spawn_on_battlefield(PlayerId(1), card("Forest"));
+
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(0) && g.current_step() == Step::Main1
+    });
+    zedruu_donate(&mut game, zedruu, signet, PlayerId(1));
+    advance_until(&mut game, |g| {
+        g.active_player() == PlayerId(1)
+            && g.current_step() == Step::Main1
+            && g.priority_holder() == PlayerId(1)
+    });
+    game.submit(Intent::TapForMana {
+        player: PlayerId(1),
+        object: feeder,
+    })
+    .expect("the controller can float feeder mana");
+
+    assert_eq!(
+        game.owner_of(signet),
+        PlayerId(0),
+        "ownership stays with the donor",
+    );
+    assert_eq!(
+        game.controller_of(signet),
+        PlayerId(1),
+        "the recipient controls the donated signet",
+    );
+    assert!(
+        game.legal_actions().iter().any(|a| matches!(
+            a.kind,
+            MeaningfulAction::Activate { source, .. } if a.player == PlayerId(1) && source == signet
+        )),
+        "the controller sees the non-owned signet's paid mana ability",
+    );
+}
+
+#[test]
 fn legal_actions_does_not_list_study_hall_paid_from_its_own_free_c() {
     // Study Hall's free {{C}} must not make its paid {{1}},{{T}}: any look activatable alone.
     let mut game = Game::new();
@@ -11544,6 +11591,22 @@ fn legal_actions_does_not_list_study_hall_paid_from_its_own_free_c() {
             MeaningfulAction::Activate { source, .. } if source == study
         )),
         "Study Hall must not false-list its paid mode from its own free {{C}}",
+    );
+}
+
+#[test]
+fn legal_actions_does_not_list_tap_cost_activate_paid_by_its_own_mana() {
+    // Arcane Lighthouse's own {T}: {C} cannot pay its {1}, {T} non-mana ability.
+    let mut game = Game::new();
+    let lighthouse = game.spawn_on_battlefield(PlayerId(0), card("Arcane Lighthouse"));
+    game.begin_first_turn();
+
+    assert!(
+        !game.legal_actions().iter().any(|a| matches!(
+            a.kind,
+            MeaningfulAction::Activate { source, .. } if source == lighthouse
+        )),
+        "the source is excluded from the auto-tap payment plan because the activation taps it",
     );
 }
 
@@ -55960,6 +56023,21 @@ fn take_with_costs(
     }
 }
 
+fn take_with_sacrifice(player: PlayerId, id: u64, sacrifice: Vec<ObjectId>) -> Intent {
+    Intent::TakeAction {
+        player,
+        id,
+        target: None,
+        x: 0,
+        modes: vec![],
+        sacrifice,
+        discard_cost: vec![],
+        graveyard_exile: vec![],
+        attackers: vec![],
+        blocks: vec![],
+    }
+}
+
 /// The list of actions is recomputed only at the tail of a `submit`/`begin_first_turn`; a
 /// direct-API board parked at Main1 hasn't refreshed yet. Tapping a battlefield land is a mana
 /// ability — it keeps priority in Main1 — so it triggers a refresh without changing the phase. (CR 117, CR 403.5, CR 603)
@@ -56242,6 +56320,37 @@ fn take_action_cycles_a_hand_card() {
         hand_ids(&game, PlayerId(0)).len(),
         1,
         "cycling drew one card"
+    );
+}
+
+#[test]
+fn take_action_activates_viscera_seer_with_a_creature_sacrifice() {
+    let mut game = Game::new();
+    let seer = game.spawn_on_battlefield(PlayerId(0), card("Viscera Seer"));
+    let fodder = game.spawn_on_battlefield(PlayerId(0), card("Grizzly Bear"));
+    game.stack_library(PlayerId(0), &[card("Forest")]);
+    game.begin_first_turn();
+
+    let id = game
+        .legal_actions()
+        .iter()
+        .find(|a| matches!(a.kind, MeaningfulAction::Activate { source, .. } if source == seer))
+        .expect("Viscera Seer activate is listed while a creature can pay the sacrifice")
+        .id;
+
+    game.submit(take_with_sacrifice(PlayerId(0), id, vec![fodder]))
+        .expect("TakeAction pays the chosen creature sacrifice");
+
+    assert_eq!(
+        game.zone_of(fodder),
+        Zone::Graveyard,
+        "the chosen creature was sacrificed as an activation cost",
+    );
+    assert!(
+        game.stack()
+            .iter()
+            .any(|entry| matches!(entry, StackEntry::Ability { source, .. } if *source == seer)),
+        "the non-mana activated ability was put on the stack",
     );
 }
 
