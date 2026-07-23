@@ -2363,29 +2363,42 @@ function destinationPickPrompt(
   tableId: string | null,
 ): Html {
   if (pending.kind === "choose_countered_spell_destination") {
-    return frame("pending-choice", "Put the countered spell on top or bottom?", [
-      h.div(
-        [h.Class("flex gap-2")],
-        [
-          answerButton(
-            pending,
-            "prompt-destination-top",
-            "Top",
-            { kind: "top_or_bottom", top: true },
-            true,
-            tableId == null,
-          ),
-          answerButton(
-            pending,
-            "prompt-destination-bottom",
-            "Bottom",
-            { kind: "top_or_bottom", top: false },
-            false,
-            tableId == null,
-          ),
-        ],
-      ),
-    ]);
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-destination-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div(
+          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+          ["Put the countered spell on top or bottom?"],
+        ),
+        h.div(
+          [h.Class("flex flex-wrap justify-center gap-2")],
+          [
+            answerButton(
+              pending,
+              "prompt-destination-top",
+              "Top",
+              { kind: "top_or_bottom", top: true },
+              true,
+              tableId == null,
+            ),
+            answerButton(
+              pending,
+              "prompt-destination-bottom",
+              "Bottom",
+              { kind: "top_or_bottom", top: false },
+              false,
+              tableId == null,
+            ),
+          ],
+        ),
+      ],
+    );
   }
   const print = choiceItemPrint(pending.item, state);
   const face = print

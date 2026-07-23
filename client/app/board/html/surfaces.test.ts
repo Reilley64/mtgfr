@@ -844,6 +844,25 @@ test("order_triggers aim shows docked drag rows, click-to-place, and arrow contr
   );
 });
 
+test("choose_countered_spell_destination aim shows docked Top and Bottom", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_countered_spell_destination",
+          player: 0,
+          spell: 5,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-destination-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-destination-top")).toExist(),
+    Scene.expect(Scene.testId("prompt-destination-bottom")).toExist(),
+  );
+});
+
 test("revealed_card_to_battlefield_or_hand aim shows face and destination buttons", () => {
   overlayScene(
     overlayModel(
