@@ -49,7 +49,6 @@ These documents are **not superseded** and must stay current alongside the specs
 | [mana-tray](2026-07-20-mana-tray.md) | Battlefield mana pool tray and payment mana tray surfaces |
 | [production-topology-and-operations](2026-07-20-production-topology-and-operations.md) | k3s, Argo, Tunnel, migrations, releases, LGTM |
 | [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md) | Pending-choice forms, X prompt, modal and local cost prompts |
-| [choose-x-stepper-design](2026-07-23-choose-x-stepper-design.md) | Restore Foldkit choose-X stepper + cost preview (design) |
 | [stack](2026-07-20-stack.md) | Stack pile, strip, expansion, targetability, auto-resolve pause |
 | [system-overlays](2026-07-20-system-overlays.md) | Result, concede, pile expansion, reconnect, portrait gate overlays |
 | [table-audio](2026-07-20-table-audio.md) | Synthesized table cues, browser unlock, sound toggle |

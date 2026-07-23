@@ -25,10 +25,14 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - All engine submissions go through `choiceIntent`.
 - Card-pick prompts use `cardArt(h, opts)` for faces.
 - `boardXPrompt` is a stepper over `[minX, maxX]`:
-  - Draft value lives on `XPromptState.draftX` (defaults to `maxX`, clamped).
-  - Min / − / + / Max dispatch `XDraftSet`; Confirm dispatches `XSubmitted` with the draft.
-  - Preview row shows `Pay {…}` via `costText(costWithChosenX(xCost, draftX))` (`x-prompt-preview`) — brace text so large resolved generics stay accurate.
+  - Draft value lives on `XPromptState.draftX`, initialized to `clampX(maxX, minX, maxX)` when the prompt opens.
+  - Min / − / + / Max dispatch `XDraftSet` (clamped into `[minX, maxX]`); Confirm dispatches `XSubmitted` with a clamped `x`.
+  - − is disabled at `minX`; + is disabled at `maxX`.
+  - Preview row (`x-prompt-preview`) shows `Pay ${costText(costWithChosenX(xCost, draftX))}` — brace text so resolved generics outside mana-font’s 0–20 range stay accurate.
+  - Cancel clears the prompt via existing `CancelActionClicked`.
 - Wire fields `min_x`, `max_x`, and `x_cost` / `x_symbols` remain the server-authoritative contract; the client does not invent affordability.
+- When `x_symbols` is omitted, `costWithChosenX` treats it as `1` if `has_x`, else `0`.
+- When `maxX < minX`, `clampX` returns `minX` (client stays safe if the server sends a bad range).
 
 ## Implementation Decisions
 
@@ -37,13 +41,14 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Local pre-submit prompts live in `BoardModel` and are not derived from shared `pending_choice`.
 - `cardArt(h, opts)` has one DOM API and supports optional `style`.
 - Pure X helpers live in `client/lib/xCost.ts` (`clampX`, `costWithChosenX`, `costText`).
+- Choose-X preview uses brace text rather than hand-bar mana-font pips so large resolved generics cannot collapse to a false `{0}`.
 
 ## Testing Decisions
 
 - Formulator registry tests ensure every `PendingChoiceView["kind"]` maps to a formulator.
 - Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression.
-- X prompt Scene tests assert `x-prompt`, stepper controls, preview, and confirm — not one button per X.
-- Unit tests cover `clampX` / `costWithChosenX` (multi-symbol X and colored pips).
+- X prompt Scene tests assert stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
+- Unit tests cover `clampX`, `costWithChosenX` (multi-symbol X and colored pips), and `costText` for large generics.
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 
 ## Out of Scope
@@ -51,8 +56,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Changing `.proto` choice shapes.
 - Client-side inference of unavailable pending-choice kinds.
 - Sparse illegal-X denylists and oracle “enters as N/N” hints.
+- Engine `pending_choice` X formulators (none today); choose-X here is the board-local `xPrompt` path only.
 
 ## Further Notes
 
 - Wire projection may still send redacted `pending_choice` data to non-deciders; the interactive formulator gate is client-side.
-- Design for the stepper restore: [2026-07-23-choose-x-stepper-design.md](2026-07-23-choose-x-stepper-design.md).
