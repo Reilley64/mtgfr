@@ -191,4 +191,21 @@ describe("handView playable outlines", () => {
     expect(className(findTestId(tree, "hand-card-face-60"))).toContain("ring-graveyard-outline");
     expect(className(findTestId(tree, "hand-card-face-61"))).toContain("ring-exile-outline");
   });
+
+  it("layers playable border with commander gold on a castable command-zone commander", () => {
+    const commander = object(9, {
+      zone: ZONE.Command,
+      is_commander: true,
+      name: "Zimone, Quandrix Prodigy",
+    });
+    const tree = renderHand(
+      state({
+        objects: [commander],
+        actions: [action(9, { object: 9, section: "command", kind: "cast" })],
+      }),
+    );
+    const face = className(findTestId(tree, "hand-card-face-9"));
+    expect(face).toContain("ring-playable-border");
+    expect(face).toContain("--color-commander-gold");
+  });
 });

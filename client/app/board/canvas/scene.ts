@@ -134,10 +134,10 @@ function cardShapes(
       ? TARGET_COLOR
       : selected
         ? "#ffd76a"
-        : card.isCommander
-          ? COMMANDER_GOLD
-          : playable
-            ? PLAYABLE_BORDER
+        : playable
+          ? PLAYABLE_BORDER
+          : card.isCommander
+            ? COMMANDER_GOLD
             : CARD_RESTING_OUTLINE;
 
     const corner = CARD_CORNER_RADIUS * camera.zoom;
@@ -155,8 +155,18 @@ function cardShapes(
     );
 
     if (card.isCommander && playable) {
+      const halo = 3;
       cardParts.push(
-        roundedRectPath(left, top, width, height, corner, undefined, PLAYABLE_BORDER, 2),
+        roundedRectPath(
+          left - halo / 2,
+          top - halo / 2,
+          width + halo,
+          height + halo,
+          corner + halo / 2,
+          undefined,
+          COMMANDER_GOLD,
+          2,
+        ),
       );
     }
 

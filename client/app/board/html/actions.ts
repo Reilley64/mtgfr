@@ -11,7 +11,14 @@ export function barZoneAura(zone: BarZone, playable = false): string {
   if (zone === "hand") {
     return playable ? "ring-2 ring-playable-border shadow-[0_0_12px_rgba(234,255,240,0.42)]" : "";
   }
-  if (zone === "command") return "ring-2 ring-commander-gold shadow-[0_0_12px_rgba(233,184,74,0.45)]";
+  if (zone === "command") {
+    // Gold is the commander identity halo (outer). When castable, playable mint is the ring;
+    // gold rides an opaque outer shadow ring so both read at once (Tailwind allows one ring-*).
+    if (playable) {
+      return "ring-2 ring-playable-border shadow-[0_0_0_2px_var(--color-commander-gold),0_0_12px_rgba(233,184,74,0.45),0_0_12px_rgba(234,255,240,0.35)]";
+    }
+    return "ring-2 ring-commander-gold shadow-[0_0_12px_rgba(233,184,74,0.45)]";
+  }
   if (zone === "graveyard") {
     return playable ? "ring-2 ring-graveyard-outline shadow-[0_0_12px_rgba(123,92,255,0.45)]" : "";
   }

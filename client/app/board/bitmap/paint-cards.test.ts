@@ -106,5 +106,10 @@ describe("paintCard", () => {
     expect(calls).toContain("stroke:#E9B84A");
     expect(calls).toContain("stroke:#EAFFF0");
     expect(calls).not.toContain("fill:rgba(0,0,0,0.45)");
+    const goldAt = calls.lastIndexOf("stroke:#E9B84A");
+    const playableAt = calls.lastIndexOf("stroke:#EAFFF0");
+    // Playable border on the card edge, then gold as the outer halo.
+    expect(playableAt).toBeGreaterThan(-1);
+    expect(goldAt).toBeGreaterThan(playableAt);
   });
 });

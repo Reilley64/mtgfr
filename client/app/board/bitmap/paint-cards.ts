@@ -121,21 +121,27 @@ export function paintCard(
   }
 
   // Restroke after art so playable / commander chrome stays rounded on top of the face.
-  if (outline != null || card.isCommander) {
+  // Playable mint sits on the card edge; commander gold is an outer halo (slightly outset).
+  if (outline != null) {
     roundRect(ctx, tl.x, tl.y, w, h, r);
-    ctx.strokeStyle = card.isCommander ? COMMANDER_GOLD : (outline?.color ?? CARD_OUTLINE);
-    ctx.lineWidth = Math.max(1, (outline || card.isCommander ? 3 : 2) * cam.zoom);
-    ctx.setLineDash(card.isCommander ? [] : (outline?.dash ?? []));
+    ctx.strokeStyle = outline.color;
+    ctx.lineWidth = Math.max(1, 3 * cam.zoom);
+    ctx.setLineDash(outline.dash);
     ctx.stroke();
     ctx.setLineDash([]);
-    if (card.isCommander && outline != null) {
-      roundRect(ctx, tl.x, tl.y, w, h, r);
-      ctx.strokeStyle = outline.color;
-      ctx.lineWidth = Math.max(1, 2 * cam.zoom);
-      ctx.setLineDash(outline.dash);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
+  } else if (card.isCommander) {
+    roundRect(ctx, tl.x, tl.y, w, h, r);
+    ctx.strokeStyle = COMMANDER_GOLD;
+    ctx.lineWidth = Math.max(1, 3 * cam.zoom);
+    ctx.stroke();
+  }
+  if (card.isCommander && outline != null) {
+    const halo = 3 * cam.zoom;
+    roundRect(ctx, tl.x - halo / 2, tl.y - halo / 2, w + halo, h + halo, r + halo / 2);
+    ctx.strokeStyle = COMMANDER_GOLD;
+    ctx.lineWidth = Math.max(1, 2 * cam.zoom);
+    ctx.setLineDash([]);
+    ctx.stroke();
   }
 
   if (options.dim) {
