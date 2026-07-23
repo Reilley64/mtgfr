@@ -13,7 +13,7 @@ import { AVATAR_R, avatarPos, type RenderCard, seatColor } from "../geometry/lay
 import { ArtLoaded, FlightsSynced } from "../messages";
 import { type CardFlight, stepFlights } from "../motion/flights";
 import { mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
-import { paintAutoTapPreview, paintCard, paintCardTargetHighlight } from "./paint-cards";
+import { paintAutoTapPreview, paintCard, paintCardPickedHighlight, paintCardTargetHighlight } from "./paint-cards";
 import { paintFlightCard } from "./paint-flights";
 
 export type BitmapFrame = {
@@ -31,6 +31,8 @@ export type BitmapFrame = {
   flights: readonly CardFlight[];
   hideCardIds: ReadonlySet<number>;
   targetObjects: ReadonlySet<number>;
+  /** Multi-aim picks already toggled in the pending draft (Priority Gold solid ring). */
+  pickedObjects: ReadonlySet<number>;
   targetPlayers: ReadonlySet<number>;
   aimFrom: Vec | null;
   cursor: Vec;
@@ -216,7 +218,9 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
     if (frame.paymentPreviewIds.has(card.id)) {
       paintAutoTapPreview(ctx, frame.camera, card, frame.viewer);
     }
-    if (frame.targetObjects.has(card.id)) {
+    if (frame.pickedObjects.has(card.id)) {
+      paintCardPickedHighlight(ctx, frame.camera, card, frame.viewer);
+    } else if (frame.targetObjects.has(card.id)) {
       paintCardTargetHighlight(ctx, frame.camera, card, frame.viewer);
     }
   }

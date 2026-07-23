@@ -15,6 +15,7 @@ const baseResting = {
   stagedBlocks: [],
   hideCardIds: new Set<number>(),
   targetObjects: new Set<number>(),
+  pickedObjects: new Set<number>(),
   targetPlayers: new Set<number>(),
   aimFrom: null,
   cursor: { x: 0, y: 0 },
