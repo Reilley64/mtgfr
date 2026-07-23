@@ -106,3 +106,61 @@ export function stackFullPerRow(
   if (minPeek <= 0) return Math.max(1, Math.floor((viewportW - margin) / cardW));
   return Math.max(1, Math.floor((viewportW - margin - cardW) / minPeek) + 1);
 }
+
+/** Screen-space center of the top card in a right-edge pile of `count` cards. */
+export function stackPileAimOrigin(
+  viewportW: number,
+  viewportH: number,
+  count: number,
+  peek = STACK_PEEK,
+): { x: number; y: number } {
+  const n = Math.max(1, count);
+  const cardH = stackCardH();
+  const pileH = cardH + (n - 1) * peek;
+  return {
+    x: viewportW - STACK_ANCHOR_FROM_RIGHT,
+    y: viewportH / 2 + pileH / 2 - (n - 1) * peek - cardH / 2,
+  };
+}
+
+/** Screen-space center of stack face at `row` (0 = bottom) for the active presentation. */
+export function stackFaceScreenOrigin(opts: {
+  presentation: StackPresentation;
+  viewportW: number;
+  viewportH: number;
+  count: number;
+  row: number;
+  peek?: number;
+}): { x: number; y: number } {
+  const n = Math.max(1, opts.count);
+  const row = Math.max(0, Math.min(n - 1, opts.row));
+  if (opts.presentation === "pile") {
+    const peek = opts.peek ?? STACK_PEEK;
+    const top = stackPileAimOrigin(opts.viewportW, opts.viewportH, n, peek);
+    const fromTop = n - 1 - row;
+    return { x: top.x, y: top.y + fromTop * peek };
+  }
+
+  const hPeek =
+    opts.presentation === "full"
+      ? STACK_STRIP_MIN_PEEK
+      : Math.max(STACK_STRIP_MIN_PEEK, stackStripPeek(n, opts.viewportW));
+  const perRow = opts.presentation === "full" ? stackFullPerRow(opts.viewportW) : n;
+  const cardH = stackCardH();
+  const col = row % perRow;
+  const rowY = Math.floor(row / perRow);
+  const cols = Math.min(n, perRow);
+  const rows = Math.ceil(n / perRow);
+  const stripW = Math.min(opts.viewportW - STACK_HORIZONTAL_MARGIN, STACK_CARD_W + Math.max(0, cols - 1) * hPeek);
+  const stripH = cardH + Math.max(0, rows - 1) * (cardH * 0.35);
+  // Approximate header row above the face strip (`Stack · N` + collapse).
+  const headerH = 28;
+  const gap = 8;
+  const columnH = headerH + gap + stripH;
+  const columnTop = opts.viewportH / 2 - columnH / 2;
+  const stripLeft =
+    opts.presentation === "full" ? opts.viewportW / 2 - stripW / 2 : opts.viewportW - STACK_OVERLAY_RIGHT - stripW;
+  const faceLeft = stripLeft + col * hPeek;
+  const faceTop = columnTop + headerH + gap + rowY * cardH * 0.35;
+  return { x: faceLeft + STACK_CARD_W / 2, y: faceTop + cardH / 2 };
+}

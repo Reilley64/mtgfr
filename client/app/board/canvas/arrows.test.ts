@@ -79,6 +79,27 @@ describe("stackTargetArrowShapes", () => {
     });
     expect(shapes).toEqual([]);
   });
+
+  it("uses expanded strip origins when presentation is expanded", () => {
+    const pile = stackTargetArrowShapes({
+      viewport: { width: 1440, height: 900 },
+      stack: [{ controller: 0, kind: "spell", label: "Bolt", source: 1, target: { kind: "object", id: 22 } }],
+      cards: [card(22)],
+      avatars: {},
+      camera: { panX: 0, panY: 0, zoom: 1 },
+      presentation: "pile",
+    });
+    const expanded = stackTargetArrowShapes({
+      viewport: { width: 1440, height: 900 },
+      stack: [{ controller: 0, kind: "spell", label: "Bolt", source: 1, target: { kind: "object", id: 22 } }],
+      cards: [card(22)],
+      avatars: {},
+      camera: { panX: 0, panY: 0, zoom: 1 },
+      presentation: "expanded",
+    });
+    expect(pile).not.toEqual(expanded);
+    expect(expanded.length).toBe(pile.length);
+  });
 });
 
 describe("combatDragArrowShapes", () => {

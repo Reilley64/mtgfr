@@ -7,6 +7,7 @@ import {
   shouldAutoCollapseStackExpand,
   stackCardH,
   stackExpandAvailable,
+  stackFaceScreenOrigin,
   stackPeekFor,
   stackPresentation,
   stackStripFits,
@@ -99,5 +100,25 @@ describe("stackPresentation", () => {
 
   it("uses expanded strip when cards fit horizontally", () => {
     expect(stackPresentation({ count: 4, expandedOpen: true, viewportW: 1200, viewportH: 900 })).toBe("expanded");
+  });
+});
+
+describe("stackFaceScreenOrigin", () => {
+  it("spreads expanded faces horizontally unlike the pile", () => {
+    const left = stackFaceScreenOrigin({
+      presentation: "expanded",
+      viewportW: 1440,
+      viewportH: 900,
+      count: 3,
+      row: 0,
+    });
+    const right = stackFaceScreenOrigin({
+      presentation: "expanded",
+      viewportW: 1440,
+      viewportH: 900,
+      count: 3,
+      row: 2,
+    });
+    expect(left.x).toBeLessThan(right.x);
   });
 });

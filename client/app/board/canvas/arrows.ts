@@ -1,10 +1,10 @@
 import { Canvas } from "foldkit";
 import { colors } from "~/design-tokens.generated";
 import type { StackObjectView, WireAttack, WireBlock } from "~/wire/types";
-import { stackAimOrigin, TARGET_COLOR } from "../action/targeting";
+import { TARGET_COLOR } from "../action/targeting";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import type { RenderCard } from "../geometry/layout";
-import { STACK_PEEK } from "../geometry/stackLayout";
+import { STACK_PEEK, type StackPresentation, stackFaceScreenOrigin } from "../geometry/stackLayout";
 import type { AvatarScreenPositions } from "./avatars";
 
 type Shape = Canvas.Shape;
@@ -70,27 +70,40 @@ export function stackPileFaceOrigin(
   row: number,
   peek = STACK_PEEK,
 ): Vec {
-  const top = stackAimOrigin(viewportW, viewportH, count, peek);
-  const fromTop = Math.max(0, count - 1 - row);
-  return { x: top.x, y: top.y + fromTop * peek };
+  return stackFaceScreenOrigin({
+    presentation: "pile",
+    viewportW,
+    viewportH,
+    count,
+    row,
+    peek,
+  });
 }
 
-/** Declared stack targets → Island Blue arrows (pile geometry; one WireTarget per entry). */
+/** Declared stack targets → Island Blue arrows (presentation-aware origins). */
 export function stackTargetArrowShapes(input: {
   viewport: { width: number; height: number };
   stack: ReadonlyArray<StackObjectView>;
   cards: ReadonlyArray<RenderCard>;
   avatars: AvatarScreenPositions;
   camera: Camera;
+  presentation?: StackPresentation;
 }): Shape[] {
   const count = input.stack.length;
   if (count === 0) return [];
+  const presentation = input.presentation ?? "pile";
   const byId = new Map(input.cards.map((card) => [card.id, card]));
   const shapes: Shape[] = [];
   for (let row = 0; row < count; row++) {
     const entry = input.stack[row];
     if (entry?.target == null) continue;
-    const from = stackPileFaceOrigin(input.viewport.width, input.viewport.height, count, row);
+    const from = stackFaceScreenOrigin({
+      presentation,
+      viewportW: input.viewport.width,
+      viewportH: input.viewport.height,
+      count,
+      row,
+    });
     let to: Vec | null = null;
     if (entry.target.kind === "player") {
       to = input.avatars[entry.target.player] ?? null;
