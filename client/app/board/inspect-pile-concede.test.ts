@@ -187,6 +187,68 @@ test("AltDown prefers hand aux hover over the battlefield hit under the cursor",
   });
 });
 
+test("while Alt held, leaving the hand peek keeps hand inspect over a battlefield hit", () => {
+  // Hand faces are pointer-events-none except the peek strip; leave clears aux while the
+  // cursor is still over hand art. Live Alt re-pin must not steal to the BF card underneath.
+  const creature = battlefieldCreature(7, "Board Bolt");
+  const fold = gameFold({ objects: [creature] });
+  const screen = screenCenterForCard(fold, 7);
+
+  let model: BoardModel = { ...initialBoardModel(), altDown: true };
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  expect(model.inspectPin).toEqual(
+    expect.objectContaining({ name: "Hand Shock", cardId: "shock-id", print: "shock-print" }),
+  );
+
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+
+  expect(model.handInspectHover).toEqual({
+    name: "Hand Shock",
+    cardId: "shock-id",
+    print: "shock-print",
+  });
+  expect(model.inspectPin).toEqual(
+    expect.objectContaining({ name: "Hand Shock", cardId: "shock-id", print: "shock-print" }),
+  );
+});
+
+test("while Alt held, moving above the hand sticky band releases hand inspect to the board", () => {
+  const creature = battlefieldCreature(7, "Board Bolt");
+  const fold = gameFold({ objects: [creature] });
+  const screen = screenCenterForCard(fold, 7);
+
+  let model: BoardModel = { ...initialBoardModel(), altDown: true };
+  [model] = updateBoard(
+    model,
+    InspectAuxHovered({
+      source: "hand",
+      card: { name: "Hand Shock", cardId: "shock-id", print: "shock-print" },
+    }),
+    fold,
+    "table-1",
+  );
+  // Park the cursor in the hand sticky band, then leave the peek (aux stays latched).
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+  [model] = updateBoard(model, InspectAuxHovered({ source: "hand", card: null }), fold, "table-1");
+  expect(model.handInspectHover).not.toBeNull();
+
+  // Leaving the raised-face band clears sticky hand hover so BF can win again.
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: 80 }), fold, "table-1");
+  expect(model.handInspectHover).toBeNull();
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+  expect(model.inspectPin).toEqual(expect.objectContaining({ name: "Board Bolt", objectId: 7 }));
+});
+
 test("aux hover pins hand and stack cards while Alt is already held", () => {
   const fold = gameFold();
   let model: BoardModel = { ...initialBoardModel(), altDown: true };

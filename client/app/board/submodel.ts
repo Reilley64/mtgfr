@@ -77,7 +77,7 @@ import {
 } from "./geometry/stackLayout";
 import { selectedRadialOptions } from "./html/activation-radial";
 import { persistHintDismissed, readHintDismissed } from "./html/discoverability";
-import { HAND_BAR_H, HAND_PLAY_SLACK_PX } from "./html/hand";
+import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html/hand";
 import type { Message } from "./messages";
 import {
   type CardFlight,
@@ -93,7 +93,7 @@ import {
 
 export const BOARD_VIEWPORT = { width: 1440, height: 900 } as const;
 /** Bottom bar height — Arena-scale tuck + pip row (re-exported from html/hand.ts). */
-export { HAND_BAR_H };
+export { HAND_BAR_H, HAND_INSPECT_STICKY_BAND };
 
 export type HandDragState = {
   action: ActionView;
@@ -775,6 +775,23 @@ function applyLiveInspectPin(model: BoardModel, fold: GameFoldState): BoardRetur
   return applyInspectPin(model, tryPinInspect(model, fold));
 }
 
+/** True when the cursor is still over the hand fan (including raised faces above the bar). */
+function cursorInHandInspectBand(model: BoardModel): boolean {
+  return model.cursor.y >= model.viewport.height - HAND_INSPECT_STICKY_BAND;
+}
+
+/**
+ * Hand peek leave clears aux while the cursor is still over pointer-events-none face art; with Alt
+ * live re-pin that would steal to the battlefield under the hand. Keep the last hand hover latched
+ * until the pointer leaves the hand sticky band (or Alt releases / a new hand card enters).
+ */
+function releaseStickyHandInspect(model: BoardModel): BoardModel {
+  if (model.handInspectHover == null) return model;
+  if (!model.altDown) return model;
+  if (cursorInHandInspectBand(model)) return model;
+  return { ...model, handInspectHover: null };
+}
+
 /** Pin from hand/stack aux hover, else the face-up canvas card under `model.cursor`. */
 function tryPinInspect(model: BoardModel, fold: GameFoldState): InspectPin | null {
   const aux = model.handInspectHover ?? model.stackInspectHover;
@@ -1255,8 +1272,10 @@ export function updateBoard(
       return [model, []];
     case "BoardPointerDown":
       return [pointerDownModel(model, fold, message.x, message.y), []];
-    case "BoardPointerMove":
-      return applyLiveInspectPin(pointerMoveModel(model, message.x, message.y), fold);
+    case "BoardPointerMove": {
+      const moved = releaseStickyHandInspect(pointerMoveModel(model, message.x, message.y));
+      return applyLiveInspectPin(moved, fold);
+    }
     case "BoardPointerUp":
       return pointerUpModel(model, fold, tableId, message.x, message.y);
     case "TickedFrame":
@@ -1683,6 +1702,16 @@ export function updateBoard(
       return [{ ...model, altDown: false, inspectPin: null, inspectCard: undefined }, []];
     case "InspectAuxHovered": {
       if (message.source === "hand") {
+        // Peek-strip leave while the cursor is still in the hand fan (face art is
+        // pointer-events-none) must not drop aux — Alt live re-pin would steal to BF underneath.
+        if (
+          message.card == null &&
+          model.altDown &&
+          model.handInspectHover != null &&
+          cursorInHandInspectBand(model)
+        ) {
+          return [model, []];
+        }
         return applyLiveInspectPin({ ...model, handInspectHover: message.card }, fold);
       }
       return applyLiveInspectPin({ ...model, stackInspectHover: message.card }, fold);

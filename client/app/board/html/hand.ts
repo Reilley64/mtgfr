@@ -30,6 +30,11 @@ export const HAND_VISIBLE_H = 130;
 const HAND_PIP_ROW_H = 20;
 /** Height of the bottom action bar — tuck + pip row + padding (Solid HAND_BAR_H). */
 export const HAND_BAR_H = HAND_VISIBLE_H + HAND_PIP_ROW_H + 12;
+/**
+ * From the viewport bottom: band where sticky Alt-inspect hand hover stays latched after leaving
+ * the peek hit strip (raised faces extend above `HAND_BAR_H` into the board).
+ */
+export const HAND_INSPECT_STICKY_BAND = HAND_BAR_H - HAND_VISIBLE_H + HAND_CARD_H;
 /** How far into the hand bar a release may still count as play (px). */
 export const HAND_PLAY_SLACK_PX = 96;
 
