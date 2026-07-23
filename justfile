@@ -124,7 +124,7 @@ server-check: server-format server-lint
 client-check: client-tokens-check server-codegen client-format client-lint client-typecheck client-test
 
 [doc("Run all checks")]
-check: server-codegen format lint typecheck test
+check: client-tokens-check server-codegen format lint typecheck test
 
 [doc("Regenerate docs/CR_INDEX.md from engine CR citations")]
 engine-cr-index:

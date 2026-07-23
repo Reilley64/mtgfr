@@ -8,6 +8,7 @@ import type { AvatarScreenPositions } from "./avatars";
 
 type Shape = Canvas.Shape;
 
+// Deliberately not colors.mountainRed — attack arrow paint (#ff6b6b) differs from the combat Mountain Red token (#FF5555).
 const ATTACK_STROKE = "#ff6b6b";
 const BLOCK_STROKE = colors.wallGreen;
 

@@ -11,15 +11,15 @@ Align mtgfr design tokens with the [Design Tokens Community Group (DTCG)](https:
 2. **Single source of truth** — Style Dictionary generates Tailwind `@theme` CSS and a canvas TS module; hand-mirroring between `DESIGN.md` YAML and `global.css` ends.
 3. **House standard** — DTCG is the authored format; prose in `DESIGN.md` no longer carries token values.
 
-## Current state (problem)
+## Prior state
 
-- Token values live in `DESIGN.md` YAML frontmatter (`colors`, `typography`, `rounded`, `spacing`, `components`).
-- `client/styles/global.css` hand-mirrors those into a Tailwind v4 `@theme` block; drift is a documented failure mode.
-- Some theme values exist only in CSS (`hud-edge`, shadows, motion).
-- Canvas paint uses hard-coded hexes in `client/app/board/` and is exempt from DOM tokens.
-- Component recipes live in YAML `{colors.x}` maps but are realized as Foldkit/`client/lib/ui` TypeScript — a dual representation nobody wants.
+- Token values lived in `DESIGN.md` YAML frontmatter (`colors`, `typography`, `rounded`, `spacing`, `components`).
+- `client/styles/global.css` hand-mirrored those into a Tailwind v4 `@theme` block; drift was a documented failure mode.
+- Some theme values existed only in CSS (`hud-edge`, shadows, motion).
+- Canvas paint used hard-coded hexes in `client/app/board/` and was exempt from DOM tokens.
+- Component recipes lived in YAML `{colors.x}` maps but were realized as Foldkit/`client/lib/ui` TypeScript — a dual representation nobody wanted.
 
-This is a project-local token convention, not DTCG.
+This was a project-local token convention, not DTCG.
 
 ## Decisions (locked)
 

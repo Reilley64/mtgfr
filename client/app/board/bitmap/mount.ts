@@ -389,6 +389,7 @@ function paintCombatArrows(ctx: CanvasRenderingContext2D, frame: BitmapFrame): v
     const from = cardsById.get(attack.attacker);
     const to = avatars.get(attack.defender);
     if (from == null || to == null) continue;
+    // Attack stroke matches arrows.ts ATTACK_STROKE (not colors.mountainRed).
     paintArrow(ctx, cardCenter(frame.camera, from), to, "#ff6b6b");
   }
 

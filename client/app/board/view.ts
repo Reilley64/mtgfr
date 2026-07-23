@@ -106,6 +106,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     aimFrom: overlay.aiming ? overlay.aimFrom : null,
     cursor: model.board.cursor,
     combatDragFrom: combatDrag?.from ?? null,
+    // Attack drag stroke matches arrows.ts ATTACK_STROKE (not colors.mountainRed).
     combatDragStroke: combatDrag == null ? null : combatDrag.declaringBlock ? colors.wallGreen : "#ff6b6b",
     paymentPreviewIds,
     actions: state.actions,
