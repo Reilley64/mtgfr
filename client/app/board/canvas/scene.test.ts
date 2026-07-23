@@ -333,6 +333,24 @@ describe("sceneShapes", () => {
     expect(aimArrow).toBeDefined();
   });
 
+  it("paints Island Blue arrows from stack entries to declared targets", () => {
+    const state = boardFixture();
+    const shapes = sceneShapes({
+      ...state,
+      stack: [
+        {
+          controller: 0,
+          kind: "spell",
+          label: "Lightning Bolt",
+          source: 9,
+          target: { kind: "object", id: 1 },
+        },
+      ],
+    });
+    const stackArrow = shapes.find((shape) => shape._tag === "Path" && shape.stroke === TARGET_COLOR);
+    expect(stackArrow).toBeDefined();
+  });
+
   it("uses playable strokes for battlefield actions without outlining tap-only lands", () => {
     const state = boardFixture();
     state.actions = [battlefieldAction(1)];
