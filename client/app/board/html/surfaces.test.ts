@@ -842,6 +842,26 @@ test("order_triggers prompt shows drag rows, click-to-place, and arrow controls"
   );
 });
 
+test("revealed_card_to_battlefield_or_hand aim shows face and destination buttons", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "revealed_card_to_battlefield_or_hand",
+          player: 0,
+          item: { id: 17, label: "Beast" },
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-revealed-destination-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-revealed-face")).toHaveText("Beast"),
+    Scene.expect(Scene.testId("prompt-destination-battlefield")).toExist(),
+    Scene.expect(Scene.testId("prompt-destination-hand")).toExist(),
+  );
+});
+
 test("partition_revealed aim shows docked Pile A and Pile B lanes", () => {
   overlayScene(
     overlayModel(

@@ -26,6 +26,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player answering a one-click on-board target choice, I aim at highlighted permanents/players (no card grid); optional choices keep Decline on the aim chrome.
 - As a player targeting only cards in one graveyard, I click selectable pile cards under `pending-gy-aim` instead of a modal grid.
 - As an opponent choosing a revealed card for the graveyard, I click a face in the docked `pending-revealed-aim` strip (or Choose none).
+- As a player choosing battlefield or hand for a revealed card, I see the face in docked `pending-revealed-destination-aim` with Battlefield / Hand.
 - As a player choosing target players, I aim at life-orb avatars on the board (multi-pick accumulates until Confirm).
 - As a player scrying or surveilling, I assign looked-at cards into Top vs Bottom (or Graveyard) lanes in docked `pending-arrange-aim` instead of a center modal.
 - As a player selecting from the top of my library, I assign cards into Take vs Bottom lanes in docked `pending-select-top-aim` (up to the allowed count).
@@ -72,6 +73,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Battlefield `choose_activation_cost_targets` reuse `pending-target-aim` when every legal item is on the canvas.
 - Engine exile card-picks (`choose_exiled_*` / `opponent_chooses_exiled_nonland`) with a shared exile pile show `pending-exile-aim` and selectable exile pile cards.
 - `opponent_chooses_revealed_to_graveyard` shows docked `pending-revealed-aim` with one-click revealed faces (and Choose none) instead of the center card grid.
+- `revealed_card_to_battlefield_or_hand` shows docked `pending-revealed-destination-aim` with the revealed face plus Battlefield / Hand.
 - `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`).
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`.
 - `select_from_top` uses docked `pending-select-top-aim` with Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
@@ -117,6 +119,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover on-board pending aim chrome (`pending-target-aim`, no card grid) and optional Decline → empty `choose_targets`.
 - Scene/pointer tests cover GY pile aim for `choose_target` when every legal item shares one graveyard (`pending-gy-aim`).
 - Scene tests cover `opponent_chooses_revealed_to_graveyard` docked aim (one-click face → `choose_exiled_with_card`, Choose none declines).
+- Scene tests cover `revealed_card_to_battlefield_or_hand` docked destination aim (Battlefield / Hand intents).
 - Scene/pointer tests cover on-board `sacrifice_edict` one-click and `proliferate` accumulate → Confirm.
 - Scene/unit tests cover docked scry/surveil `pending-arrange-aim` Top↔Bottom (Graveyard) lanes and click toggle → `arrange_top`.
 - Scene tests cover docked `pending-select-top-aim` Take/Bottom lanes (no center `pending-choice`).
