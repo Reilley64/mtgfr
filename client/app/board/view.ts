@@ -122,6 +122,10 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
       (overlay.aiming && model.board.promptDraft?.kind === "card-pick"
         ? new Set(model.board.promptDraft.picked)
         : new Set()),
+    assignAmounts:
+      model.board.promptDraft?.kind === "damage"
+        ? new Map(Object.entries(model.board.promptDraft.amounts).map(([id, amount]) => [Number(id), amount]))
+        : new Map(),
     targetPlayers: overlay.targetPlayers,
     aimFrom: overlay.aiming ? overlay.aimFrom : null,
     cursor: model.board.cursor,

@@ -16,6 +16,7 @@ const baseResting = {
   hideCardIds: new Set<number>(),
   targetObjects: new Set<number>(),
   pickedObjects: new Set<number>(),
+  assignAmounts: new Map<number, number>(),
   targetPlayers: new Set<number>(),
   aimFrom: null,
   cursor: { x: 0, y: 0 },
