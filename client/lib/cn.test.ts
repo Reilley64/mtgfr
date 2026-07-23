@@ -4,15 +4,15 @@
 // tailwind-merge ships knowing stock Tailwind's scales, not ours. Left unconfigured it reads
 // `text-caption` as a colour, decides it conflicts with `text-burn-red`, and silently drops the
 // font size — on ~25 sites. So `cn` re-declares our @theme scales, and the first test here fails
-// the build if that list ever drifts from global.css (the drift client-shell-deck-builder-and-observability spec exists to prevent).
+// the build if that list ever drifts from tokens.generated.css (the drift client-shell-deck-builder-and-observability spec exists to prevent).
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cn, THEME_SCALES } from "~/cn";
 
-// Read global.css off disk, not via Vite's `?raw` — the Tailwind plugin claims `.css` imports and
-// hands back an empty string in the node test environment.
-const css = readFileSync(new URL("../styles/global.css", import.meta.url), "utf8");
+// Read the generated token CSS off disk, not via Vite's `?raw` — the Tailwind plugin claims `.css`
+// imports and hands back an empty string in the node test environment.
+const css = readFileSync(new URL("../styles/tokens.generated.css", import.meta.url), "utf8");
 
 /** The keys defined under a `--<prefix>-*` namespace in @theme, ignoring modifiers like
  * `--text-title--font-weight`. */
@@ -23,11 +23,11 @@ function themeKeys(css: string, prefix: string): string[] {
 
 describe("THEME_SCALES", () => {
   // Without this, a failed read would make every assertion below compare [] to [] and pass.
-  it("actually read global.css", () => {
+  it("actually read tokens.generated.css", () => {
     expect(css).toContain("@theme");
   });
 
-  it.each(["text", "radius", "spacing"] as const)("mirrors global.css's --%s-* namespace", (scale) => {
+  it.each(["text", "radius", "spacing"] as const)("mirrors tokens.generated.css's --%s-* namespace", (scale) => {
     const found = themeKeys(css, scale);
     expect(found.length).toBeGreaterThan(0);
     expect([...THEME_SCALES[scale]].sort()).toEqual(found);
