@@ -542,6 +542,45 @@ test("choose_dredge submit emits chosen dredger", () => {
   });
 });
 
+test("search_library Choose submits selected card", () => {
+  const s = state({
+    pending_choice: {
+      kind: "search_library",
+      player: 0,
+      items: [
+        { id: 1, label: "Sol Ring" },
+        { id: 2, label: "Forest" },
+      ],
+    },
+  });
+  const commands: unknown[] = [];
+  const update = (model: ViewModel, message: Message): readonly [ViewModel, ReadonlyArray<never>] => {
+    const [board, nextCommands] = updateBoard(model.board, message, model.fold, model.tableId);
+    commands.push(...nextCommands);
+    return [{ ...model, board }, []];
+  };
+  Scene.scene(
+    { update, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.click(Scene.testId("prompt-card-1")),
+    Scene.click(Scene.testId("prompt-submit")),
+  );
+  expect(commands.map(intentFromCommand)).toEqual([{ kind: "search_library", player: 0, choice: 1 }]);
+});
+
+test("search_library Fail to find declines", () => {
+  const s = state({
+    pending_choice: {
+      kind: "search_library",
+      player: 0,
+      items: [{ id: 1, label: "Sol Ring" }],
+    },
+  });
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-decline")));
+  expect(intents).toEqual([{ kind: "search_library", player: 0, choice: null }]);
+});
+
 test("opponent_chooses_revealed_to_graveyard card click submits choose_exiled", () => {
   const s = state({
     pending_choice: {
