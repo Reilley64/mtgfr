@@ -29,7 +29,13 @@ import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
 import { clampX, costText, costWithChosenX } from "~/xCost";
 import { modeAvailable } from "../action/modal";
-import { objectName, playerSeatLabel, stagedPickTargets, stagedTargetTitle } from "../action/targeting";
+import {
+  objectName,
+  pendingBoardTargetMode,
+  playerSeatLabel,
+  stagedPickTargets,
+  stagedTargetTitle,
+} from "../action/targeting";
 import { seatColor } from "../geometry/layout";
 import {
   CancelActionClicked,
@@ -56,6 +62,7 @@ import {
   XSubmitted,
 } from "../messages";
 import type { BoardModel } from "../submodel";
+import { HAND_BAR_H } from "./hand";
 
 const h = html<Message>();
 
@@ -779,7 +786,43 @@ function cardPickForKind(
   state: VisibleState,
   board: BoardModel,
   tableId: string | null,
-): Html {
+): Html | null {
+  if (pendingBoardTargetMode(pending, state) != null) {
+    const decline = declineAnswer(pending);
+    const label = "label" in pending && typeof pending.label === "string" ? pending.label : pendingChoiceTitle(pending);
+    if (decline == null) {
+      return h.div(
+        [
+          h.DataAttribute("testid", "pending-target-aim"),
+          h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+          h.Class(
+            "pointer-events-none fixed left-1/2 z-30 -translate-x-1/2 rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+          ),
+        ],
+        [label],
+      );
+    }
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-target-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div([h.Class("pointer-events-none")], [label]),
+        answerButton(
+          pending,
+          "prompt-decline",
+          cardPickDeclineLabel(pending) ?? "Decline",
+          decline,
+          false,
+          tableId == null,
+        ),
+      ],
+    );
+  }
   if (pending.kind === "choose_target" && !chooseTargetIsCardPick(pending.items)) {
     const buttons = pending.items.flatMap((item, index) => {
       const seat = playerSeatFromItem(item, state, index);
@@ -1476,7 +1519,7 @@ function pendingChoicePrompt(
   state: VisibleState,
   board: BoardModel,
   tableId: string | null,
-): Html {
+): Html | null {
   const id = FORMULATOR_FOR_KIND[pending.kind];
   switch (id) {
     case "cardPick":

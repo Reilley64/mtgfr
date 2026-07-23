@@ -7,6 +7,7 @@ import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/type
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
 import { emptyCostPicks } from "../action/execution";
+import { ZONE } from "../geometry/layout";
 import {
   type Message,
   PromptCardToggled,
@@ -235,6 +236,44 @@ test("choose_dredge decline emits choose_dredge with null dredger", () => {
     Scene.click(Scene.testId("prompt-decline")),
   );
   expect(intents).toEqual([{ kind: "choose_dredge", player: 0, dredger: null }]);
+});
+
+test("optional on-board choose_target Decline emits empty choose_targets", () => {
+  const intents = clickPromptIntent(
+    state({
+      objects: [
+        {
+          controller: 0,
+          has_haste: false,
+          id: 7,
+          is_commander: false,
+          kind: { kind: "creature", power: 2, toughness: 2 },
+          mana_cost: { generic: 1, colored: [0, 0, 0, 0, 0] },
+          marked_damage: 0,
+          name: "Bear",
+          needs_target: false,
+          owner: 0,
+          plus_counters: 0,
+          power: 2,
+          summoning_sick: false,
+          tapped: false,
+          toughness: 2,
+          zone: ZONE.Battlefield,
+        },
+      ],
+      pending_choice: {
+        kind: "choose_target",
+        label: "Target creature",
+        max: 1,
+        optional: true,
+        player: 0,
+        source: 1,
+        items: [{ id: 7, label: "Bear" }],
+      },
+    }),
+    Scene.click(Scene.testId("prompt-decline")),
+  );
+  expect(intents).toEqual([{ kind: "choose_targets", player: 0, targets: [] }]);
 });
 
 test("choose_dredge submit emits chosen dredger", () => {

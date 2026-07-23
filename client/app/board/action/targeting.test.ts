@@ -3,7 +3,14 @@ import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 import { emptyCostPicks } from "./execution";
-import { stackAimOrigin, stagedPickTargets, stagedTargetTitle, stagingOverlay, targetMode } from "./targeting";
+import {
+  pendingTargetingOverlay,
+  stackAimOrigin,
+  stagedPickTargets,
+  stagedTargetTitle,
+  stagingOverlay,
+  targetMode,
+} from "./targeting";
 
 function object(over: Partial<ObjectView> = {}): ObjectView {
   return {
@@ -196,6 +203,70 @@ describe("stagingOverlay", () => {
       targetPlayers: new Set(),
       aimFrom: null,
     });
+  });
+});
+
+describe("pendingTargetingOverlay", () => {
+  it("aims when choose_target max=1 and all items are on the battlefield", () => {
+    const bear = object({ id: 7 });
+    const overlay = pendingTargetingOverlay(
+      {
+        kind: "choose_target",
+        label: "Target creature",
+        max: 1,
+        optional: false,
+        player: 0,
+        source: 1,
+        items: [{ id: 7, label: "Bear" }],
+      },
+      state([bear]),
+      { width: 1440, height: 900 },
+      0,
+    );
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetObjects]).toEqual([7]);
+  });
+
+  it("stays idle for multi-target choose_target (modal keeps asking)", () => {
+    const a = object({ id: 1 });
+    const b = object({ id: 2 });
+    const overlay = pendingTargetingOverlay(
+      {
+        kind: "choose_target",
+        label: "Target creatures",
+        max: 2,
+        optional: false,
+        player: 0,
+        source: 1,
+        items: [
+          { id: 1, label: "A" },
+          { id: 2, label: "B" },
+        ],
+      },
+      state([a, b]),
+      { width: 1440, height: 900 },
+      0,
+    );
+    expect(overlay.aiming).toBe(false);
+  });
+
+  it("stays idle when a legal item is off the battlefield", () => {
+    const gy = object({ id: 9, zone: 3 });
+    const overlay = pendingTargetingOverlay(
+      {
+        kind: "choose_target",
+        label: "Target card",
+        max: 1,
+        optional: false,
+        player: 0,
+        source: 1,
+        items: [{ id: 9, label: "Dead" }],
+      },
+      state([gy]),
+      { width: 1440, height: 900 },
+      0,
+    );
+    expect(overlay.aiming).toBe(false);
   });
 });
 

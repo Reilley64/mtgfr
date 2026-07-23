@@ -342,6 +342,36 @@ test("pointer up on legal staged target emits SubmitIntent (target completion)",
   expect(commands[0]?.name).toBe(SubmitIntent.name);
 });
 
+test("pointer up on on-board pending choose_target submits choose_targets", () => {
+  const bear = creature(22, 1, { name: "Grizzly Bears" });
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pointer: { kind: "drag", card: renderStub(22), x: 100, y: 100, moved: false },
+  };
+  const gameFold = fold(
+    state({
+      objects: [bear],
+      pending_choice: {
+        kind: "choose_target",
+        label: "Target creature",
+        max: 1,
+        optional: false,
+        player: 0,
+        source: 1,
+        items: [{ id: 22, label: "Grizzly Bears" }],
+      },
+    }),
+  );
+  const [, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_targets",
+    player: 0,
+    targets: [{ kind: "object", id: 22 }],
+  });
+});
+
 test("pointer up on non-target while staged clears drag without submitting", () => {
   const attacker = creature(11, 0);
   const other = creature(99, 1);

@@ -14,6 +14,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 
 - As a player, I can drag or click a playable card and complete required local choices.
 - As a player casting a targeted spell, I aim an arrow at legal targets on the board.
+- As a player answering a one-click on-board engine target choice, I aim the same arrow instead of a card grid.
 - As an active combat player, I can stage attackers or blockers before confirming.
 - As a player, I can cancel local staging without answering or corrupting an engine pending choice.
 - As a player aiming or paying for a cast/activate, I keep seeing which lands will auto-tap until I submit or cancel.
@@ -24,6 +25,8 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - `planRunAction` stages targeted actions, plays lands, casts spells, or submits simple actions.
 - Targeting uses engine-projected legal targets. Board targets become arrow aiming; off-board targets become picker prompts.
 - Arrow aiming highlights legal objects and players and submits only after a legal target click.
+- Engine `choose_target` with `max === 1`, and `choose_spell_targets` / `choose_ability_targets` with `min === max === 1`, use the same on-board aim when every legal item is a battlefield permanent or player (`pendingBoardTargetMode` / `pendingTargetingOverlay`). Multi-target or any off-board item stays on the modal card picker. Staged local cast aim wins over pending aim for the overlay.
+- On-board pending aim clicks pack `answerFromBoardTarget` → `choiceIntent` → `SubmitIntent`. Optional `choose_target` keeps a Decline control on `pending-target-aim` chrome.
 - Combat staging resolves attack drops onto opponent life-orb targets and block drops onto declared attackers.
 - Required attacks are merged with staged attacks before confirmation.
 - `CancelActionClicked` and Escape call `cancelAll`, clearing staged action, X prompt, modal cast, cost picks, radial, stack expand, pile expand, prompt draft, hand drag, and reject text.
@@ -42,7 +45,8 @@ Keep an action session in the board model. Pure planners decide whether an actio
 
 - Unit tests cover `paymentPreviewAction` preferring staged/X session actions over hover.
 - Action execution tests cover cost pipeline ordering, X prompt creation, target staging, and submit intent shape.
-- Targeting tests cover arrow versus picker target modes.
+- Targeting tests cover arrow versus picker target modes and pending on-board aim versus modal idle.
+- Board pointer tests cover pending on-board choose_target click → `choose_targets` intent.
 - Combat staging tests cover attacker/blocker drops, required attack merge, and step-transition clearing.
 - Board tests cover cancel behavior and keyboard Escape ordering.
 

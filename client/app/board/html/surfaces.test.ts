@@ -666,6 +666,65 @@ test("join-forces mana prompt shows a stepper instead of per-amount buttons", ()
   );
 });
 
+test("on-board choose_target aims instead of showing a card grid", () => {
+  const bear = card(7, {
+    name: "Bear",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [bear],
+        pending_choice: {
+          kind: "choose_target",
+          label: "Target creature",
+          max: 1,
+          optional: false,
+          player: 0,
+          source: 1,
+          items: [{ id: 7, label: "Bear" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-target-aim")).toHaveText("Target creature"),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-card-7")).toBeAbsent(),
+  );
+});
+
+test("optional on-board choose_target aim shows Decline", () => {
+  const bear = card(7, {
+    name: "Bear",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [bear],
+        pending_choice: {
+          kind: "choose_target",
+          label: "Target creature",
+          max: 1,
+          optional: true,
+          player: 0,
+          source: 1,
+          items: [{ id: 7, label: "Bear" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-target-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+  );
+});
+
 test("non-decider sees waiting banner instead of pending-choice controls", () => {
   overlayScene(
     overlayModel(

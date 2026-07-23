@@ -9,6 +9,7 @@ import type {
   WireIntent,
   WireModeChoice,
   WireSpellDamage,
+  WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
 
@@ -175,6 +176,19 @@ export function chooseTargetIsCardPick(
   items: ReadonlyArray<{ id?: number; label?: string; player?: number | null }>,
 ): boolean {
   return items.length > 0 && items.every((it) => it.player == null);
+}
+
+/** Pack a single board click into an AnswerInput for one-click on-board pending targets. */
+export function answerFromBoardTarget(pc: PendingChoiceView, target: WireTarget): AnswerInput | null {
+  if (pc.kind === "choose_target") {
+    if (target.kind === "player") return { kind: "target", id: 0, player: target.player };
+    return { kind: "targets", ids: [target.id] };
+  }
+  if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
+    if (target.kind !== "object") return null;
+    return { kind: "targets", ids: [target.id] };
+  }
+  return null;
 }
 
 function pickSingleCard(picked: number[]): number | null {
