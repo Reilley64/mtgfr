@@ -21,6 +21,7 @@ import {
   FORMULATOR_FOR_KIND,
   initPromptDraft,
 } from "~/choice";
+import { filterOptionLabels } from "~/optionFilter";
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
@@ -42,6 +43,7 @@ import {
   PromptDeclined,
   PromptModeChoiceToggled,
   PromptNumberSet,
+  PromptOptionFilterSet,
   PromptOrderMoved,
   PromptPartitionSet,
   PromptStringSet,
@@ -1276,18 +1278,43 @@ function stringPickPrompt(
     );
   }
   return frame("pending-choice", "Choose a creature type", [
+    h.input([
+      h.DataAttribute("testid", "prompt-type-filter"),
+      h.Type("search"),
+      h.Placeholder("Filter types…"),
+      h.Autofocus(true),
+      h.AriaLabel("Filter creature types"),
+      h.Value(board.promptOptionFilter),
+      h.OnInput((v) => PromptOptionFilterSet({ query: v })),
+      h.Class("w-[min(90vw,320px)] shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+    ]),
     h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      pending.options.map((option, index) =>
-        answerButton(
-          pending,
-          `prompt-string-${index}`,
-          option,
-          { kind: "creature_type", subtype: option },
-          false,
-          tableId == null,
+      [
+        h.DataAttribute("testid", "prompt-type-scroll"),
+        h.Class("max-h-[min(50vh,420px)] overflow-y-auto overscroll-contain"),
+      ],
+      [
+        h.div(
+          [h.Class("flex flex-wrap justify-center gap-2")],
+          (() => {
+            const shown = filterOptionLabels(pending.options, board.promptOptionFilter);
+            if (shown.length === 0 && board.promptOptionFilter.trim() !== "") {
+              return [h.div([h.Class("text-label text-mist")], ["No types match."])];
+            }
+            return shown.map((option) => {
+              const index = pending.options.indexOf(option);
+              return answerButton(
+                pending,
+                `prompt-string-${index}`,
+                option,
+                { kind: "creature_type", subtype: option },
+                false,
+                tableId == null,
+              );
+            });
+          })(),
         ),
-      ),
+      ],
     ),
   ]);
 }

@@ -174,6 +174,8 @@ export type BoardModel = {
   promptDraft: PromptDraft | null;
   /** Catalog name suggestions for `choose_card_name` (query must match current draft). */
   cardNameSuggestions: { query: string; names: ReadonlyArray<string> } | null;
+  /** Filter query for closed option prompts (creature types). */
+  promptOptionFilter: string;
   /** Window-captured hand-bar drag ghost (null when idle). */
   handDrag: HandDragState | null;
   /** Hovered hand/radial action id — resolves `auto_tap` from the live action list. */
@@ -228,6 +230,7 @@ export function initialBoardModel(): BoardModel {
     pendingChoiceKey: null,
     promptDraft: null,
     cardNameSuggestions: null,
+    promptOptionFilter: "",
     handDrag: null,
     hoverActionId: null,
   };
@@ -299,6 +302,7 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
     pendingChoiceKey: key,
     promptDraft: pc != null && gameState != null ? initPromptDraft(pc, gameState) : null,
     cardNameSuggestions: null,
+    promptOptionFilter: "",
   };
 }
 
@@ -1131,6 +1135,7 @@ function cancelAll(model: BoardModel): BoardModel {
     pendingChoiceKey: null,
     promptDraft: null,
     cardNameSuggestions: null,
+    promptOptionFilter: "",
     handDrag: null,
     hoverActionId: null,
   };
@@ -1640,6 +1645,10 @@ export function updateBoard(
         },
         [],
       ];
+    }
+    case "PromptOptionFilterSet": {
+      const synced = syncPromptDraft(model, fold);
+      return [{ ...synced, promptOptionFilter: message.query }, []];
     }
     case "PromptNumberSet": {
       const synced = syncPromptDraft(model, fold);
