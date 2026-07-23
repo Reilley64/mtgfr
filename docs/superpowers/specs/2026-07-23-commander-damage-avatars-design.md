@@ -7,7 +7,7 @@
 ## Goals
 
 1. Surface each seat’s highest per-commander damage total on the life orb when > 0.
-2. Stay on Canvas avatar paint (same transform as today); no wire/engine changes.
+2. Paint on the **visible** avatar path (Mount bitmap `paintAvatars`, which sits above the Foldkit Canvas vector pass); keep `avatarShapes` in sync for the vector helper. No wire/engine changes.
 3. Keep orbs readable at 2–4 seats; avoid per-source chip clutter.
 
 ## Non-goals
@@ -37,7 +37,7 @@ Loss condition is per single commander source — showing the max is the relevan
 
 ### Paint
 
-In `avatarShapes`, when `max > 0`, add a `Canvas.Text` below the username:
+In `paintAvatars` (`bitmap/mount.ts`) and `avatarShapes` (`canvas/avatars.ts`), when `max > 0`, add text below the username:
 
 - Content: `Cmd ${max}`
 - Fill: `#db8664` (damage-adjacent; document in battlefield canvas hex list)

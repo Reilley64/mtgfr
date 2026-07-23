@@ -78,7 +78,7 @@ Battlefield playable borders are derived from current `ActionView` data. Tap-onl
 
 ### Avatars
 
-Avatars are painted from `canvas/avatars.ts` using the same camera transform as cards. The priority player uses a gold stroke. Lost players render with muted fill. Player life, name, and hand count paint inside the avatar group. When a seat has taken commander damage, the orb also paints `Cmd N` where `N` is the highest amount from any single commander source in `PlayerView.commander_damage` (the 21-damage kill clock). Omit the label when that max is 0 or the field is empty. Targetable player highlights use Island Blue.
+Avatars are painted on the Mount bitmap layer (`bitmap/mount.ts` `paintAvatars`) using the same camera transform as cards; `canvas/avatars.ts` keeps a matching vector helper. The priority player uses a gold stroke. Lost players render with muted fill. Player life, name, and hand count paint inside the avatar group. When a seat has taken commander damage, the orb also paints `Cmd N` where `N` is the highest amount from any single commander source in `PlayerView.commander_damage` (the 21-damage kill clock). Omit the label when that max is 0 or the field is empty. Targetable player highlights use Island Blue.
 
 ### Arrows and target highlights
 
@@ -119,7 +119,7 @@ These are visual/layout rules only; they do not collapse engine objects.
 ## Testing Decisions
 
 - Canvas scene tests assert felt, seat, avatar, and arrow ordering.
-- Avatar unit tests assert `Cmd N` paint from `commander_damage` (max source only; omitted at 0).
+- Avatar unit tests assert `Cmd N` paint from `commander_damage` (max source only; omitted at 0) on both Mount `paintAvatars` and the vector `avatarShapes` helper.
 - Bitmap paint tests assert playable, commander, target, auto-tap, P/T, loyalty, counter, and damage chrome on the resting layer.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.
 - Density tests assert packing, cluster fan, and hover raise order.

@@ -47,5 +47,7 @@ describe("avatarShapes commander damage", () => {
     const without = avatarShapes([player()], positions, 0, 1);
     expect(textContents(withDmg)).toContain("Cmd 14");
     expect(textContents(without).some((t) => t.startsWith("Cmd "))).toBe(false);
+    const cmdText = withDmg.find((s) => s._tag === "Text" && s.content === "Cmd 14");
+    expect(cmdText?._tag === "Text" ? cmdText.fill : null).toBe("#db8664");
   });
 });
