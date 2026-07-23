@@ -28,7 +28,7 @@ export type BoardViewModel = {
 
 function connectingBoard(): Html {
   return h.main(
-    [h.Class("fixed inset-0 bg-forest-floor text-snow"), h.DataAttribute("testid", "board-mount")],
+    [h.Class("fixed inset-0 select-none bg-forest-floor text-snow"), h.DataAttribute("testid", "board-mount")],
     [
       h.div(
         [h.Class("fixed inset-0 flex items-center justify-center"), h.DataAttribute("testid", "board-connecting")],
@@ -136,7 +136,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
   const showHint = hintVisible(model.board);
   return h.main(
     [
-      h.Class("fixed inset-0 overflow-hidden bg-forest-floor text-snow"),
+      h.Class("fixed inset-0 select-none overflow-hidden bg-forest-floor text-snow"),
       h.DataAttribute("testid", "board-mount"),
     ],
     [

@@ -567,6 +567,13 @@ test("full board view mounts the bitmap layer", () => {
   );
 });
 
+test("board root disables native text selection", () => {
+  liveBoardScene(
+    fullBoardModel(initialBoardModel(), gameState()),
+    Scene.expect(Scene.testId("board-mount")).toHaveClass("select-none"),
+  );
+});
+
 test("full board view mounts the flight layer above the hand bar", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),
