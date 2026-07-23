@@ -29,6 +29,8 @@ Render a continuous SVG donut radial around the selected battlefield permanent. 
 - Pointer-up on the same wedge commits; pointer-up on a different wedge cancels that press; pointer-up on the scrim dismisses.
 - Disabled wedges remain visible but do not commit.
 - Hovering an action wedge updates `hoverActionId` for auto-tap preview.
+- Payment is engine-side (`settle_payment` / `auto_tap` preview only); the client must not pre-tap lands before submit.
+- Legal listed activates with payable costs must commit without a spurious `CannotActivate` / “That ability isn't available” toast; true illegals stay disabled.
 
 ## Implementation Decisions
 
@@ -36,6 +38,7 @@ Render a continuous SVG donut radial around the selected battlefield permanent. 
 - `radialOptionKey` provides stable option identity.
 - The radial is a DOM overlay, not canvas paint, so accessibility roles and keyboard handlers remain available.
 - `commitRadialIndex` clears selection before submitting tap-for-mana or running an action.
+- `take_action` ids must round-trip (`ActionView.id` → wire → engine lookup); `UnknownAction` means a stale id, distinct from `CannotActivate`.
 
 ## Testing Decisions
 

@@ -56,6 +56,13 @@ Resting permanent chrome includes:
 
 Unplayable permanents are not darkened. Castability and activation availability are represented by playable borders and action affordances.
 
+### Selection
+
+- Permanents that have activatable abilities (including ones that are presently illegal) are selectable so the radial can list them with disabled wedges.
+- Permanents with no activates are not selectable.
+- Tap-only mana lands (tap-for-mana only) are selectable so the tap wedge can open.
+- Always-on seat/controller borders on every permanent are not used.
+
 ### Playable outlines
 
 `chrome.ts` defines battlefield outline colors:
