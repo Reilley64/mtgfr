@@ -270,6 +270,7 @@ export const update = (
       AltUp: (boardMessage) => foldBoard(model, boardMessage),
       InspectAuxHovered: (boardMessage) => foldBoard(model, boardMessage),
       InspectCardFetched: (boardMessage) => foldBoard(model, boardMessage),
+      CardNameSuggestionsFetched: (boardMessage) => foldBoard(model, boardMessage),
       InspectFlipFace: (boardMessage) => foldBoard(model, boardMessage),
       InspectDismissed: (boardMessage) => foldBoard(model, boardMessage),
       PileExpanded: (boardMessage) => foldBoard(model, boardMessage),

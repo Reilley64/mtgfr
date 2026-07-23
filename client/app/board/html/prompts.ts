@@ -1227,22 +1227,53 @@ function stringPickPrompt(
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const value = draft.kind === "string" ? draft.value : "";
     const canSubmit = value.trim() !== "" && tableId != null;
-    return frame("pending-choice", "Name a card", [
-      h.input([
-        h.DataAttribute("testid", "prompt-name-input"),
-        h.Placeholder("Card name"),
-        h.Autofocus(true),
-        h.AriaLabel("Card name"),
-        h.Value(value),
-        h.OnInput((v) => PromptStringSet({ value: v })),
-        h.OnKeyDownPreventDefault((key) => {
-          if (key !== "Enter" || !canSubmit) return Option.none();
-          return Option.some(PromptSubmitted());
-        }),
-        h.Class("w-full rounded-hud bg-glass px-3 py-1 text-body text-snow"),
-      ]),
-      submitButton("Name", !canSubmit),
-    ]);
+    const suggestions =
+      board.cardNameSuggestions != null &&
+      board.cardNameSuggestions.query.trim() === value.trim() &&
+      board.cardNameSuggestions.names.length > 0
+        ? board.cardNameSuggestions.names
+        : [];
+    return frame(
+      "pending-choice",
+      "Name a card",
+      [
+        h.input([
+          h.DataAttribute("testid", "prompt-name-input"),
+          h.Placeholder("Card name"),
+          h.Autofocus(true),
+          h.AriaLabel("Card name"),
+          h.Value(value),
+          h.OnInput((v) => PromptStringSet({ value: v })),
+          h.OnKeyDownPreventDefault((key) => {
+            if (key !== "Enter" || !canSubmit) return Option.none();
+            return Option.some(PromptSubmitted());
+          }),
+          h.Class("w-full rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+        ]),
+        suggestions.length > 0
+          ? h.div(
+              [
+                h.DataAttribute("testid", "prompt-name-suggestions"),
+                h.Class("flex max-h-[40vh] flex-col gap-1 overflow-y-auto"),
+              ],
+              suggestions.map((name, index) =>
+                h.button(
+                  [
+                    h.Type("button"),
+                    h.DataAttribute("testid", `prompt-name-suggestion-${index}`),
+                    h.OnClick(PromptStringSet({ value: name })),
+                    h.Class(
+                      "cursor-pointer rounded-hud bg-glass px-3 py-1 text-left text-body text-snow hover:bg-glass-dim",
+                    ),
+                  ],
+                  [name],
+                ),
+              ),
+            )
+          : null,
+        submitButton("Name", !canSubmit),
+      ].filter((v): v is Html => v !== null),
+    );
   }
   return frame("pending-choice", "Choose a creature type", [
     h.div(

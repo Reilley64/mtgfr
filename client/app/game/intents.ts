@@ -3,7 +3,7 @@ import { Command } from "foldkit";
 import { humanReason } from "../../lib/reject";
 import { statusOf } from "../../lib/rpc-client";
 import type { IntentEnvelope, WireIntent } from "../../lib/wire/types";
-import { InspectCardFetched } from "../board/messages";
+import { CardNameSuggestionsFetched, InspectCardFetched } from "../board/messages";
 import { RpcClient } from "../resources";
 import { IntentAcked, IntentRejected } from "./messages";
 
@@ -95,6 +95,28 @@ export const FetchInspectCard = Command.define(
     return yield* rpc.lookupCards([cardId]).pipe(
       Effect.map((cards) => InspectCardFetched({ card: cards[0] ?? null })),
       Effect.catch(() => Effect.succeed(InspectCardFetched({ card: null }))),
+    );
+  }),
+);
+
+const CARD_NAME_SUGGEST_LIMIT = 8;
+
+/** Catalog typeahead for `choose_card_name` — suggestions assist; engine still accepts any name. */
+export const SearchCardNames = Command.define(
+  "SearchCardNames",
+  { query: S.String },
+  CardNameSuggestionsFetched,
+)(({ query }) =>
+  Effect.gen(function* () {
+    const rpc = yield* RpcClient;
+    return yield* rpc.searchCards({ q: query, limit: CARD_NAME_SUGGEST_LIMIT, offset: 0 }).pipe(
+      Effect.map((cards) =>
+        CardNameSuggestionsFetched({
+          query,
+          names: cards.map((c) => c.name),
+        }),
+      ),
+      Effect.catch(() => Effect.succeed(CardNameSuggestionsFetched({ query, names: [] }))),
     );
   }),
 );
