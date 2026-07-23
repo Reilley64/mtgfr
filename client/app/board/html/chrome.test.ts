@@ -183,6 +183,25 @@ test("mulligan bar waiting status names undecided seats after local keep", () =>
   );
 });
 
+test("declare attackers shows combat staging coach for the active seat", () => {
+  const state = gameState({
+    step: 5,
+    active_player: 0,
+    priority: 0,
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+  });
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with({
+      board: initialBoardModel(),
+      fold: gameFold(state),
+      tableId: "T1",
+    }),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("board-combat-coach")).toContainText("Drag a creature onto an opponent to attack"),
+  );
+});
+
 test("spectator hides hand, priority bar, concede, and discoverability chrome", () => {
   const model: OverlayModel = {
     board: initialBoardModel(),

@@ -2,6 +2,7 @@
 
 import { type Html, html } from "foldkit/html";
 import { cn } from "~/cn";
+import { combatCoachFromState } from "~/combatCoach";
 import { isActivePlayer } from "~/spectator";
 import { buttonClass } from "~/ui/buttonClass";
 import type { VisibleState } from "~/wire/types";
@@ -79,6 +80,18 @@ function hintStripView(): Html {
   );
 }
 
+function combatCoachView(text: string): Html {
+  return h.div(
+    [
+      h.DataAttribute("testid", "board-combat-coach"),
+      h.Class(
+        "pointer-events-none flex max-w-[min(480px,52vw)] items-center gap-md rounded-hud border border-mountain-red/40 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [h.span([], [text])],
+  );
+}
+
 function legendPanelView(): Html {
   return h.div(
     [
@@ -131,31 +144,39 @@ function legendToggleButton(expanded: boolean): Html {
   );
 }
 
-/** Hint strip, legend toggle, and legend panel for seated active players. */
+/** Hint strip, combat staging coach, legend toggle, and legend panel for seated active players. */
 export function discoverabilityView(board: BoardModel, state: VisibleState): Html | null {
   if (!seatedPlayer(state)) return null;
 
   const showHint = hintVisible(board);
   const showLegend = board.legendOpen;
+  const coach = combatCoachFromState(state, {
+    attackersConfirmed: board.attackersConfirmed,
+    blockersConfirmed: board.blockersConfirmed,
+  });
 
-  if (!showHint && !showLegend) {
+  if (!showHint && !showLegend && coach == null) {
     return legendToggleButton(false);
   }
+
+  const bottomStrips: Html[] = [];
+  if (coach != null) bottomStrips.push(combatCoachView(coach));
+  if (showHint) bottomStrips.push(hintStripView());
 
   return h.div(
     [],
     [
       h.div([h.Class("pointer-events-none flex items-center gap-xs")], [legendToggleButton(showLegend)]),
       showLegend ? legendPanelView() : null,
-      showHint
+      bottomStrips.length > 0
         ? h.div(
             [
               h.Style({ "--b": `${HAND_BAR_H + 10}px` }),
               h.Class(
-                "pointer-events-none fixed bottom-(--b) left-md z-20 flex max-w-[min(420px,46vw)] flex-col items-start gap-sm",
+                "pointer-events-none fixed bottom-(--b) left-md z-20 flex max-w-[min(480px,52vw)] flex-col items-start gap-sm",
               ),
             ],
-            [hintStripView()],
+            bottomStrips,
           )
         : null,
     ].filter((v): v is Html => v !== null),
