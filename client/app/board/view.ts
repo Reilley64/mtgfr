@@ -104,6 +104,10 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     flights: [...model.board.flights.values()],
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,
+    pickedObjects:
+      overlay.aiming && model.board.promptDraft?.kind === "card-pick"
+        ? new Set(model.board.promptDraft.picked)
+        : new Set(),
     targetPlayers: overlay.targetPlayers,
     aimFrom: overlay.aiming ? overlay.aimFrom : null,
     cursor: model.board.cursor,

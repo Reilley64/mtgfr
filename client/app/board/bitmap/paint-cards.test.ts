@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { colors } from "~/design-tokens.generated";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
-import { paintCard, paintCardTargetHighlight, TARGET_COLOR } from "./paint-cards";
+import { paintCard, paintCardPickedHighlight, paintCardTargetHighlight, TARGET_COLOR } from "./paint-cards";
 
 function card(overrides: Partial<RenderCard> = {}): RenderCard {
   return {
@@ -80,6 +81,18 @@ describe("paintCardTargetHighlight", () => {
     expect(ctx.shadowColor).toBe(TARGET_COLOR);
     expect(ctx.stroke).toHaveBeenCalled();
     expect(ctx.setLineDash).toHaveBeenCalledWith([2, 6]);
+  });
+});
+
+describe("paintCardPickedHighlight", () => {
+  it("strokes a solid Priority Gold ring around the card footprint", () => {
+    const ctx = mockCtx();
+
+    paintCardPickedHighlight(ctx, { panX: 0, panY: 0, zoom: 1 }, card(), 0);
+
+    expect(ctx.shadowColor).toBe(colors.priorityGold);
+    expect(ctx.stroke).toHaveBeenCalled();
+    expect(ctx.setLineDash).toHaveBeenCalledWith([]);
   });
 });
 

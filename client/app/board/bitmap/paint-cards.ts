@@ -232,6 +232,33 @@ export function paintCardTargetHighlight(
   ctx.restore();
 }
 
+/** Solid Priority Gold ring for a multi-aim pick that is already committed in the draft. */
+export function paintCardPickedHighlight(
+  ctx: CanvasRenderingContext2D,
+  cam: Camera,
+  card: RenderCard,
+  viewer: number,
+): void {
+  const tl = worldToScreen(cam, card.x, card.y);
+  const w = card.w * cam.zoom;
+  const h = card.h * cam.zoom;
+  const r = CARD_CORNER_RADIUS * cam.zoom;
+
+  ctx.save();
+  rotateCard(ctx, card, viewer, tl.x, tl.y, w, h);
+
+  ctx.shadowColor = colors.priorityGold;
+  ctx.shadowBlur = 14 * cam.zoom;
+  roundRect(ctx, tl.x, tl.y, w, h, r);
+  ctx.strokeStyle = colors.priorityGold;
+  ctx.lineWidth = Math.max(1, 4 * cam.zoom);
+  ctx.setLineDash([]);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
+}
+
 function rotateCard(
   ctx: CanvasRenderingContext2D,
   card: RenderCard,
