@@ -91,6 +91,7 @@ describe("mulliganChrome", () => {
       players: [
         {
           player: 0,
+          username: "Alice",
           hand_kept: true,
           can_mulligan: false,
           mulligans_taken: 0,
@@ -98,6 +99,7 @@ describe("mulliganChrome", () => {
         },
         {
           player: 1,
+          username: "Bob",
           hand_kept: false,
           can_mulligan: false,
           mulligans_taken: 0,
@@ -105,6 +107,7 @@ describe("mulliganChrome", () => {
         },
         {
           player: 2,
+          username: "Carol",
           hand_kept: false,
           can_mulligan: true,
           mulligans_taken: 0,
@@ -114,7 +117,70 @@ describe("mulliganChrome", () => {
     });
 
     expect(c.waitingCount).toBe(1);
-    expect(c.status).toBe("Waiting for 1 player to choose.");
+    expect(c.status).toBe("Waiting for Carol to choose.");
+  });
+
+  it("names undecided seats in the waiting status", () => {
+    const c = mulliganChrome({
+      mulliganing: true,
+      localSeat: 0,
+      players: [
+        {
+          player: 0,
+          username: "Alice",
+          hand_kept: true,
+          can_mulligan: false,
+          mulligans_taken: 0,
+          lost: false,
+        },
+        {
+          player: 1,
+          username: "Bob",
+          hand_kept: false,
+          can_mulligan: true,
+          mulligans_taken: 0,
+          lost: false,
+        },
+        {
+          player: 2,
+          username: "Carol",
+          hand_kept: false,
+          can_mulligan: true,
+          mulligans_taken: 0,
+          lost: false,
+        },
+      ],
+    });
+
+    expect(c.waitingCount).toBe(2);
+    expect(c.status).toBe("Waiting for Bob and Carol to choose.");
+  });
+
+  it("falls back to seat labels when username is empty", () => {
+    const c = mulliganChrome({
+      mulliganing: true,
+      localSeat: 0,
+      players: [
+        {
+          player: 0,
+          username: "Alice",
+          hand_kept: true,
+          can_mulligan: false,
+          mulligans_taken: 0,
+          lost: false,
+        },
+        {
+          player: 1,
+          username: "  ",
+          hand_kept: false,
+          can_mulligan: true,
+          mulligans_taken: 0,
+          lost: false,
+        },
+      ],
+    });
+
+    expect(c.status).toBe("Waiting for P1 to choose.");
   });
 
   it("hidden when not mulliganing", () => {
