@@ -27,6 +27,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player scrying or surveilling, I assign looked-at cards into Top vs Bottom (or Graveyard) lanes instead of a flat ordered pick list.
 - As a player selecting from the top of my library, I assign cards into Take vs Bottom lanes (up to the allowed count).
 - As a player distributing revealed cards from the top, I click cards across Hand / Bottom / Exile lanes (capacity per lane).
+- As a player partitioning revealed cards, I click cards between Pile A and Pile B lanes.
 - As a player ordering triggers, I click-to-place rows (or use ↑↓) so the last listed resolves first.
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
@@ -62,6 +63,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `scry` / `surveil` use two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`.
 - `select_from_top` uses Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
 - `distribute_top` uses Revealed / Hand / Bottom / Exile lanes (`prompt-distribute-lanes`); click cycles a card through lanes with room (`nextDistributeBucket`), then back to Revealed; Distribute enables when each lane hits its exact count.
+- `partition_revealed` uses Pile A / Pile B lanes (`prompt-partition-lanes`); click toggles a card between piles via `PromptCardToggled`.
 - `order_triggers` rows support click-to-place reorder (`PromptOrderRowClicked` / `orderPickPos`) plus ↑↓ (`PromptOrderMoved`); list lives under `prompt-order-list`. Submit still emits `choose_order`.
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
 - Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
@@ -96,6 +98,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover `choose_card_name` typeahead list when suggestions match the draft query.
 - Scene tests cover on-board pending aim chrome (`pending-target-aim`, no card grid) and optional Decline → empty `choose_targets`.
 - Scene/unit tests cover scry/surveil Top↔Bottom (Graveyard) lanes and click toggle → `arrange_top`.
+- Scene/unit tests cover distribute_top Hand/Bottom/Exile lanes and `nextDistributeBucket` cycling.
+- Scene/unit tests cover partition_revealed Pile A / Pile B lanes and click → pile_a.
 - Scene/unit tests cover order_triggers click-to-place reorder and ↑↓ chrome.
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 

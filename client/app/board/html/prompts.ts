@@ -1406,15 +1406,58 @@ function partitionPrompt(
   tableId: string | null,
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
-  const buckets = draft.kind === "partition" ? draft.buckets : {};
 
   if (pending.kind === "partition_revealed") {
-    const picked = buckets.pile_a ?? [];
+    const draftBuckets = draft.kind === "partition" ? draft.buckets : { pile_a: [] as number[] };
+    const pileAIds = draftBuckets.pile_a ?? [];
+    const byId = new Map(pending.items.map((it) => [it.id, it]));
+    const pileAItems = pileAIds.flatMap((id) => {
+      const item = byId.get(id);
+      return item != null ? [item] : [];
+    });
+    const pileBItems = pending.items.filter((it) => !pileAIds.includes(it.id));
     return frame("pending-choice", "Choose cards for Pile A", [
-      h.div([h.Class("text-caption text-mist")], ["Click cards to put them in Pile A — the rest go to Pile B."]),
       h.div(
-        [h.Class("flex flex-wrap justify-center gap-2")],
-        pending.items.map((item) => cardPickButton(item, state, picked, false)),
+        [h.DataAttribute("testid", "prompt-partition-lanes"), h.Class("flex flex-col gap-3")],
+        [
+          h.div([h.Class("shrink-0 text-caption text-mist")], ["Click a card to move it between Pile A and Pile B."]),
+          h.div(
+            [h.DataAttribute("testid", "prompt-partition-a"), h.Class("flex flex-col gap-2")],
+            [
+              h.div(
+                [
+                  h.DataAttribute("testid", "prompt-partition-a-label"),
+                  h.Class("text-caption font-semibold text-seafoam"),
+                ],
+                [`Pile A (${pileAIds.length})`],
+              ),
+              h.div(
+                [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                pileAItems.length > 0
+                  ? pileAItems.map((item) => arrangeLaneCard(item, state, pileAIds, false))
+                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+              ),
+            ],
+          ),
+          h.div(
+            [h.DataAttribute("testid", "prompt-partition-b"), h.Class("flex flex-col gap-2")],
+            [
+              h.div(
+                [
+                  h.DataAttribute("testid", "prompt-partition-b-label"),
+                  h.Class("text-caption font-semibold text-seafoam"),
+                ],
+                [`Pile B (${pileBItems.length})`],
+              ),
+              h.div(
+                [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                pileBItems.length > 0
+                  ? pileBItems.map((item) => arrangeLaneCard(item, state, [], false))
+                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+              ),
+            ],
+          ),
+        ],
       ),
       h.div([h.Class("flex gap-2")], [submitButton("Lock piles", false), cancelButton()]),
     ]);

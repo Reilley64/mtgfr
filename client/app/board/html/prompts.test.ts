@@ -371,6 +371,48 @@ test("distribute_top card click cycles into Hand then Bottom", () => {
   });
 });
 
+test("partition_revealed shows Pile A and Pile B lanes", () => {
+  const s = state({
+    pending_choice: {
+      kind: "partition_revealed",
+      player: 0,
+      source: 9,
+      items: [
+        { id: 1, label: "A" },
+        { id: 2, label: "B" },
+      ],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-partition-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-partition-a")).toExist(),
+    Scene.expect(Scene.testId("prompt-partition-b")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-2")).toExist(),
+  );
+});
+
+test("partition_revealed card click moves into Pile A", () => {
+  const gf = gameFold(
+    state({
+      pending_choice: {
+        kind: "partition_revealed",
+        player: 0,
+        source: 9,
+        items: [
+          { id: 1, label: "A" },
+          { id: 2, label: "B" },
+        ],
+      },
+    }),
+  );
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 1 }), gf, "T1")[0];
+  expect(board.promptDraft).toEqual({ kind: "partition", buckets: { pile_a: [1] } });
+});
+
 test("choose_dredge shows Draw normally and disables Dredge until one pick", () => {
   const s = state({
     pending_choice: {
