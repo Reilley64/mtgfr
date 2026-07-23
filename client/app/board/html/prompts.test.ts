@@ -6,14 +6,7 @@ import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/type
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
 import { emptyCostPicks } from "../action/execution";
-import {
-  type Message,
-  PromptCardToggled,
-  PromptDamageSet,
-  PromptSubmitted,
-  XDraftSet,
-  XSubmitted,
-} from "../messages";
+import { type Message, PromptCardToggled, PromptDamageSet, PromptSubmitted, XDraftSet, XSubmitted } from "../messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
