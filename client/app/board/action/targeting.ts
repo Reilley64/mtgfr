@@ -131,6 +131,22 @@ export function choiceItemsAsWireTargets(items: ReadonlyArray<{ id: number; play
   );
 }
 
+/** Pending kinds that aim at on-board permanents when every legal item is clickable on the canvas. */
+const ONBOARD_CARD_PICK_KINDS = new Set<PendingChoiceView["kind"]>([
+  "sacrifice_edict",
+  "choose_own_sacrifices",
+  "may_sacrifice",
+  "devour",
+  "proliferate",
+  "phase_out",
+  "decline_untap",
+  "choose_attach_host",
+  "sacrifice_unless_return_land",
+  "choose_copy_target",
+  "choose_counter_target_for_player",
+  "caster_keep_permanents",
+]);
+
 /** True when this pending choice can be answered by aiming on the board (Arena aim). */
 export function pendingBoardTargetMode(
   pc: PendingChoiceView | null | undefined,
@@ -144,7 +160,7 @@ export function pendingBoardTargetMode(
     if (pc.max < 1) return null;
   } else if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
     if (pc.max < 1) return null;
-  } else {
+  } else if (!ONBOARD_CARD_PICK_KINDS.has(pc.kind)) {
     return null;
   }
 
@@ -159,6 +175,15 @@ export function pendingTargetOneClick(pc: PendingChoiceView): boolean {
   if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
     return pc.min === 1 && pc.max === 1;
   }
+  if (
+    pc.kind === "choose_attach_host" ||
+    pc.kind === "sacrifice_unless_return_land" ||
+    pc.kind === "choose_copy_target"
+  ) {
+    return true;
+  }
+  if (pc.kind === "sacrifice_edict") return !pc.keep_one;
+  if (pc.kind === "choose_own_sacrifices") return pc.count === 1;
   return false;
 }
 

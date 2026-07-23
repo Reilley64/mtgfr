@@ -14,6 +14,7 @@ import {
   type AnswerInput,
   buildAnswerFromDraft,
   cardPickReady,
+  cardPickRequiredCount,
   choiceIntent,
   chooseTargetIsCardPick,
   type DistributeBucket,
@@ -965,7 +966,11 @@ function cardPickForKind(
       pending.kind === "choose_spell_targets" ||
       pending.kind === "choose_ability_targets"
         ? pending.max
-        : null;
+        : pending.kind === "choose_own_sacrifices"
+          ? pending.count
+          : pending.kind === "sacrifice_edict"
+            ? cardPickRequiredCount(pending)
+            : null;
     const ready = !oneClick && cardPickReady(pending, picked);
     const countLine =
       !oneClick && max != null

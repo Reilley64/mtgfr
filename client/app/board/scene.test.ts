@@ -377,6 +377,67 @@ test("pointer up on on-board pending choose_target submits choose_targets", () =
   });
 });
 
+test("pointer up on on-board sacrifice_edict submits sacrifice intent", () => {
+  const bear = creature(22, 0, { name: "Grizzly Bears" });
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pointer: { kind: "drag", card: renderStub(22), x: 100, y: 100, moved: false },
+  };
+  const gameFold = fold(
+    state({
+      objects: [bear],
+      pending_choice: {
+        kind: "sacrifice_edict",
+        player: 0,
+        source: 1,
+        items: [{ id: 22, label: "Grizzly Bears" }],
+      },
+    }),
+  );
+  const [, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_sacrifices",
+    player: 0,
+    sacrifices: [22],
+  });
+});
+
+test("pointer up on proliferate accumulates picks until Confirm", () => {
+  const a = creature(1, 0, { name: "A" });
+  const b = creature(2, 0, { name: "B" });
+  const pending = {
+    kind: "proliferate" as const,
+    player: 0,
+    source: 1,
+    items: [
+      { id: 1, label: "A" },
+      { id: 2, label: "B" },
+    ],
+  };
+  const gameFold = fold(state({ objects: [a, b], pending_choice: pending }));
+  let board: BoardModel = {
+    ...initialBoardModel(),
+    pointer: { kind: "drag", card: renderStub(1), x: 100, y: 100, moved: false },
+  };
+  let commands: ReturnType<typeof updateBoard>[1];
+  [board, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toEqual({ kind: "card-pick", picked: [1], filter: "" });
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(2), x: 100, y: 100, moved: false },
+  };
+  [board, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toEqual({ kind: "card-pick", picked: [1, 2], filter: "" });
+  [, commands] = updateBoard(board, PromptSubmitted(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_sacrifices",
+    player: 0,
+    sacrifices: [1, 2],
+  });
+});
+
 test("pointer up on multi on-board choose_target accumulates picks until Confirm", () => {
   const a = creature(1, 1, { name: "A" });
   const b = creature(2, 1, { name: "B" });

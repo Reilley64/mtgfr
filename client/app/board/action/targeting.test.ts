@@ -294,6 +294,48 @@ describe("pendingTargetingOverlay", () => {
     );
     expect(overlay.aiming).toBe(false);
   });
+
+  it("aims for battlefield sacrifice_edict", () => {
+    const bear = object({ id: 7 });
+    const overlay = pendingTargetingOverlay(
+      {
+        kind: "sacrifice_edict",
+        player: 0,
+        source: 1,
+        items: [{ id: 7, label: "Bear" }],
+      },
+      state([bear]),
+      { width: 1440, height: 900 },
+      0,
+    );
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetObjects]).toEqual([7]);
+    expect(
+      pendingTargetOneClick({
+        kind: "sacrifice_edict",
+        player: 0,
+        source: 1,
+        items: [{ id: 7, label: "Bear" }],
+      }),
+    ).toBe(true);
+  });
+
+  it("aims for proliferate without one-click", () => {
+    const a = object({ id: 1 });
+    const b = object({ id: 2 });
+    const pc = {
+      kind: "proliferate" as const,
+      player: 0,
+      source: 1,
+      items: [
+        { id: 1, label: "A" },
+        { id: 2, label: "B" },
+      ],
+    };
+    const overlay = pendingTargetingOverlay(pc, state([a, b]), { width: 1440, height: 900 }, 0);
+    expect(overlay.aiming).toBe(true);
+    expect(pendingTargetOneClick(pc)).toBe(false);
+  });
 });
 
 describe("pendingTargetOneClick", () => {
