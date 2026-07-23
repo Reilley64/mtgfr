@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-22-foldkit-hand-dim-and-table-audio-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md`, `docs/superpowers/specs/2026-07-20-table-audio.md`, `docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md`
 - Branch: `cursor/foldkit-migration-design-1ef0` (PR #74)
 - No sample/Howler assets; no board-wide pointerdown unlock; no reintroducing unplayable hand darkening
 - Happy-path audio must work without pressing Sound
@@ -547,7 +547,7 @@ git commit -m "fix(client): unlock table audio on Ready click path"
 ### Task 5: Spec Done + focused verification
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-22-foldkit-hand-dim-and-table-audio-design.md` (Status → Done)
+- Modify: `docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md`, `docs/superpowers/specs/2026-07-20-table-audio.md`, `docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md` (current behavior notes)
 - Optional note in `DESIGN.md` only if hand dim language still claims a veil — align to “borders only”
 
 **Interfaces:**
@@ -580,7 +580,7 @@ In the design doc header:
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-07-22-foldkit-hand-dim-and-table-audio-design.md DESIGN.md
+git add docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md docs/superpowers/specs/2026-07-20-table-audio.md docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md DESIGN.md
 git commit -m "docs: mark hand-dim and table-audio unlock spec done"
 ```
 

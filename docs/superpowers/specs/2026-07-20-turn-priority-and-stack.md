@@ -100,7 +100,7 @@ These are **server-side chrome**, not engine concepts. The engine only receives 
 ### Stack hold and helpless dwell
 
 - Before auto-resolving a stack item (when all players pass and the stack is non-empty), the server waits `STACK_HOLD` (2 s) so the table can read the card.
-- During the hold, a seat with no meaningful action may register a **helpless dwell** (`POST /stack-dwell/v1`), postponing resolution until the dwell ends. A hard cap of `STACK_HOLD + 3 s` prevents indefinite delay.
+- During the hold, a seat with no meaningful action may register a **helpless dwell** via gRPC `Game.SetStackDwell` (BFF `/api/rpc/game/:table/stack-dwell`), postponing resolution until the dwell ends. A hard cap of `STACK_HOLD + 3 s` prevents indefinite delay.
 - Seats that have a meaningful action are not helpless and cannot dwell-pause.
 - The visible state carries `stack_hold_remaining_ms` for client countdown rendering.
 

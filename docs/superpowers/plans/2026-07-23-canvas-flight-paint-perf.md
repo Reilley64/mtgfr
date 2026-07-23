@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-23-canvas-flight-paint-perf-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-flights.md`
 - Branch: `cursor/foldkit-migration-design-1ef0` (PR #74)
 - No WebGL / OffscreenCanvas / Pixi
 - No pointer-move throttling in this plan (flights-only pain)
@@ -456,7 +456,7 @@ git commit -m "perf(client): step and paint flights without full-board frames"
 
 **Files:**
 - Modify: `docs/client-canvas-map.md` (flight layer / rAF note)
-- Modify: `docs/superpowers/specs/2026-07-23-canvas-flight-paint-perf-design.md` (Status → Done)
+- Modify: `docs/superpowers/specs/2026-07-20-flights.md` (current paint-gating behavior)
 
 - [ ] **Step 1: Update canvas map**
 
@@ -475,7 +475,7 @@ Set spec status to `Done` and one-line evidence (tests that prove resting paint 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/client-canvas-map.md docs/superpowers/specs/2026-07-23-canvas-flight-paint-perf-design.md
+git add docs/client-canvas-map.md docs/superpowers/specs/2026-07-20-flights.md
 git commit -m "docs: record flight-local canvas paint loop"
 ```
 

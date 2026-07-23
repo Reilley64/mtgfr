@@ -8,7 +8,7 @@
 
 **Tech Stack:** Rust engine + schema/proto (prost/tonic), Effect-gRPC codegen (`just server-codegen`), SolidStart client (Solid signals), Vitest + cargo-nextest.
 
-**Spec:** [docs/superpowers/specs/2026-07-20-x-cost-prompt-design.md](../specs/2026-07-20-x-cost-prompt-design.md)
+**Spec:** [docs/superpowers/specs/2026-07-20-prompts-and-pending-choices.md](../specs/2026-07-20-prompts-and-pending-choices.md)
 
 ## Global Constraints
 

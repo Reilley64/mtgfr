@@ -45,10 +45,10 @@ The system separates pre-game lobby from live-game concerns across two persisten
 **In-game routing (lobby-table-routing-and-live-game spec):**
 
 All in-game requests carry `table_id` in the URL path. The BFF looks up `table_routes` in
-`mtgfr_web` → `pod_dns` → proxies to `http://{pod_dns}:8080` (headless Service
-`edh-api-headless`, `publishNotReadyAddresses=true`). Terminating pods remain reachable on the
-headless Service for the duration of their drain. No affinity cookie; `table_id` in the path is
-the sole routing key.
+`mtgfr_web` → `pod_dns`, then dials tonic gRPC at `{pod_dns}:50051` through the headless Service
+`edh-api-headless` (`publishNotReadyAddresses=true`). Health checks remain HTTP on `:8080`.
+Terminating pods remain reachable on the headless Service for the duration of their drain. No
+affinity cookie; `table_id` in the path is the sole routing key.
 
 **In-memory Registry and Table (lobby-table-routing-and-live-game spec):**
 
@@ -126,6 +126,8 @@ the BFF so that their absence does not block drain of an API pod that was never 
   game stays on the Terminating pod via headless pod DNS; new games start on the new pod.
 - As an **eliminated player**, I continue watching the game as a spectator (public projection,
   `viewer = 255`) until the game ends.
+- As a **signed-in non-seated user**, I can open the game stream and receive the spectator
+  projection; hands and libraries are still hidden.
 
 ---
 
@@ -147,9 +149,9 @@ the BFF so that their absence does not block drain of an API pod that was never 
 
 ### Stream subscribe (`Game.Stream`)
 
-1. Auth: `x-session-token` → `AuthUser`. Spectators (watchers without a seat) are not supported
-   on the current stream path — the stream requires auth to identify the viewer's seat for
-   redaction.
+1. Auth: `x-session-token` → `AuthUser`. If the user has a seat at the table, the stream uses
+   that seat for redaction; otherwise a signed-in non-seated user receives the public spectator
+   projection (`viewer = 255`).
 2. Open `Game.Stream(StreamRequest { table_id })`. Server reads current snapshot at `seq`,
    sends `SnapshotFrame`, then subscribes to `table.tx` broadcast channel.
 3. Loop: receive `Broadcast` frame → redact for viewer → send `DeltaEnvelope`. Heartbeat frames
@@ -265,8 +267,8 @@ seeded game; there are no "empty" table shells in the production registry.
 - **Horizontal same-tag replicas sharing a registry**: not in scope. Concurrent Terminating
   pods during a roll are in scope; same-image horizontal scale-out is not (would require Redis
   or a shared broadcast bus).
-- **Watcher join (non-seated observers)**: the stream path requires auth and seat resolution.
-  An unauthenticated or non-seated user cannot currently open a stream.
+- **Anonymous watcher join**: the stream path requires auth. A signed-in non-seated user receives
+  the spectator projection; an unauthenticated client cannot currently open a stream.
 - **Table recovery for abandoned lobbies**: if a lobby's `table_routes` row is stale or missing,
   the BFF returns 404 `UnknownTable`. Clients must rejoin via the lobby.
 - **Lobby real-time updates (WebSocket / push)**: the lobby is polled or rebuilt on page load,
@@ -287,7 +289,7 @@ seeded game; there are no "empty" table shells in the production registry.
 - Stack-hold countdown (`stack_hold_remaining_ms`) reaches the client on every `DeltaEnvelope`
   and every hold-tick publish. The client renders a countdown UI on the Stack view when
   `stack_hold_remaining_ms > 0`.
-- Per the CONTEXT.md, a **spectator** is an eliminated player still receiving the stream; a
-  **watcher** is a client with no seat. The stream redaction path supports both via
-  `Option<PlayerId>` (spectator = `None`), but the current gRPC stream handler requires auth
-  and resolves to a seated user — fully unseated watch access is not wired end-to-end.
+- Per the CONTEXT.md, a **spectator** is an eliminated player or signed-in non-seated user
+  receiving the stream; a **watcher** is a client with no seat. The stream redaction path uses
+  `Option<PlayerId>` (`None` = spectator projection), so non-seated signed-in watchers receive
+  public zones and counts only.

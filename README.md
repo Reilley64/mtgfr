@@ -6,7 +6,7 @@ Authoritative rules engine on the server, MTGA-style board in the client, plus a
 
 ## Status
 
-Early and incomplete on purpose. The north star is to support *any* card **faithfully** — grown from real cards, with gaps flagged rather than faked. Today that means ~493 scripted cards (`crates/cards/data/`) and an engine that is not rules-complete. The five Secrets of Strixhaven (`soc`) Commander decks (~389 unique cards) are the first proving ground, not the end of the roadmap.
+Early and incomplete on purpose. The north star is to support *any* card **faithfully** — grown from real cards, with gaps flagged rather than faked. Today that means ~618 deckable card scripts (`crates/cards/data/`) and an engine that is not rules-complete. The five Secrets of Strixhaven (`soc`) Commander decks (~389 unique cards) are the first proving ground, not the end of the roadmap.
 
 The public origin ships `robots.txt` that disallows crawlers; this is a friends table, not a content site.
 

@@ -4,9 +4,11 @@ How agents find where battlefield paint, hits, flights, and DOM overlays live.
 This is a **code map**, not a design system doc — tokens stay in [`DESIGN.md`](../DESIGN.md).
 
 The client is a Foldkit SPA hosted on Nitro; the board is one submodel with three
-surfaces (Canvas vector, Mount bitmap, HTML overlays). See the [Foldkit migration
-design](superpowers/specs/2026-07-21-foldkit-client-migration-design.md) for the
-overall module split.
+surfaces (Canvas vector, Mount bitmap, HTML overlays). See the fine-grained board
+specs for the current module split, especially
+[board-composition](superpowers/specs/2026-07-20-board-composition.md),
+[battlefield](superpowers/specs/2026-07-20-battlefield.md), and
+[flights](superpowers/specs/2026-07-20-flights.md).
 
 ## How to find a concern
 
@@ -28,7 +30,7 @@ overall module split.
 |--------|------|
 | `app/board/geometry/camera.ts` | Camera SoT: `screen = world * zoom + pan` |
 | `app/board/geometry/hit-test.ts` | Screen→world card/avatar hits (tapped/fan footprints) |
-| `app/board/geometry/density.ts` | Row packing / hover-raise / clusters ([client board](superpowers/specs/2026-07-20-client-game-board-and-interaction.md)) |
+| `app/board/geometry/density.ts` | Row packing / hover-raise / clusters ([battlefield](superpowers/specs/2026-07-20-battlefield.md)) |
 | `app/board/geometry/layout.ts` | Seat bands, card size, zone columns, attach layout |
 | `app/board/geometry/interaction.ts` | Pointer FSM reducers + `fitCamera` |
 | `app/board/geometry/combat-staging.ts` | Combat pointer resolution |
@@ -53,11 +55,13 @@ overall module split.
 
    **Bottom → top:**
 
+   Card/avatar paint order matches `mount.ts`: felt → seats → resting cards → avatars → arrows → flights.
+
    | # | Layer | Surface | Contents |
    |---|--------|---------|----------|
    | 1 | Felt / seats | Canvas vector | Table, seat bands |
-   | 2 | Zone furniture | Canvas / world DOM | Avatar **paint**, library, command zone, **battlefield in-play mana** (left under your seat), GY, exile |
-   | 3 | Resting battlefield permanents | Mount bitmap (+ card chrome) | Battlefield faces |
+   | 2 | Zone furniture | Canvas / world DOM | Library, command zone, **battlefield in-play mana** (left under your seat), GY, exile |
+   | 3 | Resting battlefield permanents + avatars | Mount bitmap + Canvas vector (+ card chrome) | Battlefield faces paint first; avatar/life paint follows resting cards |
    | 4 | Arrows | Canvas | Committed attack/block, **declare-attackers drag aim**, spell aim — always above resting permanents |
    | 5 | Hand / stack / spell mana | HTML | Resting hand & stack; **spell/payment mana tray** (same layer as hand, above hand cards) |
    | 6 | Flights | Mount / motion | In-flight play cards — **above** hand and stack |
@@ -68,7 +72,7 @@ overall module split.
 
    **Layer rules:**
 
-   1. **Avatar paint** stays in layer 2 with **clear bands** packing must not cover; **orb hits** stay in layer 7.
+   1. **Avatar paint** follows resting battlefield cards in layer 3; **clear bands** packing must not cover it. **Orb hits** stay in layer 7.
    2. **Two mana surfaces:** battlefield in-play mana (layer 2) vs spell/payment mana tray on the hand layer (5).
    3. No resting permanent paint or DOM card face may sit above layer 4 while combat/spell arrows are active. Declare-drag arrows use the **same arrow layer** as committed arrows.
    4. Flights paint above hand/stack (layer 6 over 5).
@@ -84,13 +88,16 @@ overall module split.
 
 | Doc | Use for |
 |-----|---------|
-| [Client board spec](superpowers/specs/2026-07-20-client-game-board-and-interaction.md) | Packing, flights, chrome, audio, inspect |
-| [Foldkit migration design](superpowers/specs/2026-07-21-foldkit-client-migration-design.md) | Board submodel split, Mount escape hatch |
+| [Board composition](superpowers/specs/2026-07-20-board-composition.md) | Board submodel, Canvas/Mount/HTML surfaces, overlay composition |
+| [Board camera and layout](superpowers/specs/2026-07-20-board-camera-and-layout.md) | Camera transform, screen/world geometry, seat and zone layout |
+| [Battlefield](superpowers/specs/2026-07-20-battlefield.md) | Resting permanents, avatar paint, arrows, packing, chrome |
+| [Flights](superpowers/specs/2026-07-20-flights.md) | Flight ownership, animation clock, bitmap paint gating |
+| [Card inspect](superpowers/specs/2026-07-20-card-inspect.md) | Topmost inspect dock and board card preview behavior |
 | [`DESIGN.md`](../DESIGN.md) | Tokens; canvas hex exemptions |
 | [`agent-navigation.md`](agent-navigation.md) | Engine CR lookup (server-side) |
 
 ## Non-goals
 
-- No Pixi / Konva / fabric / WebGL migration from this map.
+- No Pixi / Konva / fabric / WebGL rewrite from this map.
 - No unified DOM+canvas retained graph — dual surface is intentional.
 - Decision history lives in the feature specs; do not duplicate them here.

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-22-foldkit-remaining-bugs-and-board-layers-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-board-composition.md`, `docs/superpowers/specs/2026-07-20-battlefield.md`, `docs/superpowers/specs/2026-07-20-card-inspect.md`
 - Branch: `cursor/foldkit-migration-design-1ef0` (PR #74)
 - Outcome tests in product language (no new “Solid parity” test titles)
 - Inspect is topmost while pinned (including above concede/result/portrait chrome)
@@ -23,7 +23,7 @@
 | File | Role |
 |---|---|
 | `docs/client-canvas-map.md` | Authoritative layer stack (replace stale paint-order invariant) |
-| `docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md` | Cross-link layer SoT; note dock inspect + drag threshold |
+| `docs/superpowers/specs/2026-07-20-board-composition.md` | Cross-link layer SoT |
 | `client/lib/deck-builder/card-hover-preview.ts` | Add `mode: "follow" \| "dock"`; shared art + oracle + mods |
 | `client/lib/deck-builder/card-hover-preview.test.ts` | Create — follow vs dock layout assertions |
 | `client/app/board/html/inspect.ts` | Thin wrapper → dock mode; modifier ledger as dock extras |
@@ -38,7 +38,7 @@
 | `client/app/shell/lobby/view.ts` | Pre-pick Bring + Back; no select |
 | `client/app/shell/lobby/entry.test.ts` | Bring/Back Scene tests |
 | `client/app/board/geometry/layout.ts` | Mat/packing fixes as needed |
-| `docs/superpowers/specs/2026-07-22-foldkit-remaining-bugs-and-board-layers-design.md` | Status → Done at end |
+| Current board specs | Record landed layer, inspect, and drag behavior |
 
 ---
 
@@ -46,7 +46,7 @@
 
 **Files:**
 - Modify: `docs/client-canvas-map.md`
-- Modify: `docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md` (short cross-link + inspect/drag notes)
+- Modify: `docs/superpowers/specs/2026-07-20-board-composition.md`, `docs/superpowers/specs/2026-07-20-card-inspect.md`, and `docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md` (short cross-link + inspect/drag notes)
 
 **Interfaces:**
 - Consumes: layer table from remaining-bugs design spec
@@ -58,12 +58,12 @@ In `docs/client-canvas-map.md`, replace invariant §2 (“Paint order: felt → 
 
 - [ ] **Step 2: Cross-link from the board feature spec**
 
-Near the dual-surface intro in `docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md`, ensure the canvas-map pointer says the **layer stack** there is authoritative. Update inspect dock bullet to say board inspect uses shared preview **dock** mode (left art, right oracle/effects, backdrop, topmost). Update hand-drag sentence to note play threshold uses `HAND_BAR_H - HAND_PLAY_SLACK_PX` clearance (exact constant landed in Task 5).
+Near the dual-surface intro in `docs/superpowers/specs/2026-07-20-board-composition.md`, ensure the canvas-map pointer says the **layer stack** there is authoritative. Update `docs/superpowers/specs/2026-07-20-card-inspect.md` to say board inspect uses shared preview **dock** mode (left art, right oracle/effects, backdrop, topmost). Update `docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md` to note play threshold behavior.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/client-canvas-map.md docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md
+git add docs/client-canvas-map.md docs/superpowers/specs/2026-07-20-board-composition.md docs/superpowers/specs/2026-07-20-card-inspect.md docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md
 git commit -m "docs: lock board layer stack in canvas map"
 ```
 
@@ -621,7 +621,7 @@ git commit -m "fix(client): ease board seat and command zone layout collisions"
 ### Task 10: Live triage remainder + mark design Done
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-22-foldkit-remaining-bugs-and-board-layers-design.md` — **Status: Done**
+- Modify: current board specs — record landed behavior
 - Possibly small fix commits if Host / hand-hide / builder hover / session gate still fail live
 
 **Interfaces:**
@@ -657,7 +657,7 @@ Exercise: Host table; Alt/Option dock inspect; drag-play (short lift + hide); bu
 - [ ] **Step 4: Commit + push**
 
 ```bash
-git add docs/superpowers/specs/2026-07-22-foldkit-remaining-bugs-and-board-layers-design.md
+git add docs/superpowers/specs/2026-07-20-board-composition.md docs/superpowers/specs/2026-07-20-battlefield.md docs/superpowers/specs/2026-07-20-card-inspect.md
 git commit -m "docs: mark foldkit remaining bugs and board layers design done"
 git push -u origin cursor/foldkit-migration-design-1ef0
 ```

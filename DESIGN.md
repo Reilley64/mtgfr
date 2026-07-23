@@ -161,7 +161,7 @@ components:
 
 **North star:** "Arena, Unplugged" — MTGA game-client polish, zero storefront chrome (see `PRODUCT.md` anti-references). Dark green felt (`forest-floor`), translucent panels, cream cards (`oracle-ivory`) on felt. **Gold = a decision is owed** (priority gold on the orb; commander gold on commanders only). **Playable border** means a card has a current action. **Zone outlines** use graveyard purple and exile green for playable bar tiles. **Seat hues = identity** (forest/island/mountain/arcane), never semantics.
 
-**Layout:** Canvas board (96×134 world-unit cards, shared camera) + thin DOM HUD. Z-order: board → HUD → backdrop (29) → modal (30). No persistent nav chrome.
+**Layout:** Canvas board (96×134 world-unit cards, shared camera) + thin DOM HUD. Z-order: board → HUD → backdrop (29) → modal (30) → pinned board inspect dock (topmost, above system modals). No persistent nav chrome.
 
 **The Landscape Rule.** Mobile and tablet are **landscape-first**. Auth, lobby, decks, builder, and board assume horizontal space. Portrait phones (`orientation: portrait` and `max-width: 900px`) open a native `<dialog showModal>` rotate gate (top-layer, inert background, focus trap; Escape disabled) — never a stacked vertical reflow of the builder or board. Short landscape (phone on its side) keeps side-by-side columns and tightens padding; it does not flip the axis. Safe-area insets apply on notched devices (`viewport-fit=cover`).
 

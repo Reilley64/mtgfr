@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-22-foldkit-merge-cleanup-design.md`
+- Spec: Superseded by current client specs and companion docs: `docs/superpowers/specs/README.md`, `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`, `docs/superpowers/specs/2026-07-20-board-composition.md`
 - **Single final commit** for all implementation tasks (no intermediate commits). Plan steps still use TDD locally.
 - Commit subject must be lower-case after `type:`, header ≤72 chars, types from `[build, ci, docs, feat, fix, perf, refactor, revert, style, test]` only — no `chore:`, no `feat!:`.
 - Do not disable `lint/style/noNonNullAssertion`.
@@ -372,14 +372,14 @@ Expected: no matches in comments/code under `client/` (docs are Task 5). If a ma
 - Modify: `README.md`
 - Modify: `DESIGN.md`
 - Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`
-- Modify: `docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md`
-- Modify: `docs/superpowers/specs/2026-07-21-foldkit-client-migration-design.md`
+- Modify: `docs/superpowers/specs/2026-07-20-board-composition.md`
+- Modify: `docs/superpowers/specs/2026-07-20-client-shell-deck-builder-and-observability.md`
 - Modify: `docs/superpowers/plans/2026-07-21-foldkit-client-migration.md`
 - Modify: `docs/superpowers/specs/2026-07-20-wire-protocol-and-visibility.md`
 - Modify: `docs/superpowers/specs/2026-07-20-production-topology-and-operations.md`
 - Modify: `docs/superpowers/specs/2026-07-20-lobby-table-routing-and-live-game.md`
 - Modify: `docs/WIRE_COMPAT.md`
-- Modify: `docs/superpowers/specs/2026-07-22-foldkit-merge-cleanup-design.md` (status → Done when work lands)
+- Modify: current companion docs/specs (status/current behavior notes when work lands)
 
 **Interfaces:** none
 
@@ -440,7 +440,7 @@ Solution stays dual-surface; ensure wording is Foldkit Canvas + Mount + HTML ove
 
 - [ ] **Step 5: Migration design + plan archive banners**
 
-In `2026-07-21-foldkit-client-migration-design.md` header:
+In the current client spec headers:
 
 ```markdown
 **Status:** Done (cutover on branch; pending merge)  
@@ -577,7 +577,7 @@ Expected: Commitlint, Verify (client), Verify (server), Terraform all pass (or p
 
 - [ ] **Step 7: Mark merge-cleanup design status Done** (if not already in the same commit)
 
-In `docs/superpowers/specs/2026-07-22-foldkit-merge-cleanup-design.md`:
+In the current companion docs/specs:
 
 ```markdown
 **Status:** Done
