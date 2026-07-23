@@ -1,6 +1,6 @@
 # Nested Effect families
 
-**Status:** Approved (implementation plan ready; not started)  
+**Status:** Done  
 **Date:** 2026-07-23  
 **Module:** `crates/engine` (`types/effect`, `resolution/`, `effects.rs`, `label.rs`, `de.rs`), `crates/cards/data/`, `.agents/skills/card-dsl/DSL_REFERENCE.md`  
 **Related:** [card-dsl-and-card-pool](2026-07-20-card-dsl-and-card-pool.md), [choices-actions-and-resolution](2026-07-20-choices-actions-and-resolution.md), [engine-core-and-event-model](2026-07-20-engine-core-and-event-model.md)

@@ -58,7 +58,8 @@ type = "instant"
 timing = "spell"
 
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 3
 target = "any"
 ```

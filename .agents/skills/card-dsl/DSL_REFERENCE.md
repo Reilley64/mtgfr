@@ -342,7 +342,8 @@ load error).
 timing = "etb"
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 Inline form also works: `effects = [{ type = "put_counters", count = 2, target = "creature" }]`,
@@ -363,7 +364,8 @@ two). Give more than one `[[abilities.effects]]` block (or list more than one el
 timing = "spell"
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 [[abilities.effects]]
@@ -539,7 +541,8 @@ taps_self = true
 sacrifice = "creature"
 
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1
 ```
 ```toml
@@ -568,7 +571,8 @@ return_self = true
 generic = 2
 
 [[abilities.effects]]
-type = "copy_target_spell"
+type = "copy"
+mode = "target_spell"
 ```
 ```toml
 # {T}, Mill a card: Add {C}.
@@ -578,7 +582,8 @@ taps_self = true
 mill_self = 1
 
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 ```
 ```toml
@@ -612,7 +617,8 @@ taps_self = true
 self_damage = 1
 
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["red", "white"]]
 ```
 ```toml
@@ -641,7 +647,8 @@ timing = "dies"
 optional = true
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 
@@ -655,7 +662,8 @@ optional = true
 generic = 2
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1
 token = "81183cc6-d39c-4e51-a982-2351588987aa"  # data/tokens/fungus_beast.toml
 ```
@@ -694,7 +702,8 @@ timing = "you_sacrifice"
 filter = "creature"
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 ```toml
@@ -705,7 +714,8 @@ drawer = "opponent"
 nth_each_turn = 2
 
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 ```toml
@@ -821,9 +831,24 @@ type = "hand_has_land_with_subtype"
 subtypes = ["Forest", "Island"]
 ```
 
-## 6. Effects (`[[abilities.effects]] type =`)
+## Effect families
 
-Every accepted tag. "Target" column: does it read a `target` field (§7)?
+Effects use adjacent tags:
+
+```toml
+[[abilities.effects]]
+type = "damage"          # family
+mode = "target"          # mode within family
+amount = 3
+target = "any"
+```
+
+Structural composers (`sequence`, `conditional`, `choose_one`) have no `mode`.
+See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the full map.
+
+## 6. Effects (`[[abilities.effects]]` type + mode)
+
+Every accepted leaf `mode` (grouped by family `type`). "Target" column: does it read a `target` field (§7)?
 
 | `type` | Fields | Target |
 |--------|--------|--------|
@@ -993,13 +1018,13 @@ Every accepted tag. "Target" column: does it read a `target` field (§7)?
 | `copy_target_spell` | — | intrinsic (an instant/sorcery spell on the stack; Twincast) |
 | `copy_this_spell` | `count` (amount, default one), `cast_from_graveyard_only` (bool, default false), `optional` (bool, default false) | no (storm/Gravestorm-style rider: mints `count` copies of the resolving spell itself, each offered the same CR 707.10c retarget `copy_target_spell` offers — Plumb the Forbidden's `"spell_sacrifice_count"`, Ominous Harvest's `"permanents_died_this_turn"`; `cast_from_graveyard_only` gates the mint on the resolving spell having been cast via flashback — Sevinne's Reclamation's "if this spell was cast from a graveyard"; `optional` pauses on a `PendingChoice::MayYesNo` before minting, declining runs nothing — Sevinne's Reclamation's "you may copy this spell") |
 | `retarget_spell_copy` | `copy` (object id) | — internal only, minted by `copy_this_spell`'s own resolution; never authored in a card TOML |
-| `may_pay_to_copy_this` | `cost` (`[cost]` table), `count` (amount, default one) | no — reads the enclosing `Sequence`'s shared target (a preceding `deal_damage`-style step's own target) to find the payer instead: a player target pays themself, a permanent target's controller pays. Chain Lightning's "Then that player or that permanent's controller may pay {R}{R}. If the player does, they may copy this spell and may choose a new target for that copy": pauses the payer on a `PendingChoice::PayCost`/`Intent::PayOptionalCost`; paying mints one copy of the resolving spell under THEM (not this ability's own controller), offering the usual CR 707.10c retarget — since the copy is a full copy of this same ability, its own resolution offers its own damaged player/controller the same rider, so the chain continues with no extra bookkeeping. `effects = [{ type = "deal_damage", amount = 3, target = "any" }, { type = "may_pay_to_copy_this", cost = { red = 2 } }]`. ponytail: collapses the oracle's two "may"s (may pay, then separately may copy) into one pay-mints-unconditionally step — declining to copy after already paying is never distinguishable from never paying. |
+| `may_pay_to_copy_this` | `cost` (`[cost]` table), `count` (amount, default one) | no — reads the enclosing `Sequence`'s shared target (a preceding `deal_damage`-style step's own target) to find the payer instead: a player target pays themself, a permanent target's controller pays. Chain Lightning's "Then that player or that permanent's controller may pay {R}{R}. If the player does, they may copy this spell and may choose a new target for that copy": pauses the payer on a `PendingChoice::PayCost`/`Intent::PayOptionalCost`; paying mints one copy of the resolving spell under THEM (not this ability's own controller), offering the usual CR 707.10c retarget — since the copy is a full copy of this same ability, its own resolution offers its own damaged player/controller the same rider, so the chain continues with no extra bookkeeping. `effects = [{ type = "damage", mode = "target", amount = 3, target = "any" }, { type = "copy", mode = "may_pay_to_copy_this", cost = { red = 2 } }]`. ponytail: collapses the oracle's two "may"s (may pay, then separately may copy) into one pay-mints-unconditionally step — declining to copy after already paying is never distinguishable from never paying. |
 | `counter_target_spell` | `unless_pays` (amount, optional — "unless its controller pays {N}", Quandrix Charm), `filter` (spell filter §7, default `"all"` — Decisive Denial's `"noncreature"`), `countered_dest` (optional — Hinder's `"library_top_or_bottom"`, "if that spell is countered this way, put that card on your choice of the top or bottom of its owner's library instead of into that player's graveyard," CR 701.5b: pauses this ability's controller on a `PendingChoice::ChooseCounteredSpellDestination`/`Intent::ChooseTopOrBottom { top }` before the countered card moves; or Spell Crumple's `"library_bottom"`, same rider but *forced* to the bottom — no pause, no player choice; either way a flashback/escape spell exiles instead (CR 702.34e/702.19d), leaving nothing for the rider to redirect, and a countered copy (CR 707.10a) ceases to exist rather than moving anywhere; never combined with `unless_pays` in the pool) | intrinsic (a spell on the stack; Counterspell) |
 | `tuck_self_to_library_bottom` | — (no fields) | no — "Put [this card] on the bottom of its owner's library" (Spell Crumple's own resolution rider, alongside its `counter_target_spell` step): marks the resolving instant/sorcery so it goes to the bottom of its owner's library instead of the graveyard once every effect step has run — the self-referential sibling of `exile_self_with_time_counters` above. A copy (CR 707.10a) still ceases to exist regardless — that check runs first. |
 | `exile_self_on_resolve` | — (no fields) | no — "Exile [this card]" on a resolving instant/sorcery (Vengeful Rebirth's own trailing rider, CR 406): marks the resolving spell so it goes to exile instead of the graveyard once every effect step has run — the exile-flavored sibling of `tuck_self_to_library_bottom` above, distinct from `exile_self_with_time_counters` (no time counters here) and from the activated-ability cost field `exile_self`. A copy (CR 707.10a) still ceases to exist regardless — that check runs first. |
 | `counter_target_activated_ability` | — (no fields) | intrinsic (`"activated_ability_on_stack"` — Azorius Guildmage's "Counter target activated ability"). Removes an *activated* ability from the stack (CR 701.5c/112.7a); unlike `counter_target_spell` there is no card to move — it just ceases to exist. Mana abilities never reach the stack (CR 605.3b) so they're unreachable; triggered abilities are excluded by the target axis. Cycling and `hand_ability` activations are real stack abilities (see §5), so this can counter them. |
 | `may_draw_unless_pays` | `cost` (amount — "unless that player pays {1}", Rhystic Study) | no (untargeted; the ability's own controller). Pairs with `timing = "cast_spell"`, `caster = "opponent"` (§5, "Trigger sibling fields"): resolution first pauses the ability's own controller on a `PendingChoice::MayYesNo` — do they want to draw at all (the card's ruling: declining is quiet, no pay window is ever offered) — and only a "yes" there raises the *triggering opponent* (not the ability's controller — `Game::queue_cast_spell_triggers` bakes their identity in via `TriggerContext::triggering_caster`, same context-fill shape as `copy_triggering_spell`'s `triggering_spell`) on a `PendingChoice::PayOrControllerDraws`/`Intent::PayOptionalCost`: paying stops the draw, declining lets it happen. |
-| `change_target_of_target_spell_or_ability` | `target` (§7 target spec, default none — `"single_target_spell_on_stack"`), `optional` (bool, default `false`) | `"single_target_spell_on_stack"` (the spell to bend). `optional = false` (default, Willbender's turned-face-up payload): "change the target of target spell or ability with a single target" — the controller chooses a *different* legal target for that spell (CR 114.6b — must change if able) and it overwrites the stored one, via the same `ChooseSpellTargets`/`SpellTargetsChosen` write-back a multi-target choice uses. No-op if the spell left the stack (CR 608.2b already fizzles the trigger) or has no legal alternate. ponytail: CR's "or ability" half is unmodeled — stack abilities have no object identity to target in this engine (see the `single_target_spell_on_stack` spec); spells only. `optional = true` (Wild Ricochet, `target = "instant_or_sorcery_spell_on_stack"`): CR 114.6a's plain "you may choose new targets" — the bent spell's *current* target(s) stay in `legal` (re-picking them is how a player declines; no must-differ filter) and every one of its independent target clauses is reached (not just a single slot), reusing the exact clause-chaining `choose_spell_targets` a fresh cast or `copy_target_spell`'s own copy-retarget already runs. This ability's own controller chooses; legality is still evaluated from the bent spell's own controller's perspective (retargeting never changes whose "you" the spell's own text refers to). Pair with a following `copy_target_spell` step in the same `effects` sequence — both share the one target chosen when this ability itself was placed/cast (Wild Ricochet: "You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets for the copy." is `effects = [{ type = "change_target_of_target_spell_or_ability", target = "instant_or_sorcery_spell_on_stack", optional = true }, { type = "copy_target_spell" }]`). |
+| `change_target_of_target_spell_or_ability` | `target` (§7 target spec, default none — `"single_target_spell_on_stack"`), `optional` (bool, default `false`) | `"single_target_spell_on_stack"` (the spell to bend). `optional = false` (default, Willbender's turned-face-up payload): "change the target of target spell or ability with a single target" — the controller chooses a *different* legal target for that spell (CR 114.6b — must change if able) and it overwrites the stored one, via the same `ChooseSpellTargets`/`SpellTargetsChosen` write-back a multi-target choice uses. No-op if the spell left the stack (CR 608.2b already fizzles the trigger) or has no legal alternate. ponytail: CR's "or ability" half is unmodeled — stack abilities have no object identity to target in this engine (see the `single_target_spell_on_stack` spec); spells only. `optional = true` (Wild Ricochet, `target = "instant_or_sorcery_spell_on_stack"`): CR 114.6a's plain "you may choose new targets" — the bent spell's *current* target(s) stay in `legal` (re-picking them is how a player declines; no must-differ filter) and every one of its independent target clauses is reached (not just a single slot), reusing the exact clause-chaining `choose_spell_targets` a fresh cast or `copy_target_spell`'s own copy-retarget already runs. This ability's own controller chooses; legality is still evaluated from the bent spell's own controller's perspective (retargeting never changes whose "you" the spell's own text refers to). Pair with a following `copy_target_spell` step in the same `effects` sequence — both share the one target chosen when this ability itself was placed/cast (Wild Ricochet: "You may choose new targets for target instant or sorcery spell. Then copy that spell. You may choose new targets for the copy." is `effects = [{ type = "copy", mode = "change_target_of_target_spell_or_ability", target = "instant_or_sorcery_spell_on_stack", optional = true }, { type = "copy", mode = "target_spell" }]`). |
 | `fight` | `ally_is_shared_target` (bool, default `false`) | intrinsic — default shape: target creature an opponent controls; your own fighter is chosen at resolution. `ally_is_shared_target = true` mirrors this: the ability's shared cast target is instead your own creature (a preceding `pump_until_end_of_turn` step's target, e.g.), and the enemy ("fights up to one target creature you don't control") is chosen at an *optional* resolution-time pause instead — no legal enemy, or the ally no longer being a creature, is a no-op (no pause, no fight). Primal Might: `effects = [{ type = "pump_until_end_of_turn", power = "x", toughness = "x", target = "creature_you_control" }, { type = "fight", ally_is_shared_target = true }]` |
 | `schedule_at_next_upkeep` | `who` (`"you"` default, `"target_spell_controller"`), `then` (one effect) | no (delayed trigger, CR 603.7: `then` fires at the next upkeep — Arcane Denial's draws) |
 | `schedule_next_cast_trigger` | `filter` (spell filter, §7 below), `then` (array of effects) | no (arms a CR 603.7 delayed *one-shot*, event- rather than step-armed: the next time the ability's own controller casts a spell matching `filter` **this turn**, `then` runs as its own triggered ability, with the triggering spell's chosen `{X}` filled into `then`'s `Amount::X`/`"half_x_rounded_down"` same as a `cast_spell` trigger's own `{X}` — Brass Infiniscope's "{T}: Add {C}{C}. When you next cast a spell with {X} in its mana cost this turn, you draw a card and gain half X life, rounded down." — a `taps_self` mana ability with two `effects` blocks: `add_mana` then this. Fires at most once — CR 603.7's "next" — and expires unconsumed at the next turn's Untap if no matching cast happens first) |
@@ -1133,11 +1158,13 @@ filter = "creature"
 life_loss = 2
 
 [[abilities.effects.then]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["black", "black"]
 
 [[abilities.effects.then]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 ```
 
@@ -1160,7 +1187,8 @@ relative to the *sacrificing* player, so leave it `"any"` (the default) on an ed
 type = "may_sacrifice"
 
 [[abilities.effects.then]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 ```
 
@@ -1714,13 +1742,15 @@ just needs its colors distinct; order doesn't matter, it collapses to a bitmask)
 **Multi-mana** — `add_mana` takes a list, one symbol per mana produced:
 ```toml
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless", "colorless"]   # Sol Ring: {C}{C}
 ```
 Add `repeat` (an amount, §7) to scale the batch — e.g. Mana Geyser's "{R} per tapped land your
 opponents control":
 ```toml
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["red"]
 repeat = { per_permanent = { types = "land", controller = "opponent", tapped = true } }
 ```
@@ -1733,7 +1763,8 @@ taps_self = true
 activation_cost = { generic = 1 }   # {W/B} hybrid has no exact spelling; {1} is the closest fit
 
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["white", "black"], ["white", "black"]]
 ```
 
@@ -1753,7 +1784,8 @@ it isn't an error, the payment planner just looks past it to other mana:
 # Troyan, Gutsy Explorer: "{T}: Add {G}{U}. Spend this mana only to cast spells with mana value
 # 5 or greater or spells with {X} in their mana costs."
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["green", "blue"]
 restriction = { mana_value_at_least_or_has_x = 5 }
 ```
@@ -1785,7 +1817,8 @@ toughness = 3
 ```toml
 # on the creating card (e.g. beast_within.toml)
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1   # count is an amount (§7): a number, "x", or a derived count like
             # { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" } (Izoni)
 token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920"
@@ -1804,8 +1837,8 @@ restriction and its own `[[abilities]]`) minted attached to a target via
   target):
   ```toml
   effects = [
-      { type = "destroy_target", target = { permanent = {} } },
-      { type = "create_token", controller = "target_controller",
+      { type = "destroy", mode = "destroy_target", target = { permanent = {} } },
+      { type = "token", mode = "create", controller = "target_controller",
         token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920" },
   ]
   ```
@@ -1822,7 +1855,8 @@ restriction and its own `[[abilities]]`) minted attached to a target via
   shared with a preceding step:
   ```toml
   [[abilities.effects]]
-  type = "create_token"
+  type = "token"
+mode = "create"
   controller = "target_player"
   token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"  # data/tokens/inkling.toml
   ```
@@ -1840,7 +1874,8 @@ restriction and its own `[[abilities]]`) minted attached to a target via
   `"target_player"`, but flipped — the target names who's left out, not who's included:
   ```toml
   [[abilities.effects]]
-  type = "create_token"
+  type = "token"
+mode = "create"
   controller = "each_other_player"
   token = "60fe4897-6760-4c5a-8074-c92bd64df52b"  # data/tokens/dragon.toml
   ```
@@ -1980,7 +2015,8 @@ higher. The always-on base ability (level 1) carries no `min_level`.
 timing = "etb"
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"  # data/tokens/inkling.toml
 
