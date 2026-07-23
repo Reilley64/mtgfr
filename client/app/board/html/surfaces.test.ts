@@ -840,7 +840,7 @@ test("order_triggers prompt shows drag rows, click-to-place, and arrow controls"
   );
 });
 
-test("select_from_top prompt shows Take and Bottom lanes", () => {
+test("select_from_top aim shows docked Take and Bottom lanes", () => {
   overlayScene(
     overlayModel(
       { ...initialBoardModel(), promptDraft: { kind: "card-pick", picked: [1], filter: "" } },
@@ -857,6 +857,8 @@ test("select_from_top prompt shows Take and Bottom lanes", () => {
         },
       }),
     ),
+    Scene.expect(Scene.testId("pending-select-top-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-select-top-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-select-top-take-label")).toHaveText("Take (1 / 2)"),
     Scene.expect(Scene.testId("prompt-select-top-rest-label")).toHaveText("Bottom of library"),
