@@ -282,51 +282,64 @@ function arrangeLanesPrompt(
       ? "Click a card to move it between Top and Graveyard. Order on Top is left to right."
       : "Click a card to move it between Top and Bottom. Order in each lane is left to right.";
 
-  return frame("pending-choice", title, [
-    h.div(
-      [h.DataAttribute("testid", "prompt-arrange-lanes"), h.Class("flex flex-col gap-3")],
-      [
-        h.div([h.Class("shrink-0 text-caption text-mist")], [hint]),
-        h.div(
-          [h.DataAttribute("testid", "prompt-arrange-top"), h.Class("flex flex-col gap-2")],
-          [
-            h.div(
-              [
-                h.DataAttribute("testid", "prompt-arrange-top-label"),
-                h.Class("text-caption font-semibold text-seafoam"),
-              ],
-              ["Top of library"],
-            ),
-            h.div(
-              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-              topItems.length > 0
-                ? topItems.map((item) => arrangeLaneCard(item, state, topIds, true))
-                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-            ),
-          ],
-        ),
-        h.div(
-          [h.DataAttribute("testid", "prompt-arrange-bottom"), h.Class("flex flex-col gap-2")],
-          [
-            h.div(
-              [
-                h.DataAttribute("testid", "prompt-arrange-bottom-label"),
-                h.Class("text-caption font-semibold text-seafoam"),
-              ],
-              [bottomLabel],
-            ),
-            h.div(
-              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-              bottomItems.length > 0
-                ? bottomItems.map((item) => arrangeLaneCard(item, state, bottomIds, pending.kind === "scry"))
-                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-            ),
-          ],
-        ),
-      ],
-    ),
-    h.div([h.Class("flex shrink-0 flex-wrap gap-2")], [submitButton("Done", false)]),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-arrange-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("shrink-0 font-semibold text-body")], [title]),
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-arrange-lanes"),
+          h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+        ],
+        [
+          h.div([h.Class("shrink-0 text-caption text-mist")], [hint]),
+          h.div(
+            [h.DataAttribute("testid", "prompt-arrange-top"), h.Class("flex flex-col gap-2")],
+            [
+              h.div(
+                [
+                  h.DataAttribute("testid", "prompt-arrange-top-label"),
+                  h.Class("text-caption font-semibold text-seafoam"),
+                ],
+                ["Top of library"],
+              ),
+              h.div(
+                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                topItems.length > 0
+                  ? topItems.map((item) => arrangeLaneCard(item, state, topIds, true))
+                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+              ),
+            ],
+          ),
+          h.div(
+            [h.DataAttribute("testid", "prompt-arrange-bottom"), h.Class("flex flex-col gap-2")],
+            [
+              h.div(
+                [
+                  h.DataAttribute("testid", "prompt-arrange-bottom-label"),
+                  h.Class("text-caption font-semibold text-seafoam"),
+                ],
+                [bottomLabel],
+              ),
+              h.div(
+                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                bottomItems.length > 0
+                  ? bottomItems.map((item) => arrangeLaneCard(item, state, bottomIds, pending.kind === "scry"))
+                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+              ),
+            ],
+          ),
+        ],
+      ),
+      h.div([h.Class("flex shrink-0 flex-wrap gap-2")], [submitButton("Done", false)]),
+    ],
+  );
 }
 
 function cardPickPrompt(
