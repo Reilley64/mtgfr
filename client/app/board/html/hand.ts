@@ -429,8 +429,35 @@ export function handView(inputs: HandViewInputs): Html {
     }),
   );
 
-  const zoneTiles = (zone: "graveyard" | "exile", actions: ActionView[]) =>
-    actions.map((a, index, arr) => {
+  // Command-parity: show the viewer's cards in GY/exile even when they have no legal
+  // action, so the zone aura (purple/green) stays visible without a mint playable ring.
+  const zoneBarTiles = (zone: "graveyard" | "exile", zoneId: number, actions: ActionView[]) => {
+    const actionByObject = byObject(actions);
+    const cards = state.objects.filter(
+      (o) => Number(o.zone) === zoneId && Number(o.owner) === Number(viewer) && !hiddenIds.has(o.id),
+    );
+    const seen = new Set(cards.map((c) => c.id));
+    // Keep action-only entries (defensive — wire object should already be in `objects`).
+    const actionOnly = actions.filter((a) => a.object != null && !seen.has(a.object));
+    const count = cards.length + actionOnly.length;
+    const fromCards = cards.map((c, index) =>
+      tile({
+        name: c.name,
+        print: c.print ?? "",
+        cardId: c.card_id,
+        zone,
+        objectId: c.id,
+        objectKind: c.kind.kind,
+        manaCost: c.mana_cost,
+        action: actionByObject.get(c.id) ?? null,
+        slotInert: slotInert(c.id),
+        draggingActionId,
+        caption: actionCaption(actionByObject.get(c.id)?.kind ?? ""),
+        index,
+        count,
+      }),
+    );
+    const fromActions = actionOnly.map((a, i) => {
       const meta = metaFor(a.object);
       return tile({
         name: a.label,
@@ -443,10 +470,13 @@ export function handView(inputs: HandViewInputs): Html {
         action: a,
         slotInert: false,
         draggingActionId,
-        index,
-        count: arr.length,
+        caption: actionCaption(a.kind),
+        index: cards.length + i,
+        count,
       });
     });
+    return [...fromCards, ...fromActions];
+  };
 
   return h.div(
     [],
@@ -463,8 +493,8 @@ export function handView(inputs: HandViewInputs): Html {
         [
           section("Command", commandTiles),
           section("Hand", handTiles),
-          section("Graveyard", zoneTiles("graveyard", grouped.graveyard)),
-          section("Exile", zoneTiles("exile", grouped.exile)),
+          section("Graveyard", zoneBarTiles("graveyard", ZONE.Graveyard, grouped.graveyard)),
+          section("Exile", zoneBarTiles("exile", ZONE.Exile, grouped.exile)),
         ].filter((child): child is Html => child !== null),
       ),
       handDrag != null ? handDragGhost(handDrag) : null,
