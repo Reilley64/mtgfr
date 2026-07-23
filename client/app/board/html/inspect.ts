@@ -1,13 +1,13 @@
-// Alt-pin card inspect overlay — shared dock preview + modifier ledger extras.
+// Alt-pin card/player inspect overlay — shared dock preview + modifier / commander-damage extras.
 //
 // State lives in BoardModel (inspectPin, inspectCard, inspectFace). The catalog fetch is
 // a Command (FetchInspectCard → InspectCardFetched) fired from updateBoard on pin change.
 
 import { type Html, html } from "foldkit/html";
 import { cardHoverPreviewView } from "~/deck-builder/card-hover-preview";
-import { type InspectFace, type InspectPin, shownName } from "~/inspect";
+import { commanderDamageBreakdown, type InspectFace, type InspectPin, shownName } from "~/inspect";
 import { buttonClass } from "~/ui/buttonClass";
-import type { CatalogCard, ObjectView } from "~/wire/types";
+import type { CatalogCard, ObjectView, PlayerView } from "~/wire/types";
 import { InspectDismissed, InspectFlipFace, type Message } from "../messages";
 
 const h = html<Message>();
@@ -28,6 +28,76 @@ function modifierLedger(modifiers: NonNullable<ObjectView["modifiers"]>): Html |
   return h.div([h.Class("flex flex-col gap-3")], entries);
 }
 
+function panelClass(): string {
+  return `w-[${PANEL_W}px] shrink-0 rounded-panel border border-vine bg-forest-surface px-xl py-lg text-label text-preview-ash/80`;
+}
+
+function commanderDamagePanel(
+  player: PlayerView,
+  players: ReadonlyArray<PlayerView>,
+  objects: ReadonlyArray<ObjectView>,
+): Html | null {
+  const rows = commanderDamageBreakdown(player, players, objects);
+  if (rows.length === 0) return null;
+  return h.div(
+    [h.DataAttribute("testid", "inspect-commander-damage"), h.Class(panelClass())],
+    [
+      h.div([h.Class("font-semibold text-seafoam")], ["Commander damage"]),
+      ...rows.map((row) =>
+        h.div([h.DataAttribute("testid", `inspect-commander-damage-${row.fromSeat}`), h.Class("mt-0.5")], [row.text]),
+      ),
+    ],
+  );
+}
+
+function playerInspectView(
+  pin: InspectPin,
+  players: ReadonlyArray<PlayerView>,
+  objects: ReadonlyArray<ObjectView>,
+): Html {
+  const seat = pin.playerSeat;
+  const player = seat != null ? (players.find((p) => p.player === seat) ?? null) : null;
+  const life = player?.life ?? null;
+  const lifeEl =
+    life != null
+      ? h.div([h.DataAttribute("testid", "inspect-player-life"), h.Class(panelClass())], [`Life: ${life}`])
+      : null;
+  const damageEl = player != null ? commanderDamagePanel(player, players, objects) : null;
+  const panels = [
+    h.div(
+      [
+        h.Class(
+          `w-[${PANEL_W}px] shrink-0 rounded-panel border border-vine bg-forest-surface px-xl py-lg text-title font-semibold text-preview-ash`,
+        ),
+      ],
+      [pin.name],
+    ),
+    lifeEl,
+    damageEl,
+  ].filter((v): v is Html => v !== null);
+
+  const content = h.div(
+    [
+      h.DataAttribute("testid", "inspect-overlay-content"),
+      h.Class("pointer-events-auto relative z-10 m-lg flex flex-row items-start gap-3"),
+    ],
+    [h.div([h.Class("flex min-w-0 flex-col items-start gap-3")], panels)],
+  );
+  const backdrop = h.div(
+    [
+      h.DataAttribute("testid", "inspect-overlay-backdrop"),
+      h.Class("pointer-events-auto absolute inset-0"),
+      h.OnClick(InspectDismissed()),
+    ],
+    [],
+  );
+
+  return h.div(
+    [h.DataAttribute("testid", "inspect-overlay"), h.Class("fixed inset-0 z-[100] flex items-center bg-black/55")],
+    [backdrop, content],
+  );
+}
+
 /**
  * Full-screen inspect dock. Returns null when there is no active pin.
  *
@@ -39,8 +109,11 @@ export function inspectView(
   face: InspectFace,
   /** Live ObjectView for the pinned object, when on battlefield — modifiers and marked damage. */
   liveObject?: ObjectView | null,
+  players: ReadonlyArray<PlayerView> = [],
+  objects: ReadonlyArray<ObjectView> = [],
 ): Html | null {
   if (pin == null) return null;
+  if (pin.playerSeat != null) return playerInspectView(pin, players, objects);
 
   const back = card?.back ?? null;
   const hasBack = !!back?.name;
@@ -63,12 +136,7 @@ export function inspectView(
   const markedDamageEl =
     markedDamage > 0
       ? h.div(
-          [
-            h.DataAttribute("testid", "inspect-marked-damage"),
-            h.Class(
-              `w-[${PANEL_W}px] shrink-0 rounded-panel border border-vine bg-forest-surface px-xl py-lg text-label text-preview-ash/80`,
-            ),
-          ],
+          [h.DataAttribute("testid", "inspect-marked-damage"), h.Class(panelClass())],
           [`Marked damage: ${markedDamage}`],
         )
       : null;

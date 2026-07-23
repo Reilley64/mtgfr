@@ -137,9 +137,8 @@ These are visual/layout rules only; they do not collapse engine objects.
 - Under-card resting name labels.
 - New counter kinds not exposed by the wire.
 - Changing combat or targeting legality; this spec covers presentation only.
-- Per-commander damage breakdown UI (inspect dock / hover).
-- HTML overlays for commander-damage chips.
+- HTML overlays for commander-damage chips on the orb (breakdown lives in card inspect).
 
 ## Further Notes
 
-- Sibling specs: [`2026-07-20-board-composition.md`](2026-07-20-board-composition.md), [`2026-07-20-board-camera-and-layout.md`](2026-07-20-board-camera-and-layout.md), [`2026-07-20-flights.md`](2026-07-20-flights.md).
+- Sibling specs: [`2026-07-20-board-composition.md`](2026-07-20-board-composition.md), [`2026-07-20-board-camera-and-layout.md`](2026-07-20-board-camera-and-layout.md), [`2026-07-20-flights.md`](2026-07-20-flights.md), [`2026-07-20-card-inspect.md`](2026-07-20-card-inspect.md) (Alt life-orb commander-damage breakdown).
