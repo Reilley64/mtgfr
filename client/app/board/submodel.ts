@@ -697,8 +697,7 @@ function pointerUpModel(
     const pc = fold.state?.pending_choice ?? null;
     const damageBlockers = fold.state != null ? pendingDamageAssignBlockers(pc, fold.state) : null;
     if (
-      damageBlockers != null &&
-      damageBlockers.has(release.card.id) &&
+      damageBlockers?.has(release.card.id) &&
       (pc?.kind === "assign_combat_damage" || pc?.kind === "divide_counters")
     ) {
       const synced = syncPromptDraft(idle, fold);
@@ -1398,6 +1397,34 @@ function trySubmitReadyPendingDraft(
           boardIntentSubmit(tableId, choiceIntent(pc, answer)),
         ];
       }
+    }
+  }
+  if (
+    pc != null &&
+    synced.promptDraft != null &&
+    (pc.kind === "order_triggers" ||
+      pc.kind === "scry" ||
+      pc.kind === "surveil" ||
+      pc.kind === "select_from_top" ||
+      pc.kind === "distribute_top" ||
+      pc.kind === "partition_revealed")
+  ) {
+    if (synced.promptDraft.kind === "card-pick" && !cardPickReady(pc, synced.promptDraft.picked)) {
+      return null;
+    }
+    if (
+      synced.promptDraft.kind === "partition" &&
+      (pc.kind === "partition_revealed" || pc.kind === "distribute_top") &&
+      !partitionReady(pc, synced.promptDraft)
+    ) {
+      return null;
+    }
+    const answer = buildAnswerFromDraft(pc, synced.promptDraft);
+    if (answer != null) {
+      return [
+        { ...synced, promptDraft: null, pendingChoiceKey: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+      ];
     }
   }
   return null;
