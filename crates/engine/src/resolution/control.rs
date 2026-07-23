@@ -252,11 +252,7 @@ impl Game {
     /// `ControlGained` events (CR 800.4a: the swap outranks any earlier steal), leaving
     /// ownership untouched (CR 108.3). Both must still be on the battlefield — an exchange
     /// needs both, so a target that has left since (CR 608.2b) cancels the whole swap.
-    pub(crate) fn resolve_exchange_control(
-        &mut self,
-        ctx: ResolveCtx,
-        events: &mut Vec<Event>,
-    ) {
+    pub(crate) fn resolve_exchange_control(&mut self, ctx: ResolveCtx, events: &mut Vec<Event>) {
         let ResolveCtx {
             target,
             targets_second,

@@ -1169,7 +1169,9 @@ impl Game {
                 .collect()
         };
         let (cost, exclude, spell) = match action.kind {
-            MeaningfulAction::PlayLand { .. }
+            MeaningfulAction::KeepHand
+            | MeaningfulAction::Mulligan
+            | MeaningfulAction::PlayLand { .. }
             | MeaningfulAction::DeclareAttackers
             | MeaningfulAction::DeclareBlockers => return Vec::new(),
             MeaningfulAction::Cast { card, zone } => {

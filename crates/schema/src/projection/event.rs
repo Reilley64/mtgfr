@@ -706,6 +706,17 @@ pub(crate) fn project_event(
         Event::CitysBlessingGained { player } => {
             VisibleEvent::CitysBlessingGained { player: player.0 }
         }
+        Event::MulliganTaken {
+            player,
+            mulligans_taken,
+            hand_size,
+        } => VisibleEvent::MulliganTaken {
+            player: player.0,
+            mulligans_taken,
+            hand_size,
+        },
+        Event::HandKept { player } => VisibleEvent::HandKept { player: player.0 },
+        Event::MulligansFinished => VisibleEvent::MulligansFinished,
         Event::CardDrawn {
             player,
             object,

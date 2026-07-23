@@ -138,6 +138,8 @@ export type PlayerView = {
   commander_damage?: Array<CommanderDamageView>;
   commander_tax: number;
   hand_count: number;
+  can_mulligan?: boolean;
+  hand_kept?: boolean;
   library_count: number;
   life: number;
   lost: boolean;
@@ -148,6 +150,7 @@ export type PlayerView = {
     either?: Array<WireEitherMana>;
     of_colors?: Array<WireOfColorsMana>;
   };
+  mulligans_taken?: number;
   player: number;
   username?: string;
 };
@@ -581,6 +584,8 @@ export type WireIntent =
   | { kind: "cast_adventure"; player: number; source: U32; target?: null | WireTarget; x?: number }
   | { kind: "cast_bestow"; object: U32; player: number; target?: null | WireTarget }
   | { kind: "pass_priority"; player: number }
+  | { kind: "keep_hand"; player: number }
+  | { kind: "mulligan"; player: number }
   | { kind: "concede"; player: number }
   | {
       attackers?: Array<WireAttack>;
@@ -609,6 +614,7 @@ export type VisibleState = {
   pending_choice?: null | PendingChoiceView;
   players: Array<PlayerView>;
   priority: number;
+  mulliganing?: boolean;
   stack: Array<StackObjectView>;
   stack_hold_remaining_ms?: number;
   step: number;

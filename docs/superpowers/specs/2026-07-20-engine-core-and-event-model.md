@@ -1,6 +1,6 @@
 # Engine Core and Event Model
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-21)
 **Module:** `crates/engine` (`src/lib.rs`, `src/core.rs`, `src/apply.rs`, `src/pipeline.rs`, `src/zones.rs`, `src/state.rs`, `src/characteristics.rs`, `src/characteristics_cache.rs`, `src/spawn.rs`)
 
 ---
@@ -23,7 +23,9 @@ A Commander game needs an authoritative, deterministic, server-side rules engine
 
 State is **event-sourced for board facts** (objects, mana, zones, counters, damage) and **orchestration-tracked for priority and choices** (priority holder, pass count, pending choice). This distinction is an explicit design commitment: `pending_choice`, `consecutive_passes`, and similar orchestration fields live directly on `Game`, not in events, so the event log is an audit trail of what happened rather than a replay harness.
 
-The sole randomness source is an injected splitmix64 seed (`Game::rng_state`), so the engine is deterministic: same seed + same intents = same shuffle order and same events every run.
+The sole randomness source is an injected 32-byte master seed. Each logical random operation derives an isolated splitmix64 stream from `BLAKE3(master_seed || player || op_iteration)`, so the engine is deterministic without coupling one player's library order to another player's random operations.
+
+Real games enter a simultaneous pre-game mulligan phase after libraries are shuffled and opening hands are drawn. The first turn is not begun until every living player has kept.
 
 ---
 
@@ -31,7 +33,7 @@ The sole randomness source is an injected splitmix64 seed (`Game::rng_state`), s
 
 1. As a **server**, I want to call `Game::submit(intent)` and receive the events that result, so I can broadcast deltas to clients.
 2. As a **server**, I want the engine to reject invalid intents (wrong player, wrong timing, unknown object id) with a typed `Reject` so I can surface the reason without parsing event logs.
-3. As a **test author**, I want to construct a `Game` via `Game::with_players(n, seed)`, populate zones with `spawn_*` helpers, and call `submit` directly, so I can drive the engine without a server or network.
+3. As a **test author**, I want to construct a `Game` via `Game::with_players(n, seed)` or `Game::with_master_seed(n, master_seed)`, populate zones with `spawn_*` helpers, and call `submit` directly, so I can drive the engine without a server or network.
 4. As a **test author**, I want `Game::fund_mana(player)` so I can skip land setup in cost-agnostic tests.
 5. As a **rules engine consumer**, I want state-based actions (lethal damage, 0-toughness, planeswalker 0-loyalty, empty library, Aura attachment) checked automatically after every intent, so I don't have to call them explicitly.
 6. As a **rules engine consumer**, I want triggered abilities enqueued and placed in APNAP order automatically after every intent, so trigger ordering is always rules-correct.
@@ -46,9 +48,17 @@ The sole randomness source is an injected splitmix64 seed (`Game::rng_state`), s
 
 ### Game construction and zones
 
-- `Game::with_players(n: u8, seed: u64)` creates a game with `n` seats (2–4), each starting at 40 life (Commander default), empty zones, and the given seed. Player 0 is the starting active player holding priority; the game is parked in their first main phase with beginning steps un-run.
-- `Game::begin_first_turn()` must be called after setup (libraries shuffled, opening hands drawn): it runs Untap → Upkeep → Draw for the starting player, feeding the post-intent pipeline so upkeep triggers reach the stack.
+- `Game::with_players(n: u8, seed: u64)` creates a deterministic compatibility seed by expanding the `u64` into the first eight bytes of a 32-byte master seed. `Game::with_master_seed(n: u8, master_seed: [u8; 32])` is the production constructor. Both create `n` seats (2–4), each starting at 40 life (Commander default), empty zones, and player 0 as the starting active player holding priority; the game is parked in their first main phase with beginning steps un-run.
+- Real setup shuffles each library, draws seven cards, then calls `Game::begin_mulligans()`. During this simultaneous mulligan phase, any undecided living seat may `KeepHand` or `Mulligan`; ordinary game actions are blocked until all living seats keep.
+- `Game::begin_first_turn()` must be called after setup and mulligans: it runs Untap → Upkeep → Draw for the starting player, feeding the post-intent pipeline so upkeep triggers reach the stack. The seeded-game path calls it automatically when the final player keeps.
 - In a two-player game the starting player skips their first draw step (CR 103.8a). In three- or four-player games, no player skips (CR 103.8c).
+
+### Pre-game mulligans
+
+- `hand_size_after_mulligans(0) == 7`, `hand_size_after_mulligans(1) == 7` for the friendly mulligan, then later mulligans draw to size 6, 5, ... down to 1. There is no London bottoming or Vancouver scry.
+- `KeepHand { player }` emits `HandKept`. `Mulligan { player }` returns that player's hand to the top of their library, emits `LibraryShuffled`, draws the new hand size, then emits `MulliganTaken { player, mulligans_taken, hand_size }`.
+- A seat at hand size 1 auto-keeps after the mulligan redraw. Further keep/mulligan intents from lost seats, already-kept seats, or outside the mulligan phase are rejected as `Reject::Mulliganing`.
+- When all living seats have kept, the engine emits `MulligansFinished`, clears `mulliganing`, and begins the first turn. The first-draw skip rule is unchanged and is armed only once the first turn begins.
 
 ### Objects and zone identity
 
@@ -108,9 +118,11 @@ Implemented SBAs (CR 704):
 
 ### Determinism and RNG
 
-- The sole randomness source is `Game::rng_state: u64` (splitmix64 seed).
-- `Game::next_u64()` advances the state and returns a value; `Game::shuffle` uses Fisher-Yates over this.
-- Seeding is injected at construction (`with_players(n, seed)`); the lobby's server picks a seed before dealing opening hands.
+- The sole randomness source is `Game::master_seed: [u8; 32]`.
+- Each player has a monotonic `op_iteration: u64`. `Game::with_op_rng(player, f)` derives `BLAKE3(master_seed || player_index:u8 || op_iteration:u64-le)`, increments that player's iteration once, and gives `f` a short-lived splitmix64 `OpRng`.
+- `OpRng::gen_index(upper)` uses rejection sampling to avoid modulo bias. `Game::shuffle` uses Fisher-Yates over that unbiased index helper.
+- One library shuffle, one random graveyard pick, one random opponent pick, or one random-order bottoming is one logical operation and bumps exactly one player's counter. Setup and mulligan shuffles are attributed to the seat whose library is shuffled; controller-scoped card effects attribute to that effect's controller.
+- Seeding is injected at construction (`with_master_seed(n, master_seed)`); `with_players(n, seed)` remains a deterministic `u64` test convenience.
 
 ---
 
@@ -119,7 +131,7 @@ Implemented SBAs (CR 704):
 - **`CardDef` is `Copy` and `&'static`.** Abilities are `&'static [Ability]`, so `CardDef` fields never heap-allocate at runtime. The `card-dsl` feature's `intern` / `static_slice` helpers leak owned vecs into static slices at load time (a bounded, load-once pool). This enables zero-cost `Clone` of `Game` (needed for look-ahead and snapshot forking).
 - **`Effect` enum grows only from real card demand (card-dsl-and-card-pool spec).** New card behavior = new `Effect` variant + one `Game::run` dispatch arm + `Event::apply` arm + TOML entry. No caller bypasses `Game::run` to apply effects directly.
 - **P/T layers are engine-internal** (`PtLayer` is not a DSL or TOML surface), not stored, and rebuilt fresh on each query. Real CR 613 timestamps and dependency ordering are forward-compatible stubs.
-- **No I/O, no `async`, no wall-clock in the engine.** Time-based behavior (suspend, time counters) is event-triggered, not polled.
+- **No I/O, no `async`, no wall-clock in the engine.** Beacon fetching and seed policy live in the server; the engine only receives the master seed. Time-based behavior (suspend, time counters) is event-triggered, not polled.
 - **Game state is `Clone`.** `Game` derives `Clone` so the server can snapshot for spectator projection or the engine can be forked for look-ahead without additional complexity.
 - **`ObjectId` is a `u32` arena index.** Out-of-range ids are rejected at the `submit` gate before any handler sees them, preventing untrusted input from causing panics.
 - **`Reject` is typed.** `submit` returns `Err(Reject::ChoicePending)`, `Err(Reject::UnknownObject)`, etc., so callers can log the exact reason without parsing events.
@@ -129,7 +141,8 @@ Implemented SBAs (CR 704):
 ## Testing Decisions
 
 - **Direct-API unit tests are the default.** The engine has no server or network; tests call `Game::with_players`, `spawn_in_hand`/`spawn_on_battlefield`/`stack_library`, `fund_mana`, then `submit` and assert on the returned events or board state.
-- **Test seam:** `Game::with_players(n, 0)` is a fully deterministic zero-seed game; tests that need shuffles inject a fixed seed.
+- **Test seam:** `Game::with_players(n, 0)` is a fully deterministic zero-seed game; tests that need production-shaped seeding inject a fixed `[u8; 32]` via `Game::with_master_seed`.
+- **Mulligan tests** should assert the friendly mulligan redraws to seven, later mulligans draw to size, hand size 1 auto-keeps, and the first turn does not begin until every living player has kept.
 - **SBA tests** should construct a minimal board (a creature with lethal damage marks), submit a `PassPriority`, and assert the creature moved to the graveyard.
 - **Trigger tests** should verify the pending trigger group is populated after the triggering event and that `place_pending_triggers` puts it on the stack.
 - **Elimination tests** should assert `Game::winner()` changes correctly and that the loser's objects are gone.

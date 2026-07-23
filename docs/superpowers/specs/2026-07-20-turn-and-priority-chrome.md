@@ -1,6 +1,6 @@
 # Turn and Priority Chrome
 **Status:** Current (as of 2026-07-23)
-**Module:** `client/app/board/html/priority-bar.ts`, `client/app/board/html/turn-chrome.ts`, `client/app/board/html/discoverability.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/html/keyboard-mount.ts`
+**Module:** `client/app/board/html/priority-bar.ts`, `client/app/board/html/turn-chrome.ts`, `client/app/board/html/discoverability.ts`, `client/app/board/html/sound-chrome.ts`, `client/app/board/html/keyboard-mount.ts`, `client/app/board/html/mulligan-bar.ts`
 
 ## Problem Statement
 
@@ -26,6 +26,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - Active players see End Turn when the stack is empty and combat staging is not pending.
 - Non-active players see the Until my turn rocker.
 - Space mirrors the primary/pass action. Enter toggles End Turn or Until my turn.
+- While `VisibleState.mulliganing` is true for a seated viewer, `mulliganBarView` replaces the priority bar (Keep / Mulligan). Space and Enter are inert until mulligans finish; Concede stays available.
 - `TurnBanner` shows five phase bands: Beginning, Main 1, Combat, Main 2, End, plus step detail when needed.
 - `HintStrip` explains drag, activation click, Alt inspect, and Space pass; it auto-hides after 12 seconds and persists dismissal as `mtgfr.hintDismissed`.
 - `LegendPanel` explains badges, target/combat outlines, playable border, commander outline, and graveyard/exile outlines.

@@ -10,9 +10,7 @@ impl Game {
     /// Pause on SelectFromTop / DistributeTop / SearchLibrary for the matching effect.
     pub(crate) fn run_look_pause(&mut self, effect: Effect, ctx: ResolveCtx) {
         let ResolveCtx {
-            controller,
-            target,
-            ..
+            controller, target, ..
         } = ctx;
         match effect {
             // Look at the top N, select up to `up_to` matching cards into `dest`, rest to `rest`

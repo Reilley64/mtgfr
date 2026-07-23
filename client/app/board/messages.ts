@@ -64,6 +64,10 @@ export const HandActionHovered = m("HandActionHovered", { actionId: S.NullOr(S.N
 export const PrimaryClicked = m("PrimaryClicked");
 /** One-shot Resolve card (pass_priority while stack owns priority). */
 export const PassClicked = m("PassClicked");
+/** Pre-game mulligan: keep the current opening hand. */
+export const KeepHandClicked = m("KeepHandClicked");
+/** Pre-game mulligan: shuffle and redraw to the next hand size. */
+export const MulliganClicked = m("MulliganClicked");
 /** Arm Resolve stack (stack yield). */
 export const StackYieldArmed = m("StackYieldArmed");
 /** Toggle Arena End Turn / Turn Yield rocker. */
@@ -221,6 +225,8 @@ export const Message = S.Union([
   HandActionHovered,
   PrimaryClicked,
   PassClicked,
+  KeepHandClicked,
+  MulliganClicked,
   StackYieldArmed,
   TurnYieldToggled,
   CancelActionClicked,

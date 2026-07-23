@@ -371,6 +371,12 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
         WireIntent::PassPriority { player } => Intent::PassPriority(pb::WireIntentPassPriority {
             player: u32::from(player),
         }),
+        WireIntent::KeepHand { player } => Intent::KeepHand(pb::WireIntentKeepHand {
+            player: u32::from(player),
+        }),
+        WireIntent::Mulligan { player } => Intent::Mulligan(pb::WireIntentMulligan {
+            player: u32::from(player),
+        }),
         WireIntent::Concede { player } => Intent::Concede(pb::WireIntentConcede {
             player: u32::from(player),
         }),
@@ -760,6 +766,12 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
         Intent::PassPriority(pb::WireIntentPassPriority { player }) => WireIntent::PassPriority {
             player: u8_trunc(player),
         },
+        Intent::KeepHand(pb::WireIntentKeepHand { player }) => WireIntent::KeepHand {
+            player: u8_trunc(player),
+        },
+        Intent::Mulligan(pb::WireIntentMulligan { player }) => WireIntent::Mulligan {
+            player: u8_trunc(player),
+        },
         Intent::Concede(pb::WireIntentConcede { player }) => WireIntent::Concede {
             player: u8_trunc(player),
         },
@@ -863,6 +875,17 @@ mod tests {
         };
         let pb = intent_envelope_to_pb(envelope.clone());
         assert_eq!(intent_envelope_from_pb(pb).unwrap(), envelope);
+    }
+
+    #[test]
+    fn mulligan_intents_round_trip_through_pb() {
+        for intent in [
+            WireIntent::KeepHand { player: 0 },
+            WireIntent::Mulligan { player: 1 },
+        ] {
+            let pb = wire_intent_to_pb(intent.clone());
+            assert_eq!(wire_intent_from_pb(pb).unwrap(), intent);
+        }
     }
 
     #[test]

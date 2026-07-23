@@ -64,6 +64,25 @@ impl Game {
     /// ponytail: proactive instant-speed play on an empty stack (holding up mana in the end
     /// step) still has no affordance; add "hold priority" if it's ever wanted. (CR 702.8, CR 117, CR 301.5)
     pub fn meaningful_actions(&self, player: PlayerId) -> Vec<MeaningfulAction> {
+        if self.players[player.0 as usize].lost {
+            return Vec::new();
+        }
+        if self.mulliganing {
+            let mut actions = Vec::new();
+            if !self.players[player.0 as usize].hand_kept {
+                actions.push(MeaningfulAction::KeepHand);
+                let next = hand_size_after_mulligans(
+                    self.players[player.0 as usize]
+                        .mulligans_taken
+                        .saturating_add(1),
+                );
+                if next >= 1 {
+                    actions.push(MeaningfulAction::Mulligan);
+                }
+            }
+            return actions;
+        }
+
         let mut actions = Vec::new();
         let sorcery_ok = self.can_take_sorcery_speed_action(player);
         let available = self.available_mana(player);
@@ -479,6 +498,9 @@ impl Game {
     /// part of [`Game::meaningful_actions`], so they never stop auto-pass (turn-priority-and-stack spec). Appended onto
     /// [`Game::actions`] by [`Game::refresh_actions`] so the client can show them.
     pub(crate) fn paid_mana_activates(&self, player: PlayerId) -> Vec<MeaningfulAction> {
+        if self.mulliganing {
+            return Vec::new();
+        }
         if player != self.priority {
             return Vec::new();
         }
@@ -1058,6 +1080,11 @@ impl Game {
     /// Number of cards in `player`'s library.
     pub fn library_size(&self, player: PlayerId) -> usize {
         self.players[player.0 as usize].library.len()
+    }
+
+    /// The card ids currently in `player`'s hand.
+    pub fn hand(&self, player: PlayerId) -> Vec<ObjectId> {
+        self.hand_of(player)
     }
 
     /// The card ids currently in `player`'s hand.

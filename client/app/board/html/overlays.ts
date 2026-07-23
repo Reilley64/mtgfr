@@ -2,6 +2,7 @@
 // pile, concede button + dialog, result overlay, and inspect dock (topmost).
 
 import { type Html, html } from "foldkit/html";
+import { mulliganChrome } from "~/mulligan";
 import { isActivePlayer, SPECTATOR_VIEWER } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { LogLine } from "../../game/fold";
@@ -13,6 +14,7 @@ import { discoverabilityView } from "./discoverability";
 import { handView } from "./hand";
 import { inspectView } from "./inspect";
 import { logPanelView } from "./log-panel";
+import { mulliganBarView } from "./mulligan-bar";
 import { pileOverlayView } from "./pile-overlay";
 import { priorityBarView } from "./priority-bar";
 import { promptsView } from "./prompts";
@@ -45,6 +47,11 @@ export function boardOverlays(
   const hiddenIds = new Set<number>([...board.handHidden, ...board.hideCardIds]);
   const seatedViewer = isActivePlayer(state.players, state.viewer);
   const spectating = state.viewer === SPECTATOR_VIEWER;
+  const mulliganing = mulliganChrome({
+    mulliganing: state.mulliganing,
+    localSeat: state.viewer,
+    players: state.players,
+  }).show;
 
   // Live object for the inspect pin's modifiers (battlefield objects only).
   const inspectObject =
@@ -66,9 +73,10 @@ export function boardOverlays(
     seatedViewer
       ? handView({ state, hiddenId: stagedCardId, flyingIds: board.hideCardIds, hiddenIds, handDrag: board.handDrag })
       : null,
-    seatedViewer ? priorityBarView(board, state) : null,
-    seatedViewer ? promptsView(board, state, tableId) : null,
-    seatedViewer ? activationRadialView(board, state) : null,
+    seatedViewer && mulliganing ? mulliganBarView(state) : null,
+    seatedViewer && !mulliganing ? priorityBarView(board, state) : null,
+    seatedViewer && !mulliganing ? promptsView(board, state, tableId) : null,
+    seatedViewer && !mulliganing ? activationRadialView(board, state) : null,
     seatedViewer ? concedeButtonView() : null,
     concedeDialogView(board.confirmConcede),
     pileOverlayView(board.pileExpand, state),

@@ -4,6 +4,7 @@ import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
+import { SubmitIntent } from "../game/intents";
 import { worldToScreen } from "./geometry/camera";
 import { layout } from "./geometry/layout";
 import type { Message } from "./messages";
@@ -18,8 +19,10 @@ import {
   InspectCardFetched,
   InspectDismissed,
   InspectFlipFace,
+  KeepHandClicked,
   KeyboardEscape,
   KeyboardSpacePressed,
+  MulliganClicked,
   PileExpanded,
   PileOverlayClosed,
   RadialWedgeArmed,
@@ -404,6 +407,38 @@ test("ConcedeConfirmed clears confirmConcede and submits intent", () => {
   );
   expect(resultModel.confirmConcede).toBe(false);
   expect(cmds.length).toBeGreaterThan(0);
+});
+
+test("KeepHandClicked submits keep_hand for the viewer", () => {
+  const fold = gameFold({
+    ...twoPlayerState(),
+    mulliganing: true,
+    players: [
+      { ...twoPlayerState().players[0], hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+      { ...twoPlayerState().players[1], hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  const [, cmds] = updateBoard(initialBoardModel(), KeepHandClicked(), fold, "table-1");
+  expect(cmds[0]?.name).toBe(SubmitIntent.name);
+});
+
+test("MulliganClicked is a no-op when can_mulligan is false", () => {
+  const fold = gameFold({
+    ...twoPlayerState(),
+    mulliganing: true,
+    players: [
+      { ...twoPlayerState().players[0], hand_kept: false, can_mulligan: false, mulligans_taken: 6 },
+      { ...twoPlayerState().players[1], hand_kept: false, can_mulligan: true, mulligans_taken: 0 },
+    ],
+  });
+  const [, cmds] = updateBoard(initialBoardModel(), MulliganClicked(), fold, "table-1");
+  expect(cmds).toEqual([]);
+});
+
+test("KeyboardSpacePressed is inert while mulliganing", () => {
+  const fold = gameFold({ ...twoPlayerState(), mulliganing: true });
+  const [, cmds] = updateBoard(initialBoardModel(), KeyboardSpacePressed(), fold, "table-1");
+  expect(cmds).toEqual([]);
 });
 
 // ── Game result ────────────────────────────────────────────────────────────────

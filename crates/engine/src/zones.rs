@@ -84,13 +84,25 @@ impl Game {
             .collect()
     }
 
-    /// Shuffle `player`'s library with the injected PRNG (Fisher-Yates).
+    /// Shuffle `player`'s library with a derive-per-op PRNG (Fisher-Yates via unbiased indices).
     pub fn shuffle(&mut self, player: PlayerId) {
         let len = self.players[player.0 as usize].library.len();
-        for i in (1..len).rev() {
-            let j = (self.next_u64() % (i as u64 + 1)) as usize;
-            self.players[player.0 as usize].library.swap(i, j);
+        if len < 2 {
+            return;
         }
+        let mut order: Vec<usize> = (0..len).collect();
+        self.with_op_rng(player, |rng| {
+            for i in (1..len).rev() {
+                let j = rng.gen_index(i + 1);
+                order.swap(i, j);
+            }
+        });
+        let lib = &mut self.players[player.0 as usize].library;
+        let mut next = Vec::with_capacity(len);
+        for i in order {
+            next.push(lib[i]);
+        }
+        *lib = next;
     }
 
     /// Shuffle `player`'s library, then put `card` on top (CR 701.19 — Enlightened Tutor/Sterling

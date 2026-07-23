@@ -974,7 +974,8 @@ pub enum Effect {
     CantBeAttackedBy { filter: PermanentFilter },
     /// "Choose an opponent at random. ~ attacks that player this combat if able." (Ruhan of the
     /// Fomori, CR 508.1a "if able"): picks a living opponent of the ability's controller uniformly
-    /// via the injected RNG ([`Game::next_u64`]) and records a this-turn
+    /// via the injected operation RNG ([`Game::with_op_rng`] / [`crate::rng::OpRng`]) and records
+    /// a this-turn
     /// [`Event::MustAttackDeclared`](crate::types::stack::Event::MustAttackDeclared) naming the
     /// ability's own source as the required attacker — read back by [`Game::declare_attackers`]'s
     /// `must_attack` loop, the same requirement [`CreateToken::must_attack_defender`](Self::CreateToken::must_attack_defender)
@@ -1969,8 +1970,8 @@ pub enum Effect {
     /// "Exile a card from your graveyard at random. You may play the exiled card this turn."
     /// (Advanced Reconstruction's base level). Unlike [`ExileFromGraveyardMayPlay`](Self::ExileFromGraveyardMayPlay),
     /// the card isn't handed in by a trigger context — it's chosen by the injected RNG at
-    /// resolution, so this can only resolve via [`Game::run`] (`&mut self`, the only
-    /// place [`Game::next_u64`] may be called), never the private mint path. Takes no target;
+    /// resolution, so this can only resolve via [`Game::run`] (`&mut self`, through
+    /// [`Game::with_op_rng`] / [`crate::rng::OpRng`]), never the private mint path. Takes no target;
     /// no filter (the only consumer says "a card", any card — add a `CardFilter` axis if a second
     /// card needs one). CR 701.19 "if you can't" — an empty graveyard is a silent no-op.
     ExileRandomFromGraveyardMayPlay,

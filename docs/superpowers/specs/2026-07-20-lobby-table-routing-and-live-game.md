@@ -1,6 +1,6 @@
 # Lobby, Table Routing, and Live Game
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-21)
 **Module:** `crates/server/src/table.rs`, `crates/server/src/lobby.rs`, `crates/server/src/session.rs`,
 `crates/server/src/game_loop.rs`, `crates/server/src/stream.rs`, `crates/server/src/chrome.rs`,
 `crates/server/src/health.rs`, `crates/server/src/main.rs`,
@@ -37,7 +37,7 @@ The system separates pre-game lobby from live-game concerns across two persisten
    claimed and all claimed seats are ready.
 4. The host clicks Start. The BFF calls `Tables.Seed` (gRPC, Service `edh-api`) on the
    **newest** active API pod. The seed request carries seat order, user ids, and deck ids.
-5. `Tables.Seed` resolves and validates all decks, seeds the game (OS CSPRNG), inserts the
+5. `Tables.Seed` resolves and validates all decks, fetches a drand beacon master seed (or a configured fixed seed in dev/test), deals opening hands, enters the mulligan phase, inserts the
    `Table` into the in-memory `Registry`, and returns `SeedResponse { table_id, pod_dns, version }`.
 6. BFF writes `table_routes (table_id → pod_dns)` to `mtgfr_web`. Clients are redirected to
    `/play/{table_id}`.
@@ -55,7 +55,7 @@ affinity cookie; `table_id` in the path is the sole routing key.
 One `Registry` per API pod process (a `std::sync::Mutex<HashMap<String, Table>>`). Table ids
 are random 128-bit hex strings (unguessable). Each `Table` holds:
 - The `engine::Game` (pure, deterministic state machine).
-- The PRNG seed (recorded for replay if needed off-process).
+- The 32-byte master seed and `beacon_round` used to derive every engine random operation (`beacon_round = 0` for configured/test seeds).
 - A monotonic `seq` (event counter / stream resume watermark).
 - A `tokio::broadcast` channel per table for fan-out to all subscribers.
 - `ChromeState` (yield flags, stack-hold, dwell — see below).
@@ -141,11 +141,15 @@ the BFF so that their absence does not block drain of an API pod that was never 
 4. Resolve decks for each seat (precon negative ids → static fixtures; positive ids → Postgres,
    guarded to `seat.user_id`). Deck resolution and legality re-validation happen **outside** the
    registry lock — no DB await across the lock.
-5. Under the lock: draw OS CSPRNG seed (`OsRng.next_u64()`), build `Table::seeded(...)`, fill
+5. Resolve entropy before inserting the table: `settings.master_seed` or `MTGFR_MASTER_SEED` supplies a fixed 64-hex-character master seed with `beacon_round = 0`; otherwise the API fetches `https://drand.cloudflare.com/public/latest`, retrying across `https://api.drand.sh/public/latest`. The drand `randomness` becomes the `[u8; 32]` engine master seed and `round` is recorded as `beacon_round`.
+6. If beacon entropy is unavailable or malformed and no fixed seed is configured, return 503. No partial table is created and there is no silent production fallback to `OsRng`.
+7. Under the lock: build `Table::seeded(...)`, record `table.seed` and `table.beacon_round`, fill
    `table.prints` (Card id → Printing UUID per seat), seed game via `decks::seed_game`, call
    `registry.try_insert(table_id, table)`.
-6. Return `SeedResponse { table_id, pod_dns: settings.pod_dns, version: settings.version }`.
+8. Return `SeedResponse { table_id, pod_dns: settings.pod_dns, version: settings.version }`.
    BFF writes `table_routes`.
+
+`decks::seed_game` constructs `Game::with_master_seed`, designates commanders, stacks and shuffles each library with per-seat derived RNG, draws seven cards per seat, and calls `begin_mulligans()`. It deliberately does **not** call `begin_first_turn()` at seed time; the first turn begins only after all living seats keep their hands.
 
 ### Stream subscribe (`Game.Stream`)
 
@@ -168,6 +172,8 @@ the BFF so that their absence does not block drain of an API pod that was never 
 4. Returns `Ack { accepted, reason }`. Deltas arrive on the stream, not in the ack.
 5. Action log is appended outside the lock (`action_log::append`) — TOON format, written to
    `ACTION_LOG_DIR`.
+
+While the engine is `mulliganing`, clients submit `KeepHand` or `Mulligan` just like other intents. The server does not auto-advance priority or begin turn one until `MulligansFinished` has occurred; disconnected undecided seats remain undecided.
 
 ### Yield / dwell (`SetYield`, `SetTurnYield`, `SetStackDwell`)
 
@@ -223,9 +229,10 @@ seeded game; there are no "empty" table shells in the production registry.
 - **table_routes for pod affinity** (lobby-table-routing-and-live-game spec): no affinity cookie, no ConfigMap peer registry.
   `table_id` in the path is the routing key; `pod_dns` in `mtgfr_web.table_routes` is the
   destination. Headless Service `publishNotReadyAddresses` keeps Terminating pods dialable.
-- **Seed outside lock, insert under lock** (`lobby.rs`): deck resolution and DB queries happen
+- **Seed outside lock, insert under lock** (`lobby.rs`): deck resolution, DB queries, and beacon entropy resolution happen
   outside the registry mutex (no DB await across the lock). `try_insert` under the lock handles
   a concurrent duplicate-id race.
+- **Drand over silent fallback** (`beacon.rs`): production seed calls must get Cloudflare/drand randomness or fail; fixed master seeds are explicit test/dev configuration (`settings.master_seed` or `MTGFR_MASTER_SEED`).
 - **Settle loop bounded** (turn-priority-and-stack spec): up to 256 auto-passes per intent, preventing infinite
   loops on engine bugs. The bound is high enough for real priority chains.
 - **Abandoned table grace = 60s** (`table.rs`): long enough for a reconnect blip; short enough
@@ -253,8 +260,9 @@ seeded game; there are no "empty" table shells in the production registry.
 - `crates/server/src/health.rs` tests: `live` version report, `ready` always 200 while
   draining, `drain` status with zero active tables.
 - `crates/server/src/grpc/tests.rs` contains integration tests for `Tables.Seed` (including
-  draining rejection, duplicate table id, invalid seat counts) and `Game.SubmitIntent` (seated
+  draining rejection, duplicate table id, invalid seat counts, beacon failure, and recorded beacon entropy) and `Game.SubmitIntent` (seated
   vs. non-seated auth).
+- `crates/server/src/decks.rs` tests assert seeded games deal opening hands, enter mulligans, and delay the first turn until keeps.
 - Engine-level tests (`tests/game.rs`) cover the full game loop: variable players, elimination,
   multiplayer combat, lobby start.
 

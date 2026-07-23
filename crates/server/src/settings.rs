@@ -32,6 +32,9 @@ pub struct Settings {
     pub cors_origin: String,
     /// Surfaced on `/health/live`. Default: crate version.
     pub version: String,
+    /// Test/config override for deterministic seeding. Production also honors `MTGFR_MASTER_SEED`
+    /// directly in the beacon resolver.
+    pub master_seed: Option<String>,
 }
 
 impl Settings {
@@ -51,6 +54,7 @@ impl Settings {
             .set_default("cookie_domain", "")?
             .set_default("cors_origin", "")?
             .set_default("version", env!("CARGO_PKG_VERSION"))?
+            .set_default("master_seed", None::<String>)?
             .add_source(config::File::with_name(config_path).required(false))
             .add_source(config::Environment::default().separator("__"))
             .build()?
@@ -94,6 +98,9 @@ pub(crate) fn for_test() -> Settings {
         cookie_domain: String::new(),
         cors_origin: String::new(),
         version: env!("CARGO_PKG_VERSION").to_string(),
+        master_seed: Some(
+            "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".to_string(),
+        ),
     }
 }
 
@@ -155,6 +162,7 @@ mod tests {
         assert_eq!(settings.cookie_domain, "");
         assert_eq!(settings.cors_origin, "");
         assert_eq!(settings.version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(settings.master_seed, None);
         assert_eq!(settings.listen_addr(), "127.0.0.1:8080");
         assert_eq!(settings.grpc_listen_addr(), "127.0.0.1:50051");
 

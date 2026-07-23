@@ -222,6 +222,54 @@ fn action_view(game: &engine::Game, action: &engine::LegalAction) -> ActionView 
     };
 
     let mut view = match action.kind {
+        MeaningfulAction::KeepHand => ActionView {
+            id: action.id,
+            kind: "keep_hand".to_string(),
+            object: None,
+            ability_index: None,
+            section: "setup".to_string(),
+            label: "Keep hand".to_string(),
+            needs_target: false,
+            targets: Vec::new(),
+            modal: None,
+            sacrifice_choices: None,
+            discard_choices: None,
+            discard_count: 0,
+            graveyard_exile_choices: None,
+            graveyard_exile_min: 0,
+            graveyard_exile_max: 0,
+            has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
+            auto_tap: Vec::new(),
+            required_attacks: Vec::new(),
+            taps_self: false,
+        },
+        MeaningfulAction::Mulligan => ActionView {
+            id: action.id,
+            kind: "mulligan".to_string(),
+            object: None,
+            ability_index: None,
+            section: "setup".to_string(),
+            label: "Mulligan".to_string(),
+            needs_target: false,
+            targets: Vec::new(),
+            modal: None,
+            sacrifice_choices: None,
+            discard_choices: None,
+            discard_count: 0,
+            graveyard_exile_choices: None,
+            graveyard_exile_min: 0,
+            graveyard_exile_max: 0,
+            has_x: false,
+            min_x: 0,
+            max_x: 0,
+            x_cost: None,
+            auto_tap: Vec::new(),
+            required_attacks: Vec::new(),
+            taps_self: false,
+        },
         MeaningfulAction::PlayLand { card, zone } => ActionView {
             id: action.id,
             kind: "play_land".to_string(),
@@ -609,6 +657,8 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 .iter()
                 .filter(|&&id| game.zone_of(id) == Zone::Hand && game.owner_of(id) == pid)
                 .count() as u32;
+            let next_mulligan_hand_size =
+                engine::hand_size_after_mulligans(game.mulligans_taken(pid).saturating_add(1));
             PlayerView {
                 player: p,
                 username: String::new(),
@@ -617,6 +667,12 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
                 lost: game.has_lost(pid),
                 hand_count,
                 library_count: game.library_size(pid) as u32,
+                mulligans_taken: game.mulligans_taken(pid),
+                hand_kept: game.hand_kept(pid),
+                can_mulligan: game.mulliganing()
+                    && !game.has_lost(pid)
+                    && !game.hand_kept(pid)
+                    && next_mulligan_hand_size >= 1,
                 mana_pool: WireManaPool::from_engine(game.mana_pool(pid)),
                 commander_damage: game
                     .commander_damage(pid)
@@ -806,6 +862,7 @@ fn project_board(game: &engine::Game, viewer: Option<engine::PlayerId>) -> Visib
         active_player: game.active_player().0,
         step: game.current_step() as u8,
         priority: game.priority_holder().0,
+        mulliganing: game.mulliganing(),
         players,
         objects,
         stack,
@@ -958,6 +1015,25 @@ mod tests {
         );
         assert_eq!(spectating.stack_hold_remaining_ms, 1500);
         assert_eq!(spectating.players[0].username, "alice");
+    }
+
+    #[test]
+    fn mulliganing_snapshot_exposes_seat_status() {
+        let mut game = Game::new();
+        game.begin_mulligans();
+        game.submit(engine::Intent::KeepHand {
+            player: PlayerId(1),
+        })
+        .unwrap();
+
+        let snap = snapshot(&game, PlayerId(0));
+
+        assert!(snap.mulliganing);
+        assert_eq!(snap.players[0].mulligans_taken, 0);
+        assert!(!snap.players[0].hand_kept);
+        assert!(snap.players[0].can_mulligan);
+        assert!(snap.players[1].hand_kept);
+        assert!(!snap.players[1].can_mulligan);
     }
 
     #[test]

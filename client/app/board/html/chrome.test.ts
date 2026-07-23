@@ -114,6 +114,41 @@ test("active player sees hand, priority bar, concede, and hint chrome", () => {
   );
 });
 
+test("mulliganing seat sees mulligan bar and hides priority chrome", () => {
+  const state = gameState({
+    mulliganing: true,
+    players: [
+      {
+        ...player(0),
+        hand_kept: false,
+        can_mulligan: true,
+        mulligans_taken: 0,
+      },
+      {
+        ...player(1),
+        hand_kept: false,
+        can_mulligan: true,
+        mulligans_taken: 0,
+      },
+    ],
+  });
+  const model: OverlayModel = {
+    board: initialBoardModel(),
+    fold: gameFold(state),
+    tableId: "T1",
+  };
+  Scene.scene(
+    { update: (m) => [m, []], view: overlayView },
+    Scene.with(model),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("hand-bar")).toExist(),
+    Scene.expect(Scene.testId("mulligan-bar")).toExist(),
+    Scene.expect(Scene.testId("mulligan-keep")).toExist(),
+    Scene.expect(Scene.testId("board-primary")).not.toExist(),
+    Scene.expect(Scene.testId("board-concede")).toExist(),
+  );
+});
+
 test("spectator hides hand, priority bar, concede, and discoverability chrome", () => {
   const model: OverlayModel = {
     board: initialBoardModel(),

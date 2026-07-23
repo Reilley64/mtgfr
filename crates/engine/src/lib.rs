@@ -34,18 +34,21 @@ mod combat;
 mod core;
 mod effects;
 mod label;
+mod mulligan;
 mod pending;
 mod pipeline;
 mod playable;
 mod priority;
 mod query;
 mod resolution;
+pub mod rng;
 mod spawn;
 mod state;
 mod triggers;
 mod types;
 mod zones;
 
+pub use mulligan::hand_size_after_mulligans;
 /// Shared Effect-resolution context for [`Game::run`] / [`Game::run_sequence`].
 pub(crate) use resolution::ResolveCtx;
 pub use state::ControlCondition;
@@ -125,9 +128,10 @@ pub struct Game {
     pub(crate) exile_links: state::ExileLinks,
     /// Pending CR 603.7 delayed triggered abilities not yet placed on the stack.
     pub(crate) delayed_triggers: state::DelayedTriggers,
-    /// Injected PRNG state (splitmix64) — the only source of randomness, so the
-    /// engine stays deterministic: same seed ⇒ same shuffles.
-    pub(crate) rng_state: u64,
+    /// Master seed for derive-per-op random streams (BLAKE3 keyed by player + iteration).
+    pub(crate) master_seed: [u8; 32],
+    /// Whether the game is in the pre-game simultaneous mulligan phase.
+    pub(crate) mulliganing: bool,
     /// Whether the active player's next draw step is skipped: the starting player skips their
     /// first draw in a two-player game only (CR 103.8a; multiplayer skips no one, CR 103.8c).
     /// Armed by [`Game::begin_first_turn`] from the seat count and spent on the first draw step.
@@ -234,10 +238,24 @@ impl Game {
             return Err(Reject::UnknownObject);
         }
 
+        if self.mulliganing
+            && !matches!(
+                intent,
+                Intent::KeepHand { .. }
+                    | Intent::Mulligan { .. }
+                    | Intent::Concede { .. }
+                    | Intent::TakeAction { .. }
+            )
+        {
+            return Err(Reject::Mulliganing);
+        }
+
         let mut events = if pending::is_answer(&intent) {
             pending::answer(self, intent)?
         } else {
             match intent {
+                Intent::KeepHand { player } => self.keep_hand(player)?,
+                Intent::Mulligan { player } => self.take_mulligan(player)?,
                 Intent::Cast {
                     player,
                     object,
@@ -299,7 +317,11 @@ impl Game {
                 Intent::CastFaceDown { player, card } => self.cast_face_down(player, card)?,
                 Intent::TapForMana { player, object } => self.tap_for_mana(player, object)?,
                 Intent::ChannelColorlessMana { player } => self.channel_colorless_mana(player)?,
-                Intent::Concede { player } => self.concede(player),
+                Intent::Concede { player } => {
+                    let mut events = self.concede(player);
+                    self.finish_mulligans_if_all_kept(&mut events);
+                    events
+                }
                 Intent::ActivateAbility {
                     player,
                     object,
@@ -410,6 +432,8 @@ impl Game {
             return Err(Reject::UnknownAction);
         }
         match action.kind {
+            MeaningfulAction::KeepHand => self.keep_hand(player),
+            MeaningfulAction::Mulligan => self.take_mulligan(player),
             MeaningfulAction::PlayLand { card, .. } => self.play_land(player, card),
             MeaningfulAction::Cast { card, .. } => self.cast_with_kind(
                 player,

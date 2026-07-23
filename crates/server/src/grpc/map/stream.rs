@@ -121,6 +121,9 @@ pub fn player_view_to_pb(player: PlayerView) -> pb::PlayerView {
         lost: player.lost,
         hand_count: player.hand_count,
         library_count: player.library_count,
+        mulligans_taken: u32::from(player.mulligans_taken),
+        hand_kept: player.hand_kept,
+        can_mulligan: player.can_mulligan,
         mana_pool: Some(wire_mana_pool_to_pb(player.mana_pool)),
         commander_damage: player
             .commander_damage
@@ -800,7 +803,7 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
     }
 }
 
-pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
+pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
     use pb::visible_event::Event;
     let event = match event {
         VisibleEvent::SpellCast {
@@ -1453,6 +1456,13 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
                 player: u32::from(player),
             })
         }
+        VisibleEvent::MulliganTaken { .. }
+        | VisibleEvent::HandKept { .. }
+        | VisibleEvent::MulligansFinished => {
+            // Mulligan state is snapshot-sourced; no event payload is sent until the wire owns
+            // explicit mulligan variants.
+            return None;
+        }
         VisibleEvent::CardDrawn {
             player,
             object,
@@ -1524,7 +1534,7 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> pb::VisibleEvent {
             controller: u32::from(controller),
         }),
     };
-    pb::VisibleEvent { event: Some(event) }
+    Some(pb::VisibleEvent { event: Some(event) })
 }
 
 pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
@@ -1547,6 +1557,7 @@ pub fn visible_state_to_pb(state: VisibleState) -> pb::VisibleState {
         stack_hold_remaining_ms: state.stack_hold_remaining_ms,
         pending_choice: state.pending_choice.map(pending_choice_view_to_pb),
         actions: state.actions.into_iter().map(action_view_to_pb).collect(),
+        mulliganing: state.mulliganing,
     }
 }
 
@@ -1562,7 +1573,7 @@ pub fn stream_frame_to_pb(frame: StreamFrame) -> pb::StreamFrame {
             events: envelope
                 .events
                 .into_iter()
-                .map(visible_event_to_pb)
+                .filter_map(visible_event_to_pb)
                 .collect(),
             state: Some(visible_state_to_pb(envelope.state)),
             auto_actions: envelope.auto_actions,
@@ -1592,6 +1603,9 @@ mod tests {
             lost: false,
             hand_count: 0,
             library_count: 99,
+            mulligans_taken: 0,
+            hand_kept: false,
+            can_mulligan: false,
             mana_pool: WireManaPool::default(),
             commander_damage: vec![],
         }
@@ -1650,6 +1664,7 @@ mod tests {
             }],
             combat: CombatView::default(),
             can_act: true,
+            mulliganing: false,
             yielded: false,
             turn_yielded: false,
             stack_hold_remaining_ms: 0,
@@ -1780,5 +1795,28 @@ mod tests {
             }
             other => panic!("expected SpellDamageDivided, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn delta_omits_mulligan_lifecycle_events_from_wire() {
+        let state = rich_snapshot_state();
+        let pb = stream_frame_to_pb(StreamFrame::Delta(DeltaEnvelope {
+            seq: 11,
+            events: vec![
+                VisibleEvent::MulliganTaken {
+                    player: 0,
+                    mulligans_taken: 1,
+                    hand_size: 6,
+                },
+                VisibleEvent::HandKept { player: 0 },
+                VisibleEvent::MulligansFinished,
+            ],
+            state,
+            auto_actions: vec![],
+        }));
+        let Some(pb::stream_frame::Frame::Delta(delta)) = pb.frame else {
+            panic!("expected Delta frame");
+        };
+        assert!(delta.events.is_empty());
     }
 }

@@ -2172,6 +2172,19 @@ impl Game {
                     .retain(|&o| o != from);
                 self.players[player.0 as usize].draws_this_turn += 1;
             }
+            Event::MulliganTaken {
+                player,
+                mulligans_taken,
+                ..
+            } => {
+                self.players[player.0 as usize].mulligans_taken = mulligans_taken;
+            }
+            Event::HandKept { player } => {
+                self.players[player.0 as usize].hand_kept = true;
+            }
+            Event::MulligansFinished => {
+                self.mulliganing = false;
+            }
             // Perpetual Timepiece's mandatory shuffle after the chosen graveyard cards enter the
             // library (CR 701.19-style). The order isn't event-sourced (like scry / `Game::
             // shuffle`'s other callers) — mutate the library directly.

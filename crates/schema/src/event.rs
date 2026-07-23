@@ -722,6 +722,18 @@ pub enum VisibleEvent {
     CitysBlessingGained {
         player: u8,
     },
+    /// A player completed a pre-game mulligan and redrew to the resulting hand size.
+    MulliganTaken {
+        player: u8,
+        mulligans_taken: u8,
+        hand_size: u8,
+    },
+    /// A player kept their current opening hand during the pre-game mulligan phase.
+    HandKept {
+        player: u8,
+    },
+    /// Every living player has kept; the pre-game mulligan phase is over.
+    MulligansFinished,
     /// Opponents see that a draw happened, but `card` (and the library object it came `from`,
     /// which would otherwise leak that identity by its decklist-order id) are `None` for anyone
     /// but the drawer.

@@ -97,6 +97,37 @@ describe("pure game fold", () => {
     expect(next.provenance).toBe(current.provenance);
   });
 
+  it("applies snapshot-sourced mulligan fields with no visible events", () => {
+    const current = applySnapshotPure(emptyGameFold(), 0, mkState());
+    const next = applyDeltaPure(current, {
+      ...mkDelta(1, []),
+      state: {
+        ...mkState(),
+        mulliganing: true,
+        players: [
+          {
+            player: 0,
+            username: "p0",
+            life: 40,
+            commander_tax: 0,
+            lost: false,
+            hand_count: 7,
+            library_count: 92,
+            mulligans_taken: 0,
+            hand_kept: true,
+            can_mulligan: false,
+            mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+          },
+        ],
+      },
+    });
+
+    expect(next.state?.mulliganing).toBe(true);
+    expect(next.state?.players[0]?.hand_kept).toBe(true);
+    expect(next.state?.players[0]?.can_mulligan).toBe(false);
+    expect(next.log).toEqual([]);
+  });
+
   it("setRejectPure updates only the reject reason", () => {
     const current = applySnapshotPure(emptyGameFold(), 1, mkState());
 

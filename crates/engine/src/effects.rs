@@ -928,7 +928,9 @@ impl Game {
             | Effect::ReturnFromGraveyardAttachedToToken { .. }
             | Effect::AttachSelfToReanimated
             | Effect::AttachSelfToMintedToken
-            | Effect::AttachMintedAuraToTarget { .. } => self.run_sequence_step(effect, ctx, events),
+            | Effect::AttachMintedAuraToTarget { .. } => {
+                self.run_sequence_step(effect, ctx, events)
+            }
             // Fractal Harness — see
             // `resolution/counters.rs::resolve_double_counters_on_attached_creature`.
             Effect::DoubleCountersOnAttachedCreature => {

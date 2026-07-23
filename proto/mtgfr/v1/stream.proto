@@ -24,6 +24,12 @@ message PlayerView {
   WireManaPool mana_pool = 8;
   // Commander damage this player has taken, one entry per commander that has connected.
   repeated CommanderDamageView commander_damage = 9;
+  // Completed pre-game mulligans this player has taken.
+  uint32 mulligans_taken = 10;
+  // Whether this player has kept their current opening hand.
+  bool hand_kept = 11;
+  // Whether this player may still take another pre-game mulligan.
+  bool can_mulligan = 12;
 }
 
 // One source card def's contributions to a permanent (Alt-inspect ledger).
@@ -870,6 +876,8 @@ message VisibleState {
   optional PendingChoiceView pending_choice = 13;
   // The viewer's own legal actions right now (empty for a spectator, or anyone else's seat).
   repeated ActionView actions = 14;
+  // Whether the game is in the simultaneous pre-game mulligan phase.
+  bool mulliganing = 15;
 }
 
 // An `engine::Event` after per-viewer redaction. Public facts pass through unchanged; private

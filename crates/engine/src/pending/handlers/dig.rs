@@ -138,7 +138,7 @@ impl Game {
             },
         );
         if !self.resolution_is_paused() {
-            self.bottom_exiled_dig(&exiled, events);
+            self.bottom_exiled_dig(controller, &exiled, events);
         }
     }
 
@@ -173,7 +173,7 @@ impl Game {
             .into_iter()
             .filter(|&id| Some(id) != choice)
             .collect();
-        self.bottom_exiled_dig(&rest, &mut events);
+        self.bottom_exiled_dig(player, &rest, &mut events);
         Ok(events)
     }
 
@@ -183,11 +183,20 @@ impl Game {
     /// and pure — no `rand`. Shared by [`Self::exile_top_cast_matching_free`]'s /
     /// [`Self::cascade`]'s no-hit fast paths and [`Self::choose_exiled_dig_to_cast_free`]'s
     /// answer.
-    pub(crate) fn bottom_exiled_dig(&mut self, cards: &[ObjectId], events: &mut Vec<Event>) {
+    pub(crate) fn bottom_exiled_dig(
+        &mut self,
+        player: PlayerId,
+        cards: &[ObjectId],
+        events: &mut Vec<Event>,
+    ) {
         let mut order = cards.to_vec();
-        for i in (1..order.len()).rev() {
-            let j = (self.next_u64() % (i as u64 + 1)) as usize;
-            order.swap(i, j);
+        if order.len() >= 2 {
+            self.with_op_rng(player, |rng| {
+                for i in (1..order.len()).rev() {
+                    let j = rng.gen_index(i + 1);
+                    order.swap(i, j);
+                }
+            });
         }
         for from in order {
             let card = self.next_object_id();
@@ -216,9 +225,13 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         let mut order = cards.to_vec();
-        for i in (1..order.len()).rev() {
-            let j = (self.next_u64() % (i as u64 + 1)) as usize;
-            order.swap(i, j);
+        if order.len() >= 2 {
+            self.with_op_rng(player, |rng| {
+                for i in (1..order.len()).rev() {
+                    let j = rng.gen_index(i + 1);
+                    order.swap(i, j);
+                }
+            });
         }
         for card in order {
             self.push_apply(events, Event::PutOnBottomOfLibrary { player, card });
@@ -1310,7 +1323,7 @@ impl Game {
             }
         }
         let Some(hit) = hit else {
-            self.bottom_exiled_dig(&exiled, events); // whiff — bottom everything revealed
+            self.bottom_exiled_dig(controller, &exiled, events); // whiff — bottom everything revealed
             return;
         };
         pending::raise(

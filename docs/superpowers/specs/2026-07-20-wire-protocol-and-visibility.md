@@ -1,6 +1,6 @@
 # Wire Protocol and Visibility
 
-**Status:** Current (as of 2026-07-20)
+**Status:** Current (as of 2026-07-23)
 **Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/lib/wire/`
 
 ---
@@ -76,6 +76,7 @@ peers never send — never rename, remove, or reuse field numbers while older po
   only as a count — their identities are never sent to my stream.
 - As a **player**, I reconnect after a network blip and return to the same board state without
   losing game log history.
+- As a **player in the pre-game mulligan phase**, I see my private opening hand plus public keep/mulligan status for every seat, and I can submit Keep or Mulligan until I keep.
 - As a **spectator or eliminated player**, I receive the public projection of the game
   (`viewer = SPECTATOR_VIEWER = 255`); hand and library contents appear only as counts.
 - As an **operator**, I can roll a new API binary while a game is in progress; mid-game clients
@@ -129,6 +130,9 @@ BFF can pin later `table_id` hops to this pod.
 | `actions` | `ActionView` list for this viewer's own legal actions (empty for spectators) |
 | `can_act`, `yielded`, `turn_yielded` | Priority / yield state for auto-pass logic |
 | `stack_hold_remaining_ms` | Countdown until an uncontested stack auto-resolves |
+| `mulliganing` | Whether the game is still in simultaneous pre-game mulligans |
+
+During mulligans, each `PlayerView` also carries `mulligans_taken`, `hand_kept`, and `can_mulligan`. These are public status fields; card identities remain private through the existing hand/object redaction rules. The local player's legal actions include setup-section `keep_hand` and `mulligan` actions while they are undecided.
 
 ### Redaction rules
 
@@ -162,6 +166,12 @@ stable-id or answer payload. `TakeAction { id }` references a `LegalAction` id f
 recent `actions` list in `VisibleState`; stable ids survive across multiple intents as long as
 the underlying action remains legal (lobby-table-routing-and-live-game spec).
 
+Pre-game mulligans use dedicated `KeepHand { player }` and `Mulligan { player }` intent arms. The authenticated seat stamps the actor at the schema boundary, so a client cannot keep or mulligan for another player by changing the payload.
+
+### Mulligan events and stream source of truth
+
+The engine/schema event model includes `MulliganTaken { player, mulligans_taken, hand_size }`, `HandKept { player }`, and `MulligansFinished`. The current `stream.proto` `VisibleEvent` oneof does not yet define protobuf arms for these events, so the gRPC mapper **omits** them from stream deltas (it does not emit empty oneofs). Clients must treat `VisibleState.mulliganing` and each `PlayerView`'s `mulligans_taken` / `hand_kept` / `can_mulligan` fields as the source of truth for mulligan UI.
+
 ---
 
 ## Implementation Decisions
@@ -180,6 +190,7 @@ the underlying action remains legal (lobby-table-routing-and-live-game spec).
 - **Self-sufficient deltas** (wire-protocol-and-visibility spec): each `DeltaEnvelope` carries `VisibleState` so the
   client never needs a side refetch. Render assembly (`schema::snapshot`) lives in the wire
   layer, not in fat engine events.
+- **Mulligan UI is snapshot-driven**: until protobuf visible-event variants are added, mulligan decision progress comes from `VisibleState` fields on snapshots and deltas, not from the event log.
 - **Spectator projection** (wire-protocol-and-visibility spec, partial): `snapshot`/`redact` takes `Option<PlayerId>`;
   `None` = spectator (all hands/libraries hidden, `viewer = SPECTATOR_VIEWER`). Eliminated
   players and signed-in non-seated users receive the spectator projection, not a 403.
@@ -196,6 +207,7 @@ the underlying action remains legal (lobby-table-routing-and-live-game spec).
   handlers against an in-memory SQLite test database.
 - Redaction correctness is tested in `crates/schema/` with fixture-driven round-trips
   (`schema::snapshot` + `schema::redact`).
+- Mulligan projection tests assert `mulliganing`, `mulligans_taken`, `hand_kept`, and `can_mulligan` are present in snapshots without exposing other players' hands.
 - `PendingChoice` variants are tested via `crates/engine/` unit tests that verify each choice
   kind is raised, answered, and produces the correct events.
 - Expand-only compliance is enforced by code review discipline, not an automated checker;

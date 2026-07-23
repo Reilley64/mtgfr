@@ -22,6 +22,22 @@ fn land_permanent(events: &[Event]) -> ObjectId {
         .expect("playing a land emits LandPlayed")
 }
 
+fn deal_opening(game: &mut Game, deck_size: usize) {
+    let plains = card("Plains");
+    let deck = vec![plains; deck_size];
+    for p in 0..game.player_count() as u8 {
+        let player = PlayerId(p);
+        game.stack_library(player, &deck);
+        game.shuffle(player);
+    }
+    for _ in 0..7 {
+        for p in 0..game.player_count() as u8 {
+            game.draw_card(PlayerId(p));
+        }
+    }
+    game.begin_mulligans();
+}
+
 /// Pass priority for whichever player currently holds it until `predicate` holds,
 /// rolling the game forward through steps. On declare attackers, submits
 /// [`Game::required_attacks`] (empty when nothing is forced) so goad cannot wedge
@@ -56,6 +72,175 @@ fn advance_until(game: &mut Game, predicate: impl Fn(&Game) -> bool) {
 fn pass_until_next_turn(game: &mut Game) {
     let start = game.active_player();
     advance_until(game, |g| g.active_player() != start);
+}
+
+#[test]
+fn friendly_mulligan_redraws_seven() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::Mulligan {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    assert_eq!(game.hand(PlayerId(0)).len(), 7);
+    assert!(game.mulliganing());
+}
+
+#[test]
+fn friendly_mulligan_emits_library_shuffled_before_redraw() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+
+    let events = game
+        .submit(Intent::Mulligan {
+            player: PlayerId(0),
+        })
+        .unwrap();
+
+    let shuffle_pos = events
+        .iter()
+        .position(
+            |event| matches!(event, Event::LibraryShuffled { player } if *player == PlayerId(0)),
+        )
+        .expect("a mulligan shuffles through the event stream");
+    assert_eq!(
+        events
+            .iter()
+            .filter(
+                |event| matches!(event, Event::LibraryShuffled { player } if *player == PlayerId(0))
+            )
+            .count(),
+        1,
+        "a mulligan shuffles exactly once"
+    );
+    let redraw_pos = events
+        .iter()
+        .position(
+            |event| matches!(event, Event::CardDrawn { player, .. } if *player == PlayerId(0)),
+        )
+        .expect("a mulligan redraws a hand");
+    assert!(
+        shuffle_pos < redraw_pos,
+        "shuffle must happen before redraw"
+    );
+}
+
+#[test]
+fn second_mulligan_draws_six() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::Mulligan {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::Mulligan {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    assert_eq!(game.hand(PlayerId(0)).len(), 6);
+}
+
+#[test]
+fn mulligan_to_one_auto_keeps() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    for _ in 0..7 {
+        game.submit(Intent::Mulligan {
+            player: PlayerId(0),
+        })
+        .unwrap();
+    }
+    assert_eq!(game.hand(PlayerId(0)).len(), 1);
+    assert!(game.hand_kept(PlayerId(0)));
+    assert_eq!(game.mulligans_taken(PlayerId(0)), 7);
+    assert!(
+        game.submit(Intent::Mulligan {
+            player: PlayerId(0),
+        })
+        .is_err()
+    );
+}
+
+#[test]
+fn all_keeps_begin_first_turn() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::KeepHand {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    assert!(game.mulliganing());
+    let events = game
+        .submit(Intent::KeepHand {
+            player: PlayerId(1),
+        })
+        .unwrap();
+    assert!(!game.mulliganing());
+    assert!(events.iter().any(|e| matches!(e, Event::MulligansFinished)));
+    assert!(events.iter().any(|e| matches!(
+        e,
+        Event::StepBegan {
+            step: Step::Upkeep,
+            ..
+        }
+    )));
+}
+
+#[test]
+fn simultaneous_keeps_ignore_priority() {
+    let mut game = Game::with_players(3, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::KeepHand {
+        player: PlayerId(2),
+    })
+    .unwrap();
+    game.submit(Intent::KeepHand {
+        player: PlayerId(0),
+    })
+    .unwrap();
+    game.submit(Intent::KeepHand {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    assert!(!game.mulliganing());
+}
+
+#[test]
+fn concede_after_other_player_kept_finishes_mulligans() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+    game.submit(Intent::KeepHand {
+        player: PlayerId(1),
+    })
+    .unwrap();
+    assert!(game.mulliganing());
+
+    let events = game
+        .submit(Intent::Concede {
+            player: PlayerId(0),
+        })
+        .unwrap();
+
+    assert!(game.has_lost(PlayerId(0)));
+    assert!(!game.mulliganing());
+    assert!(
+        events
+            .iter()
+            .any(|event| matches!(event, Event::MulligansFinished))
+    );
+}
+
+#[test]
+fn pass_priority_rejects_while_mulliganing() {
+    let mut game = Game::with_players(2, 1);
+    deal_opening(&mut game, 40);
+
+    assert_eq!(
+        game.submit(Intent::PassPriority {
+            player: PlayerId(0),
+        }),
+        Err(Reject::Mulliganing)
+    );
 }
 
 #[test]
@@ -13355,6 +13540,86 @@ fn the_same_seed_shuffles_a_library_identically() {
         draw_order(42),
         "a fixed seed must reproduce the same shuffle",
     );
+}
+
+#[test]
+fn the_same_master_seed_and_iteration_shuffles_identically() {
+    let deck = [
+        card("Grizzly Bear"),
+        card("Shock"),
+        card("Grizzly Bear"),
+        card("Shock"),
+        card("Grizzly Bear"),
+    ];
+    let order = |seed: u64| {
+        let mut game = Game::with_players(2, seed);
+        game.stack_library(PlayerId(0), &deck);
+        game.shuffle(PlayerId(0));
+        (0..deck.len())
+            .flat_map(|_| game.draw_card(PlayerId(0)))
+            .filter_map(|e| match e {
+                Event::CardDrawn { card, .. } => Some(card.name),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(order(42), order(42));
+}
+
+#[test]
+fn different_players_get_independent_shuffle_streams() {
+    let deck = [
+        card("Grizzly Bear"),
+        card("Shock"),
+        card("Island"),
+        card("Mountain"),
+        card("Forest"),
+    ];
+    let mut game = Game::with_players(2, 99);
+    game.stack_library(PlayerId(0), &deck);
+    game.stack_library(PlayerId(1), &deck);
+    game.shuffle(PlayerId(0));
+    game.shuffle(PlayerId(1));
+    let top0 = match game
+        .draw_card(PlayerId(0))
+        .into_iter()
+        .find_map(|e| match e {
+            Event::CardDrawn { card, .. } => Some(card.name),
+            _ => None,
+        }) {
+        Some(n) => n,
+        None => panic!("expected draw"),
+    };
+    // Re-deal identical libraries and only shuffle P1 first — P0's first shuffle must match
+    // the previous P0 order, proving P1's op did not consume P0's stream.
+    let mut game2 = Game::with_players(2, 99);
+    game2.stack_library(PlayerId(0), &deck);
+    game2.stack_library(PlayerId(1), &deck);
+    game2.shuffle(PlayerId(1));
+    game2.shuffle(PlayerId(0));
+    let top0_b = match game2
+        .draw_card(PlayerId(0))
+        .into_iter()
+        .find_map(|e| match e {
+            Event::CardDrawn { card, .. } => Some(card.name),
+            _ => None,
+        }) {
+        Some(n) => n,
+        None => panic!("expected draw"),
+    };
+    assert_eq!(top0, top0_b);
+}
+
+#[test]
+fn gen_index_stays_in_range() {
+    use engine::rng::OpRng;
+    let mut rng = OpRng::from_seed(0xDEAD_BEEF);
+    for upper in [1usize, 2, 7, 99] {
+        for _ in 0..200 {
+            let i = rng.gen_index(upper);
+            assert!(i < upper);
+        }
+    }
 }
 
 #[test]
@@ -38403,6 +38668,20 @@ fn furygale_flocking_creates_two_tokens_per_opponent_each_forced_at_that_opponen
 // ── Choose an opponent at random, must attack (CR 508.1a — Ruhan of the Fomori) ──────
 
 #[test]
+fn random_opponent_pick_is_stable_for_same_iteration() {
+    // Derive-per-op RNG: the same master seed and seat sequence must pick the same opponent
+    // every replay — locks attribution to the controller's op stream, not a shared legacy stream.
+    let pick = |seed: u64| {
+        let mut game = Game::with_players(3, seed);
+        game.spawn_on_battlefield(PlayerId(0), card("Ruhan of the Fomori"));
+        advance_until(&mut game, |g| g.current_step() == Step::DeclareAttackers);
+        game.required_attacks(PlayerId(0))[0].1
+    };
+    assert_eq!(pick(42), pick(42));
+    assert_eq!(pick(99), pick(99));
+}
+
+#[test]
 fn ruhan_attacks_a_random_opponent_each_combat() {
     // "At the beginning of combat on your turn, choose an opponent at random. Ruhan attacks that
     // player this combat if able." The opponent is picked by the injected RNG, then enforced the
@@ -52676,24 +52955,24 @@ fn exile_random_from_graveyard_may_play_picks_a_graveyard_card_deterministically
         "the other two graveyard cards are untouched"
     );
 
-    // Determinism: seed 7's first `next_u64() % 3` picks index 0 (Forest) — locks the pick to
-    // the injected PRNG so replay stays reproducible for a fixed seed.
+    // Determinism: seed 7's derive-per-op stream for P0 iteration 0 picks index 2 (Mountain) —
+    // locks the pick to the controller-attributed PRNG so replay stays reproducible for a fixed seed.
     assert_eq!(
-        game.zone_of(forest),
+        game.zone_of(mountain),
         Zone::Exile,
-        "seed 7 deterministically picks the first graveyard card"
+        "seed 7 deterministically picks the third graveyard card"
     );
+    assert_eq!(game.zone_of(forest), Zone::Graveyard);
     assert_eq!(game.zone_of(island), Zone::Graveyard);
-    assert_eq!(game.zone_of(mountain), Zone::Graveyard);
 
     // The exiled card carries impulse-play permission this turn (CR "you may play it").
-    let exiled_forest = game.current_id(forest);
+    let exiled_mountain = game.current_id(mountain);
     game.submit(Intent::PlayLand {
         player: PlayerId(0),
-        object: exiled_forest,
+        object: exiled_mountain,
     })
     .expect("the randomly-exiled card is playable from exile this turn");
-    assert_eq!(game.zone_of(exiled_forest), Zone::Battlefield);
+    assert_eq!(game.zone_of(exiled_mountain), Zone::Battlefield);
 }
 
 #[test]
@@ -66076,39 +66355,49 @@ fn creative_technique_bottoms_rest_in_prng_order() {
     // library before any of this is revealed, so which lands end up as "the rest" is itself
     // seed-dependent — the events themselves are read below rather than the pre-cast stack
     // order, so that's irrelevant to what's being tested here.)
-    let mut game = TestGame {
-        game: Game::with_seed(1),
+    //
+    // Library shuffles now use derive-per-op streams; dig bottoming still uses the legacy stream
+    // until Task 2 — pick the first seed that reveals ≥2 lands and reorders the bottom pile.
+    let deck = [
+        card("Forest"),
+        card("Island"),
+        card("Swamp"),
+        card("Grizzly Bear"), // the lone nonland — the reveal's stop point
+        card("Mountain"),
+    ];
+    let bottom_pile = |seed: u64| -> (Vec<ObjectId>, Vec<ObjectId>) {
+        let mut game = TestGame {
+            game: Game::with_seed(seed),
+        };
+        game.stack_library(PlayerId(0), &deck);
+        let technique = game.spawn_in_hand(PlayerId(0), card("Creative Technique"));
+        game.cast(technique).submit();
+        decline_demonstrate(&mut game);
+        let resolved = resolve_top_of_stack_events(&mut game);
+        let mut revealed: Vec<ObjectId> = resolved
+            .iter()
+            .filter_map(|e| match e {
+                Event::RevealedTopOfLibrary { card, .. } => Some(*card),
+                _ => None,
+            })
+            .collect();
+        revealed.pop();
+        let bottomed: Vec<ObjectId> = resolved
+            .iter()
+            .filter_map(|e| match e {
+                Event::PutOnBottomOfLibrary { card, .. } => Some(*card),
+                _ => None,
+            })
+            .collect();
+        (revealed, bottomed)
     };
-    game.stack_library(
-        PlayerId(0),
-        &[
-            card("Forest"),
-            card("Island"),
-            card("Swamp"),
-            card("Grizzly Bear"), // the lone nonland — the reveal's stop point
-            card("Mountain"),
-        ],
-    );
-    let technique = game.spawn_in_hand(PlayerId(0), card("Creative Technique"));
-    game.cast(technique).submit();
-    decline_demonstrate(&mut game);
-    let resolved = resolve_top_of_stack_events(&mut game);
-
-    let mut revealed: Vec<ObjectId> = resolved
-        .iter()
-        .filter_map(|e| match e {
-            Event::RevealedTopOfLibrary { card, .. } => Some(*card),
-            _ => None,
+    let seed = (0..256u64)
+        .find(|&seed| {
+            let (revealed, bottomed) = bottom_pile(seed);
+            revealed.len() >= 2 && bottomed != revealed
         })
-        .collect();
-    revealed.pop(); // drop the hit itself — only the lands revealed ahead of it are "the rest"
-    let bottomed: Vec<ObjectId> = resolved
-        .iter()
-        .filter_map(|e| match e {
-            Event::PutOnBottomOfLibrary { card, .. } => Some(*card),
-            _ => None,
-        })
-        .collect();
+        .expect("at least one seed reveals two lands and reorders the bottom pile");
+    let (revealed, bottomed) = bottom_pile(seed);
     assert_eq!(
         revealed.len(),
         bottomed.len(),
@@ -66116,11 +66405,11 @@ fn creative_technique_bottoms_rest_in_prng_order() {
     );
     assert!(
         revealed.len() >= 2,
-        "seed 0 must reveal at least two lands before the hit for this test to mean anything"
+        "seed {seed} must reveal at least two lands before the hit for this test to mean anything"
     );
     assert_ne!(
         bottomed, revealed,
-        "seed 1's Fisher-Yates reorders the bottomed pile away from reveal order"
+        "seed {seed}'s Fisher-Yates reorders the bottomed pile away from reveal order"
     );
     let mut sorted_bottomed = bottomed.clone();
     sorted_bottomed.sort();
@@ -66132,19 +66421,19 @@ fn creative_technique_bottoms_rest_in_prng_order() {
     );
 
     // Control: a different seed produces a different shuffled order for the identical setup.
+    let control_seed = (0..256u64)
+        .find(|&s| {
+            if s == seed {
+                return false;
+            }
+            let (_, control) = bottom_pile(s);
+            !control.is_empty() && control != bottomed
+        })
+        .expect("at least one other seed bottom-reorders differently");
     let mut control = TestGame {
-        game: Game::with_seed(16),
+        game: Game::with_seed(control_seed),
     };
-    control.stack_library(
-        PlayerId(0),
-        &[
-            card("Forest"),
-            card("Island"),
-            card("Swamp"),
-            card("Grizzly Bear"),
-            card("Mountain"),
-        ],
-    );
+    control.stack_library(PlayerId(0), &deck);
     let technique = control.spawn_in_hand(PlayerId(0), card("Creative Technique"));
     control.cast(technique).submit();
     decline_demonstrate(&mut control);
@@ -66159,7 +66448,7 @@ fn creative_technique_bottoms_rest_in_prng_order() {
     assert_ne!(
         control_bottomed.len(),
         0,
-        "seed 16 must also reveal at least one land before the hit for this test to mean anything"
+        "seed {control_seed} must also reveal at least one land before the hit for this test to mean anything"
     );
     assert_ne!(
         control_bottomed, bottomed,

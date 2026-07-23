@@ -5,6 +5,7 @@ use tonic::{Request, Status};
 
 use super::*;
 use crate::db;
+use crate::decks::keep_all_hands;
 use crate::test_support::seat_deck;
 
 async fn test_state() -> AppState {
@@ -266,6 +267,7 @@ async fn tables_seed_and_game_submit_intent_round_trip() {
         .expect("seed")
         .into_inner();
     assert_eq!(resp.table_id, "grpc-tbl");
+    keep_table_hands(&state, "grpc-tbl");
 
     let game_svc = game_svc::GameSvc::new(state.clone());
     let envelope = map::intent_envelope_to_pb(schema::IntentEnvelope {
@@ -381,7 +383,15 @@ async fn seed_two_player_table(state: &AppState, table_id: &str) -> (i64, String
         ))
         .await
         .expect("seed");
+    keep_table_hands(state, table_id);
     (host_id, host_token)
+}
+
+fn keep_table_hands(state: &AppState, table_id: &str) {
+    let mut reg = crate::lock(&state.reg);
+    let table = reg.get_mut(table_id).expect("seeded table exists");
+    let game = table.game.as_mut().expect("seeded table has a game");
+    keep_all_hands(game);
 }
 
 /// Pull the next decoded `StreamFrame` off a live `Game.Stream` response, bounded so a stalled

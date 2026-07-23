@@ -1331,10 +1331,22 @@ export function updateBoard(
     case "HandActionHovered":
       return [{ ...model, hoverActionId: message.actionId }, []];
     case "PrimaryClicked":
+      if (fold.state?.mulliganing) return [model, []];
       return primaryClickModel(model, fold, tableId);
     case "PassClicked": {
       if (fold.state == null) return [model, []];
       return [model, boardIntentSubmit(tableId, { kind: "pass_priority", player: fold.state.viewer })];
+    }
+    case "KeepHandClicked": {
+      if (fold.state == null) return [model, []];
+      return [model, boardIntentSubmit(tableId, { kind: "keep_hand", player: fold.state.viewer })];
+    }
+    case "MulliganClicked": {
+      if (fold.state == null) return [model, []];
+      if (!(fold.state.players.find((p) => p.player === fold.state?.viewer)?.can_mulligan ?? false)) {
+        return [model, []];
+      }
+      return [model, boardIntentSubmit(tableId, { kind: "mulligan", player: fold.state.viewer })];
     }
     case "StackYieldArmed": {
       if (tableId == null) return [model, []];
@@ -1756,10 +1768,13 @@ export function updateBoard(
       return [model, []];
     // ── Global keyboard shortcuts ─────────────────────────────────────────────
     case "KeyboardSpacePressed":
+      // Opening mulligans own the chrome — don't pass/confirm via Space.
+      if (fold.state?.mulliganing) return [model, []];
       return primaryClickModel(model, fold, tableId);
     case "KeyboardEnterPressed": {
       const state = fold.state;
       if (state == null) return [model, []];
+      if (state.mulliganing) return [model, []];
       const me = state.viewer;
       const active = state.active_player;
       // Enter toggles End Turn when it's the viewer's turn (and stack is empty), or
