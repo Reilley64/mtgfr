@@ -647,6 +647,25 @@ export function clickDamageAssign(
   return next;
 }
 
+export type DistributeBucket = "to_hand" | "to_bottom" | "to_exile_may_play";
+
+const DISTRIBUTE_BUCKET_ORDER: readonly DistributeBucket[] = ["to_hand", "to_bottom", "to_exile_may_play"];
+
+/** Next lane for a distribute_top card click; null clears the card back to the pool. */
+export function nextDistributeBucket(
+  current: DistributeBucket | null,
+  counts: Readonly<Record<DistributeBucket, number>>,
+  caps: Readonly<Record<DistributeBucket, number>>,
+): DistributeBucket | null {
+  const start = current == null ? 0 : DISTRIBUTE_BUCKET_ORDER.indexOf(current) + 1;
+  for (let i = start; i < DISTRIBUTE_BUCKET_ORDER.length; i++) {
+    const bucket = DISTRIBUTE_BUCKET_ORDER[i];
+    if (bucket == null) continue;
+    if (counts[bucket] < caps[bucket]) return bucket;
+  }
+  return null;
+}
+
 export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIntent {
   const player = pc.player;
   return Match.value(answer).pipe(

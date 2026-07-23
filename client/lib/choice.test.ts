@@ -10,6 +10,7 @@ import {
   damageAssignReady,
   declineAnswer,
   FORMULATOR_FOR_KIND,
+  nextDistributeBucket,
   type PromptDraft,
 } from "~/choice";
 import type { ObjectView, PendingChoiceView, VisibleState, WireIntent, WireModeChoice } from "~/wire/types";
@@ -237,6 +238,31 @@ describe("clickDamageAssign", () => {
 
   test("no-op when the clicked blocker already holds all assigned damage", () => {
     expect(clickDamageAssign({ 4: 4, 5: 0 }, 4, 4, false)).toEqual({ 4: 4, 5: 0 });
+  });
+});
+
+describe("nextDistributeBucket", () => {
+  const caps = { to_hand: 1, to_bottom: 1, to_exile_may_play: 1 };
+
+  test("cycles unassigned into the first bucket with room", () => {
+    expect(nextDistributeBucket(null, { to_hand: 0, to_bottom: 0, to_exile_may_play: 0 }, caps)).toBe("to_hand");
+    expect(nextDistributeBucket(null, { to_hand: 1, to_bottom: 0, to_exile_may_play: 0 }, caps)).toBe("to_bottom");
+  });
+
+  test("cycles through buckets then clears", () => {
+    expect(nextDistributeBucket("to_hand", { to_hand: 1, to_bottom: 0, to_exile_may_play: 0 }, caps)).toBe("to_bottom");
+    expect(nextDistributeBucket("to_bottom", { to_hand: 1, to_bottom: 1, to_exile_may_play: 0 }, caps)).toBe(
+      "to_exile_may_play",
+    );
+    expect(nextDistributeBucket("to_exile_may_play", { to_hand: 1, to_bottom: 1, to_exile_may_play: 1 }, caps)).toBe(
+      null,
+    );
+  });
+
+  test("skips full buckets when cycling", () => {
+    expect(nextDistributeBucket("to_hand", { to_hand: 1, to_bottom: 1, to_exile_may_play: 0 }, caps)).toBe(
+      "to_exile_may_play",
+    );
   });
 });
 

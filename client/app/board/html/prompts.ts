@@ -16,10 +16,12 @@ import {
   cardPickReady,
   choiceIntent,
   chooseTargetIsCardPick,
+  type DistributeBucket,
   damageAssignReady,
   declineAnswer,
   FORMULATOR_FOR_KIND,
   initPromptDraft,
+  nextDistributeBucket,
 } from "~/choice";
 import { costPipPlate } from "~/costPips";
 import { filterOptionLabels } from "~/optionFilter";
@@ -1418,68 +1420,133 @@ function partitionPrompt(
     ]);
   }
 
-  const currentBucket = (id: number): string | null => {
-    for (const [bucket, ids] of Object.entries(buckets)) {
-      if (ids.includes(id)) return bucket;
-    }
-    return null;
-  };
+  return distributeTopLanesPrompt(pending, board, state, tableId);
+}
+
+function distributeTopLanesPrompt(
+  pending: Extract<PendingChoiceView, { kind: "distribute_top" }>,
+  board: BoardModel,
+  state: VisibleState,
+  tableId: string | null,
+): Html {
+  const draft = board.promptDraft ?? initPromptDraft(pending, state);
+  const buckets = draft.kind === "partition" ? draft.buckets : {};
   const toHand = buckets.to_hand ?? [];
   const toBottom = buckets.to_bottom ?? [];
   const toExile = buckets.to_exile_may_play ?? [];
+  const assigned = new Set([...toHand, ...toBottom, ...toExile]);
+  const pool = pending.items.filter((it) => !assigned.has(it.id));
+  const byId = new Map(pending.items.map((it) => [it.id, it]));
+  const caps = {
+    to_hand: pending.to_hand,
+    to_bottom: pending.to_bottom,
+    to_exile_may_play: pending.to_exile_may_play,
+  };
+  const counts = {
+    to_hand: toHand.length,
+    to_bottom: toBottom.length,
+    to_exile_may_play: toExile.length,
+  };
   const ready =
     toHand.length === pending.to_hand &&
     toBottom.length === pending.to_bottom &&
     toExile.length === pending.to_exile_may_play &&
     toHand.length + toBottom.length + toExile.length === pending.items.length;
 
-  const bucketButton = (
-    itemId: number,
-    bucket: "to_hand" | "to_bottom" | "to_exile_may_play",
-    label: string,
-    active: boolean,
-  ): Html =>
-    h.button(
+  const currentBucket = (id: number): DistributeBucket | null => {
+    if (toHand.includes(id)) return "to_hand";
+    if (toBottom.includes(id)) return "to_bottom";
+    if (toExile.includes(id)) return "to_exile_may_play";
+    return null;
+  };
+
+  const laneCard = (item: (typeof pending.items)[number]): Html => {
+    const current = currentBucket(item.id);
+    const next = nextDistributeBucket(current, counts, caps);
+    const clickBucket = next ?? current;
+    const print = choiceItemPrint(item, state);
+    const face = print
+      ? cardArt(h, {
+          print,
+          size: "large",
+          alt: "",
+          className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
+        })
+      : h.div(
+          [
+            h.Class(
+              "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
+            ),
+          ],
+          [item.label],
+        );
+    if (clickBucket == null || tableId == null) {
+      return h.div(
+        [
+          h.DataAttribute("testid", `prompt-card-${item.id}`),
+          h.Class("relative rounded-[9px] border-4 border-transparent p-0"),
+        ],
+        [face],
+      );
+    }
+    return h.button(
       [
         h.Type("button"),
-        h.DataAttribute("testid", `prompt-partition-${itemId}-${bucket}`),
-        h.Disabled(tableId == null),
-        h.OnClick(PromptPartitionSet({ id: itemId, bucket })),
+        h.DataAttribute("testid", `prompt-card-${item.id}`),
+        h.AriaLabel(item.label),
+        h.OnClick(PromptPartitionSet({ id: item.id, bucket: clickBucket })),
         h.Class(
-          [
-            "rounded-hud px-2 py-1 text-caption",
-            active ? "bg-llanowar/25 text-snow" : "bg-glass text-mist",
-            tableId == null ? "cursor-not-allowed opacity-50" : "hover:bg-glass-dim",
-          ].join(" "),
+          "relative cursor-pointer rounded-[9px] border-4 border-transparent p-0 transition-transform duration-150 ease-out hover:-translate-y-1",
         ),
       ],
-      [label],
+      [face],
     );
+  };
+
+  const lane = (testId: string, label: string, ids: readonly number[], cap: number): Html => {
+    const items = ids.flatMap((id) => {
+      const item = byId.get(id);
+      return item != null ? [item] : [];
+    });
+    return h.div(
+      [h.DataAttribute("testid", testId), h.Class("flex flex-col gap-2")],
+      [
+        h.div([h.Class("text-caption font-semibold text-seafoam")], [`${label} (${ids.length} / ${cap})`]),
+        h.div(
+          [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+          items.length > 0
+            ? items.map((item) => laneCard(item))
+            : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+        ),
+      ],
+    );
+  };
 
   return frame("pending-choice", "Distribute the revealed cards", [
     h.div(
-      [h.Class("text-caption text-mist")],
+      [h.DataAttribute("testid", "prompt-distribute-lanes"), h.Class("flex flex-col gap-3")],
       [
-        `Hand ${toHand.length}/${pending.to_hand} · Bottom ${toBottom.length}/${pending.to_bottom} · Exile ${toExile.length}/${pending.to_exile_may_play}`,
+        h.div(
+          [h.Class("shrink-0 text-caption text-mist")],
+          ["Click a card to cycle Hand → Bottom → Exile (skips full lanes)."],
+        ),
+        h.div(
+          [h.DataAttribute("testid", "prompt-distribute-pool"), h.Class("flex flex-col gap-2")],
+          [
+            h.div([h.Class("text-caption font-semibold text-seafoam")], [`Revealed (${pool.length})`]),
+            h.div(
+              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+              pool.length > 0
+                ? pool.map((item) => laneCard(item))
+                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+            ),
+          ],
+        ),
+        lane("prompt-distribute-hand", "Hand", toHand, pending.to_hand),
+        lane("prompt-distribute-bottom", "Bottom of library", toBottom, pending.to_bottom),
+        lane("prompt-distribute-exile", "Exile (may play)", toExile, pending.to_exile_may_play),
       ],
     ),
-    ...pending.items.map((item) => {
-      const assigned = currentBucket(item.id);
-      return h.div(
-        [h.Class("flex items-center justify-between gap-3 rounded-panel bg-glass p-2")],
-        [
-          h.span([h.Class("truncate text-body")], [item.label]),
-          h.div(
-            [h.Class("flex gap-2")],
-            [
-              bucketButton(item.id, "to_hand", "Hand", assigned === "to_hand"),
-              bucketButton(item.id, "to_bottom", "Bottom", assigned === "to_bottom"),
-              bucketButton(item.id, "to_exile_may_play", "Exile", assigned === "to_exile_may_play"),
-            ],
-          ),
-        ],
-      );
-    }),
     h.div([h.Class("flex gap-2")], [submitButton("Distribute", !ready), cancelButton()]),
   ]);
 }
