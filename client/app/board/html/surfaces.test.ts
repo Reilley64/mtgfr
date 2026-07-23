@@ -1336,6 +1336,30 @@ test("pending gy aim shows coach when exile_from_graveyard cards share a pile", 
   );
 });
 
+test("pending revealed aim shows coach for opponent_chooses_revealed_to_graveyard", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "opponent_chooses_revealed_to_graveyard",
+          player: 0,
+          source: 1,
+          items: [
+            { id: 21, label: "Island" },
+            { id: 22, label: "Swamp" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-revealed-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-21")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-22")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("pending gy aim shows coach for choose_target when cards share a pile", () => {
   const gy = card(8, {
     name: "Reanimate me",

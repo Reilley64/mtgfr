@@ -1066,12 +1066,82 @@ function pendingHandAimCoach(
   }
 }
 
+function revealedToGraveyardAim(
+  pending: Extract<PendingChoiceView, { kind: "opponent_chooses_revealed_to_graveyard" }>,
+  state: VisibleState,
+  tableId: string | null,
+): Html {
+  const cards = pending.items.map((item) => {
+    const print = choiceItemPrint(item, state);
+    return h.button(
+      [
+        h.Type("button"),
+        h.DataAttribute("testid", `prompt-card-${item.id}`),
+        h.AriaLabel(item.label),
+        h.OnClick(
+          PendingChoiceAnswered({
+            intent: choiceIntent(pending, { kind: "choose_exiled", choice: item.id }),
+          }),
+        ),
+        h.Disabled(tableId == null),
+        h.Class(
+          "relative cursor-pointer rounded-[9px] border-4 border-transparent p-0 transition-transform duration-150 ease-out hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-50",
+        ),
+      ],
+      [
+        print
+          ? cardArt(h, {
+              print,
+              size: "large",
+              alt: "",
+              className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
+            })
+          : h.div(
+              [
+                h.Class(
+                  "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
+                ),
+              ],
+              [item.label],
+            ),
+      ],
+    );
+  });
+  const decline = declineAnswer(pending);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-revealed-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center")], ["Click a revealed card to put into the graveyard"]),
+      h.div([h.Class("flex max-w-[min(90vw,720px)] flex-wrap justify-center gap-2")], cards),
+      decline != null
+        ? answerButton(
+            pending,
+            "prompt-decline",
+            cardPickDeclineLabel(pending) ?? "Choose none",
+            decline,
+            false,
+            tableId == null,
+          )
+        : null,
+    ].filter((v): v is Html => v !== null),
+  );
+}
+
 function cardPickForKind(
   pending: PendingChoiceView,
   state: VisibleState,
   board: BoardModel,
   tableId: string | null,
 ): Html | null {
+  if (pending.kind === "opponent_chooses_revealed_to_graveyard") {
+    return revealedToGraveyardAim(pending, state, tableId);
+  }
   const gyPick = pendingGraveyardPickIds(pending, state);
   if (gyPick != null) {
     const kind = pending.kind;

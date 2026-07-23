@@ -542,6 +542,35 @@ test("choose_dredge submit emits chosen dredger", () => {
   });
 });
 
+test("opponent_chooses_revealed_to_graveyard card click submits choose_exiled", () => {
+  const s = state({
+    pending_choice: {
+      kind: "opponent_chooses_revealed_to_graveyard",
+      player: 0,
+      source: 1,
+      items: [
+        { id: 21, label: "Island" },
+        { id: 22, label: "Swamp" },
+      ],
+    },
+  });
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-card-21")));
+  expect(intents).toEqual([{ kind: "choose_exiled_with_card", player: 0, choice: 21 }]);
+});
+
+test("opponent_chooses_revealed_to_graveyard Choose none declines", () => {
+  const s = state({
+    pending_choice: {
+      kind: "opponent_chooses_revealed_to_graveyard",
+      player: 0,
+      source: 1,
+      items: [{ id: 21, label: "Island" }],
+    },
+  });
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-decline")));
+  expect(intents).toEqual([{ kind: "choose_exiled_with_card", player: 0, choice: null }]);
+});
+
 test("assign_combat_damage submit when damage sums to power", () => {
   const attacker: ObjectView = {
     controller: 0,
