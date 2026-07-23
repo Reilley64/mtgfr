@@ -82,7 +82,7 @@ export function boardOverlays(
     pileOverlayView(board.pileExpand, state),
     resultOverlayView(state, board.resultSeen),
     // Inspect dock is topmost (layer 10) — above pile, concede dialog, and result.
-    inspectView(board.inspectPin, board.inspectCard, board.inspectFace, inspectObject),
+    inspectView(board.inspectPin, board.inspectCard, board.inspectFace, inspectObject, state.players, state.objects),
   ];
 
   return h.div(

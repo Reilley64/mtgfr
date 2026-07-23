@@ -6,7 +6,7 @@ import type { ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { SubmitIntent } from "../game/intents";
 import { worldToScreen } from "./geometry/camera";
-import { layout } from "./geometry/layout";
+import { avatarPos, layout } from "./geometry/layout";
 import type { Message } from "./messages";
 import {
   AltDown,
@@ -144,6 +144,46 @@ test("AltDown pins the face-up card under the cursor (no click)", () => {
     expect.objectContaining({ name: "Sol Ring", objectId: 7, cardId: "card-1", print: "print-1" }),
   );
   expect((cmds[0] as { name?: string } | undefined)?.name).toBe("FetchInspectCard");
+});
+
+test("AltDown over a life orb pins that player for commander-damage inspect", () => {
+  const fold = gameFold({
+    players: [
+      {
+        commander_tax: 0,
+        hand_count: 7,
+        library_count: 80,
+        life: 26,
+        lost: false,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+        player: 0,
+        username: "Alice",
+        commander_damage: [
+          { from: 1, amount: 14 },
+          { from: 2, amount: 7 },
+        ],
+      },
+      {
+        commander_tax: 0,
+        hand_count: 7,
+        library_count: 80,
+        life: 40,
+        lost: false,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+        player: 1,
+        username: "Bob",
+      },
+    ],
+  });
+  const avatar = avatarPos(0, 0, 2);
+  const screen = worldToScreen(initialBoardModel().camera, avatar.x, avatar.y);
+
+  let model = initialBoardModel();
+  [model] = updateBoard(model, BoardPointerMove({ x: screen.x, y: screen.y }), fold, "table-1");
+  const [pinned, cmds] = updateBoard(model, AltDown(), fold, "table-1");
+
+  expect(pinned.inspectPin).toEqual({ name: "Alice", prepared: false, playerSeat: 0 });
+  expect(cmds).toEqual([]);
 });
 
 test("pointer move pins the face-up board card while Alt is already held", () => {

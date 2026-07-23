@@ -22,8 +22,7 @@ import type {
   WireTarget,
 } from "~/wire/types";
 import { clampX } from "~/xCost";
-import type { InspectPin } from "../../lib/inspect";
-import { inspectPinChanged, pinFromCard } from "../../lib/inspect";
+import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "../../lib/inspect";
 import { humanReason } from "../../lib/reject";
 import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../../lib/tableAudio";
 import type { GameFoldState } from "../game/fold";
@@ -789,7 +788,7 @@ function releaseStickyHandInspect(model: BoardModel): BoardModel {
   return { ...model, handInspectHover: null };
 }
 
-/** Pin from hand/stack aux hover, else the face-up canvas card under `model.cursor`. */
+/** Pin from hand/stack aux hover, else face-up card under cursor, else life-orb seat. */
 function tryPinInspect(model: BoardModel, fold: GameFoldState): InspectPin | null {
   const aux = model.handInspectHover ?? model.stackInspectHover;
   if (aux != null) {
@@ -801,21 +800,25 @@ function tryPinInspect(model: BoardModel, fold: GameFoldState): InspectPin | nul
     };
   }
   const hit = cardAt(fold, model, model.cursor.x, model.cursor.y);
-  if (hit == null) return null;
-  return pinFromCard(
-    true,
-    {
-      name: hit.name,
-      faceDown: hit.faceDown,
-      prepared: hit.prepared,
-      id: hit.id,
-      zone: hit.zone,
-      pile: hit.pile,
-      cardId: hit.cardId || undefined,
-      print: hit.print || undefined,
-    },
-    ZONE.Battlefield,
-  );
+  if (hit != null) {
+    return pinFromCard(
+      true,
+      {
+        name: hit.name,
+        faceDown: hit.faceDown,
+        prepared: hit.prepared,
+        id: hit.id,
+        zone: hit.zone,
+        pile: hit.pile,
+        cardId: hit.cardId || undefined,
+        print: hit.print || undefined,
+      },
+      ZONE.Battlefield,
+    );
+  }
+  const seat = avatarSeatAt(fold, model, model.cursor.x, model.cursor.y);
+  const player = fold.state?.players.find((p) => p.player === seat) ?? null;
+  return pinFromPlayer(true, seat, player);
 }
 
 function objectByAction(fold: GameFoldState, action: ActionView): ObjectView | null {

@@ -489,6 +489,64 @@ test("inspect overlay shows marked damage for a damaged battlefield permanent", 
   );
 });
 
+test("inspect overlay shows per-commander damage breakdown for a player pin", () => {
+  const atraxa = card(9, {
+    owner: 1,
+    controller: 1,
+    is_commander: true,
+    name: "Atraxa, Praetors' Voice",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 4, toughness: 4 },
+    power: 4,
+    toughness: 4,
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        inspectPin: { name: "Alice", prepared: false, playerSeat: 0 },
+      },
+      gameState({
+        players: [
+          player(0, {
+            username: "Alice",
+            life: 26,
+            commander_damage: [
+              { from: 1, amount: 14 },
+              { from: 2, amount: 7 },
+            ],
+          }),
+          player(1, { username: "Bob" }),
+          player(2, { username: "Carol" }),
+        ],
+        objects: [atraxa],
+      }),
+    ),
+    Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.testId("inspect-player-life")).toHaveText("Life: 26"),
+    Scene.expect(Scene.testId("inspect-commander-damage")).toExist(),
+    Scene.expect(Scene.testId("inspect-commander-damage-1")).toHaveText("Bob — Atraxa, Praetors' Voice: 14 / 21"),
+    Scene.expect(Scene.testId("inspect-commander-damage-2")).toHaveText("Carol: 7 / 21"),
+  );
+});
+
+test("inspect overlay omits commander-damage block when the seat has none", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        inspectPin: { name: "Alice", prepared: false, playerSeat: 0 },
+      },
+      gameState({
+        players: [player(0, { username: "Alice", life: 40 }), player(1, { username: "Bob" })],
+      }),
+    ),
+    Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.testId("inspect-player-life")).toHaveText("Life: 40"),
+    Scene.expect(Scene.testId("inspect-commander-damage")).toBeAbsent(),
+  );
+});
+
 test("pile overlay renders with its close control", () => {
   const graveyardCard = card(60, {
     owner: 1,
