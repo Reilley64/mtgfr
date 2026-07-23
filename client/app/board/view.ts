@@ -10,7 +10,7 @@ import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap
 import { sceneShapes } from "./canvas/scene";
 import { worldToScreen } from "./geometry/camera";
 import { layout, STEP } from "./geometry/layout";
-import { autoTapPreviewIds } from "./html/actions";
+import { autoTapPreviewIds, paymentPreviewAction } from "./html/actions";
 import { MountBoardAudio, MountHintAutoHide } from "./html/audio-mount";
 import { MountBoardKeyboard } from "./html/keyboard-mount";
 import { manaTrayView } from "./html/mana-tray";
@@ -75,8 +75,8 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
 
   const cards = layout(state, state.viewer);
   const overlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
-  const hoveredAction = state.actions?.find((action) => action.id === model.board.hoverActionId) ?? null;
-  const paymentPreviewIds = autoTapPreviewIds(hoveredAction);
+  const previewAction = paymentPreviewAction(model.board, state.actions);
+  const paymentPreviewIds = autoTapPreviewIds(previewAction);
   const combatDrag =
     model.board.pointer.kind === "drag"
       ? {

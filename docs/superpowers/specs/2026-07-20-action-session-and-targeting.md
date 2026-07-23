@@ -16,6 +16,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - As a player casting a targeted spell, I aim an arrow at legal targets on the board.
 - As an active combat player, I can stage attackers or blockers before confirming.
 - As a player, I can cancel local staging without answering or corrupting an engine pending choice.
+- As a player aiming or paying for a cast/activate, I keep seeing which lands will auto-tap until I submit or cancel.
 
 ## Behavior
 
@@ -28,6 +29,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - `CancelActionClicked` and Escape call `cancelAll`, clearing staged action, X prompt, modal cast, cost picks, radial, stack expand, pile expand, prompt draft, hand drag, and reject text.
 - `session.cancel` means local pre-submit cancellation only; engine `pending_choice` is handled by `PromptHost`.
 - Payment is engine-side. The client previews `auto_tap`, but it does not tap lands or solve mana costs before submit.
+- Auto-tap preview prefers the in-flight session action (`staged`, choose-X, modal, sacrifice/discard/gy-exile pick) over `hoverActionId`, so payment glyphs stay visible after hand/radial hover clears on activate.
 
 ## Implementation Decisions
 
@@ -38,6 +40,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 
 ## Testing Decisions
 
+- Unit tests cover `paymentPreviewAction` preferring staged/X session actions over hover.
 - Action execution tests cover cost pipeline ordering, X prompt creation, target staging, and submit intent shape.
 - Targeting tests cover arrow versus picker target modes.
 - Combat staging tests cover attacker/blocker drops, required attack merge, and step-transition clearing.

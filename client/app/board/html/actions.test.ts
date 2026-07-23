@@ -1,6 +1,37 @@
 import { describe, expect, it } from "vitest";
 import type { ActionView } from "~/wire/types";
-import { autoTapPreviewIds, barZoneAura } from "./actions";
+import { autoTapPreviewIds, barZoneAura, paymentPreviewAction } from "./actions";
+
+const castAction = {
+  id: 3,
+  kind: "cast",
+  label: "Cast",
+  needs_target: true,
+  section: "hand",
+  auto_tap: [10, 11],
+} as ActionView;
+
+const hoverAction = {
+  id: 9,
+  kind: "cast",
+  label: "Other",
+  needs_target: false,
+  section: "hand",
+  auto_tap: [20],
+} as ActionView;
+
+function board(overrides: Partial<Parameters<typeof paymentPreviewAction>[0]> = {}) {
+  return {
+    hoverActionId: null as number | null,
+    staged: null,
+    xPrompt: null,
+    modalCast: null,
+    sacrificePick: null,
+    discardPick: null,
+    gyExilePick: null,
+    ...overrides,
+  };
+}
 
 describe("autoTapPreviewIds", () => {
   it("returns an empty set when no action is hovered", () => {
@@ -8,15 +39,23 @@ describe("autoTapPreviewIds", () => {
   });
 
   it("returns auto_tap object ids from the live action", () => {
-    const action = {
-      id: 3,
-      kind: "cast",
-      label: "Cast",
-      needs_target: false,
-      section: "hand",
-      auto_tap: [10, 11],
-    } as ActionView;
-    expect(autoTapPreviewIds(action)).toEqual(new Set([10, 11]));
+    expect(autoTapPreviewIds(castAction)).toEqual(new Set([10, 11]));
+  });
+});
+
+describe("paymentPreviewAction", () => {
+  it("falls back to the hovered action when no session is open", () => {
+    expect(paymentPreviewAction(board({ hoverActionId: 9 }), [hoverAction])).toBe(hoverAction);
+  });
+
+  it("prefers the staged action over hover so auto_tap survives activate", () => {
+    expect(paymentPreviewAction(board({ hoverActionId: 9, staged: { action: castAction } }), [hoverAction])).toBe(
+      castAction,
+    );
+  });
+
+  it("prefers the choose-X prompt action while the stepper is open", () => {
+    expect(paymentPreviewAction(board({ xPrompt: { action: castAction } }), [hoverAction])).toBe(castAction);
   });
 });
 

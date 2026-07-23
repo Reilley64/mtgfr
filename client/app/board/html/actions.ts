@@ -69,3 +69,30 @@ export function handExtras(actions: readonly ActionView[]): ActionView[] {
 export function autoTapPreviewIds(action: ActionView | null | undefined): ReadonlySet<number> {
   return new Set(action?.auto_tap ?? []);
 }
+
+type PaymentPreviewBoard = {
+  hoverActionId: number | null;
+  staged: { action: ActionView } | null;
+  xPrompt: { action: ActionView } | null;
+  modalCast: { action: ActionView } | null;
+  sacrificePick: { action: ActionView } | null;
+  discardPick: { action: ActionView } | null;
+  gyExilePick: { action: ActionView } | null;
+};
+
+/**
+ * Action whose `auto_tap` should paint while aiming or paying.
+ * Session actions win over hover so the preview survives HandActionActivated clearing hover.
+ */
+export function paymentPreviewAction(
+  board: PaymentPreviewBoard,
+  actions: ReadonlyArray<ActionView> | null | undefined,
+): ActionView | null {
+  if (board.staged != null) return board.staged.action;
+  if (board.xPrompt != null) return board.xPrompt.action;
+  if (board.modalCast != null) return board.modalCast.action;
+  if (board.sacrificePick != null) return board.sacrificePick.action;
+  if (board.discardPick != null) return board.discardPick.action;
+  if (board.gyExilePick != null) return board.gyExilePick.action;
+  return actions?.find((action) => action.id === board.hoverActionId) ?? null;
+}

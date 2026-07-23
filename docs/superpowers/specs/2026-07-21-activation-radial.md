@@ -28,7 +28,7 @@ Render a continuous SVG donut radial around the selected battlefield permanent. 
 - Pointer-down on a wedge stores `radialPress.armed`.
 - Pointer-up on the same wedge commits; pointer-up on a different wedge cancels that press; pointer-up on the scrim dismisses.
 - Disabled wedges remain visible but do not commit.
-- Hovering an action wedge updates `hoverActionId` for auto-tap preview.
+- Hovering an action wedge updates `hoverActionId` for auto-tap preview when no local session action is open; staged/X/modal/cost-pick sessions keep preview from their action instead (see action-session-and-targeting).
 - Payment is engine-side (`settle_payment` / `auto_tap` preview only); the client must not pre-tap lands before submit.
 - Legal listed activates with payable costs must commit without a spurious `CannotActivate` / “That ability isn't available” toast; true illegals stay disabled.
 
