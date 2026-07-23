@@ -74,6 +74,11 @@ client-mana-oracle-check:
     cd client && node scripts/gen-mana-oracle.mjs --check
 
 [group('client')]
+[doc("Fail if tokens.generated.* are stale vs design.tokens.json")]
+client-tokens-check:
+    cd client && bun run gen:tokens:check
+
+[group('client')]
 [doc("Run client tests")]
 client-test:
     cd client && bun run test
@@ -116,7 +121,7 @@ server-check: server-format server-lint
     just server-test
 
 [doc("Client CI check (codegen + format + lint + typecheck + vitest)")]
-client-check: server-codegen client-format client-lint client-typecheck client-test
+client-check: server-codegen client-tokens-check client-format client-lint client-typecheck client-test
 
 [doc("Run all checks")]
 check: server-codegen format lint typecheck test

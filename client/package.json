@@ -3,7 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "gen": "PATH=\"$PWD/node_modules/.bin:$PATH\" bunx --bun buf generate --template ../proto/buf.gen.yaml ../proto",
+    "gen:wire": "PATH=\"$PWD/node_modules/.bin:$PATH\" bunx --bun buf generate --template ../proto/buf.gen.yaml ../proto",
+    "gen:tokens": "node scripts/gen-tokens.mjs",
+    "gen:tokens:check": "node scripts/gen-tokens.mjs --check",
+    "gen": "bun run gen:wire && bun run gen:tokens",
     "predev": "bun run gen",
     "dev": "vite",
     "prebuild": "bun run gen",
