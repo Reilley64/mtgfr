@@ -2,6 +2,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { choiceDraftKey } from "~/choice";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
@@ -225,6 +226,56 @@ test("assign_combat_damage submit when damage sums to power", () => {
     kind: "assign_damage",
     player: 0,
     assignment: [{ blocker: 20, amount: 4 }],
+  });
+});
+
+test("trample assign_combat_damage submit allows under-assign overflow to defender", () => {
+  const attacker: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 9,
+    is_commander: false,
+    keywords: ["trample"],
+    kind: { kind: "creature", power: 5, toughness: 5 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
+    marked_damage: 0,
+    name: "Trampler",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 5,
+    print: "",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 5,
+    zone: 2,
+  };
+  const pending = {
+    kind: "assign_combat_damage" as const,
+    player: 0,
+    source: 9,
+    items: [
+      { id: 20, label: "Bear" },
+      { id: 21, label: "Elf" },
+    ],
+  };
+  const s = state({
+    objects: [attacker],
+    pending_choice: pending,
+  });
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pendingChoiceKey: choiceDraftKey(pending),
+    promptDraft: { kind: "damage", amounts: { 20: 2, 21: 0 } },
+  };
+  const [, commands] = updateBoard(board, PromptSubmitted(), gameFold(s), "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "assign_damage",
+    player: 0,
+    assignment: [
+      { blocker: 20, amount: 2 },
+      { blocker: 21, amount: 0 },
+    ],
   });
 });
 

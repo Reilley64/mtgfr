@@ -248,9 +248,12 @@ function damageAssignPrompt(
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const amounts = draft.kind === "damage" ? draft.amounts : {};
-  const power = state.objects.find((o) => o.id === pending.source)?.power ?? 0;
+  const source = state.objects.find((o) => o.id === pending.source);
+  const power = source?.power ?? 0;
+  const trample = source?.keywords?.includes("trample") ?? false;
   const assigned = Object.values(amounts).reduce((s, n) => s + n, 0);
   const ready = damageAssignReady(pending, draft, state);
+  const overflow = trample ? Math.max(0, power - assigned) : 0;
   const rows = pending.items.map((it) =>
     h.div(
       [h.Class("flex items-center gap-2")],
@@ -270,9 +273,18 @@ function damageAssignPrompt(
   return frame("pending-choice", `Divide ${power} damage among blockers`, [
     ...rows,
     h.div(
-      [h.Class(assigned === power ? "text-assign-clover" : "text-caution-amber")],
+      [
+        h.DataAttribute("testid", "prompt-damage-assigned"),
+        h.Class(ready ? "text-assign-clover" : "text-caution-amber"),
+      ],
       [`assigned ${assigned} / ${power}`],
     ),
+    trample
+      ? h.div(
+          [h.DataAttribute("testid", "prompt-damage-overflow"), h.Class("text-body text-mist")],
+          [`to defender: ${overflow}`],
+        )
+      : null,
     submitButton("Assign", !ready),
   ]);
 }

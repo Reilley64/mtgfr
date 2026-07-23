@@ -15,6 +15,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As the awaited player, I get the correct prompt for the engine choice I must answer.
 - As a non-deciding player or spectator, I do not see interactive prompt buttons for someone else’s choice.
 - As a player choosing X, I adjust a clamped stepper within server `min_x`…`max_x` and see what I will pay before confirming.
+- As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
 - As a player choosing cards, prompts use the same cached card art behavior as hand and stack.
 
 ## Behavior
@@ -33,6 +34,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Wire fields `min_x`, `max_x`, and `x_cost` / `x_symbols` remain the server-authoritative contract; the client does not invent affordability.
 - When `x_symbols` is omitted, `costWithChosenX` treats it as `1` if `has_x`, else `0`.
 - When `maxX < minX`, `clampX` returns `minX` (client stays safe if the server sends a bad range).
+- `assign_combat_damage` readiness (`damageAssignReady`) mirrors the engine: non-trample requires the sum of non-negative blocker amounts to equal the attacker’s power; trample requires `0 ≤ sum ≤ power` (overflow trampling is automatic).
+- Trample’s prompt shows `assigned N / power` plus a `to defender: R` overflow line (`prompt-damage-overflow`). Non-trample prompts omit that line.
 
 ## Implementation Decisions
 
@@ -49,6 +52,8 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression.
 - X prompt Scene tests assert stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
 - Unit tests cover `clampX`, `costWithChosenX` (multi-symbol X and colored pips), and `costText` for large generics.
+- Unit tests cover `damageAssignReady` for exact-sum non-trample and under-assign / over-assign / negative trample cases.
+- Scene tests cover trample overflow copy and Assign enabled when under-assigned.
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 
 ## Out of Scope
