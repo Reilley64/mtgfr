@@ -1248,6 +1248,30 @@ test("pending discard aim shows coach when cards are in hand", () => {
   );
 });
 
+test("pending put-from-hand aim shows coach when cards are in hand", () => {
+  const forest = card(20, {
+    name: "Forest",
+    zone: ZONE.Hand,
+    kind: { kind: "land", colors: [0, 0, 0, 0, 1] },
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [forest],
+        pending_choice: {
+          kind: "put_land_from_hand",
+          player: 0,
+          items: [{ id: 20, label: "Forest" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-hand-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("full board view mounts the bitmap layer", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),

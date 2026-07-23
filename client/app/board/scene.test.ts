@@ -22,6 +22,7 @@ import { boardOverlays } from "./html/overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
 import {
   BoardPointerUp,
+  DiscardChosen,
   HandActionActivated,
   KeyboardEnterPressed,
   KeyboardSpacePressed,
@@ -1314,6 +1315,99 @@ test("HandActionActivated during pending discard submits discard intent", () => 
     kind: "discard",
     player: 0,
     cards: [11],
+  });
+});
+
+test("HandActionActivated during put_land_from_hand submits put_land intent", () => {
+  const forest = creature(20, 0, {
+    name: "Forest",
+    zone: ZONE.Hand,
+    kind: { kind: "land", colors: [0, 0, 0, 0, 1] },
+  });
+  const landAction: ActionView = {
+    id: 60,
+    kind: "play_land",
+    label: "Play Forest",
+    needs_target: false,
+    object: 20,
+    section: "hand",
+  };
+  const gameFold = fold(
+    state({
+      objects: [forest],
+      actions: [landAction],
+      pending_choice: {
+        kind: "put_land_from_hand",
+        player: 0,
+        items: [{ id: 20, label: "Forest" }],
+      },
+      can_act: true,
+    }),
+  );
+  const [, commands] = updateBoard(
+    initialBoardModel(),
+    HandActionActivated({ action: landAction, x: 400, y: 200 }),
+    gameFold,
+    "T1",
+  );
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "put_land_from_hand",
+    player: 0,
+    choice: 20,
+  });
+});
+
+test("DiscardChosen during put_creature_from_hand submits put_creature intent", () => {
+  const elf = creature(21, 0, { name: "Elf", zone: ZONE.Hand });
+  const gameFold = fold(
+    state({
+      objects: [elf],
+      actions: [],
+      pending_choice: {
+        kind: "put_creature_from_hand",
+        player: 0,
+        items: [{ id: 21, label: "Elf" }],
+      },
+      can_act: true,
+    }),
+  );
+  const [, commands] = updateBoard(initialBoardModel(), DiscardChosen({ ids: [21] }), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "put_creature_from_hand",
+    player: 0,
+    choice: 21,
+  });
+});
+
+test("Enter confirms put_from_hand_on_top when hand-bar draft is ready", () => {
+  const a = creature(51, 0, { name: "A", zone: ZONE.Hand });
+  const b = creature(52, 0, { name: "B", zone: ZONE.Hand });
+  const pending = {
+    kind: "put_from_hand_on_top" as const,
+    player: 0,
+    count: 2,
+    items: [
+      { id: 51, label: "A" },
+      { id: 52, label: "B" },
+    ],
+  };
+  const gameFold = fold(
+    state({
+      objects: [a, b],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "card-pick", picked: [51, 52], filter: "" },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardEnterPressed(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "put_from_hand_on_top",
+    player: 0,
+    cards: [51, 52],
   });
 });
 

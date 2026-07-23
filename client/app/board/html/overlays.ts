@@ -6,7 +6,7 @@ import { mulliganChrome } from "~/mulligan";
 import { isActivePlayer, SPECTATOR_VIEWER } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { LogLine } from "../../game/fold";
-import { pendingDiscardHandIds } from "../action/targeting";
+import { pendingHandPickIds } from "../action/targeting";
 import type { Message } from "../messages";
 import type { BoardModel } from "../submodel";
 import { activationRadialView } from "./activation-radial";
@@ -82,7 +82,7 @@ export function boardOverlays(
           handDrag: board.handDrag,
           discardCostIds: (() => {
             if (board.discardPick != null) return new Set(board.discardPick.action.discard_choices ?? []);
-            const pending = pendingDiscardHandIds(state.pending_choice, state);
+            const pending = pendingHandPickIds(state.pending_choice, state);
             return pending != null ? pending : null;
           })(),
         })

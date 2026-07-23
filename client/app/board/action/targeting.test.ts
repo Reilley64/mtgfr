@@ -6,8 +6,10 @@ import { emptyCostPicks } from "./execution";
 import {
   pendingDamageAssignBlockers,
   pendingDamageAssignOverlay,
+  pendingDiscardHandIds,
   pendingDivideSpellObjectIndexes,
   pendingDivideSpellOverlay,
+  pendingHandPickIds,
   pendingPlayerAimOneClick,
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
@@ -436,6 +438,98 @@ describe("sacrificeCostOverlay", () => {
 
   it("is idle when a choice is off the battlefield", () => {
     expect(sacrificeCostObjectIds([55], state([object({ id: 55, zone: ZONE.Graveyard })]))).toBeNull();
+  });
+});
+
+describe("pendingDiscardHandIds", () => {
+  it("returns hand ids for discard when every item is in hand", () => {
+    const ids = pendingDiscardHandIds(
+      {
+        kind: "discard",
+        player: 0,
+        count: 1,
+        items: [{ id: 11, label: "A" }],
+      },
+      state([object({ id: 11, zone: ZONE.Hand })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected discard hand ids");
+    expect([...ids]).toEqual([11]);
+  });
+
+  it("is idle when a discard item is not in hand", () => {
+    expect(
+      pendingDiscardHandIds(
+        {
+          kind: "discard",
+          player: 0,
+          count: 1,
+          items: [{ id: 11, label: "A" }],
+        },
+        state([object({ id: 11, zone: ZONE.Battlefield })]),
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("pendingHandPickIds", () => {
+  it("returns hand ids for put_land_from_hand", () => {
+    const ids = pendingHandPickIds(
+      {
+        kind: "put_land_from_hand",
+        player: 0,
+        items: [{ id: 20, label: "Forest" }],
+      },
+      state([object({ id: 20, zone: ZONE.Hand, name: "Forest" })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected put_land hand ids");
+    expect([...ids]).toEqual([20]);
+  });
+
+  it("returns hand ids for put_creature_from_hand", () => {
+    const ids = pendingHandPickIds(
+      {
+        kind: "put_creature_from_hand",
+        player: 0,
+        items: [{ id: 21, label: "Elf" }],
+      },
+      state([object({ id: 21, zone: ZONE.Hand, name: "Elf" })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected put_creature hand ids");
+    expect([...ids]).toEqual([21]);
+  });
+
+  it("returns hand ids for put_from_hand_on_top", () => {
+    const ids = pendingHandPickIds(
+      {
+        kind: "put_from_hand_on_top",
+        player: 0,
+        count: 2,
+        items: [
+          { id: 51, label: "A" },
+          { id: 52, label: "B" },
+        ],
+      },
+      state([object({ id: 51, zone: ZONE.Hand }), object({ id: 52, zone: ZONE.Hand })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected put_from_hand_on_top hand ids");
+    expect([...ids].sort()).toEqual([51, 52]);
+  });
+
+  it("is idle when a put-from-hand item is not in hand", () => {
+    expect(
+      pendingHandPickIds(
+        {
+          kind: "put_land_from_hand",
+          player: 0,
+          items: [{ id: 20, label: "Forest" }],
+        },
+        state([object({ id: 20, zone: ZONE.Battlefield, name: "Forest" })]),
+      ),
+    ).toBeNull();
   });
 });
 
