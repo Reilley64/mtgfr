@@ -12,6 +12,7 @@ import {
   PromptCardToggled,
   PromptDamageSet,
   PromptNumberSet,
+  PromptStringSet,
   PromptSubmitted,
   XDraftSet,
   XSubmitted,
@@ -639,6 +640,33 @@ test("choose_creature_type prompt emits choose_creature_type intent from UI", ()
     Scene.click(Scene.testId("prompt-string-1")),
   );
   expect(intents).toEqual([{ kind: "choose_creature_type", player: 0, subtype: "Cleric" }]);
+});
+
+test("choose_card_name prompt has placeholder and Names a typed card", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_card_name",
+      player: 0,
+      source: 5,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.placeholder("Card name")).toExist(),
+    Scene.expect(Scene.testId("prompt-name-input")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+  );
+
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptStringSet({ value: "Lightning Bolt" }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_card_name",
+    player: 0,
+    name: "Lightning Bolt",
+  });
 });
 
 test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {

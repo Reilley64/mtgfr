@@ -2,6 +2,7 @@
 //
 // Pending-choice formulators collect answers and route every submission through `choiceIntent`.
 
+import { Option } from "effect";
 import { type Html, html } from "foldkit/html";
 import {
   type AnswerInput,
@@ -1165,14 +1166,22 @@ function stringPickPrompt(
   if (pending.kind === "choose_card_name") {
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const value = draft.kind === "string" ? draft.value : "";
+    const canSubmit = value.trim() !== "" && tableId != null;
     return frame("pending-choice", "Name a card", [
       h.input([
         h.DataAttribute("testid", "prompt-name-input"),
+        h.Placeholder("Card name"),
+        h.Autofocus(true),
+        h.AriaLabel("Card name"),
         h.Value(value),
         h.OnInput((v) => PromptStringSet({ value: v })),
+        h.OnKeyDownPreventDefault((key) => {
+          if (key !== "Enter" || !canSubmit) return Option.none();
+          return Option.some(PromptSubmitted());
+        }),
         h.Class("w-full rounded-hud bg-glass px-3 py-1 text-body text-snow"),
       ]),
-      submitButton("Name", value.trim() === "" || tableId == null),
+      submitButton("Name", !canSubmit),
     ]);
   }
   return frame("pending-choice", "Choose a creature type", [

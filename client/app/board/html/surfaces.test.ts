@@ -607,6 +607,25 @@ test("join-forces mana prompt shows a stepper instead of per-amount buttons", ()
   );
 });
 
+test("choose_card_name prompt shows a Card name placeholder field", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_card_name",
+          player: 0,
+          source: 9,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.placeholder("Card name")).toExist(),
+    Scene.expect(Scene.testId("prompt-name-input")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+  );
+});
+
 test("trample combat damage assign shows overflow to defender and enables Assign under power", () => {
   const attacker = card(9, {
     zone: ZONE.Battlefield,
