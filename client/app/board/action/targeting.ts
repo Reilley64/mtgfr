@@ -131,7 +131,7 @@ export function choiceItemsAsWireTargets(items: ReadonlyArray<{ id: number; play
   );
 }
 
-/** True when this pending choice can be answered with one on-board click (Arena aim). */
+/** True when this pending choice can be answered by aiming on the board (Arena aim). */
 export function pendingBoardTargetMode(
   pc: PendingChoiceView | null | undefined,
   state: VisibleState,
@@ -141,9 +141,9 @@ export function pendingBoardTargetMode(
   if (!("items" in pc) || !Array.isArray(pc.items)) return null;
 
   if (pc.kind === "choose_target") {
-    if (pc.max !== 1) return null;
+    if (pc.max < 1) return null;
   } else if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
-    if (pc.min !== 1 || pc.max !== 1) return null;
+    if (pc.max < 1) return null;
   } else {
     return null;
   }
@@ -153,7 +153,16 @@ export function pendingBoardTargetMode(
   return mode;
 }
 
-/** Aim overlay for a one-click on-board pending target; idle when the modal picker should ask. */
+/** One legal click completes the answer; otherwise clicks accumulate until Confirm. */
+export function pendingTargetOneClick(pc: PendingChoiceView): boolean {
+  if (pc.kind === "choose_target") return pc.max === 1;
+  if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
+    return pc.min === 1 && pc.max === 1;
+  }
+  return false;
+}
+
+/** Aim overlay for on-board pending targets; idle when the modal picker should ask. */
 export function pendingTargetingOverlay(
   pc: PendingChoiceView | null | undefined,
   state: VisibleState,

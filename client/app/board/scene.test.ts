@@ -24,6 +24,7 @@ import {
   HandActionActivated,
   type Message,
   PendingChoiceAnswered,
+  PromptSubmitted,
   RadialOptionPicked,
   StackDwellChanged,
 } from "./messages";
@@ -369,6 +370,46 @@ test("pointer up on on-board pending choose_target submits choose_targets", () =
     kind: "choose_targets",
     player: 0,
     targets: [{ kind: "object", id: 22 }],
+  });
+});
+
+test("pointer up on multi on-board choose_target accumulates picks until Confirm", () => {
+  const a = creature(1, 1, { name: "A" });
+  const b = creature(2, 1, { name: "B" });
+  const pending = {
+    kind: "choose_target" as const,
+    label: "Target creatures",
+    max: 2,
+    optional: false,
+    player: 0,
+    source: 1,
+    items: [
+      { id: 1, label: "A" },
+      { id: 2, label: "B" },
+    ],
+  };
+  const gameFold = fold(state({ objects: [a, b], pending_choice: pending }));
+  let board: BoardModel = {
+    ...initialBoardModel(),
+    pointer: { kind: "drag", card: renderStub(1), x: 100, y: 100, moved: false },
+  };
+  [board] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(board.promptDraft).toEqual({ kind: "card-pick", picked: [1], filter: "" });
+  board = {
+    ...board,
+    pointer: { kind: "drag", card: renderStub(2), x: 100, y: 100, moved: false },
+  };
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [1, 2], filter: "" });
+  const [, submitCmds] = updateBoard(next, PromptSubmitted(), gameFold, "T1");
+  expect(intentFromCommand(submitCmds[0])).toEqual({
+    kind: "choose_targets",
+    player: 0,
+    targets: [
+      { kind: "object", id: 1 },
+      { kind: "object", id: 2 },
+    ],
   });
 });
 

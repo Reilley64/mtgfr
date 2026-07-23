@@ -588,6 +588,9 @@ export function cardPickReady(pc: PendingChoiceView, picked: number[]): boolean 
     if (picked.length > pc.max) return false;
     return pc.optional || picked.length >= 1;
   }
+  if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
+    return picked.length >= pc.min && picked.length <= pc.max;
+  }
   const required = cardPickRequiredCount(pc);
   if (required != null) return picked.length === required;
   if (pc.kind === "select_from_top") return picked.length <= pc.up_to;

@@ -696,6 +696,47 @@ test("on-board choose_target aims instead of showing a card grid", () => {
   );
 });
 
+test("multi on-board choose_target shows Confirm count chrome", () => {
+  const a = card(1, {
+    name: "A",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  const b = card(2, {
+    name: "B",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  overlayScene(
+    overlayModel(
+      { ...initialBoardModel(), promptDraft: { kind: "card-pick", picked: [1], filter: "" } },
+      gameState({
+        objects: [a, b],
+        pending_choice: {
+          kind: "choose_target",
+          label: "Target creatures",
+          max: 2,
+          optional: false,
+          player: 0,
+          source: 1,
+          items: [
+            { id: 1, label: "A" },
+            { id: 2, label: "B" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-target-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-target-count")).toHaveText("1 / 2 selected"),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("optional on-board choose_target aim shows Decline", () => {
   const bear = card(7, {
     name: "Bear",
