@@ -353,7 +353,7 @@ test("select_from_top Take lane click emits select_from_top intent", () => {
   });
 });
 
-test("distribute_top shows Hand Bottom Exile lanes", () => {
+test("distribute_top shows docked Hand Bottom Exile lanes", () => {
   const s = state({
     pending_choice: {
       kind: "distribute_top",
@@ -372,6 +372,8 @@ test("distribute_top shows Hand Bottom Exile lanes", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-distribute-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-distribute-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-distribute-pool")).toExist(),
     Scene.expect(Scene.testId("prompt-distribute-hand")).toExist(),

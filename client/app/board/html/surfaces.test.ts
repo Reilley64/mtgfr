@@ -842,6 +842,32 @@ test("order_triggers prompt shows drag rows, click-to-place, and arrow controls"
   );
 });
 
+test("distribute_top aim shows docked Hand Bottom Exile lanes", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "distribute_top",
+          player: 0,
+          to_hand: 1,
+          to_bottom: 1,
+          to_exile_may_play: 1,
+          items: [
+            { id: 1, label: "A" },
+            { id: 2, label: "B" },
+            { id: 3, label: "C" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-distribute-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-distribute-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
 test("select_from_top aim shows docked Take and Bottom lanes", () => {
   overlayScene(
     overlayModel(
