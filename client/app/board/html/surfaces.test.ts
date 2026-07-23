@@ -1277,6 +1277,36 @@ test("pending exile aim shows coach when choose_exiled cards share a pile", () =
   );
 });
 
+test("pending gy aim shows coach for cumulative upkeep when cards share a pile", () => {
+  const gy = card(8, {
+    name: "Fodder",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "pay_cumulative_upkeep_or_sacrifice",
+          player: 0,
+          source: 1,
+          count: 1,
+          items: [{ id: 8, label: "Fodder" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.testId("pile-card-8")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("pending gy aim shows coach when exile_from_graveyard cards share a pile", () => {
   const gy = card(8, {
     name: "Fodder",

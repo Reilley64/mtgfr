@@ -184,7 +184,11 @@ export function answerFromBoardTarget(pc: PendingChoiceView, target: WireTarget)
     if (target.kind === "player") return { kind: "target", id: 0, player: target.player };
     return { kind: "targets", ids: [target.id] };
   }
-  if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
+  if (
+    pc.kind === "choose_spell_targets" ||
+    pc.kind === "choose_ability_targets" ||
+    pc.kind === "choose_activation_cost_targets"
+  ) {
     if (target.kind !== "object") return null;
     return { kind: "targets", ids: [target.id] };
   }
@@ -575,6 +579,7 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "put_from_hand_on_top":
     case "pay_cumulative_upkeep_or_sacrifice":
     case "choose_exiled_to_cast_free":
+    case "choose_activation_cost_targets":
       return pc.count;
     case "choose_own_sacrifices":
       return pc.count;
