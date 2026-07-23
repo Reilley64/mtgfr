@@ -1639,15 +1639,25 @@ function payCostPrompt(
   const title = "label" in pending ? pending.label : pendingChoiceTitle(pending);
   const payLabel = `Pay ${costText(pending.cost)}`;
   const declineLabel = payCostDeclineLabel(pending.kind);
-  return frame("pending-choice", title, [
-    h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      [
-        answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null),
-        answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
-      ],
-    ),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-pay-cost-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        [
+          answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null),
+          answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
+        ],
+      ),
+    ],
+  );
 }
 
 function modeListPrompt(

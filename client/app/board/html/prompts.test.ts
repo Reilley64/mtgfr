@@ -818,6 +818,8 @@ test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
   );

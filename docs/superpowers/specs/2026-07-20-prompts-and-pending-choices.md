@@ -84,7 +84,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `order_triggers` uses docked `pending-order-aim`; rows support HTML5 drag reorder (`Draggable` / `OnDrop` → `PromptOrderRowClicked`, `OnDragEnd` → `PromptOrderDragEnded`), click-to-place (`orderPickPos`), and ↑↓ (`PromptOrderMoved`); list lives under `prompt-order-list`. Submit still emits `choose_order`.
 - Enter or Space submits a ready lane / order draft (`order_triggers`, `scry`, `surveil`, `select_from_top`, `distribute_top`, `partition_revealed`) the same way the Done / Confirm button does (`trySubmitReadyPendingDraft`).
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
-- Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
+- Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) use docked `pending-pay-cost-aim`; they label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
 - `pay_any_amount_of_mana` (join forces) uses a clamped stepper over `[0, max]` with draft on `promptDraft` (`PromptNumberSet`); Confirm submits via `PromptSubmitted`. Per-N buttons (`prompt-number-N`) are not used for this kind. `may_draw_up_to` / `trade_secrets_caster_draw` keep one-click number buttons.
 
 ## Implementation Decisions

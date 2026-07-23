@@ -959,6 +959,27 @@ test("select_from_top aim shows docked Take and Bottom lanes", () => {
   );
 });
 
+test("pay_cost aim shows docked Pay and decline", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "pay_cost",
+          cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
+          label: "Create a Fungus Beast",
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
+  );
+});
+
 test("may_yes_no aim shows docked Yes and No", () => {
   overlayScene(
     overlayModel(
