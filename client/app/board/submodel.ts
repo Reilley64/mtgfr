@@ -26,7 +26,14 @@ import { type InspectPin, inspectPinChanged, pinFromCard, pinFromPlayer } from "
 import { humanReason } from "../../lib/reject";
 import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../../lib/tableAudio";
 import type { GameFoldState } from "../game/fold";
-import { FetchInspectCard, SetStackDwell, SetTurnYield, SetYield, SubmitIntent } from "../game/intents";
+import {
+  FetchInspectCard,
+  SearchCardNames,
+  SetStackDwell,
+  SetTurnYield,
+  SetYield,
+  SubmitIntent,
+} from "../game/intents";
 import type { RpcClient } from "../resources";
 import {
   buildTakeActionIntent,
@@ -165,6 +172,8 @@ export type BoardModel = {
   pendingChoiceKey: string | null;
   /** In-progress answer for interactive pending-choice forms. */
   promptDraft: PromptDraft | null;
+  /** Catalog name suggestions for `choose_card_name` (query must match current draft). */
+  cardNameSuggestions: { query: string; names: ReadonlyArray<string> } | null;
   /** Window-captured hand-bar drag ghost (null when idle). */
   handDrag: HandDragState | null;
   /** Hovered hand/radial action id — resolves `auto_tap` from the live action list. */
@@ -218,6 +227,7 @@ export function initialBoardModel(): BoardModel {
     lastPriorityHolder: null,
     pendingChoiceKey: null,
     promptDraft: null,
+    cardNameSuggestions: null,
     handDrag: null,
     hoverActionId: null,
   };
@@ -288,6 +298,7 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
     ...model,
     pendingChoiceKey: key,
     promptDraft: pc != null && gameState != null ? initPromptDraft(pc, gameState) : null,
+    cardNameSuggestions: null,
   };
 }
 
@@ -1119,6 +1130,7 @@ function cancelAll(model: BoardModel): BoardModel {
     stackExpand: false,
     pendingChoiceKey: null,
     promptDraft: null,
+    cardNameSuggestions: null,
     handDrag: null,
     hoverActionId: null,
   };
@@ -1601,7 +1613,22 @@ export function updateBoard(
     case "PromptStringSet": {
       const synced = syncPromptDraft(model, fold);
       if (synced.promptDraft?.kind !== "string") return [synced, []];
-      return [{ ...synced, promptDraft: { kind: "string", value: message.value } }, []];
+      const next = { ...synced, promptDraft: { kind: "string" as const, value: message.value } };
+      const pc = fold.state?.pending_choice;
+      if (pc?.kind !== "choose_card_name") {
+        return [{ ...next, cardNameSuggestions: null }, []];
+      }
+      const q = message.value.trim();
+      if (q.length < 2) {
+        return [{ ...next, cardNameSuggestions: null }, []];
+      }
+      return [next, [SearchCardNames({ query: q }) as unknown as BoardCmd]];
+    }
+    case "CardNameSuggestionsFetched": {
+      const draft = model.promptDraft;
+      if (draft?.kind !== "string") return [model, []];
+      if (draft.value.trim() !== message.query.trim()) return [model, []];
+      return [{ ...model, cardNameSuggestions: { query: message.query, names: message.names } }, []];
     }
     case "PromptCardFilterSet": {
       const synced = syncPromptDraft(model, fold);

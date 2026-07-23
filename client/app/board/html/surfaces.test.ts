@@ -736,6 +736,28 @@ test("choose_card_name prompt shows a Card name placeholder field", () => {
   );
 });
 
+test("choose_card_name prompt lists matching catalog suggestions", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "string", value: "Sol" },
+        cardNameSuggestions: { query: "Sol", names: ["Sol Ring", "Sol Talisman"] },
+      },
+      gameState({
+        pending_choice: {
+          kind: "choose_card_name",
+          player: 0,
+          source: 9,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("prompt-name-suggestions")).toExist(),
+    Scene.expect(Scene.testId("prompt-name-suggestion-0")).toHaveText("Sol Ring"),
+    Scene.expect(Scene.testId("prompt-name-suggestion-1")).toHaveText("Sol Talisman"),
+  );
+});
+
 test("trample combat damage assign shows overflow to defender and enables Assign under power", () => {
   const attacker = card(9, {
     zone: ZONE.Battlefield,

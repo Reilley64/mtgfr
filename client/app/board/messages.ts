@@ -176,6 +176,11 @@ export const InspectAuxHovered = m("InspectAuxHovered", {
 });
 /** Catalog lookup returned for the current inspect pin. */
 export const InspectCardFetched = m("InspectCardFetched", { card: CatalogCard });
+/** Catalog name suggestions for `choose_card_name` typeahead. */
+export const CardNameSuggestionsFetched = m("CardNameSuggestionsFetched", {
+  query: S.String,
+  names: S.Array(S.String),
+});
 /** Toggle DFC face in the inspect overlay. */
 export const InspectFlipFace = m("InspectFlipFace");
 /** Dismiss inspect overlay (Escape / backdrop click). */
@@ -275,6 +280,7 @@ export const Message = S.Union([
   AltUp,
   InspectAuxHovered,
   InspectCardFetched,
+  CardNameSuggestionsFetched,
   InspectFlipFace,
   InspectDismissed,
   PileExpanded,

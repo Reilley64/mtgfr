@@ -18,7 +18,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player choosing X, I adjust a clamped stepper within server `min_x`…`max_x` and see what I will pay before confirming.
 - As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
 - As a player dividing combat damage, spell damage, or counters, I adjust each share with a clamped stepper instead of typing numbers.
-- As a player naming a card, I get a focused text field with a Card name placeholder and can confirm with Name or Enter.
+- As a player naming a card, I get a focused text field with a Card name placeholder, optional catalog typeahead suggestions, and can confirm with Name or Enter.
 - As a player searching their library, I can filter faces by name while title, filter, and Choose stay pinned above a scrolling card grid.
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
@@ -45,7 +45,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `assign_combat_damage` readiness (`damageAssignReady`) mirrors the engine: non-trample requires the sum of non-negative blocker amounts to equal the attacker’s power; trample requires `0 ≤ sum ≤ power` (overflow trampling is automatic).
 - Trample’s prompt shows `assigned N / power` plus a `to defender: R` overflow line (`prompt-damage-overflow`). Non-trample prompts omit that line.
 - Combat damage, divide-spell damage, and divide-counters rows use Min/−/value/+/Max steppers (`prompt-damage-{id}-*`) capped at the attacker’s power or the division total — no raw `type=number` fields.
-- `choose_card_name` uses an autofocused text field (`prompt-name-input`) with placeholder “Card name”; Enter submits when the trimmed name is non-empty (same gate as the Name button).
+- `choose_card_name` uses an autofocused text field (`prompt-name-input`) with placeholder “Card name”; Enter submits when the trimmed name is non-empty (same gate as the Name button). Typing ≥2 characters fires `SearchCardNames`; matching results render under `prompt-name-suggestions` (click fills the draft). Catalog suggestions assist only — free-typed / nonexistent names remain submittable.
 - `search_library` card picks are searchable: autofocused `pick-card-filter` (“Filter by name…”), face dedupe by label, filtered grid inside `pick-card-scroll`, with title / filter / Choose+Fail-to-find pinned (dialog `overflow-hidden`, scroll only on the card strip). Other card-pick kinds stay unfiltered.
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
 - Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
@@ -75,6 +75,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
 - Scene/unit tests cover join-forces mana stepper (no per-N buttons; draft submit).
 - Scene/unit tests cover library-search filter, face dedupe, and pinned scroll chrome (`pick-card-filter`, `pick-card-scroll`).
+- Scene tests cover `choose_card_name` typeahead list when suggestions match the draft query.
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 
 ## Out of Scope
