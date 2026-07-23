@@ -8,6 +8,7 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeAll, expect, test } from "vitest";
+import { choiceDraftKey } from "~/choice";
 import { BindCardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
@@ -417,26 +418,23 @@ test("pointer up on multi on-board choose_target accumulates picks until Confirm
 test("Enter confirms multi on-board choose_target when draft is ready", () => {
   const a = creature(1, 1, { name: "A" });
   const b = creature(2, 1, { name: "B" });
-  const gameFold = fold(
-    state({
-      objects: [a, b],
-      pending_choice: {
-        kind: "choose_target",
-        label: "Target creatures",
-        max: 2,
-        optional: false,
-        player: 0,
-        source: 1,
-        items: [
-          { id: 1, label: "A" },
-          { id: 2, label: "B" },
-        ],
-      },
-    }),
-  );
+  const pending = {
+    kind: "choose_target" as const,
+    label: "Target creatures",
+    max: 2,
+    optional: false,
+    player: 0,
+    source: 1,
+    items: [
+      { id: 1, label: "A" },
+      { id: 2, label: "B" },
+    ],
+  };
+  const gameFold = fold(state({ objects: [a, b], pending_choice: pending }));
   const board: BoardModel = {
     ...initialBoardModel(),
     promptDraft: { kind: "card-pick", picked: [1, 2], filter: "" },
+    pendingChoiceKey: choiceDraftKey(pending),
   };
   const [, commands] = updateBoard(board, KeyboardEnterPressed(), gameFold, "T1");
   expect(commands).toHaveLength(1);
