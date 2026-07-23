@@ -842,6 +842,29 @@ test("order_triggers prompt shows drag rows, click-to-place, and arrow controls"
   );
 });
 
+test("partition_revealed aim shows docked Pile A and Pile B lanes", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "partition_revealed",
+          player: 0,
+          source: 9,
+          items: [
+            { id: 1, label: "A" },
+            { id: 2, label: "B" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-partition-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-partition-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
 test("distribute_top aim shows docked Hand Bottom Exile lanes", () => {
   overlayScene(
     overlayModel(
