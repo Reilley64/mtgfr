@@ -28,4 +28,8 @@ describe("costWithChosenX", () => {
     expect(costWithChosenX(base, 4).generic).toBe(4);
     expect(costWithChosenX(base, 4).colored[3]).toBe(1);
   });
+  it("defaults x_symbols to 1 when has_x and x_symbols omitted", () => {
+    const base = { generic: 2, colored: [0, 0, 0, 0, 0], has_x: true };
+    expect(costWithChosenX(base, 3).generic).toBe(5);
+  });
 });

@@ -1424,10 +1424,11 @@ export function updateBoard(
     }
     case "XSubmitted": {
       if (model.xPrompt == null) return [model, []];
-      const { action, target, picks, modes } = model.xPrompt;
+      const { action, target, picks, modes, minX, maxX } = model.xPrompt;
+      const x = clampX(message.x, minX, maxX);
       return [
         { ...model, xPrompt: null },
-        boardIntentSubmit(tableId, takeAction(fold, action, target, message.x, modes, picks)),
+        boardIntentSubmit(tableId, takeAction(fold, action, target, x, modes, picks)),
       ];
     }
     case "SacrificeChosen": {

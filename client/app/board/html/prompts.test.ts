@@ -521,3 +521,55 @@ test("XSubmitted confirms draft X on the cast intent", () => {
   expect(commands.length).toBeGreaterThan(0);
   expect(intentFromCommand(commands[0])).toMatchObject({ x: 2 });
 });
+
+test("XSubmitted clamps out-of-range x before submit", () => {
+  const [, commands] = updateBoard(
+    {
+      ...initialBoardModel(),
+      xPrompt: {
+        action: xAction(),
+        target: null,
+        picks: emptyCostPicks(),
+        modes: [],
+        name: "Comet Storm",
+        minX: 0,
+        maxX: 3,
+        draftX: 3,
+        xCost: xCost(),
+      },
+    },
+    XSubmitted({ x: 99 }),
+    gameFold(state()),
+    "T1",
+  );
+  expect(intentFromCommand(commands[0])).toMatchObject({ x: 3 });
+});
+
+test("choose-X stepper dec updates value and preview via the view", () => {
+  const s = state();
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    xPrompt: {
+      action: xAction(),
+      target: null,
+      picks: emptyCostPicks(),
+      modes: [],
+      name: "Comet Storm",
+      minX: 0,
+      maxX: 3,
+      draftX: 3,
+      xCost: xCost(),
+    },
+  };
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s, board)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("x-prompt-value")).toHaveText("3"),
+    Scene.expect(Scene.testId("x-prompt-inc")).toBeDisabled(),
+    Scene.click(Scene.testId("x-prompt-dec")),
+    Scene.expect(Scene.testId("x-prompt-value")).toHaveText("2"),
+    Scene.expect(Scene.testId("x-prompt-inc")).toBeEnabled(),
+    Scene.expect(Scene.testId("x-prompt-preview")).toContainText("Pay"),
+  );
+});
