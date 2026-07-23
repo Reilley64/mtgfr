@@ -1,0 +1,958 @@
+{
+  "add_mana": {
+    "family": "mana",
+    "mode": "add"
+  },
+  "animate_self_until_end_of_turn": {
+    "family": "pump",
+    "mode": "animate_self_until_end_of_turn"
+  },
+  "anthem_static": {
+    "family": "static",
+    "mode": "anthem"
+  },
+  "arm_combat_damage_watch": {
+    "family": "misc",
+    "mode": "arm_combat_damage_watch"
+  },
+  "attach_minted_aura_to_target": {
+    "family": "zone",
+    "mode": "attach_minted_aura_to_target"
+  },
+  "attach_self_to_entering": {
+    "family": "control",
+    "mode": "attach_self_to_entering"
+  },
+  "attach_self_to_minted_token": {
+    "family": "zone",
+    "mode": "attach_self_to_minted_token"
+  },
+  "attach_self_to_reanimated": {
+    "family": "zone",
+    "mode": "attach_self_to_reanimated"
+  },
+  "attach_triggering_aura_to_minted_token": {
+    "family": "zone",
+    "mode": "attach_triggering_aura_to_minted_token"
+  },
+  "attack_tax": {
+    "family": "static",
+    "mode": "attack_tax"
+  },
+  "attacker_draws_controller_counters": {
+    "family": "counters",
+    "mode": "attacker_draws_controller_counters"
+  },
+  "attacker_loses_life_you_draw": {
+    "family": "life",
+    "mode": "attacker_loses_you_draw"
+  },
+  "attacker_loses_life_you_gain": {
+    "family": "life",
+    "mode": "attacker_loses_you_gain"
+  },
+  "attacking_player_draws": {
+    "family": "draw",
+    "mode": "attacking_player"
+  },
+  "become_copy_of_target_creature_gaining_myriad": {
+    "family": "token",
+    "mode": "become_copy_of_target_creature_gaining_myriad"
+  },
+  "become_prepared": {
+    "family": "misc",
+    "mode": "become_prepared"
+  },
+  "cant_be_attacked_by": {
+    "family": "static",
+    "mode": "cant_be_attacked_by"
+  },
+  "cascade": {
+    "family": "dig",
+    "mode": "cascade"
+  },
+  "cash_out_exiled_with_this": {
+    "family": "dig",
+    "mode": "cash_out_exiled_with_this"
+  },
+  "cast_creature_face_down": {
+    "family": "choice",
+    "mode": "cast_creature_face_down"
+  },
+  "cast_exiled_with_this_free": {
+    "family": "dig",
+    "mode": "cast_exiled_with_this_free"
+  },
+  "cast_x_replacement": {
+    "family": "static",
+    "mode": "cast_x_replacement"
+  },
+  "caster_keeps_one_of_each_type_per_player": {
+    "family": "choice",
+    "mode": "caster_keeps_one_of_each_type_per_player"
+  },
+  "change_target_of_target_spell_or_ability": {
+    "family": "copy",
+    "mode": "change_target_of_target_spell_or_ability"
+  },
+  "choose_color": {
+    "family": "choice",
+    "mode": "choose_color"
+  },
+  "choose_creature_type": {
+    "family": "choice",
+    "mode": "choose_creature_type"
+  },
+  "clash": {
+    "family": "dig",
+    "mode": "clash"
+  },
+  "commander_enters_with_bonus_counters": {
+    "family": "counters",
+    "mode": "commander_enters_with_bonus_counters"
+  },
+  "control_attached": {
+    "family": "static",
+    "mode": "control_attached"
+  },
+  "copy_each_entered_this_turn_token_tapped_attacking": {
+    "family": "token",
+    "mode": "copy_each_entered_this_turn_token_tapped_attacking"
+  },
+  "copy_target_spell": {
+    "family": "copy",
+    "mode": "target_spell"
+  },
+  "copy_this_spell": {
+    "family": "copy",
+    "mode": "this_spell"
+  },
+  "copy_triggering_ability": {
+    "family": "copy",
+    "mode": "copy_triggering_ability"
+  },
+  "copy_triggering_spell": {
+    "family": "copy",
+    "mode": "copy_triggering_spell"
+  },
+  "copy_triggering_spell_for_each_other_creature_you_control": {
+    "family": "copy",
+    "mode": "copy_triggering_spell_for_each_other_creature_you_control"
+  },
+  "councils_dilemma_vote": {
+    "family": "choice",
+    "mode": "councils_dilemma_vote"
+  },
+  "counter_replacement": {
+    "family": "static",
+    "mode": "counter_replacement"
+  },
+  "counter_scaled_attack_tax": {
+    "family": "static",
+    "mode": "counter_scaled_attack_tax"
+  },
+  "counter_target_activated_ability": {
+    "family": "misc",
+    "mode": "counter_target_activated_ability"
+  },
+  "counter_target_spell": {
+    "family": "misc",
+    "mode": "counter_target_spell"
+  },
+  "create_token": {
+    "family": "token",
+    "mode": "create"
+  },
+  "create_token_copy": {
+    "family": "token",
+    "mode": "create_copy"
+  },
+  "create_treasure": {
+    "family": "token",
+    "mode": "create_treasure"
+  },
+  "creatures_you_control_enter_with_counters": {
+    "family": "static",
+    "mode": "creatures_you_control_enter_with_counters"
+  },
+  "damage_each_creature": {
+    "family": "damage",
+    "mode": "each_creature"
+  },
+  "damage_each_other_opponent": {
+    "family": "damage",
+    "mode": "each_other_opponent"
+  },
+  "damage_each_player": {
+    "family": "damage",
+    "mode": "each_player"
+  },
+  "damaging_creature_controller_may_draw": {
+    "family": "choice",
+    "mode": "damaging_creature_controller_may_draw"
+  },
+  "deal_damage": {
+    "family": "damage",
+    "mode": "target"
+  },
+  "deal_damage_to_entering_permanent": {
+    "family": "damage",
+    "mode": "to_entering_permanent"
+  },
+  "deal_damage_to_self": {
+    "family": "damage",
+    "mode": "to_self"
+  },
+  "deal_damage_to_target_controller": {
+    "family": "damage",
+    "mode": "to_target_controller"
+  },
+  "defending_player_sacrifices": {
+    "family": "choice",
+    "mode": "defending_player_sacrifices"
+  },
+  "demonstrate": {
+    "family": "copy",
+    "mode": "demonstrate"
+  },
+  "destroy_all": {
+    "family": "destroy",
+    "mode": "destroy_all"
+  },
+  "destroy_target": {
+    "family": "destroy",
+    "mode": "destroy_target"
+  },
+  "destroy_triggering_damaged_creature": {
+    "family": "destroy",
+    "mode": "destroy_triggering_damaged_creature"
+  },
+  "discard": {
+    "family": "choice",
+    "mode": "discard"
+  },
+  "distribute_top": {
+    "family": "dig",
+    "mode": "distribute_top"
+  },
+  "double_counters": {
+    "family": "counters",
+    "mode": "double_counters"
+  },
+  "double_counters_on_attached_creature": {
+    "family": "counters",
+    "mode": "double_counters_on_attached_creature"
+  },
+  "double_counters_on_target_creatures": {
+    "family": "counters",
+    "mode": "double_counters_on_target_creatures"
+  },
+  "drain_target": {
+    "family": "life",
+    "mode": "drain_target"
+  },
+  "draw_cards": {
+    "family": "draw",
+    "mode": "cards"
+  },
+  "each_draw_step_player_draws": {
+    "family": "draw",
+    "mode": "each_draw_step_player"
+  },
+  "each_opponent_drain": {
+    "family": "life",
+    "mode": "each_opponent_drain"
+  },
+  "each_opponent_loses_life": {
+    "family": "life",
+    "mode": "each_opponent_loses"
+  },
+  "each_other_token_becomes_copy_of_chosen": {
+    "family": "choice",
+    "mode": "each_other_token_becomes_copy_of_chosen"
+  },
+  "each_player_controller_chooses_counter_target": {
+    "family": "choice",
+    "mode": "each_player_controller_chooses_counter_target"
+  },
+  "each_player_creates_fractal_from_exiled_power": {
+    "family": "choice",
+    "mode": "each_player_creates_fractal_from_exiled_power"
+  },
+  "each_player_discards_hand_then_draws": {
+    "family": "choice",
+    "mode": "each_player_discards_hand_then_draws"
+  },
+  "each_player_draws": {
+    "family": "draw",
+    "mode": "each_player"
+  },
+  "each_player_exiles_from_graveyard": {
+    "family": "choice",
+    "mode": "each_player_exiles_from_graveyard"
+  },
+  "each_player_exiles_until_nonland_opponent_picks": {
+    "family": "dig",
+    "mode": "each_player_exiles_until_nonland_opponent_picks"
+  },
+  "each_player_life_becomes_highest": {
+    "family": "life",
+    "mode": "each_player_becomes_highest"
+  },
+  "each_player_names_card_then_reveals_top": {
+    "family": "choice",
+    "mode": "each_player_names_card_then_reveals_top"
+  },
+  "each_player_sacrifices": {
+    "family": "choice",
+    "mode": "each_player_sacrifices"
+  },
+  "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life": {
+    "family": "pump",
+    "mode": "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life"
+  },
+  "enters_with_counters": {
+    "family": "static",
+    "mode": "enters_with_counters"
+  },
+  "equip": {
+    "family": "control",
+    "mode": "equip"
+  },
+  "exchange_all_creatures_until_end_of_turn": {
+    "family": "control",
+    "mode": "exchange_all_creatures_until_end_of_turn"
+  },
+  "exchange_control": {
+    "family": "control",
+    "mode": "exchange_control"
+  },
+  "exile_all": {
+    "family": "destroy",
+    "mode": "exile_all"
+  },
+  "exile_all_graveyards": {
+    "family": "destroy",
+    "mode": "exile_all_graveyards"
+  },
+  "exile_dead_creature_create_copy_with_subtype": {
+    "family": "zone",
+    "mode": "exile_dead_creature_create_copy_with_subtype"
+  },
+  "exile_discarded_with_this": {
+    "family": "mill",
+    "mode": "exile_discarded_with_this"
+  },
+  "exile_from_graveyard_may_play": {
+    "family": "mill",
+    "mode": "exile_from_graveyard_may_play"
+  },
+  "exile_graveyard": {
+    "family": "destroy",
+    "mode": "exile_graveyard"
+  },
+  "exile_graveyard_object_gain_life": {
+    "family": "zone",
+    "mode": "exile_graveyard_object_gain_life"
+  },
+  "exile_object": {
+    "family": "destroy",
+    "mode": "exile_object"
+  },
+  "exile_random_from_graveyard_may_play": {
+    "family": "dig",
+    "mode": "exile_random_from_graveyard_may_play"
+  },
+  "exile_self_on_resolve": {
+    "family": "zone",
+    "mode": "exile_self_on_resolve"
+  },
+  "exile_self_with_time_counters": {
+    "family": "zone",
+    "mode": "exile_self_with_time_counters"
+  },
+  "exile_target": {
+    "family": "destroy",
+    "mode": "exile_target"
+  },
+  "exile_target_from_graveyard_create_token_copy": {
+    "family": "mill",
+    "mode": "exile_target_from_graveyard_create_token_copy"
+  },
+  "exile_target_from_graveyard_with_this": {
+    "family": "mill",
+    "mode": "exile_target_from_graveyard_with_this"
+  },
+  "exile_target_graveyard_card_record_mana_value": {
+    "family": "dig",
+    "mode": "exile_target_graveyard_card_record_mana_value"
+  },
+  "exile_target_graveyard_card_then_if_creature": {
+    "family": "zone",
+    "mode": "exile_target_graveyard_card_then_if_creature"
+  },
+  "exile_target_graveyard_spell_cast_free": {
+    "family": "dig",
+    "mode": "exile_target_graveyard_spell_cast_free"
+  },
+  "exile_target_minting_illusion_on_leave": {
+    "family": "destroy",
+    "mode": "exile_target_minting_illusion_on_leave"
+  },
+  "exile_top_cast_matching_free": {
+    "family": "dig",
+    "mode": "exile_top_cast_matching_free"
+  },
+  "exile_top_may_play": {
+    "family": "mill",
+    "mode": "exile_top_may_play"
+  },
+  "exile_top_until_stop_cast_free_under_budget": {
+    "family": "dig",
+    "mode": "exile_top_until_stop_cast_free_under_budget"
+  },
+  "exile_until_source_leaves": {
+    "family": "destroy",
+    "mode": "exile_until_source_leaves"
+  },
+  "fight": {
+    "family": "misc",
+    "mode": "fight"
+  },
+  "flicker_target": {
+    "family": "zone",
+    "mode": "flicker_target"
+  },
+  "flip_source": {
+    "family": "misc",
+    "mode": "flip_source"
+  },
+  "gain_control": {
+    "family": "control",
+    "mode": "gain_control"
+  },
+  "gain_control_all_until_end_of_turn": {
+    "family": "control",
+    "mode": "gain_control_all_until_end_of_turn"
+  },
+  "gain_control_until_end_of_turn": {
+    "family": "control",
+    "mode": "gain_control_until_end_of_turn"
+  },
+  "gain_control_while": {
+    "family": "control",
+    "mode": "gain_control_while"
+  },
+  "gain_life": {
+    "family": "life",
+    "mode": "gain"
+  },
+  "gain_life_target_controller": {
+    "family": "life",
+    "mode": "gain_target_controller"
+  },
+  "goad_target": {
+    "family": "control",
+    "mode": "goad_target"
+  },
+  "grant_channel_colorless_mana_this_turn": {
+    "family": "misc",
+    "mode": "grant_channel_colorless_mana_this_turn"
+  },
+  "grant_flash_this_turn": {
+    "family": "misc",
+    "mode": "grant_flash_this_turn"
+  },
+  "grant_keywords_to_permanents_you_control_until_end_of_turn": {
+    "family": "pump",
+    "mode": "grant_keywords_to_permanents_you_control_until_end_of_turn"
+  },
+  "grant_mana_ability": {
+    "family": "static",
+    "mode": "grant_mana_ability"
+  },
+  "grant_source_abilities_until_end_of_turn": {
+    "family": "control",
+    "mode": "grant_source_abilities_until_end_of_turn"
+  },
+  "grant_to_attached": {
+    "family": "static",
+    "mode": "grant_to_attached"
+  },
+  "join_forces_pay_mana": {
+    "family": "choice",
+    "mode": "join_forces_pay_mana"
+  },
+  "keyword_anthem_static": {
+    "family": "static",
+    "mode": "keyword_anthem"
+  },
+  "level_up": {
+    "family": "counters",
+    "mode": "level_up"
+  },
+  "life_gain_replacement": {
+    "family": "static",
+    "mode": "life_gain_replacement"
+  },
+  "look_at_top": {
+    "family": "dig",
+    "mode": "look_at_top"
+  },
+  "lose_life": {
+    "family": "life",
+    "mode": "lose"
+  },
+  "manifest": {
+    "family": "zone",
+    "mode": "manifest"
+  },
+  "mass_return_from_graveyard": {
+    "family": "zone",
+    "mode": "mass_return_from_graveyard"
+  },
+  "may_discard": {
+    "family": "choice",
+    "mode": "may_discard"
+  },
+  "may_draw_unless_pays": {
+    "family": "choice",
+    "mode": "may_draw_unless_pays"
+  },
+  "may_draw_up_to": {
+    "family": "choice",
+    "mode": "may_draw_up_to"
+  },
+  "may_draw_up_to_then_opponent_may_repeat": {
+    "family": "choice",
+    "mode": "may_draw_up_to_then_opponent_may_repeat"
+  },
+  "may_pay_to_copy_this": {
+    "family": "copy",
+    "mode": "may_pay_to_copy_this"
+  },
+  "may_return_from_graveyard": {
+    "family": "choice",
+    "mode": "may_return_from_graveyard"
+  },
+  "may_sacrifice": {
+    "family": "choice",
+    "mode": "may_sacrifice"
+  },
+  "mill": {
+    "family": "mill",
+    "mode": "mill"
+  },
+  "mill_self": {
+    "family": "mill",
+    "mode": "mill_self"
+  },
+  "mint_free_copy_of_exiled_card": {
+    "family": "copy",
+    "mode": "mint_free_copy_of_exiled_card"
+  },
+  "move_counters": {
+    "family": "counters",
+    "mode": "move_counters"
+  },
+  "must_attack_random_opponent": {
+    "family": "misc",
+    "mode": "must_attack_random_opponent"
+  },
+  "myriad_token_copies": {
+    "family": "token",
+    "mode": "myriad_token_copies"
+  },
+  "no_maximum_hand_size": {
+    "family": "static",
+    "mode": "no_maximum_hand_size"
+  },
+  "opponent_gains_life": {
+    "family": "life",
+    "mode": "opponent_gains"
+  },
+  "opponent_splits_exile_piles": {
+    "family": "dig",
+    "mode": "opponent_splits_exile_piles"
+  },
+  "phase_out": {
+    "family": "choice",
+    "mode": "phase_out"
+  },
+  "place_vow_counters": {
+    "family": "counters",
+    "mode": "place_vow_counters"
+  },
+  "play_from_graveyard_once_per_turn": {
+    "family": "static",
+    "mode": "play_from_graveyard_once_per_turn"
+  },
+  "prevent_all_combat_damage_this_turn": {
+    "family": "misc",
+    "mode": "prevent_all_combat_damage_this_turn"
+  },
+  "prevent_combat_damage_static": {
+    "family": "static",
+    "mode": "prevent_combat_damage"
+  },
+  "prevent_combat_damage_to_you_creating_tokens": {
+    "family": "misc",
+    "mode": "prevent_combat_damage_to_you_creating_tokens"
+  },
+  "prevent_damage_to_self_removing_counter": {
+    "family": "static",
+    "mode": "prevent_damage_to_self_removing_counter"
+  },
+  "prevent_noncombat_damage_to_other_creatures_you_control": {
+    "family": "static",
+    "mode": "prevent_noncombat_damage_to_other_creatures_you_control"
+  },
+  "proliferate": {
+    "family": "choice",
+    "mode": "proliferate"
+  },
+  "pump_creatures_you_control_until_end_of_turn": {
+    "family": "pump",
+    "mode": "pump_creatures_you_control_until_end_of_turn"
+  },
+  "pump_other_attackers_attacking_your_opponents": {
+    "family": "pump",
+    "mode": "pump_other_attackers_attacking_your_opponents"
+  },
+  "pump_self_until_end_of_turn": {
+    "family": "pump",
+    "mode": "pump_self_until_end_of_turn"
+  },
+  "pump_until_end_of_turn": {
+    "family": "pump",
+    "mode": "pump_until_end_of_turn"
+  },
+  "put_counter_then_may_become_copy_of_card_from_list": {
+    "family": "choice",
+    "mode": "put_counter_then_may_become_copy_of_card_from_list"
+  },
+  "put_counters": {
+    "family": "counters",
+    "mode": "put_counters"
+  },
+  "put_counters_each": {
+    "family": "counters",
+    "mode": "put_counters_each"
+  },
+  "put_creature_from_hand": {
+    "family": "choice",
+    "mode": "put_creature_from_hand"
+  },
+  "put_from_hand_on_top": {
+    "family": "choice",
+    "mode": "put_from_hand_on_top"
+  },
+  "put_land_from_hand": {
+    "family": "choice",
+    "mode": "put_land_from_hand"
+  },
+  "reanimate_dying_enchanted_creature": {
+    "family": "zone",
+    "mode": "reanimate_dying_enchanted_creature"
+  },
+  "reanimate_to_battlefield": {
+    "family": "zone",
+    "mode": "reanimate_to_battlefield"
+  },
+  "reduce_spell_cost": {
+    "family": "static",
+    "mode": "reduce_spell_cost"
+  },
+  "reflexive_trigger": {
+    "family": "zone",
+    "mode": "reflexive_trigger"
+  },
+  "regenerate_shield": {
+    "family": "control",
+    "mode": "regenerate_shield"
+  },
+  "remove_all_counters_then_draw": {
+    "family": "counters",
+    "mode": "remove_all_counters_then_draw"
+  },
+  "remove_counter_from_self": {
+    "family": "counters",
+    "mode": "remove_counter_from_self"
+  },
+  "remove_from_combat": {
+    "family": "control",
+    "mode": "remove_from_combat"
+  },
+  "retarget_spell_copy": {
+    "family": "copy",
+    "mode": "retarget_spell_copy"
+  },
+  "return_all_to_hand": {
+    "family": "zone",
+    "mode": "return_all_to_hand"
+  },
+  "return_exiled_card_to_owners_graveyard": {
+    "family": "zone",
+    "mode": "return_exiled_card_to_owners_graveyard"
+  },
+  "return_flickered_card": {
+    "family": "zone",
+    "mode": "return_flickered_card"
+  },
+  "return_from_graveyard_attached_to_token": {
+    "family": "zone",
+    "mode": "return_from_graveyard_attached_to_token"
+  },
+  "return_from_graveyard_to_hand": {
+    "family": "zone",
+    "mode": "return_from_graveyard_to_hand"
+  },
+  "return_object_to_hand": {
+    "family": "zone",
+    "mode": "return_object_to_hand"
+  },
+  "return_this_aura_attached_to": {
+    "family": "zone",
+    "mode": "return_this_aura_attached_to"
+  },
+  "return_this_aura_from_graveyard_attached_to_chosen_host": {
+    "family": "zone",
+    "mode": "return_this_aura_from_graveyard_attached_to_chosen_host"
+  },
+  "return_this_from_graveyard_to_battlefield": {
+    "family": "zone",
+    "mode": "return_this_from_graveyard_to_battlefield"
+  },
+  "return_this_to_hand": {
+    "family": "zone",
+    "mode": "return_this_to_hand"
+  },
+  "return_to_hand": {
+    "family": "zone",
+    "mode": "return_to_hand"
+  },
+  "reveal_top_and_drain_mutual": {
+    "family": "reveal",
+    "mode": "top_and_drain_mutual"
+  },
+  "reveal_top_cards": {
+    "family": "reveal",
+    "mode": "top_cards"
+  },
+  "reveal_top_opponent_picks_one_to_graveyard": {
+    "family": "dig",
+    "mode": "reveal_top_opponent_picks_one_to_graveyard"
+  },
+  "reveal_top_split_piles": {
+    "family": "dig",
+    "mode": "reveal_top_split_piles"
+  },
+  "reveal_top_to_hand": {
+    "family": "reveal",
+    "mode": "top_to_hand"
+  },
+  "reveal_until": {
+    "family": "reveal",
+    "mode": "until"
+  },
+  "reveal_until_exile_cast_free": {
+    "family": "dig",
+    "mode": "reveal_until_exile_cast_free"
+  },
+  "reveal_until_may_deploy": {
+    "family": "dig",
+    "mode": "reveal_until_may_deploy"
+  },
+  "revert_all_creatures_to_owners": {
+    "family": "control",
+    "mode": "revert_all_creatures_to_owners"
+  },
+  "sacrifice_enchanted_creature": {
+    "family": "destroy",
+    "mode": "sacrifice_enchanted_creature"
+  },
+  "sacrifice_object": {
+    "family": "destroy",
+    "mode": "sacrifice_object"
+  },
+  "sacrifice_own": {
+    "family": "choice",
+    "mode": "sacrifice_own"
+  },
+  "sacrifice_self_unless_pay": {
+    "family": "choice",
+    "mode": "sacrifice_self_unless_pay"
+  },
+  "sacrifice_self_unless_return_land": {
+    "family": "choice",
+    "mode": "sacrifice_self_unless_return_land"
+  },
+  "sacrifice_source": {
+    "family": "destroy",
+    "mode": "sacrifice_source"
+  },
+  "schedule_at_next_upkeep": {
+    "family": "misc",
+    "mode": "schedule_at_next_upkeep"
+  },
+  "schedule_colorless_mana_for_countered_spell_next_main_phase": {
+    "family": "misc",
+    "mode": "schedule_colorless_mana_for_countered_spell_next_main_phase"
+  },
+  "schedule_next_cast_trigger": {
+    "family": "misc",
+    "mode": "schedule_next_cast_trigger"
+  },
+  "schedule_return_reanimated_to_hand": {
+    "family": "zone",
+    "mode": "schedule_return_reanimated_to_hand"
+  },
+  "schedule_return_this_aura_attached_to_reanimated": {
+    "family": "zone",
+    "mode": "schedule_return_this_aura_attached_to_reanimated"
+  },
+  "schedule_return_this_aura_from_graveyard_attached_to_chosen_host": {
+    "family": "zone",
+    "mode": "schedule_return_this_aura_from_graveyard_attached_to_chosen_host"
+  },
+  "schedule_this_turn_combat_damage_copy": {
+    "family": "misc",
+    "mode": "schedule_this_turn_combat_damage_copy"
+  },
+  "scry": {
+    "family": "dig",
+    "mode": "scry"
+  },
+  "search_library": {
+    "family": "dig",
+    "mode": "search_library"
+  },
+  "set_attached_base_pt": {
+    "family": "static",
+    "mode": "set_attached_base_pt"
+  },
+  "set_attached_types": {
+    "family": "static",
+    "mode": "set_attached_types"
+  },
+  "set_base_pt_creatures_you_control_until_end_of_turn": {
+    "family": "pump",
+    "mode": "set_base_pt_creatures_you_control_until_end_of_turn"
+  },
+  "set_base_pt_target_until_end_of_turn": {
+    "family": "pump",
+    "mode": "set_base_pt_target_until_end_of_turn"
+  },
+  "set_own_base_pt_from_amount": {
+    "family": "pump",
+    "mode": "set_own_base_pt_from_amount"
+  },
+  "set_own_color_until_end_of_turn": {
+    "family": "choice",
+    "mode": "set_own_color_until_end_of_turn"
+  },
+  "shuffle_library": {
+    "family": "dig",
+    "mode": "shuffle_library"
+  },
+  "shuffle_target_cards_from_graveyard_into_library": {
+    "family": "dig",
+    "mode": "shuffle_target_cards_from_graveyard_into_library"
+  },
+  "shuffle_target_permanent_into_library": {
+    "family": "zone",
+    "mode": "shuffle_target_permanent_into_library"
+  },
+  "shuffle_target_permanent_into_library_then_reveal": {
+    "family": "zone",
+    "mode": "shuffle_target_permanent_into_library_then_reveal"
+  },
+  "skip_next_untap_opponent_creatures": {
+    "family": "misc",
+    "mode": "skip_next_untap_opponent_creatures"
+  },
+  "strip_keywords_from_opponents_creatures": {
+    "family": "pump",
+    "mode": "strip_keywords_from_opponents_creatures"
+  },
+  "surveil": {
+    "family": "dig",
+    "mode": "surveil"
+  },
+  "tap_target": {
+    "family": "control",
+    "mode": "tap_target"
+  },
+  "tapped_for_mana_bonus": {
+    "family": "static",
+    "mode": "tapped_for_mana_bonus"
+  },
+  "target_opponent_gains_control": {
+    "family": "control",
+    "mode": "target_opponent_gains_control"
+  },
+  "target_owner_draws": {
+    "family": "draw",
+    "mode": "target_owner"
+  },
+  "target_player_draws": {
+    "family": "draw",
+    "mode": "target_player"
+  },
+  "target_player_exiles_from_graveyard": {
+    "family": "choice",
+    "mode": "target_player_exiles_from_graveyard"
+  },
+  "target_player_gains_life": {
+    "family": "life",
+    "mode": "target_player_gains"
+  },
+  "target_player_loses_life": {
+    "family": "life",
+    "mode": "target_player_loses"
+  },
+  "target_player_may_draw": {
+    "family": "choice",
+    "mode": "target_player_may_draw"
+  },
+  "token_replacement": {
+    "family": "static",
+    "mode": "token_replacement"
+  },
+  "trigger_doubling_static": {
+    "family": "static",
+    "mode": "trigger_doubling"
+  },
+  "tuck_from_graveyard": {
+    "family": "zone",
+    "mode": "tuck_from_graveyard"
+  },
+  "tuck_permanent_into_library": {
+    "family": "zone",
+    "mode": "tuck_permanent_into_library"
+  },
+  "tuck_self_and_blocked_creatures": {
+    "family": "zone",
+    "mode": "tuck_self_and_blocked_creatures"
+  },
+  "tuck_self_to_library_bottom": {
+    "family": "zone",
+    "mode": "tuck_self_to_library_bottom"
+  },
+  "untap_all": {
+    "family": "control",
+    "mode": "untap_all"
+  },
+  "untap_searched_land": {
+    "family": "zone",
+    "mode": "untap_searched_land"
+  },
+  "untap_target": {
+    "family": "control",
+    "mode": "untap_target"
+  },
+  "weaken_each_creature": {
+    "family": "pump",
+    "mode": "weaken_each_creature"
+  }
+}
