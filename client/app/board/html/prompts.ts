@@ -964,7 +964,13 @@ function cardPickConfig(pending: PendingChoiceView): {
 }
 
 function pendingGraveyardAimCoach(
-  kind: "exile_from_graveyard" | "may_return_from_graveyard" | "shuffle_from_graveyard" | "choose_dredge",
+  kind:
+    | "exile_from_graveyard"
+    | "may_return_from_graveyard"
+    | "shuffle_from_graveyard"
+    | "choose_dredge"
+    | "pay_cumulative_upkeep_or_sacrifice"
+    | "choose_activation_cost_targets",
   oneClick: boolean,
 ): string {
   switch (kind) {
@@ -976,6 +982,14 @@ function pendingGraveyardAimCoach(
       return oneClick ? "Click a card in the graveyard to shuffle in" : "Click cards in the graveyard to shuffle in";
     case "choose_dredge":
       return "Click a card in the graveyard to dredge";
+    case "pay_cumulative_upkeep_or_sacrifice":
+      return oneClick
+        ? "Click a card in a graveyard to pay cumulative upkeep"
+        : "Click cards in a graveyard to pay cumulative upkeep";
+    case "choose_activation_cost_targets":
+      return oneClick
+        ? "Click a card in the graveyard for the activation cost"
+        : "Click cards in the graveyard for the activation cost";
     default: {
       const _exhaustive: never = kind;
       return _exhaustive;
@@ -1052,7 +1066,9 @@ function cardPickForKind(
       kind !== "exile_from_graveyard" &&
       kind !== "may_return_from_graveyard" &&
       kind !== "shuffle_from_graveyard" &&
-      kind !== "choose_dredge"
+      kind !== "choose_dredge" &&
+      kind !== "pay_cumulative_upkeep_or_sacrifice" &&
+      kind !== "choose_activation_cost_targets"
     ) {
       return null;
     }
@@ -1077,7 +1093,15 @@ function cardPickForKind(
     const actions: Html[] = [];
     if (!oneClick) {
       const submitLabel =
-        kind === "exile_from_graveyard" ? "Exile" : kind === "may_return_from_graveyard" ? "Return" : "Shuffle";
+        kind === "exile_from_graveyard"
+          ? "Exile"
+          : kind === "may_return_from_graveyard"
+            ? "Return"
+            : kind === "shuffle_from_graveyard"
+              ? "Shuffle"
+              : kind === "pay_cumulative_upkeep_or_sacrifice"
+                ? "Pay"
+                : "Confirm";
       actions.push(submitButton(submitLabel, !ready));
     }
     const decline = declineAnswer(pending);
@@ -1247,7 +1271,7 @@ function cardPickForKind(
       pending.kind === "choose_spell_targets" ||
       pending.kind === "choose_ability_targets"
         ? pending.max
-        : pending.kind === "choose_own_sacrifices"
+        : pending.kind === "choose_own_sacrifices" || pending.kind === "choose_activation_cost_targets"
           ? pending.count
           : pending.kind === "sacrifice_edict"
             ? cardPickRequiredCount(pending)

@@ -1433,6 +1433,36 @@ test("PileCardClicked during choose_exiled_with_card submits choose intent", () 
   });
 });
 
+test("PileCardClicked during pay_cumulative_upkeep submits sacrifice intent", () => {
+  const gy = creature(8, 0, { name: "Fodder", zone: ZONE.Graveyard });
+  const pending = {
+    kind: "pay_cumulative_upkeep_or_sacrifice" as const,
+    player: 0,
+    source: 1,
+    count: 1,
+    items: [{ id: 8, label: "Fodder" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [gy],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+    pendingChoiceKey: choiceDraftKey(pending),
+    promptDraft: { kind: "card-pick", picked: [], filter: "" },
+  };
+  const [, commands] = updateBoard(board, PileCardClicked({ id: 8 }), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_sacrifices",
+    player: 0,
+    sacrifices: [8],
+  });
+});
+
 test("PileCardClicked during choose_dredge submits dredge intent", () => {
   const dredger = creature(8, 0, { name: "Stinkweed Imp", zone: ZONE.Graveyard });
   const pending = {

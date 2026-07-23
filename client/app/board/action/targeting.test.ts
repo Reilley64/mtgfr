@@ -344,6 +344,21 @@ describe("pendingTargetingOverlay", () => {
     expect(overlay.aiming).toBe(true);
     expect(pendingTargetOneClick(pc)).toBe(false);
   });
+
+  it("aims for battlefield choose_activation_cost_targets", () => {
+    const bear = object({ id: 7 });
+    const pc = {
+      kind: "choose_activation_cost_targets" as const,
+      player: 0,
+      source: 1,
+      count: 1,
+      items: [{ id: 7, label: "Bear" }],
+    };
+    const overlay = pendingTargetingOverlay(pc, state([bear]), { width: 1440, height: 900 }, 0);
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetObjects]).toEqual([7]);
+    expect(pendingTargetOneClick(pc)).toBe(true);
+  });
 });
 
 describe("pendingTargetOneClick", () => {
@@ -482,6 +497,41 @@ describe("gyExileCostPile", () => {
 });
 
 describe("pendingGraveyardPickIds", () => {
+  it("returns graveyard ids for pay_cumulative_upkeep_or_sacrifice", () => {
+    const ids = pendingGraveyardPickIds(
+      {
+        kind: "pay_cumulative_upkeep_or_sacrifice",
+        player: 0,
+        source: 1,
+        count: 2,
+        items: [
+          { id: 8, label: "A" },
+          { id: 9, label: "B" },
+        ],
+      },
+      state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 }), object({ id: 9, zone: ZONE.Graveyard, owner: 0 })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected cumulative upkeep gy ids");
+    expect([...ids].sort()).toEqual([8, 9]);
+  });
+
+  it("returns graveyard ids for choose_activation_cost_targets", () => {
+    const ids = pendingGraveyardPickIds(
+      {
+        kind: "choose_activation_cost_targets",
+        player: 0,
+        source: 1,
+        count: 1,
+        items: [{ id: 8, label: "A" }],
+      },
+      state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected activation cost gy ids");
+    expect([...ids]).toEqual([8]);
+  });
+
   it("returns graveyard ids for exile_from_graveyard in one pile", () => {
     const ids = pendingGraveyardPickIds(
       {

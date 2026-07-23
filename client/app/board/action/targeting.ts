@@ -145,6 +145,7 @@ const ONBOARD_CARD_PICK_KINDS = new Set<PendingChoiceView["kind"]>([
   "choose_copy_target",
   "choose_counter_target_for_player",
   "caster_keep_permanents",
+  "choose_activation_cost_targets",
 ]);
 
 /** True when this pending choice can be answered by aiming on the board (Arena aim). */
@@ -183,7 +184,9 @@ export function pendingTargetOneClick(pc: PendingChoiceView): boolean {
     return true;
   }
   if (pc.kind === "sacrifice_edict") return !pc.keep_one;
-  if (pc.kind === "choose_own_sacrifices") return pc.count === 1;
+  if (pc.kind === "choose_own_sacrifices" || pc.kind === "choose_activation_cost_targets") {
+    return pc.count === 1;
+  }
   return false;
 }
 
@@ -376,7 +379,13 @@ export function gyExileCostObjectIds(
 type PendingGraveyardPickChoice = Extract<
   PendingChoiceView,
   {
-    kind: "exile_from_graveyard" | "may_return_from_graveyard" | "shuffle_from_graveyard" | "choose_dredge";
+    kind:
+      | "exile_from_graveyard"
+      | "may_return_from_graveyard"
+      | "shuffle_from_graveyard"
+      | "choose_dredge"
+      | "pay_cumulative_upkeep_or_sacrifice"
+      | "choose_activation_cost_targets";
   }
 >;
 
@@ -385,7 +394,9 @@ function isPendingGraveyardPick(pc: PendingChoiceView): pc is PendingGraveyardPi
     pc.kind === "exile_from_graveyard" ||
     pc.kind === "may_return_from_graveyard" ||
     pc.kind === "shuffle_from_graveyard" ||
-    pc.kind === "choose_dredge"
+    pc.kind === "choose_dredge" ||
+    pc.kind === "pay_cumulative_upkeep_or_sacrifice" ||
+    pc.kind === "choose_activation_cost_targets"
   );
 }
 
@@ -394,6 +405,9 @@ export function pendingGraveyardPickOneClick(pc: PendingChoiceView | null | unde
   if (pc == null || !isPendingGraveyardPick(pc)) return false;
   if (pc.kind === "choose_dredge") return true;
   if (pc.kind === "shuffle_from_graveyard") return pc.max === 1;
+  if (pc.kind === "pay_cumulative_upkeep_or_sacrifice" || pc.kind === "choose_activation_cost_targets") {
+    return pc.count === 1;
+  }
   return false;
 }
 
