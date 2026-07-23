@@ -2051,7 +2051,7 @@ function distributeTopLanesPrompt(
       [
         h.div([h.Class("text-caption font-semibold text-seafoam")], [`${label} (${ids.length} / ${cap})`]),
         h.div(
-          [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+          [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
           items.length > 0
             ? items.map((item) => laneCard(item))
             : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
@@ -2060,33 +2060,46 @@ function distributeTopLanesPrompt(
     );
   };
 
-  return frame("pending-choice", "Distribute the revealed cards", [
-    h.div(
-      [h.DataAttribute("testid", "prompt-distribute-lanes"), h.Class("flex flex-col gap-3")],
-      [
-        h.div(
-          [h.Class("shrink-0 text-caption text-mist")],
-          ["Click a card to cycle Hand → Bottom → Exile (skips full lanes)."],
-        ),
-        h.div(
-          [h.DataAttribute("testid", "prompt-distribute-pool"), h.Class("flex flex-col gap-2")],
-          [
-            h.div([h.Class("text-caption font-semibold text-seafoam")], [`Revealed (${pool.length})`]),
-            h.div(
-              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-              pool.length > 0
-                ? pool.map((item) => laneCard(item))
-                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-            ),
-          ],
-        ),
-        lane("prompt-distribute-hand", "Hand", toHand, pending.to_hand),
-        lane("prompt-distribute-bottom", "Bottom of library", toBottom, pending.to_bottom),
-        lane("prompt-distribute-exile", "Exile (may play)", toExile, pending.to_exile_may_play),
-      ],
-    ),
-    h.div([h.Class("flex gap-2")], [submitButton("Distribute", !ready), cancelButton()]),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-distribute-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("shrink-0 font-semibold text-body")], ["Distribute the revealed cards"]),
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-distribute-lanes"),
+          h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+        ],
+        [
+          h.div(
+            [h.Class("shrink-0 text-caption text-mist")],
+            ["Click a card to cycle Hand → Bottom → Exile (skips full lanes)."],
+          ),
+          h.div(
+            [h.DataAttribute("testid", "prompt-distribute-pool"), h.Class("flex flex-col gap-2")],
+            [
+              h.div([h.Class("text-caption font-semibold text-seafoam")], [`Revealed (${pool.length})`]),
+              h.div(
+                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                pool.length > 0
+                  ? pool.map((item) => laneCard(item))
+                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+              ),
+            ],
+          ),
+          lane("prompt-distribute-hand", "Hand", toHand, pending.to_hand),
+          lane("prompt-distribute-bottom", "Bottom of library", toBottom, pending.to_bottom),
+          lane("prompt-distribute-exile", "Exile (may play)", toExile, pending.to_exile_may_play),
+        ],
+      ),
+      h.div([h.Class("flex shrink-0 gap-2")], [submitButton("Distribute", !ready), cancelButton()]),
+    ],
+  );
 }
 
 function colorPickPrompt(
