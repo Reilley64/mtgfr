@@ -1195,6 +1195,41 @@ test("RadialOptionPicked opens sacrifice picker before submitting a payable acti
   expect(commands).toEqual([]);
 });
 
+test("pointer up on sacrifice-cost permanent settles the cost pick", () => {
+  const seer = creature(5, 0, { name: "Viscera Seer" });
+  const fodder = creature(6, 0, { name: "Goat" });
+  const action: ActionView = {
+    id: 92,
+    kind: "activate",
+    label: "Sacrifice a creature: Scry 1",
+    needs_target: false,
+    object: seer.id,
+    sacrifice_choices: [fodder.id],
+    section: "battlefield",
+  };
+  const gameFold = fold(state({ objects: [seer, fodder], actions: [action], can_act: true }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    sacrificePick: {
+      action,
+      card: seer,
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 0, y: 0 },
+      picks: emptyCostPicks(),
+    },
+    pointer: { kind: "drag", card: renderStub(6), x: 100, y: 100, moved: false },
+  };
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(next.sacrificePick).toBeNull();
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toMatchObject({
+    kind: "take_action",
+    id: 92,
+    sacrifice: [6],
+  });
+});
+
 test("StackDwellChanged emits a SetStackDwell command", () => {
   const board = initialBoardModel();
   const gameFold = fold(state());

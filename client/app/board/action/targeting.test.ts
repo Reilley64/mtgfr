@@ -12,6 +12,8 @@ import {
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
   pendingTargetOneClick,
+  sacrificeCostObjectIds,
+  sacrificeCostOverlay,
   stackAimOrigin,
   stagedPickTargets,
   stagedTargetTitle,
@@ -421,6 +423,19 @@ describe("pendingDamageAssignOverlay", () => {
     );
     expect(overlay.aiming).toBe(true);
     expect([...overlay.targetObjects].sort()).toEqual([12, 13]);
+  });
+});
+
+describe("sacrificeCostOverlay", () => {
+  it("highlights battlefield sacrifice_choices", () => {
+    const token = object({ id: 55, name: "Token" });
+    const overlay = sacrificeCostOverlay([55], state([token]));
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetObjects]).toEqual([55]);
+  });
+
+  it("is idle when a choice is off the battlefield", () => {
+    expect(sacrificeCostObjectIds([55], state([object({ id: 55, zone: ZONE.Graveyard })]))).toBeNull();
   });
 });
 

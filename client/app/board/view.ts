@@ -10,6 +10,7 @@ import {
   pendingDivideSpellOverlay,
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
+  sacrificeCostOverlay,
   stagingOverlay,
 } from "./action/targeting";
 import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap/mount";
@@ -86,15 +87,26 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
   const damageOverlay = pendingDamageAssignOverlay(state.pending_choice, state);
   const divideOverlay = pendingDivideSpellOverlay(state.pending_choice, state);
   const playerOverlay = pendingPlayerAimOverlay(state.pending_choice, state);
+  const sacrificeOverlay =
+    model.board.sacrificePick != null
+      ? sacrificeCostOverlay(model.board.sacrificePick.action.sacrifice_choices, state)
+      : {
+          aiming: false,
+          targetObjects: new Set<number>(),
+          targetPlayers: new Set<number>(),
+          aimFrom: null,
+        };
   const overlay = stagedOverlay.aiming
     ? stagedOverlay
-    : pendingOverlay.aiming
-      ? pendingOverlay
-      : damageOverlay.aiming
-        ? damageOverlay
-        : divideOverlay.aiming
-          ? divideOverlay
-          : playerOverlay;
+    : sacrificeOverlay.aiming
+      ? sacrificeOverlay
+      : pendingOverlay.aiming
+        ? pendingOverlay
+        : damageOverlay.aiming
+          ? damageOverlay
+          : divideOverlay.aiming
+            ? divideOverlay
+            : playerOverlay;
   const previewAction = paymentPreviewAction(model.board, state.actions);
   const paymentPreviewIds = autoTapPreviewIds(previewAction);
   const combatDrag =

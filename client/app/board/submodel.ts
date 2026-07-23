@@ -60,6 +60,7 @@ import {
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
   pendingTargetOneClick,
+  sacrificeCostObjectIds,
   stagedPickTargets,
 } from "./action/targeting";
 import type { Camera, Vec2 } from "./geometry/camera";
@@ -686,6 +687,22 @@ function pointerUpModel(
     // Pile card: open the pile overlay.
     if (release.card.pile > 0) {
       return [{ ...idle, pileExpand: { zone: release.card.zone, owner: release.card.owner } }, []];
+    }
+    if (model.sacrificePick != null && fold.state != null) {
+      const costIds = sacrificeCostObjectIds(model.sacrificePick.action.sacrifice_choices, fold.state);
+      if (costIds?.has(release.card.id)) {
+        const settled = settleSacrificePick(model.sacrificePick, release.card.id);
+        return continueAfterCostPick(
+          { ...idle, sacrificePick: null },
+          fold,
+          tableId,
+          settled.action,
+          settled.card,
+          settled.picks,
+          settled.dropSeed,
+          settled.screenOrigin,
+        );
+      }
     }
     if (model.staged != null) {
       const legalObjects = stagedLegalObjectIds(model.staged);
