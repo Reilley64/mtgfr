@@ -6,6 +6,8 @@ import { emptyCostPicks } from "./execution";
 import {
   pendingDamageAssignBlockers,
   pendingDamageAssignOverlay,
+  pendingDivideSpellObjectIndexes,
+  pendingDivideSpellOverlay,
   pendingPlayerAimOneClick,
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
@@ -357,6 +359,64 @@ describe("pendingDamageAssignOverlay", () => {
       state([object({ id: 4, zone: ZONE.Graveyard })]),
     );
     expect(blockers).toBeNull();
+  });
+});
+
+describe("pendingDivideSpellOverlay", () => {
+  it("highlights battlefield spell-damage targets with item indexes", () => {
+    const bear = object({ id: 21, name: "Bear", controller: 1 });
+    const elf = object({ id: 22, name: "Elf", controller: 1 });
+    const pc = {
+      kind: "divide_spell_damage" as const,
+      items: [
+        { id: 21, label: "Bear" },
+        { id: 22, label: "Elf" },
+      ],
+      player: 0,
+      spell: 99,
+      total: 3,
+    };
+    const indexes = pendingDivideSpellObjectIndexes(pc, state([bear, elf]));
+    expect(indexes).not.toBeNull();
+    if (indexes == null) throw new Error("expected divide indexes");
+    expect([...indexes.entries()].sort(([a], [b]) => a - b)).toEqual([
+      [21, 0],
+      [22, 1],
+    ]);
+    const overlay = pendingDivideSpellOverlay(pc, state([bear, elf]));
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetObjects].sort()).toEqual([21, 22]);
+    expect(overlay.aimFrom).toBeNull();
+  });
+
+  it("is idle when any target is a player or off the battlefield", () => {
+    expect(
+      pendingDivideSpellObjectIndexes(
+        {
+          kind: "divide_spell_damage",
+          items: [
+            { id: 21, label: "Bear" },
+            { id: 0, label: "Bob", player: 1 },
+          ],
+          player: 0,
+          spell: 99,
+          total: 3,
+        },
+        state([object({ id: 21, name: "Bear" })]),
+      ),
+    ).toBeNull();
+    expect(
+      pendingDivideSpellObjectIndexes(
+        {
+          kind: "divide_spell_damage",
+          items: [{ id: 21, label: "Bear" }],
+          player: 0,
+          spell: 99,
+          total: 3,
+        },
+        state([object({ id: 21, zone: ZONE.Graveyard })]),
+      ),
+    ).toBeNull();
   });
 });
 

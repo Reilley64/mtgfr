@@ -7,6 +7,7 @@ import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import {
   pendingDamageAssignOverlay,
+  pendingDivideSpellOverlay,
   pendingPlayerAimOverlay,
   pendingTargetingOverlay,
   stagingOverlay,
@@ -83,6 +84,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
   const stagedOverlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
   const pendingOverlay = pendingTargetingOverlay(state.pending_choice, state, model.board.viewport, state.stack.length);
   const damageOverlay = pendingDamageAssignOverlay(state.pending_choice, state);
+  const divideOverlay = pendingDivideSpellOverlay(state.pending_choice, state);
   const playerOverlay = pendingPlayerAimOverlay(state.pending_choice, state);
   const overlay = stagedOverlay.aiming
     ? stagedOverlay
@@ -90,7 +92,9 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
       ? pendingOverlay
       : damageOverlay.aiming
         ? damageOverlay
-        : playerOverlay;
+        : divideOverlay.aiming
+          ? divideOverlay
+          : playerOverlay;
   const previewAction = paymentPreviewAction(model.board, state.actions);
   const paymentPreviewIds = autoTapPreviewIds(previewAction);
   const combatDrag =
@@ -116,6 +120,31 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
             .map(([id]) => Number(id)),
         )
       : null;
+  const dividePicked =
+    overlay.aiming &&
+    model.board.promptDraft?.kind === "divide" &&
+    divideOverlay.aiming &&
+    !stagedOverlay.aiming &&
+    !pendingOverlay.aiming &&
+    state.pending_choice?.kind === "divide_spell_damage"
+      ? new Set(
+          state.pending_choice.items.flatMap((item, index) => {
+            const amount =
+              model.board.promptDraft?.kind === "divide" ? (model.board.promptDraft.amounts[index] ?? 0) : 0;
+            return amount > 0 ? [item.id] : [];
+          }),
+        )
+      : null;
+  const divideAssignAmounts =
+    model.board.promptDraft?.kind === "divide" && state.pending_choice?.kind === "divide_spell_damage"
+      ? new Map(
+          state.pending_choice.items.flatMap((item, index) => {
+            const amount =
+              model.board.promptDraft?.kind === "divide" ? (model.board.promptDraft.amounts[index] ?? 0) : 0;
+            return amount > 0 ? ([[item.id, amount]] as const) : [];
+          }),
+        )
+      : null;
   publishBitmapFrame({
     width: model.board.viewport.width,
     height: model.board.viewport.height,
@@ -132,13 +161,15 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     targetObjects: overlay.targetObjects,
     pickedObjects:
       damagePicked ??
+      dividePicked ??
       (overlay.aiming && model.board.promptDraft?.kind === "card-pick"
         ? new Set(model.board.promptDraft.picked)
         : new Set()),
     assignAmounts:
-      model.board.promptDraft?.kind === "damage"
+      divideAssignAmounts ??
+      (model.board.promptDraft?.kind === "damage"
         ? new Map(Object.entries(model.board.promptDraft.amounts).map(([id, amount]) => [Number(id), amount]))
-        : new Map(),
+        : new Map()),
     targetPlayers: overlay.targetPlayers,
     pickedPlayers:
       overlay.aiming && model.board.promptDraft?.kind === "player-pick"

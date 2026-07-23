@@ -598,6 +598,63 @@ test("pointer up on assign_combat_damage blocker moves one damage onto it", () =
   expect(next.promptDraft).toEqual({ kind: "damage", amounts: { 4: 3, 5: 1 } });
 });
 
+test("pointer up on divide_spell_damage target moves one damage onto it", () => {
+  const bear = creature(21, 1, { name: "Bear" });
+  const elf = creature(22, 1, { name: "Elf" });
+  const pending = {
+    kind: "divide_spell_damage" as const,
+    items: [
+      { id: 21, label: "Bear" },
+      { id: 22, label: "Elf" },
+    ],
+    player: 0,
+    spell: 99,
+    total: 3,
+  };
+  const gameFold = fold(state({ objects: [bear, elf], pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "divide", amounts: { 0: 3, 1: 0 } },
+    pendingChoiceKey: choiceDraftKey(pending),
+    pointer: { kind: "drag", card: renderStub(22), x: 100, y: 100, moved: false },
+  };
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "divide", amounts: { 0: 2, 1: 1 } });
+});
+
+test("Space confirms on-board divide_spell_damage when draft matches total", () => {
+  const bear = creature(21, 1, { name: "Bear" });
+  const elf = creature(22, 1, { name: "Elf" });
+  const pending = {
+    kind: "divide_spell_damage" as const,
+    items: [
+      { id: 21, label: "Bear" },
+      { id: 22, label: "Elf" },
+    ],
+    player: 0,
+    spell: 99,
+    total: 3,
+  };
+  const gameFold = fold(state({ objects: [bear, elf], pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "divide", amounts: { 0: 2, 1: 1 } },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardSpacePressed(), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "divide_spell_damage",
+    player: 0,
+    assignment: [
+      { amount: 2, target: { kind: "object", id: 21 } },
+      { amount: 1, target: { kind: "object", id: 22 } },
+    ],
+  });
+});
+
 test("pointer up on choose_target_players avatar accumulates seat picks", () => {
   const pending = {
     kind: "choose_target_players" as const,

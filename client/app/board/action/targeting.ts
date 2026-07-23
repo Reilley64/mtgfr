@@ -223,6 +223,49 @@ export function pendingDamageAssignOverlay(
   };
 }
 
+/**
+ * Object id → divide draft index when every `divide_spell_damage` target is a battlefield permanent.
+ * Player targets or off-board items keep the modal steppers only.
+ */
+export function pendingDivideSpellObjectIndexes(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlyMap<number, number> | null {
+  if (pc == null || pc.kind !== "divide_spell_damage") return null;
+  if (pc.player !== state.viewer) return null;
+  if (pc.items.length === 0) return null;
+  const indexes = new Map<number, number>();
+  for (let i = 0; i < pc.items.length; i++) {
+    const item = pc.items[i];
+    if (item == null || item.player != null) return null;
+    const obj = state.objects.find((o) => o.id === item.id);
+    if (obj == null || obj.zone !== ZONE.Battlefield) return null;
+    indexes.set(item.id, i);
+  }
+  return indexes;
+}
+
+/** Highlight battlefield spell-damage targets during on-board divide (no aim arrow). */
+export function pendingDivideSpellOverlay(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): StagingOverlay {
+  const idle: StagingOverlay = {
+    aiming: false,
+    targetObjects: new Set(),
+    targetPlayers: new Set(),
+    aimFrom: null,
+  };
+  const indexes = pendingDivideSpellObjectIndexes(pc, state);
+  if (indexes == null) return idle;
+  return {
+    aiming: true,
+    targetObjects: new Set(indexes.keys()),
+    targetPlayers: new Set(),
+    aimFrom: null,
+  };
+}
+
 /** Legal player seats for on-board choose_target_players / choose_splitting_opponent aim. */
 export function pendingPlayerAimSeats(
   pc: PendingChoiceView | null | undefined,
