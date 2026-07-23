@@ -23,6 +23,7 @@ import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardM
 import {
   BoardPointerUp,
   DiscardChosen,
+  GyExileChosen,
   HandActionActivated,
   KeyboardEnterPressed,
   KeyboardSpacePressed,
@@ -1376,6 +1377,79 @@ test("DiscardChosen during put_creature_from_hand submits put_creature intent", 
     kind: "put_creature_from_hand",
     player: 0,
     choice: 21,
+  });
+});
+
+test("GyExileChosen during gyExilePick settles a one-card exile cost", () => {
+  const caster = creature(10, 0, { name: "Caster", zone: ZONE.Hand });
+  const gy = creature(8, 0, { name: "Fodder", zone: ZONE.Graveyard });
+  const castAction: ActionView = {
+    id: 50,
+    kind: "cast",
+    label: "Cast",
+    needs_target: false,
+    object: caster.id,
+    graveyard_exile_choices: [8],
+    graveyard_exile_min: 1,
+    graveyard_exile_max: 1,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [caster, gy], actions: [castAction], can_act: true }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    gyExilePick: {
+      action: castAction,
+      card: caster,
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 0, y: 0 },
+      picks: emptyCostPicks(),
+    },
+    pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+  };
+  const [next, commands] = updateBoard(board, GyExileChosen({ ids: [8] }), gameFold, "T1");
+  expect(next.gyExilePick).toBeNull();
+  expect(next.pileExpand).toBeNull();
+  expect(commands).toHaveLength(1);
+  expect(intentFromCommand(commands[0])).toMatchObject({
+    kind: "take_action",
+    id: 50,
+    graveyard_exile: [8],
+  });
+});
+
+test("second GyExileChosen auto-settles exact multi gy-exile cost", () => {
+  const caster = creature(10, 0, { name: "Caster", zone: ZONE.Hand });
+  const a = creature(8, 0, { name: "A", zone: ZONE.Graveyard });
+  const b = creature(9, 0, { name: "B", zone: ZONE.Graveyard });
+  const castAction: ActionView = {
+    id: 50,
+    kind: "cast",
+    label: "Cast",
+    needs_target: false,
+    object: caster.id,
+    graveyard_exile_choices: [8, 9],
+    graveyard_exile_min: 2,
+    graveyard_exile_max: 2,
+    section: "hand",
+  };
+  const gameFold = fold(state({ objects: [caster, a, b], actions: [castAction], can_act: true }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    gyExilePick: {
+      action: castAction,
+      card: caster,
+      dropSeed: { x: 0, y: 0 },
+      screenOrigin: { x: 0, y: 0 },
+      picks: { ...emptyCostPicks(), graveyard_exile: [8] },
+    },
+    pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+  };
+  const [next, commands] = updateBoard(board, GyExileChosen({ ids: [9] }), gameFold, "T1");
+  expect(next.gyExilePick).toBeNull();
+  expect(intentFromCommand(commands[0])).toMatchObject({
+    kind: "take_action",
+    id: 50,
+    graveyard_exile: [8, 9],
   });
 });
 

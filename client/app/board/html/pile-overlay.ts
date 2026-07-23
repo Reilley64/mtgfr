@@ -6,7 +6,7 @@ import { buttonClass } from "~/ui/buttonClass";
 import { cardArt } from "~/ui/card-art";
 import type { ObjectView, VisibleState } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
-import { type Message, PileOverlayClosed } from "../messages";
+import { GyExileChosen, type Message, PileOverlayClosed } from "../messages";
 
 const h = html<Message>();
 
@@ -21,41 +21,62 @@ function zoneName(zone: number, count: number): string {
   return `${base} (${count})`;
 }
 
-function cardThumb(card: ObjectView): Html {
-  return h.div(
-    [h.Class("relative"), h.Attribute("title", card.name)],
+function cardThumb(card: ObjectView, selectable: boolean, selected: boolean): Html {
+  const face = card.print
+    ? cardArt(h, {
+        print: card.print,
+        size: "large",
+        alt: card.name,
+        className: "block rounded-md",
+        style: { width: "90px" },
+      })
+    : h.div(
+        [
+          h.Class("flex items-center justify-center rounded-md bg-forest-surface text-caption text-lichen"),
+          h.Style({ width: "90px", height: "126px" }),
+        ],
+        [card.name],
+      );
+  const ring = selected ? "ring-2 ring-priority-gold" : selectable ? "ring-2 ring-dashed ring-island-blue" : "";
+  if (!selectable) {
+    return h.div([h.Class("relative"), h.Attribute("title", card.name)], [face]);
+  }
+  return h.button(
     [
-      card.print
-        ? cardArt(h, {
-            print: card.print,
-            size: "large",
-            alt: card.name,
-            className: "block rounded-md",
-            style: { width: "90px" },
-          })
-        : h.div(
-            [
-              h.Class("flex items-center justify-center rounded-md bg-forest-surface text-caption text-lichen"),
-              h.Style({ width: "90px", height: "126px" }),
-            ],
-            [card.name],
-          ),
+      h.Type("button"),
+      h.DataAttribute("testid", `pile-card-${card.id}`),
+      h.Attribute("title", card.name),
+      h.OnClick(GyExileChosen({ ids: [card.id] })),
+      h.Class(["relative rounded-md", ring].filter(Boolean).join(" ")),
     ],
+    [face],
   );
 }
+
+export type PileOverlayOptions = {
+  selectableIds?: ReadonlySet<number> | null;
+  selectedIds?: ReadonlyArray<number> | null;
+};
 
 /**
  * Pile expand overlay. Returns null when pileExpand is null.
  *
  * Backdrop click and the Close button both fire PileOverlayClosed.
+ * When `selectableIds` is set, those cards emit `GyExileChosen` on click.
  */
-export function pileOverlayView(expand: { zone: number; owner: number } | null, state: VisibleState): Html | null {
+export function pileOverlayView(
+  expand: { zone: number; owner: number } | null,
+  state: VisibleState,
+  options: PileOverlayOptions = {},
+): Html | null {
   if (expand == null) return null;
 
   const cards = pileCards(state, expand.zone, expand.owner);
   const title = zoneName(expand.zone, cards.length);
+  const selectable = options.selectableIds ?? null;
+  const selected = new Set(options.selectedIds ?? []);
 
-  const cardList = cards.map(cardThumb);
+  const cardList = cards.map((card) => cardThumb(card, selectable?.has(card.id) ?? false, selected.has(card.id)));
 
   const modal = h.div(
     [

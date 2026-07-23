@@ -4,6 +4,8 @@ import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 import { emptyCostPicks } from "./execution";
 import {
+  gyExileCostObjectIds,
+  gyExileCostPile,
   pendingDamageAssignBlockers,
   pendingDamageAssignOverlay,
   pendingDiscardHandIds,
@@ -438,6 +440,42 @@ describe("sacrificeCostOverlay", () => {
 
   it("is idle when a choice is off the battlefield", () => {
     expect(sacrificeCostObjectIds([55], state([object({ id: 55, zone: ZONE.Graveyard })]))).toBeNull();
+  });
+});
+
+describe("gyExileCostObjectIds", () => {
+  it("returns graveyard ids when every choice is in a single graveyard", () => {
+    const ids = gyExileCostObjectIds(
+      [8, 9],
+      state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 }), object({ id: 9, zone: ZONE.Graveyard, owner: 0 })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected gy exile ids");
+    expect([...ids].sort()).toEqual([8, 9]);
+  });
+
+  it("is idle when a choice is not in the graveyard", () => {
+    expect(gyExileCostObjectIds([8], state([object({ id: 8, zone: ZONE.Hand, owner: 0 })]))).toBeNull();
+  });
+
+  it("is idle when choices span multiple owners", () => {
+    expect(
+      gyExileCostObjectIds(
+        [8, 9],
+        state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 }), object({ id: 9, zone: ZONE.Graveyard, owner: 1 })]),
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("gyExileCostPile", () => {
+  it("returns the shared graveyard pile for on-pile aim", () => {
+    expect(
+      gyExileCostPile(
+        [8, 9],
+        state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 }), object({ id: 9, zone: ZONE.Graveyard, owner: 0 })]),
+      ),
+    ).toEqual({ zone: ZONE.Graveyard, owner: 0 });
   });
 });
 
