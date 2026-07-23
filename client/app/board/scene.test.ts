@@ -24,6 +24,7 @@ import {
   BoardPointerUp,
   HandActionActivated,
   KeyboardEnterPressed,
+  KeyboardSpacePressed,
   type Message,
   PendingChoiceAnswered,
   PromptSubmitted,
@@ -446,6 +447,84 @@ test("Enter confirms multi on-board choose_target when draft is ready", () => {
     targets: [
       { kind: "object", id: 1 },
       { kind: "object", id: 2 },
+    ],
+  });
+});
+
+test("Space confirms multi on-board choose_target when draft is ready", () => {
+  const a = creature(1, 1, { name: "A" });
+  const b = creature(2, 1, { name: "B" });
+  const pending = {
+    kind: "choose_target" as const,
+    label: "Target creatures",
+    max: 2,
+    optional: false,
+    player: 0,
+    source: 1,
+    items: [
+      { id: 1, label: "A" },
+      { id: 2, label: "B" },
+    ],
+  };
+  const gameFold = fold(
+    state({
+      objects: [a, b],
+      pending_choice: pending,
+      stack: [{ controller: 0, kind: "spell", label: "Hold", source: 9 }],
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "card-pick", picked: [1, 2], filter: "" },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardSpacePressed(), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_targets",
+    player: 0,
+    targets: [
+      { kind: "object", id: 1 },
+      { kind: "object", id: 2 },
+    ],
+  });
+});
+
+test("Space confirms on-board assign_combat_damage when draft is ready", () => {
+  const attacker = creature(9, 0, { name: "Atk", power: 4, toughness: 4 });
+  const bear = creature(4, 1, { name: "Bear" });
+  const elf = creature(5, 1, { name: "Elf" });
+  const pending = {
+    kind: "assign_combat_damage" as const,
+    items: [
+      { id: 4, label: "Bear" },
+      { id: 5, label: "Elf" },
+    ],
+    player: 0,
+    source: 9,
+  };
+  const gameFold = fold(
+    state({
+      objects: [attacker, bear, elf],
+      pending_choice: pending,
+      stack: [{ controller: 0, kind: "spell", label: "Hold", source: 9 }],
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "damage", amounts: { 4: 3, 5: 1 } },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardSpacePressed(), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "assign_damage",
+    player: 0,
+    assignment: [
+      { blocker: 4, amount: 3 },
+      { blocker: 5, amount: 1 },
     ],
   });
 });
