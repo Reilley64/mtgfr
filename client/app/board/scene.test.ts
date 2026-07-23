@@ -712,6 +712,113 @@ test("Space confirms on-board divide_counters when draft matches total", () => {
   });
 });
 
+test("Space confirms scry arrange when draft is ready", () => {
+  const pending = {
+    kind: "scry" as const,
+    player: 0,
+    items: [
+      { id: 1, label: "Island" },
+      { id: 2, label: "Forest" },
+    ],
+  };
+  const gameFold = fold(state({ pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "partition", buckets: { top: [1], bottom: [2] } },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardSpacePressed(), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "arrange_top",
+    player: 0,
+    top: [1],
+    bottom: [2],
+  });
+});
+
+test("Enter confirms order_triggers when draft is ready", () => {
+  const pending = {
+    kind: "order_triggers" as const,
+    player: 0,
+    count: 2,
+    source: 1,
+    labels: ["A", "B"],
+  };
+  const gameFold = fold(state({ pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "order", order: [1, 0] },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardEnterPressed(), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_order",
+    player: 0,
+    order: [1, 0],
+  });
+});
+
+test("Space confirms distribute_top when each lane is full", () => {
+  const pending = {
+    kind: "distribute_top" as const,
+    player: 0,
+    to_hand: 1,
+    to_bottom: 1,
+    to_exile_may_play: 1,
+    items: [
+      { id: 1, label: "A" },
+      { id: 2, label: "B" },
+      { id: 3, label: "C" },
+    ],
+  };
+  const gameFold = fold(state({ pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: {
+      kind: "partition",
+      buckets: { to_hand: [1], to_bottom: [2], to_exile_may_play: [3] },
+    },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardSpacePressed(), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "distribute_top",
+    player: 0,
+    to_hand: [1],
+    to_bottom: [2],
+    to_exile_may_play: [3],
+  });
+});
+
+test("Space does not confirm distribute_top when a lane is short", () => {
+  const pending = {
+    kind: "distribute_top" as const,
+    player: 0,
+    to_hand: 1,
+    to_bottom: 1,
+    to_exile_may_play: 1,
+    items: [
+      { id: 1, label: "A" },
+      { id: 2, label: "B" },
+      { id: 3, label: "C" },
+    ],
+  };
+  const gameFold = fold(state({ pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: {
+      kind: "partition",
+      buckets: { to_hand: [1], to_bottom: [2], to_exile_may_play: [] },
+    },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardSpacePressed(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({ kind: "pass_priority", player: 0 });
+});
+
 test("pointer up on choose_target_players avatar accumulates seat picks", () => {
   const pending = {
     kind: "choose_target_players" as const,
