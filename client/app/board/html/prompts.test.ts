@@ -13,6 +13,7 @@ import {
   PromptCardToggled,
   PromptDamageSet,
   PromptNumberSet,
+  PromptOrderDragEnded,
   PromptOrderRowClicked,
   PromptPartitionSet,
   PromptStringSet,
@@ -172,6 +173,25 @@ test("order_triggers shows reorder controls and submit", () => {
   );
 });
 
+test("order_triggers rows are HTML5-draggable drop targets", () => {
+  const s = state({
+    pending_choice: {
+      kind: "order_triggers",
+      count: 2,
+      labels: ["First", "Second"],
+      player: 0,
+      source: 1,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.selector('[data-testid="prompt-order-0"][draggable="true"]')).toExist(),
+    Scene.expect(Scene.selector('[data-testid="prompt-order-1"][draggable="true"]')).toExist(),
+  );
+});
+
 test("order_triggers click-to-place reorders then submits choose_order", () => {
   const s = state({
     pending_choice: {
@@ -190,6 +210,23 @@ test("order_triggers click-to-place reorders then submits choose_order", () => {
   expect(board.promptDraft).toEqual({ kind: "order", order: [1, 2, 0] });
   const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
   expect(intentFromCommand(commands[0])).toEqual({ kind: "choose_order", player: 0, order: [1, 2, 0] });
+});
+
+test("order_triggers drag-end clears a cancelled pick", () => {
+  const s = state({
+    pending_choice: {
+      kind: "order_triggers",
+      count: 2,
+      labels: ["A", "B"],
+      player: 0,
+      source: 1,
+    },
+  });
+  const gf = gameFold(s);
+  let board = updateBoard(initialBoardModel(), PromptOrderRowClicked({ pos: 0 }), gf, "T1")[0];
+  expect(board.orderPickPos).toBe(0);
+  board = updateBoard(board, PromptOrderDragEnded(), gf, "T1")[0];
+  expect(board.orderPickPos).toBeNull();
 });
 
 test("order_triggers submit emits choose_order intent", () => {

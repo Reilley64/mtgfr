@@ -817,7 +817,7 @@ test("scry prompt shows Top and Bottom arrange lanes", () => {
   );
 });
 
-test("order_triggers prompt shows click-to-place list and arrow controls", () => {
+test("order_triggers prompt shows drag rows, click-to-place, and arrow controls", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -832,6 +832,7 @@ test("order_triggers prompt shows click-to-place list and arrow controls", () =>
       }),
     ),
     Scene.expect(Scene.testId("prompt-order-list")).toExist(),
+    Scene.expect(Scene.selector('[data-testid="prompt-order-0"][draggable="true"]')).toExist(),
     Scene.expect(Scene.testId("prompt-order-pick-0")).toHaveText("ETB draw"),
     Scene.expect(Scene.testId("prompt-order-up-0")).toExist(),
     Scene.expect(Scene.testId("prompt-order-down-1")).toExist(),
