@@ -64,7 +64,7 @@ describe("mergeFlightPoses", () => {
     expect(mergeFlightPoses(live, incoming)[0]).toMatchObject({ id: 7, x: 40, y: 80, targetX: 100, targetY: 200 });
   });
 
-  it("adopts incoming when target retargets or id is new", () => {
+  it("keeps the live pose when target retargets", () => {
     const live = [
       spawnFlight({
         id: 7,
@@ -79,7 +79,14 @@ describe("mergeFlightPoses", () => {
         kind: "battlefield",
       }),
     ];
-    const incoming = [{ ...live[0], targetX: 300, targetY: 400, x: 0, y: 0 }];
-    expect(mergeFlightPoses(live, incoming)[0]).toMatchObject({ targetX: 300, targetY: 400, x: 0, y: 0 });
+    const incoming = [{ ...live[0], targetX: 300, targetY: 400, x: 0, y: 0, scale: 0.5, phase: "launching" as const }];
+    expect(mergeFlightPoses(live, incoming)[0]).toMatchObject({
+      targetX: 300,
+      targetY: 400,
+      x: 40,
+      y: 80,
+      scale: 1,
+      phase: live[0].phase,
+    });
   });
 });

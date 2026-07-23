@@ -67,8 +67,7 @@ function actionPaintKey(action: ActionView): Record<string, unknown> {
 }
 
 export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights">): RestingPaintSnapshot {
-  const cursorActive =
-    frame.aimFrom != null || (frame.combatDragFrom != null && frame.combatDragStroke != null);
+  const cursorActive = frame.aimFrom != null || (frame.combatDragFrom != null && frame.combatDragStroke != null);
 
   const payload = {
     width: frame.width,
@@ -94,10 +93,7 @@ export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights">): Resti
     cursor: cursorActive ? frame.cursor : null,
     combatDragFrom: frame.combatDragFrom,
     combatDragStroke: frame.combatDragStroke,
-    actions:
-      frame.actions == null
-        ? null
-        : [...frame.actions].sort((a, b) => a.id - b.id).map(actionPaintKey),
+    actions: frame.actions == null ? null : [...frame.actions].sort((a, b) => a.id - b.id).map(actionPaintKey),
   };
 
   return JSON.stringify(payload);
@@ -113,9 +109,6 @@ export function mergeFlightPoses(live: readonly CardFlight[], incoming: readonly
   return incoming.map((inc) => {
     const prev = liveById.get(inc.id);
     if (prev == null) return inc;
-    const retargeted =
-      prev.targetX !== inc.targetX || prev.targetY !== inc.targetY || prev.targetScale !== inc.targetScale;
-    if (retargeted) return inc;
     return {
       ...inc,
       x: prev.x,
