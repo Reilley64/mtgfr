@@ -45,7 +45,6 @@ export {
   BoardPointerMove,
   BoardPointerUp,
   FlightsSynced,
-  TickedFrame,
 } from "./board/messages";
 export {
   IntentAcked,

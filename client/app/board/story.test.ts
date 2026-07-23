@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import type { Message } from "./messages";
-import { BoardPointerDown, FlightsSynced, TickedFrame } from "./messages";
+import { BoardPointerDown, FlightsSynced } from "./messages";
 import { spawnFlight } from "./motion/flights";
 import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
@@ -140,64 +140,63 @@ test("FlightsSynced clears hidden cards when flights disappear", () => {
   );
 });
 
-test("ticked frame does not step in-flight positions", () => {
+test("FlightsSynced keeps flyers and drops settled entries in one payload", () => {
   const fold = gameFold();
+  const flyer = {
+    ...spawnFlight({
+      id: 1,
+      kind: "battlefield",
+      name: "Grizzly Bears",
+      print: "print-a",
+      scale: 0.9,
+      targetScale: 1,
+      targetX: 120,
+      targetY: 40,
+      x: 50,
+      y: 20,
+      fromCardId: 9,
+    }),
+    phase: "flying" as const,
+  };
+  const settled = {
+    ...spawnFlight({
+      id: 2,
+      kind: "battlefield",
+      name: "Shock",
+      print: "print-b",
+      scale: 1,
+      targetScale: 1,
+      targetX: 200,
+      targetY: 80,
+      x: 200,
+      y: 80,
+      fromCardId: 11,
+    }),
+    phase: "settled" as const,
+  };
   const model: BoardModel = {
     ...initialBoardModel(),
     flights: new Map([
-      [
-        1,
-        spawnFlight({
-          id: 1,
-          kind: "battlefield",
-          name: "Grizzly Bears",
-          print: "print-id",
-          scale: 1,
-          targetScale: 1,
-          targetX: 100,
-          targetY: 0,
-          x: 0,
-          y: 0,
-        }),
-      ],
+      [1, flyer],
+      [2, { ...settled, phase: "flying" }],
     ]),
-    hideCardIds: new Set([1]),
-    lastFlightFrame: 0,
-    ownedIds: new Set([1]),
+    handHidden: new Set([9, 11]),
+    hideCardIds: new Set([1, 2]),
+    ownedIds: new Set([1, 2]),
+    lastFlightFrame: 50,
   };
 
   Story.story(
     (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
     Story.with(model),
-    Story.message(TickedFrame({ now: 16 })),
+    Story.message(FlightsSynced({ flights: [flyer, settled], now: 90 })),
     Story.model((board) => {
-      const flight = board.flights.get(1);
-
-      expect(flight?.x).toBe(0);
-      expect(flight?.y).toBe(0);
-      expect(board.hideCardIds.has(1)).toBe(true);
-      expect(board.lastFlightFrame).toBe(0);
-    }),
-  );
-});
-
-test("ticked frame clears stale hide ids once flights are gone", () => {
-  const fold = gameFold();
-  const model: BoardModel = {
-    ...initialBoardModel(),
-    hideCardIds: new Set([1]),
-    ownedIds: new Set([1]),
-    lastFlightFrame: 100,
-  };
-
-  Story.story(
-    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
-    Story.with(model),
-    Story.message(TickedFrame({ now: 120 })),
-    Story.model((board) => {
-      expect(board.hideCardIds.size).toBe(0);
-      expect(board.ownedIds.size).toBe(0);
-      expect(board.lastFlightFrame).toBeNull();
+      expect(board.flights.get(1)).toEqual(flyer);
+      expect(board.flights.has(2)).toBe(false);
+      expect(board.handHidden).toEqual(new Set([9]));
+      expect(board.hideCardIds).toEqual(new Set([1]));
+      expect(board.ownedIds).toEqual(new Set([1]));
+      expect(board.lastFlightFrame).toBe(90);
     }),
   );
 });

@@ -1,6 +1,6 @@
 # Canvas flight paint performance
 
-**Status:** Done — `flight-frame.test.ts` (resting gate + `mergeFlightPoses`), `mount.test.ts` (pose-only tick skips resting paint), `story.test.ts` (`FlightsSynced` settle; `TickedFrame` no-step).  
+**Status:** Done — `flight-frame.test.ts` (resting gate + `mergeFlightPoses`), `mount.test.ts` (pose-only tick skips resting paint), `story.test.ts` (`FlightsSynced` settle + mixed settled/flying payload).  
 **Date:** 2026-07-23  
 **PR:** [#74](https://github.com/Reilley64/mtgfr/pull/74)  
 **Related:** [`docs/client-canvas-map.md`](../../client-canvas-map.md), [`docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md`](2026-07-20-client-game-board-and-interaction.md)
@@ -71,6 +71,6 @@ Do **not** pursue WebGL / OffscreenCanvas / Pixi in this pass (board specs keep 
 |------|------|
 | `client/app/board/bitmap/mount.ts` | Frame bus, rAF, split layers — primary change site |
 | `client/app/board/motion/flights.ts` | Pure step/spawn — reuse from Mount-local clock |
-| `client/app/board/submodel.ts` | Stop mid-flight `TickedFrame` storm; settle/spawn updates only |
+| `client/app/board/submodel.ts` | `FlightsSynced` settle/spawn only; dead `TickedFrame` removed |
 | `client/app/board/view.ts` | `publishBitmapFrame` / composition — gate resting publishes |
 | `client/app/board/canvas/scene.ts` | Optional later: drop covered vector card shapes |

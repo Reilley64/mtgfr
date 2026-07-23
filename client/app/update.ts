@@ -220,7 +220,6 @@ export const update = (
       BoardPointerDown: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerMove: (boardMessage) => foldBoard(model, boardMessage),
       BoardPointerUp: (boardMessage) => foldBoard(model, boardMessage),
-      TickedFrame: (boardMessage) => foldBoard(model, boardMessage),
       FlightsSynced: (boardMessage) => foldBoard(model, boardMessage),
       HandActionActivated: (boardMessage) => foldBoard(model, boardMessage),
       HandDragStarted: (boardMessage) => foldBoard(model, boardMessage),

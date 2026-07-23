@@ -33,7 +33,6 @@ export const ArtLoaded = m("ArtLoaded");
 export const BoardPointerDown = m("BoardPointerDown", CanvasPoint);
 export const BoardPointerMove = m("BoardPointerMove", CanvasPoint);
 export const BoardPointerUp = m("BoardPointerUp", CanvasPoint);
-export const TickedFrame = m("TickedFrame", { now: S.Number, reducedMotion: S.optional(S.Boolean) });
 export const FlightsSynced = m("FlightsSynced", { now: S.Number, flights: S.Array(CardFlight) });
 
 /** User activated a hand/command/graveyard/exile bar action (click / Enter / Space / drop above threshold). */
@@ -214,7 +213,6 @@ export const Message = S.Union([
   BoardPointerDown,
   BoardPointerMove,
   BoardPointerUp,
-  TickedFrame,
   FlightsSynced,
   HandActionActivated,
   HandDragStarted,

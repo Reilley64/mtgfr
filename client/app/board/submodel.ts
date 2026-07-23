@@ -739,12 +739,6 @@ function applyFlightsSynced(model: BoardModel, flightsIn: readonly CardFlight[],
   };
 }
 
-function tickedFrameModel(model: BoardModel): BoardModel {
-  if (model.flights.size > 0) return model;
-  if (model.lastFlightFrame == null && model.hideCardIds.size === 0 && model.ownedIds.size === 0) return model;
-  return { ...model, hideCardIds: new Set(), lastFlightFrame: null, ownedIds: new Set() };
-}
-
 type Vec = { x: number; y: number };
 type BoardCmd = FoldkitCommand.Command<Message, never, RpcClient>;
 type BoardReturn = readonly [BoardModel, ReadonlyArray<BoardCmd>];
@@ -1280,8 +1274,6 @@ export function updateBoard(
     }
     case "BoardPointerUp":
       return pointerUpModel(model, fold, tableId, message.x, message.y);
-    case "TickedFrame":
-      return [tickedFrameModel(model), []];
     case "FlightsSynced":
       return [applyFlightsSynced(model, message.flights, message.now), []];
     case "HandActionActivated": {
