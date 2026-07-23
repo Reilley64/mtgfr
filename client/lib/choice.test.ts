@@ -229,6 +229,12 @@ test("choiceDraftKey changes when scry items change", () => {
   expect(choiceDraftKey(a)).not.toBe(choiceDraftKey(b));
 });
 
+test("choiceDraftKey changes when pay_any_amount max shrinks", () => {
+  const a = { kind: "pay_any_amount_of_mana" as const, max: 12, player: 0, source: 7 };
+  const b = { kind: "pay_any_amount_of_mana" as const, max: 4, player: 0, source: 7 };
+  expect(choiceDraftKey(a)).not.toBe(choiceDraftKey(b));
+});
+
 test("buildAnswerFromDraft builds discard from card-pick draft", () => {
   const pc = { kind: "discard" as const, count: 2, items: [], player: 0 };
   const draft: PromptDraft = { kind: "card-pick", picked: [1, 2] };

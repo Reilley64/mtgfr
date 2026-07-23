@@ -17,7 +17,7 @@ import {
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
-import { costText, costWithChosenX } from "~/xCost";
+import { clampX, costText, costWithChosenX } from "~/xCost";
 import { modeAvailable } from "../action/modal";
 import { objectName, playerSeatLabel, stagedPickTargets, stagedTargetTitle } from "../action/targeting";
 import { seatColor } from "../geometry/layout";
@@ -33,6 +33,7 @@ import {
   PromptDamageSet,
   PromptDeclined,
   PromptModeChoiceToggled,
+  PromptNumberSet,
   PromptOrderMoved,
   PromptPartitionSet,
   PromptStringSet,
@@ -1205,10 +1206,35 @@ function numberPickPrompt(
     PendingChoiceView,
     { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
   >,
+  board: BoardModel,
+  state: VisibleState,
   tableId: string | null,
 ): Html {
-  const answerFor = (count: number): AnswerInput =>
-    pending.kind === "pay_any_amount_of_mana" ? { kind: "pay_amount", amount: count } : { kind: "draw_count", count };
+  if (pending.kind === "pay_any_amount_of_mana") {
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const max = pending.max;
+    const count = clampX(draft.kind === "number" ? draft.count : 0, 0, max);
+    return frame("pending-choice", numberPickTitle(pending), [
+      h.div(
+        [h.Class("flex flex-wrap items-center justify-center gap-2")],
+        [
+          itemButton("Min", "prompt-number-min", PromptNumberSet({ count: 0 })),
+          itemButton("−", "prompt-number-dec", PromptNumberSet({ count: count - 1 }), count <= 0),
+          h.span(
+            [
+              h.DataAttribute("testid", "prompt-number-value"),
+              h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+            ],
+            [String(count)],
+          ),
+          itemButton("+", "prompt-number-inc", PromptNumberSet({ count: count + 1 }), count >= max),
+          itemButton("Max", "prompt-number-max", PromptNumberSet({ count: max })),
+        ],
+      ),
+      submitButton(count === 0 ? "Pay 0 (decline)" : `Pay {${count}}`, tableId == null),
+    ]);
+  }
+  const answerFor = (count: number): AnswerInput => ({ kind: "draw_count", count });
   return frame("pending-choice", numberPickTitle(pending), [
     h.div(
       [h.Class("flex flex-wrap gap-2")],
@@ -1363,7 +1389,7 @@ function pendingChoicePrompt(
       ) {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
-      return numberPickPrompt(pending, tableId);
+      return numberPickPrompt(pending, board, state, tableId);
     case "destinationPick":
       if (
         pending.kind !== "choose_countered_spell_destination" &&

@@ -1593,6 +1593,13 @@ export function updateBoard(
       if (synced.promptDraft?.kind !== "string") return [synced, []];
       return [{ ...synced, promptDraft: { kind: "string", value: message.value } }, []];
     }
+    case "PromptNumberSet": {
+      const synced = syncPromptDraft(model, fold);
+      const pc = fold.state?.pending_choice;
+      if (synced.promptDraft?.kind !== "number" || pc == null || !("max" in pc)) return [synced, []];
+      const count = clampX(message.count, 0, pc.max);
+      return [{ ...synced, promptDraft: { kind: "number", count } }, []];
+    }
     case "PromptModeChoiceToggled": {
       const synced = syncPromptDraft(model, fold);
       const pc = fold.state?.pending_choice;

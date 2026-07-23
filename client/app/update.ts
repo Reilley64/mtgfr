@@ -253,6 +253,7 @@ export const update = (
       PromptOrderMoved: (boardMessage) => foldBoard(model, boardMessage),
       PromptDamageSet: (boardMessage) => foldBoard(model, boardMessage),
       PromptStringSet: (boardMessage) => foldBoard(model, boardMessage),
+      PromptNumberSet: (boardMessage) => foldBoard(model, boardMessage),
       PromptModeChoiceToggled: (boardMessage) => foldBoard(model, boardMessage),
       PromptPartitionSet: (boardMessage) => foldBoard(model, boardMessage),
       ModalModeToggled: (boardMessage) => foldBoard(model, boardMessage),
