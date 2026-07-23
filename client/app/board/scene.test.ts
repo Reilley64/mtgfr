@@ -125,11 +125,15 @@ function staticOverlayScene(model: ViewModel, ...steps: readonly unknown[]) {
   Scene.scene<ViewModel, Message>({ update, view }, Scene.with(model), ...(steps as []));
 }
 
-function liveBoardScene(model: BoardViewModel, ...steps: readonly unknown[]) {
+function liveBoardScene(
+  model: BoardViewModel,
+  ...steps: readonly unknown[]
+) {
+  const hint = !model.board.hintDismissed && !model.board.hintAutoHidden;
   Scene.scene<BoardViewModel, Message>(
     { update: (m) => [m, []], view: fullBoardView },
     Scene.with(model),
-    resolveLiveBoardMounts(),
+    resolveLiveBoardMounts({ hint }),
     ...(steps as []),
   );
 }
@@ -695,6 +699,26 @@ test("log panel shows last lines with AUTO chip", () => {
 test("log panel hidden when log is empty", () => {
   const model = viewModel(fold(state()));
   overlayScene(model, Scene.expect(Scene.testId("board-log")).toBeAbsent());
+});
+
+test("board hosts keyboard and audio mounts on separate elements", () => {
+  // Foldkit keeps only the last OnMount insert hook per DOM node. Stacking
+  // keyboard + audio (+ hint) on <main> silently drops Alt inspect (and can
+  // drop table audio). Each mount must own its own host element.
+  liveBoardScene(
+    fullBoardModel(fold(state())),
+    Scene.expect(Scene.testId("board-keyboard-mount")).toExist(),
+    Scene.expect(Scene.testId("board-audio-mount")).toExist(),
+    Scene.expect(Scene.testId("board-hint-mount")).toExist(),
+  );
+
+  const hintGone = fullBoardModel(fold(state()));
+  liveBoardScene(
+    { ...hintGone, board: { ...hintGone.board, hintDismissed: true } },
+    Scene.expect(Scene.testId("board-keyboard-mount")).toExist(),
+    Scene.expect(Scene.testId("board-audio-mount")).toExist(),
+    Scene.expect(Scene.testId("board-hint-mount")).toBeAbsent(),
+  );
 });
 
 test("inspect overlay docks left with backdrop when pinned", () => {

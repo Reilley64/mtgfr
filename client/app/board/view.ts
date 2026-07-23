@@ -130,17 +130,44 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
 
   const ariaSummary = boardStatusSummary(state, state.viewer);
 
+  // Foldkit keeps only the last OnMount insert hook per element — never stack
+  // MountBoardKeyboard / MountBoardAudio / MountHintAutoHide on the same node
+  // (that silently dropped Alt inspect and could mute table audio).
+  const showHint = hintVisible(model.board);
   return h.main(
     [
       h.Class("fixed inset-0 overflow-hidden bg-forest-floor text-snow"),
       h.DataAttribute("testid", "board-mount"),
-      h.OnMount(MountBoardKeyboard()),
-      h.OnMount(MountBoardAudio()),
-      hintVisible(model.board) ? h.OnMount(MountHintAutoHide()) : null,
-      h.DataAttribute("hint-visible", hintVisible(model.board) ? "1" : "0"),
-      ...boardAudioAttrs(model, state),
-    ].filter((attribute) => attribute != null),
+    ],
     [
+      h.div(
+        [
+          h.Class("hidden"),
+          h.DataAttribute("testid", "board-keyboard-mount"),
+          h.OnMount(MountBoardKeyboard()),
+        ],
+        [],
+      ),
+      h.div(
+        [
+          h.Class("hidden"),
+          h.DataAttribute("testid", "board-audio-mount"),
+          ...boardAudioAttrs(model, state),
+          h.OnMount(MountBoardAudio()),
+        ],
+        [],
+      ),
+      showHint
+        ? h.div(
+            [
+              h.Class("hidden"),
+              h.DataAttribute("testid", "board-hint-mount"),
+              h.DataAttribute("hint-visible", "1"),
+              h.OnMount(MountHintAutoHide()),
+            ],
+            [],
+          )
+        : null,
       h.div([h.Class("sr-only"), h.Attribute("aria-live", "polite")], [ariaSummary]),
       Canvas.view<Message>({
         width: model.board.viewport.width,
