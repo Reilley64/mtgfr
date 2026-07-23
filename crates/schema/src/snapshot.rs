@@ -949,7 +949,7 @@ mod tests {
     use crate::dto::{CommanderDamageView, PendingChoiceView, WireKind};
     use crate::intent::{WireAttack, WireTarget};
     use crate::test_support::{def, pass_until_choice, refresh_via_mana_tap, resolve_top_of_stack};
-    use engine::{Defender, Effect, Game, ObjectId, PlayerId};
+    use engine::{Defender, Effect, Game, ObjectId, PlayerId, TokenEffect};
 
     use super::{SPECTATOR_VIEWER, StreamFrame, ViewExtras, complete_visible};
 

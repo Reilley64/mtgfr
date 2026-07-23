@@ -838,7 +838,7 @@ mod coverage_tests {
     use super::project_pending_choice;
     use crate::dto::PendingChoiceView;
     use crate::test_support::def;
-    use engine::{Amount, Effect, Game, PendingChoice, PlayerId, Target};
+    use engine::{Amount, DrawEffect, Effect, Game, LifeEffect, PendingChoice, PlayerId, Target};
 
     const CHOOSE_ONE_MODES: &[Effect] = &[
         Effect::Draw(DrawEffect::Cards {
