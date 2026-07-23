@@ -1009,7 +1009,6 @@ test("trample combat damage assign shows overflow to defender and enables Assign
     Scene.expect(Scene.testId("pending-choice")).toExist(),
     Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 2 / 5"),
     Scene.expect(Scene.testId("prompt-damage-overflow")).toHaveText("to defender: 3"),
-    Scene.expect(Scene.testId("pending-damage-aim")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
     Scene.expect(Scene.testId("prompt-damage-20-value")).toHaveText("2"),
     Scene.expect(Scene.testId("prompt-damage-20-inc")).toExist(),
@@ -1056,6 +1055,57 @@ test("divide_spell_damage on-board aim shows coach when targets are battlefield"
     Scene.expect(Scene.testId("pending-choice")).toExist(),
     Scene.expect(Scene.testId("pending-divide-aim")).toExist(),
     Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 3 / 3"),
+    Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-damage-0-inc")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-damage-1-inc")).toBeAbsent(),
+  );
+});
+
+test("on-board assign_combat_damage hides steppers when blockers are battlefield", () => {
+  const attacker = card(9, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 4, toughness: 4 },
+    power: 4,
+    toughness: 4,
+    name: "Atk",
+  });
+  const bear = card(20, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+    name: "Bear",
+  });
+  const elf = card(21, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+    power: 1,
+    toughness: 1,
+    name: "Elf",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "damage", amounts: { 20: 3, 21: 1 } },
+      },
+      gameState({
+        objects: [attacker, bear, elf],
+        pending_choice: {
+          kind: "assign_combat_damage",
+          player: 0,
+          source: 9,
+          items: [
+            { id: 20, label: "Bear" },
+            { id: 21, label: "Elf" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-damage-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 4 / 4"),
+    Scene.expect(Scene.testId("prompt-damage-20-inc")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-damage-21-inc")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
   );
 });

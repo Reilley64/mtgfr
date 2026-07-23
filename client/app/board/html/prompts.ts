@@ -513,17 +513,22 @@ function damageAssignPrompt(
   const assigned = Object.values(amounts).reduce((s, n) => s + n, 0);
   const ready = damageAssignReady(pending, draft, state);
   const overflow = trample ? Math.max(0, power - assigned) : 0;
-  const rows = pending.items.map((it) =>
-    h.div(
-      [h.Class("flex items-center gap-2")],
-      [h.span([h.Class("w-28 truncate text-body")], [it.label]), amountStepper(it.id, amounts[it.id] ?? 0, power)],
-    ),
-  );
+  const onBoard = pendingDamageAssignBlockers(pending, state) != null;
+  const rows = onBoard
+    ? []
+    : pending.items.map((it) =>
+        h.div(
+          [h.Class("flex items-center gap-2")],
+          [h.span([h.Class("w-28 truncate text-body")], [it.label]), amountStepper(it.id, amounts[it.id] ?? 0, power)],
+        ),
+      );
   return frame("pending-choice", `Divide ${power} damage among blockers`, [
-    h.div(
-      [h.DataAttribute("testid", "pending-damage-aim"), h.Class("text-body text-mist")],
-      ["Click a blocker on the board to move 1 damage onto it"],
-    ),
+    onBoard
+      ? h.div(
+          [h.DataAttribute("testid", "pending-damage-aim"), h.Class("text-body text-mist")],
+          ["Click a blocker on the board to move 1 damage onto it"],
+        )
+      : null,
     ...rows,
     h.div(
       [
@@ -1372,6 +1377,17 @@ function divideTotalPrompt(
     const amounts = draft.kind === "divide" ? draft.amounts : {};
     const assigned = Object.values(amounts).reduce((sum, amount) => sum + amount, 0);
     const onBoard = pendingDivideSpellObjectIndexes(pending, state) != null;
+    const rows = onBoard
+      ? []
+      : pending.items.map((item, index) =>
+          h.div(
+            [h.Class("flex items-center gap-2")],
+            [
+              h.span([h.Class("w-44 truncate text-body")], [item.label]),
+              amountStepper(index, amounts[index] ?? 0, pending.total),
+            ],
+          ),
+        );
     return frame("pending-choice", `Divide ${pending.total} damage`, [
       onBoard
         ? h.div(
@@ -1379,15 +1395,7 @@ function divideTotalPrompt(
             ["Click a target on the board to move 1 damage onto it"],
           )
         : null,
-      ...pending.items.map((item, index) =>
-        h.div(
-          [h.Class("flex items-center gap-2")],
-          [
-            h.span([h.Class("w-44 truncate text-body")], [item.label]),
-            amountStepper(index, amounts[index] ?? 0, pending.total),
-          ],
-        ),
-      ),
+      ...rows,
       h.div(
         [
           h.DataAttribute("testid", "prompt-damage-assigned"),
@@ -1402,6 +1410,17 @@ function divideTotalPrompt(
   const amounts = draft.kind === "damage" ? draft.amounts : {};
   const assigned = Object.values(amounts).reduce((sum, amount) => sum + amount, 0);
   const onBoard = pendingDamageAssignBlockers(pending, state) != null;
+  const rows = onBoard
+    ? []
+    : pending.items.map((item) =>
+        h.div(
+          [h.Class("flex items-center gap-2")],
+          [
+            h.span([h.Class("w-44 truncate text-body")], [item.label]),
+            amountStepper(item.id, amounts[item.id] ?? 0, pending.total),
+          ],
+        ),
+      );
   return frame("pending-choice", `Divide ${pending.total} counters`, [
     onBoard
       ? h.div(
@@ -1409,15 +1428,7 @@ function divideTotalPrompt(
           ["Click a permanent on the board to move 1 counter onto it"],
         )
       : null,
-    ...pending.items.map((item) =>
-      h.div(
-        [h.Class("flex items-center gap-2")],
-        [
-          h.span([h.Class("w-44 truncate text-body")], [item.label]),
-          amountStepper(item.id, amounts[item.id] ?? 0, pending.total),
-        ],
-      ),
-    ),
+    ...rows,
     h.div(
       [
         h.DataAttribute("testid", "prompt-damage-assigned"),
@@ -2052,18 +2063,11 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
             "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud pointer-events-auto",
           ),
         ],
-        [
-          h.div([h.Class("pointer-events-none")], ["Click a permanent to sacrifice"]),
-          cancelButton(),
-        ],
+        [h.div([h.Class("pointer-events-none")], ["Click a permanent to sacrifice"]), cancelButton()],
       );
     }
-    return costPickPrompt(
-      "sacrifice-pick",
-      "Choose a permanent to sacrifice",
-      choices,
-      state,
-      (id) => SacrificeChosen({ objectId: id }),
+    return costPickPrompt("sacrifice-pick", "Choose a permanent to sacrifice", choices, state, (id) =>
+      SacrificeChosen({ objectId: id }),
     );
   }
   if (board.discardPick != null) {
