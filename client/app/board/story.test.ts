@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import type { Message } from "./messages";
-import { BoardPointerDown, TickedFrame } from "./messages";
+import { BoardPointerDown, FlightsSynced, TickedFrame } from "./messages";
 import { spawnFlight } from "./motion/flights";
 import { type BoardModel, initialBoardModel, syncBoardWithGame, updateBoard } from "./submodel";
 
@@ -65,7 +65,82 @@ test("pointer down on empty felt enters pan phase", () => {
   );
 });
 
-test("ticked frame advances flight position", () => {
+test("FlightsSynced stores still-flying poses and hides the source card", () => {
+  const fold = gameFold();
+  const flight = {
+    ...spawnFlight({
+      id: 1,
+      kind: "battlefield",
+      name: "Grizzly Bears",
+      print: "print-id",
+      scale: 0.8,
+      targetScale: 1,
+      targetX: 100,
+      targetY: 0,
+      x: 40,
+      y: 12,
+      fromCardId: 9,
+    }),
+    phase: "flying" as const,
+  };
+
+  Story.story(
+    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
+    Story.with(initialBoardModel()),
+    Story.message(FlightsSynced({ flights: [flight], now: 200 })),
+    Story.model((board) => {
+      expect(board.flights.get(1)).toEqual(flight);
+      expect(board.handHidden.has(9)).toBe(true);
+      expect(board.hideCardIds).toEqual(new Set([1]));
+      expect(board.ownedIds).toEqual(new Set([1]));
+      expect(board.lastFlightFrame).toBe(200);
+    }),
+  );
+});
+
+test("FlightsSynced clears hidden cards when flights disappear", () => {
+  const fold = gameFold();
+  const model: BoardModel = {
+    ...initialBoardModel(),
+    flights: new Map([
+      [
+        1,
+        spawnFlight({
+          id: 1,
+          kind: "battlefield",
+          name: "Grizzly Bears",
+          print: "print-id",
+          scale: 1,
+          targetScale: 1,
+          targetX: 100,
+          targetY: 0,
+          x: 0,
+          y: 0,
+          fromCardId: 9,
+        }),
+      ],
+    ]),
+    handHidden: new Set([9]),
+    hideCardIds: new Set([1]),
+    ownedIds: new Set([1]),
+    lastFlightFrame: 100,
+  };
+
+  Story.story(
+    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
+    Story.with(model),
+    Story.message(FlightsSynced({ flights: [], now: 200 })),
+    Story.model((board) => {
+      expect(board.flights.size).toBe(0);
+      expect(board.handHidden.size).toBe(0);
+      expect(board.hideCardIds.size).toBe(0);
+      expect(board.ownedIds.size).toBe(0);
+      expect(board.lastFlightFrame).toBeNull();
+    }),
+  );
+});
+
+test("ticked frame does not step in-flight positions", () => {
   const fold = gameFold();
   const model: BoardModel = {
     ...initialBoardModel(),
@@ -86,7 +161,9 @@ test("ticked frame advances flight position", () => {
         }),
       ],
     ]),
+    hideCardIds: new Set([1]),
     lastFlightFrame: 0,
+    ownedIds: new Set([1]),
   };
 
   Story.story(
@@ -96,9 +173,31 @@ test("ticked frame advances flight position", () => {
     Story.model((board) => {
       const flight = board.flights.get(1);
 
-      expect(flight?.x).toBeGreaterThan(0);
-      expect(flight?.x).toBeLessThan(100);
+      expect(flight?.x).toBe(0);
+      expect(flight?.y).toBe(0);
       expect(board.hideCardIds.has(1)).toBe(true);
+      expect(board.lastFlightFrame).toBe(0);
+    }),
+  );
+});
+
+test("ticked frame clears stale hide ids once flights are gone", () => {
+  const fold = gameFold();
+  const model: BoardModel = {
+    ...initialBoardModel(),
+    hideCardIds: new Set([1]),
+    ownedIds: new Set([1]),
+    lastFlightFrame: 100,
+  };
+
+  Story.story(
+    (board: BoardModel, message: Message) => updateBoard(board, message, fold, null),
+    Story.with(model),
+    Story.message(TickedFrame({ now: 120 })),
+    Story.model((board) => {
+      expect(board.hideCardIds.size).toBe(0);
+      expect(board.ownedIds.size).toBe(0);
+      expect(board.lastFlightFrame).toBeNull();
     }),
   );
 });

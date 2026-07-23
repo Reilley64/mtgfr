@@ -24,12 +24,7 @@ import type {
 import type { InspectPin } from "../../lib/inspect";
 import { inspectPinChanged, pinFromCard } from "../../lib/inspect";
 import { humanReason } from "../../lib/reject";
-import {
-  isSoundEnabled,
-  playUnmuteTick,
-  setSoundEnabled,
-  unlockTableAudio,
-} from "../../lib/tableAudio";
+import { isSoundEnabled, playUnmuteTick, setSoundEnabled, unlockTableAudio } from "../../lib/tableAudio";
 import type { GameFoldState } from "../game/fold";
 import { FetchInspectCard, SetStackDwell, SetTurnYield, SetYield, SubmitIntent } from "../game/intents";
 import type { RpcClient } from "../resources";
@@ -81,14 +76,12 @@ import { HAND_BAR_H, HAND_INSPECT_STICKY_BAND, HAND_PLAY_SLACK_PX } from "./html
 import type { Message } from "./messages";
 import {
   type CardFlight,
-  flightSettled,
   flyingCardIds,
   handFlightScale,
   rebindFlightId,
   retargetFlight,
   spawnFlight,
   stackFlightScale,
-  stepFlights,
 } from "./motion/flights";
 
 export const BOARD_VIEWPORT = { width: 1440, height: 900 } as const;
@@ -713,24 +706,27 @@ function completeStagedTarget(
   return [nextModel, boardIntentSubmit(tableId, takeAction(fold, staged.action, target, 0, [], staged.picks))];
 }
 
-function tickedFrameModel(model: BoardModel, now: number, reducedMotion: boolean): BoardModel {
-  if (model.flights.size === 0) {
-    if (model.lastFlightFrame == null && model.hideCardIds.size === 0 && model.ownedIds.size === 0) return model;
-    return { ...model, hideCardIds: new Set(), lastFlightFrame: null, ownedIds: new Set() };
-  }
-
-  const last = model.lastFlightFrame ?? now - 16;
-  const dtMs = Math.max(0, now - last);
-  const stepped = stepFlights(model.flights, dtMs, reducedMotion);
+function applyFlightsSynced(model: BoardModel, flightsIn: readonly CardFlight[], now: number): BoardModel {
   const flights = new Map<number, CardFlight>();
   const handHidden = new Set(model.handHidden);
+  const retainedSourceIds = new Set<number>();
 
-  for (const [id, flight] of stepped.flights) {
-    if (!flightSettled(flight)) {
-      flights.set(id, flight);
+  for (const flight of flightsIn) {
+    if (flight.fromCardId != null) retainedSourceIds.add(flight.fromCardId);
+
+    if (flight.phase === "flying") {
+      flights.set(flight.id, flight);
+      if (flight.fromCardId != null) handHidden.add(flight.fromCardId);
       continue;
     }
+
     if (flight.fromCardId != null) handHidden.delete(flight.fromCardId);
+  }
+
+  for (const previousFlight of model.flights.values()) {
+    if (previousFlight.fromCardId == null) continue;
+    if (retainedSourceIds.has(previousFlight.fromCardId)) continue;
+    handHidden.delete(previousFlight.fromCardId);
   }
 
   return {
@@ -741,6 +737,12 @@ function tickedFrameModel(model: BoardModel, now: number, reducedMotion: boolean
     lastFlightFrame: flights.size === 0 ? null : now,
     ownedIds: new Set(flights.keys()),
   };
+}
+
+function tickedFrameModel(model: BoardModel): BoardModel {
+  if (model.flights.size > 0) return model;
+  if (model.lastFlightFrame == null && model.hideCardIds.size === 0 && model.ownedIds.size === 0) return model;
+  return { ...model, hideCardIds: new Set(), lastFlightFrame: null, ownedIds: new Set() };
 }
 
 type Vec = { x: number; y: number };
@@ -1279,7 +1281,9 @@ export function updateBoard(
     case "BoardPointerUp":
       return pointerUpModel(model, fold, tableId, message.x, message.y);
     case "TickedFrame":
-      return [tickedFrameModel(model, message.now, message.reducedMotion ?? false), []];
+      return [tickedFrameModel(model), []];
+    case "FlightsSynced":
+      return [applyFlightsSynced(model, message.flights, message.now), []];
     case "HandActionActivated": {
       const x = message.x ?? model.viewport.width / 2;
       const y = message.y ?? model.viewport.height / 2;
@@ -1704,12 +1708,7 @@ export function updateBoard(
       if (message.source === "hand") {
         // Peek-strip leave while the cursor is still in the hand fan (face art is
         // pointer-events-none) must not drop aux — Alt live re-pin would steal to BF underneath.
-        if (
-          message.card == null &&
-          model.altDown &&
-          model.handInspectHover != null &&
-          cursorInHandInspectBand(model)
-        ) {
+        if (message.card == null && model.altDown && model.handInspectHover != null && cursorInHandInspectBand(model)) {
           return [model, []];
         }
         return applyLiveInspectPin({ ...model, handInspectHover: message.card }, fold);

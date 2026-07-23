@@ -44,6 +44,7 @@ export {
   BoardPointerDown,
   BoardPointerMove,
   BoardPointerUp,
+  FlightsSynced,
   TickedFrame,
 } from "./board/messages";
 export {

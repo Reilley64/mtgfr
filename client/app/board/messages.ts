@@ -12,12 +12,29 @@ const WireTarget: S.Schema<WireTargetT> = S.Any;
 const WireIntent: S.Schema<WireIntentT> = S.Any;
 const ActionView: S.Schema<ActionViewT> = S.Any;
 const CatalogCard: S.Schema<CatalogCardT | null> = S.Any;
+const FlightPhase = S.Union([S.Literal("flying"), S.Literal("settled")]);
+const FlightKind = S.Union([S.Literal("battlefield"), S.Literal("stack"), S.Literal("from-stack")]);
+const CardFlight = S.Struct({
+  id: S.Number,
+  print: S.String,
+  name: S.String,
+  x: S.Number,
+  y: S.Number,
+  scale: S.Number,
+  targetX: S.Number,
+  targetY: S.Number,
+  targetScale: S.Number,
+  phase: FlightPhase,
+  kind: FlightKind,
+  fromCardId: S.optional(S.Number),
+});
 
 export const ArtLoaded = m("ArtLoaded");
 export const BoardPointerDown = m("BoardPointerDown", CanvasPoint);
 export const BoardPointerMove = m("BoardPointerMove", CanvasPoint);
 export const BoardPointerUp = m("BoardPointerUp", CanvasPoint);
 export const TickedFrame = m("TickedFrame", { now: S.Number, reducedMotion: S.optional(S.Boolean) });
+export const FlightsSynced = m("FlightsSynced", { now: S.Number, flights: S.Array(CardFlight) });
 
 /** User activated a hand/command/graveyard/exile bar action (click / Enter / Space / drop above threshold). */
 export const HandActionActivated = m("HandActionActivated", {
@@ -198,6 +215,7 @@ export const Message = S.Union([
   BoardPointerMove,
   BoardPointerUp,
   TickedFrame,
+  FlightsSynced,
   HandActionActivated,
   HandDragStarted,
   HandDragMoved,
