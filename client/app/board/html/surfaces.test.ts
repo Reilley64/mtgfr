@@ -539,6 +539,41 @@ test("modal mode picker renders before modes are chosen", () => {
   );
 });
 
+test("trample combat damage assign shows overflow to defender and enables Assign under power", () => {
+  const attacker = card(9, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 5, toughness: 5 },
+    power: 5,
+    toughness: 5,
+    name: "Trampler",
+    keywords: ["trample"],
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "damage", amounts: { 20: 2, 21: 0 } },
+      },
+      gameState({
+        objects: [attacker],
+        pending_choice: {
+          kind: "assign_combat_damage",
+          player: 0,
+          source: 9,
+          items: [
+            { id: 20, label: "Bear" },
+            { id: 21, label: "Elf" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 2 / 5"),
+    Scene.expect(Scene.testId("prompt-damage-overflow")).toHaveText("to defender: 3"),
+    Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+  );
+});
+
 test("sacrifice pick prompt renders as a board surface", () => {
   const sacrificeAction = action(14, {
     kind: "activate",

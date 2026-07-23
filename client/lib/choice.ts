@@ -529,9 +529,13 @@ export function cardPickReady(pc: PendingChoiceView, picked: number[]): boolean 
 
 export function damageAssignReady(pc: PendingChoiceView, draft: PromptDraft, state: VisibleState): boolean {
   if (draft.kind !== "damage") return false;
-  const assigned = Object.values(draft.amounts).reduce((sum, amount) => sum + amount, 0);
+  const amounts = Object.values(draft.amounts);
+  if (amounts.some((amount) => amount < 0)) return false;
+  const assigned = amounts.reduce((sum, amount) => sum + amount, 0);
   if (pc.kind === "assign_combat_damage") {
-    const power = state.objects.find((o) => o.id === pc.source)?.power ?? 0;
+    const source = state.objects.find((o) => o.id === pc.source);
+    const power = source?.power ?? 0;
+    if (source?.keywords?.includes("trample")) return assigned <= power;
     return assigned === power;
   }
   if (pc.kind === "divide_counters") {

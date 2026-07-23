@@ -5,11 +5,12 @@ import {
   buildAnswerFromDraft,
   choiceDraftKey,
   choiceIntent,
+  damageAssignReady,
   declineAnswer,
   FORMULATOR_FOR_KIND,
   type PromptDraft,
 } from "~/choice";
-import type { PendingChoiceView, WireIntent, WireModeChoice } from "~/wire/types";
+import type { ObjectView, PendingChoiceView, VisibleState, WireIntent, WireModeChoice } from "~/wire/types";
 
 const ALL_PENDING_CHOICE_KINDS = [
   "order_triggers",
@@ -149,6 +150,73 @@ test("choiceIntent maps assign combat damage", () => {
     kind: "assign_damage",
     player: 0,
     assignment: [{ blocker: 4, amount: 3 }],
+  });
+});
+
+function attackerObject(overrides: Partial<ObjectView> = {}): ObjectView {
+  return {
+    controller: 0,
+    has_haste: false,
+    id: 9,
+    is_commander: false,
+    kind: { kind: "creature", power: 4, toughness: 4 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
+    marked_damage: 0,
+    name: "Attacker",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 4,
+    print: "",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 4,
+    zone: 2,
+    ...overrides,
+  };
+}
+
+function damageState(attacker: ObjectView): VisibleState {
+  return {
+    active_player: 0,
+    can_act: true,
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    objects: [attacker],
+    pending_choice: null,
+    players: [],
+    priority: 0,
+    stack: [],
+    step: 3,
+    viewer: 0,
+  };
+}
+
+describe("damageAssignReady", () => {
+  const pc = {
+    kind: "assign_combat_damage" as const,
+    items: [
+      { id: 4, label: "Bear" },
+      { id: 5, label: "Elf" },
+    ],
+    player: 0,
+    source: 9,
+  };
+
+  test("non-trample requires exact power sum", () => {
+    const state = damageState(attackerObject());
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 3, 5: 1 } }, state)).toBe(true);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 2, 5: 1 } }, state)).toBe(false);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 5, 5: 0 } }, state)).toBe(false);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 5, 5: -1 } }, state)).toBe(false);
+  });
+
+  test("trample allows under-assign; rejects over-assign and negatives", () => {
+    const state = damageState(attackerObject({ keywords: ["trample"] }));
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 2, 5: 0 } }, state)).toBe(true);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 0, 5: 0 } }, state)).toBe(true);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 3, 5: 1 } }, state)).toBe(true);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 5, 5: 0 } }, state)).toBe(false);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: -1, 5: 0 } }, state)).toBe(false);
   });
 });
 
