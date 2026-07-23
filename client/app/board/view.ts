@@ -15,6 +15,7 @@ import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap
 import { sceneShapes } from "./canvas/scene";
 import { worldToScreen } from "./geometry/camera";
 import { layout, STEP } from "./geometry/layout";
+import { stackPresentation } from "./geometry/stackLayout";
 import { autoTapPreviewIds, paymentPreviewAction } from "./html/actions";
 import { MountBoardAudio, MountHintAutoHide } from "./html/audio-mount";
 import { MountBoardKeyboard } from "./html/keyboard-mount";
@@ -220,6 +221,12 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
           stagedBlocks: model.board.combatBlocks,
           stagedTargeting,
           combatDrag: combatDragShapes,
+          stackPresentation: stackPresentation({
+            count: state.stack.length,
+            expandedOpen: model.board.stackExpand,
+            viewportW: model.board.viewport.width,
+            viewportH: model.board.viewport.height,
+          }),
         }),
         onPointerDown: ({ x, y }) => BoardPointerDown({ x, y }),
         onPointerMove: ({ x, y }) => BoardPointerMove({ x, y }),

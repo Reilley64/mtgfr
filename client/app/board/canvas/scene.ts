@@ -7,6 +7,7 @@ import { CARD_RESTING_OUTLINE, COMMANDER_GOLD, PLAYABLE_BORDER, playableBattlefi
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { fitCamera } from "../geometry/interaction";
 import { CARD_H, CARD_W, layout, type RenderCard, seatBand, seatColor } from "../geometry/layout";
+import type { StackPresentation } from "../geometry/stackLayout";
 import { BOARD_VIEWPORT } from "../submodel";
 import { aimArrowShapes, arrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
 import { avatarScreenPositions, avatarShapes } from "./avatars";
@@ -62,6 +63,7 @@ export type SceneShapesOptions = {
   stagedBlocks?: ReadonlyArray<WireBlock>;
   stagedTargeting?: StagedTargeting | null;
   combatDrag?: { from: { x: number; y: number }; to: { x: number; y: number }; declaringBlock: boolean } | null;
+  stackPresentation?: StackPresentation;
 };
 
 function seatShapes(state: VisibleState, camera: Camera): Shape[] {
@@ -246,6 +248,7 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
       cards,
       avatars,
       camera,
+      presentation: options.stackPresentation ?? "pile",
     }),
     ...(targeting == null ? [] : aimArrowShapes({ from: targeting.aimFrom, to: targeting.cursor })),
     ...(options.combatDrag == null
