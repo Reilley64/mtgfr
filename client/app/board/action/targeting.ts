@@ -223,6 +223,47 @@ export function pendingDamageAssignOverlay(
   };
 }
 
+/** Legal player seats for on-board choose_target_players / choose_splitting_opponent aim. */
+export function pendingPlayerAimSeats(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (pc == null) return null;
+  if (pc.player !== state.viewer) return null;
+  if (pc.kind !== "choose_target_players" && pc.kind !== "choose_splitting_opponent") return null;
+  if (!("items" in pc) || pc.items.length === 0) return null;
+  const seats = new Set<number>();
+  for (const item of pc.items) {
+    if (item.player == null) return null;
+    seats.add(item.player);
+  }
+  return seats;
+}
+
+export function pendingPlayerAimOneClick(pc: PendingChoiceView): boolean {
+  if (pc.kind === "choose_splitting_opponent") return true;
+  if (pc.kind === "choose_target_players") return pc.max === 1;
+  return false;
+}
+
+/** Highlight life-orb avatars for on-board player-target pending choices. */
+export function pendingPlayerAimOverlay(pc: PendingChoiceView | null | undefined, state: VisibleState): StagingOverlay {
+  const idle: StagingOverlay = {
+    aiming: false,
+    targetObjects: new Set(),
+    targetPlayers: new Set(),
+    aimFrom: null,
+  };
+  const seats = pendingPlayerAimSeats(pc, state);
+  if (seats == null) return idle;
+  return {
+    aiming: true,
+    targetObjects: new Set(),
+    targetPlayers: seats,
+    aimFrom: null,
+  };
+}
+
 /** Object ids that are legal arrow targets while staged or pending aim is live. */
 export function aimingObjectIds(
   staged: StagedAction | null,

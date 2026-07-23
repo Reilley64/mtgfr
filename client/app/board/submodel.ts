@@ -56,6 +56,8 @@ import { advance } from "./action/modal";
 import {
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
+  pendingPlayerAimOneClick,
+  pendingPlayerAimSeats,
   pendingTargetOneClick,
   stagedPickTargets,
 } from "./action/targeting";
@@ -743,6 +745,34 @@ function pointerUpModel(
       }
     }
   }
+  const playerSeats = fold.state != null ? pendingPlayerAimSeats(pc, fold.state) : null;
+  if (playerSeats != null && pc != null) {
+    const seat = avatarSeatAt(fold, model, x, y);
+    if (seat != null && playerSeats.has(seat)) {
+      if (pendingPlayerAimOneClick(pc)) {
+        if (pc.kind === "choose_splitting_opponent") {
+          const answer = { kind: "target" as const, id: 0, player: seat };
+          return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+        }
+        if (pc.kind === "choose_target_players") {
+          const answer = { kind: "target_players" as const, players: [seat] };
+          return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+        }
+      } else if (pc.kind === "choose_target_players") {
+        const synced = syncPromptDraft(idle, fold);
+        const players = synced.promptDraft?.kind === "player-pick" ? synced.promptDraft.players : [];
+        let next: number[];
+        if (players.includes(seat)) {
+          next = players.filter((p) => p !== seat);
+        } else if (players.length >= pc.max) {
+          return [synced, []];
+        } else {
+          next = [...players, seat];
+        }
+        return [{ ...synced, promptDraft: { kind: "player-pick", players: next } }, []];
+      }
+    }
+  }
   // Empty board click dismisses the activation radial.
   if (model.selectedId != null) {
     return [{ ...idle, selectedId: null, radialPress: { armed: null }, radialHover: null }, []];
@@ -1318,6 +1348,23 @@ function trySubmitReadyPendingDraft(
         { ...synced, promptDraft: null, pendingChoiceKey: null },
         boardIntentSubmit(tableId, choiceIntent(pc, answer)),
       ];
+    }
+  }
+  if (
+    pc?.kind === "choose_target_players" &&
+    pendingPlayerAimSeats(pc, state) != null &&
+    !pendingPlayerAimOneClick(pc) &&
+    synced.promptDraft?.kind === "player-pick"
+  ) {
+    const count = synced.promptDraft.players.length;
+    if (count >= pc.min && count <= pc.max) {
+      const answer = buildAnswerFromDraft(pc, synced.promptDraft);
+      if (answer != null) {
+        return [
+          { ...synced, promptDraft: null, pendingChoiceKey: null },
+          boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+        ];
+      }
     }
   }
   return null;

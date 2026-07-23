@@ -741,61 +741,116 @@ test("choose_mode prompt emits choose_mode intent from UI", () => {
   expect(intents).toEqual([{ kind: "choose_mode", player: 0, mode: 1 }]);
 });
 
-test("choose_splitting_opponent prompt emits player target intent from UI", () => {
-  const intents = clickPromptIntent(
-    state({
-      pending_choice: {
-        kind: "choose_splitting_opponent",
-        items: [
-          { id: 0, label: "Player 2", player: 1 },
-          { id: 0, label: "Player 3", player: 2 },
-        ],
-        label: "Choose an opponent",
-        player: 0,
-        source: 1,
-      },
-      players: [
-        {
-          player: 0,
-          username: "Alice",
-          life: 40,
-          hand_count: 5,
-          library_count: 90,
-          lost: false,
-          commander_tax: 0,
-          mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
-        },
-        {
-          player: 1,
-          username: "Bob",
-          life: 40,
-          hand_count: 5,
-          library_count: 90,
-          lost: false,
-          commander_tax: 0,
-          mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
-        },
-        {
-          player: 2,
-          username: "Carol",
-          life: 40,
-          hand_count: 5,
-          library_count: 90,
-          lost: false,
-          commander_tax: 0,
-          mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
-        },
-      ],
-    }),
-    Scene.click(Scene.testId("prompt-player-2")),
-  );
-  expect(intents).toEqual([
-    {
-      kind: "choose_targets",
+test("choose_target_players on-board aim shows pending-player-aim chrome", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_target_players",
+      label: "Choose opponents",
+      min: 1,
+      max: 2,
       player: 0,
-      targets: [{ kind: "player", player: 2 }],
+      source: 1,
+      items: [
+        { id: 0, label: "Bob", player: 1 },
+        { id: 1, label: "Carol", player: 2 },
+      ],
     },
-  ]);
+    players: [
+      {
+        player: 0,
+        username: "Alice",
+        life: 40,
+        hand_count: 7,
+        library_count: 80,
+        lost: false,
+        commander_tax: 0,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+      },
+      {
+        player: 1,
+        username: "Bob",
+        life: 40,
+        hand_count: 5,
+        library_count: 90,
+        lost: false,
+        commander_tax: 0,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+      },
+      {
+        player: 2,
+        username: "Carol",
+        life: 40,
+        hand_count: 5,
+        library_count: 90,
+        lost: false,
+        commander_tax: 0,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+      },
+    ],
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-player-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-player-count")).toHaveText("0 / 2 selected"),
+    Scene.expect(Scene.testId("prompt-player-1")).not.toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+  );
+});
+
+test("choose_splitting_opponent on-board aim shows pending-player-aim chrome", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_splitting_opponent",
+      items: [
+        { id: 0, label: "Player 2", player: 1 },
+        { id: 0, label: "Player 3", player: 2 },
+      ],
+      label: "Choose an opponent",
+      player: 0,
+      source: 1,
+    },
+    players: [
+      {
+        player: 0,
+        username: "Alice",
+        life: 40,
+        hand_count: 5,
+        library_count: 90,
+        lost: false,
+        commander_tax: 0,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+      },
+      {
+        player: 1,
+        username: "Bob",
+        life: 40,
+        hand_count: 5,
+        library_count: 90,
+        lost: false,
+        commander_tax: 0,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+      },
+      {
+        player: 2,
+        username: "Carol",
+        life: 40,
+        hand_count: 5,
+        library_count: 90,
+        lost: false,
+        commander_tax: 0,
+        mana_pool: { any: 0, colored: [0, 0, 0, 0, 0], colorless: 0 },
+      },
+    ],
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-player-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-player-2")).not.toExist(),
+  );
 });
 
 test("divide_spell_damage submit emits divide intent when assignments match total", () => {
