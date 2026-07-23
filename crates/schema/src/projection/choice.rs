@@ -841,18 +841,18 @@ mod coverage_tests {
     use engine::{Amount, Effect, Game, PendingChoice, PlayerId, Target};
 
     const CHOOSE_ONE_MODES: &[Effect] = &[
-        Effect::DrawCards {
+        Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
-        Effect::GainLife {
+        }),
+        Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
     ];
 
     fn draw_effect() -> Effect {
-        Effect::DrawCards {
+        Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        }
+        })
     }
 
     #[test]
@@ -870,9 +870,9 @@ mod coverage_tests {
                     player: PlayerId(0),
                     source,
                     effects: vec![
-                        Effect::GainLife {
+                        Effect::Life(LifeEffect::Gain {
                             amount: Amount::Fixed(1),
-                        },
+                        }),
                         draw_effect(),
                     ],
                 },

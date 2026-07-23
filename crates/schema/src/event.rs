@@ -159,7 +159,7 @@ pub enum VisibleEvent {
     Untapped {
         object: ObjectId,
     },
-    /// A permanent was removed from combat (CR 506.4 — `Effect::RemoveFromCombat`).
+    /// A permanent was removed from combat (CR 506.4 — `Effect::Control(ControlEffect::RemoveFromCombat)`).
     RemovedFromCombat {
         object: ObjectId,
     },

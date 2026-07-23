@@ -746,7 +746,7 @@ mod tests {
         conditional_keywords: &[],
         abilities: &[engine::Ability {
             timing: engine::Timing::Triggered(engine::Trigger::Etb),
-            effect: engine::Effect::DealDamage {
+            effect: engine::Effect::Damage(DamageEffect::Target {
                 amount: engine::Amount::Fixed(1),
                 target: engine::TargetSpec::Creature,
                 count: engine::TargetCount {
@@ -757,7 +757,7 @@ mod tests {
                     strive_scaled: false,
                 },
                 divided: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             condition: None,
