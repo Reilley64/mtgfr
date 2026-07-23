@@ -79,7 +79,10 @@ export type TargetMode =
 
 export function onBoard(target: WireTarget, state: VisibleState): boolean {
   if (target.kind === "player") return true;
-  return state.objects.find((o) => o.id === target.id)?.zone === ZONE.Battlefield;
+  const obj = state.objects.find((o) => o.id === target.id);
+  if (obj == null) return false;
+  if (obj.zone === ZONE.Battlefield || obj.zone === ZONE.Stack) return true;
+  return state.stack.some((entry) => entry.source === target.id);
 }
 
 export function askFor(targets: WireTarget[], state: VisibleState): TargetMode {
@@ -171,6 +174,21 @@ export function pendingTargetingOverlay(
     targetPlayers: mode.players,
     aimFrom: stackAimOrigin(viewport.width, viewport.height, stackLen + 1),
   };
+}
+
+/** Object ids that are legal arrow targets while staged or pending aim is live. */
+export function aimingObjectIds(
+  staged: StagedAction | null,
+  pending: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> {
+  if (staged != null && !staged.preferPick) {
+    const mode = targetMode(staged.action, state);
+    if (mode.kind === "arrow") return mode.objects;
+  }
+  const pendingMode = pendingBoardTargetMode(pending, state);
+  if (pendingMode != null) return pendingMode.objects;
+  return new Set();
 }
 
 /** Title while the player is aiming a staged cast or activation before submitting. */

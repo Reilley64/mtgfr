@@ -109,10 +109,28 @@ describe("targetMode", () => {
     expect(mode).toEqual({ kind: "pick", targets: [{ kind: "object", id: 9 }] });
   });
 
-  it("a spell on the stack falls back to the picker", () => {
+  it("a spell on the stack uses arrow aiming (stack faces are clickable)", () => {
     const spell = object({ id: 4, zone: ZONE.Stack, name: "Shock", kind: { kind: "instant" } });
     const mode = targetMode(action({ label: "Counterspell", targets: [{ kind: "object", id: 4 }] }), state([spell]));
-    expect(mode).toEqual({ kind: "pick", targets: [{ kind: "object", id: 4 }] });
+    expect(mode.kind).toBe("arrow");
+    if (mode.kind !== "arrow") throw new Error("unreachable");
+    expect([...mode.objects]).toEqual([4]);
+  });
+
+  it("mixed stack and graveyard targets still use the picker", () => {
+    const spell = object({ id: 4, zone: ZONE.Stack, name: "Shock", kind: { kind: "instant" } });
+    const corpse = object({ id: 9, zone: ZONE.Graveyard, name: "Bear" });
+    const mode = targetMode(
+      action({
+        label: "Weird",
+        targets: [
+          { kind: "object", id: 4 },
+          { kind: "object", id: 9 },
+        ],
+      }),
+      state([spell, corpse]),
+    );
+    expect(mode.kind).toBe("pick");
   });
 });
 

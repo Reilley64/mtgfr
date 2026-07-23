@@ -15,6 +15,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - As a player, I can drag or click a playable card and complete required local choices.
 - As a player casting a targeted spell, I aim an arrow at legal targets on the board.
 - As a player answering a one-click on-board engine target choice, I aim the same arrow instead of a card grid.
+- As a player targeting a spell or ability on the stack, I click the highlighted stack face instead of a modal picker.
 - As an active combat player, I can stage attackers or blockers before confirming.
 - As a player, I can cancel local staging without answering or corrupting an engine pending choice.
 - As a player aiming or paying for a cast/activate, I keep seeing which lands will auto-tap until I submit or cancel.
@@ -23,9 +24,10 @@ Keep an action session in the board model. Pure planners decide whether an actio
 
 - `planCostPipeline` sequences sacrifice, discard, graveyard-exile, modal, X, target, and run steps.
 - `planRunAction` stages targeted actions, plays lands, casts spells, or submits simple actions.
-- Targeting uses engine-projected legal targets. Board targets become arrow aiming; off-board targets become picker prompts.
+- Targeting uses engine-projected legal targets. Battlefield, stack, and player targets become arrow aiming; graveyard/exile (and other off-board) targets become picker prompts.
 - Arrow aiming highlights legal objects and players and submits only after a legal target click.
-- Engine `choose_target` with `max === 1`, and `choose_spell_targets` / `choose_ability_targets` with `min === max === 1`, use the same on-board aim when every legal item is a battlefield permanent or player (`pendingBoardTargetMode` / `pendingTargetingOverlay`). Multi-target or any off-board item stays on the modal card picker. Staged local cast aim wins over pending aim for the overlay.
+- Stack faces that are legal targets show an Island Blue ring (`legal-target`) and click via `TargetChosen` to complete staged or pending aim.
+- Engine `choose_target` with `max === 1`, and `choose_spell_targets` / `choose_ability_targets` with `min === max === 1`, use the same on-board aim when every legal item is a battlefield permanent, stack object, or player (`pendingBoardTargetMode` / `pendingTargetingOverlay`). Multi-target or any off-board item stays on the modal card picker. Staged local cast aim wins over pending aim for the overlay.
 - On-board pending aim clicks pack `answerFromBoardTarget` → `choiceIntent` → `SubmitIntent`. Optional `choose_target` keeps a Decline control on `pending-target-aim` chrome.
 - Combat staging resolves attack drops onto opponent life-orb targets and block drops onto declared attackers.
 - Required attacks are merged with staged attacks before confirmation.
@@ -38,7 +40,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 
 - Planners are pure TypeScript functions, while `updateBoard` turns plans into model changes and `SubmitIntent` commands.
 - `buildTakeActionIntent` is the single take-action intent builder for cast, activate, cycle, and related action ids.
-- `stagedPickTargets` keeps graveyard/exile/stack targets in DOM pickers when they are not reliable canvas click targets.
+- `stagedPickTargets` keeps graveyard/exile targets in DOM pickers when they are not reliable canvas click targets; stack objects are arrow-aimed via the stack overlay.
 - Combat staging functions return new `WireAttack[]` / `WireBlock[]` values without mutating state.
 
 ## Testing Decisions

@@ -1,14 +1,13 @@
 // Stack overlay: right-edge card-art pile with staged ghost, dwell, hold timer, and expand.
 //
-// Faithful minimum of Solid `stack-overlay.tsx`. Aim arrows into stack objects stay on canvas
-// fidelity-grind backlog. Hovering the overlay emits `StackDwellChanged` when the player has
-// priority (dwell-suppresses helpless auto-resolve).
+// Legal stack targets are clickable while arrow-aiming (Counterspell-style). Hovering the overlay
+// emits `StackDwellChanged` when the player has priority (dwell-suppresses helpless auto-resolve).
 
 import { type Attribute, type Html, html } from "foldkit/html";
 import { buttonClass } from "~/ui/buttonClass";
 import { cardArt } from "~/ui/card-art";
 import type { PlayerView, StackObjectView, VisibleState } from "~/wire/types";
-import { stagedPickTargets } from "../action/targeting";
+import { aimingObjectIds, stagedPickTargets } from "../action/targeting";
 import {
   STACK_CARD_W,
   STACK_HORIZONTAL_MARGIN,
@@ -29,6 +28,7 @@ import {
   StackCollapseClicked,
   StackDwellChanged,
   StackExpandClicked,
+  TargetChosen,
 } from "../messages";
 import type { BoardModel } from "../submodel";
 
@@ -90,25 +90,28 @@ function stackItems(board: BoardModel, state: VisibleState, showStaged: boolean)
 
 function stackFace(opts: {
   row: number;
+  source: number;
   imageName: string | null;
   print: string;
   cardId?: string;
   label: string;
   isTop: boolean;
   staged?: boolean;
+  legalTarget?: boolean;
   cardH: number;
   style: Record<string, string>;
 }): Html {
   const faceClass = [
     "absolute rounded-game shadow-hand",
-    opts.staged ? "ring-2" : "",
+    opts.staged || opts.legalTarget ? "ring-2" : "",
+    opts.legalTarget ? "cursor-pointer" : "",
     opts.isTop ? "group-hover/stack:shadow-[0_0_16px_rgba(255,215,106,0.4)]" : "",
   ]
     .filter((v) => v !== "")
     .join(" ");
 
   const faceStyle: Record<string, string> = { ...opts.style };
-  if (opts.staged) faceStyle["--tw-ring-color"] = TARGET_COLOR;
+  if (opts.staged || opts.legalTarget) faceStyle["--tw-ring-color"] = TARGET_COLOR;
 
   const art: Html =
     opts.imageName && opts.print
@@ -135,6 +138,10 @@ function stackFace(opts: {
     h.DataAttribute("testid", `stack-face-${opts.row}`),
     h.Attribute("title", opts.imageName ?? opts.label),
   ];
+  if (opts.legalTarget) {
+    faceAttrs.push(h.DataAttribute("legal-target", "1"));
+    faceAttrs.push(h.OnClick(TargetChosen({ target: { kind: "object", id: opts.source } })));
+  }
   // Solid stack overlay: hover a face → Alt-inspect aux for that card.
   if (opts.imageName) {
     faceAttrs.push(
@@ -217,6 +224,7 @@ function pileView(
   cardH: number,
   showStaged: boolean,
   allowDwell: boolean,
+  legalTargets: ReadonlySet<number>,
 ): Html {
   const pileH = cardH + Math.max(0, items.length - 1) * peek;
   const holdMs = state.stack_hold_remaining_ms ?? 0;
@@ -229,12 +237,14 @@ function pileView(
       const isTop = item.row === items.length - 1;
       return stackFace({
         row: item.row,
+        source: item.source,
         imageName: item.imageName,
         print: item.print,
         cardId: item.cardId,
         label: item.label,
         isTop,
         staged: item.staged,
+        legalTarget: !item.staged && legalTargets.has(item.source),
         cardH,
         style: {
           width: `${STACK_CARD_W}px`,
@@ -299,6 +309,7 @@ function stripView(
   mode: "expanded" | "full",
   showStaged: boolean,
   allowDwell: boolean,
+  legalTargets: ReadonlySet<number>,
 ): Html {
   const viewportW = board.viewport.width;
   const n = items.length;
@@ -321,12 +332,14 @@ function stripView(
       const isTop = item.row === n - 1;
       return stackFace({
         row: item.row,
+        source: item.source,
         imageName: item.imageName,
         print: item.print,
         cardId: item.cardId,
         label: item.label,
         isTop,
         staged: item.staged,
+        legalTarget: !item.staged && legalTargets.has(item.source),
         cardH,
         style: {
           width: `${STACK_CARD_W}px`,
@@ -397,9 +410,10 @@ export function stackView(board: BoardModel, state: VisibleState): Html | null {
   });
   const allowDwell = shouldEmitDwell(board, state);
   const cardH = stackCardH();
+  const legalTargets = aimingObjectIds(board.staged, state.pending_choice, state);
 
   if (presentation === "pile") {
-    return pileView(board, state, items, peek, cardH, showStaged, allowDwell);
+    return pileView(board, state, items, peek, cardH, showStaged, allowDwell, legalTargets);
   }
-  return stripView(board, state, items, presentation, showStaged, allowDwell);
+  return stripView(board, state, items, presentation, showStaged, allowDwell, legalTargets);
 }

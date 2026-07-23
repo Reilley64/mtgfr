@@ -1429,8 +1429,23 @@ export function updateBoard(
         { x: model.viewport.width / 2, y: model.viewport.height / 2 },
       );
     }
-    case "TargetChosen":
-      return completeStagedTarget(model, fold, tableId, message.target);
+    case "TargetChosen": {
+      if (model.staged != null) {
+        return completeStagedTarget(model, fold, tableId, message.target);
+      }
+      const pc = fold.state?.pending_choice ?? null;
+      const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
+      if (pendingAim == null || pc == null) return [model, []];
+      if (message.target.kind === "object" && !pendingAim.objects.has(message.target.id)) {
+        return [model, []];
+      }
+      if (message.target.kind === "player" && !pendingAim.players.has(message.target.player)) {
+        return [model, []];
+      }
+      const answer = answerFromBoardTarget(pc, message.target);
+      if (answer == null) return [model, []];
+      return [model, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+    }
     case "ModalModesChosen": {
       if (model.modalCast == null) return [model, []];
       const chosen = [...message.chosen];
