@@ -1281,6 +1281,48 @@ function primaryFor(
   return { kind: "pass", label: "Next" };
 }
 
+/** Submit a ready multi-aim or on-board damage-assign draft; null when nothing to submit. */
+function trySubmitReadyPendingDraft(
+  model: BoardModel,
+  fold: GameFoldState,
+  tableId: string | null,
+): BoardReturn | null {
+  const state = fold.state;
+  if (state == null) return null;
+  const synced = syncPromptDraft(model, fold);
+  const pc = state.pending_choice;
+  if (
+    pc != null &&
+    pendingBoardTargetMode(pc, state) != null &&
+    !pendingTargetOneClick(pc) &&
+    synced.promptDraft?.kind === "card-pick" &&
+    cardPickReady(pc, synced.promptDraft.picked)
+  ) {
+    const answer = buildAnswerFromDraft(pc, synced.promptDraft);
+    if (answer != null) {
+      return [
+        { ...synced, promptDraft: null, pendingChoiceKey: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+      ];
+    }
+  }
+  if (
+    pc?.kind === "assign_combat_damage" &&
+    pendingDamageAssignBlockers(pc, state) != null &&
+    synced.promptDraft != null &&
+    damageAssignReady(pc, synced.promptDraft, state)
+  ) {
+    const answer = buildAnswerFromDraft(pc, synced.promptDraft);
+    if (answer != null) {
+      return [
+        { ...synced, promptDraft: null, pendingChoiceKey: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+      ];
+    }
+  }
+  return null;
+}
+
 function primaryClickModel(model: BoardModel, fold: GameFoldState, tableId: string | null): BoardReturn {
   const state = fold.state;
   if (state == null) return [model, []];
@@ -2007,45 +2049,19 @@ export function updateBoard(
       // Handled at app level (update.ts) — board model unchanged.
       return [model, []];
     // ── Global keyboard shortcuts ─────────────────────────────────────────────
-    case "KeyboardSpacePressed":
+    case "KeyboardSpacePressed": {
       // Opening mulligans own the chrome — don't pass/confirm via Space.
       if (fold.state?.mulliganing) return [model, []];
+      const submitted = trySubmitReadyPendingDraft(model, fold, tableId);
+      if (submitted != null) return submitted;
       return primaryClickModel(model, fold, tableId);
+    }
     case "KeyboardEnterPressed": {
       const state = fold.state;
       if (state == null) return [model, []];
       if (state.mulliganing) return [model, []];
-      const synced = syncPromptDraft(model, fold);
-      const pc = state.pending_choice;
-      if (
-        pc != null &&
-        pendingBoardTargetMode(pc, state) != null &&
-        !pendingTargetOneClick(pc) &&
-        synced.promptDraft?.kind === "card-pick" &&
-        cardPickReady(pc, synced.promptDraft.picked)
-      ) {
-        const answer = buildAnswerFromDraft(pc, synced.promptDraft);
-        if (answer != null) {
-          return [
-            { ...synced, promptDraft: null, pendingChoiceKey: null },
-            boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-          ];
-        }
-      }
-      if (
-        pc?.kind === "assign_combat_damage" &&
-        pendingDamageAssignBlockers(pc, state) != null &&
-        synced.promptDraft != null &&
-        damageAssignReady(pc, synced.promptDraft, state)
-      ) {
-        const answer = buildAnswerFromDraft(pc, synced.promptDraft);
-        if (answer != null) {
-          return [
-            { ...synced, promptDraft: null, pendingChoiceKey: null },
-            boardIntentSubmit(tableId, choiceIntent(pc, answer)),
-          ];
-        }
-      }
+      const submitted = trySubmitReadyPendingDraft(model, fold, tableId);
+      if (submitted != null) return submitted;
       const me = state.viewer;
       const active = state.active_player;
       // Enter toggles End Turn when it's the viewer's turn (and stack is empty), or
