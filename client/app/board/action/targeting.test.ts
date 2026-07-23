@@ -6,6 +6,8 @@ import { emptyCostPicks } from "./execution";
 import {
   pendingDamageAssignBlockers,
   pendingDamageAssignOverlay,
+  pendingPlayerAimOneClick,
+  pendingPlayerAimOverlay,
   pendingTargetingOverlay,
   pendingTargetOneClick,
   stackAimOrigin,
@@ -355,6 +357,42 @@ describe("pendingDamageAssignOverlay", () => {
       state([object({ id: 4, zone: ZONE.Graveyard })]),
     );
     expect(blockers).toBeNull();
+  });
+});
+
+describe("pendingPlayerAimOverlay", () => {
+  it("highlights player seats for choose_target_players", () => {
+    const overlay = pendingPlayerAimOverlay(
+      {
+        kind: "choose_target_players",
+        label: "Choose opponents",
+        min: 1,
+        max: 2,
+        player: 0,
+        source: 1,
+        items: [
+          { id: 0, label: "Alice", player: 1 },
+          { id: 1, label: "Bob", player: 2 },
+        ],
+      },
+      state([]),
+    );
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetPlayers].sort()).toEqual([1, 2]);
+  });
+
+  it("is one-click when max is 1", () => {
+    expect(
+      pendingPlayerAimOneClick({
+        kind: "choose_target_players",
+        label: "Choose a player",
+        min: 1,
+        max: 1,
+        player: 0,
+        source: 1,
+        items: [{ id: 0, label: "Bob", player: 1 }],
+      }),
+    ).toBe(true);
   });
 });
 

@@ -5,7 +5,12 @@ import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { pendingDamageAssignOverlay, pendingTargetingOverlay, stagingOverlay } from "./action/targeting";
+import {
+  pendingDamageAssignOverlay,
+  pendingPlayerAimOverlay,
+  pendingTargetingOverlay,
+  stagingOverlay,
+} from "./action/targeting";
 import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap/mount";
 import { sceneShapes } from "./canvas/scene";
 import { worldToScreen } from "./geometry/camera";
@@ -77,7 +82,14 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
   const stagedOverlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
   const pendingOverlay = pendingTargetingOverlay(state.pending_choice, state, model.board.viewport, state.stack.length);
   const damageOverlay = pendingDamageAssignOverlay(state.pending_choice, state);
-  const overlay = stagedOverlay.aiming ? stagedOverlay : pendingOverlay.aiming ? pendingOverlay : damageOverlay;
+  const playerOverlay = pendingPlayerAimOverlay(state.pending_choice, state);
+  const overlay = stagedOverlay.aiming
+    ? stagedOverlay
+    : pendingOverlay.aiming
+      ? pendingOverlay
+      : damageOverlay.aiming
+        ? damageOverlay
+        : playerOverlay;
   const previewAction = paymentPreviewAction(model.board, state.actions);
   const paymentPreviewIds = autoTapPreviewIds(previewAction);
   const combatDrag =

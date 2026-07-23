@@ -598,6 +598,29 @@ test("pointer up on assign_combat_damage blocker moves one damage onto it", () =
   expect(next.promptDraft).toEqual({ kind: "damage", amounts: { 4: 3, 5: 1 } });
 });
 
+test("pointer up on choose_target_players avatar accumulates seat picks", () => {
+  const pending = {
+    kind: "choose_target_players" as const,
+    label: "Choose opponents",
+    min: 1,
+    max: 2,
+    player: 0,
+    source: 1,
+    items: [
+      { id: 0, label: "Bob", player: 1 },
+      { id: 1, label: "Carol", player: 2 },
+    ],
+  };
+  const players = [player(), player({ player: 1, username: "Bob" }), player({ player: 2, username: "Carol" })];
+  const gameFold = fold(state({ pending_choice: pending, players }));
+  const board = initialBoardModel();
+  const world = avatarPos(1, 0, 3);
+  const screen = worldToScreen(board.camera, world.x, world.y);
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: screen.x, y: screen.y }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "player-pick", players: [1] });
+});
+
 test("pointer up on non-target while staged clears drag without submitting", () => {
   const attacker = creature(11, 0);
   const other = creature(99, 1);

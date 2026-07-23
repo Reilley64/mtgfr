@@ -34,6 +34,8 @@ import { modeAvailable } from "../action/modal";
 import {
   objectName,
   pendingBoardTargetMode,
+  pendingPlayerAimOneClick,
+  pendingPlayerAimSeats,
   pendingTargetOneClick,
   playerSeatLabel,
   stagedPickTargets,
@@ -1257,6 +1259,43 @@ function playerPickPrompt(
   board: BoardModel,
   tableId: string | null,
 ): Html {
+  if (pendingPlayerAimSeats(pending, state) != null) {
+    const oneClick = pendingPlayerAimOneClick(pending);
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const picked = draft.kind === "player-pick" ? draft.players : [];
+    const max = pending.kind === "choose_target_players" ? pending.max : 1;
+    const ready =
+      pending.kind === "choose_target_players" ? picked.length >= pending.min && picked.length <= pending.max : false;
+    const countLine =
+      !oneClick && pending.kind === "choose_target_players"
+        ? h.div(
+            [h.DataAttribute("testid", "pending-player-count"), h.Class("pointer-events-none text-caption text-mist")],
+            [`${picked.length} / ${max} selected`],
+          )
+        : null;
+    const actions: Html[] = [];
+    if (!oneClick) {
+      actions.push(submitButton("Confirm", !ready));
+    }
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-player-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          [
+            "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+            actions.length > 0 ? "pointer-events-auto" : "pointer-events-none",
+          ].join(" "),
+        ),
+      ],
+      [
+        h.div([h.Class("pointer-events-none")], [pending.label]),
+        countLine,
+        actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
+      ].filter((v): v is Html => v !== null),
+    );
+  }
+
   if (pending.kind === "choose_splitting_opponent") {
     return frame("pending-choice", pending.label, [
       h.div(
