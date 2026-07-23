@@ -10,9 +10,15 @@ import sys
 from pathlib import Path
 
 EFFECT_TABLE_SUFFIXES = ("effects", "steps", "options", "then")
+INLINE_NESTED_KEYS = ("then", "modes", "options", "steps")
 STRUCTURAL_TYPES = frozenset({"sequence", "conditional", "choose_one"})
 TABLE_HEADER_RE = re.compile(r"^\[\[(.+)\]\]\s*$")
 TYPE_LINE_RE = re.compile(r'^(\s*)type\s*=\s*"([^"]+)"\s*$')
+INLINE_NESTED_START_RE = re.compile(
+    rf'^\s*(?:{"|".join(INLINE_NESTED_KEYS)})\s*=\s*\['
+)
+INLINE_TYPE_RE = re.compile(r'type\s*=\s*"([^"]+)"')
+MODE_LINE_RE = re.compile(r'^(\s*)mode\s*=\s*"([^"]+)"\s*$')
 
 
 def load_map(path: Path) -> dict[str, dict[str, str]]:
@@ -27,10 +33,64 @@ def _table_suffix(header: str) -> str | None:
     return None
 
 
+def _mapping_entry(
+    old_type: str, mapping: dict[str, dict[str, str]]
+) -> dict[str, str] | None:
+    if old_type in STRUCTURAL_TYPES:
+        return None
+    return mapping.get(old_type)
+
+
+def _table_type_already_migrated(lines: list[str], index: int, indent: str) -> bool:
+    if index + 1 >= len(lines):
+        return False
+    next_line = lines[index + 1].rstrip("\n")
+    return MODE_LINE_RE.match(next_line) is not None and next_line.startswith(indent)
+
+
+def _rewrite_inline_types(line: str, mapping: dict[str, dict[str, str]]) -> str:
+    def replace(match: re.Match[str]) -> str:
+        old_type = match.group(1)
+        entry = _mapping_entry(old_type, mapping)
+        if entry is None:
+            return match.group(0)
+
+        tail = line[match.end() :]
+        if re.match(r'\s*,\s*mode\s*=\s*"', tail):
+            return match.group(0)
+
+        return f'type = "{entry["family"]}", mode = "{entry["mode"]}"'
+
+    return INLINE_TYPE_RE.sub(replace, line)
+
+
+def _inline_bracket_delta(line: str) -> int:
+    return line.count("[") - line.count("]")
+
+
+def _iter_unmigrated_inline_types(
+    line: str, mapping: dict[str, dict[str, str]]
+) -> list[str]:
+    hits: list[str] = []
+    for match in INLINE_TYPE_RE.finditer(line):
+        old_type = match.group(1)
+        entry = _mapping_entry(old_type, mapping)
+        if entry is None:
+            continue
+
+        tail = line[match.end() :]
+        if re.match(r'\s*,\s*mode\s*=\s*"', tail):
+            continue
+
+        hits.append(old_type)
+    return hits
+
+
 def migrate_text(text: str, mapping: dict[str, dict[str, str]]) -> str:
     lines = text.splitlines(keepends=True)
     out: list[str] = []
     in_effect_table = False
+    inline_nested_depth = 0
 
     index = 0
     while index < len(lines):
@@ -38,12 +98,27 @@ def migrate_text(text: str, mapping: dict[str, dict[str, str]]) -> str:
         header_match = TABLE_HEADER_RE.match(line.rstrip("\n"))
         if header_match is not None:
             in_effect_table = _table_suffix(header_match.group(1)) is not None
+            inline_nested_depth = 0
             out.append(line)
             index += 1
             continue
 
         if not in_effect_table:
             out.append(line)
+            index += 1
+            continue
+
+        if inline_nested_depth == 0 and INLINE_NESTED_START_RE.match(line.rstrip("\n")):
+            rewritten = _rewrite_inline_types(line, mapping)
+            inline_nested_depth = max(0, _inline_bracket_delta(rewritten))
+            out.append(rewritten)
+            index += 1
+            continue
+
+        if inline_nested_depth > 0:
+            rewritten = _rewrite_inline_types(line, mapping)
+            inline_nested_depth = max(0, inline_nested_depth + _inline_bracket_delta(rewritten))
+            out.append(rewritten)
             index += 1
             continue
 
@@ -54,8 +129,13 @@ def migrate_text(text: str, mapping: dict[str, dict[str, str]]) -> str:
             continue
 
         indent, old_type = type_match.group(1), type_match.group(2)
-        entry = mapping.get(old_type)
-        if entry is None or old_type in STRUCTURAL_TYPES:
+        entry = _mapping_entry(old_type, mapping)
+        if entry is None:
+            out.append(line)
+            index += 1
+            continue
+
+        if _table_type_already_migrated(lines, index, indent):
             out.append(line)
             index += 1
             continue
@@ -74,23 +154,44 @@ def find_unmigrated_types(
 ) -> list[tuple[int, str]]:
     hits: list[tuple[int, str]] = []
     in_effect_table = False
+    inline_nested_depth = 0
 
     for line_number, line in enumerate(text.splitlines(), start=1):
         header_match = TABLE_HEADER_RE.match(line)
         if header_match is not None:
             in_effect_table = _table_suffix(header_match.group(1)) is not None
+            inline_nested_depth = 0
             continue
 
         if not in_effect_table:
+            continue
+
+        if inline_nested_depth == 0 and INLINE_NESTED_START_RE.match(line):
+            for old_type in _iter_unmigrated_inline_types(line, mapping):
+                hits.append((line_number, old_type))
+            inline_nested_depth = max(0, _inline_bracket_delta(line))
+            continue
+
+        if inline_nested_depth > 0:
+            for old_type in _iter_unmigrated_inline_types(line, mapping):
+                hits.append((line_number, old_type))
+            inline_nested_depth = max(0, inline_nested_depth + _inline_bracket_delta(line))
             continue
 
         type_match = TYPE_LINE_RE.match(line)
         if type_match is None:
             continue
 
-        old_type = type_match.group(2)
-        if old_type in mapping and old_type not in STRUCTURAL_TYPES:
-            hits.append((line_number, old_type))
+        indent, old_type = type_match.group(1), type_match.group(2)
+        if _mapping_entry(old_type, mapping) is None:
+            continue
+
+        line_index = line_number - 1
+        remaining = text.splitlines()
+        if _table_type_already_migrated(remaining, line_index, indent):
+            continue
+
+        hits.append((line_number, old_type))
 
     return hits
 
