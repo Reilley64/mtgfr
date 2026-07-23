@@ -56,6 +56,7 @@ import { advance } from "./action/modal";
 import {
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
+  pendingDiscardHandIds,
   pendingDivideSpellObjectIndexes,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
@@ -1205,6 +1206,25 @@ function handActivated(
   x: number,
   y: number,
 ): BoardReturn {
+  const state = fold.state;
+  const pc = state?.pending_choice ?? null;
+  if (
+    state != null &&
+    pc != null &&
+    pc.player === state.viewer &&
+    (pc.kind === "discard" || pc.kind === "may_discard") &&
+    action.object != null &&
+    pc.items.some((it) => it.id === action.object)
+  ) {
+    const objectId = action.object;
+    if (pc.kind === "discard" && pc.count === 1) {
+      return [
+        { ...model, handDrag: null, hoverActionId: null, promptDraft: null, pendingChoiceKey: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, { kind: "discard", cards: [objectId] })),
+      ];
+    }
+    return togglePendingObjectAimPick({ ...model, handDrag: null, hoverActionId: null }, fold, pc, objectId);
+  }
   if (model.discardPick != null) {
     const choices = model.discardPick.action.discard_choices ?? [];
     const objectId = action.object;
@@ -1458,6 +1478,21 @@ function trySubmitReadyPendingDraft(
     ) {
       return null;
     }
+    const answer = buildAnswerFromDraft(pc, synced.promptDraft);
+    if (answer != null) {
+      return [
+        { ...synced, promptDraft: null, pendingChoiceKey: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+      ];
+    }
+  }
+  if (
+    pc != null &&
+    pendingDiscardHandIds(pc, state) != null &&
+    !(pc.kind === "discard" && pc.count === 1) &&
+    synced.promptDraft?.kind === "card-pick" &&
+    cardPickReady(pc, synced.promptDraft.picked)
+  ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {
       return [

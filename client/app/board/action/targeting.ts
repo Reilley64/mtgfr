@@ -249,6 +249,26 @@ export function pendingDamageAssignOverlay(
   };
 }
 
+/** Legal hand object ids for pending discard / may_discard when every item is in the viewer's hand. */
+export function pendingDiscardHandIds(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (pc == null) return null;
+  if (pc.kind !== "discard" && pc.kind !== "may_discard") return null;
+  if (pc.player !== state.viewer) return null;
+  if (pc.items.length === 0) return null;
+  const handIds = new Set(
+    state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === state.viewer).map((o) => o.id),
+  );
+  const ids = new Set<number>();
+  for (const item of pc.items) {
+    if (!handIds.has(item.id)) return null;
+    ids.add(item.id);
+  }
+  return ids;
+}
+
 /**
  * Legal permanent ids for a local pre-submit sacrifice cost when every choice is on the battlefield.
  * Off-board choices keep the modal cost grid.

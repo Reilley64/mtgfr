@@ -1224,6 +1224,30 @@ test("discard cost aim shows coach when choices are in hand", () => {
   );
 });
 
+test("pending discard aim shows coach when cards are in hand", () => {
+  const a = card(11, {
+    name: "A",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [a],
+        pending_choice: {
+          kind: "discard",
+          player: 0,
+          count: 1,
+          items: [{ id: 11, label: "A" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-discard-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("full board view mounts the bitmap layer", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),

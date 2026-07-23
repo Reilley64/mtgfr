@@ -36,6 +36,7 @@ import {
   objectName,
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
+  pendingDiscardHandIds,
   pendingDivideSpellObjectIndexes,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
@@ -961,6 +962,44 @@ function cardPickForKind(
   board: BoardModel,
   tableId: string | null,
 ): Html | null {
+  const discardHand = pendingDiscardHandIds(pending, state);
+  if (discardHand != null) {
+    const oneClick = pending.kind === "discard" && pending.count === 1;
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const picked = draft.kind === "card-pick" ? draft.picked : [];
+    const ready = !oneClick && cardPickReady(pending, picked);
+    const countLine =
+      !oneClick && pending.kind === "discard"
+        ? h.div(
+            [h.DataAttribute("testid", "pending-discard-count"), h.Class("pointer-events-none text-caption text-mist")],
+            [`${picked.length} / ${pending.count} selected`],
+          )
+        : null;
+    const actions: Html[] = [];
+    if (!oneClick) {
+      actions.push(submitButton(pending.kind === "may_discard" ? "Continue" : "Discard", !ready));
+    }
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-discard-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          [
+            "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+            actions.length > 0 ? "pointer-events-auto" : "pointer-events-none",
+          ].join(" "),
+        ),
+      ],
+      [
+        h.div(
+          [h.Class("pointer-events-none")],
+          [oneClick ? "Click a card in your hand to discard" : "Click cards in your hand to discard"],
+        ),
+        countLine,
+        actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
+      ].filter((v): v is Html => v !== null),
+    );
+  }
   if (pendingBoardTargetMode(pending, state) != null) {
     const decline = declineAnswer(pending);
     const label = "label" in pending && typeof pending.label === "string" ? pending.label : pendingChoiceTitle(pending);
