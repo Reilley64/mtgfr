@@ -15,6 +15,7 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 - As a player, I can hold Alt over a face-up card to read it.
 - As a player, I can inspect hand, stack, and battlefield cards with one behavior.
 - As a player, I can see live modifier contributions on a battlefield permanent.
+- As a player, I can see marked damage on a damaged battlefield permanent.
 - As a player, I can dismiss inspect with Alt release, Escape, or backdrop click.
 
 ## Behavior
@@ -26,6 +27,7 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 - `InspectPin` carries name, object/card ids, print, and prepared state.
 - `FetchInspectCard` loads catalog data for oracle and faces.
 - Battlefield object modifiers render as a grouped modifier ledger by source name.
+- When the pinned live object has `marked_damage > 0`, the dock shows a `Marked damage: N` line (`inspect-marked-damage`) above the modifier ledger.
 - Space is blocked while the dock is open through keyboard dismissal priority.
 - Inspect is topmost in the board layer stack: above prompts, HUD, pile overlay, concede dialog, result overlay, and portrait gate when present.
 
@@ -38,13 +40,12 @@ Alt/Option pins a card into a shared preview `dock` mode. The dock has a full-bo
 
 ## Testing Decisions
 
-- Scene/unit tests cover Alt pin, dock backdrop, left art, right oracle/extras, DFC flip, and dismissal.
+- Scene/unit tests cover Alt pin, dock backdrop, left art, right oracle/extras, marked damage, DFC flip, and dismissal.
 - Layer tests should assert inspect renders above prompt/system overlay DOM.
 - Keyboard tests cover Escape dismissing inspect before radial/action cancellation.
 
 ## Out of Scope
 
-- Marked damage in the modifier ledger.
 - Reflowing the board for portrait screens.
 - Inspecting hidden private cards for non-owners.
 
