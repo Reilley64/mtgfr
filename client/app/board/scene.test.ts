@@ -1381,6 +1381,36 @@ test("DiscardChosen during put_creature_from_hand submits put_creature intent", 
   });
 });
 
+test("PileCardClicked during choose_exiled_with_card submits choose intent", () => {
+  const exiled = creature(30, 0, { name: "Exiled", zone: ZONE.Exile });
+  const pending = {
+    kind: "choose_exiled_with_card" as const,
+    player: 0,
+    source: 1,
+    items: [{ id: 30, label: "Exiled" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [exiled],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pileExpand: { zone: ZONE.Exile, owner: 0 },
+    pendingChoiceKey: choiceDraftKey(pending),
+    promptDraft: { kind: "card-pick", picked: [], filter: "" },
+  };
+  const [next, commands] = updateBoard(board, PileCardClicked({ id: 30 }), gameFold, "T1");
+  expect(next.pileExpand).toBeNull();
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_exiled_with_card",
+    player: 0,
+    choice: 30,
+  });
+});
+
 test("PileCardClicked during choose_dredge submits dredge intent", () => {
   const dredger = creature(8, 0, { name: "Stinkweed Imp", zone: ZONE.Graveyard });
   const pending = {

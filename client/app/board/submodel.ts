@@ -58,11 +58,13 @@ import {
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
   pendingDivideSpellObjectIndexes,
+  pendingExilePickIds,
+  pendingExilePickOneClick,
   pendingGraveyardPickIds,
   pendingGraveyardPickOneClick,
-  pendingGraveyardPickPile,
   pendingHandPickIds,
   pendingHandPickOneClick,
+  pendingPilePickPile,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
   pendingTargetOneClick,
@@ -317,7 +319,7 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
   const pc = gameState?.pending_choice ?? null;
   const key = pc != null ? choiceDraftKey(pc) : null;
   if (key === model.pendingChoiceKey) return model;
-  const pile = pc != null && gameState != null ? pendingGraveyardPickPile(pc, gameState) : null;
+  const pile = pc != null && gameState != null ? pendingPilePickPile(pc, gameState) : null;
   return {
     ...model,
     pendingChoiceKey: key,
@@ -1598,6 +1600,21 @@ function trySubmitReadyPendingDraft(
       ];
     }
   }
+  if (
+    pc != null &&
+    pendingExilePickIds(pc, state) != null &&
+    !pendingExilePickOneClick(pc) &&
+    synced.promptDraft?.kind === "card-pick" &&
+    cardPickReady(pc, synced.promptDraft.picked)
+  ) {
+    const answer = buildAnswerFromDraft(pc, synced.promptDraft);
+    if (answer != null) {
+      return [
+        { ...synced, promptDraft: null, pendingChoiceKey: null, pileExpand: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+      ];
+    }
+  }
   return null;
 }
 
@@ -2330,9 +2347,10 @@ export function updateBoard(
       const state = fold.state;
       const pc = state?.pending_choice ?? null;
       if (state == null || pc == null) return [model, []];
-      const gyIds = pendingGraveyardPickIds(pc, state);
-      if (gyIds == null || !gyIds.has(message.id)) return [model, []];
-      if (pendingGraveyardPickOneClick(pc)) {
+      const pileIds = pendingGraveyardPickIds(pc, state) ?? pendingExilePickIds(pc, state);
+      if (pileIds == null || !pileIds.has(message.id)) return [model, []];
+      const oneClick = pendingGraveyardPickOneClick(pc) || pendingExilePickOneClick(pc);
+      if (oneClick) {
         const answer = buildAnswerFromDraft(pc, { kind: "card-pick", picked: [message.id], filter: "" });
         if (answer == null) return [model, []];
         return [
@@ -2343,13 +2361,13 @@ export function updateBoard(
       return togglePendingObjectAimPick(model, fold, pc, message.id);
     }
     case "PileOverlayClosed": {
-      // Keep the GY open while pile-aim exile / pending GY pick is live.
+      // Keep the pile open while pile-aim cost / pending GY or exile pick is live.
       if (model.gyExilePick != null && fold.state != null) {
         const pile = gyExileCostPile(model.gyExilePick.action.graveyard_exile_choices, fold.state);
         if (pile != null) return [{ ...model, pileExpand: pile }, []];
       }
       if (fold.state != null) {
-        const pile = pendingGraveyardPickPile(fold.state.pending_choice, fold.state);
+        const pile = pendingPilePickPile(fold.state.pending_choice, fold.state);
         if (pile != null) return [{ ...model, pileExpand: pile }, []];
       }
       return [{ ...model, pileExpand: null }, []];

@@ -11,6 +11,7 @@ import {
   pendingDiscardHandIds,
   pendingDivideSpellObjectIndexes,
   pendingDivideSpellOverlay,
+  pendingExilePickIds,
   pendingGraveyardPickIds,
   pendingHandPickIds,
   pendingPlayerAimOneClick,
@@ -526,6 +527,37 @@ describe("pendingGraveyardPickIds", () => {
           ],
         },
         state([object({ id: 8, zone: ZONE.Graveyard, owner: 0 }), object({ id: 9, zone: ZONE.Graveyard, owner: 1 })]),
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("pendingExilePickIds", () => {
+  it("returns exile ids for choose_exiled_with_card in one pile", () => {
+    const ids = pendingExilePickIds(
+      {
+        kind: "choose_exiled_with_card",
+        player: 0,
+        source: 1,
+        items: [{ id: 30, label: "Exiled" }],
+      },
+      state([object({ id: 30, zone: ZONE.Exile, owner: 0, name: "Exiled" })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected exile pick ids");
+    expect([...ids]).toEqual([30]);
+  });
+
+  it("is idle when an item is not in exile", () => {
+    expect(
+      pendingExilePickIds(
+        {
+          kind: "choose_exiled_with_card",
+          player: 0,
+          source: 1,
+          items: [{ id: 30, label: "Exiled" }],
+        },
+        state([object({ id: 30, zone: ZONE.Graveyard, owner: 0 })]),
       ),
     ).toBeNull();
   });
