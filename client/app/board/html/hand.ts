@@ -13,7 +13,7 @@ import { cardArt } from "~/ui/card-art";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import { HAND_BAR_PEEK, handBarHitHeight, handBarHitWidth, handBarRaiseTranslateY } from "../geometry/handBarHit";
 import { ZONE } from "../geometry/layout";
-import { HandActionActivated, InspectAuxHovered, type Message } from "../messages";
+import { DiscardChosen, HandActionActivated, InspectAuxHovered, type Message } from "../messages";
 import { HAND_FACE_W } from "../motion/flights";
 import type { HandDragState } from "../submodel";
 import { barZoneAura, byObject, bySection, handExtras } from "./actions";
@@ -86,6 +86,7 @@ function tile(args: {
   caption?: string;
   index: number;
   count: number;
+  discardSelectable?: boolean;
 }): Html {
   const {
     name,
@@ -101,8 +102,9 @@ function tile(args: {
     caption,
     index,
     count,
+    discardSelectable = false,
   } = args;
-  const playable = action != null && !slotInert;
+  const playable = (action != null || discardSelectable) && !slotInert;
   const testId = objectId != null ? `hand-card-${objectId}` : undefined;
   const hitW = handBarHitWidth(index, count, HAND_CARD_PEEK, HAND_CARD_W);
   const restHitH = handBarHitHeight(false, HAND_VISIBLE_H, HAND_CARD_H);
@@ -115,7 +117,7 @@ function tile(args: {
   ].join(" ");
 
   // Solid parity: the drag source fades so the ghost carries the face; inert slots stay non-interactive.
-  const dragSource = playable && draggingActionId != null && action?.id === draggingActionId;
+  const dragSource = playable && action != null && draggingActionId != null && action.id === draggingActionId;
   const artClass = [
     "pointer-events-none block touch-none rounded-game object-cover shadow-hand transition-[filter,opacity] duration-[80ms] ease-state",
     dragSource ? "opacity-25" : "",
@@ -123,7 +125,10 @@ function tile(args: {
   ]
     .filter((v) => v !== "")
     .join(" ");
-  const faceChromeClass = ["relative origin-bottom rounded-game", barZoneAura(zone, playable)]
+  const faceChromeClass = [
+    "relative origin-bottom rounded-game",
+    discardSelectable ? "ring-2 ring-island-blue shadow-[0_0_12px_rgba(74,158,255,0.45)]" : barZoneAura(zone, playable),
+  ]
     .filter((v) => v !== "")
     .join(" ");
 
@@ -178,6 +183,17 @@ function tile(args: {
       h.OnKeyDownPreventDefault((key) => {
         if (key !== "Enter" && key !== " ") return Option.none();
         return Option.some(HandActionActivated({ action }));
+      }),
+    );
+  } else if (discardSelectable && objectId != null && !slotInert) {
+    hitAttrs.push(h.Role("button"));
+    hitAttrs.push(h.Tabindex(0));
+    hitAttrs.push(h.DataAttribute("discard-cost-id", String(objectId)));
+    hitAttrs.push(h.OnClick(DiscardChosen({ ids: [objectId] })));
+    hitAttrs.push(
+      h.OnKeyDownPreventDefault((key) => {
+        if (key !== "Enter" && key !== " ") return Option.none();
+        return Option.some(DiscardChosen({ ids: [objectId] }));
       }),
     );
   }
@@ -287,6 +303,8 @@ export type HandViewInputs = {
    * `board.handHidden` and any external hide set. */
   hiddenIds: ReadonlySet<number>;
   handDrag: HandDragState | null;
+  /** Object ids legal for the live local discard cost; null when not discarding. */
+  discardCostIds?: ReadonlySet<number> | null;
 };
 
 function handDragGhost(drag: HandDragState): Html {
@@ -335,7 +353,7 @@ function handDragGhost(drag: HandDragState): Html {
 }
 
 export function handView(inputs: HandViewInputs): Html {
-  const { state, hiddenId, flyingIds, hiddenIds, handDrag } = inputs;
+  const { state, hiddenId, flyingIds, hiddenIds, handDrag, discardCostIds = null } = inputs;
   const viewer = state.viewer;
   const grouped = bySection(state.actions);
   const commandActionByObject = byObject(grouped.command);
@@ -393,6 +411,7 @@ export function handView(inputs: HandViewInputs): Html {
     action: ActionView | null;
     slotInert: boolean;
     caption?: string;
+    discardSelectable?: boolean;
   };
   const handSlots: HandSlot[] = [];
   for (const c of handCards) {
@@ -408,6 +427,7 @@ export function handView(inputs: HandViewInputs): Html {
       action,
       slotInert: slotInert(c.id),
       caption: actionCaption(action?.kind ?? ""),
+      discardSelectable: discardCostIds?.has(c.id) ?? false,
     });
   }
   for (const extra of handExtras(grouped.hand)) {
@@ -422,6 +442,7 @@ export function handView(inputs: HandViewInputs): Html {
       action: extra,
       slotInert: false,
       caption: actionCaption(extra.kind),
+      discardSelectable: extra.object != null ? (discardCostIds?.has(extra.object) ?? false) : false,
     });
   }
   const handTiles = handSlots.map((slot, index) =>

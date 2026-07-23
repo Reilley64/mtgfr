@@ -1187,6 +1187,43 @@ test("sacrifice pick prompt renders as a board surface", () => {
   );
 });
 
+test("discard cost aim shows coach when choices are in hand", () => {
+  const caster = card(10, {
+    name: "Caster",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  const fodder = card(11, {
+    name: "Island",
+    zone: ZONE.Hand,
+    kind: { kind: "land", colors: [0, 1, 0, 0, 0] },
+  });
+  const castAction = action(50, {
+    kind: "cast",
+    label: "Cast",
+    discard_choices: [11],
+    object: 10,
+    section: "hand",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        discardPick: {
+          action: castAction,
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: emptyCostPicks(),
+        },
+      },
+      gameState({ objects: [caster, fodder] }),
+    ),
+    Scene.expect(Scene.testId("discard-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("discard-pick")).toBeAbsent(),
+  );
+});
+
 test("full board view mounts the bitmap layer", () => {
   liveBoardScene(
     fullBoardModel(initialBoardModel(), gameState()),
