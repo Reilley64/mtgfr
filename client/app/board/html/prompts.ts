@@ -189,6 +189,127 @@ function cardPickButton(item: ChoiceItem, state: VisibleState, picked: ReadonlyA
   );
 }
 
+function arrangeLaneCard(
+  item: ChoiceItem,
+  state: VisibleState,
+  laneIds: ReadonlyArray<number>,
+  ordered: boolean,
+): Html {
+  const pickOrder = laneIds.indexOf(item.id);
+  const print = choiceItemPrint(item, state);
+  return h.button(
+    [
+      h.Type("button"),
+      h.DataAttribute("testid", `prompt-card-${item.id}`),
+      h.AriaLabel(item.label),
+      h.OnClick(PromptCardToggled({ id: item.id })),
+      h.Class(
+        "relative cursor-pointer rounded-[9px] border-4 border-transparent p-0 transition-transform duration-150 ease-out hover:-translate-y-1",
+      ),
+    ],
+    [
+      print
+        ? cardArt(h, {
+            print,
+            size: "large",
+            alt: "",
+            className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
+          })
+        : h.div(
+            [
+              h.Class(
+                "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
+              ),
+            ],
+            [item.label],
+          ),
+      ordered && pickOrder >= 0
+        ? h.span(
+            [
+              h.Class(
+                "absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-llanowar text-caption font-bold text-snow",
+              ),
+            ],
+            [String(pickOrder + 1)],
+          )
+        : h.span([], []),
+    ],
+  );
+}
+
+function arrangeLanesPrompt(
+  pending: Extract<PendingChoiceView, { kind: "scry" | "surveil" }>,
+  state: VisibleState,
+  board: BoardModel,
+): Html {
+  const draft = board.promptDraft ?? initPromptDraft(pending, state);
+  const buckets =
+    draft.kind === "partition" ? draft.buckets : { top: [] as number[], bottom: pending.items.map((it) => it.id) };
+  const topIds = buckets.top ?? [];
+  const bottomIds = buckets.bottom ?? [];
+  const byId = new Map(pending.items.map((it) => [it.id, it]));
+  const topItems = topIds.flatMap((id) => {
+    const item = byId.get(id);
+    return item != null ? [item] : [];
+  });
+  const bottomItems = bottomIds.flatMap((id) => {
+    const item = byId.get(id);
+    return item != null ? [item] : [];
+  });
+  const title = pending.kind === "scry" ? `Scry ${pending.items.length}` : `Surveil ${pending.items.length}`;
+  const bottomLabel = pending.kind === "surveil" ? "Graveyard" : "Bottom of library";
+  const hint =
+    pending.kind === "surveil"
+      ? "Click a card to move it between Top and Graveyard. Order on Top is left to right."
+      : "Click a card to move it between Top and Bottom. Order in each lane is left to right.";
+
+  return frame("pending-choice", title, [
+    h.div(
+      [h.DataAttribute("testid", "prompt-arrange-lanes"), h.Class("flex flex-col gap-3")],
+      [
+        h.div([h.Class("shrink-0 text-caption text-mist")], [hint]),
+        h.div(
+          [h.DataAttribute("testid", "prompt-arrange-top"), h.Class("flex flex-col gap-2")],
+          [
+            h.div(
+              [
+                h.DataAttribute("testid", "prompt-arrange-top-label"),
+                h.Class("text-caption font-semibold text-seafoam"),
+              ],
+              ["Top of library"],
+            ),
+            h.div(
+              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+              topItems.length > 0
+                ? topItems.map((item) => arrangeLaneCard(item, state, topIds, true))
+                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+            ),
+          ],
+        ),
+        h.div(
+          [h.DataAttribute("testid", "prompt-arrange-bottom"), h.Class("flex flex-col gap-2")],
+          [
+            h.div(
+              [
+                h.DataAttribute("testid", "prompt-arrange-bottom-label"),
+                h.Class("text-caption font-semibold text-seafoam"),
+              ],
+              [bottomLabel],
+            ),
+            h.div(
+              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+              bottomItems.length > 0
+                ? bottomItems.map((item) => arrangeLaneCard(item, state, bottomIds, pending.kind === "scry"))
+                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+            ),
+          ],
+        ),
+      ],
+    ),
+    h.div([h.Class("flex shrink-0 flex-wrap gap-2")], [submitButton("Done", false)]),
+  ]);
+}
+
 function cardPickPrompt(
   pending: PendingChoiceView,
   items: ReadonlyArray<ChoiceItem>,
@@ -676,14 +797,14 @@ function cardPickConfig(pending: PendingChoiceView): {
     case "scry":
       return {
         title: `Scry ${pending.items.length}`,
-        hint: "Click cards to keep on top, in that order — the rest go to the bottom of your library.",
+        hint: "Click a card to move it between Top and Bottom. Order in each lane is left to right.",
         submitLabel: "Done",
         ordered: true,
       };
     case "surveil":
       return {
         title: `Surveil ${pending.items.length}`,
-        hint: "Click cards to keep on top, in that order — the rest go to your graveyard.",
+        hint: "Click a card to move it between Top and Graveyard. Order on Top is left to right.",
         submitLabel: "Done",
         ordered: true,
       };
@@ -852,6 +973,10 @@ function cardPickForKind(
       );
     }
     return frame("pending-choice", pending.label, [h.div([h.Class("flex flex-wrap gap-2")], buttons)]);
+  }
+
+  if (pending.kind === "scry" || pending.kind === "surveil") {
+    return arrangeLanesPrompt(pending, state, board);
   }
 
   const items = "items" in pending ? pending.items : [];

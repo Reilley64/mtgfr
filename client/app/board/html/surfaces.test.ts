@@ -725,6 +725,30 @@ test("optional on-board choose_target aim shows Decline", () => {
   );
 });
 
+test("scry prompt shows Top and Bottom arrange lanes", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "scry",
+          player: 0,
+          items: [
+            { id: 1, label: "Island" },
+            { id: 2, label: "Forest" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-top")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-bottom")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-bottom-label")).toHaveText("Bottom of library"),
+    Scene.expect(Scene.testId("prompt-card-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
 test("non-decider sees waiting banner instead of pending-choice controls", () => {
   overlayScene(
     overlayModel(

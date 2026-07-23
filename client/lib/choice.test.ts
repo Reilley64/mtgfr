@@ -552,6 +552,18 @@ describe("answerFromDraft builds accepted intents", () => {
         ],
         player: 0,
       },
+      { kind: "partition", buckets: { top: [2], bottom: [1] } },
+      { kind: "arrange_top", bottom: [1], player: 0, top: [2] },
+    );
+    expectDraftIntent(
+      {
+        kind: "scry",
+        items: [
+          { id: 1, label: "A" },
+          { id: 2, label: "B" },
+        ],
+        player: 0,
+      },
       { kind: "card-pick", picked: [2] },
       { kind: "arrange_top", bottom: [1], player: 0, top: [2] },
     );
