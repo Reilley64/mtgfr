@@ -11,7 +11,7 @@ The battlefield must show a crowded Commander table with stable seat furniture, 
 
 ## Solution
 
-Battlefield paint is split across Canvas vector shapes and Mount bitmap card layers. Canvas handles felt, seats, avatars, and arrows. The bitmap layer paints resting permanent faces and permanent chrome using the shared image cache. Flights are documented separately in [`2026-07-20-flights.md`](2026-07-20-flights.md).
+Battlefield paint is split across Canvas vector shapes and Mount bitmap layers. Canvas handles felt, seats, and vector helpers; Mount paints resting permanent faces, permanent chrome, and the authoritative avatar life orbs. Flights are documented separately in [`2026-07-20-flights.md`](2026-07-20-flights.md).
 
 The board layer stack authority is [`docs/client-canvas-map.md`](../../client-canvas-map.md). The battlefield paint order is felt → seats → resting cards → avatars → arrows → flights.
 
