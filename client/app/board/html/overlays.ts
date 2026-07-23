@@ -15,6 +15,7 @@ import { handView } from "./hand";
 import { inspectView } from "./inspect";
 import { logPanelView } from "./log-panel";
 import { mulliganBarView } from "./mulligan-bar";
+import { pendingChoiceWaitingView } from "./pending-choice-waiting";
 import { pileOverlayView } from "./pile-overlay";
 import { priorityBarView } from "./priority-bar";
 import { promptsView } from "./prompts";
@@ -62,6 +63,7 @@ export function boardOverlays(
   const layers: Array<Html | null> = [
     turnChromeView(board, state),
     spectating ? spectatingBadgeView() : null,
+    pendingChoiceWaitingView(state),
     h.div(
       [h.Class("pointer-events-none fixed top-md left-md z-25 flex items-center gap-xs")],
       [discoverabilityView(board, state), soundToggleView(board)].filter((v): v is Html => v !== null),

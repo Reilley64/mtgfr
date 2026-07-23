@@ -423,16 +423,19 @@ test("may_yes_no prompt mounts only for the awaited seat", () => {
     viewModel(fold(state({ pending_choice: pendingChoice, viewer: 0 }))),
     Scene.expect(Scene.testId("prompt-yes")).toExist(),
     Scene.expect(Scene.testId("prompt-no")).toExist(),
+    Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
   );
   overlayScene(
     viewModel(fold(state({ pending_choice: pendingChoice, viewer: 1 }))),
     Scene.expect(Scene.testId("prompt-yes")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-no")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-choice-waiting")).toHaveText("Waiting for Alice…"),
   );
   staticOverlayScene(
     viewModel(fold(state({ pending_choice: pendingChoice, viewer: 255 }))),
     Scene.expect(Scene.testId("prompt-yes")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-no")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-choice-waiting")).toHaveText("Waiting for Alice…"),
   );
 });
 

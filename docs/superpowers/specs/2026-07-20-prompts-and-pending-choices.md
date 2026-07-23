@@ -1,6 +1,6 @@
 # Prompts and Pending Choices
 **Status:** Current (as of 2026-07-23)
-**Module:** `client/app/board/html/prompts.ts`, `client/lib/choice.ts`, `client/lib/xCost.ts`, `client/app/board/action/execution.ts`, `client/lib/ui/card-art.ts`, `client/lib/wire/types.ts`
+**Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/lib/choice.ts`, `client/lib/choiceWaiting.ts`, `client/lib/xCost.ts`, `client/app/board/action/execution.ts`, `client/lib/ui/card-art.ts`, `client/lib/wire/types.ts`
 
 ## Problem Statement
 
@@ -8,12 +8,13 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 ## Solution
 
-`PromptHost` is `promptsView`. It prioritizes local board prompts first, then renders `state.pending_choice` only for the awaited player. Engine choices use `FORMULATOR_FOR_KIND` to select a formulator and submit through `choiceIntent(pc, answer)`. Local choose-X uses a clamped Min/−/value/+/Max stepper with a live resolved-cost preview from wire `x_cost`.
+`PromptHost` is `promptsView`. It prioritizes local board prompts first, then renders `state.pending_choice` only for the awaited player. Non-deciders and spectators see a passive waiting banner (`pending-choice-waiting`) naming the awaited seat. Engine choices use `FORMULATOR_FOR_KIND` to select a formulator and submit through `choiceIntent(pc, answer)`. Local choose-X uses a clamped Min/−/value/+/Max stepper with a live resolved-cost preview from wire `x_cost`.
 
 ## User Stories
 
 - As the awaited player, I get the correct prompt for the engine choice I must answer.
 - As a non-deciding player or spectator, I do not see interactive prompt buttons for someone else’s choice.
+- As a non-deciding player or spectator, I see who the table is waiting on while a pending choice is open.
 - As a player choosing X, I adjust a clamped stepper within server `min_x`…`max_x` and see what I will pay before confirming.
 - As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
 - As a player dividing combat damage, spell damage, or counters, I adjust each share with a clamped stepper instead of typing numbers.
@@ -27,6 +28,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 
 - Local prompts render in this order: X prompt, modal cast, sacrifice pick, discard pick, graveyard-exile pick, staged target picker.
 - Engine pending choices render only when `pending_choice.player === state.viewer` and the viewer is an active seated player.
+- When `pending_choice` is set for another seat (and the game is not mulliganing), `pendingChoiceWaitingView` shows `Waiting for {name}…` (`pending-choice-waiting`) for non-deciders and spectators. The awaited seat never sees this banner. Username falls back to `P{seat}` when empty.
 - `pendingChoicePrompt` switches on `FORMULATOR_FOR_KIND[pending.kind]` and uses an exhaustive `never` default.
 - All engine submissions go through `choiceIntent`.
 - Card-pick prompts use `cardArt(h, opts)` for faces.
@@ -55,11 +57,13 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `cardArt(h, opts)` has one DOM API and supports optional `style`.
 - Pure X helpers live in `client/lib/xCost.ts` (`clampX`, `costWithChosenX`, `costText`).
 - Choose-X preview uses brace text rather than hand-bar mana-font pips so large resolved generics cannot collapse to a false `{0}`.
+- Waiting copy lives in `client/lib/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome.
 
 ## Testing Decisions
 
 - Formulator registry tests ensure every `PendingChoiceView["kind"]` maps to a formulator.
-- Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression.
+- Scene tests cover awaited-player prompt visibility and non-decider/spectator suppression plus waiting-banner copy.
+- Unit tests cover `pendingChoiceWaitingText` (null for decider / absent / mulligan; named seat and `P{seat}` fallback).
 - X prompt Scene tests assert stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
 - Unit tests cover `clampX`, `costWithChosenX` (multi-symbol X and colored pips), and `costText` for large generics.
 - Unit tests cover `damageAssignReady` for exact-sum non-trample and under-assign / over-assign / negative trample cases.

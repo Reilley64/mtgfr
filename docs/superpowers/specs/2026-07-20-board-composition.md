@@ -94,7 +94,7 @@ The board follows the Landscape Rule in [`DESIGN.md`](../../DESIGN.md): portrait
 
 ### Data-testid markers
 
-Stable markers include `board-mount`, `board-connecting`, `board-keyboard-mount`, `board-audio-mount`, `board-hint-mount`, `board-bitmap-layer`, `board-flight-layer`, `board-reconnecting`, `x-prompt`, `inspect-overlay`, `life-orb-{seat}`, and `bf-card-{id}`. Tests use these markers for cold-load, route-entry, and interaction coverage.
+Stable markers include `board-mount`, `board-connecting`, `board-keyboard-mount`, `board-audio-mount`, `board-hint-mount`, `board-bitmap-layer`, `board-flight-layer`, `board-reconnecting`, `x-prompt`, `pending-choice-waiting`, `inspect-overlay`, `life-orb-{seat}`, and `bf-card-{id}`. Tests use these markers for cold-load, route-entry, and interaction coverage.
 
 ## Implementation Decisions
 
@@ -115,9 +115,8 @@ Stable markers include `board-mount`, `board-connecting`, `board-keyboard-mount`
 
 - WebGL, Pixi, Konva, or a unified retained scene graph.
 - Portrait board reflow.
-- New passive waiting banners for non-deciders.
 - Per-card audio files, music, or voice.
 
 ## Further Notes
 
-- Sibling specs: [`2026-07-20-board-camera-and-layout.md`](2026-07-20-board-camera-and-layout.md), [`2026-07-20-battlefield.md`](2026-07-20-battlefield.md), [`2026-07-20-flights.md`](2026-07-20-flights.md).
+- Sibling specs: [`2026-07-20-board-camera-and-layout.md`](2026-07-20-board-camera-and-layout.md), [`2026-07-20-battlefield.md`](2026-07-20-battlefield.md), [`2026-07-20-flights.md`](2026-07-20-flights.md), [`2026-07-20-prompts-and-pending-choices.md`](2026-07-20-prompts-and-pending-choices.md) (non-decider waiting banner).
