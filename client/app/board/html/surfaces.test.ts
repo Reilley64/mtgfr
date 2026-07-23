@@ -819,7 +819,7 @@ test("scry aim shows docked Top and Bottom arrange lanes", () => {
   );
 });
 
-test("order_triggers prompt shows drag rows, click-to-place, and arrow controls", () => {
+test("order_triggers aim shows docked drag rows, click-to-place, and arrow controls", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -833,6 +833,8 @@ test("order_triggers prompt shows drag rows, click-to-place, and arrow controls"
         },
       }),
     ),
+    Scene.expect(Scene.testId("pending-order-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-order-list")).toExist(),
     Scene.expect(Scene.selector('[data-testid="prompt-order-0"][draggable="true"]')).toExist(),
     Scene.expect(Scene.testId("prompt-order-pick-0")).toHaveText("ETB draw"),
