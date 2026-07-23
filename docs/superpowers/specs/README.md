@@ -41,7 +41,6 @@ These documents are **not superseded** and must stay current alongside the specs
 | [client-interaction-test-policy](2026-07-22-client-interaction-test-policy-design.md) | Outcome-focused client interaction test policy |
 | [client-shell-deck-builder-and-observability](2026-07-20-client-shell-deck-builder-and-observability.md) | Shell routes, deck builder, BFF edges, observability, design system |
 | [combat-and-commander-rules](2026-07-20-combat-and-commander-rules.md) | Multiplayer combat, commander tax/damage, elimination |
-| [commander-damage-avatars-design](2026-07-23-commander-damage-avatars-design.md) | Surface max commander damage on life orbs (design) |
 | [engine-core-and-event-model](2026-07-20-engine-core-and-event-model.md) | Pure Rust engine zones, events, SBAs, determinism |
 | [flights](2026-07-20-flights.md) | Card movement animation, flight ownership, bitmap paint gating |
 | [foldkit-devtools](2026-07-22-foldkit-devtools.md) | Local Foldkit runtime relay and MCP debugging tools |

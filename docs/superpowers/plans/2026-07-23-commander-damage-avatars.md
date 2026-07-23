@@ -8,7 +8,7 @@
 
 **Tech Stack:** Foldkit Canvas, Vitest, TypeScript.
 
-**Spec:** [2026-07-23-commander-damage-avatars-design.md](../specs/2026-07-23-commander-damage-avatars-design.md)
+**Spec:** [battlefield](../specs/2026-07-20-battlefield.md) (Avatars)
 
 ## Global Constraints
 

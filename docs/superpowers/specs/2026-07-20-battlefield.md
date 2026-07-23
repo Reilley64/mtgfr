@@ -78,7 +78,11 @@ Battlefield playable borders are derived from current `ActionView` data. Tap-onl
 
 ### Avatars
 
-Avatars are painted on the Mount bitmap layer (`bitmap/mount.ts` `paintAvatars`) using the same camera transform as cards; `canvas/avatars.ts` keeps a matching vector helper. The priority player uses a gold stroke. Lost players render with muted fill. Player life, name, and hand count paint inside the avatar group. When a seat has taken commander damage, the orb also paints `Cmd N` where `N` is the highest amount from any single commander source in `PlayerView.commander_damage` (the 21-damage kill clock). Omit the label when that max is 0 or the field is empty. Targetable player highlights use Island Blue.
+Avatars are painted on the Mount bitmap layer (`bitmap/mount.ts` `paintAvatars`) using the same camera transform as cards; `canvas/avatars.ts` keeps a matching vector helper for the Foldkit Canvas pass beneath the Mount layer. The priority player uses a gold stroke. Lost players render with muted fill. Player life, name, and hand count paint inside the avatar group.
+
+When a seat has taken commander damage, the orb also paints `Cmd N` below the username (`pos.y + 42 * zoom`, fill `#db8664`), where `N` is `maxCommanderDamage(player)` — the highest `amount` from any single entry in `PlayerView.commander_damage` (the 21-damage kill clock is per commander source). Omit the label when that max is 0 or the field is absent/empty. Lost seats still show `Cmd N` when present. Targetable player highlights use Island Blue.
+
+`restingPaintSnapshot` / `playerPaintKey` includes `commander_damage` so Mount resting repaint runs when only commander damage changes (life/hand/username unchanged).
 
 ### Arrows and target highlights
 
@@ -115,11 +119,14 @@ These are visual/layout rules only; they do not collapse engine objects.
 - Keep arrows above resting cards so combat and targeting remain legible.
 - Keep canvas colors as code literals and sync user-facing meaning through `DESIGN.md`.
 - Keep avatar paint below HTML life-orb hit targets.
+- Mount `paintAvatars` is the authoritative visible avatar chrome; keep `avatarShapes` in sync for the vector helper.
+- Show only the max per-commander damage total on the orb (no per-source chip list).
 
 ## Testing Decisions
 
 - Canvas scene tests assert felt, seat, avatar, and arrow ordering.
 - Avatar unit tests assert `Cmd N` paint from `commander_damage` (max source only; omitted at 0) on both Mount `paintAvatars` and the vector `avatarShapes` helper.
+- Resting-snapshot tests assert a `commander_damage`-only player change invalidates Mount resting paint.
 - Bitmap paint tests assert playable, commander, target, auto-tap, P/T, loyalty, counter, and damage chrome on the resting layer.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.
 - Density tests assert packing, cluster fan, and hover raise order.
@@ -130,6 +137,8 @@ These are visual/layout rules only; they do not collapse engine objects.
 - Under-card resting name labels.
 - New counter kinds not exposed by the wire.
 - Changing combat or targeting legality; this spec covers presentation only.
+- Per-commander damage breakdown UI (inspect dock / hover).
+- HTML overlays for commander-damage chips.
 
 ## Further Notes
 
