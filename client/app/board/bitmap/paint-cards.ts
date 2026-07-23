@@ -10,6 +10,8 @@ export interface Stroke {
 }
 
 export const CARD_OUTLINE = CARD_RESTING_OUTLINE;
+/** World-space corner radius; screen px = this × camera.zoom (matches Foldkit card paths). */
+export const CARD_CORNER_RADIUS = 6;
 export const DIM_CARD_VEIL = 0.45;
 export const TAP_GLYPH = "\ue61a";
 export const TARGET_STROKE: Stroke = { color: "#77CCFF", dash: [2, 6] };
@@ -90,7 +92,7 @@ export function paintCard(
   const tl = worldToScreen(cam, card.x, card.y);
   const w = card.w * cam.zoom;
   const h = card.h * cam.zoom;
-  const r = 6 * cam.zoom;
+  const r = CARD_CORNER_RADIUS * cam.zoom;
   const outline = options.outline ?? null;
 
   ctx.save();
@@ -118,13 +120,22 @@ export function paintCard(
     paintFaceUp(ctx, cam, card, cache, tl.x, tl.y, w, h, r);
   }
 
-  if (card.isCommander && outline != null) {
+  // Restroke after art so playable / commander chrome stays rounded on top of the face.
+  if (outline != null || card.isCommander) {
     roundRect(ctx, tl.x, tl.y, w, h, r);
-    ctx.strokeStyle = outline.color;
-    ctx.lineWidth = Math.max(1, 2 * cam.zoom);
-    ctx.setLineDash(outline.dash);
+    ctx.strokeStyle = card.isCommander ? COMMANDER_GOLD : (outline?.color ?? CARD_OUTLINE);
+    ctx.lineWidth = Math.max(1, (outline || card.isCommander ? 3 : 2) * cam.zoom);
+    ctx.setLineDash(card.isCommander ? [] : (outline?.dash ?? []));
     ctx.stroke();
     ctx.setLineDash([]);
+    if (card.isCommander && outline != null) {
+      roundRect(ctx, tl.x, tl.y, w, h, r);
+      ctx.strokeStyle = outline.color;
+      ctx.lineWidth = Math.max(1, 2 * cam.zoom);
+      ctx.setLineDash(outline.dash);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
   }
 
   if (options.dim) {
@@ -147,7 +158,7 @@ export function paintCardArt(
   const tl = worldToScreen(cam, card.x, card.y);
   const w = card.w * cam.zoom;
   const h = card.h * cam.zoom;
-  const r = 6 * cam.zoom;
+  const r = CARD_CORNER_RADIUS * cam.zoom;
 
   ctx.save();
   rotateCard(ctx, card, viewer, tl.x, tl.y, w, h);
@@ -195,7 +206,7 @@ export function paintCardTargetHighlight(
   const tl = worldToScreen(cam, card.x, card.y);
   const w = card.w * cam.zoom;
   const h = card.h * cam.zoom;
-  const r = 6 * cam.zoom;
+  const r = CARD_CORNER_RADIUS * cam.zoom;
 
   ctx.save();
   rotateCard(ctx, card, viewer, tl.x, tl.y, w, h);

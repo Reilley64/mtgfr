@@ -142,17 +142,22 @@ function collectTextShapes(shapes: ReadonlyArray<Shape>): Canvas.Text[] {
   return texts;
 }
 
-function groupWithRectFill(shape: Shape, fill: string): Group | null {
+function groupWithCardFill(shape: Shape, fill: string): Group | null {
   if (shape._tag !== "Group") {
     return null;
   }
 
-  if (shape.shapes.some((child) => child._tag === "Rect" && child.fill === fill)) {
+  if (
+    shape.shapes.some(
+      (child) =>
+        (child._tag === "Path" || child._tag === "Rect") && "fill" in child && child.fill === fill,
+    )
+  ) {
     return shape;
   }
 
   for (const child of shape.shapes) {
-    const group = groupWithRectFill(child, fill);
+    const group = groupWithCardFill(child, fill);
     if (group != null) {
       return group;
     }
@@ -161,9 +166,9 @@ function groupWithRectFill(shape: Shape, fill: string): Group | null {
   return null;
 }
 
-function firstGroupWithRectFill(shapes: ReadonlyArray<Shape>, fill: string): Group | null {
+function firstGroupWithCardFill(shapes: ReadonlyArray<Shape>, fill: string): Group | null {
   for (const shape of shapes) {
-    const group = groupWithRectFill(shape, fill);
+    const group = groupWithCardFill(shape, fill);
     if (group != null) {
       return group;
     }
@@ -172,10 +177,10 @@ function firstGroupWithRectFill(shapes: ReadonlyArray<Shape>, fill: string): Gro
   return null;
 }
 
-function firstRect(group: Group | null): Canvas.Rect | null {
+function firstCardPath(group: Group | null): Canvas.Path | null {
   if (group == null) return null;
-  const shape = group.shapes.find((child) => child._tag === "Rect");
-  return shape?._tag === "Rect" ? shape : null;
+  const shape = group.shapes.find((child) => child._tag === "Path");
+  return shape?._tag === "Path" ? shape : null;
 }
 
 function shapeHasFill(shape: Shape, fill: string): boolean {
@@ -319,10 +324,10 @@ describe("sceneShapes", () => {
     const bearGroup = firstGroupContainingText(shapes, "2/2");
     expect(bearGroup).not.toBeNull();
     if (bearGroup == null) return;
-    const bearRect = bearGroup.shapes.find((shape) => shape._tag === "Rect");
-    expect(bearRect?._tag).toBe("Rect");
-    if (bearRect?._tag !== "Rect") return;
-    expect(bearRect.stroke).toBe(TARGET_COLOR);
+    const bearCard = firstCardPath(bearGroup);
+    expect(bearCard?._tag).toBe("Path");
+    if (bearCard?._tag !== "Path") return;
+    expect(bearCard.stroke).toBe(TARGET_COLOR);
 
     const aimArrow = shapes.find((shape) => shape._tag === "Path" && shape.stroke === TARGET_COLOR);
     expect(aimArrow).toBeDefined();
@@ -333,11 +338,22 @@ describe("sceneShapes", () => {
     state.actions = [battlefieldAction(1)];
 
     const shapes = sceneShapes(state);
-    const bearRect = firstRect(firstGroupContainingText(shapes, "2/2"));
-    const forestRect = firstRect(firstGroupWithRectFill(shapes, "#223820"));
+    const bearCard = firstCardPath(firstGroupContainingText(shapes, "2/2"));
+    const forestCard = firstCardPath(firstGroupWithCardFill(shapes, "#223820"));
 
-    expect(bearRect?.stroke).toBe("#EAFFF0");
-    expect(forestRect?.stroke).toBe("#1a1a1a");
+    expect(bearCard?.stroke).toBe("#EAFFF0");
+    expect(forestCard?.stroke).toBe("#1a1a1a");
+  });
+
+  it("paints battlefield cards as rounded paths, not square rects", () => {
+    const shapes = sceneShapes(boardFixture());
+    const bearGroup = firstGroupContainingText(shapes, "2/2");
+    expect(bearGroup).not.toBeNull();
+    if (bearGroup == null) return;
+    expect(bearGroup.shapes.some((shape) => shape._tag === "Rect")).toBe(false);
+    const cardPath = firstCardPath(bearGroup);
+    expect(cardPath?._tag).toBe("Path");
+    expect(cardPath?.instructions.some((i) => i._tag === "QuadTo")).toBe(true);
   });
 
   it("keeps commander gold instead of controller seat strokes", () => {
@@ -345,9 +361,9 @@ describe("sceneShapes", () => {
     state.objects = [object({ id: 9, is_commander: true })];
 
     const shapes = sceneShapes(state);
-    const commanderRect = firstRect(firstGroupContainingText(shapes, "2/2"));
+    const commanderCard = firstCardPath(firstGroupContainingText(shapes, "2/2"));
 
-    expect(commanderRect?.stroke).toBe("#E9B84A");
+    expect(commanderCard?.stroke).toBe("#E9B84A");
   });
 
   it("layers playable and commander outlines on playable commanders", () => {
@@ -358,8 +374,8 @@ describe("sceneShapes", () => {
     const shapes = sceneShapes(state);
     const commanderGroup = firstGroupContainingText(shapes, "2/2");
     const strokes = commanderGroup?.shapes
-      .filter((shape) => shape._tag === "Rect")
-      .map((shape) => shape.stroke);
+      .filter((shape) => shape._tag === "Path")
+      .map((shape) => (shape._tag === "Path" ? shape.stroke : undefined));
 
     expect(strokes).toContain(COMMANDER_GOLD);
     expect(strokes).toContain(PLAYABLE_BORDER);

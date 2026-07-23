@@ -365,6 +365,7 @@ export type ActionView = {
   required_attacks?: Array<WireAttack>;
   sacrifice_choices?: Array<number>;
   section: string;
+  taps_self?: boolean;
   targets?: Array<WireTarget>;
 };
 export type PendingChoiceView =

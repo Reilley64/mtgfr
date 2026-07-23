@@ -264,8 +264,14 @@ export interface ClickContext {
   blocks: WireBlock[]; // creatures staged as blockers this declaration
 }
 
-export function canSelectPermanent(objectId: number, tapsForMana: boolean, actions: ActionView[] | undefined): boolean {
-  if (tapsForMana) return true;
+export function canSelectPermanent(
+  objectId: number,
+  tapsForMana: boolean,
+  actions: ActionView[] | undefined,
+  opts: { summoningSick?: boolean; hasHaste?: boolean } = {},
+): boolean {
+  const sickBlocksTap = opts.summoningSick === true && opts.hasHaste !== true;
+  if (tapsForMana && !sickBlocksTap) return true;
   return (actions ?? []).some((a) => a.section === "battlefield" && a.object === objectId && a.kind === "activate");
 }
 
@@ -306,6 +312,13 @@ export function resolveClick(state: VisibleState | null, me: number, card: Rende
 
   // Select your permanent — tap-for-mana and activates live on the activation radial, not as a
   // raw board click (one-click auto-tap fought select + on-permanent chips).
-  if (!canSelectPermanent(card.id, card.tapsForMana, state?.actions)) return { kind: "none" };
+  if (
+    !canSelectPermanent(card.id, card.tapsForMana, state?.actions, {
+      summoningSick: card.summoningSick,
+      hasHaste: card.hasHaste,
+    })
+  ) {
+    return { kind: "none" };
+  }
   return { kind: "select", id: card.id };
 }

@@ -672,7 +672,14 @@ function pointerUpModel(
       }
       return [idle, []];
     }
-    if (!canSelectPermanent(release.card.id, release.card.tapsForMana, fold.state?.actions)) return [idle, []];
+    if (
+      !canSelectPermanent(release.card.id, release.card.tapsForMana, fold.state?.actions, {
+        summoningSick: release.card.summoningSick,
+        hasHaste: release.card.hasHaste,
+      })
+    ) {
+      return [idle, []];
+    }
     return [{ ...idle, selectedId: release.card.id, radialPress: { armed: null }, radialHover: null }, []];
   }
 

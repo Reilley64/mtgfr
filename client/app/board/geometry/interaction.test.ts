@@ -406,6 +406,31 @@ describe("resolveClick", () => {
     expect(resolveClick(state(), 0, ring, noCtx)).toEqual({ kind: "select", id: 5 });
   });
 
+  it("does not select a summoning-sick mana dork with only tap-for-mana", () => {
+    const elf = card({
+      id: 5,
+      zone: ZONE.Battlefield,
+      controller: 0,
+      kind: "creature",
+      tapsForMana: true,
+      summoningSick: true,
+    });
+    expect(resolveClick(state(), 0, elf, noCtx)).toEqual({ kind: "none" });
+  });
+
+  it("selects a summoning-sick mana dork that has haste", () => {
+    const elf = card({
+      id: 5,
+      zone: ZONE.Battlefield,
+      controller: 0,
+      kind: "creature",
+      tapsForMana: true,
+      summoningSick: true,
+      hasHaste: true,
+    });
+    expect(resolveClick(state(), 0, elf, noCtx)).toEqual({ kind: "select", id: 5 });
+  });
+
   it("does not select a permanent with no mana ability or legal battlefield activate", () => {
     const land = card({ id: 4, zone: ZONE.Battlefield, controller: 0, kind: "land", tapsForMana: false });
     expect(resolveClick(state(), 0, land, noCtx)).toEqual({ kind: "none" });

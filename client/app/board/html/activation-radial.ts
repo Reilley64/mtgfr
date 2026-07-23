@@ -38,7 +38,15 @@ export function selectedRadialOptions(board: BoardModel, state: VisibleState): R
   if (id == null) return [];
   const card = layout(state, state.viewer).find((c) => c.id === id);
   if (card == null) return [];
-  return radialOptions(id, state.actions, card.tapsForMana, card.tapped, state.can_act);
+  return radialOptions(
+    id,
+    state.actions,
+    card.tapsForMana,
+    card.tapped,
+    state.can_act,
+    card.summoningSick,
+    card.hasHaste,
+  );
 }
 
 export function activationRadialView(board: BoardModel, state: VisibleState): Html | null {
@@ -51,7 +59,15 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
   const card = cards.find((c) => c.id === id) ?? cards.find((c) => c.clusterMembers.includes(id));
   if (card == null) return null;
 
-  const options = radialOptions(id, state.actions, card.tapsForMana, card.tapped, state.can_act);
+  const options = radialOptions(
+    id,
+    state.actions,
+    card.tapsForMana,
+    card.tapped,
+    state.can_act,
+    card.summoningSick,
+    card.hasHaste,
+  );
   if (options.length === 0) return null;
 
   const center = radialScreenCenter(board.camera, card);

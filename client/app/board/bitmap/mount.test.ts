@@ -394,6 +394,45 @@ describe("paintBitmapLayer", () => {
     expect(calls).not.toContain("fill:rgba(0,0,0,0.45)");
   });
 
+  it("does not outline a summoning-sick creature for a tap activate", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const cache = { get: vi.fn(() => undefined) };
+    const frame = {
+      width: 800,
+      height: 600,
+      camera: { panX: 0, panY: 0, zoom: 1 },
+      cards: [card({ id: 7, pt: "", name: "Zimone, Quandrix Prodigy", summoningSick: true })],
+      viewer: 0,
+      players: [player()],
+      priority: 0,
+      combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+      stagedAttackers: [],
+      stagedBlocks: [],
+      flights: [],
+      hideCardIds: new Set<number>(),
+      targetObjects: new Set<number>(),
+      targetPlayers: new Set<number>(),
+      aimFrom: null,
+      cursor: { x: 0, y: 0 },
+      combatDragFrom: null,
+      combatDragStroke: null,
+      paymentPreviewIds: new Set<number>(),
+      actions: [battlefieldAction(7, { taps_self: true })],
+    };
+
+    paintBitmapLayer(canvas, frame, cache);
+
+    expect(calls).not.toContain("stroke:#EAFFF0");
+    expect(calls).toContain("stroke:#1a1a1a");
+  });
+
   it("paints target highlights and an aim arrow while staged spell targeting", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });

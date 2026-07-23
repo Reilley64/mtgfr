@@ -87,7 +87,14 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
   const ctx = prepareLayerCtx(canvas, frame);
   if (ctx == null) return;
 
-  const playableObjects = playableBattlefieldObjectIds(frame.actions);
+  const playableObjects = playableBattlefieldObjectIds(
+    frame.actions,
+    frame.cards.map((card) => ({
+      id: card.id,
+      summoningSick: card.summoningSick,
+      hasHaste: card.hasHaste,
+    })),
+  );
   for (const card of frame.cards) {
     if (frame.hideCardIds.has(card.id)) continue;
     const outline = playableObjects.has(card.id) ? { color: PLAYABLE_BORDER, dash: [] } : null;

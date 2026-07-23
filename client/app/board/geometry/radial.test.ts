@@ -62,6 +62,9 @@ describe("radialOptions", () => {
     expect(radialOptions(7, [], true, true, true)).toEqual([
       { kind: "tap_for_mana", label: "Tap for mana", disabled: true },
     ]);
+    expect(radialOptions(7, [], true, false, true, true, false)).toEqual([
+      { kind: "tap_for_mana", label: "Tap for mana", disabled: true },
+    ]);
   });
 
   it("lists each battlefield action for that object", () => {

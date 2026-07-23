@@ -1,6 +1,7 @@
 import { Canvas } from "foldkit";
 import type { VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
+import { CARD_CORNER_RADIUS } from "../bitmap/paint-cards";
 import { CARD_RESTING_OUTLINE, COMMANDER_GOLD, PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { fitCamera } from "../geometry/interaction";
@@ -11,6 +12,38 @@ import { avatarScreenPositions, avatarShapes } from "./avatars";
 import { feltShapes } from "./felt";
 
 type Shape = Canvas.Shape;
+
+/** Axis-aligned rounded rect as a Foldkit Path (bitmap cards use the same corner radius). */
+function roundedRectPath(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  fill: string | undefined,
+  stroke: string | undefined,
+  lineWidth: number,
+): Shape {
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  return Canvas.Path({
+    instructions: [
+      Canvas.MoveTo({ x: x + r, y }),
+      Canvas.LineTo({ x: x + width - r, y }),
+      Canvas.QuadTo({ cpx: x + width, cpy: y, x: x + width, y: y + r }),
+      Canvas.LineTo({ x: x + width, y: y + height - r }),
+      Canvas.QuadTo({ cpx: x + width, cpy: y + height, x: x + width - r, y: y + height }),
+      Canvas.LineTo({ x: x + r, y: y + height }),
+      Canvas.QuadTo({ cpx: x, cpy: y + height, x, y: y + height - r }),
+      Canvas.LineTo({ x, y: y + r }),
+      Canvas.QuadTo({ cpx: x, cpy: y, x: x + r, y }),
+      Canvas.Close(),
+    ],
+    fill,
+    stroke,
+    lineWidth,
+    lineJoin: "Round",
+  });
+}
 
 export type StagedTargeting = {
   targetObjects: ReadonlySet<number>;
@@ -107,29 +140,23 @@ function cardShapes(
             ? PLAYABLE_BORDER
             : CARD_RESTING_OUTLINE;
 
+    const corner = CARD_CORNER_RADIUS * camera.zoom;
     cardParts.push(
-      Canvas.Rect({
-        x: left,
-        y: top,
+      roundedRectPath(
+        left,
+        top,
         width,
         height,
-        fill: card.faceDown ? "#1a1623" : kindFill(card),
-        stroke: cardStroke,
-        lineWidth: targeted || selected || card.isCommander || playable ? 3 : 1.5,
-      }),
+        corner,
+        card.faceDown ? "#1a1623" : kindFill(card),
+        cardStroke,
+        targeted || selected || card.isCommander || playable ? 3 : 1.5,
+      ),
     );
 
     if (card.isCommander && playable) {
       cardParts.push(
-        Canvas.Rect({
-          x: left,
-          y: top,
-          width,
-          height,
-          fill: "transparent",
-          stroke: PLAYABLE_BORDER,
-          lineWidth: 2,
-        }),
+        roundedRectPath(left, top, width, height, corner, undefined, PLAYABLE_BORDER, 2),
       );
     }
 
@@ -181,7 +208,14 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
   const avatars = avatarScreenPositions(state.players, state.viewer, count, camera);
   const targeting = options.stagedTargeting ?? null;
   const targetObjects = targeting?.targetObjects ?? new Set<number>();
-  const playableObjects = playableBattlefieldObjectIds(state.actions);
+  const playableObjects = playableBattlefieldObjectIds(
+    state.actions,
+    cards.map((card) => ({
+      id: card.id,
+      summoningSick: card.summoningSick,
+      hasHaste: card.hasHaste,
+    })),
+  );
 
   return [
     ...feltShapes(width, height),

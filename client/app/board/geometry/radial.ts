@@ -133,9 +133,18 @@ export function radialOptions(
   tapsForMana: boolean,
   tapped: boolean,
   canAct: boolean,
+  summoningSick = false,
+  hasHaste = false,
 ): RadialOption[] {
   const out: RadialOption[] = [];
-  if (tapsForMana) out.push({ kind: "tap_for_mana", label: "Tap for mana", disabled: !canAct || tapped });
+  if (tapsForMana) {
+    const sickBlocksTap = summoningSick && !hasHaste;
+    out.push({
+      kind: "tap_for_mana",
+      label: "Tap for mana",
+      disabled: !canAct || tapped || sickBlocksTap,
+    });
+  }
   for (const a of actions ?? []) {
     if (a.section !== "battlefield" || a.object !== objectId) continue;
     out.push({ kind: "action", action: a, label: a.label, disabled: false });
