@@ -1,6 +1,6 @@
 # Prompts and Pending Choices
 **Status:** Current (as of 2026-07-23)
-**Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/lib/choice.ts`, `client/lib/choiceWaiting.ts`, `client/lib/xCost.ts`, `client/app/board/action/execution.ts`, `client/lib/ui/card-art.ts`, `client/lib/wire/types.ts`
+**Module:** `client/app/board/html/prompts.ts`, `client/app/board/html/pending-choice-waiting.ts`, `client/lib/choice.ts`, `client/lib/choiceWaiting.ts`, `client/lib/cardPickSearch.ts`, `client/lib/xCost.ts`, `client/app/board/action/execution.ts`, `client/lib/ui/card-art.ts`, `client/lib/wire/types.ts`
 
 ## Problem Statement
 
@@ -19,6 +19,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
 - As a player dividing combat damage, spell damage, or counters, I adjust each share with a clamped stepper instead of typing numbers.
 - As a player naming a card, I get a focused text field with a Card name placeholder and can confirm with Name or Enter.
+- As a player searching their library, I can filter faces by name while title, filter, and Choose stay pinned above a scrolling card grid.
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
 - As a player joining forces (`pay_any_amount_of_mana`), I adjust a Min/−/value/+/Max stepper up to my affordable max and confirm (0 declines).
@@ -45,6 +46,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Trample’s prompt shows `assigned N / power` plus a `to defender: R` overflow line (`prompt-damage-overflow`). Non-trample prompts omit that line.
 - Combat damage, divide-spell damage, and divide-counters rows use Min/−/value/+/Max steppers (`prompt-damage-{id}-*`) capped at the attacker’s power or the division total — no raw `type=number` fields.
 - `choose_card_name` uses an autofocused text field (`prompt-name-input`) with placeholder “Card name”; Enter submits when the trimmed name is non-empty (same gate as the Name button).
+- `search_library` card picks are searchable: autofocused `pick-card-filter` (“Filter by name…”), face dedupe by label, filtered grid inside `pick-card-scroll`, with title / filter / Choose+Fail-to-find pinned (dialog `overflow-hidden`, scroll only on the card strip). Other card-pick kinds stay unfiltered.
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
 - Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
 - `pay_any_amount_of_mana` (join forces) uses a clamped stepper over `[0, max]` with draft on `promptDraft` (`PromptNumberSet`); Confirm submits via `PromptSubmitted`. Per-N buttons (`prompt-number-N`) are not used for this kind. `may_draw_up_to` / `trade_secrets_caster_draw` keep one-click number buttons.
@@ -58,6 +60,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Pure X helpers live in `client/lib/xCost.ts` (`clampX`, `costWithChosenX`, `costText`).
 - Choose-X preview uses brace text rather than hand-bar mana-font pips so large resolved generics cannot collapse to a false `{0}`.
 - Waiting copy lives in `client/lib/choiceWaiting.ts`; the banner is composed in `boardOverlays` (not inside `promptsView`) so spectators see it without seated prompt chrome.
+- Library-search filter helpers live in `client/lib/cardPickSearch.ts`; filter draft is optional `filter` on `PromptDraft` `card-pick`, updated via `PromptCardFilterSet`.
 
 ## Testing Decisions
 
@@ -71,6 +74,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
 - Scene/unit tests cover join-forces mana stepper (no per-N buttons; draft submit).
+- Scene/unit tests cover library-search filter, face dedupe, and pinned scroll chrome (`pick-card-filter`, `pick-card-scroll`).
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 
 ## Out of Scope

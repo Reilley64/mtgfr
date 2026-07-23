@@ -123,6 +123,8 @@ export const PromptOrderMoved = m("PromptOrderMoved", { pos: S.Number, delta: S.
 export const PromptDamageSet = m("PromptDamageSet", { id: S.Number, amount: S.Number });
 /** Type into a free-text prompt (naming a card). */
 export const PromptStringSet = m("PromptStringSet", { value: S.String });
+/** Filter searchable card-pick prompts (library search) by name. */
+export const PromptCardFilterSet = m("PromptCardFilterSet", { query: S.String });
 /** Set a numeric pending-choice draft (join-forces mana amount, etc.). */
 export const PromptNumberSet = m("PromptNumberSet", { count: S.Number });
 /** Toggle a trigger-mode choice while assembling a pending-choice answer. */
@@ -256,6 +258,7 @@ export const Message = S.Union([
   PromptOrderMoved,
   PromptDamageSet,
   PromptStringSet,
+  PromptCardFilterSet,
   PromptNumberSet,
   PromptModeChoiceToggled,
   PromptPartitionSet,
