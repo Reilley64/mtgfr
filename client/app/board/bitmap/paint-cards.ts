@@ -541,8 +541,8 @@ function drawAbilityChip(
   cy: number,
   r: number,
   id: string,
-  bg = colors.forestHud,
-  ink = colors.snowMint,
+  bg: string = colors.forestHud,
+  ink: string = colors.snowMint,
 ): void {
   ctx.save();
   ctx.beginPath();
