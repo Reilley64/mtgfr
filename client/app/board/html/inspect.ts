@@ -60,6 +60,7 @@ export function inspectView(
 
   const modsEl = modifierLedger(modifiers);
 
+  // Dismiss via backdrop / Esc / Alt-up — no Close control (Solid parity).
   const flipButton: Html | null = hasBack
     ? h.button(
         [
@@ -72,17 +73,9 @@ export function inspectView(
       )
     : null;
 
-  const closeButton = h.button(
-    [h.Type("button"), h.OnClick(InspectDismissed()), h.Class(buttonClass("game-quiet"))],
-    ["Close"],
-  );
-
   const extras: Html[] = [
     modsEl,
-    h.div(
-      [h.Class("flex flex-wrap items-center gap-2")],
-      [flipButton, closeButton].filter((v): v is Html => v !== null),
-    ),
+    flipButton != null ? h.div([h.Class("flex flex-wrap items-center gap-2")], [flipButton]) : null,
   ].filter((v): v is Html => v !== null);
 
   return cardHoverPreviewView(h, {

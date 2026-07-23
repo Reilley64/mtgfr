@@ -160,7 +160,7 @@ function dockPreviewView<M>(h: HtmlFactory<M>, args: DockPreviewArgs<M>): Html {
   );
 
   return h.div(
-    [h.DataAttribute("testid", testId), h.Class("fixed inset-0 z-[100] flex items-start bg-black/55")],
+    [h.DataAttribute("testid", testId), h.Class("fixed inset-0 z-[100] flex items-center bg-black/55")],
     [backdrop, content],
   );
 }

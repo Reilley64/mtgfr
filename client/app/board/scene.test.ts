@@ -755,12 +755,13 @@ test("inspect overlay docks left with backdrop when pinned", () => {
     Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("bg-black/55"),
     Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("fixed"),
     Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("inset-0"),
-    Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("items-start"),
+    Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("items-center"),
     Scene.expect(Scene.testId("inspect-overlay")).toHaveClass("z-[100]"),
-    Scene.expect(Scene.testId("inspect-overlay")).not.toHaveClass("items-center"),
+    Scene.expect(Scene.testId("inspect-overlay")).not.toHaveClass("items-start"),
     Scene.expect(Scene.testId("inspect-overlay")).not.toHaveClass("top-(--y)"),
     Scene.expect(Scene.testId("inspect-overlay")).not.toHaveClass("left-(--x)"),
     Scene.expect(Scene.testId("inspect-overlay")).toContainText(": Add ."),
+    Scene.expect(Scene.testId("inspect-overlay")).not.toContainText("Close"),
     Scene.expect(Scene.selector('[aria-label="{C}"]')).toExist(),
   );
 });
