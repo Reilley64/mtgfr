@@ -175,7 +175,7 @@ describe("handView playable outlines", () => {
     expect(className(findTestId(tree, "hand-card-face-43"))).not.toContain("ring-playable-border");
   });
 
-  it("uses graveyard purple and exile green outlines for playable zone bar tiles", () => {
+  it("layers playable border with gy/exile zone halos on playable zone bar tiles", () => {
     const graveyardCard = object(60, { zone: ZONE.Graveyard });
     const exileCard = object(61, { zone: ZONE.Exile });
     const tree = renderHand(
@@ -188,8 +188,12 @@ describe("handView playable outlines", () => {
       }),
     );
 
-    expect(className(findTestId(tree, "hand-card-face-60"))).toContain("ring-graveyard-outline");
-    expect(className(findTestId(tree, "hand-card-face-61"))).toContain("ring-exile-outline");
+    const gy = className(findTestId(tree, "hand-card-face-60"));
+    const exile = className(findTestId(tree, "hand-card-face-61"));
+    expect(gy).toContain("ring-playable-border");
+    expect(gy).toContain("--color-graveyard-outline");
+    expect(exile).toContain("ring-playable-border");
+    expect(exile).toContain("--color-exile-outline");
   });
 
   it("layers playable border with commander gold on a castable command-zone commander", () => {

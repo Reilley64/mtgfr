@@ -32,4 +32,18 @@ describe("barZoneAura", () => {
     expect(aura).toContain("ring-playable-border");
     expect(aura).toContain("--color-commander-gold");
   });
+
+  it("layers playable border with graveyard purple when a GY tile is playable", () => {
+    const aura = barZoneAura("graveyard", true);
+    expect(aura).toContain("ring-playable-border");
+    expect(aura).toContain("--color-graveyard-outline");
+    expect(barZoneAura("graveyard", false)).toBe("");
+  });
+
+  it("layers playable border with exile green when an exile tile is playable", () => {
+    const aura = barZoneAura("exile", true);
+    expect(aura).toContain("ring-playable-border");
+    expect(aura).toContain("--color-exile-outline");
+    expect(barZoneAura("exile", false)).toBe("");
+  });
 });

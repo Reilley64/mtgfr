@@ -20,9 +20,14 @@ export function barZoneAura(zone: BarZone, playable = false): string {
     return "ring-2 ring-commander-gold shadow-[0_0_12px_rgba(233,184,74,0.45)]";
   }
   if (zone === "graveyard") {
-    return playable ? "ring-2 ring-graveyard-outline shadow-[0_0_12px_rgba(123,92,255,0.45)]" : "";
+    // Same dual language as command: mint playable ring + zone-colour outer halo.
+    return playable
+      ? "ring-2 ring-playable-border shadow-[0_0_0_2px_var(--color-graveyard-outline),0_0_12px_rgba(123,92,255,0.45),0_0_12px_rgba(234,255,240,0.35)]"
+      : "";
   }
-  return playable ? "ring-2 ring-exile-outline shadow-[0_0_12px_rgba(61,220,151,0.45)]" : "";
+  return playable
+    ? "ring-2 ring-playable-border shadow-[0_0_0_2px_var(--color-exile-outline),0_0_12px_rgba(61,220,151,0.45),0_0_12px_rgba(234,255,240,0.35)]"
+    : "";
 }
 
 export function bySection(actions: readonly ActionView[] | undefined): GroupedActions {
