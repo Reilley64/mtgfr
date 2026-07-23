@@ -758,6 +758,28 @@ test("choose_card_name prompt lists matching catalog suggestions", () => {
   );
 });
 
+test("choose_creature_type prompt filters options by name", () => {
+  overlayScene(
+    overlayModel(
+      { ...initialBoardModel(), promptOptionFilter: "cler" },
+      gameState({
+        pending_choice: {
+          kind: "choose_creature_type",
+          options: ["Wizard", "Cleric", "Elf"],
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("prompt-type-filter")).toExist(),
+    Scene.expect(Scene.placeholder("Filter types…")).toExist(),
+    Scene.expect(Scene.testId("prompt-type-scroll")).toExist(),
+    Scene.expect(Scene.testId("prompt-string-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-string-0")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-string-2")).toBeAbsent(),
+  );
+});
+
 test("trample combat damage assign shows overflow to defender and enables Assign under power", () => {
   const attacker = card(9, {
     zone: ZONE.Battlefield,

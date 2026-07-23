@@ -125,6 +125,8 @@ export const PromptDamageSet = m("PromptDamageSet", { id: S.Number, amount: S.Nu
 export const PromptStringSet = m("PromptStringSet", { value: S.String });
 /** Filter searchable card-pick prompts (library search) by name. */
 export const PromptCardFilterSet = m("PromptCardFilterSet", { query: S.String });
+/** Filter closed option lists (creature types) by name. */
+export const PromptOptionFilterSet = m("PromptOptionFilterSet", { query: S.String });
 /** Set a numeric pending-choice draft (join-forces mana amount, etc.). */
 export const PromptNumberSet = m("PromptNumberSet", { count: S.Number });
 /** Toggle a trigger-mode choice while assembling a pending-choice answer. */
@@ -264,6 +266,7 @@ export const Message = S.Union([
   PromptDamageSet,
   PromptStringSet,
   PromptCardFilterSet,
+  PromptOptionFilterSet,
   PromptNumberSet,
   PromptModeChoiceToggled,
   PromptPartitionSet,
