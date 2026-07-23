@@ -22,7 +22,7 @@ timing = "spell"
 # Destroy target permanent.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = {} }
 
 # Its controller creates a 3/3 green Beast creature token.

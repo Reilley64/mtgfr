@@ -86,6 +86,35 @@ class MigrateEffectToml(unittest.TestCase):
         self.assertNotIn('type = "look_at_top"', out)
         self.assertNotIn('type = "put_counters_each"', out)
 
+    def test_rewrites_nested_destroy_family_splits(self):
+        src = textwrap.dedent(
+            """\
+            [[abilities.effects]]
+            type = "destroy"
+            mode = "exile_target"
+            target = "creature"
+
+            [[abilities.effects]]
+            type = "destroy"
+            mode = "sacrifice_source"
+
+            [[abilities.effects]]
+            type = "destroy"
+            mode = "destroy_target"
+            target = "artifact"
+            """
+        )
+        out = migrate_text(src, self.mapping)
+        self.assertIn('type = "exile"', out)
+        self.assertIn('mode = "target"', out)
+        self.assertIn('type = "sacrifice"', out)
+        self.assertIn('mode = "source"', out)
+        self.assertIn('type = "destroy"', out)
+        self.assertIn('mode = "target"', out)
+        self.assertNotIn('mode = "exile_target"', out)
+        self.assertNotIn('mode = "sacrifice_source"', out)
+        self.assertNotIn('mode = "destroy_target"', out)
+
     def test_find_unmigrated_detects_inline_then(self):
         src = textwrap.dedent(
             """\

@@ -380,6 +380,8 @@ pub enum Effect {
     Draw(DrawEffect),
     Life(LifeEffect),
     Destroy(DestroyEffect),
+    Exile(ExileEffect),
+    Sacrifice(SacrificeEffect),
     Control(ControlEffect),
     Counters(CountersEffect),
     Mana(ManaEffect),
@@ -441,9 +443,9 @@ impl Effect {
             | Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { target, .. })
             | Effect::Counters(CountersEffect::MoveCounters { target, .. })
             | Effect::Counters(CountersEffect::RemoveAllCountersThenDraw { target })
-            | Effect::Destroy(DestroyEffect::ExileTarget { target, .. })
-            | Effect::Destroy(DestroyEffect::ExileUntilSourceLeaves { target })
-            | Effect::Destroy(DestroyEffect::ExileTargetMintingIllusionOnLeave { target })
+            | Effect::Exile(ExileEffect::Target { target, .. })
+            | Effect::Exile(ExileEffect::UntilSourceLeaves { target })
+            | Effect::Exile(ExileEffect::TargetMintingIllusionOnLeave { target })
             | Effect::Zone(ZoneEffect::FlickerTarget { target, .. })
             | Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand { target, .. })
             | Effect::Zone(ZoneEffect::ReanimateToBattlefield { target, .. })
@@ -467,7 +469,7 @@ impl Effect {
             | Effect::Zone(ZoneEffect::AttachMintedAuraToTarget { target })
             | Effect::Token(TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad { target })
             | Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility { target, .. })
-            | Effect::Destroy(DestroyEffect::DestroyTarget { target, .. }) => target,
+            | Effect::Destroy(DestroyEffect::Target { target, .. }) => target,
             Effect::Zone(ZoneEffect::ReturnToHand { target, .. }) => target,
             // The first target clause is the ability's own target; the second is chosen separately
             // (see `Game::ability_second_target_clause`) and read off `targets_second`.
@@ -569,7 +571,7 @@ impl Effect {
             | Effect::Life(LifeEffect::DrainTarget { opponent: false, .. })
             | Effect::Life(LifeEffect::TargetPlayerGains { opponent: false, .. })
             | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { opponent: false, .. })
-            | Effect::Destroy(DestroyEffect::ExileGraveyard)
+            | Effect::Exile(ExileEffect::Graveyard)
             | Effect::Life(LifeEffect::TargetPlayerLoses { .. })
             | Effect::Choice(ChoiceEffect::Discard {
                 target_player: true,
@@ -653,9 +655,9 @@ impl Effect {
             | Effect::Static(StaticEffect::CastXReplacement { .. })
             | Effect::Static(StaticEffect::EntersWithCounters { .. })
             | Effect::Static(StaticEffect::CreaturesYouControlEnterWithCounters { .. })
-            | Effect::Destroy(DestroyEffect::DestroyAll { .. })
-            | Effect::Destroy(DestroyEffect::ExileAll { .. })
-            | Effect::Destroy(DestroyEffect::ExileAllGraveyards)
+            | Effect::Destroy(DestroyEffect::All { .. })
+            | Effect::Exile(ExileEffect::All { .. })
+            | Effect::Exile(ExileEffect::AllGraveyards)
             | Effect::Zone(ZoneEffect::ReturnAllToHand { .. })
             | Effect::Zone(ZoneEffect::MassReturnFromGraveyard { .. })
             | Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
@@ -707,11 +709,11 @@ impl Effect {
             | Effect::Draw(DrawEffect::EachPlayer { .. })
             | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
             | Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { .. })
-            | Effect::Destroy(DestroyEffect::SacrificeObject { .. })
-            | Effect::Destroy(DestroyEffect::SacrificeSource)
-            | Effect::Destroy(DestroyEffect::SacrificeEnchantedCreature { .. })
-            | Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature { .. })
-            | Effect::Destroy(DestroyEffect::ExileObject { .. })
+            | Effect::Sacrifice(SacrificeEffect::Object { .. })
+            | Effect::Sacrifice(SacrificeEffect::Source)
+            | Effect::Sacrifice(SacrificeEffect::EnchantedCreature { .. })
+            | Effect::Destroy(DestroyEffect::TriggeringDamagedCreature { .. })
+            | Effect::Exile(ExileEffect::Object { .. })
             | Effect::Zone(ZoneEffect::ReturnObjectToHand { .. })
             | Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife { .. })
             | Effect::Mill(MillEffect::MillSelf { .. })
@@ -879,8 +881,8 @@ impl Effect {
     /// mandatory target (`{1, 1}`); [`ZoneEffect::ReturnToHand`](crate::ZoneEffect::ReturnToHand) (Aether Gale's "six
     /// target"), [`DamageEffect::Target`](crate::DamageEffect::Target) (Volcanic Salvo's "up to two", Magma Opus's
     /// divided "any number"), [`ControlEffect::TapTarget`](crate::ControlEffect::TapTarget) (Magma Opus's "tap two"),
-    /// [`DestroyEffect::ExileTarget`](crate::DestroyEffect::ExileTarget) (Curse of the Swine's "exile X target creatures"),
-    /// [`DestroyEffect::DestroyTarget`](crate::DestroyEffect::DestroyTarget) (Pest Infestation's "up to X target artifacts
+    /// [`ExileEffect::Target`](crate::ExileEffect::Target) (Curse of the Swine's "exile X target creatures"),
+    /// [`DestroyEffect::Target`](crate::DestroyEffect::Target) (Pest Infestation's "up to X target artifacts
     /// and/or enchantments"), [`CountersEffect::PutCounters`](crate::CountersEffect::PutCounters) (Silkguard's "each of up to
     /// X"), and [`DigEffect::ExileTargetGraveyardSpellCastFree`](crate::DigEffect::ExileTargetGraveyardSpellCastFree)
     /// (Renegade Bull's "up to one target," `{0, 1}`) carry a real count.
@@ -891,8 +893,8 @@ impl Effect {
             | Effect::Damage(DamageEffect::Target { count, .. })
             | Effect::Control(ControlEffect::TapTarget { count, .. })
             | Effect::Control(ControlEffect::UntapTarget { count, .. })
-            | Effect::Destroy(DestroyEffect::ExileTarget { count, .. })
-            | Effect::Destroy(DestroyEffect::DestroyTarget { count, .. })
+            | Effect::Exile(ExileEffect::Target { count, .. })
+            | Effect::Destroy(DestroyEffect::Target { count, .. })
             | Effect::Dig(DigEffect::ExileTargetGraveyardSpellCastFree { count, .. }) => count,
             // "return up to one target Aura or Equipment card" (CR 601.2c — a declinable target).
             Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { .. }) => TargetCount {
@@ -1938,8 +1940,8 @@ fn fill_dying_enchanted_creature(effect: Effect, dying: ObjectId) -> Effect {
 /// effect variant only (flag-don't-force: no other pool card reads this context field yet).
 fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
     match effect {
-        Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature { .. }) => {
-            Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature {
+        Effect::Destroy(DestroyEffect::TriggeringDamagedCreature { .. }) => {
+            Effect::Destroy(DestroyEffect::TriggeringDamagedCreature {
                 creature: Some(damaged),
             })
         }
@@ -1961,7 +1963,7 @@ fn fill_damaged_creature(effect: Effect, damaged: ObjectId) -> Effect {
 /// only (flag-don't-force: no other pool card reads this context field yet).
 fn fill_left_battlefield_host(effect: Effect, host: ObjectId) -> Effect {
     match effect {
-        Effect::Destroy(DestroyEffect::SacrificeEnchantedCreature { .. }) => Effect::Destroy(DestroyEffect::SacrificeEnchantedCreature {
+        Effect::Sacrifice(SacrificeEffect::EnchantedCreature { .. }) => Effect::Sacrifice(SacrificeEffect::EnchantedCreature {
             creature: Some(host),
         }),
         Effect::Sequence { steps } => {

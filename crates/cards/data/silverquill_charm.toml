@@ -36,8 +36,8 @@ timing = "spell"
 
 # Exile target creature with power 2 or less.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = { permanent = { types = "creature", power_max = 2 } }
 
 # Mode 2 — "Each opponent loses 3 life and you gain 3 life." (no target)

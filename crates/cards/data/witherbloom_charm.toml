@@ -50,5 +50,5 @@ timing = "spell"
 # Destroy target nonland permanent with mana value 2 or less.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "nonland", mv_max = 2 } }

@@ -1058,11 +1058,11 @@ impl Game {
             }
             // Destroy / exile / mill "this way" snapshot choreography lives in the family modules
             // (`resolve_destroy_all` / `resolve_exile_all` / `resolve_mill_self`).
-            Effect::Destroy(destroy @ DestroyEffect::DestroyAll { .. }) => {
+            Effect::Destroy(destroy @ DestroyEffect::All { .. }) => {
                 self.resolve_destroy_all(destroy, controller, source, target, x, events)
             }
-            Effect::Destroy(destroy @ DestroyEffect::ExileAll { .. }) => {
-                self.resolve_exile_all(destroy, controller, source, target, x, events)
+            Effect::Exile(exile @ ExileEffect::All { .. }) => {
+                self.resolve_exile_all(exile, controller, source, target, x, events)
             }
             Effect::Mill(MillEffect::MillSelf { count }) => {
                 self.resolve_mill_self(count, controller, source, target, x, events)

@@ -38,6 +38,6 @@ activation_cost = { green = 1 }
 
 # Exile target noncreature artifact or noncreature enchantment.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = { permanent = { types = ["artifact", "enchantment"], noncreature = true } }

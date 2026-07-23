@@ -20,7 +20,36 @@ INLINE_NESTED_START_RE = re.compile(
     rf'^\s*(?:{"|".join(INLINE_NESTED_KEYS)})\s*=\s*\['
 )
 INLINE_TYPE_RE = re.compile(r'type\s*=\s*"([^"]+)"')
+INLINE_FAMILY_MODE_RE = re.compile(r'type\s*=\s*"([^"]+)"\s*,\s*mode\s*=\s*"([^"]+)"')
 MODE_LINE_RE = re.compile(r'^(\s*)mode\s*=\s*"([^"]+)"\s*$')
+
+NESTED_MODE_REWRITES = {
+    ("destroy", "destroy_all"): {"family": "destroy", "mode": "all"},
+    ("destroy", "destroy_target"): {"family": "destroy", "mode": "target"},
+    (
+        "destroy",
+        "destroy_triggering_damaged_creature",
+    ): {"family": "destroy", "mode": "triggering_damaged_creature"},
+    ("destroy", "exile_all"): {"family": "exile", "mode": "all"},
+    ("destroy", "exile_all_graveyards"): {"family": "exile", "mode": "all_graveyards"},
+    ("destroy", "exile_graveyard"): {"family": "exile", "mode": "graveyard"},
+    ("destroy", "exile_object"): {"family": "exile", "mode": "object"},
+    ("destroy", "exile_target"): {"family": "exile", "mode": "target"},
+    (
+        "destroy",
+        "exile_target_minting_illusion_on_leave",
+    ): {"family": "exile", "mode": "target_minting_illusion_on_leave"},
+    ("destroy", "exile_until_source_leaves"): {
+        "family": "exile",
+        "mode": "until_source_leaves",
+    },
+    ("destroy", "sacrifice_enchanted_creature"): {
+        "family": "sacrifice",
+        "mode": "enchanted_creature",
+    },
+    ("destroy", "sacrifice_object"): {"family": "sacrifice", "mode": "object"},
+    ("destroy", "sacrifice_source"): {"family": "sacrifice", "mode": "source"},
+}
 
 
 def load_map(path: Path) -> dict[str, dict[str, str]]:
@@ -50,7 +79,25 @@ def _table_type_already_migrated(lines: list[str], index: int, indent: str) -> b
     return MODE_LINE_RE.match(next_line) is not None and next_line.startswith(indent)
 
 
+def _nested_mapping_entry(
+    family: str, mode: str
+) -> dict[str, str] | None:
+    return NESTED_MODE_REWRITES.get((family, mode))
+
+
+def _rewrite_inline_family_modes(line: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        entry = _nested_mapping_entry(match.group(1), match.group(2))
+        if entry is None:
+            return match.group(0)
+        return f'type = "{entry["family"]}", mode = "{entry["mode"]}"'
+
+    return INLINE_FAMILY_MODE_RE.sub(replace, line)
+
+
 def _rewrite_inline_types(line: str, mapping: dict[str, dict[str, str]]) -> str:
+    line = _rewrite_inline_family_modes(line)
+
     def replace(match: re.Match[str]) -> str:
         old_type = match.group(1)
         entry = _mapping_entry(old_type, mapping)
@@ -74,6 +121,13 @@ def _iter_unmigrated_inline_types(
     line: str, mapping: dict[str, dict[str, str]]
 ) -> list[str]:
     hits: list[str] = []
+
+    for match in INLINE_FAMILY_MODE_RE.finditer(line):
+        family = match.group(1)
+        mode = match.group(2)
+        if _nested_mapping_entry(family, mode) is not None:
+            hits.append(f"{family}/{mode}")
+
     for match in INLINE_TYPE_RE.finditer(line):
         old_type = match.group(1)
         entry = _mapping_entry(old_type, mapping)
@@ -152,6 +206,16 @@ def migrate_text(text: str, mapping: dict[str, dict[str, str]]) -> str:
             continue
 
         indent, old_type = type_match.group(1), type_match.group(2)
+        if index + 1 < len(lines):
+            mode_match = MODE_LINE_RE.match(lines[index + 1].rstrip("\n"))
+            if mode_match is not None and lines[index + 1].startswith(indent):
+                nested_entry = _nested_mapping_entry(old_type, mode_match.group(2))
+                if nested_entry is not None:
+                    out.append(f'{indent}type = "{nested_entry["family"]}"\n')
+                    out.append(f'{indent}mode = "{nested_entry["mode"]}"\n')
+                    index += 2
+                    continue
+
         entry = _mapping_entry(old_type, mapping)
         if entry is None:
             out.append(line)
@@ -220,11 +284,18 @@ def find_unmigrated_types(
             continue
 
         indent, old_type = type_match.group(1), type_match.group(2)
+        line_index = line_number - 1
+        remaining = text.splitlines()
+        if line_index + 1 < len(remaining):
+            mode_match = MODE_LINE_RE.match(remaining[line_index + 1])
+            if mode_match is not None and remaining[line_index + 1].startswith(indent):
+                if _nested_mapping_entry(old_type, mode_match.group(2)) is not None:
+                    hits.append((line_number, f"{old_type}/{mode_match.group(2)}"))
+                    continue
+
         if _mapping_entry(old_type, mapping) is None:
             continue
 
-        line_index = line_number - 1
-        remaining = text.splitlines()
         if _table_type_already_migrated(remaining, line_index, indent):
             continue
 

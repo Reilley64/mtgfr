@@ -212,7 +212,7 @@ impl Game {
                 );
                 if !self.resolution_is_paused() {
                     self.run(
-                        Effect::Destroy(DestroyEffect::SacrificeObject {
+                        Effect::Sacrifice(SacrificeEffect::Object {
                             object: Some(source),
                         }),
                         ResolveCtx {

@@ -22,7 +22,7 @@ timing = "spell"
 # Destroy all creatures.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_all"
+mode = "all"
 filter = "creatures"
 
 # Then create a 3/2 red and white Spirit creature token for each nontoken creature you

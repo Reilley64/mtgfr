@@ -36,7 +36,7 @@ timing = "spell"
 # Destroy target enchantment.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "enchantment" } }
 
 # Mode 2 — "Target creature has base power and toughness 5/5 until end of turn."

@@ -5409,7 +5409,7 @@ const DESTROY: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Creature,
             count: TargetCount {
                 min: 1,
@@ -5491,7 +5491,7 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter {
                 exclude: TypeSet::ARTIFACT,
                 color: ColorFilter::NotColor(Color::Black),
@@ -5577,7 +5577,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::NONE)),
             count: TargetCount {
                 min: 1,
@@ -5659,7 +5659,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter {
                 nonbasic: true,
                 ..PermanentFilter::of(TypeSet::LAND)
@@ -5744,7 +5744,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::ExileTarget {
+        effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::CreatureCardInAnyGraveyard,
             count: TargetCount {
                 min: 1,
@@ -5826,7 +5826,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::ExileTarget {
+        effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Any,
                 filter: CardFilter::AnyCard,
@@ -5911,7 +5911,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::ExileTarget {
+        effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter {
                 exclude: TypeSet::CREATURE,
                 ..PermanentFilter::of(TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT))
@@ -5995,7 +5995,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::ExileTarget {
+        effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter {
                 power_max: Some(2),
                 ..PermanentFilter::of(TypeSet::CREATURE)
@@ -6079,7 +6079,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::ExileTarget {
+        effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ENCHANTMENT)),
             count: TargetCount {
                 min: 1,
@@ -6160,7 +6160,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::ExileTarget {
+        effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),
             count: TargetCount {
                 min: 1,
@@ -15768,7 +15768,7 @@ const DESTROY_ENCHANTMENT_TEST: CardDef = CardDef {
     },
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::Target {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ENCHANTMENT)),
             count: TargetCount {
                 min: 1,
@@ -36710,7 +36710,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Destroy(DestroyEffect::ExileTarget {
+        effect: Effect::Exile(ExileEffect::Target {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Opponents,
                 filter: CardFilter::AnyCard,
@@ -61418,7 +61418,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                 exile_self: false,
                 graveyard_exile_target_count: 0,
             }),
-            effect: Effect::Destroy(DestroyEffect::DestroyTarget {
+            effect: Effect::Destroy(DestroyEffect::Target {
                 target: TargetSpec::ArtifactEnchantmentOrPlaneswalker,
                 count: TargetCount {
                     min: 1,
@@ -83775,7 +83775,7 @@ const TEST_MINUS_ONE_COUNTER_CREATURE: CardDef = CardDef {
                 exile_self: false,
                 graveyard_exile_target_count: 0,
             }),
-            effect: Effect::Destroy(DestroyEffect::DestroyTarget {
+            effect: Effect::Destroy(DestroyEffect::Target {
                 target: TargetSpec::Permanent(PermanentFilter::of(
                     TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT),
                 )),

@@ -20,5 +20,5 @@ timing = "spell"
 # Destroy all nonbasic lands.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_all"
+mode = "all"
 filter = { types = "land", nonbasic = true }

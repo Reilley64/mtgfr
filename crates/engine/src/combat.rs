@@ -549,7 +549,7 @@ impl Game {
                         controller: player,
                         source: a,
                         fire_at: Step::EndCombat,
-                        effect: Effect::Destroy(DestroyEffect::SacrificeObject { object: Some(a) }),
+                        effect: Effect::Sacrifice(SacrificeEffect::Object { object: Some(a) }),
                     },
                 );
             }

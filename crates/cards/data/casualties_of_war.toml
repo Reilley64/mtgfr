@@ -29,7 +29,7 @@ timing = "spell"
 # • Destroy target creature.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = "creature"
 
 # Mode 1 — "• Destroy target artifact."
@@ -39,7 +39,7 @@ timing = "spell"
 # • Destroy target artifact.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "artifact" } }
 
 # Mode 2 — "• Destroy target enchantment."
@@ -49,7 +49,7 @@ timing = "spell"
 # • Destroy target enchantment.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "enchantment" } }
 
 # Mode 3 — "• Destroy target land."
@@ -59,7 +59,7 @@ timing = "spell"
 # • Destroy target land.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "land" } }
 
 # Mode 4 — "• Destroy target planeswalker."
@@ -69,5 +69,5 @@ timing = "spell"
 # • Destroy target planeswalker.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "planeswalker" } }

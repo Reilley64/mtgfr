@@ -26,7 +26,7 @@ timing = "spell"
 # Destroy target artifact or enchantment.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "artifact_or_enchantment" } }
 
 # If this spell was kicked, draw two cards.

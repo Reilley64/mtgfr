@@ -30,5 +30,5 @@ timing = "etb"
 # destroy target land.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "land" } }

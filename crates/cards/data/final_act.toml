@@ -38,7 +38,7 @@ timing = "spell"
 # Destroy all creatures.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_all"
+mode = "all"
 filter = "creatures"
 
 # Mode 1 — "Destroy all planeswalkers."
@@ -48,7 +48,7 @@ timing = "spell"
 # Destroy all planeswalkers.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_all"
+mode = "all"
 filter = { types = "planeswalker" }
 
 # Mode 2 — "Exile all graveyards."
@@ -57,5 +57,5 @@ timing = "spell"
 
 # Exile all graveyards.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_all_graveyards"
+type = "exile"
+mode = "all_graveyards"

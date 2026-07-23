@@ -23,8 +23,8 @@ timing = "spell"
 
 # Exile X target creatures.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = "creature"
 count = { min = 1, max = 1, x_scaled = true }
 

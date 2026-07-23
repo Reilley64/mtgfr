@@ -61,6 +61,10 @@ impl Game {
             },
             Effect::Damage(damage) => self.mint_damage(damage, controller, source, target, x),
             Effect::Destroy(destroy) => self.mint_destroy(destroy, controller, source, target, x),
+            Effect::Exile(exile) => self.mint_exile(exile, controller, source, target, x),
+            Effect::Sacrifice(sacrifice) => {
+                self.mint_sacrifice(sacrifice, controller, source, target, x)
+            }
             Effect::Draw(draw) => self.mint_draw(draw, controller, source, target, x),
             Effect::Life(life) => self.mint_life(life, controller, source, target, x),
             Effect::Mana(mana) => self.mint_mana(mana, controller, source, target, x),

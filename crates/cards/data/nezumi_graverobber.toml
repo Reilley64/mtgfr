@@ -31,8 +31,8 @@ black = 1
 
 # Exile target card from an opponent's graveyard.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = { card_in_graveyard = { whose = "opponents", filter = "any_card" } }
 
 # If no cards are in that graveyard, flip this creature.

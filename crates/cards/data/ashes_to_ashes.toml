@@ -18,8 +18,8 @@ timing = "spell"
 
 # Exile two target nonartifact creatures.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = { permanent = { types = "creature", exclude = "artifact" } }
 count = { min = 2, max = 2 }
 

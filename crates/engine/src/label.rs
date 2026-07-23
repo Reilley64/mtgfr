@@ -698,12 +698,12 @@ impl Effect {
                 (false, false) => "Prevent no combat damage".to_string(),
             },
             Effect::Counters(CountersEffect::PlaceVowCounters { .. }) => "Put a vow counter on each surviving creature".to_string(),
-            Effect::Destroy(DestroyEffect::DestroyTarget { .. }) => "Destroy target".to_string(),
+            Effect::Destroy(DestroyEffect::Target { .. }) => "Destroy target".to_string(),
             Effect::Control(ControlEffect::RegenerateShield { .. }) => "Regenerate target".to_string(),
-            Effect::Destroy(DestroyEffect::DestroyAll { filter }) => {
+            Effect::Destroy(DestroyEffect::All { filter }) => {
                 format!("Destroy all {}", permanent_filter_label(filter))
             }
-            Effect::Destroy(DestroyEffect::ExileAll { filter }) => {
+            Effect::Exile(ExileEffect::All { filter }) => {
                 format!("Exile all {}", permanent_filter_label(filter))
             }
             Effect::Damage(DamageEffect::EachCreature {
@@ -938,11 +938,11 @@ impl Effect {
             Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost) => {
                 "Return this to the battlefield at the beginning of the next end step".to_string()
             }
-            Effect::Destroy(DestroyEffect::ExileTarget { .. }) => "Exile target".to_string(),
-            Effect::Destroy(DestroyEffect::ExileUntilSourceLeaves { .. }) => {
+            Effect::Exile(ExileEffect::Target { .. }) => "Exile target".to_string(),
+            Effect::Exile(ExileEffect::UntilSourceLeaves { .. }) => {
                 "Exile target until this leaves the battlefield".to_string()
             }
-            Effect::Destroy(DestroyEffect::ExileTargetMintingIllusionOnLeave { .. }) => "Exile target".to_string(),
+            Effect::Exile(ExileEffect::TargetMintingIllusionOnLeave { .. }) => "Exile target".to_string(),
             Effect::Zone(ZoneEffect::FlickerTarget {
                 return_at: None, ..
             }) => "Exile target creature, then return it to the battlefield under its owner's \
@@ -1140,8 +1140,8 @@ impl Effect {
                     .to_string()
             }
             Effect::Mill(MillEffect::Mill { count, .. }) => format!("Target player mills {}", amount_label(count)),
-            Effect::Destroy(DestroyEffect::ExileGraveyard) => "Exile target player's graveyard".to_string(),
-            Effect::Destroy(DestroyEffect::ExileAllGraveyards) => "Exile all graveyards".to_string(),
+            Effect::Exile(ExileEffect::Graveyard) => "Exile target player's graveyard".to_string(),
+            Effect::Exile(ExileEffect::AllGraveyards) => "Exile all graveyards".to_string(),
             Effect::Life(LifeEffect::DrainTarget { amount, .. }) => {
                 format!("Target player loses {amount}, you gain {amount}")
             }
@@ -1528,13 +1528,13 @@ impl Effect {
             Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { count, .. }) => {
                 format!("Defending player sacrifices {count} permanents of their choice")
             }
-            Effect::Destroy(DestroyEffect::SacrificeObject { .. }) => "Sacrifice it".to_string(),
-            Effect::Destroy(DestroyEffect::SacrificeSource) => "Sacrifice it".to_string(),
-            Effect::Destroy(DestroyEffect::SacrificeEnchantedCreature { .. }) => {
+            Effect::Sacrifice(SacrificeEffect::Object { .. }) => "Sacrifice it".to_string(),
+            Effect::Sacrifice(SacrificeEffect::Source) => "Sacrifice it".to_string(),
+            Effect::Sacrifice(SacrificeEffect::EnchantedCreature { .. }) => {
                 "That creature's controller sacrifices it".to_string()
             }
-            Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature { .. }) => "Destroy that creature".to_string(),
-            Effect::Destroy(DestroyEffect::ExileObject { .. }) => "Exile it".to_string(),
+            Effect::Destroy(DestroyEffect::TriggeringDamagedCreature { .. }) => "Destroy that creature".to_string(),
+            Effect::Exile(ExileEffect::Object { .. }) => "Exile it".to_string(),
             Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife { amount, .. }) => {
                 format!("Exile it and gain {amount} life")
             }

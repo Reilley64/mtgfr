@@ -775,7 +775,7 @@ impl Game {
             source: permanent,
             abilities: vec![Ability {
                 timing: Timing::Triggered(Trigger::Etb),
-                effect: Effect::Destroy(DestroyEffect::SacrificeObject {
+                effect: Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(permanent),
                 }),
                 optional: false,

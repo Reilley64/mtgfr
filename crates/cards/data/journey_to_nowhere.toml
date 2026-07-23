@@ -21,6 +21,6 @@ timing = "etb"
 
 # exile target creature.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_until_source_leaves"
+type = "exile"
+mode = "until_source_leaves"
 target = "creature"

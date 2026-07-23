@@ -23,5 +23,5 @@ timing = "spell"
 # Destroy target nonland permanent.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = "nonland" }

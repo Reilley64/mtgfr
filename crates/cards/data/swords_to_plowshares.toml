@@ -26,6 +26,6 @@ amount = "target_power"
 
 # Exile target creature.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = "creature"

@@ -20,6 +20,6 @@ timing = "spell"
 # Destroy target creature. It can't be regenerated.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = "creature"
 cant_be_regenerated = true

@@ -34,8 +34,8 @@ generic = 1
 
 # Exile all graveyards.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_all_graveyards"
+type = "exile"
+mode = "all_graveyards"
 
 # Draw a card.
 [[abilities.effects]]

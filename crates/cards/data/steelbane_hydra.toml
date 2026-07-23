@@ -39,5 +39,5 @@ remove_counters = 1
 # Destroy target artifact or enchantment.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "artifact_or_enchantment" } }

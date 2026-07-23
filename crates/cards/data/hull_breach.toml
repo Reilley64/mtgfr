@@ -23,7 +23,7 @@ timing = "spell"
 # Destroy target artifact.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "artifact" } }
 
 # Mode 1 — "Destroy target enchantment."
@@ -33,7 +33,7 @@ timing = "spell"
 # Destroy target enchantment.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "enchantment" } }
 
 # Mode 2 — "Destroy target artifact and target enchantment."
@@ -43,11 +43,11 @@ timing = "spell"
 # Destroy target artifact and target enchantment.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "artifact" } }
 
 # Destroy target artifact and target enchantment.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "enchantment" } }

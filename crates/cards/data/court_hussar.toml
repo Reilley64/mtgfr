@@ -45,4 +45,4 @@ timing = "etb"
 type = "conditional"
 condition = { type = "color_was_spent_to_cast_this", color = "white" }
 negate = true
-then = [{ type = "destroy", mode = "sacrifice_source" }]
+then = [{ type = "sacrifice", mode = "source" }]

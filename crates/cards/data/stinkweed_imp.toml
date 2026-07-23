@@ -30,4 +30,4 @@ timing = "deals_combat_damage_to_creature"
 # destroy that creature.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_triggering_damaged_creature"
+mode = "triggering_damaged_creature"

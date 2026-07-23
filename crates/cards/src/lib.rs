@@ -162,10 +162,10 @@ mod tests {
     use engine::{
         Amount, CardFilter, CardKind, ChoiceEffect, Color, Condition, ControlEffect, CopyEffect,
         Cost, CountersEffect, DamageEffect, DestroyEffect, DigEffect, DrawEffect, Effect,
-        EnterController, Keyword, LandProduces, LifeEffect, Mana, ManaEffect, MillEffect,
-        MiscEffect, PermanentFilter, ProtectionScope, PumpEffect, SacrificeCost, SearchDest,
-        SpellFilter, SpellSpeed, StaticEffect, TargetSpec, Timing, TokenEffect, Trigger, TypeSet,
-        ZoneEffect,
+        EnterController, ExileEffect, Keyword, LandProduces, LifeEffect, Mana, ManaEffect,
+        MillEffect, MiscEffect, PermanentFilter, ProtectionScope, PumpEffect, SacrificeCost,
+        SacrificeEffect, SearchDest, SpellFilter, SpellSpeed, StaticEffect, TargetSpec, Timing,
+        TokenEffect, Trigger, TypeSet, ZoneEffect,
     };
 
     #[test]
@@ -257,6 +257,61 @@ target = "any"
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn split_destroy_related_families_deserialize() {
+        let toml = r#"
+name = "Fixture Split"
+id = "00000000-0000-0000-0000-000000000011"
+default_print = "00000000-0000-0000-0000-000000000012"
+oracle = "Fixture exiles a creature, destroys an artifact, then sacrifices itself."
+
+[cost]
+generic = 1
+
+[kind]
+type = "artifact"
+
+[[abilities]]
+timing = "activated"
+
+[[abilities.effects]]
+type = "exile"
+mode = "target"
+target = "creature"
+
+[[abilities.effects]]
+type = "destroy"
+mode = "target"
+target = { permanent = { types = "artifact" } }
+
+[[abilities.effects]]
+type = "sacrifice"
+mode = "source"
+"#;
+        let def: CardDef = toml::from_str(toml).expect("split destroy-related families parse");
+        let Effect::Sequence { steps } = def.abilities[0].effect else {
+            panic!("multiple effects should parse as a sequence");
+        };
+        assert!(matches!(
+            steps[0],
+            Effect::Exile(ExileEffect::Target {
+                target: TargetSpec::Creature,
+                ..
+            })
+        ));
+        assert!(matches!(
+            steps[1],
+            Effect::Destroy(DestroyEffect::Target {
+                target: TargetSpec::Permanent(PermanentFilter {
+                    types: TypeSet::ARTIFACT,
+                    ..
+                }),
+                ..
+            })
+        ));
+        assert!(matches!(steps[2], Effect::Sacrifice(SacrificeEffect::Source)));
     }
 
     #[test]
@@ -869,7 +924,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         ));
         assert!(matches!(
             steps[1],
-            Effect::Destroy(DestroyEffect::ExileTarget {
+            Effect::Exile(ExileEffect::Target {
                 target: TargetSpec::Creature,
                 ..
             })
@@ -1135,7 +1190,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // Mode 1: exile target creature with power 2 or less.
         assert!(matches!(
             charm.abilities[1].effect,
-            Effect::Destroy(DestroyEffect::ExileTarget {
+            Effect::Exile(ExileEffect::Target {
                 target: TargetSpec::Permanent(PermanentFilter {
                     power_max: Some(2),
                     ..
@@ -1166,7 +1221,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         ));
         assert!(matches!(
             qcharm.abilities[1].effect,
-            Effect::Destroy(DestroyEffect::DestroyTarget {
+            Effect::Destroy(DestroyEffect::Target {
                 target: TargetSpec::Permanent(PermanentFilter {
                     types: TypeSet::ENCHANTMENT,
                     ..
@@ -1222,7 +1277,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         ));
         assert!(matches!(
             prismari.abilities[3].effect,
-            Effect::Destroy(DestroyEffect::DestroyTarget {
+            Effect::Destroy(DestroyEffect::Target {
                 target: TargetSpec::Permanent(PermanentFilter {
                     types: TypeSet::ARTIFACT,
                     ..
@@ -1253,7 +1308,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         ));
         assert!(matches!(
             wither.abilities[1].effect,
-            Effect::Destroy(DestroyEffect::DestroyTarget {
+            Effect::Destroy(DestroyEffect::Target {
                 target: TargetSpec::Permanent(PermanentFilter {
                     types: TypeSet::NONLAND,
                     exclude: TypeSet::CREATURE,
@@ -1636,7 +1691,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let winds = get_by_name("Winds of Rath").expect("Winds of Rath is in the pool");
         assert!(matches!(
             winds.abilities[0].effect,
-            Effect::Destroy(DestroyEffect::DestroyAll {
+            Effect::Destroy(DestroyEffect::All {
                 filter: PermanentFilter {
                     types: TypeSet::CREATURE,
                     enchanted: Some(false),
@@ -1657,7 +1712,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         };
         assert!(matches!(
             wipe,
-            Effect::Destroy(DestroyEffect::DestroyAll {
+            Effect::Destroy(DestroyEffect::All {
                 filter: PermanentFilter {
                     types: TypeSet::NONLAND,
                     mv_max: Some(2),
@@ -1677,7 +1732,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let fracture = get_by_name("Fracture").expect("Fracture is in the pool");
         assert!(matches!(
             fracture.abilities[0].effect,
-            Effect::Destroy(DestroyEffect::DestroyTarget {
+            Effect::Destroy(DestroyEffect::Target {
                 target: TargetSpec::ArtifactEnchantmentOrPlaneswalker,
                 ..
             })

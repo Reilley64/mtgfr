@@ -26,5 +26,5 @@ sacrifice = "this"
 # Destroy target enchantment.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "enchantment" } }

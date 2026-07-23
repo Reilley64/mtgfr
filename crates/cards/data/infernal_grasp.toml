@@ -25,7 +25,7 @@ timing = "spell"
 # Destroy target creature.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = "creature"
 
 # You lose 2 life.

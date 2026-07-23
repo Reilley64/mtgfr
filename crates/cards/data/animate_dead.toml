@@ -53,5 +53,5 @@ timing = "this_leaves_battlefield"
 
 # that creature's controller sacrifices it
 [[abilities.effects]]
-type = "destroy"
-mode = "sacrifice_enchanted_creature"
+type = "sacrifice"
+mode = "enchanted_creature"

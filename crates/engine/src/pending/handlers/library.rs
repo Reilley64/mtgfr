@@ -619,7 +619,7 @@ impl Game {
                     controller: player,
                     source,
                     fire_at: Step::End,
-                    effect: Effect::Destroy(DestroyEffect::SacrificeObject {
+                    effect: Effect::Sacrifice(SacrificeEffect::Object {
                         object: Some(permanent),
                     }),
                 },

@@ -39,7 +39,7 @@ timing = "etb"
 # destroy up to one target artifact or enchantment with mana value X or less
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 count = { max = 1 }
 target = { permanent = { types = "artifact_or_enchantment", mv_max_x = true } }
 

@@ -30,7 +30,7 @@ optional = true
 # destroy up to one target nonbasic land.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "land", nonbasic = true } }
 
 # Its controller may search their library for a basic land card, put it onto the battlefield

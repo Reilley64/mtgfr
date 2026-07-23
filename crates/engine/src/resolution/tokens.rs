@@ -155,7 +155,7 @@ impl Game {
                                 controller,
                                 source,
                                 fire_at: Step::End,
-                                effect: Effect::Destroy(DestroyEffect::ExileObject {
+                                effect: Effect::Exile(ExileEffect::Object {
                                     object: Some(next),
                                 }),
                             });
@@ -247,7 +247,7 @@ impl Game {
                             controller,
                             source,
                             fire_at: Step::End,
-                            effect: Effect::Destroy(DestroyEffect::SacrificeObject {
+                            effect: Effect::Sacrifice(SacrificeEffect::Object {
                                 object: Some(token),
                             }),
                         });
@@ -260,7 +260,7 @@ impl Game {
                             controller,
                             source,
                             fire_at: Step::End,
-                            effect: Effect::Destroy(DestroyEffect::ExileObject {
+                            effect: Effect::Exile(ExileEffect::Object {
                                 object: Some(token),
                             }),
                         });
@@ -327,7 +327,7 @@ impl Game {
                             controller: attacker,
                             source,
                             fire_at: Step::EndCombat,
-                            effect: Effect::Destroy(DestroyEffect::ExileObject {
+                            effect: Effect::Exile(ExileEffect::Object {
                                 object: Some(token),
                             }),
                         });
@@ -373,7 +373,7 @@ impl Game {
                         controller,
                         source,
                         fire_at: Step::End,
-                        effect: Effect::Destroy(DestroyEffect::SacrificeObject {
+                        effect: Effect::Sacrifice(SacrificeEffect::Object {
                             object: Some(next),
                         }),
                     });

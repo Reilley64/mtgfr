@@ -29,6 +29,6 @@ optional = true
 # less. When this creature leaves the battlefield, the exiled card's owner creates an X/X blue
 # Illusion creature token, where X is the mana value of the exiled card.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target_minting_illusion_on_leave"
+type = "exile"
+mode = "target_minting_illusion_on_leave"
 target = { permanent = { types = "nonland", token = "nontoken", controller = "opponent", mv_max = 4 } }

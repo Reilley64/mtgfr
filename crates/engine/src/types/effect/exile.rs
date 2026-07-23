@@ -7,21 +7,31 @@ use super::*;
     derive(serde::Deserialize),
     serde(tag = "mode", rename_all = "snake_case")
 )]
-pub enum DestroyEffect {
+pub enum ExileEffect {
     All {
         filter: PermanentFilter,
+    },
+
+    AllGraveyards,
+
+    Graveyard,
+
+    Object {
+        #[cfg_attr(feature = "card-dsl", serde(skip))]
+        object: Option<ObjectId>,
     },
 
     Target {
         target: TargetSpec,
         #[cfg_attr(feature = "card-dsl", serde(default))]
         count: TargetCount,
-        #[cfg_attr(feature = "card-dsl", serde(default))]
-        cant_be_regenerated: bool,
     },
 
-    TriggeringDamagedCreature {
-        #[cfg_attr(feature = "card-dsl", serde(skip))]
-        creature: Option<ObjectId>,
+    TargetMintingIllusionOnLeave {
+        target: TargetSpec,
+    },
+
+    UntilSourceLeaves {
+        target: TargetSpec,
     },
 }

@@ -22,7 +22,7 @@ sacrifice = "this"
 # Destroy target land.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "land" } }
 
 # Its controller may search their library for a basic land card, put it onto the battlefield,

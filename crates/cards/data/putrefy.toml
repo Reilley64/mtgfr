@@ -21,6 +21,6 @@ timing = "spell"
 # Destroy target artifact or creature. It can't be regenerated.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "artifact_or_creature" } }
 cant_be_regenerated = true

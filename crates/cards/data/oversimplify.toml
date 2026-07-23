@@ -23,8 +23,8 @@ timing = "spell"
 
 # Exile all creatures.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_all"
+type = "exile"
+mode = "all"
 filter = "creatures"
 
 # Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1

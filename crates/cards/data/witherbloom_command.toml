@@ -55,7 +55,7 @@ timing = "spell"
 # Destroy target noncreature, nonland permanent with mana value 2 or less.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "nonland", noncreature = true, mv_max = 2 } }
 
 # Mode 2 — "Target creature gets -3/-1 until end of turn." (a negative pump)

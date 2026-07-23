@@ -217,15 +217,15 @@
   },
   "destroy_all": {
     "family": "destroy",
-    "mode": "destroy_all"
+    "mode": "all"
   },
   "destroy_target": {
     "family": "destroy",
-    "mode": "destroy_target"
+    "mode": "target"
   },
   "destroy_triggering_damaged_creature": {
     "family": "destroy",
-    "mode": "destroy_triggering_damaged_creature"
+    "mode": "triggering_damaged_creature"
   },
   "discard": {
     "family": "choice",
@@ -328,12 +328,12 @@
     "mode": "exchange_control"
   },
   "exile_all": {
-    "family": "destroy",
-    "mode": "exile_all"
+    "family": "exile",
+    "mode": "all"
   },
   "exile_all_graveyards": {
-    "family": "destroy",
-    "mode": "exile_all_graveyards"
+    "family": "exile",
+    "mode": "all_graveyards"
   },
   "exile_dead_creature_create_copy_with_subtype": {
     "family": "zone",
@@ -348,16 +348,16 @@
     "mode": "exile_from_graveyard_may_play"
   },
   "exile_graveyard": {
-    "family": "destroy",
-    "mode": "exile_graveyard"
+    "family": "exile",
+    "mode": "graveyard"
   },
   "exile_graveyard_object_gain_life": {
     "family": "zone",
     "mode": "exile_graveyard_object_gain_life"
   },
   "exile_object": {
-    "family": "destroy",
-    "mode": "exile_object"
+    "family": "exile",
+    "mode": "object"
   },
   "exile_random_from_graveyard_may_play": {
     "family": "dig",
@@ -372,8 +372,8 @@
     "mode": "exile_self_with_time_counters"
   },
   "exile_target": {
-    "family": "destroy",
-    "mode": "exile_target"
+    "family": "exile",
+    "mode": "target"
   },
   "exile_target_from_graveyard_create_token_copy": {
     "family": "mill",
@@ -396,8 +396,8 @@
     "mode": "exile_target_graveyard_spell_cast_free"
   },
   "exile_target_minting_illusion_on_leave": {
-    "family": "destroy",
-    "mode": "exile_target_minting_illusion_on_leave"
+    "family": "exile",
+    "mode": "target_minting_illusion_on_leave"
   },
   "exile_top_cast_matching_free": {
     "family": "dig",
@@ -412,8 +412,8 @@
     "mode": "exile_top_until_stop_cast_free_under_budget"
   },
   "exile_until_source_leaves": {
-    "family": "destroy",
-    "mode": "exile_until_source_leaves"
+    "family": "exile",
+    "mode": "until_source_leaves"
   },
   "fight": {
     "family": "misc",
@@ -768,12 +768,12 @@
     "mode": "revert_all_creatures_to_owners"
   },
   "sacrifice_enchanted_creature": {
-    "family": "destroy",
-    "mode": "sacrifice_enchanted_creature"
+    "family": "sacrifice",
+    "mode": "enchanted_creature"
   },
   "sacrifice_object": {
-    "family": "destroy",
-    "mode": "sacrifice_object"
+    "family": "sacrifice",
+    "mode": "object"
   },
   "sacrifice_own": {
     "family": "choice",
@@ -788,8 +788,8 @@
     "mode": "sacrifice_self_unless_return_land"
   },
   "sacrifice_source": {
-    "family": "destroy",
-    "mode": "sacrifice_source"
+    "family": "sacrifice",
+    "mode": "source"
   },
   "schedule_at_next_upkeep": {
     "family": "misc",

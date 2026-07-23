@@ -382,7 +382,7 @@ impl Game {
             self.finish_answer();
             let mut events = Vec::new();
             self.run(
-                Effect::Destroy(DestroyEffect::SacrificeObject {
+                Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(source),
                 }),
                 ResolveCtx {
@@ -434,7 +434,7 @@ impl Game {
             self.finish_answer();
             let mut events = Vec::new();
             self.run(
-                Effect::Destroy(DestroyEffect::SacrificeObject {
+                Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(source),
                 }),
                 ResolveCtx {
@@ -535,7 +535,7 @@ impl Game {
             self.finish_answer();
             let mut events = Vec::new();
             self.run(
-                Effect::Destroy(DestroyEffect::SacrificeObject {
+                Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(source),
                 }),
                 ResolveCtx {
@@ -578,7 +578,7 @@ impl Game {
         let mut events = Vec::new();
         match land {
             None => self.run(
-                Effect::Destroy(DestroyEffect::SacrificeObject {
+                Effect::Sacrifice(SacrificeEffect::Object {
                     object: Some(source),
                 }),
                 ResolveCtx {

@@ -21,6 +21,6 @@ white = 1
 
 # Exile target creature that's attacking you or a planeswalker you control.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = { permanent = { types = "creature", attacking_you = true } }

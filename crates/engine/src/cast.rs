@@ -1387,7 +1387,7 @@ impl Game {
                         controller: player,
                         source: card,
                         fire_at: Step::End,
-                        effect: Effect::Destroy(DestroyEffect::SacrificeObject {
+                        effect: Effect::Sacrifice(SacrificeEffect::Object {
                             object: Some(token),
                         }),
                     },

@@ -614,7 +614,7 @@ mod tests {
                     },
                     Ability {
                         timing: Timing::Spell,
-                        effect: Effect::Destroy(DestroyEffect::DestroyAll {
+                        effect: Effect::Destroy(DestroyEffect::All {
                             filter: PermanentFilter::of(TypeSet::ARTIFACT),
                         }),
                         optional: false,
@@ -839,7 +839,7 @@ mod tests {
                     },
                     Ability {
                         timing: Timing::Spell,
-                        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
+                        effect: Effect::Destroy(DestroyEffect::Target {
                             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),
                             count: TargetCount::default(),
                             cant_be_regenerated: false,

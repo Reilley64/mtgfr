@@ -23,8 +23,8 @@ timing = "spell"
 
 # Exile target nonland permanent.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = { permanent = "nonland" }
 
 # "You lose 3 life." — negative gain_life; amount < 0 does not fire the YouGainLife trigger.

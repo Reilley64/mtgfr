@@ -44,6 +44,6 @@ white = 1
 
 # Exile enchanted creature.
 [[abilities.effects]]
-type = "destroy"
-mode = "exile_target"
+type = "exile"
+mode = "target"
 target = "enchanted_creature"

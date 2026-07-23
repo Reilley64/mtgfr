@@ -26,6 +26,6 @@ timing = "spell"
 # Destroy X target nonland permanents.
 [[abilities.effects]]
 type = "destroy"
-mode = "destroy_target"
+mode = "target"
 target = { permanent = { types = "nonland" } }
 count = { sacrifice_scaled = true }
