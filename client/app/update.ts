@@ -243,6 +243,7 @@ export const update = (
       DiscardChosen: (boardMessage) => foldBoard(model, boardMessage),
       GyExileChosen: (boardMessage) => foldBoard(model, boardMessage),
       GyExileConfirmed: (boardMessage) => foldBoard(model, boardMessage),
+      PileCardClicked: (boardMessage) => foldBoard(model, boardMessage),
       CombatAttackerDropped: (boardMessage) => foldBoard(model, boardMessage),
       CombatBlockerDropped: (boardMessage) => foldBoard(model, boardMessage),
       CombatCancelAttacker: (boardMessage) => foldBoard(model, boardMessage),
