@@ -18,6 +18,7 @@ The board layer stack authority is [`docs/client-canvas-map.md`](../../client-ca
 ## User Stories
 
 - As a player, I can read each permanent and see relevant battlefield chrome.
+- As a player, I can see each seat’s highest commander-damage total on their life orb when it is above zero.
 - As a player with priority, I can tell which battlefield permanents have playable actions from their outline.
 - As a player declaring combat or targeting, arrows and target highlights stay above resting cards.
 - As a player on a crowded board, packing and clusters keep permanents inside their seat bands.
