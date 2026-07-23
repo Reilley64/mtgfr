@@ -55,6 +55,8 @@ Commits on `main`/`master` follow the [Angular commit message guidelines](https:
 
 Specs live in [`docs/superpowers/specs/`](docs/superpowers/specs/). Keep **one spec per code target / feature surface**, not per topic, PR, or wave. Document what exists today: no TBD, no Solid/migration history, and no historical client narrative. When a change splits, merges, or renames a target, update the relevant specs in the same change. Board specs are intentionally fine-grained (composition, battlefield, hand, stack, radial, prompts, inspect, and more); use the [README index](docs/superpowers/specs/README.md). Cite the relevant spec instead of inventing requirements.
 
+**Review gate:** Every code review (including autonomous continuous-loop reviews via `requesting-code-review`) must check Feature specs compliance on the diff. Violations — PR/wave-scoped design sidecars, migration/history prose in feature specs, shipped behavior missing from the surface spec, or wrong section template — are **merge-blocking**. Implementation plans belong under `docs/superpowers/plans/`, not as indexed feature specs.
+
 Crate split: `engine` (pure, no I/O) / `cards` (TOML scripts) / `server` (tonic + health Axum) / `schema` (projection DTOs; mapped to/from native proto at the gRPC edge). Client split: `client/app/` (Foldkit UI), `client/lib/` (shared wire/domain helpers), `client/server/` (Nitro BFF routes/plugins), `client/styles/` (Tailwind/design tokens).
 
 **Reference:** [Forge](https://github.com/Card-Forge/forge) — consult its card scripts and rules implementation for tricky interactions.

@@ -103,8 +103,17 @@ digraph brainstorming {
 
 **Documentation:**
 
-- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
-  - (User preferences for spec location override this default)
+- **This repo (mtgfr):** Write durable behavior into the existing feature-surface
+  spec under `docs/superpowers/specs/` (see `AGENTS.md` Feature specs and the
+  specs README template). Do **not** add a new `YYYY-MM-DD-<topic>-design.md`
+  sidecar or index entry for a PR/wave. Put implementation plans under
+  `docs/superpowers/plans/`. If no surface spec exists yet, create one with the
+  standard template (Problem → Solution → User Stories → Behavior →
+  Implementation Decisions → Testing Decisions → Out of Scope → Further Notes)
+  documenting **current** intended behavior only — no migration history,
+  Approaches tables, or approval-status process prose.
+- Other projects / default: Write the validated design to
+  `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` (user preferences override).
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit the design document to git
 
@@ -115,6 +124,8 @@ After writing the spec document, look at it with fresh eyes:
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
 3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+5. **AGENTS.md Feature specs (this repo):** One surface per spec; current behavior
+   only; standard template; no PR-scoped design sidecar indexed as a feature spec.
 
 Fix any issues inline. No need to re-review — just fix and move on.
 

@@ -41,6 +41,24 @@ Subagent (general-purpose):
     - Are deviations justified improvements, or problematic departures?
     - Is all planned functionality present?
 
+    **Feature specs (AGENTS.md — merge-blocking):**
+    Inspect every path under `docs/superpowers/specs/` in the diff (and the
+    [specs README index](docs/superpowers/specs/README.md) if touched).
+    - **One spec per code target / feature surface** — not per topic, PR, or wave.
+      Reject new `*-design.md` (or similar) sidecars when durable behavior belongs
+      in an existing surface spec (e.g. prompts, battlefield, hand). Plans stay
+      under `docs/superpowers/plans/`; they are not feature specs.
+    - **Current behavior only** — no TBD/TODO placeholders, no Solid/migration
+      history, no historical client narrative, no “Approaches considered” /
+      approval-status process prose in feature specs.
+    - **Template shape** for feature specs: Problem Statement → Solution →
+      User Stories → Behavior → Implementation Decisions → Testing Decisions →
+      Out of Scope → Further Notes.
+    - Behavior that shipped in this change must be reflected in the relevant
+      surface spec(s) in the same change; index the README only for real
+      feature-surface specs.
+    - Treat violations as **Critical (Must Fix)** before merge.
+
     **Code quality:**
     - Clean separation of concerns?
     - Proper error handling?
