@@ -4,6 +4,8 @@ import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 import { emptyCostPicks } from "./execution";
 import {
+  pendingDamageAssignBlockers,
+  pendingDamageAssignOverlay,
   pendingTargetingOverlay,
   pendingTargetOneClick,
   stackAimOrigin,
@@ -317,6 +319,42 @@ describe("pendingTargetOneClick", () => {
         ],
       }),
     ).toBe(false);
+  });
+});
+
+describe("pendingDamageAssignOverlay", () => {
+  it("highlights battlefield blockers for assign_combat_damage", () => {
+    const attacker = object({ id: 9, name: "Atk", power: 4 });
+    const bear = object({ id: 4, name: "Bear", controller: 1 });
+    const elf = object({ id: 5, name: "Elf", controller: 1 });
+    const overlay = pendingDamageAssignOverlay(
+      {
+        kind: "assign_combat_damage",
+        items: [
+          { id: 4, label: "Bear" },
+          { id: 5, label: "Elf" },
+        ],
+        player: 0,
+        source: 9,
+      },
+      state([attacker, bear, elf]),
+    );
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetObjects].sort()).toEqual([4, 5]);
+    expect(overlay.aimFrom).toBeNull();
+  });
+
+  it("is idle when a blocker is off the battlefield", () => {
+    const blockers = pendingDamageAssignBlockers(
+      {
+        kind: "assign_combat_damage",
+        items: [{ id: 4, label: "Bear" }],
+        player: 0,
+        source: 9,
+      },
+      state([object({ id: 4, zone: ZONE.Graveyard })]),
+    );
+    expect(blockers).toBeNull();
   });
 });
 

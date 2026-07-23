@@ -614,6 +614,39 @@ export function damageAssignReady(pc: PendingChoiceView, draft: PromptDraft, sta
   return false;
 }
 
+/**
+ * Click a blocker during combat damage assign: take 1 more onto it.
+ * Trample under power adds freely; otherwise (or when full) steals 1 from the largest other share.
+ */
+export function clickDamageAssign(
+  amounts: Readonly<Record<number, number>>,
+  blockerId: number,
+  power: number,
+  trample: boolean,
+): Record<number, number> {
+  const next: Record<number, number> = { ...amounts };
+  const current = next[blockerId] ?? 0;
+  const sum = Object.values(next).reduce((s, n) => s + n, 0);
+  if (trample && sum < power) {
+    next[blockerId] = current + 1;
+    return next;
+  }
+  let donorId: number | null = null;
+  let donorAmount = 0;
+  for (const [key, amount] of Object.entries(next)) {
+    const id = Number(key);
+    if (id === blockerId || amount <= 0) continue;
+    if (amount > donorAmount) {
+      donorId = id;
+      donorAmount = amount;
+    }
+  }
+  if (donorId == null) return next;
+  next[donorId] = donorAmount - 1;
+  next[blockerId] = current + 1;
+  return next;
+}
+
 export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIntent {
   const player = pc.player;
   return Match.value(answer).pipe(

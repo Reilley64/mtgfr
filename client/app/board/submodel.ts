@@ -6,6 +6,7 @@ import {
   cardPickRequiredCount,
   choiceDraftKey,
   choiceIntent,
+  clickDamageAssign,
   damageAssignReady,
   declineAnswer,
   initPromptDraft,
@@ -52,7 +53,12 @@ import {
   type XPromptState,
 } from "./action/execution";
 import { advance } from "./action/modal";
-import { pendingBoardTargetMode, pendingTargetOneClick, stagedPickTargets } from "./action/targeting";
+import {
+  pendingBoardTargetMode,
+  pendingDamageAssignBlockers,
+  pendingTargetOneClick,
+  stagedPickTargets,
+} from "./action/targeting";
 import type { Camera, Vec2 } from "./geometry/camera";
 import { panBy, screenToWorld, worldToScreen } from "./geometry/camera";
 import {
@@ -686,6 +692,17 @@ function pointerUpModel(
       return [idle, []];
     }
     const pc = fold.state?.pending_choice ?? null;
+    const damageBlockers = fold.state != null ? pendingDamageAssignBlockers(pc, fold.state) : null;
+    if (damageBlockers != null && pc?.kind === "assign_combat_damage" && damageBlockers.has(release.card.id)) {
+      const synced = syncPromptDraft(idle, fold);
+      const draft = synced.promptDraft?.kind === "damage" ? synced.promptDraft : null;
+      if (draft == null) return [synced, []];
+      const source = fold.state?.objects.find((o) => o.id === pc.source);
+      const power = source?.power ?? 0;
+      const trample = source?.keywords?.includes("trample") ?? false;
+      const amounts = clickDamageAssign(draft.amounts, release.card.id, power, trample);
+      return [{ ...synced, promptDraft: { kind: "damage", amounts } }, []];
+    }
     const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
     if (pendingAim != null && pc != null && pendingAim.objects.has(release.card.id)) {
       if (pendingTargetOneClick(pc)) {
@@ -2006,6 +2023,20 @@ export function updateBoard(
         !pendingTargetOneClick(pc) &&
         synced.promptDraft?.kind === "card-pick" &&
         cardPickReady(pc, synced.promptDraft.picked)
+      ) {
+        const answer = buildAnswerFromDraft(pc, synced.promptDraft);
+        if (answer != null) {
+          return [
+            { ...synced, promptDraft: null, pendingChoiceKey: null },
+            boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+          ];
+        }
+      }
+      if (
+        pc?.kind === "assign_combat_damage" &&
+        pendingDamageAssignBlockers(pc, state) != null &&
+        synced.promptDraft != null &&
+        damageAssignReady(pc, synced.promptDraft, state)
       ) {
         const answer = buildAnswerFromDraft(pc, synced.promptDraft);
         if (answer != null) {

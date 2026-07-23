@@ -982,6 +982,7 @@ test("trample combat damage assign shows overflow to defender and enables Assign
     Scene.expect(Scene.testId("pending-choice")).toExist(),
     Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 2 / 5"),
     Scene.expect(Scene.testId("prompt-damage-overflow")).toHaveText("to defender: 3"),
+    Scene.expect(Scene.testId("pending-damage-aim")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
     Scene.expect(Scene.testId("prompt-damage-20-value")).toHaveText("2"),
     Scene.expect(Scene.testId("prompt-damage-20-inc")).toExist(),

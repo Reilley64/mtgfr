@@ -5,7 +5,7 @@ import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { pendingTargetingOverlay, stagingOverlay } from "./action/targeting";
+import { pendingDamageAssignOverlay, pendingTargetingOverlay, stagingOverlay } from "./action/targeting";
 import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap/mount";
 import { sceneShapes } from "./canvas/scene";
 import { worldToScreen } from "./geometry/camera";
@@ -76,7 +76,8 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
   const cards = layout(state, state.viewer);
   const stagedOverlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
   const pendingOverlay = pendingTargetingOverlay(state.pending_choice, state, model.board.viewport, state.stack.length);
-  const overlay = stagedOverlay.aiming ? stagedOverlay : pendingOverlay;
+  const damageOverlay = pendingDamageAssignOverlay(state.pending_choice, state);
+  const overlay = stagedOverlay.aiming ? stagedOverlay : pendingOverlay.aiming ? pendingOverlay : damageOverlay;
   const previewAction = paymentPreviewAction(model.board, state.actions);
   const paymentPreviewIds = autoTapPreviewIds(previewAction);
   const combatDrag =
@@ -89,6 +90,18 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
           ),
           declaringBlock: state.step === STEP.DeclareBlockers && state.active_player !== state.viewer,
         }
+      : null;
+  const damagePicked =
+    overlay.aiming &&
+    model.board.promptDraft?.kind === "damage" &&
+    damageOverlay.aiming &&
+    !stagedOverlay.aiming &&
+    !pendingOverlay.aiming
+      ? new Set(
+          Object.entries(model.board.promptDraft.amounts)
+            .filter(([, amount]) => amount > 0)
+            .map(([id]) => Number(id)),
+        )
       : null;
   publishBitmapFrame({
     width: model.board.viewport.width,
@@ -105,9 +118,10 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     hideCardIds: model.board.hideCardIds,
     targetObjects: overlay.targetObjects,
     pickedObjects:
-      overlay.aiming && model.board.promptDraft?.kind === "card-pick"
+      damagePicked ??
+      (overlay.aiming && model.board.promptDraft?.kind === "card-pick"
         ? new Set(model.board.promptDraft.picked)
-        : new Set(),
+        : new Set()),
     targetPlayers: overlay.targetPlayers,
     aimFrom: overlay.aiming ? overlay.aimFrom : null,
     cursor: model.board.cursor,
