@@ -563,6 +563,8 @@ function cardPickDeclineLabel(pending: PendingChoiceView): string | null {
       return pending.optional ? "No target" : null;
     case "pay_cumulative_upkeep_or_sacrifice":
       return "Don't pay";
+    case "choose_dredge":
+      return "Draw normally";
     default:
       return null;
   }
@@ -658,7 +660,7 @@ function cardPickConfig(pending: PendingChoiceView): {
         declineLabel,
       };
     case "choose_dredge":
-      return { title: "Choose a card to dredge", submitLabel: "Dredge" };
+      return { title: "Choose a card to dredge", submitLabel: "Dredge", declineLabel };
     case "cast_creature_face_down":
       return { title: "Choose a creature to cast face down", submitLabel: "Cast face down" };
     case "choose_exiled_with_card":

@@ -3,6 +3,7 @@ import {
   answerFromDraft,
   assertAllKindsRegistered,
   buildAnswerFromDraft,
+  cardPickReady,
   choiceDraftKey,
   choiceIntent,
   damageAssignReady,
@@ -656,6 +657,24 @@ describe("answerFromDraft builds accepted intents", () => {
       kind: "choose_sacrifices",
       player: 0,
       sacrifices: [],
+    });
+  });
+
+  test("declines dredge to draw normally", () => {
+    const pc = {
+      kind: "choose_dredge" as const,
+      items: [{ id: 61, label: "Stinkweed Imp" }],
+      player: 0,
+    };
+    expect(cardPickReady(pc, [])).toBe(false);
+    expect(cardPickReady(pc, [61])).toBe(true);
+    const answer = declineAnswer(pc);
+    expect(answer).toEqual({ kind: "dredge", dredger: null });
+    if (answer == null) return;
+    expect(choiceIntent(pc, answer)).toEqual({
+      kind: "choose_dredge",
+      player: 0,
+      dredger: null,
     });
   });
 
