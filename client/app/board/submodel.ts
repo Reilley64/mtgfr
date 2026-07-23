@@ -21,6 +21,7 @@ import type {
   WireModeChoice,
   WireTarget,
 } from "~/wire/types";
+import { clampX } from "~/xCost";
 import type { InspectPin } from "../../lib/inspect";
 import { inspectPinChanged, pinFromCard } from "../../lib/inspect";
 import { humanReason } from "../../lib/reject";
@@ -856,14 +857,17 @@ function ensureXPrompt(
   const card = objectByAction(fold, action);
   const xCost: WireCost =
     action.x_cost ?? ({ generic: 0, colored: [0, 0, 0, 0, 0], has_x: true, x_symbols: 1 } as WireCost);
+  const minX = action.min_x ?? 0;
+  const maxX = action.max_x ?? 0;
   return {
     action,
     target,
     picks,
     modes,
     name: action.kind === "cast_prepared" ? action.label : (card?.name ?? action.label),
-    minX: action.min_x ?? 0,
-    maxX: action.max_x ?? 0,
+    minX,
+    maxX,
+    draftX: clampX(maxX, minX, maxX),
     xCost,
   };
 }
@@ -1406,6 +1410,17 @@ export function updateBoard(
         ];
       }
       return [{ ...model, modalCast: { ...mc, answers } }, []];
+    }
+    case "XDraftSet": {
+      if (model.xPrompt == null) return [model, []];
+      const { minX, maxX } = model.xPrompt;
+      return [
+        {
+          ...model,
+          xPrompt: { ...model.xPrompt, draftX: clampX(message.x, minX, maxX) },
+        },
+        [],
+      ];
     }
     case "XSubmitted": {
       if (model.xPrompt == null) return [model, []];

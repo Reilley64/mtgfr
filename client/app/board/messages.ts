@@ -84,6 +84,8 @@ export const TargetChosen = m("TargetChosen", { target: WireTarget });
 export const ModalModesChosen = m("ModalModesChosen", { chosen: S.Array(S.Number) });
 export const ModalTargetChosen = m("ModalTargetChosen", { target: WireTarget });
 
+/** Choose-X stepper draft adjusted (Min/−/+/Max / field). */
+export const XDraftSet = m("XDraftSet", { x: S.Number });
 /** X cost submitted. */
 export const XSubmitted = m("XSubmitted", { x: S.Number });
 
@@ -234,6 +236,7 @@ export const Message = S.Union([
   TargetChosen,
   ModalModesChosen,
   ModalTargetChosen,
+  XDraftSet,
   XSubmitted,
   SacrificeChosen,
   DiscardChosen,

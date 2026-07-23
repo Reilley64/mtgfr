@@ -494,6 +494,7 @@ test("x prompt renders when the board is waiting for a chosen X", () => {
     name: "Comet Storm",
     minX: 0,
     maxX: 3,
+    draftX: 3,
     xCost: cost({ generic: 1, has_x: true, x_symbols: 1 }),
   };
   overlayScene(overlayModel({ ...initialBoardModel(), xPrompt }), Scene.expect(Scene.testId("x-prompt")).toExist());
