@@ -121,7 +121,7 @@ server-check: server-format server-lint
     just server-test
 
 [doc("Client CI check (codegen + format + lint + typecheck + vitest)")]
-client-check: server-codegen client-tokens-check client-format client-lint client-typecheck client-test
+client-check: client-tokens-check server-codegen client-format client-lint client-typecheck client-test
 
 [doc("Run all checks")]
 check: server-codegen format lint typecheck test
