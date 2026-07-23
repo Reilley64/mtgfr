@@ -1359,6 +1359,28 @@ test("HandActionActivated during put_land_from_hand submits put_land intent", ()
   });
 });
 
+test("DiscardChosen during cast_creature_face_down submits cast face-down intent", () => {
+  const bear = creature(22, 0, { name: "Bear", zone: ZONE.Hand });
+  const gameFold = fold(
+    state({
+      objects: [bear],
+      actions: [],
+      pending_choice: {
+        kind: "cast_creature_face_down",
+        player: 0,
+        items: [{ id: 22, label: "Bear" }],
+      },
+      can_act: true,
+    }),
+  );
+  const [, commands] = updateBoard(initialBoardModel(), DiscardChosen({ ids: [22] }), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "cast_creature_face_down",
+    player: 0,
+    choice: 22,
+  });
+});
+
 test("DiscardChosen during put_creature_from_hand submits put_creature intent", () => {
   const elf = creature(21, 0, { name: "Elf", zone: ZONE.Hand });
   const gameFold = fold(

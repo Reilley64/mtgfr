@@ -1009,7 +1009,13 @@ function pendingExileAimCoach(
 }
 
 function pendingHandAimCoach(
-  kind: "discard" | "may_discard" | "put_land_from_hand" | "put_creature_from_hand" | "put_from_hand_on_top",
+  kind:
+    | "discard"
+    | "may_discard"
+    | "put_land_from_hand"
+    | "put_creature_from_hand"
+    | "put_from_hand_on_top"
+    | "cast_creature_face_down",
   oneClick: boolean,
 ): string {
   switch (kind) {
@@ -1020,6 +1026,8 @@ function pendingHandAimCoach(
       return "Click a land in your hand to put onto the battlefield";
     case "put_creature_from_hand":
       return "Click a creature in your hand to put onto the battlefield";
+    case "cast_creature_face_down":
+      return "Click a creature in your hand to cast face down";
     case "put_from_hand_on_top":
       return oneClick
         ? "Click a card in your hand to put on top of your library"
@@ -1170,7 +1178,8 @@ function cardPickForKind(
       kind !== "may_discard" &&
       kind !== "put_land_from_hand" &&
       kind !== "put_creature_from_hand" &&
-      kind !== "put_from_hand_on_top"
+      kind !== "put_from_hand_on_top" &&
+      kind !== "cast_creature_face_down"
     ) {
       return null;
     }

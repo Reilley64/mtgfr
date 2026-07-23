@@ -252,7 +252,13 @@ export function pendingDamageAssignOverlay(
 type PendingHandPickChoice = Extract<
   PendingChoiceView,
   {
-    kind: "discard" | "may_discard" | "put_land_from_hand" | "put_creature_from_hand" | "put_from_hand_on_top";
+    kind:
+      | "discard"
+      | "may_discard"
+      | "put_land_from_hand"
+      | "put_creature_from_hand"
+      | "put_from_hand_on_top"
+      | "cast_creature_face_down";
   }
 >;
 
@@ -262,14 +268,21 @@ function isPendingHandPick(pc: PendingChoiceView): pc is PendingHandPickChoice {
     pc.kind === "may_discard" ||
     pc.kind === "put_land_from_hand" ||
     pc.kind === "put_creature_from_hand" ||
-    pc.kind === "put_from_hand_on_top"
+    pc.kind === "put_from_hand_on_top" ||
+    pc.kind === "cast_creature_face_down"
   );
 }
 
 /** True when a hand-bar click should auto-submit (no accumulate chrome). */
 export function pendingHandPickOneClick(pc: PendingChoiceView | null | undefined): boolean {
   if (pc == null || !isPendingHandPick(pc)) return false;
-  if (pc.kind === "put_land_from_hand" || pc.kind === "put_creature_from_hand") return true;
+  if (
+    pc.kind === "put_land_from_hand" ||
+    pc.kind === "put_creature_from_hand" ||
+    pc.kind === "cast_creature_face_down"
+  ) {
+    return true;
+  }
   if (pc.kind === "discard" || pc.kind === "put_from_hand_on_top") return pc.count === 1;
   return false;
 }
