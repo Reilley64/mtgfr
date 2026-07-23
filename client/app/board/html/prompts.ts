@@ -45,7 +45,7 @@ import {
   stagedPickTargets,
   stagedTargetTitle,
 } from "../action/targeting";
-import { seatColor } from "../geometry/layout";
+import { seatColor, ZONE } from "../geometry/layout";
 import {
   CancelActionClicked,
   DiscardChosen,
@@ -2071,12 +2071,25 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
     );
   }
   if (board.discardPick != null) {
-    return costPickPrompt(
-      "discard-pick",
-      "Choose a card to discard",
-      board.discardPick.action.discard_choices ?? [],
-      state,
-      (id) => DiscardChosen({ ids: [id] }),
+    const choices = board.discardPick.action.discard_choices ?? [];
+    const handIds = new Set(
+      state.objects.filter((o) => o.zone === ZONE.Hand && o.owner === state.viewer).map((o) => o.id),
+    );
+    const onHand = choices.length > 0 && choices.every((id) => handIds.has(id));
+    if (onHand) {
+      return h.div(
+        [
+          h.DataAttribute("testid", "discard-cost-aim"),
+          h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+          h.Class(
+            "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+          ),
+        ],
+        [h.div([h.Class("pointer-events-none")], ["Click a card in your hand to discard"]), cancelButton()],
+      );
+    }
+    return costPickPrompt("discard-pick", "Choose a card to discard", choices, state, (id) =>
+      DiscardChosen({ ids: [id] }),
     );
   }
   if (board.gyExilePick != null) {

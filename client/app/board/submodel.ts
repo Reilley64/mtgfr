@@ -1205,6 +1205,28 @@ function handActivated(
   x: number,
   y: number,
 ): BoardReturn {
+  if (model.discardPick != null) {
+    const choices = model.discardPick.action.discard_choices ?? [];
+    const objectId = action.object;
+    if (objectId == null || !choices.includes(objectId)) {
+      return [{ ...model, handDrag: null, hoverActionId: null }, []];
+    }
+    const picks: CostPicks = {
+      ...model.discardPick.picks,
+      discard_cost: [objectId],
+      discard_settled: true,
+    };
+    return continueAfterCostPick(
+      { ...model, discardPick: null, handDrag: null, hoverActionId: null },
+      fold,
+      tableId,
+      model.discardPick.action,
+      model.discardPick.card,
+      picks,
+      model.discardPick.dropSeed,
+      model.discardPick.screenOrigin,
+    );
+  }
   const threshold = model.viewport.height - HAND_BAR_H + HAND_PLAY_SLACK_PX;
   const card = objectByAction(fold, action);
   const plan = planHandDrop(action, card, y, threshold);

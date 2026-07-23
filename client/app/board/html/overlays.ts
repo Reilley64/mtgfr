@@ -73,7 +73,14 @@ export function boardOverlays(
     stackView(board, state),
     logPanelView(log),
     seatedViewer
-      ? handView({ state, hiddenId: stagedCardId, flyingIds: board.hideCardIds, hiddenIds, handDrag: board.handDrag })
+      ? handView({
+          state,
+          hiddenId: stagedCardId,
+          flyingIds: board.hideCardIds,
+          hiddenIds,
+          handDrag: board.handDrag,
+          discardCostIds: board.discardPick != null ? new Set(board.discardPick.action.discard_choices ?? []) : null,
+        })
       : null,
     seatedViewer && mulliganing ? mulliganBarView(state) : null,
     seatedViewer && !mulliganing ? priorityBarView(board, state) : null,

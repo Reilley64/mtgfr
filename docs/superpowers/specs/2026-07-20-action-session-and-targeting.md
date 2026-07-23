@@ -41,6 +41,7 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - Payment is engine-side. The client previews `auto_tap`, but it does not tap lands or solve mana costs before submit.
 - Auto-tap preview prefers the in-flight session action (`staged`, choose-X, modal, sacrifice/discard/gy-exile pick) over `hoverActionId`, so payment glyphs stay visible after hand/radial hover clears on activate.
 - Local pre-submit sacrifice costs (`sacrificePick`) highlight battlefield `sacrifice_choices` (`sacrificeCostOverlay`); a click settles the cost (`SacrificeChosen` path). Chrome shows `sacrifice-cost-aim` instead of the modal grid when every choice is on the battlefield.
+- Local pre-submit discard costs (`discardPick`) aim at hand tiles: clicking a legal hand card settles the cost (`HandActionActivated` / `DiscardChosen`). Chrome shows `discard-cost-aim` when every choice is in the viewer's hand.
 
 ## Implementation Decisions
 
