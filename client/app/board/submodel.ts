@@ -56,6 +56,7 @@ import { advance } from "./action/modal";
 import {
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
+  pendingDivideSpellObjectIndexes,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
   pendingTargetOneClick,
@@ -705,6 +706,17 @@ function pointerUpModel(
       const amounts = clickDamageAssign(draft.amounts, release.card.id, power, trample);
       return [{ ...synced, promptDraft: { kind: "damage", amounts } }, []];
     }
+    const divideIndexes = fold.state != null ? pendingDivideSpellObjectIndexes(pc, fold.state) : null;
+    if (divideIndexes != null && pc?.kind === "divide_spell_damage") {
+      const itemIndex = divideIndexes.get(release.card.id);
+      if (itemIndex != null) {
+        const synced = syncPromptDraft(idle, fold);
+        const draft = synced.promptDraft?.kind === "divide" ? synced.promptDraft : null;
+        if (draft == null) return [synced, []];
+        const amounts = clickDamageAssign(draft.amounts, itemIndex, pc.total, false);
+        return [{ ...synced, promptDraft: { kind: "divide", amounts } }, []];
+      }
+    }
     const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
     if (pendingAim != null && pc != null && pendingAim.objects.has(release.card.id)) {
       if (pendingTargetOneClick(pc)) {
@@ -1341,6 +1353,19 @@ function trySubmitReadyPendingDraft(
     pendingDamageAssignBlockers(pc, state) != null &&
     synced.promptDraft != null &&
     damageAssignReady(pc, synced.promptDraft, state)
+  ) {
+    const answer = buildAnswerFromDraft(pc, synced.promptDraft);
+    if (answer != null) {
+      return [
+        { ...synced, promptDraft: null, pendingChoiceKey: null },
+        boardIntentSubmit(tableId, choiceIntent(pc, answer)),
+      ];
+    }
+  }
+  if (
+    pc?.kind === "divide_spell_damage" &&
+    pendingDivideSpellObjectIndexes(pc, state) != null &&
+    synced.promptDraft?.kind === "divide"
   ) {
     const answer = buildAnswerFromDraft(pc, synced.promptDraft);
     if (answer != null) {

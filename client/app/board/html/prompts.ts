@@ -34,6 +34,7 @@ import { modeAvailable } from "../action/modal";
 import {
   objectName,
   pendingBoardTargetMode,
+  pendingDivideSpellObjectIndexes,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
   pendingTargetOneClick,
@@ -1363,7 +1364,14 @@ function divideTotalPrompt(
   if (pending.kind === "divide_spell_damage") {
     const amounts = draft.kind === "divide" ? draft.amounts : {};
     const assigned = Object.values(amounts).reduce((sum, amount) => sum + amount, 0);
+    const onBoard = pendingDivideSpellObjectIndexes(pending, state) != null;
     return frame("pending-choice", `Divide ${pending.total} damage`, [
+      onBoard
+        ? h.div(
+            [h.DataAttribute("testid", "pending-divide-aim"), h.Class("text-body text-mist")],
+            ["Click a target on the board to move 1 damage onto it"],
+          )
+        : null,
       ...pending.items.map((item, index) =>
         h.div(
           [h.Class("flex items-center gap-2")],

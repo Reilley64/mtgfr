@@ -991,6 +991,48 @@ test("trample combat damage assign shows overflow to defender and enables Assign
   );
 });
 
+test("divide_spell_damage on-board aim shows coach when targets are battlefield", () => {
+  const bear = card(21, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+    name: "Bear",
+  });
+  const elf = card(22, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+    power: 1,
+    toughness: 1,
+    name: "Elf",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "divide", amounts: { 0: 2, 1: 1 } },
+      },
+      gameState({
+        objects: [bear, elf],
+        pending_choice: {
+          kind: "divide_spell_damage",
+          player: 0,
+          spell: 99,
+          total: 3,
+          items: [
+            { id: 21, label: "Bear" },
+            { id: 22, label: "Elf" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("pending-divide-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 3 / 3"),
+    Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+  );
+});
+
 test("sacrifice pick prompt renders as a board surface", () => {
   const sacrificeAction = action(14, {
     kind: "activate",
