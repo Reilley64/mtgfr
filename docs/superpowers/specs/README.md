@@ -48,6 +48,7 @@ These documents are **not superseded** and must stay current alongside the specs
 | [hand-and-zone-bar](2026-07-20-hand-and-zone-bar.md) | Hand, command, graveyard, exile bars and playable outlines |
 | [lobby-table-routing-and-live-game](2026-07-20-lobby-table-routing-and-live-game.md) | Lobby, seed, in-memory tables, affinity, drain |
 | [mana-tray](2026-07-20-mana-tray.md) | Battlefield mana pool tray and payment mana tray surfaces |
+| [nested-effect-families](2026-07-23-nested-effect-families-design.md) | Nested `Effect` family/`mode` vocabulary (design) |
 | [production-topology-and-operations](2026-07-20-production-topology-and-operations.md) | k3s, Argo, Tunnel, migrations, releases, LGTM |
 | [prompts-and-pending-choices](2026-07-20-prompts-and-pending-choices.md) | Pending-choice forms, X prompt, modal and local cost prompts |
 | [stack](2026-07-20-stack.md) | Stack pile, strip, expansion, targetability, auto-resolve pause |
