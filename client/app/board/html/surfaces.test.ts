@@ -793,7 +793,7 @@ test("optional on-board choose_target aim shows Decline", () => {
   );
 });
 
-test("scry prompt shows Top and Bottom arrange lanes", () => {
+test("scry aim shows docked Top and Bottom arrange lanes", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -808,6 +808,8 @@ test("scry prompt shows Top and Bottom arrange lanes", () => {
         },
       }),
     ),
+    Scene.expect(Scene.testId("pending-arrange-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-arrange-top")).toExist(),
     Scene.expect(Scene.testId("prompt-arrange-bottom")).toExist(),
