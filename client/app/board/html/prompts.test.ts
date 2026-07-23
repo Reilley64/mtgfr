@@ -410,7 +410,7 @@ test("distribute_top card click cycles into Hand then Bottom", () => {
   });
 });
 
-test("partition_revealed shows Pile A and Pile B lanes", () => {
+test("partition_revealed shows docked Pile A and Pile B lanes", () => {
   const s = state({
     pending_choice: {
       kind: "partition_revealed",
@@ -426,6 +426,8 @@ test("partition_revealed shows Pile A and Pile B lanes", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-partition-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-partition-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-partition-a")).toExist(),
     Scene.expect(Scene.testId("prompt-partition-b")).toExist(),

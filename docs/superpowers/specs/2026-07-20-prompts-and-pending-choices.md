@@ -30,7 +30,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player scrying or surveilling, I assign looked-at cards into Top vs Bottom (or Graveyard) lanes in docked `pending-arrange-aim` instead of a center modal.
 - As a player selecting from the top of my library, I assign cards into Take vs Bottom lanes in docked `pending-select-top-aim` (up to the allowed count).
 - As a player distributing revealed cards from the top, I click cards across Hand / Bottom / Exile lanes in docked `pending-distribute-aim` (capacity per lane).
-- As a player partitioning revealed cards, I click cards between Pile A and Pile B lanes.
+- As a player partitioning revealed cards, I click cards between Pile A and Pile B lanes in docked `pending-partition-aim`.
 - As a player ordering triggers, I drag rows, click-to-place, or use ↑↓ so the last listed resolves first.
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
@@ -76,7 +76,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `scry` / `surveil` use docked `pending-arrange-aim` with two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`.
 - `select_from_top` uses docked `pending-select-top-aim` with Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
 - `distribute_top` uses docked `pending-distribute-aim` with Revealed / Hand / Bottom / Exile lanes (`prompt-distribute-lanes`); click cycles a card through lanes with room (`nextDistributeBucket`), then back to Revealed; Distribute enables when each lane hits its exact count.
-- `partition_revealed` uses Pile A / Pile B lanes (`prompt-partition-lanes`); click toggles a card between piles via `PromptCardToggled`.
+- `partition_revealed` uses docked `pending-partition-aim` with Pile A / Pile B lanes (`prompt-partition-lanes`); click toggles a card between piles via `PromptCardToggled`.
 - `order_triggers` rows support HTML5 drag reorder (`Draggable` / `OnDrop` → `PromptOrderRowClicked`, `OnDragEnd` → `PromptOrderDragEnded`), click-to-place (`orderPickPos`), and ↑↓ (`PromptOrderMoved`); list lives under `prompt-order-list`. Submit still emits `choose_order`.
 - Enter or Space submits a ready lane / order draft (`order_triggers`, `scry`, `surveil`, `select_from_top`, `distribute_top`, `partition_revealed`) the same way the Done / Confirm button does (`trySubmitReadyPendingDraft`).
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
@@ -121,7 +121,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene/unit tests cover docked scry/surveil `pending-arrange-aim` Top↔Bottom (Graveyard) lanes and click toggle → `arrange_top`.
 - Scene tests cover docked `pending-select-top-aim` Take/Bottom lanes (no center `pending-choice`).
 - Scene/unit tests cover docked `pending-distribute-aim` Hand/Bottom/Exile lanes and `nextDistributeBucket` cycling.
-- Scene/unit tests cover partition_revealed Pile A / Pile B lanes and click → pile_a.
+- Scene/unit tests cover docked `pending-partition-aim` Pile A / Pile B lanes and click → pile_a.
 - Scene/unit tests cover order_triggers drag rows, click-to-place reorder, drag-end cancel, and ↑↓ chrome.
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 

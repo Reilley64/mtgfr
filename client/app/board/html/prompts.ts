@@ -1911,51 +1911,64 @@ function partitionPrompt(
       return item != null ? [item] : [];
     });
     const pileBItems = pending.items.filter((it) => !pileAIds.includes(it.id));
-    return frame("pending-choice", "Choose cards for Pile A", [
-      h.div(
-        [h.DataAttribute("testid", "prompt-partition-lanes"), h.Class("flex flex-col gap-3")],
-        [
-          h.div([h.Class("shrink-0 text-caption text-mist")], ["Click a card to move it between Pile A and Pile B."]),
-          h.div(
-            [h.DataAttribute("testid", "prompt-partition-a"), h.Class("flex flex-col gap-2")],
-            [
-              h.div(
-                [
-                  h.DataAttribute("testid", "prompt-partition-a-label"),
-                  h.Class("text-caption font-semibold text-seafoam"),
-                ],
-                [`Pile A (${pileAIds.length})`],
-              ),
-              h.div(
-                [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                pileAItems.length > 0
-                  ? pileAItems.map((item) => arrangeLaneCard(item, state, pileAIds, false))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-          h.div(
-            [h.DataAttribute("testid", "prompt-partition-b"), h.Class("flex flex-col gap-2")],
-            [
-              h.div(
-                [
-                  h.DataAttribute("testid", "prompt-partition-b-label"),
-                  h.Class("text-caption font-semibold text-seafoam"),
-                ],
-                [`Pile B (${pileBItems.length})`],
-              ),
-              h.div(
-                [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                pileBItems.length > 0
-                  ? pileBItems.map((item) => arrangeLaneCard(item, state, [], false))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-        ],
-      ),
-      h.div([h.Class("flex gap-2")], [submitButton("Lock piles", false), cancelButton()]),
-    ]);
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-partition-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
+        ),
+      ],
+      [
+        h.div([h.Class("shrink-0 font-semibold text-body")], ["Choose cards for Pile A"]),
+        h.div(
+          [
+            h.DataAttribute("testid", "prompt-partition-lanes"),
+            h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          ],
+          [
+            h.div([h.Class("shrink-0 text-caption text-mist")], ["Click a card to move it between Pile A and Pile B."]),
+            h.div(
+              [h.DataAttribute("testid", "prompt-partition-a"), h.Class("flex flex-col gap-2")],
+              [
+                h.div(
+                  [
+                    h.DataAttribute("testid", "prompt-partition-a-label"),
+                    h.Class("text-caption font-semibold text-seafoam"),
+                  ],
+                  [`Pile A (${pileAIds.length})`],
+                ),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  pileAItems.length > 0
+                    ? pileAItems.map((item) => arrangeLaneCard(item, state, pileAIds, false))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+            h.div(
+              [h.DataAttribute("testid", "prompt-partition-b"), h.Class("flex flex-col gap-2")],
+              [
+                h.div(
+                  [
+                    h.DataAttribute("testid", "prompt-partition-b-label"),
+                    h.Class("text-caption font-semibold text-seafoam"),
+                  ],
+                  [`Pile B (${pileBItems.length})`],
+                ),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  pileBItems.length > 0
+                    ? pileBItems.map((item) => arrangeLaneCard(item, state, [], false))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+          ],
+        ),
+        h.div([h.Class("flex shrink-0 gap-2")], [submitButton("Lock piles", false), cancelButton()]),
+      ],
+    );
   }
 
   return distributeTopLanesPrompt(pending, board, state, tableId);
