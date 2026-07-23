@@ -24,6 +24,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player choosing a creature type, I can filter the long option list by name before picking.
 - As a player choosing a color or mana color, I pick from mana-font pip buttons (not letter labels).
 - As a player answering a one-click on-board target choice, I aim at highlighted permanents/players (no card grid); optional choices keep Decline on the aim chrome.
+- As a player targeting only cards in one graveyard, I click selectable pile cards under `pending-gy-aim` instead of a modal grid.
 - As a player choosing target players, I aim at life-orb avatars on the board (multi-pick accumulates until Confirm).
 - As a player scrying or surveilling, I assign looked-at cards into Top vs Bottom (or Graveyard) lanes instead of a flat ordered pick list.
 - As a player selecting from the top of my library, I assign cards into Take vs Bottom lanes (up to the allowed count).
@@ -66,7 +67,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - On-board battlefield sacrifice / proliferate / attach / phase-out / keep-tapped card-picks reuse the same `pending-target-aim` chrome (one-click or Confirm accumulate).
 - Engine `discard` / `may_discard` with every item in hand suppress the card grid for `pending-discard-aim` hand-bar coach; `put_land_from_hand` / `put_creature_from_hand` / `put_from_hand_on_top` / `cast_creature_face_down` use `pending-hand-aim` (Decline stays for optional put-land/put-creature).
 - Local `gyExilePick` with every choice in one graveyard shows `gy-exile-cost-aim` plus a selectable pile overlay (`pile-card-{id}`) instead of the modal `gy-exile-pick` grid.
-- Engine GY card-picks (`exile_from_graveyard`, `may_return_from_graveyard`, `shuffle_from_graveyard`, `choose_dredge`, `pay_cumulative_upkeep_or_sacrifice`, GY-based `choose_activation_cost_targets`) with a shared pile show `pending-gy-aim` and the same selectable pile overlay instead of the modal card grid.
+- Engine GY card-picks (`exile_from_graveyard`, `may_return_from_graveyard`, `shuffle_from_graveyard`, `choose_dredge`, `pay_cumulative_upkeep_or_sacrifice`, GY-based `choose_activation_cost_targets`) and GY-only target prompts (`choose_target` / `choose_spell_targets` / `choose_ability_targets`) with a shared pile show `pending-gy-aim` and the same selectable pile overlay instead of the modal card grid.
 - Battlefield `choose_activation_cost_targets` reuse `pending-target-aim` when every legal item is on the canvas.
 - Engine exile card-picks (`choose_exiled_*` / `opponent_chooses_exiled_nonland`) with a shared exile pile show `pending-exile-aim` and selectable exile pile cards.
 - `choose_target_players` / `choose_splitting_opponent` with seat-tagged items aim at life orbs (`pending-player-aim`); one-click when `max === 1` (or splitting); multi-pick accumulates seats in the player-pick draft with Confirm. Enter / Space submit when ready. Picked seats paint a solid Priority Gold ring (`pickedPlayers`).
@@ -112,6 +113,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene/unit tests cover library-search filter, face dedupe, and pinned scroll chrome (`pick-card-filter`, `pick-card-scroll`).
 - Scene tests cover `choose_card_name` typeahead list when suggestions match the draft query.
 - Scene tests cover on-board pending aim chrome (`pending-target-aim`, no card grid) and optional Decline → empty `choose_targets`.
+- Scene/pointer tests cover GY pile aim for `choose_target` when every legal item shares one graveyard (`pending-gy-aim`).
 - Scene/pointer tests cover on-board `sacrifice_edict` one-click and `proliferate` accumulate → Confirm.
 - Scene/unit tests cover scry/surveil Top↔Bottom (Graveyard) lanes and click toggle → `arrange_top`.
 - Scene/unit tests cover distribute_top Hand/Bottom/Exile lanes and `nextDistributeBucket` cycling.

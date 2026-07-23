@@ -580,6 +580,41 @@ describe("pendingGraveyardPickIds", () => {
       ),
     ).toBeNull();
   });
+
+  it("returns graveyard ids for choose_target in one pile", () => {
+    const ids = pendingGraveyardPickIds(
+      {
+        kind: "choose_target",
+        label: "Target creature card in a graveyard",
+        player: 0,
+        source: 1,
+        max: 1,
+        optional: false,
+        items: [{ id: 8, label: "Reanimate me" }],
+      },
+      state([object({ id: 8, zone: ZONE.Graveyard, owner: 0, name: "Reanimate me" })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected choose_target gy ids");
+    expect([...ids]).toEqual([8]);
+  });
+
+  it("is idle for choose_target when items are on the battlefield", () => {
+    expect(
+      pendingGraveyardPickIds(
+        {
+          kind: "choose_target",
+          label: "Target creature",
+          player: 0,
+          source: 1,
+          max: 1,
+          optional: false,
+          items: [{ id: 8, label: "Bear" }],
+        },
+        state([object({ id: 8, zone: ZONE.Battlefield, owner: 0, name: "Bear" })]),
+      ),
+    ).toBeNull();
+  });
 });
 
 describe("pendingExilePickIds", () => {
