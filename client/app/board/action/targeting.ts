@@ -306,8 +306,9 @@ export function pendingDiscardHandIds(
   return pendingHandPickIds(pc, state);
 }
 
-/** Shared graveyard pile when every id is in the same owner's GY; otherwise null. */
-export function sharedGraveyardPile(
+/** Shared zone pile when every id is in the same owner's zone; otherwise null. */
+export function sharedZonePile(
+  zone: number,
   ids: ReadonlyArray<number> | null | undefined,
   state: VisibleState,
 ): { zone: number; owner: number } | null {
@@ -315,12 +316,28 @@ export function sharedGraveyardPile(
   let owner: number | null = null;
   for (const id of ids) {
     const obj = state.objects.find((o) => o.id === id);
-    if (obj == null || obj.zone !== ZONE.Graveyard) return null;
+    if (obj == null || obj.zone !== zone) return null;
     if (owner == null) owner = obj.owner;
     else if (obj.owner !== owner) return null;
   }
   if (owner == null) return null;
-  return { zone: ZONE.Graveyard, owner };
+  return { zone, owner };
+}
+
+/** Shared graveyard pile when every id is in the same owner's GY; otherwise null. */
+export function sharedGraveyardPile(
+  ids: ReadonlyArray<number> | null | undefined,
+  state: VisibleState,
+): { zone: number; owner: number } | null {
+  return sharedZonePile(ZONE.Graveyard, ids, state);
+}
+
+/** Shared exile pile when every id is in the same owner's exile; otherwise null. */
+export function sharedExilePile(
+  ids: ReadonlyArray<number> | null | undefined,
+  state: VisibleState,
+): { zone: number; owner: number } | null {
+  return sharedZonePile(ZONE.Exile, ids, state);
 }
 
 /** Shared graveyard pile for on-pile gy-exile aim, or null when modal fallback is required. */
@@ -391,6 +408,69 @@ export function pendingGraveyardPickPile(
   const ids = pendingGraveyardPickIds(pc, state);
   if (ids == null) return null;
   return sharedGraveyardPile([...ids], state);
+}
+
+type PendingExilePickChoice = Extract<
+  PendingChoiceView,
+  {
+    kind:
+      | "choose_exiled_with_card"
+      | "choose_exiled_with_card_to_cast"
+      | "choose_exiled_dig_to_cast_free"
+      | "opponent_chooses_exiled_nonland"
+      | "choose_exiled_to_cast_free";
+  }
+>;
+
+function isPendingExilePick(pc: PendingChoiceView): pc is PendingExilePickChoice {
+  return (
+    pc.kind === "choose_exiled_with_card" ||
+    pc.kind === "choose_exiled_with_card_to_cast" ||
+    pc.kind === "choose_exiled_dig_to_cast_free" ||
+    pc.kind === "opponent_chooses_exiled_nonland" ||
+    pc.kind === "choose_exiled_to_cast_free"
+  );
+}
+
+/** True when an exile-pile click should auto-submit (no accumulate chrome). */
+export function pendingExilePickOneClick(pc: PendingChoiceView | null | undefined): boolean {
+  if (pc == null || !isPendingExilePick(pc)) return false;
+  if (pc.kind === "choose_exiled_to_cast_free") return pc.count === 1;
+  return true;
+}
+
+/**
+ * Legal exile ids for engine exile card-picks when every item shares one exile pile.
+ * Mixed owners / off-exile items keep the modal card picker.
+ */
+export function pendingExilePickIds(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (pc == null || !isPendingExilePick(pc)) return null;
+  if (pc.player !== state.viewer) return null;
+  if (pc.items.length === 0) return null;
+  const ids = pc.items.map((item) => item.id);
+  if (sharedExilePile(ids, state) == null) return null;
+  return new Set(ids);
+}
+
+/** Shared exile pile for pending exile card-picks, or null when modal fallback is required. */
+export function pendingExilePickPile(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): { zone: number; owner: number } | null {
+  const ids = pendingExilePickIds(pc, state);
+  if (ids == null) return null;
+  return sharedExilePile([...ids], state);
+}
+
+/** Any pending pile aim (GY or exile) that should keep/auto-open the pile overlay. */
+export function pendingPilePickPile(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): { zone: number; owner: number } | null {
+  return pendingGraveyardPickPile(pc, state) ?? pendingExilePickPile(pc, state);
 }
 
 /**

@@ -38,6 +38,8 @@ import {
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
   pendingDivideSpellObjectIndexes,
+  pendingExilePickIds,
+  pendingExilePickOneClick,
   pendingGraveyardPickIds,
   pendingGraveyardPickOneClick,
   pendingHandPickIds,
@@ -981,6 +983,31 @@ function pendingGraveyardAimCoach(
   }
 }
 
+function pendingExileAimCoach(
+  kind:
+    | "choose_exiled_with_card"
+    | "choose_exiled_with_card_to_cast"
+    | "choose_exiled_dig_to_cast_free"
+    | "opponent_chooses_exiled_nonland"
+    | "choose_exiled_to_cast_free",
+  oneClick: boolean,
+): string {
+  switch (kind) {
+    case "choose_exiled_with_card":
+    case "opponent_chooses_exiled_nonland":
+      return "Click a card in exile to choose";
+    case "choose_exiled_with_card_to_cast":
+    case "choose_exiled_dig_to_cast_free":
+      return "Click a card in exile to cast";
+    case "choose_exiled_to_cast_free":
+      return oneClick ? "Click a card in exile to cast" : "Click cards in exile to cast";
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
 function pendingHandAimCoach(
   kind: "discard" | "may_discard" | "put_land_from_hand" | "put_creature_from_hand" | "put_from_hand_on_top",
   oneClick: boolean,
@@ -1071,6 +1098,65 @@ function cardPickForKind(
       ],
       [
         h.div([h.Class("pointer-events-none")], [pendingGraveyardAimCoach(kind, oneClick)]),
+        countLine,
+        actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
+      ].filter((v): v is Html => v !== null),
+    );
+  }
+  const exilePick = pendingExilePickIds(pending, state);
+  if (exilePick != null) {
+    const kind = pending.kind;
+    if (
+      kind !== "choose_exiled_with_card" &&
+      kind !== "choose_exiled_with_card_to_cast" &&
+      kind !== "choose_exiled_dig_to_cast_free" &&
+      kind !== "opponent_chooses_exiled_nonland" &&
+      kind !== "choose_exiled_to_cast_free"
+    ) {
+      return null;
+    }
+    const oneClick = pendingExilePickOneClick(pending);
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const picked = draft.kind === "card-pick" ? draft.picked : [];
+    const ready = !oneClick && cardPickReady(pending, picked);
+    const required = cardPickRequiredCount(pending);
+    const countLine =
+      !oneClick && required != null
+        ? h.div(
+            [h.DataAttribute("testid", "pending-exile-count"), h.Class("pointer-events-none text-caption text-mist")],
+            [`${picked.length} / ${required} selected`],
+          )
+        : null;
+    const actions: Html[] = [];
+    if (!oneClick) {
+      actions.push(submitButton("Choose", !ready));
+    }
+    const decline = declineAnswer(pending);
+    if (decline != null) {
+      actions.push(
+        answerButton(
+          pending,
+          "prompt-decline",
+          cardPickDeclineLabel(pending) ?? "Decline",
+          decline,
+          false,
+          tableId == null,
+        ),
+      );
+    }
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-exile-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          [
+            "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+            actions.length > 0 ? "pointer-events-auto" : "pointer-events-none",
+          ].join(" "),
+        ),
+      ],
+      [
+        h.div([h.Class("pointer-events-none")], [pendingExileAimCoach(kind, oneClick)]),
         countLine,
         actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
       ].filter((v): v is Html => v !== null),

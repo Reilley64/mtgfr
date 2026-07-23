@@ -1248,6 +1248,35 @@ test("pending discard aim shows coach when cards are in hand", () => {
   );
 });
 
+test("pending exile aim shows coach when choose_exiled cards share a pile", () => {
+  const exiled = card(30, {
+    name: "Exiled",
+    zone: ZONE.Exile,
+    kind: { kind: "instant" },
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Exile, owner: 0 },
+      },
+      gameState({
+        objects: [exiled],
+        pending_choice: {
+          kind: "choose_exiled_with_card",
+          player: 0,
+          source: 1,
+          items: [{ id: 30, label: "Exiled" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-exile-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.testId("pile-card-30")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("pending gy aim shows coach when exile_from_graveyard cards share a pile", () => {
   const gy = card(8, {
     name: "Fodder",

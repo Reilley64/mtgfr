@@ -6,7 +6,12 @@ import { mulliganChrome } from "~/mulligan";
 import { isActivePlayer, SPECTATOR_VIEWER } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { LogLine } from "../../game/fold";
-import { gyExileCostObjectIds, pendingGraveyardPickIds, pendingHandPickIds } from "../action/targeting";
+import {
+  gyExileCostObjectIds,
+  pendingExilePickIds,
+  pendingGraveyardPickIds,
+  pendingHandPickIds,
+} from "../action/targeting";
 import type { Message } from "../messages";
 import type { BoardModel } from "../submodel";
 import { activationRadialView } from "./activation-radial";
@@ -98,7 +103,7 @@ export function boardOverlays(
         if (board.gyExilePick != null) {
           return gyExileCostObjectIds(board.gyExilePick.action.graveyard_exile_choices, state);
         }
-        return pendingGraveyardPickIds(state.pending_choice, state);
+        return pendingGraveyardPickIds(state.pending_choice, state) ?? pendingExilePickIds(state.pending_choice, state);
       })(),
       selectedIds: (() => {
         if (board.gyExilePick != null) return board.gyExilePick.picks.graveyard_exile;
