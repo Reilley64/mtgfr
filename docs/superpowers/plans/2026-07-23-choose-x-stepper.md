@@ -8,7 +8,7 @@
 
 **Tech Stack:** Foldkit (Html / Messages / Scene), Effect Schema messages, Vitest, TypeScript.
 
-**Spec:** [docs/superpowers/specs/2026-07-23-choose-x-stepper-design.md](../specs/2026-07-23-choose-x-stepper-design.md), [prompts-and-pending-choices](../specs/2026-07-20-prompts-and-pending-choices.md)
+**Spec:** [prompts-and-pending-choices](../specs/2026-07-20-prompts-and-pending-choices.md)
 
 ## Global Constraints
 
