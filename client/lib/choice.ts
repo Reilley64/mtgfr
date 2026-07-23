@@ -10,6 +10,7 @@ import type {
   WireModeChoice,
   WireSpellDamage,
 } from "~/wire/types";
+import { clampX } from "~/xCost";
 
 type ChoiceItemLike = { id: number; label?: string; player?: number | null };
 
@@ -197,6 +198,10 @@ export function choiceDraftKey(pc: PendingChoiceView): string {
   if ("labels" in pc && Array.isArray(pc.labels)) {
     return `${base}:${pc.labels.join("|")}`;
   }
+  // Join-forces / draw-count affordability can shrink mid-prompt; key on max so the draft resets.
+  if ("max" in pc && typeof pc.max === "number") {
+    return `${base}:max=${pc.max}`;
+  }
   return base;
 }
 
@@ -355,7 +360,7 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
       return { kind: "draw_count", count: draft.count };
     case "pay_any_amount_of_mana":
       if (draft.kind !== "number") return null;
-      return { kind: "pay_amount", amount: draft.count };
+      return { kind: "pay_amount", amount: clampX(draft.count, 0, pc.max) };
     case "choose_card_name": {
       if (draft.kind !== "string") return null;
       const name = draft.value.trim();

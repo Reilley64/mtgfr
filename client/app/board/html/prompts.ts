@@ -17,7 +17,7 @@ import {
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
-import { costText, costWithChosenX } from "~/xCost";
+import { clampX, costText, costWithChosenX } from "~/xCost";
 import { modeAvailable } from "../action/modal";
 import { objectName, playerSeatLabel, stagedPickTargets, stagedTargetTitle } from "../action/targeting";
 import { seatColor } from "../geometry/layout";
@@ -1212,8 +1212,8 @@ function numberPickPrompt(
 ): Html {
   if (pending.kind === "pay_any_amount_of_mana") {
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
-    const count = draft.kind === "number" ? draft.count : 0;
     const max = pending.max;
+    const count = clampX(draft.kind === "number" ? draft.count : 0, 0, max);
     return frame("pending-choice", numberPickTitle(pending), [
       h.div(
         [h.Class("flex flex-wrap items-center justify-center gap-2")],
