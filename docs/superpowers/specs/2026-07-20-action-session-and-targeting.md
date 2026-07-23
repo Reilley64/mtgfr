@@ -42,7 +42,8 @@ Keep an action session in the board model. Pure planners decide whether an actio
 - Auto-tap preview prefers the in-flight session action (`staged`, choose-X, modal, sacrifice/discard/gy-exile pick) over `hoverActionId`, so payment glyphs stay visible after hand/radial hover clears on activate.
 - Local pre-submit sacrifice costs (`sacrificePick`) highlight battlefield `sacrifice_choices` (`sacrificeCostOverlay`); a click settles the cost (`SacrificeChosen` path). Chrome shows `sacrifice-cost-aim` instead of the modal grid when every choice is on the battlefield.
 - Local pre-submit discard costs (`discardPick`) aim at hand tiles: clicking a legal hand card settles the cost (`HandActionActivated` / `DiscardChosen`). Chrome shows `discard-cost-aim` when every choice is in the viewer's hand.
-- Engine `discard` / `may_discard` pending choices with every item in hand use the same hand-bar aim (`pendingDiscardHandIds` / `pending-discard-aim`); one-click when `discard` count is 1, otherwise accumulate until Confirm / Enter / Space.
+- Engine `discard` / `may_discard` pending choices with every item in hand use the same hand-bar aim (`pendingHandPickIds` / `pending-discard-aim`); one-click when `discard` count is 1, otherwise accumulate until Confirm / Enter / Space.
+- Engine `put_land_from_hand` / `put_creature_from_hand` / `put_from_hand_on_top` with every item in hand use hand-bar aim (`pendingHandPickIds` / `pending-hand-aim`); one-click for put-land/put-creature and `put_from_hand_on_top` when count is 1; multi `put_from_hand_on_top` accumulates until Put on top / Enter / Space. Optional put-land/put-creature keep Decline on the coach chrome.
 
 ## Implementation Decisions
 

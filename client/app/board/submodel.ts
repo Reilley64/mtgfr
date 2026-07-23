@@ -56,8 +56,9 @@ import { advance } from "./action/modal";
 import {
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
-  pendingDiscardHandIds,
   pendingDivideSpellObjectIndexes,
+  pendingHandPickIds,
+  pendingHandPickOneClick,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
   pendingTargetOneClick,
@@ -851,7 +852,7 @@ function togglePendingObjectAimPick(
       ? pc.max
       : pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets"
         ? pc.max
-        : undefined;
+        : (cardPickRequiredCount(pc) ?? undefined);
   let next: number[];
   if (picked.includes(objectId)) {
     next = picked.filter((id) => id !== objectId);
@@ -861,6 +862,41 @@ function togglePendingObjectAimPick(
     next = [...picked, objectId];
   }
   return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter } }, []];
+}
+
+function submitPendingHandPick(
+  model: BoardModel,
+  fold: GameFoldState,
+  tableId: string | null,
+  pc: NonNullable<NonNullable<GameFoldState["state"]>["pending_choice"]>,
+  objectId: number,
+): BoardReturn {
+  const idle = { ...model, handDrag: null, hoverActionId: null };
+  if (pc.kind === "discard" && pc.count === 1) {
+    return [
+      { ...idle, promptDraft: null, pendingChoiceKey: null },
+      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "discard", cards: [objectId] })),
+    ];
+  }
+  if (pc.kind === "put_land_from_hand") {
+    return [
+      { ...idle, promptDraft: null, pendingChoiceKey: null },
+      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "put_land", choice: objectId })),
+    ];
+  }
+  if (pc.kind === "put_creature_from_hand") {
+    return [
+      { ...idle, promptDraft: null, pendingChoiceKey: null },
+      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "put_creature", choice: objectId })),
+    ];
+  }
+  if (pc.kind === "put_from_hand_on_top" && pc.count === 1) {
+    return [
+      { ...idle, promptDraft: null, pendingChoiceKey: null },
+      boardIntentSubmit(tableId, choiceIntent(pc, { kind: "hand_on_top", cards: [objectId] })),
+    ];
+  }
+  return togglePendingObjectAimPick(idle, fold, pc, objectId);
 }
 
 function applyFlightsSynced(model: BoardModel, flightsIn: readonly CardFlight[], now: number): BoardModel {
@@ -1208,22 +1244,15 @@ function handActivated(
 ): BoardReturn {
   const state = fold.state;
   const pc = state?.pending_choice ?? null;
-  if (
-    state != null &&
-    pc != null &&
-    pc.player === state.viewer &&
-    (pc.kind === "discard" || pc.kind === "may_discard") &&
-    action.object != null &&
-    pc.items.some((it) => it.id === action.object)
-  ) {
+  if (state != null && pc != null && action.object != null) {
+    const handIds = pendingHandPickIds(pc, state);
     const objectId = action.object;
-    if (pc.kind === "discard" && pc.count === 1) {
-      return [
-        { ...model, handDrag: null, hoverActionId: null, promptDraft: null, pendingChoiceKey: null },
-        boardIntentSubmit(tableId, choiceIntent(pc, { kind: "discard", cards: [objectId] })),
-      ];
+    if (handIds != null) {
+      if (!handIds.has(objectId)) {
+        return [{ ...model, handDrag: null, hoverActionId: null }, []];
+      }
+      return submitPendingHandPick(model, fold, tableId, pc, objectId);
     }
-    return togglePendingObjectAimPick({ ...model, handDrag: null, hoverActionId: null }, fold, pc, objectId);
   }
   if (model.discardPick != null) {
     const choices = model.discardPick.action.discard_choices ?? [];
@@ -1488,8 +1517,8 @@ function trySubmitReadyPendingDraft(
   }
   if (
     pc != null &&
-    pendingDiscardHandIds(pc, state) != null &&
-    !(pc.kind === "discard" && pc.count === 1) &&
+    pendingHandPickIds(pc, state) != null &&
+    !pendingHandPickOneClick(pc) &&
     synced.promptDraft?.kind === "card-pick" &&
     cardPickReady(pc, synced.promptDraft.picked)
   ) {
@@ -1791,18 +1820,26 @@ export function updateBoard(
     }
     case "DiscardChosen": {
       const pick = model.discardPick;
-      if (pick == null) return [model, []];
-      const picks: CostPicks = { ...pick.picks, discard_cost: [...message.ids], discard_settled: true };
-      return continueAfterCostPick(
-        { ...model, discardPick: null },
-        fold,
-        tableId,
-        pick.action,
-        pick.card,
-        picks,
-        pick.dropSeed,
-        pick.screenOrigin,
-      );
+      if (pick != null) {
+        const picks: CostPicks = { ...pick.picks, discard_cost: [...message.ids], discard_settled: true };
+        return continueAfterCostPick(
+          { ...model, discardPick: null },
+          fold,
+          tableId,
+          pick.action,
+          pick.card,
+          picks,
+          pick.dropSeed,
+          pick.screenOrigin,
+        );
+      }
+      const state = fold.state;
+      const pc = state?.pending_choice ?? null;
+      const objectId = message.ids[0];
+      if (state == null || pc == null || objectId == null) return [model, []];
+      const handIds = pendingHandPickIds(pc, state);
+      if (handIds == null || !handIds.has(objectId)) return [model, []];
+      return submitPendingHandPick(model, fold, tableId, pc, objectId);
     }
     case "GyExileChosen": {
       const pick = model.gyExilePick;

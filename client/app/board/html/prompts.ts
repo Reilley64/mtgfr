@@ -36,8 +36,9 @@ import {
   objectName,
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
-  pendingDiscardHandIds,
   pendingDivideSpellObjectIndexes,
+  pendingHandPickIds,
+  pendingHandPickOneClick,
   pendingPlayerAimOneClick,
   pendingPlayerAimSeats,
   pendingTargetOneClick,
@@ -956,32 +957,85 @@ function cardPickConfig(pending: PendingChoiceView): {
   }
 }
 
+function pendingHandAimCoach(
+  kind: "discard" | "may_discard" | "put_land_from_hand" | "put_creature_from_hand" | "put_from_hand_on_top",
+  oneClick: boolean,
+): string {
+  switch (kind) {
+    case "discard":
+    case "may_discard":
+      return oneClick ? "Click a card in your hand to discard" : "Click cards in your hand to discard";
+    case "put_land_from_hand":
+      return "Click a land in your hand to put onto the battlefield";
+    case "put_creature_from_hand":
+      return "Click a creature in your hand to put onto the battlefield";
+    case "put_from_hand_on_top":
+      return oneClick
+        ? "Click a card in your hand to put on top of your library"
+        : "Click cards in your hand to put on top of your library";
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
 function cardPickForKind(
   pending: PendingChoiceView,
   state: VisibleState,
   board: BoardModel,
   tableId: string | null,
 ): Html | null {
-  const discardHand = pendingDiscardHandIds(pending, state);
-  if (discardHand != null) {
-    const oneClick = pending.kind === "discard" && pending.count === 1;
+  const handPick = pendingHandPickIds(pending, state);
+  if (handPick != null) {
+    const kind = pending.kind;
+    if (
+      kind !== "discard" &&
+      kind !== "may_discard" &&
+      kind !== "put_land_from_hand" &&
+      kind !== "put_creature_from_hand" &&
+      kind !== "put_from_hand_on_top"
+    ) {
+      return null;
+    }
+    const discardKind = kind === "discard" || kind === "may_discard";
+    const oneClick = pendingHandPickOneClick(pending);
     const draft = board.promptDraft ?? initPromptDraft(pending, state);
     const picked = draft.kind === "card-pick" ? draft.picked : [];
     const ready = !oneClick && cardPickReady(pending, picked);
+    const required = cardPickRequiredCount(pending);
     const countLine =
-      !oneClick && pending.kind === "discard"
+      !oneClick && required != null
         ? h.div(
-            [h.DataAttribute("testid", "pending-discard-count"), h.Class("pointer-events-none text-caption text-mist")],
-            [`${picked.length} / ${pending.count} selected`],
+            [
+              h.DataAttribute("testid", discardKind ? "pending-discard-count" : "pending-hand-count"),
+              h.Class("pointer-events-none text-caption text-mist"),
+            ],
+            [`${picked.length} / ${required} selected`],
           )
         : null;
     const actions: Html[] = [];
     if (!oneClick) {
-      actions.push(submitButton(pending.kind === "may_discard" ? "Continue" : "Discard", !ready));
+      const submitLabel =
+        kind === "may_discard" ? "Continue" : kind === "put_from_hand_on_top" ? "Put on top" : "Discard";
+      actions.push(submitButton(submitLabel, !ready));
+    }
+    const decline = declineAnswer(pending);
+    if (decline != null) {
+      actions.push(
+        answerButton(
+          pending,
+          "prompt-decline",
+          cardPickDeclineLabel(pending) ?? "Decline",
+          decline,
+          false,
+          tableId == null,
+        ),
+      );
     }
     return h.div(
       [
-        h.DataAttribute("testid", "pending-discard-aim"),
+        h.DataAttribute("testid", discardKind ? "pending-discard-aim" : "pending-hand-aim"),
         h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
         h.Class(
           [
@@ -991,10 +1045,7 @@ function cardPickForKind(
         ),
       ],
       [
-        h.div(
-          [h.Class("pointer-events-none")],
-          [oneClick ? "Click a card in your hand to discard" : "Click cards in your hand to discard"],
-        ),
+        h.div([h.Class("pointer-events-none")], [pendingHandAimCoach(kind, oneClick)]),
         countLine,
         actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
       ].filter((v): v is Html => v !== null),

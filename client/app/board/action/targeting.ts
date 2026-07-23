@@ -249,13 +249,40 @@ export function pendingDamageAssignOverlay(
   };
 }
 
-/** Legal hand object ids for pending discard / may_discard when every item is in the viewer's hand. */
-export function pendingDiscardHandIds(
+type PendingHandPickChoice = Extract<
+  PendingChoiceView,
+  {
+    kind: "discard" | "may_discard" | "put_land_from_hand" | "put_creature_from_hand" | "put_from_hand_on_top";
+  }
+>;
+
+function isPendingHandPick(pc: PendingChoiceView): pc is PendingHandPickChoice {
+  return (
+    pc.kind === "discard" ||
+    pc.kind === "may_discard" ||
+    pc.kind === "put_land_from_hand" ||
+    pc.kind === "put_creature_from_hand" ||
+    pc.kind === "put_from_hand_on_top"
+  );
+}
+
+/** True when a hand-bar click should auto-submit (no accumulate chrome). */
+export function pendingHandPickOneClick(pc: PendingChoiceView | null | undefined): boolean {
+  if (pc == null || !isPendingHandPick(pc)) return false;
+  if (pc.kind === "put_land_from_hand" || pc.kind === "put_creature_from_hand") return true;
+  if (pc.kind === "discard" || pc.kind === "put_from_hand_on_top") return pc.count === 1;
+  return false;
+}
+
+/**
+ * Legal hand object ids for pending discard / put-from-hand choices when every item is in the
+ * viewer's hand. Off-hand items keep the modal card picker.
+ */
+export function pendingHandPickIds(
   pc: PendingChoiceView | null | undefined,
   state: VisibleState,
 ): ReadonlySet<number> | null {
-  if (pc == null) return null;
-  if (pc.kind !== "discard" && pc.kind !== "may_discard") return null;
+  if (pc == null || !isPendingHandPick(pc)) return null;
   if (pc.player !== state.viewer) return null;
   if (pc.items.length === 0) return null;
   const handIds = new Set(
@@ -267,6 +294,16 @@ export function pendingDiscardHandIds(
     ids.add(item.id);
   }
   return ids;
+}
+
+/** Legal hand object ids for pending discard / may_discard when every item is in the viewer's hand. */
+export function pendingDiscardHandIds(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (pc == null) return null;
+  if (pc.kind !== "discard" && pc.kind !== "may_discard") return null;
+  return pendingHandPickIds(pc, state);
 }
 
 /**
