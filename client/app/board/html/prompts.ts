@@ -2343,6 +2343,7 @@ function destinationPickPrompt(
     PendingChoiceView,
     { kind: "choose_countered_spell_destination" | "revealed_card_to_battlefield_or_hand" }
   >,
+  state: VisibleState,
   tableId: string | null,
 ): Html {
   if (pending.kind === "choose_countered_spell_destination") {
@@ -2370,29 +2371,62 @@ function destinationPickPrompt(
       ),
     ]);
   }
-  return frame("pending-choice", "Put the revealed card onto the battlefield or into your hand?", [
-    h.div(
-      [h.Class("flex gap-2")],
-      [
-        answerButton(
-          pending,
-          "prompt-destination-battlefield",
-          "Battlefield",
-          { kind: "revealed", choice: pending.item.id },
-          true,
-          tableId == null,
-        ),
-        answerButton(
-          pending,
-          "prompt-destination-hand",
-          "Hand",
-          { kind: "revealed", choice: null },
-          false,
-          tableId == null,
-        ),
-      ],
-    ),
-  ]);
+  const print = choiceItemPrint(pending.item, state);
+  const face = print
+    ? cardArt(h, {
+        print,
+        size: "large",
+        alt: "",
+        className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
+      })
+    : h.div(
+        [
+          h.DataAttribute("testid", "prompt-revealed-face"),
+          h.Class(
+            "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
+          ),
+        ],
+        [pending.item.label],
+      );
+  const faceEl =
+    print !== "" ? h.div([h.DataAttribute("testid", "prompt-revealed-face"), h.Class("relative")], [face]) : face;
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-revealed-destination-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        ["Put the revealed card onto the battlefield or into your hand?"],
+      ),
+      faceEl,
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        [
+          answerButton(
+            pending,
+            "prompt-destination-battlefield",
+            "Battlefield",
+            { kind: "revealed", choice: pending.item.id },
+            true,
+            tableId == null,
+          ),
+          answerButton(
+            pending,
+            "prompt-destination-hand",
+            "Hand",
+            { kind: "revealed", choice: null },
+            false,
+            tableId == null,
+          ),
+        ],
+      ),
+    ],
+  );
 }
 
 function pendingChoicePrompt(
@@ -2483,7 +2517,7 @@ function pendingChoicePrompt(
       ) {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
-      return destinationPickPrompt(pending, tableId);
+      return destinationPickPrompt(pending, state, tableId);
     default: {
       const _exhaustive: never = id;
       return _exhaustive;

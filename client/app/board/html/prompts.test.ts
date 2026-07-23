@@ -546,6 +546,30 @@ test("choose_dredge submit emits chosen dredger", () => {
   });
 });
 
+test("revealed_card_to_battlefield_or_hand Battlefield submits revealed choice", () => {
+  const s = state({
+    pending_choice: {
+      kind: "revealed_card_to_battlefield_or_hand",
+      player: 0,
+      item: { id: 17, label: "Beast" },
+    },
+  });
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-destination-battlefield")));
+  expect(intents).toEqual([{ kind: "revealed_card_to_battlefield_or_hand", player: 0, choice: 17 }]);
+});
+
+test("revealed_card_to_battlefield_or_hand Hand puts the card in hand", () => {
+  const s = state({
+    pending_choice: {
+      kind: "revealed_card_to_battlefield_or_hand",
+      player: 0,
+      item: { id: 17, label: "Beast" },
+    },
+  });
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-destination-hand")));
+  expect(intents).toEqual([{ kind: "revealed_card_to_battlefield_or_hand", player: 0, choice: null }]);
+});
+
 test("search_library Choose submits selected card", () => {
   const s = state({
     pending_choice: {
