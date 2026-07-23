@@ -1,7 +1,7 @@
 # Choices, Actions, and Resolution
 
 **Status:** Current (as of 2026-07-20)
-**Module:** `crates/engine` (`src/types.rs` `PendingChoice`/`LegalAction`, `src/cast.rs`, `src/effects.rs`, `src/resolution.rs`, `src/priority.rs` `settle_payment`, `src/query.rs`, `src/playable.rs`)
+**Module:** `crates/engine` (`src/types/` `PendingChoice`/`LegalAction`, `src/cast.rs`, `src/effects.rs`, `src/resolution/`, `src/priority.rs` `settle_payment`, `src/query.rs`, `src/playable.rs`)
 
 ---
 

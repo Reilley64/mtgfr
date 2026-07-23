@@ -43,8 +43,9 @@ positive ids of user decks. Every user sees precons in their deck list alongside
 server boot into the `catalog_cards` table (DDL managed by Toasty migrations; data refreshed by
 `catalog_search::project()` truncate + reinsert). Each row holds a lowercased `search_blob`
 haystack (name + kind + subtypes + set + colors + keywords + Scryfall oracle-tag slugs) and the
-card's full wire JSON. `GET /cards/search` (proto `Cards.Search`) runs a tokenized `LIKE` query
-against `search_blob`; `Cards.Lookup` fetches specific cards by id for deck hydration on load.
+card's full wire JSON. `Cards.Search` (BFF `/api/rpc/cards/search`) runs a tokenized `LIKE`
+query against `search_blob`; `Cards.Lookup` fetches specific cards by id for deck hydration on
+load.
 Neither endpoint requires authentication.
 
 ---
@@ -134,10 +135,10 @@ Precon names are:
 | ID | Name |
 |----|------|
 | -1 | Silverquill Influence |
-| -2 | Prismari Performance |
-| -3 | Witherbloom Witchcraft |
-| -4 | Lorehold Legacies |
-| -5 | Quantum Quandrix |
+| -2 | Prismari Artistry |
+| -3 | Witherbloom Pestilence |
+| -4 | Lorehold Spirit |
+| -5 | Quandrix Unlimited |
 | -6...-8 | Additional fidelity-grind decks |
 
 `is_precon(id)` returns `true` for `id < 0`. Edit and delete of a precon id returns a 422.
@@ -207,8 +208,8 @@ for hydrating a saved deck without fetching the full catalog.
 
 ## Testing Decisions
 
-- `tests/deck_legality.rs` validates all five `soc` precon decks pass `legality::validate` —
-  this is the canonical fidelity bar for the initial faithful deck scope.
+- SoC precon tests in `crates/server/src/decks.rs` validate the five `soc` precon decks pass
+  `legality::validate` — this is the canonical fidelity bar for the initial faithful deck scope.
 - `crates/server/src/legality.rs` contains inline unit tests covering: missing commander in pool,
   wrong commander type, count too low/high, singleton violation, basic-land exemption, off-color
   card, missing/invalid print UUID.
@@ -243,11 +244,11 @@ for hydrating a saved deck without fetching the full catalog.
   rules definition (CR 903.4) within the engine's simplified color model.
 - The `catalog_search::project()` call on boot means a server restart always reflects the current
   engine card pool — no stale catalog entries survive a binary update. The truncate+reinsert is
-  cheap for the current pool size (~493 cards).
+  cheap for the current pool size (618 deckable card TOMLs).
 - `CatalogCard.approximates` is the one-line fidelity note on how a card's engine behavior
   differs from its printed rules. The deck builder displays this to inform players of known gaps.
 - `CatalogCard.oracle` carries the printed rules text for deck builder hover/inspect; it is
   absent for vanilla cards and for cards whose oracle text hasn't been recorded in the card TOML.
-- Precon fixture JSON files are also the source of truth for `tests/deck_legality.rs` via
-  `include_str!` — changing a precon's list automatically runs it through the legality validator
-  on the next `cargo nextest run`.
+- Precon fixture JSON files are also the source of truth for the SoC precon tests in
+  `crates/server/src/decks.rs` via `include_str!` — changing a precon's list automatically runs
+  it through the legality validator on the next `cargo nextest run`.
