@@ -259,6 +259,37 @@ export function paintCardPickedHighlight(
   ctx.restore();
 }
 
+/** Crimson badge showing combat-damage assigned to this blocker during draft. */
+export function paintCardAssignAmount(
+  ctx: CanvasRenderingContext2D,
+  cam: Camera,
+  card: RenderCard,
+  viewer: number,
+  amount: number,
+): void {
+  if (amount <= 0) return;
+  const tl = worldToScreen(cam, card.x, card.y);
+  const w = card.w * cam.zoom;
+  const h = card.h * cam.zoom;
+  const bw = 28 * cam.zoom;
+  const bh = 18 * cam.zoom;
+
+  ctx.save();
+  rotateCard(ctx, card, viewer, tl.x, tl.y, w, h);
+  badge(
+    ctx,
+    tl.x + w / 2 - bw / 2,
+    tl.y + 6 * cam.zoom,
+    bw,
+    bh,
+    String(amount),
+    cam.zoom,
+    colors.damageCrimson,
+    "#ffecec",
+  );
+  ctx.restore();
+}
+
 function rotateCard(
   ctx: CanvasRenderingContext2D,
   card: RenderCard,

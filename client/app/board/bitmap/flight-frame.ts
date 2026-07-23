@@ -80,6 +80,10 @@ export function restingPaintSnapshot(frame: Omit<BitmapFrame, "flights">): Resti
     hideCardIds: sortedSetValues(frame.hideCardIds),
     targetObjects: sortedSetValues(frame.targetObjects),
     pickedObjects: sortedSetValues(frame.pickedObjects),
+    assignAmounts: [...frame.assignAmounts.entries()]
+      .filter(([, amount]) => amount > 0)
+      .sort((a, b) => a[0] - b[0])
+      .map(([id, amount]) => `${id}:${amount}`),
     targetPlayers: sortedSetValues(frame.targetPlayers),
     paymentPreviewIds: sortedSetValues(frame.paymentPreviewIds),
     cards: [...frame.cards].sort((a, b) => a.id - b.id).map(cardPaintKey),

@@ -139,6 +139,7 @@ function frame(overrides: Partial<BitmapFrame> = {}): BitmapFrame {
     hideCardIds: new Set(),
     targetObjects: new Set(),
     pickedObjects: new Set(),
+    assignAmounts: new Map(),
     targetPlayers: new Set(),
     aimFrom: null,
     cursor: { x: 0, y: 0 },
@@ -192,6 +193,7 @@ describe("paintBitmapLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set(),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set(),
         aimFrom: null,
         cursor: { x: 0, y: 0 },
@@ -253,6 +255,7 @@ describe("paintBitmapLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set(),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set(),
         aimFrom: null,
         cursor: { x: 0, y: 0 },
@@ -303,6 +306,7 @@ describe("paintBitmapLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set(),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set(),
         aimFrom: null,
         cursor: { x: 0, y: 0 },
@@ -350,6 +354,7 @@ describe("paintBitmapLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set(),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set(),
         aimFrom: null,
         cursor: { x: 0, y: 0 },
@@ -392,6 +397,7 @@ describe("paintBitmapLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set(),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set(),
         aimFrom: null,
         cursor: { x: 0, y: 0 },
@@ -436,6 +442,7 @@ describe("paintBitmapLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set(),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set(),
         aimFrom: null,
         cursor: { x: 0, y: 0 },
@@ -477,6 +484,7 @@ describe("paintBitmapLayer", () => {
       hideCardIds: new Set<number>(),
       targetObjects: new Set<number>(),
       pickedObjects: new Set<number>(),
+      assignAmounts: new Map<number, number>(),
       targetPlayers: new Set<number>(),
       aimFrom: null,
       cursor: { x: 0, y: 0 },
@@ -518,6 +526,7 @@ describe("paintBitmapLayer", () => {
       hideCardIds: new Set<number>(),
       targetObjects: new Set<number>(),
       pickedObjects: new Set<number>(),
+      assignAmounts: new Map<number, number>(),
       targetPlayers: new Set<number>(),
       aimFrom: null,
       cursor: { x: 0, y: 0 },
@@ -561,6 +570,7 @@ describe("paintBitmapLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set([22]),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set<number>(),
         aimFrom: { x: 1300, y: 450 },
         cursor: { x: 500, y: 300 },
@@ -574,6 +584,51 @@ describe("paintBitmapLayer", () => {
     expect(calls.some((call) => call === "target-highlight")).toBe(true);
     expect(calls.filter((call) => call === "stroke").length).toBeGreaterThan(0);
     expect(calls.indexOf("target-highlight")).toBeGreaterThan(calls.indexOf("image:unknown"));
+  });
+
+  it("paints assign-amount badges on blockers during combat damage draft", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+    const cache = { get: vi.fn(() => undefined) };
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 1440,
+        height: 900,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [card({ id: 22 }), card({ id: 99, x: 200, y: 200, name: "Elf" })],
+        viewer: 0,
+        players: [player()],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set([22, 99]),
+        pickedObjects: new Set([22]),
+        assignAmounts: new Map([
+          [22, 3],
+          [99, 0],
+        ]),
+        targetPlayers: new Set<number>(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      cache,
+    );
+
+    expect(calls).toContain(`fill:${colors.damageCrimson}`);
   });
 
   it("does not paint flights on the resting-permanent layer", () => {
@@ -618,6 +673,7 @@ describe("paintBitmapLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set(),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set(),
         aimFrom: null,
         cursor: { x: 0, y: 0 },
@@ -675,6 +731,7 @@ describe("paintFlightLayer", () => {
         hideCardIds: new Set(),
         targetObjects: new Set(),
         pickedObjects: new Set(),
+        assignAmounts: new Map(),
         targetPlayers: new Set(),
         aimFrom: null,
         cursor: { x: 0, y: 0 },

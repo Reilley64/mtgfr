@@ -13,7 +13,13 @@ import { AVATAR_R, avatarPos, type RenderCard, seatColor } from "../geometry/lay
 import { ArtLoaded, FlightsSynced } from "../messages";
 import { type CardFlight, stepFlights } from "../motion/flights";
 import { mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
-import { paintAutoTapPreview, paintCard, paintCardPickedHighlight, paintCardTargetHighlight } from "./paint-cards";
+import {
+  paintAutoTapPreview,
+  paintCard,
+  paintCardAssignAmount,
+  paintCardPickedHighlight,
+  paintCardTargetHighlight,
+} from "./paint-cards";
 import { paintFlightCard } from "./paint-flights";
 
 export type BitmapFrame = {
@@ -33,6 +39,8 @@ export type BitmapFrame = {
   targetObjects: ReadonlySet<number>;
   /** Multi-aim picks already toggled in the pending draft (Priority Gold solid ring). */
   pickedObjects: ReadonlySet<number>;
+  /** Combat-damage assign draft amounts keyed by blocker object id. */
+  assignAmounts: ReadonlyMap<number, number>;
   targetPlayers: ReadonlySet<number>;
   aimFrom: Vec | null;
   cursor: Vec;
@@ -222,6 +230,10 @@ export function paintBitmapLayer(canvas: HTMLCanvasElement, frame: BitmapFrame, 
       paintCardPickedHighlight(ctx, frame.camera, card, frame.viewer);
     } else if (frame.targetObjects.has(card.id)) {
       paintCardTargetHighlight(ctx, frame.camera, card, frame.viewer);
+    }
+    const assignAmount = frame.assignAmounts.get(card.id) ?? 0;
+    if (assignAmount > 0) {
+      paintCardAssignAmount(ctx, frame.camera, card, frame.viewer, assignAmount);
     }
   }
 

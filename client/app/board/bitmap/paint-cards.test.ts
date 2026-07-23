@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { colors } from "~/design-tokens.generated";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
-import { paintCard, paintCardPickedHighlight, paintCardTargetHighlight, TARGET_COLOR } from "./paint-cards";
+import {
+  paintCard,
+  paintCardAssignAmount,
+  paintCardPickedHighlight,
+  paintCardTargetHighlight,
+  TARGET_COLOR,
+} from "./paint-cards";
 
 function card(overrides: Partial<RenderCard> = {}): RenderCard {
   return {
@@ -93,6 +99,24 @@ describe("paintCardPickedHighlight", () => {
     expect(ctx.shadowColor).toBe(colors.priorityGold);
     expect(ctx.stroke).toHaveBeenCalled();
     expect(ctx.setLineDash).toHaveBeenCalledWith([]);
+  });
+});
+
+describe("paintCardAssignAmount", () => {
+  it("draws a crimson assign-amount badge when amount is positive", () => {
+    const calls: string[] = [];
+    const ctx = mockCtx(calls);
+
+    paintCardAssignAmount(ctx, { panX: 0, panY: 0, zoom: 1 }, card(), 0, 3);
+
+    expect(calls).toContain(`fill:${colors.damageCrimson}`);
+    expect(ctx.fillText).toHaveBeenCalled();
+  });
+
+  it("skips painting when amount is zero", () => {
+    const ctx = mockCtx();
+    paintCardAssignAmount(ctx, { panX: 0, panY: 0, zoom: 1 }, card(), 0, 0);
+    expect(ctx.fillText).not.toHaveBeenCalled();
   });
 });
 
