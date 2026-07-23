@@ -364,6 +364,61 @@ test("pay_cost prompt emits pay_optional_cost intent from UI", () => {
   expect(intents).toEqual([{ kind: "pay_optional_cost", player: 0, pay: true }]);
 });
 
+test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_cost",
+      cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
+      label: "Create a Fungus Beast",
+      player: 0,
+      source: 1,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
+  );
+});
+
+test("pay_echo_or_sacrifice decline is labeled Sacrifice", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_echo_or_sacrifice",
+      cost: { colored: [], generic: 1 },
+      player: 0,
+      source: 9,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {1}"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Sacrifice"),
+  );
+});
+
+test("pay_or_counter decline is labeled Let it be countered", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_or_counter",
+      cost: { colored: [0, 1, 0, 0, 0], generic: 0 },
+      player: 0,
+      spell: 3,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {U}"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Let it be countered"),
+  );
+});
+
 test("choose_mode prompt emits choose_mode intent from UI", () => {
   const intents = clickPromptIntent(
     state({

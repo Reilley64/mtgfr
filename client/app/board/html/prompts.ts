@@ -755,6 +755,34 @@ function yesNoPrompt(
   ]);
 }
 
+function payCostDeclineLabel(
+  kind:
+    | "pay_cost"
+    | "pay_or_counter"
+    | "pay_or_controller_draws"
+    | "pay_echo_or_sacrifice"
+    | "pay_recover_or_exile"
+    | "sacrifice_unless_pay",
+): string {
+  switch (kind) {
+    case "pay_or_counter":
+      return "Let it be countered";
+    case "pay_or_controller_draws":
+      return "Let them draw";
+    case "pay_echo_or_sacrifice":
+    case "sacrifice_unless_pay":
+      return "Sacrifice";
+    case "pay_recover_or_exile":
+      return "Exile";
+    case "pay_cost":
+      return "Don't pay";
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
 function payCostPrompt(
   pending: Extract<
     PendingChoiceView,
@@ -771,12 +799,14 @@ function payCostPrompt(
   tableId: string | null,
 ): Html {
   const title = "label" in pending ? pending.label : pendingChoiceTitle(pending);
+  const payLabel = `Pay ${costText(pending.cost)}`;
+  const declineLabel = payCostDeclineLabel(pending.kind);
   return frame("pending-choice", title, [
     h.div(
       [h.Class("flex flex-wrap gap-2")],
       [
-        answerButton(pending, "prompt-pay", "Pay", { kind: "pay", pay: true }, true, tableId == null),
-        answerButton(pending, "prompt-decline", "Don't pay", { kind: "pay", pay: false }, false, tableId == null),
+        answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null),
+        answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
       ],
     ),
   ]);
@@ -1160,7 +1190,10 @@ function stringPickPrompt(
 }
 
 function numberPickTitle(
-  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }>,
+  pending: Extract<
+    PendingChoiceView,
+    { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
+  >,
 ): string {
   if (pending.kind === "trade_secrets_caster_draw") return `Choose how many cards to draw (up to ${pending.max})`;
   if (pending.kind === "pay_any_amount_of_mana") return `Pay any amount of mana (up to ${pending.max})`;
@@ -1168,7 +1201,10 @@ function numberPickTitle(
 }
 
 function numberPickPrompt(
-  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }>,
+  pending: Extract<
+    PendingChoiceView,
+    { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
+  >,
   tableId: string | null,
 ): Html {
   const answerFor = (count: number): AnswerInput =>

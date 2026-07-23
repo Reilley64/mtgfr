@@ -38,6 +38,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `assign_combat_damage` readiness (`damageAssignReady`) mirrors the engine: non-trample requires the sum of non-negative blocker amounts to equal the attacker’s power; trample requires `0 ≤ sum ≤ power` (overflow trampling is automatic).
 - Trample’s prompt shows `assigned N / power` plus a `to defender: R` overflow line (`prompt-damage-overflow`). Non-trample prompts omit that line.
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
+- Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
 
 ## Implementation Decisions
 
@@ -57,6 +58,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Unit tests cover `damageAssignReady` for exact-sum non-trample and under-assign / over-assign / negative trample cases.
 - Scene tests cover trample overflow copy and Assign enabled when under-assigned.
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
+- Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 
 ## Out of Scope
