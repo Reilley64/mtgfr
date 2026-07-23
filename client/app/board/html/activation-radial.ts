@@ -148,7 +148,7 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
           h.Role("group"),
           h.AriaLabel("Activation options"),
           h.Class("pointer-events-none absolute z-[31]"),
-          h.Attribute("viewBox", `0 0 ${size} ${size}`),
+          h.ViewBox(`0 0 ${size} ${size}`),
           h.Style(placement),
         ],
         [h.g([h.Transform(`translate(${origin}, ${origin})`), h.Class("pointer-events-auto")], wedges)],
