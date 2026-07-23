@@ -570,6 +570,6 @@ test("choose-X stepper dec updates value and preview via the view", () => {
     Scene.click(Scene.testId("x-prompt-dec")),
     Scene.expect(Scene.testId("x-prompt-value")).toHaveText("2"),
     Scene.expect(Scene.testId("x-prompt-inc")).toBeEnabled(),
-    Scene.expect(Scene.testId("x-prompt-preview")).toContainText("Pay"),
+    Scene.expect(Scene.testId("x-prompt-preview")).toHaveText("Pay {3}"),
   );
 });

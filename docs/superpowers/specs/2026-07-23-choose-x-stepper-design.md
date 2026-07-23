@@ -46,7 +46,7 @@ Pure helpers restored under `client/lib/xCost.ts`:
 - `clampX(value, min, max)`
 - `costWithChosenX(cost, x)` → WireCost with `generic += x * x_symbols`, `has_x: false`
 
-Preview renders as “Pay” + `costPips(costWithChosenX(xCost, draftX), { showZero: true })` so the prompt matches hand-bar mana language.
+Preview renders as `Pay ${costText(costWithChosenX(xCost, draftX))}` (brace string). Text is used instead of mana-font pips so generics above mana-font’s 0–20 range (common for high X) never collapse to a false `{0}`.
 
 ### View
 

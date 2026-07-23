@@ -14,11 +14,10 @@ import {
   FORMULATOR_FOR_KIND,
   initPromptDraft,
 } from "~/choice";
-import { type CostPip, costPipPlate, costPips } from "~/costPips";
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
-import { costWithChosenX } from "~/xCost";
+import { costText, costWithChosenX } from "~/xCost";
 import { modeAvailable } from "../action/modal";
 import { objectName, playerSeatLabel, stagedPickTargets, stagedTargetTitle } from "../action/targeting";
 import { seatColor } from "../geometry/layout";
@@ -71,22 +70,6 @@ function itemButton(label: string, testId: string, onClick: Message, disabled = 
         [label],
       ),
     ],
-  );
-}
-
-function costPipView(ms: string, code: string, sizePx: number): Html {
-  return h.span(
-    [
-      h.Class("inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)]"),
-      h.Style({
-        width: `${sizePx}px`,
-        height: `${sizePx}px`,
-        "background-color": costPipPlate(code),
-        color: "#111",
-        "font-size": `${Math.round(sizePx * 0.82)}px`,
-      }),
-    ],
-    [h.i([h.Class(`ms ms-${ms}`)], [])],
   );
 }
 
@@ -364,15 +347,14 @@ function targetPickPrompt(title: string, targets: ReadonlyArray<WireTarget>, sta
 
 function boardXPrompt(prompt: NonNullable<BoardModel["xPrompt"]>): Html {
   const { minX, maxX, draftX, xCost, name } = prompt;
-  const preview = costWithChosenX(xCost, draftX);
-  const pips = costPips(preview, { showZero: true });
+  const preview = costText(costWithChosenX(xCost, draftX));
   return frame("x-prompt", `Choose X for ${name}`, [
     h.div(
       [
         h.Class("mb-sm flex items-center justify-center gap-2 text-body text-mist"),
         h.DataAttribute("testid", "x-prompt-preview"),
       ],
-      ["Pay ", ...pips.map((pip: CostPip) => costPipView(pip.ms, pip.code, 16))],
+      [`Pay ${preview}`],
     ),
     h.div(
       [h.Class("flex flex-wrap items-center justify-center gap-2")],

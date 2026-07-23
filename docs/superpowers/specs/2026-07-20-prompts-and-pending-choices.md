@@ -27,7 +27,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `boardXPrompt` is a stepper over `[minX, maxX]`:
   - Draft value lives on `XPromptState.draftX` (defaults to `maxX`, clamped).
   - Min / − / + / Max dispatch `XDraftSet`; Confirm dispatches `XSubmitted` with the draft.
-  - Preview row shows Pay + `costPips(costWithChosenX(xCost, draftX))` (`x-prompt-preview`).
+  - Preview row shows `Pay {…}` via `costText(costWithChosenX(xCost, draftX))` (`x-prompt-preview`) — brace text so large resolved generics stay accurate.
 - Wire fields `min_x`, `max_x`, and `x_cost` / `x_symbols` remain the server-authoritative contract; the client does not invent affordability.
 
 ## Implementation Decisions
@@ -36,7 +36,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `initPromptDraft`, `buildAnswerFromDraft`, and readiness helpers own draft validation.
 - Local pre-submit prompts live in `BoardModel` and are not derived from shared `pending_choice`.
 - `cardArt(h, opts)` has one DOM API and supports optional `style`.
-- Pure X helpers live in `client/lib/xCost.ts` (`clampX`, `costWithChosenX`); preview reuses hand-bar `costPips`.
+- Pure X helpers live in `client/lib/xCost.ts` (`clampX`, `costWithChosenX`, `costText`).
 
 ## Testing Decisions
 
