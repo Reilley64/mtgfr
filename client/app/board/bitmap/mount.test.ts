@@ -264,6 +264,55 @@ describe("paintBitmapLayer", () => {
     expect(calls.indexOf("arrow")).toBeGreaterThan(calls.indexOf("avatar"));
   });
 
+  it("paints Cmd N on life orbs from max commander_damage", () => {
+    const calls: string[] = [];
+    vi.stubGlobal("window", { devicePixelRatio: 1 });
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => mockCtx(calls)),
+      style: {},
+    } as unknown as HTMLCanvasElement;
+
+    paintBitmapLayer(
+      canvas,
+      {
+        width: 800,
+        height: 600,
+        camera: { panX: 0, panY: 0, zoom: 1 },
+        cards: [],
+        viewer: 0,
+        players: [
+          player({
+            commander_damage: [
+              { from: 1, amount: 7 },
+              { from: 2, amount: 14 },
+            ],
+          }),
+          player({ player: 1, username: "Bob" }),
+        ],
+        priority: 0,
+        combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+        stagedAttackers: [],
+        stagedBlocks: [],
+        flights: [],
+        hideCardIds: new Set(),
+        targetObjects: new Set(),
+        targetPlayers: new Set(),
+        aimFrom: null,
+        cursor: { x: 0, y: 0 },
+        combatDragFrom: null,
+        combatDragStroke: null,
+        paymentPreviewIds: new Set(),
+      },
+      { get: vi.fn(() => undefined) },
+    );
+
+    expect(calls).toContain("text:Cmd 14");
+    expect(calls).not.toContain("text:Cmd 0");
+    expect(calls.filter((c) => c.startsWith("text:Cmd "))).toHaveLength(1);
+  });
+
   it("paints staged declare-attackers arrows above resting cards", () => {
     const calls: string[] = [];
     vi.stubGlobal("window", { devicePixelRatio: 1 });

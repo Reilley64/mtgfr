@@ -6,6 +6,17 @@ import { AVATAR_R, avatarPos, seatColor } from "../geometry/layout";
 
 type Shape = Canvas.Shape;
 
+/** Highest combat damage from any single commander source (21-damage clock). */
+export function maxCommanderDamage(player: PlayerView): number {
+  const rows = player.commander_damage;
+  if (rows == null || rows.length === 0) return 0;
+  let max = 0;
+  for (const row of rows) {
+    if (row.amount > max) max = row.amount;
+  }
+  return max;
+}
+
 export type AvatarScreenPositions = Record<number, { x: number; y: number }>;
 
 export function avatarScreenPositions(
@@ -75,6 +86,21 @@ export function avatarShapes(
         baseline: "Middle",
       }),
     );
+
+    const cmd = maxCommanderDamage(player);
+    if (cmd > 0) {
+      shapes.push(
+        Canvas.Text({
+          x: pos.x,
+          y: pos.y + 42 * zoom,
+          content: `Cmd ${cmd}`,
+          font: `${Math.max(1, Math.round(12 * zoom))}px system-ui, sans-serif`,
+          fill: "#db8664",
+          align: "Center",
+          baseline: "Middle",
+        }),
+      );
+    }
 
     if (targeted) {
       shapes.push(

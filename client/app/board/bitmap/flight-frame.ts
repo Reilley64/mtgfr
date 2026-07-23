@@ -40,12 +40,14 @@ function cardPaintKey(card: RenderCard): Record<string, unknown> {
 }
 
 function playerPaintKey(player: PlayerView): Record<string, unknown> {
+  const commanderDamage = [...(player.commander_damage ?? [])].map((row) => `${row.from}:${row.amount}`).sort();
   return {
     player: player.player,
     life: player.life,
     lost: player.lost,
     username: player.username ?? "",
     hand_count: player.hand_count,
+    commander_damage: commanderDamage,
   };
 }
 

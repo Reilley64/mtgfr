@@ -42,6 +42,27 @@ describe("restingPaintChanged", () => {
     const fanned = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, fanAngle: 0.12 }] } as never);
     expect(restingPaintChanged(flat, fanned)).toBe(true);
   });
+
+  it("is true when only commander_damage changes on a player", () => {
+    const before = restingPaintSnapshot({
+      ...baseResting,
+      players: [{ player: 0, life: 40, lost: false, username: "Alice", hand_count: 7 }],
+    } as never);
+    const after = restingPaintSnapshot({
+      ...baseResting,
+      players: [
+        {
+          player: 0,
+          life: 40,
+          lost: false,
+          username: "Alice",
+          hand_count: 7,
+          commander_damage: [{ from: 1, amount: 14 }],
+        },
+      ],
+    } as never);
+    expect(restingPaintChanged(before, after)).toBe(true);
+  });
 });
 
 describe("mergeFlightPoses", () => {
