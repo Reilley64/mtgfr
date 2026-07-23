@@ -696,6 +696,33 @@ test("on-board choose_target aims instead of showing a card grid", () => {
   );
 });
 
+test("on-board sacrifice_edict shows aim chrome instead of card grid", () => {
+  const bear = card(7, {
+    name: "Bear",
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [bear],
+        pending_choice: {
+          kind: "sacrifice_edict",
+          player: 0,
+          source: 1,
+          items: [{ id: 7, label: "Bear" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-target-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-card-7")).toBeAbsent(),
+  );
+});
+
 test("multi on-board choose_target shows Confirm count chrome", () => {
   const a = card(1, {
     name: "A",

@@ -188,6 +188,23 @@ export function answerFromBoardTarget(pc: PendingChoiceView, target: WireTarget)
     if (target.kind !== "object") return null;
     return { kind: "targets", ids: [target.id] };
   }
+  if (target.kind !== "object") return null;
+  if (pc.kind === "choose_attach_host") return { kind: "attach_host", host: target.id };
+  if (pc.kind === "sacrifice_unless_return_land") return { kind: "return_land", land: target.id };
+  if (pc.kind === "choose_copy_target") return { kind: "copy_target", copy: target.id };
+  if (pc.kind === "decline_untap") return { kind: "keep_tapped", ids: [target.id] };
+  if (
+    pc.kind === "sacrifice_edict" ||
+    pc.kind === "proliferate" ||
+    pc.kind === "choose_own_sacrifices" ||
+    pc.kind === "phase_out" ||
+    pc.kind === "may_sacrifice" ||
+    pc.kind === "devour" ||
+    pc.kind === "choose_counter_target_for_player" ||
+    pc.kind === "caster_keep_permanents"
+  ) {
+    return { kind: "sacrifice", ids: [target.id] };
+  }
   return null;
 }
 
