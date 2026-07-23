@@ -485,7 +485,7 @@ test("result overlay renders watch and leave actions", () => {
   );
 });
 
-test("x prompt renders when the board is waiting for a chosen X", () => {
+test("x prompt shows stepper controls and a live cost preview", () => {
   const xPrompt: XPromptState = {
     action: action(12, { label: "Comet Storm", has_x: true, max_x: 3, min_x: 0 }),
     target: null,
@@ -494,9 +494,21 @@ test("x prompt renders when the board is waiting for a chosen X", () => {
     name: "Comet Storm",
     minX: 0,
     maxX: 3,
+    draftX: 3,
     xCost: cost({ generic: 1, has_x: true, x_symbols: 1 }),
   };
-  overlayScene(overlayModel({ ...initialBoardModel(), xPrompt }), Scene.expect(Scene.testId("x-prompt")).toExist());
+  overlayScene(
+    overlayModel({ ...initialBoardModel(), xPrompt }),
+    Scene.expect(Scene.testId("x-prompt")).toExist(),
+    Scene.expect(Scene.testId("x-prompt-preview")).toHaveText("Pay {4}"),
+    Scene.expect(Scene.testId("x-prompt-value")).toHaveText("3"),
+    Scene.expect(Scene.testId("x-prompt-inc")).toBeDisabled(),
+    Scene.expect(Scene.testId("x-prompt-min")).toExist(),
+    Scene.expect(Scene.testId("x-prompt-dec")).toExist(),
+    Scene.expect(Scene.testId("x-prompt-max")).toExist(),
+    Scene.expect(Scene.testId("x-prompt-confirm")).toExist(),
+    Scene.expect(Scene.testId("x-prompt-0")).not.toExist(),
+  );
 });
 
 test("modal mode picker renders before modes are chosen", () => {

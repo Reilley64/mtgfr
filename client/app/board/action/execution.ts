@@ -226,6 +226,8 @@ export type XPromptState = {
   name: string;
   minX: number;
   maxX: number;
+  /** Clamped draft while the stepper is open; Confirm submits this value. */
+  draftX: number;
   xCost: WireCost;
 };
 

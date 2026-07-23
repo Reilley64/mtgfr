@@ -2,10 +2,11 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
-import type { ObjectView, VisibleState } from "~/wire/types";
+import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
-import { type Message, PromptCardToggled, PromptDamageSet, PromptSubmitted } from "../messages";
+import { emptyCostPicks } from "../action/execution";
+import { type Message, PromptCardToggled, PromptDamageSet, PromptSubmitted, XDraftSet, XSubmitted } from "../messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
@@ -450,4 +451,125 @@ test("choose_countered_spell_destination prompt emits choose_top_or_bottom inten
     Scene.click(Scene.testId("prompt-destination-top")),
   );
   expect(intents).toEqual([{ kind: "choose_top_or_bottom", player: 0, top: true }]);
+});
+
+function xCost(overrides: Partial<WireCost> = {}): WireCost {
+  return {
+    generic: 1,
+    colored: [0, 0, 0, 0, 0],
+    has_x: true,
+    x_symbols: 1,
+    ...overrides,
+  };
+}
+
+function xAction(): ActionView {
+  return {
+    id: 12,
+    kind: "cast",
+    label: "Comet Storm",
+    has_x: true,
+    min_x: 0,
+    max_x: 3,
+    x_cost: xCost(),
+    needs_target: false,
+    section: "hand",
+  };
+}
+
+test("XDraftSet clamps draftX into min/max", () => {
+  const board = {
+    ...initialBoardModel(),
+    xPrompt: {
+      action: xAction(),
+      target: null,
+      picks: emptyCostPicks(),
+      modes: [],
+      name: "Comet Storm",
+      minX: 0,
+      maxX: 3,
+      draftX: 3,
+      xCost: xCost(),
+    },
+  };
+  const [next] = updateBoard(board, XDraftSet({ x: 99 }), gameFold(state()), "T1");
+  expect(next.xPrompt?.draftX).toBe(3);
+  const [low] = updateBoard(next, XDraftSet({ x: -5 }), gameFold(state()), "T1");
+  expect(low.xPrompt?.draftX).toBe(0);
+});
+
+test("XSubmitted confirms draft X on the cast intent", () => {
+  const [, commands] = updateBoard(
+    {
+      ...initialBoardModel(),
+      xPrompt: {
+        action: xAction(),
+        target: null,
+        picks: emptyCostPicks(),
+        modes: [],
+        name: "Comet Storm",
+        minX: 0,
+        maxX: 3,
+        draftX: 2,
+        xCost: xCost(),
+      },
+    },
+    XSubmitted({ x: 2 }),
+    gameFold(state()),
+    "T1",
+  );
+  expect(commands.length).toBeGreaterThan(0);
+  expect(intentFromCommand(commands[0])).toMatchObject({ x: 2 });
+});
+
+test("XSubmitted clamps out-of-range x before submit", () => {
+  const [, commands] = updateBoard(
+    {
+      ...initialBoardModel(),
+      xPrompt: {
+        action: xAction(),
+        target: null,
+        picks: emptyCostPicks(),
+        modes: [],
+        name: "Comet Storm",
+        minX: 0,
+        maxX: 3,
+        draftX: 3,
+        xCost: xCost(),
+      },
+    },
+    XSubmitted({ x: 99 }),
+    gameFold(state()),
+    "T1",
+  );
+  expect(intentFromCommand(commands[0])).toMatchObject({ x: 3 });
+});
+
+test("choose-X stepper dec updates value and preview via the view", () => {
+  const s = state();
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    xPrompt: {
+      action: xAction(),
+      target: null,
+      picks: emptyCostPicks(),
+      modes: [],
+      name: "Comet Storm",
+      minX: 0,
+      maxX: 3,
+      draftX: 3,
+      xCost: xCost(),
+    },
+  };
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s, board)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("x-prompt-value")).toHaveText("3"),
+    Scene.expect(Scene.testId("x-prompt-inc")).toBeDisabled(),
+    Scene.click(Scene.testId("x-prompt-dec")),
+    Scene.expect(Scene.testId("x-prompt-value")).toHaveText("2"),
+    Scene.expect(Scene.testId("x-prompt-inc")).toBeEnabled(),
+    Scene.expect(Scene.testId("x-prompt-preview")).toHaveText("Pay {3}"),
+  );
 });

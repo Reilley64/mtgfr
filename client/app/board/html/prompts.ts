@@ -17,6 +17,7 @@ import {
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
+import { costText, costWithChosenX } from "~/xCost";
 import { modeAvailable } from "../action/modal";
 import { objectName, playerSeatLabel, stagedPickTargets, stagedTargetTitle } from "../action/targeting";
 import { seatColor } from "../geometry/layout";
@@ -37,25 +38,33 @@ import {
   PromptSubmitted,
   SacrificeChosen,
   TargetChosen,
+  XDraftSet,
   XSubmitted,
 } from "../messages";
 import type { BoardModel } from "../submodel";
 
 const h = html<Message>();
 
-function itemButton(label: string, testId: string, onClick: Message): Html {
+function itemButton(label: string, testId: string, onClick: Message, disabled = false): Html {
   return h.button(
     [
       h.Type("button"),
       h.DataAttribute("testid", testId),
       h.OnClick(onClick),
-      h.Class("group relative cursor-pointer rounded-hud border-0 bg-transparent p-0"),
+      h.Disabled(disabled),
+      h.Class(
+        disabled
+          ? "group relative cursor-not-allowed rounded-hud border-0 bg-transparent p-0 opacity-40"
+          : "group relative cursor-pointer rounded-hud border-0 bg-transparent p-0",
+      ),
     ],
     [
       h.span(
         [
           h.Class(
-            "block rounded-hud bg-glass px-3 py-1 text-body text-snow transition-transform duration-150 ease-out group-hover:-translate-y-1 hover:bg-glass-dim",
+            disabled
+              ? "block rounded-hud bg-glass px-3 py-1 text-body text-mist"
+              : "block rounded-hud bg-glass px-3 py-1 text-body text-snow transition-transform duration-150 ease-out group-hover:-translate-y-1 hover:bg-glass-dim",
           ),
         ],
         [label],
@@ -337,13 +346,36 @@ function targetPickPrompt(title: string, targets: ReadonlyArray<WireTarget>, sta
 }
 
 function boardXPrompt(prompt: NonNullable<BoardModel["xPrompt"]>): Html {
-  const options: Html[] = [];
-  for (let x = prompt.minX; x <= prompt.maxX; x++) {
-    options.push(itemButton(`X = ${x}`, `x-prompt-${x}`, XSubmitted({ x })));
-  }
-  return frame("x-prompt", `Choose X for ${prompt.name}`, [
-    h.div([h.Class("flex flex-wrap gap-2")], options),
-    cancelButton(),
+  const { minX, maxX, draftX, xCost, name } = prompt;
+  const preview = costText(costWithChosenX(xCost, draftX));
+  return frame("x-prompt", `Choose X for ${name}`, [
+    h.div(
+      [
+        h.Class("mb-sm flex items-center justify-center gap-2 text-body text-mist"),
+        h.DataAttribute("testid", "x-prompt-preview"),
+      ],
+      [`Pay ${preview}`],
+    ),
+    h.div(
+      [h.Class("flex flex-wrap items-center justify-center gap-2")],
+      [
+        itemButton("Min", "x-prompt-min", XDraftSet({ x: minX })),
+        itemButton("−", "x-prompt-dec", XDraftSet({ x: draftX - 1 }), draftX <= minX),
+        h.span(
+          [
+            h.DataAttribute("testid", "x-prompt-value"),
+            h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+          ],
+          [String(draftX)],
+        ),
+        itemButton("+", "x-prompt-inc", XDraftSet({ x: draftX + 1 }), draftX >= maxX),
+        itemButton("Max", "x-prompt-max", XDraftSet({ x: maxX })),
+      ],
+    ),
+    h.div(
+      [h.Class("flex flex-wrap items-center justify-center gap-2")],
+      [itemButton("Confirm", "x-prompt-confirm", XSubmitted({ x: draftX })), cancelButton()],
+    ),
   ]);
 }
 

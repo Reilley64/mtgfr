@@ -237,6 +237,7 @@ export const update = (
       TargetChosen: (boardMessage) => foldBoard(model, boardMessage),
       ModalModesChosen: (boardMessage) => foldBoard(model, boardMessage),
       ModalTargetChosen: (boardMessage) => foldBoard(model, boardMessage),
+      XDraftSet: (boardMessage) => foldBoard(model, boardMessage),
       XSubmitted: (boardMessage) => foldBoard(model, boardMessage),
       SacrificeChosen: (boardMessage) => foldBoard(model, boardMessage),
       DiscardChosen: (boardMessage) => foldBoard(model, boardMessage),
