@@ -5,7 +5,7 @@
 /crates/server/logs
 /node_modules
 openapi.json
-client/src/wire/generated/
+client/lib/wire/generated/
 
 mutants*.out
 

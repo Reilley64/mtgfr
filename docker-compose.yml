@@ -1,5 +1,6 @@
 # Dev Postgres for mtgfr. `docker compose up -d`, then run the server — it picks this up via the
 # default DATABASE_URL (postgresql://mtgfr:mtgfr@localhost:5432/mtgfr), or set DATABASE_URL yourself.
+# Init also creates `mtgfr_web` for the BFF (WEB_DATABASE_URL defaults to that DB).
 services:
   postgres:
     image: postgres:latest
@@ -14,6 +15,7 @@ services:
     volumes:
       # Postgres 18+ stores data in a version subdirectory, so mount the parent (not .../data).
       - mtgfr-pgdata:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mtgfr -d mtgfr"]
       interval: 5s

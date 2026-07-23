@@ -8,7 +8,7 @@
 
 **Tech Stack:** SolidStart client (Solid signals), Vitest (`just client-test` / `cd client && bun run test`), DESIGN.md HUD tokens via Tailwind classes.
 
-**Spec:** [docs/superpowers/specs/2026-07-21-activation-radial-pie-design.md](../specs/2026-07-21-activation-radial-pie-design.md)
+**Spec:** [docs/superpowers/specs/2026-07-21-activation-radial.md](../specs/2026-07-21-activation-radial.md)
 
 ## Global Constraints
 
@@ -30,7 +30,7 @@
 | `client/src/lib/radial.test.ts` | Unit tests for geometry + press reducer |
 | `client/src/components/molecules/activation-radial.tsx` | SVG continuous-ring UI + pointer-up commit |
 | `client/src/components/organisms/board.tsx` | Freeze anchor on open; empty → clear selection; pass frozen x/y/zoom |
-| `docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md` | Note pie radial + pointer-up (short behavior update) |
+| `docs/superpowers/specs/2026-07-21-activation-radial.md` | Note radial + pointer-up behavior |
 
 ---
 
@@ -604,7 +604,7 @@ git commit -m "fix(client): freeze radial anchor and hide empty pies"
 ### Task 5: Spec note + verify
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md` (activation radial behavior blurb)
+- Modify: `docs/superpowers/specs/2026-07-21-activation-radial.md` (activation radial behavior blurb)
 - Optionally touch: `CONTEXT.md` activation-radial glossary line if it still says “pie of legal activates” only — keep wording aligned (“continuous SVG donut; pointer-up commit”)
 
 - [ ] **Step 1: Update board interaction spec**
@@ -638,7 +638,7 @@ Expected: all green
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-07-20-client-game-board-and-interaction.md CONTEXT.md
+git add docs/superpowers/specs/2026-07-21-activation-radial.md CONTEXT.md
 git commit -m "docs: note continuous-ring activation radial behavior"
 ```
 

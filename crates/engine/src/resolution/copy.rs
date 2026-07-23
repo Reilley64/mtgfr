@@ -13,12 +13,7 @@ impl Game {
     /// Resolve one of the copy-family choreography arms behind [`Game::run`]. Each match
     /// arm is a 1:1 relocation of its (formerly inline) [`Game::run`] body — no behavior
     /// change.
-    pub(crate) fn run_copy(
-        &mut self,
-        effect: Effect,
-        ctx: ResolveCtx,
-        events: &mut Vec<Event>,
-    ) {
+    pub(crate) fn run_copy(&mut self, effect: Effect, ctx: ResolveCtx, events: &mut Vec<Event>) {
         let ResolveCtx {
             controller,
             source,

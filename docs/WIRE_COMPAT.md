@@ -8,7 +8,7 @@ Durable rules for the proto / gRPC wire contract during a rolling deploy. See
 ## Why this exists
 
 Rolling deploy keeps **outgoing** API pods Terminating (SIGTERM drain) while **newest** accepts
-new tables via Service `edh-api`. The SolidStart SPA may roll with newest; mid-game clients still
+new tables via Service `edh-api`. The Foldkit SPA may roll with newest; mid-game clients still
 talk to older pods via BFF `table_routes` → pod DNS on the headless Service.
 
 So every concurrent instance version must speak a wire protocol the current SPA/BFF can parse —

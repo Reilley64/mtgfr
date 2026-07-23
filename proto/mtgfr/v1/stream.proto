@@ -180,6 +180,9 @@ message ActionView {
   // Mana cost being paid for preview (printed / flashback / back face / activation).
   // Absent when has_x is false.
   optional WireCost x_cost = 21;
+  // Whether this activate's cost includes {T}/{Q} on the source (CR 302.6 summoning sickness).
+  // False / unset for non-activate actions.
+  bool taps_self = 22;
 }
 
 // The current combat state a client renders: who's attacking and the declared blocks.

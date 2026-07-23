@@ -1,7 +1,7 @@
 # Wire Protocol and Visibility
 
-**Status:** Current (as of 2026-07-21)
-**Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/src/wire/`
+**Status:** Current (as of 2026-07-23)
+**Module:** `proto/mtgfr/v1/`, `crates/schema/`, `crates/server/src/grpc/`, `client/lib/wire/`
 
 ---
 
@@ -35,7 +35,7 @@ protocol — all trees are native protobuf.
 | BFF → API pod | `@effect-grpc/effect-grpc` (Connect native-gRPC) → tonic on `:50051` |
 | Game stream | gRPC server-streaming `Game.Stream` → BFF bridges to SSE on `/api/rpc/.../stream` |
 
-The BFF (SolidStart Vinxi, `ssr: false`) handles cookie termination: the session cookie never
+The BFF (Nitro) handles cookie termination: the session cookie never
 travels beyond the BFF, and the resolved session token flows as gRPC metadata
 (`x-session-token`) to tonic. Health-check HTTP lives on `:8080` (Axum `GET /health/live`,
 `/health/ready`, `/health/drain`); all game, auth, deck, and catalog RPCs live on `:50051`
@@ -170,7 +170,7 @@ Pre-game mulligans use dedicated `KeepHand { player }` and `Mulligan { player }`
 
 ### Mulligan events and stream source of truth
 
-The engine/schema event model includes `MulliganTaken { player, mulligans_taken, hand_size }`, `HandKept { player }`, and `MulligansFinished`. The current `stream.proto` `VisibleEvent` oneof does not yet define protobuf arms for these events, so the gRPC mapper emits an empty `VisibleEvent` for them. Clients must treat `VisibleState.mulliganing` and each `PlayerView`'s `mulligans_taken` / `hand_kept` / `can_mulligan` fields as the source of truth for mulligan UI.
+The engine/schema event model includes `MulliganTaken { player, mulligans_taken, hand_size }`, `HandKept { player }`, and `MulligansFinished`. The current `stream.proto` `VisibleEvent` oneof does not yet define protobuf arms for these events, so the gRPC mapper **omits** them from stream deltas (it does not emit empty oneofs). Clients must treat `VisibleState.mulliganing` and each `PlayerView`'s `mulligans_taken` / `hand_kept` / `can_mulligan` fields as the source of truth for mulligan UI.
 
 ---
 
@@ -178,7 +178,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
 
 - **`.proto` as sole contract** (wire-protocol-and-visibility spec): eliminates the utoipa/Orval OpenAPI layer (wire-protocol-and-visibility spec, superseded) and the OpenAPI-generated Effect client (wire-protocol-and-visibility spec, superseded). `crates/schema`
   remains the projection model; `crates/server/src/grpc/map/` converts at the gRPC edge to/from
-  native proto. `client/src/wire/types.ts` holds hand-maintained TypeScript mirror types that
+  native proto. `client/lib/wire/types.ts` holds hand-maintained TypeScript mirror types that
   the BFF maps via `protoMap.ts`.
 - **Hard cut for the REST→gRPC migration**: API + web shipped together; in-flight tables could
   drop. After that cut, expand-only proto rules apply (wire-protocol-and-visibility spec, `WIRE_COMPAT.md`).
@@ -196,7 +196,7 @@ The engine/schema event model includes `MulliganTaken { player, mulligans_taken,
   players and signed-in non-seated users receive the spectator projection, not a 403.
 - **Codegen lifecycle**: `just server-codegen` (Rust, via `build.rs` → `OUT_DIR`) and
   `bun run gen` (TypeScript via `scripts/gen.sh`) regenerate bindings from `.proto`. Generated
-  TS files under `client/src/wire/generated/` are gitignored and regenerated in-image for
+  TS files under `client/lib/wire/generated/` are gitignored and regenerated in-image for
   production builds.
 
 ---

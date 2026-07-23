@@ -37,7 +37,7 @@ server-run: server-build-prod
     cargo run -p server --release -- serve
 
 [group('server')]
-[doc("Regenerate Effect-gRPC clients from proto into gitignored client/src/wire/generated (ADR 0032)")]
+[doc("Regenerate Effect-gRPC clients from proto into gitignored client/lib/wire/generated (ADR 0032)")]
 server-codegen:
     cd client && bun run gen
 
@@ -64,12 +64,12 @@ client-typecheck:
     cd client && bun run typecheck
 
 [group('client')]
-[doc("Regenerate src/mana-oracle.css from mana-font")]
+[doc("Regenerate styles/mana-oracle.css from mana-font")]
 client-mana-oracle:
     cd client && node scripts/gen-mana-oracle.mjs
 
 [group('client')]
-[doc("Fail if src/mana-oracle.css is stale vs mana-font")]
+[doc("Fail if styles/mana-oracle.css is stale vs mana-font")]
 client-mana-oracle-check:
     cd client && node scripts/gen-mana-oracle.mjs --check
 

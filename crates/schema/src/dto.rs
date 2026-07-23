@@ -356,6 +356,11 @@ pub struct ActionView {
     /// an empty "No attackers" confirm when the engine would reject it.
     #[serde(default)]
     pub required_attacks: Vec<WireAttack>,
+    /// Whether this activate's cost includes `{T}` / `{Q}` on the source (CR 302.6). False for
+    /// every non-activate action. The client uses this with `summoning_sick` to hide playable
+    /// chrome that the engine would reject.
+    #[serde(default)]
+    pub taps_self: bool,
 }
 
 /// A modal spell's printed modes and how many of them the caster picks (CR 700.2).

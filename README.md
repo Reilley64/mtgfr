@@ -6,7 +6,7 @@ Authoritative rules engine on the server, MTGA-style board in the client, plus a
 
 ## Status
 
-Early and incomplete on purpose. The north star is to support *any* card **faithfully** — grown from real cards, with gaps flagged rather than faked. Today that means ~493 scripted cards (`crates/cards/data/`) and an engine that is not rules-complete. The five Secrets of Strixhaven (`soc`) Commander decks (~389 unique cards) are the first proving ground, not the end of the roadmap.
+Early and incomplete on purpose. The north star is to support *any* card **faithfully** — grown from real cards, with gaps flagged rather than faked. Today that means ~618 deckable card scripts (`crates/cards/data/`) and an engine that is not rules-complete. The five Secrets of Strixhaven (`soc`) Commander decks (~389 unique cards) are the first proving ground, not the end of the roadmap.
 
 The public origin ships `robots.txt` that disallows crawlers; this is a friends table, not a content site.
 
@@ -16,9 +16,9 @@ The public origin ships `robots.txt` that disallows crawlers; this is a friends 
 |-------|------|
 | Engine | Pure Rust, deterministic stack/priority state machine |
 | Cards | Data-driven TOML scripts (`crates/cards/data/`) |
-| Wire | `.proto` → tonic gRPC (API) + Effect RPC (browser → SolidStart BFF) |
+| Wire | `.proto` → tonic gRPC (API) + Effect RPC (browser → Nitro BFF) |
 | API | tonic gRPC (game / auth / decks / catalog / seed) + Axum `/health/*` only |
-| BFF / client | SolidStart 1.3 (Vinxi, `ssr: false`); lobby + `table_routes` on Postgres `mtgfr_web` (Drizzle); canvas/WebGL board + thin DOM overlay |
+| BFF / client | Foldkit SPA on Nitro (Vite); lobby + `table_routes` on Postgres `mtgfr_web` (Drizzle); canvas + Mount bitmap board + thin HTML overlays |
 | Durable data | Postgres `mtgfr` (users, sessions, decks); `mtgfr_web` (lobbies, table→pod routes) |
 | Deploy | k3s + Cloudflare Tunnel; Argo-owned API/web rolls with SIGTERM drain |
 
@@ -27,14 +27,13 @@ Live games stay **in memory per API process**. Concurrent pods pin each table vi
 ## Local development
 
 ```bash
-docker compose up -d          # Postgres on :5432 (mtgfr)
-# create mtgfr_web if you need lobby persistence locally, then:
+docker compose up -d          # Postgres on :5432 (`mtgfr` + `mtgfr_web`)
 just migrate                  # Toasty → mtgfr
-just client-migrate           # Drizzle → mtgfr_web (needs WEB_DATABASE_URL)
-just dev                      # tmux: bacon server (:8080) + Vinxi client (default :3000)
+just client-migrate           # Drizzle → mtgfr_web (defaults WEB_DATABASE_URL to local compose)
+just dev                      # tmux: bacon server (:8080) + Foldkit/Vite client (default :3000)
 ```
 
-Without `WEB_DATABASE_URL`, the BFF falls back to localhost for game paths (lobby DB features need the web DB).
+`WEB_DATABASE_URL` defaults to `postgresql://mtgfr:mtgfr@127.0.0.1:5432/mtgfr_web` (same pattern as the API’s `config/mtgfr.toml`). Override when pointing at a remote DB.
 
 Useful checks:
 

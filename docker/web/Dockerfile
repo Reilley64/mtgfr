@@ -1,19 +1,17 @@
 # syntax=docker/dockerfile:1
-# mtgfr-web — SolidStart (Vinxi/Nitro) BFF on distroless Node (see production-topology spec).
+# mtgfr-web — Foldkit SPA + Nitro BFF on distroless Node (see production-topology spec).
 
 FROM oven/bun:1 AS deps
 WORKDIR /client
 COPY client/package.json client/bun.lock* ./
 RUN bun install --frozen-lockfile
 
-FROM node:22-bookworm AS build
+FROM oven/bun:1 AS build
 WORKDIR /src
 COPY --from=deps /client/node_modules ./client/node_modules
 COPY client ./client
 COPY proto ./proto
 WORKDIR /src/client
-# Effect-gRPC + protobuf-es clients are gitignored; regenerate from proto here.
-RUN PATH="$PWD/node_modules/.bin:$PATH" ./node_modules/.bin/buf generate --template ../proto/buf.gen.yaml ../proto
 # Empty `VITE_CARD_CDN` → Scryfall `named` fallback in the client.
 ARG VITE_CARD_CDN=
 ENV VITE_CARD_CDN=$VITE_CARD_CDN
@@ -24,11 +22,12 @@ ENV VITE_APP_VERSION=$APP_VERSION
 ENV VITE_GIT_COMMIT=$GIT_COMMIT
 ENV APP_VERSION=$APP_VERSION
 ENV GIT_COMMIT=$GIT_COMMIT
-# Vinxi needs a real Node for the production Nitro build.
-RUN npx tsc --noEmit && npx vinxi build
+# `bun run build` regenerates gitignored Effect-gRPC clients, typechecks, then writes Nitro/Vite output.
+RUN bun run build
 
 FROM gcr.io/distroless/nodejs22-debian12:nonroot
 WORKDIR /app
+# Nitro writes `.output/public` and `.output/server`; keep both under the runtime root.
 COPY --from=build /src/client/.output ./.output
 ARG APP_VERSION=dev
 ARG GIT_COMMIT=unknown

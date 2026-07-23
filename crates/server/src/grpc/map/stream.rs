@@ -160,6 +160,7 @@ pub fn action_view_to_pb(action: ActionView) -> pb::ActionView {
             .into_iter()
             .map(wire_attack_to_pb)
             .collect(),
+        taps_self: action.taps_self,
     }
 }
 
@@ -1702,6 +1703,7 @@ mod tests {
                 x_cost: None,
                 auto_tap: vec![],
                 required_attacks: vec![],
+                taps_self: false,
             }],
         }
     }

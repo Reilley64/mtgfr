@@ -99,13 +99,7 @@ impl Game {
                     // card ... to the battlefield tapped") — the graveyard twin of the
                     // `Object::Permanent` arm below.
                     if c.zone == Zone::Graveyard && c.def.functions_in_graveyard {
-                        self.push_activatable_abilities(
-                            &mut actions,
-                            player,
-                            id,
-                            c.def.abilities,
-                            available,
-                        );
+                        self.push_activatable_abilities(&mut actions, player, id, c.def.abilities);
                     }
                     // Encore (CR 702.140) — a keyword activated ability that functions from the
                     // graveyard, offered right here beside the `functions_in_graveyard` scan.
@@ -159,13 +153,7 @@ impl Game {
                 }
                 // A non-mana activated ability the player can afford, or a prepared back-face cast. (CR 602, CR 601, CR 113)
                 Object::Permanent(p) => {
-                    self.push_activatable_abilities(
-                        &mut actions,
-                        player,
-                        id,
-                        p.def.abilities,
-                        available,
-                    );
+                    self.push_activatable_abilities(&mut actions, player, id, p.def.abilities);
                     if self.cast_prepared_listable(player, id) {
                         actions.push(MeaningfulAction::CastPrepared { source: id });
                     }
@@ -434,7 +422,6 @@ impl Game {
         player: PlayerId,
         source: ObjectId,
         abilities: &'static [Ability],
-        available: ManaPool,
     ) {
         for (i, a) in abilities.iter().enumerate() {
             if a.effect.is_mana_ability() {
@@ -443,7 +430,7 @@ impl Game {
             let Ok((_, cost)) = self.ability_activation_gate(player, source, i) else {
                 continue;
             };
-            if !Self::affordable_from(available, cost.mana, None) {
+            if !self.activation_mana_payable(player, source, cost) {
                 continue;
             }
             // Same target gate as casts: don't list (or stop auto-pass for) an activation that
@@ -469,7 +456,7 @@ impl Game {
             let Ok((_, cost)) = self.ability_activation_gate(player, source, index) else {
                 continue;
             };
-            if !Self::affordable_from(available, cost.mana, None) {
+            if !self.activation_mana_payable(player, source, cost) {
                 continue;
             }
             let Some(ability) = self.ability_at(source, index) else {
@@ -491,6 +478,22 @@ impl Game {
         }
     }
 
+    fn activation_mana_payable(
+        &self,
+        player: PlayerId,
+        source: ObjectId,
+        cost: ActivationCost,
+    ) -> bool {
+        let exclude = cost.taps_self.then_some(source);
+        let characteristics = SpellCharacteristics {
+            mana_value: 0,
+            has_x: cost.mana.x > 0,
+            is_instant_or_sorcery: false,
+        };
+        self.plan_auto_taps(player, cost.mana, exclude, Some(characteristics))
+            .is_some()
+    }
+
     /// Paid tap-for-mana activates (filter lands, karoos, signets) for the wire radial — **not**
     /// part of [`Game::meaningful_actions`], so they never stop auto-pass (turn-priority-and-stack spec). Appended onto
     /// [`Game::actions`] by [`Game::refresh_actions`] so the client can show them.
@@ -507,7 +510,7 @@ impl Game {
             let Object::Permanent(p) = o else {
                 continue;
             };
-            if p.owner != player || p.tapped {
+            if self.controller_of(id) != player || p.tapped {
                 continue;
             }
             for (i, a) in p.def.abilities.iter().enumerate() {
