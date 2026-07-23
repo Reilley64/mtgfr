@@ -37,7 +37,7 @@ export function inspectView(
   pin: InspectPin | null,
   card: CatalogCard | null | undefined,
   face: InspectFace,
-  /** Live ObjectView for the pinned object, when on battlefield — provides current modifiers. */
+  /** Live ObjectView for the pinned object, when on battlefield — modifiers and marked damage. */
   liveObject?: ObjectView | null,
 ): Html | null {
   if (pin == null) return null;
@@ -59,6 +59,19 @@ export function inspectView(
   const displayFace: InspectFace = catalogReady ? currentFace : pin.prepared ? "back" : "front";
 
   const modsEl = modifierLedger(modifiers);
+  const markedDamage = liveObject?.marked_damage ?? 0;
+  const markedDamageEl =
+    markedDamage > 0
+      ? h.div(
+          [
+            h.DataAttribute("testid", "inspect-marked-damage"),
+            h.Class(
+              `w-[${PANEL_W}px] shrink-0 rounded-panel border border-vine bg-forest-surface px-xl py-lg text-label text-preview-ash/80`,
+            ),
+          ],
+          [`Marked damage: ${markedDamage}`],
+        )
+      : null;
 
   // Dismiss via backdrop / Esc / Alt-up — no Close control (Solid parity).
   const flipButton: Html | null = hasBack
@@ -74,6 +87,7 @@ export function inspectView(
     : null;
 
   const extras: Html[] = [
+    markedDamageEl,
     modsEl,
     flipButton != null ? h.div([h.Class("flex flex-wrap items-center gap-2")], [flipButton]) : null,
   ].filter((v): v is Html => v !== null);

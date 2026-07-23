@@ -443,6 +443,52 @@ test("inspect overlay renders from a pinned inspect card", () => {
   );
 });
 
+test("inspect overlay shows marked damage for a damaged battlefield permanent", () => {
+  const bear = card(42, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+    name: "Grizzly Bears",
+    print: "bears-print",
+    marked_damage: 3,
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        inspectPin: {
+          name: "Grizzly Bears",
+          objectId: 42,
+          prepared: false,
+          print: "bears-print",
+        },
+        inspectCard: {
+          id: "grizzly-bears",
+          name: "Grizzly Bears",
+          oracle: "",
+          approximates: null,
+          back: null,
+          color_identity: [],
+          cost: cost({ generic: 1, colored: [0, 1, 0, 0, 0] }),
+          default_print: "bears-print",
+          keywords: [],
+          kind: { kind: "creature", power: 2, toughness: 2 },
+          legendary: false,
+          otags: [],
+          set: "soc",
+          subtypes: ["Bear"],
+          summary: "Bear",
+        },
+      },
+      gameState({ objects: [bear] }),
+    ),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.testId("inspect-marked-damage")).toHaveText("Marked damage: 3"),
+  );
+});
+
 test("pile overlay renders with its close control", () => {
   const graveyardCard = card(60, {
     owner: 1,
