@@ -6,6 +6,7 @@ import { mulliganChrome } from "~/mulligan";
 import { isActivePlayer, SPECTATOR_VIEWER } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { LogLine } from "../../game/fold";
+import { pendingDiscardHandIds } from "../action/targeting";
 import type { Message } from "../messages";
 import type { BoardModel } from "../submodel";
 import { activationRadialView } from "./activation-radial";
@@ -79,7 +80,11 @@ export function boardOverlays(
           flyingIds: board.hideCardIds,
           hiddenIds,
           handDrag: board.handDrag,
-          discardCostIds: board.discardPick != null ? new Set(board.discardPick.action.discard_choices ?? []) : null,
+          discardCostIds: (() => {
+            if (board.discardPick != null) return new Set(board.discardPick.action.discard_choices ?? []);
+            const pending = pendingDiscardHandIds(state.pending_choice, state);
+            return pending != null ? pending : null;
+          })(),
         })
       : null,
     seatedViewer && mulliganing ? mulliganBarView(state) : null,
