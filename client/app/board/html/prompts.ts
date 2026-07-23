@@ -1569,15 +1569,28 @@ function yesNoPrompt(
   pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" | "trade_secrets_repeat" }>,
   tableId: string | null,
 ): Html {
-  return frame("pending-choice", pendingChoiceTitle(pending), [
-    h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      [
-        answerButton(pending, "prompt-yes", "Yes", { kind: "may", yes: true }, true, tableId == null),
-        answerButton(pending, "prompt-no", "No", { kind: "may", yes: false }, false, tableId == null),
-      ],
-    ),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-yes-no-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        [pendingChoiceTitle(pending)],
+      ),
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        [
+          answerButton(pending, "prompt-yes", "Yes", { kind: "may", yes: true }, true, tableId == null),
+          answerButton(pending, "prompt-no", "No", { kind: "may", yes: false }, false, tableId == null),
+        ],
+      ),
+    ],
+  );
 }
 
 function payCostDeclineLabel(

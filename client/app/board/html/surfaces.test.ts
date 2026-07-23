@@ -959,6 +959,26 @@ test("select_from_top aim shows docked Take and Bottom lanes", () => {
   );
 });
 
+test("may_yes_no aim shows docked Yes and No", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "may_yes_no",
+          label: "Scry?",
+          player: 0,
+          source: 3,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-yes-no-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-yes")).toExist(),
+    Scene.expect(Scene.testId("prompt-no")).toExist(),
+  );
+});
+
 test("non-decider sees waiting banner instead of pending-choice controls", () => {
   overlayScene(
     overlayModel(
@@ -974,6 +994,7 @@ test("non-decider sees waiting banner instead of pending-choice controls", () =>
       }),
     ),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-yes-no-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice-waiting")).toHaveText("Waiting for Alice…"),
   );
 });
