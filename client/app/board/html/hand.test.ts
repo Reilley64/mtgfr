@@ -175,7 +175,7 @@ describe("handView playable outlines", () => {
     expect(className(findTestId(tree, "hand-card-face-43"))).not.toContain("ring-playable-border");
   });
 
-  it("layers playable border with gy/exile zone halos on playable zone bar tiles", () => {
+  it("layers mint playable ring with gy/exile outline halos on playable zone bar tiles", () => {
     const graveyardCard = object(60, { zone: ZONE.Graveyard });
     const exileCard = object(61, { zone: ZONE.Exile });
     const tree = renderHand(
@@ -191,12 +191,24 @@ describe("handView playable outlines", () => {
     const gy = className(findTestId(tree, "hand-card-face-60"));
     const exile = className(findTestId(tree, "hand-card-face-61"));
     expect(gy).toContain("ring-playable-border");
-    expect(gy).toContain("--color-graveyard-outline");
+    expect(gy).toContain("outline-graveyard-outline");
     expect(exile).toContain("ring-playable-border");
-    expect(exile).toContain("--color-exile-outline");
+    expect(exile).toContain("outline-exile-outline");
   });
 
-  it("layers playable border with commander gold on a castable command-zone commander", () => {
+  it("keeps commander gold on an unplayable command-zone commander", () => {
+    const commander = object(9, {
+      zone: ZONE.Command,
+      is_commander: true,
+      name: "Zimone, Quandrix Prodigy",
+    });
+    const tree = renderHand(state({ objects: [commander], actions: [] }));
+    const face = className(findTestId(tree, "hand-card-face-9"));
+    expect(face).toContain("ring-commander-gold");
+    expect(face).not.toContain("ring-playable-border");
+  });
+
+  it("layers mint playable ring with outer commander-gold outline when castable", () => {
     const commander = object(9, {
       zone: ZONE.Command,
       is_commander: true,
@@ -210,6 +222,6 @@ describe("handView playable outlines", () => {
     );
     const face = className(findTestId(tree, "hand-card-face-9"));
     expect(face).toContain("ring-playable-border");
-    expect(face).toContain("--color-commander-gold");
+    expect(face).toContain("outline-commander-gold");
   });
 });

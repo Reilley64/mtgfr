@@ -6,28 +6,33 @@ export type Section = "hand" | "command" | "graveyard" | "exile" | "battlefield"
 export type BarZone = "hand" | "command" | "graveyard" | "exile";
 export type GroupedActions = Record<Section, ActionView[]>;
 
-/** Zone aura on bar faces — Arena gap + colour, no section captions. */
+/**
+ * Zone aura on bar faces — Arena gap + colour, no section captions.
+ *
+ * Playable dual chrome uses `ring` (mint) + `outline` (zone colour). Do not put the zone
+ * colour in `box-shadow` at the same radius as `ring-2`: Tailwind paints ring and shadow into
+ * one `box-shadow` list, so a 2px zone shadow is fully covered by the mint ring.
+ */
 export function barZoneAura(zone: BarZone, playable = false): string {
   if (zone === "hand") {
     return playable ? "ring-2 ring-playable-border shadow-[0_0_12px_rgba(234,255,240,0.42)]" : "";
   }
   if (zone === "command") {
-    // Gold is the commander identity halo (outer). When castable, playable mint is the ring;
-    // gold rides an opaque outer shadow ring so both read at once (Tailwind allows one ring-*).
     if (playable) {
-      return "ring-2 ring-playable-border shadow-[0_0_0_2px_var(--color-commander-gold),0_0_12px_rgba(233,184,74,0.45),0_0_12px_rgba(234,255,240,0.35)]";
+      return "ring-2 ring-playable-border outline-2 outline-commander-gold outline-offset-2 shadow-[0_0_12px_rgba(233,184,74,0.45),0_0_12px_rgba(234,255,240,0.35)]";
     }
     return "ring-2 ring-commander-gold shadow-[0_0_12px_rgba(233,184,74,0.45)]";
   }
   if (zone === "graveyard") {
-    // Same dual language as command: mint playable ring + zone-colour outer halo.
-    return playable
-      ? "ring-2 ring-playable-border shadow-[0_0_0_2px_var(--color-graveyard-outline),0_0_12px_rgba(123,92,255,0.45),0_0_12px_rgba(234,255,240,0.35)]"
-      : "";
+    if (playable) {
+      return "ring-2 ring-playable-border outline-2 outline-graveyard-outline outline-offset-2 shadow-[0_0_12px_rgba(123,92,255,0.45),0_0_12px_rgba(234,255,240,0.35)]";
+    }
+    return "ring-2 ring-graveyard-outline shadow-[0_0_12px_rgba(123,92,255,0.45)]";
   }
-  return playable
-    ? "ring-2 ring-playable-border shadow-[0_0_0_2px_var(--color-exile-outline),0_0_12px_rgba(61,220,151,0.45),0_0_12px_rgba(234,255,240,0.35)]"
-    : "";
+  if (playable) {
+    return "ring-2 ring-playable-border outline-2 outline-exile-outline outline-offset-2 shadow-[0_0_12px_rgba(61,220,151,0.45),0_0_12px_rgba(234,255,240,0.35)]";
+  }
+  return "ring-2 ring-exile-outline shadow-[0_0_12px_rgba(61,220,151,0.45)]";
 }
 
 export function bySection(actions: readonly ActionView[] | undefined): GroupedActions {
