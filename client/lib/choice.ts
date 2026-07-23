@@ -279,6 +279,15 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
       return { kind: "destination", choice: false };
     case "revealed_card_to_battlefield_or_hand":
       return { kind: "destination", choice: null };
+    case "scry":
+    case "surveil":
+      return {
+        kind: "partition",
+        buckets: {
+          top: [],
+          bottom: pc.items.map((it) => it.id),
+        },
+      };
     default:
       return { kind: "card-pick", picked: [], filter: "" };
   }
@@ -395,6 +404,13 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
       return null;
     case "scry":
     case "surveil": {
+      if (draft.kind === "partition") {
+        const all = new Set(pc.items.map((it) => it.id));
+        const top = (draft.buckets.top ?? []).filter((id) => all.has(id));
+        const bottom = (draft.buckets.bottom ?? []).filter((id) => all.has(id) && !top.includes(id));
+        const missing = pc.items.map((it) => it.id).filter((id) => !top.includes(id) && !bottom.includes(id));
+        return { kind: "arrange", top, bottom: [...bottom, ...missing] };
+      }
       if (draft.kind !== "card-pick") return null;
       const all = pc.items.map((it) => it.id);
       const top = draft.picked.filter((id) => all.includes(id));

@@ -202,6 +202,72 @@ test("scry prompt submit emits arrange_top intent", () => {
   });
 });
 
+test("scry prompt shows Top and Bottom lanes instead of a flat ordered grid", () => {
+  const s = state({
+    pending_choice: {
+      kind: "scry",
+      player: 0,
+      items: [
+        { id: 1, label: "Island" },
+        { id: 2, label: "Forest" },
+      ],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-top")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-bottom")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-bottom-label")).toHaveText("Bottom of library"),
+    Scene.expect(Scene.testId("prompt-card-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-2")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+  );
+});
+
+test("surveil bottom lane is labeled Graveyard", () => {
+  const s = state({
+    pending_choice: {
+      kind: "surveil",
+      player: 0,
+      items: [{ id: 3, label: "Swamp" }],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-arrange-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-arrange-bottom-label")).toHaveText("Graveyard"),
+  );
+});
+
+test("scry card click moves from Bottom lane to Top lane", () => {
+  const s = state({
+    pending_choice: {
+      kind: "scry",
+      player: 0,
+      items: [
+        { id: 1, label: "Island" },
+        { id: 2, label: "Forest" },
+      ],
+    },
+  });
+  const gf = gameFold(s);
+  let board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 1 }), gf, "T1")[0];
+  expect(board.promptDraft).toEqual({
+    kind: "partition",
+    buckets: { top: [1], bottom: [2] },
+  });
+  board = updateBoard(board, PromptCardToggled({ id: 1 }), gf, "T1")[0];
+  expect(board.promptDraft).toEqual({
+    kind: "partition",
+    buckets: { top: [], bottom: [2, 1] },
+  });
+});
+
 test("choose_dredge shows Draw normally and disables Dredge until one pick", () => {
   const s = state({
     pending_choice: {

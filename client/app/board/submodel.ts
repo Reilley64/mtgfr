@@ -1589,6 +1589,42 @@ export function updateBoard(
         return [{ ...synced, promptDraft: { kind: "partition", buckets: { pile_a: nextPileA } } }, []];
       }
 
+      if (synced.promptDraft.kind === "partition" && (pc.kind === "scry" || pc.kind === "surveil")) {
+        const top = synced.promptDraft.buckets.top ?? [];
+        const bottom = synced.promptDraft.buckets.bottom ?? [];
+        if (top.includes(message.id)) {
+          return [
+            {
+              ...synced,
+              promptDraft: {
+                kind: "partition",
+                buckets: {
+                  top: top.filter((id) => id !== message.id),
+                  bottom: [...bottom, message.id],
+                },
+              },
+            },
+            [],
+          ];
+        }
+        if (bottom.includes(message.id)) {
+          return [
+            {
+              ...synced,
+              promptDraft: {
+                kind: "partition",
+                buckets: {
+                  bottom: bottom.filter((id) => id !== message.id),
+                  top: [...top, message.id],
+                },
+              },
+            },
+            [],
+          ];
+        }
+        return [synced, []];
+      }
+
       return [synced, []];
     }
     case "PromptOrderMoved": {
