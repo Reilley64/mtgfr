@@ -27,6 +27,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 - Non-active players see the Until my turn rocker.
 - Space mirrors the primary/pass action. Enter toggles End Turn or Until my turn.
 - While `VisibleState.mulliganing` is true for a seated viewer, `mulliganBarView` replaces the priority bar (Keep / Mulligan). Space and Enter are inert until mulligans finish; Concede stays available.
+- After the local seat keeps, the bar stays visible with a waiting status that names undecided living seats (username, or `P{seat}` when empty). Lost seats are omitted. When every living seat has kept, status is “All players kept. Starting game…”.
 - `TurnBanner` shows five phase bands: Beginning, Main 1, Combat, Main 2, End, plus step detail when needed.
 - `HintStrip` explains drag, activation click, Alt inspect, and Space pass; it auto-hides after 12 seconds and persists dismissal as `mtgfr.hintDismissed`.
 - `LegendPanel` explains badges, target/combat outlines, playable border, commander outline, and graveyard/exile outlines.
@@ -44,6 +45,7 @@ Use `PriorityContextBar` for action controls, `TurnBanner` for active player and
 ## Testing Decisions
 
 - Chrome tests cover Next, Resolve card, Resolve stack, End Turn, Until my turn, and staged cancel controls.
+- Mulligan unit tests cover Keep/Mulligan affordances and waiting status that names undecided seats (including empty-username fallback).
 - Keyboard tests cover Space, Enter, Escape, and Alt behavior without stealing text-input focus.
 - Discoverability tests cover hint auto-hide, dismissal persistence, legend content, and toolbar placement.
 - Playable-chrome tests assert outlines/borders rather than dimming.

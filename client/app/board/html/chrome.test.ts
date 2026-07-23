@@ -149,6 +149,40 @@ test("mulliganing seat sees mulligan bar and hides priority chrome", () => {
   );
 });
 
+test("mulligan bar waiting status names undecided seats after local keep", () => {
+  const state = gameState({
+    mulliganing: true,
+    players: [
+      {
+        ...player(0),
+        hand_kept: true,
+        can_mulligan: false,
+        mulligans_taken: 0,
+      },
+      {
+        ...player(1),
+        hand_kept: false,
+        can_mulligan: true,
+        mulligans_taken: 0,
+      },
+    ],
+  });
+  Scene.scene(
+    {
+      update: (m) => [m, []],
+      view: overlayView,
+    },
+    Scene.with({
+      board: initialBoardModel(),
+      fold: gameFold(state),
+      tableId: "T1",
+    }),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("mulligan-bar")).toContainText("Waiting for Bob to choose."),
+    Scene.expect(Scene.testId("mulligan-keep")).not.toExist(),
+  );
+});
+
 test("spectator hides hand, priority bar, concede, and discoverability chrome", () => {
   const model: OverlayModel = {
     board: initialBoardModel(),
