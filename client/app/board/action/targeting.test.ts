@@ -5,6 +5,7 @@ import type { StagedAction } from "./execution";
 import { emptyCostPicks } from "./execution";
 import {
   pendingTargetingOverlay,
+  pendingTargetOneClick,
   stackAimOrigin,
   stagedPickTargets,
   stagedTargetTitle,
@@ -245,7 +246,7 @@ describe("pendingTargetingOverlay", () => {
     expect([...overlay.targetObjects]).toEqual([7]);
   });
 
-  it("stays idle for multi-target choose_target (modal keeps asking)", () => {
+  it("aims for multi-target choose_target when all items are on the battlefield", () => {
     const a = object({ id: 1 });
     const b = object({ id: 2 });
     const overlay = pendingTargetingOverlay(
@@ -265,7 +266,8 @@ describe("pendingTargetingOverlay", () => {
       { width: 1440, height: 900 },
       0,
     );
-    expect(overlay.aiming).toBe(false);
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetObjects].sort()).toEqual([1, 2]);
   });
 
   it("stays idle when a legal item is off the battlefield", () => {
@@ -285,6 +287,36 @@ describe("pendingTargetingOverlay", () => {
       0,
     );
     expect(overlay.aiming).toBe(false);
+  });
+});
+
+describe("pendingTargetOneClick", () => {
+  it("is true only for max=1 choose_target", () => {
+    expect(
+      pendingTargetOneClick({
+        kind: "choose_target",
+        label: "T",
+        max: 1,
+        optional: false,
+        player: 0,
+        source: 1,
+        items: [{ id: 1, label: "A" }],
+      }),
+    ).toBe(true);
+    expect(
+      pendingTargetOneClick({
+        kind: "choose_target",
+        label: "T",
+        max: 2,
+        optional: false,
+        player: 0,
+        source: 1,
+        items: [
+          { id: 1, label: "A" },
+          { id: 2, label: "B" },
+        ],
+      }),
+    ).toBe(false);
   });
 });
 

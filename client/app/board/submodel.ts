@@ -52,7 +52,7 @@ import {
   type XPromptState,
 } from "./action/execution";
 import { advance } from "./action/modal";
-import { pendingBoardTargetMode, stagedPickTargets } from "./action/targeting";
+import { pendingBoardTargetMode, pendingTargetOneClick, stagedPickTargets } from "./action/targeting";
 import type { Camera, Vec2 } from "./geometry/camera";
 import { panBy, screenToWorld, worldToScreen } from "./geometry/camera";
 import {
@@ -688,9 +688,32 @@ function pointerUpModel(
     const pc = fold.state?.pending_choice ?? null;
     const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
     if (pendingAim != null && pc != null && pendingAim.objects.has(release.card.id)) {
-      const answer = answerFromBoardTarget(pc, { kind: "object", id: release.card.id });
-      if (answer != null) {
-        return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      if (pendingTargetOneClick(pc)) {
+        const answer = answerFromBoardTarget(pc, { kind: "object", id: release.card.id });
+        if (answer != null) {
+          return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+        }
+      } else {
+        const synced = syncPromptDraft(idle, fold);
+        if (synced.promptDraft?.kind !== "card-pick") {
+          return [{ ...synced, promptDraft: { kind: "card-pick", picked: [release.card.id], filter: "" } }, []];
+        }
+        const picked = synced.promptDraft.picked;
+        const max =
+          pc.kind === "choose_target"
+            ? pc.max
+            : pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets"
+              ? pc.max
+              : undefined;
+        let next: number[];
+        if (picked.includes(release.card.id)) {
+          next = picked.filter((id) => id !== release.card.id);
+        } else if (max != null && picked.length >= max) {
+          return [synced, []];
+        } else {
+          next = [...picked, release.card.id];
+        }
+        return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter } }, []];
       }
     }
     if (
@@ -715,7 +738,7 @@ function pointerUpModel(
   const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
   if (pendingAim != null && pc != null) {
     const seat = avatarSeatAt(fold, model, x, y);
-    if (seat != null && pendingAim.players.has(seat)) {
+    if (seat != null && pendingAim.players.has(seat) && pendingTargetOneClick(pc)) {
       const answer = answerFromBoardTarget(pc, { kind: "player", player: seat });
       if (answer != null) {
         return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];

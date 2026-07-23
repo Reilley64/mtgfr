@@ -32,6 +32,7 @@ import { modeAvailable } from "../action/modal";
 import {
   objectName,
   pendingBoardTargetMode,
+  pendingTargetOneClick,
   playerSeatLabel,
   stagedPickTargets,
   stagedTargetTitle,
@@ -946,28 +947,29 @@ function cardPickForKind(
   if (pendingBoardTargetMode(pending, state) != null) {
     const decline = declineAnswer(pending);
     const label = "label" in pending && typeof pending.label === "string" ? pending.label : pendingChoiceTitle(pending);
-    if (decline == null) {
-      return h.div(
-        [
-          h.DataAttribute("testid", "pending-target-aim"),
-          h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-          h.Class(
-            "pointer-events-none fixed left-1/2 z-30 -translate-x-1/2 rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-          ),
-        ],
-        [label],
-      );
+    const oneClick = pendingTargetOneClick(pending);
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const picked = draft.kind === "card-pick" ? draft.picked : [];
+    const max =
+      pending.kind === "choose_target" ||
+      pending.kind === "choose_spell_targets" ||
+      pending.kind === "choose_ability_targets"
+        ? pending.max
+        : null;
+    const ready = !oneClick && cardPickReady(pending, picked);
+    const countLine =
+      !oneClick && max != null
+        ? h.div(
+            [h.DataAttribute("testid", "pending-target-count"), h.Class("pointer-events-none text-caption text-mist")],
+            [`${picked.length} / ${max} selected`],
+          )
+        : null;
+    const actions: Html[] = [];
+    if (!oneClick) {
+      actions.push(submitButton("Confirm", !ready));
     }
-    return h.div(
-      [
-        h.DataAttribute("testid", "pending-target-aim"),
-        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
-        h.Class(
-          "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
-        ),
-      ],
-      [
-        h.div([h.Class("pointer-events-none")], [label]),
+    if (decline != null) {
+      actions.push(
         answerButton(
           pending,
           "prompt-decline",
@@ -976,7 +978,24 @@ function cardPickForKind(
           false,
           tableId == null,
         ),
+      );
+    }
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-target-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          [
+            "fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+            actions.length > 0 ? "pointer-events-auto" : "pointer-events-none",
+          ].join(" "),
+        ),
       ],
+      [
+        h.div([h.Class("pointer-events-none")], [label]),
+        countLine,
+        actions.length > 0 ? h.div([h.Class("flex flex-wrap justify-center gap-2")], actions) : null,
+      ].filter((v): v is Html => v !== null),
     );
   }
   if (pending.kind === "choose_target" && !chooseTargetIsCardPick(pending.items)) {
