@@ -8,7 +8,7 @@ import { type Camera, worldToScreen } from "../geometry/camera";
 import { fitCamera } from "../geometry/interaction";
 import { CARD_H, CARD_W, layout, type RenderCard, seatBand, seatColor } from "../geometry/layout";
 import { BOARD_VIEWPORT } from "../submodel";
-import { aimArrowShapes, arrowShapes, combatDragArrowShapes } from "./arrows";
+import { aimArrowShapes, arrowShapes, combatDragArrowShapes, stackTargetArrowShapes } from "./arrows";
 import { avatarScreenPositions, avatarShapes } from "./avatars";
 import { feltShapes } from "./felt";
 
@@ -239,6 +239,13 @@ export function sceneShapes(state: VisibleState, options: SceneShapesOptions = {
       avatars,
       attackers: [...(options.stagedAttackers ?? []), ...state.combat.attackers],
       blocks: [...(options.stagedBlocks ?? []), ...state.combat.blocks],
+    }),
+    ...stackTargetArrowShapes({
+      viewport: { width, height },
+      stack: state.stack,
+      cards,
+      avatars,
+      camera,
     }),
     ...(targeting == null ? [] : aimArrowShapes({ from: targeting.aimFrom, to: targeting.cursor })),
     ...(options.combatDrag == null
