@@ -18,6 +18,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player choosing X, I adjust a clamped stepper within server `min_x`…`max_x` and see what I will pay before confirming.
 - As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
 - As a player dividing combat damage, spell damage, or counters, I adjust each share with a clamped stepper instead of typing numbers.
+- As a player assigning combat damage among battlefield blockers, I can click a blocker to move 1 damage onto it (steppers remain for fine control).
 - As a player naming a card, I get a focused text field with a Card name placeholder, optional catalog typeahead suggestions, and can confirm with Name or Enter.
 - As a player searching their library, I can filter faces by name while title, filter, and Choose stay pinned above a scrolling card grid.
 - As a player choosing a creature type, I can filter the long option list by name before picking.
@@ -51,6 +52,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `assign_combat_damage` readiness (`damageAssignReady`) mirrors the engine: non-trample requires the sum of non-negative blocker amounts to equal the attacker’s power; trample requires `0 ≤ sum ≤ power` (overflow trampling is automatic).
 - Trample’s prompt shows `assigned N / power` plus a `to defender: R` overflow line (`prompt-damage-overflow`). Non-trample prompts omit that line.
 - Combat damage, divide-spell damage, and divide-counters rows use Min/−/value/+/Max steppers (`prompt-damage-{id}-*`) capped at the attacker’s power or the division total — no raw `type=number` fields.
+- When every `assign_combat_damage` blocker is on the battlefield, blockers highlight for on-board clicks (`pendingDamageAssignOverlay`); a click moves 1 damage onto that blocker (`clickDamageAssign` — steals from the largest other share, or adds under trample power). Chrome shows `pending-damage-aim` coach copy; Enter submits when `damageAssignReady`. Blockers with amount > 0 paint Priority Gold (`pickedObjects`).
 - `choose_card_name` uses an autofocused text field (`prompt-name-input`) with placeholder “Card name”; Enter submits when the trimmed name is non-empty (same gate as the Name button). Typing ≥2 characters fires `SearchCardNames`; matching results render under `prompt-name-suggestions` (click fills the draft). Catalog suggestions assist only — free-typed / nonexistent names remain submittable.
 - `search_library` card picks are searchable: autofocused `pick-card-filter` (“Filter by name…”), face dedupe by label, filtered grid inside `pick-card-scroll`, with title / filter / Choose+Fail-to-find pinned (dialog `overflow-hidden`, scroll only on the card strip). Other card-pick kinds stay unfiltered.
 - `choose_creature_type` shows an autofocused `prompt-type-filter` (“Filter types…”) and a scrolling option strip (`prompt-type-scroll`); only matching `pending.options` are clickable. Free-typed types outside the option list are not allowed.
@@ -82,7 +84,9 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - X prompt Scene tests assert stepper controls, preview text (e.g. `Pay {4}`), confirm, disabled `+` at max, and absence of per-X buttons (`x-prompt-n`).
 - Unit tests cover `clampX`, `costWithChosenX` (multi-symbol X and colored pips), and `costText` for large generics.
 - Unit tests cover `damageAssignReady` for exact-sum non-trample and under-assign / over-assign / negative trample cases.
-- Scene tests cover trample overflow copy, damage steppers (no number inputs), and Assign enabled when under-assigned.
+- Unit tests cover `clickDamageAssign` redistribution and trample under-assign.
+- Scene tests cover trample overflow copy, damage steppers (no number inputs), on-board click coach (`pending-damage-aim`), and Assign enabled when under-assigned.
+- Board pointer tests cover clicking a blocker during `assign_combat_damage` moves 1 damage onto it.
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
 - Scene/unit tests cover join-forces mana stepper (no per-N buttons; draft submit).

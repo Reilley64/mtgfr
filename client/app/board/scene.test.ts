@@ -494,6 +494,31 @@ test("TargetChosen accumulates multi on-board stack targets until Confirm", () =
   });
 });
 
+test("pointer up on assign_combat_damage blocker moves one damage onto it", () => {
+  const attacker = creature(9, 0, { name: "Attacker", power: 4, toughness: 4 });
+  const bear = creature(4, 1, { name: "Bear" });
+  const elf = creature(5, 1, { name: "Elf" });
+  const pending = {
+    kind: "assign_combat_damage" as const,
+    items: [
+      { id: 4, label: "Bear" },
+      { id: 5, label: "Elf" },
+    ],
+    player: 0,
+    source: 9,
+  };
+  const gameFold = fold(state({ objects: [attacker, bear, elf], pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "damage", amounts: { 4: 4, 5: 0 } },
+    pendingChoiceKey: choiceDraftKey(pending),
+    pointer: { kind: "drag", card: renderStub(5), x: 100, y: 100, moved: false },
+  };
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "damage", amounts: { 4: 3, 5: 1 } });
+});
+
 test("pointer up on non-target while staged clears drag without submitting", () => {
   const attacker = creature(11, 0);
   const other = creature(99, 1);

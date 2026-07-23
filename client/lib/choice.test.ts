@@ -6,6 +6,7 @@ import {
   cardPickReady,
   choiceDraftKey,
   choiceIntent,
+  clickDamageAssign,
   damageAssignReady,
   declineAnswer,
   FORMULATOR_FOR_KIND,
@@ -220,6 +221,22 @@ describe("damageAssignReady", () => {
     expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 3, 5: 1 } }, state)).toBe(true);
     expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 5, 5: 0 } }, state)).toBe(false);
     expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: -1, 5: 0 } }, state)).toBe(false);
+  });
+});
+
+describe("clickDamageAssign", () => {
+  test("moves one damage from the largest other blocker onto the clicked blocker", () => {
+    expect(clickDamageAssign({ 4: 4, 5: 0 }, 5, 4, false)).toEqual({ 4: 3, 5: 1 });
+    expect(clickDamageAssign({ 4: 3, 5: 1 }, 5, 4, false)).toEqual({ 4: 2, 5: 2 });
+  });
+
+  test("trample under-assign adds without stealing until power is full", () => {
+    expect(clickDamageAssign({ 4: 0, 5: 0 }, 4, 4, true)).toEqual({ 4: 1, 5: 0 });
+    expect(clickDamageAssign({ 4: 4, 5: 0 }, 5, 4, true)).toEqual({ 4: 3, 5: 1 });
+  });
+
+  test("no-op when the clicked blocker already holds all assigned damage", () => {
+    expect(clickDamageAssign({ 4: 4, 5: 0 }, 4, 4, false)).toEqual({ 4: 4, 5: 0 });
   });
 });
 

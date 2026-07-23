@@ -185,6 +185,44 @@ export function pendingTargetingOverlay(
   };
 }
 
+/** Blocker object ids when combat damage can be assigned by clicking battlefield permanents. */
+export function pendingDamageAssignBlockers(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (pc == null || pc.kind !== "assign_combat_damage") return null;
+  if (pc.player !== state.viewer) return null;
+  if (pc.items.length === 0) return null;
+  const ids = new Set<number>();
+  for (const item of pc.items) {
+    const obj = state.objects.find((o) => o.id === item.id);
+    if (obj == null || obj.zone !== ZONE.Battlefield) return null;
+    ids.add(item.id);
+  }
+  return ids;
+}
+
+/** Highlight blockers during on-board combat damage assign (no aim arrow). */
+export function pendingDamageAssignOverlay(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): StagingOverlay {
+  const idle: StagingOverlay = {
+    aiming: false,
+    targetObjects: new Set(),
+    targetPlayers: new Set(),
+    aimFrom: null,
+  };
+  const blockers = pendingDamageAssignBlockers(pc, state);
+  if (blockers == null) return idle;
+  return {
+    aiming: true,
+    targetObjects: blockers,
+    targetPlayers: new Set(),
+    aimFrom: null,
+  };
+}
+
 /** Object ids that are legal arrow targets while staged or pending aim is live. */
 export function aimingObjectIds(
   staged: StagedAction | null,

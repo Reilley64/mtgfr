@@ -512,6 +512,10 @@ function damageAssignPrompt(
     ),
   );
   return frame("pending-choice", `Divide ${power} damage among blockers`, [
+    h.div(
+      [h.DataAttribute("testid", "pending-damage-aim"), h.Class("text-body text-mist")],
+      ["Click a blocker on the board to move 1 damage onto it"],
+    ),
     ...rows,
     h.div(
       [
