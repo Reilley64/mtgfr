@@ -77,7 +77,7 @@ Battlefield playable borders are derived from current `ActionView` data. Tap-onl
 
 ### Avatars
 
-Avatars are painted from `canvas/avatars.ts` using the same camera transform as cards. The priority player uses a gold stroke. Lost players render with muted fill. Player life, name, and hand count paint inside the avatar group. Targetable player highlights use Island Blue.
+Avatars are painted from `canvas/avatars.ts` using the same camera transform as cards. The priority player uses a gold stroke. Lost players render with muted fill. Player life, name, and hand count paint inside the avatar group. When a seat has taken commander damage, the orb also paints `Cmd N` where `N` is the highest amount from any single commander source in `PlayerView.commander_damage` (the 21-damage kill clock). Omit the label when that max is 0 or the field is empty. Targetable player highlights use Island Blue.
 
 ### Arrows and target highlights
 
@@ -92,6 +92,7 @@ Canvas and bitmap paint use explicit hex and rgba literals rather than Tailwind 
 - Attack red `#ff6b6b`; block green `#66ff99`; target blue `#77CCFF`.
 - Face-up fallback `#e8e4d8`; face-down fallback `#2a3742`.
 - Badge examples: summoning sick `#e8b24a`, goaded `#7a3b13`, prepared `#55cc99`, counters `#2f7d46`, marked damage `#8f2f2f`.
+- Avatar commander-damage label `#db8664`.
 
 When badge or outline meaning changes, update [`DESIGN.md`](../../DESIGN.md) and the board legend together.
 
@@ -117,6 +118,7 @@ These are visual/layout rules only; they do not collapse engine objects.
 ## Testing Decisions
 
 - Canvas scene tests assert felt, seat, avatar, and arrow ordering.
+- Avatar unit tests assert `Cmd N` paint from `commander_damage` (max source only; omitted at 0).
 - Bitmap paint tests assert playable, commander, target, auto-tap, P/T, loyalty, counter, and damage chrome on the resting layer.
 - Scene tests assert arrows and interactive life-orb hit targets remain layered correctly.
 - Density tests assert packing, cluster fan, and hover raise order.
