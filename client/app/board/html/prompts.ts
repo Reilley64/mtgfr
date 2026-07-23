@@ -395,22 +395,28 @@ function cardPickPrompt(
     return frame("pending-choice", config.title, body);
   }
 
+  // Library search: dock near the hand bar so the board stays visible (Arena tutor chrome).
   return h.div(
     [
-      h.DataAttribute("testid", "pending-choice"),
+      h.DataAttribute("testid", "pending-library-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
       h.Class(
-        "pointer-events-auto fixed top-1/2 left-1/2 z-40 flex max-h-[min(90vh,720px)] max-w-[min(90vw,1040px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-2 overflow-hidden rounded-panel bg-black/70 p-4 text-snow shadow-hud",
+        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
       ),
     ],
     [
       h.div([h.DataAttribute("testid", "pick-title"), h.Class("shrink-0 font-semibold text-body")], [config.title]),
+      h.div(
+        [h.Class("pointer-events-none shrink-0 text-caption text-mist")],
+        ["Filter by name, click a card, then Choose — or Fail to find."],
+      ),
       hintEl,
       filterEl,
       h.div(
         [
           h.DataAttribute("testid", "pick-card-scroll"),
           h.Class(
-            `${PICK_CARD_SCROLL_MIN_CLASS} w-full max-w-[min(90vw,1040px)] flex-1 overflow-y-auto overscroll-contain`,
+            `${PICK_CARD_SCROLL_MIN_CLASS} w-full flex-1 overflow-y-auto overscroll-contain rounded-panel bg-glass/30 p-2`,
           ),
         ],
         [cardsEl],

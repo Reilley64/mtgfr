@@ -884,7 +884,7 @@ test("non-decider sees waiting banner instead of pending-choice controls", () =>
   );
 });
 
-test("library search prompt shows name filter and pinned scroll chrome", () => {
+test("library search aim shows docked filter chrome instead of center modal", () => {
   overlayScene(
     overlayModel(
       {
@@ -904,7 +904,8 @@ test("library search prompt shows name filter and pinned scroll chrome", () => {
         },
       }),
     ),
-    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("pending-library-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("pick-title")).toHaveText("Search your library"),
     Scene.expect(Scene.testId("pick-card-filter")).toExist(),
     Scene.expect(Scene.placeholder("Filter by name…")).toExist(),
@@ -912,7 +913,7 @@ test("library search prompt shows name filter and pinned scroll chrome", () => {
     Scene.expect(Scene.testId("prompt-card-1")).toExist(),
     Scene.expect(Scene.testId("prompt-card-4")).toExist(),
     Scene.expect(Scene.testId("prompt-card-2")).toBeAbsent(),
-    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Fail to find"),
   );
 });
 
