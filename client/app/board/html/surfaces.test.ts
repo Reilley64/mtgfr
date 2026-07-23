@@ -657,11 +657,31 @@ test("join-forces mana prompt shows a stepper instead of per-amount buttons", ()
       }),
     ),
     Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("pending-choice-waiting")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
     Scene.expect(Scene.testId("prompt-number-min")).toExist(),
     Scene.expect(Scene.testId("prompt-number-max")).toExist(),
     Scene.expect(Scene.testId("prompt-number-0")).not.toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
+test("non-decider sees waiting banner instead of pending-choice controls", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        viewer: 1,
+        pending_choice: {
+          kind: "may_yes_no",
+          label: "Scry?",
+          player: 0,
+          source: 3,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-choice-waiting")).toHaveText("Waiting for Alice…"),
   );
 });
 
