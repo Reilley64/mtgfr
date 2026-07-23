@@ -74,7 +74,7 @@ Board image use goes through `sharedImageCache`. Published bitmap frames preload
 
 Prompt HTML is local to `client/app/board/html/prompts.ts`. Pending engine choices render interactive forms only for the awaited player; non-deciders and spectators do not receive actionable prompt DOM. Client-local prompts remain local board state.
 
-The X prompt follows the current `boardXPrompt` shape: it renders a button-per-X list from `minX` through `maxX`, with labels like `X = 3`, plus Cancel. It is not a numeric stepper.
+The X prompt follows the current `boardXPrompt` shape: a clamped Min/−/value/+/Max stepper with a `Pay {…}` cost preview and Confirm/Cancel. Details live in [`prompts-and-pending-choices`](2026-07-20-prompts-and-pending-choices.md).
 
 ### Inspect
 
