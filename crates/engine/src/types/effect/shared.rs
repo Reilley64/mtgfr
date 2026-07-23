@@ -414,7 +414,7 @@ pub enum Effect {
 impl Effect {
     /// A plain "add `amount` {C}" mana ability, built at runtime so a delayed trigger can bake in a
     /// count known only at schedule time (Scattering Stroke's {C}-per-mana-value rider). Every other
-    /// [`AddMana`](Self::AddMana) field takes its ordinary card default.
+    /// [`ManaEffect::Add`](crate::ManaEffect::Add) field takes its ordinary card default.
     pub(crate) fn add_colorless(amount: u8) -> Effect {
         Effect::Mana(ManaEffect::Add {
             mana: ManaPool::of(Mana::Colorless, amount),
@@ -876,13 +876,13 @@ impl Effect {
     }
 
     /// How many targets this effect chooses (CR 601.2c). Most targeted effects take a single
-    /// mandatory target (`{1, 1}`); [`ReturnToHand`](Self::ReturnToHand) (Aether Gale's "six
-    /// target"), [`DealDamage`](Self::DealDamage) (Volcanic Salvo's "up to two", Magma Opus's
-    /// divided "any number"), [`TapTarget`](Self::TapTarget) (Magma Opus's "tap two"),
-    /// [`ExileTarget`](Self::ExileTarget) (Curse of the Swine's "exile X target creatures"),
-    /// [`DestroyTarget`](Self::DestroyTarget) (Pest Infestation's "up to X target artifacts
-    /// and/or enchantments"), [`PutCounters`](Self::PutCounters) (Silkguard's "each of up to
-    /// X"), and [`ExileTargetGraveyardSpellCastFree`](Self::ExileTargetGraveyardSpellCastFree)
+    /// mandatory target (`{1, 1}`); [`ZoneEffect::ReturnToHand`](crate::ZoneEffect::ReturnToHand) (Aether Gale's "six
+    /// target"), [`DamageEffect::Target`](crate::DamageEffect::Target) (Volcanic Salvo's "up to two", Magma Opus's
+    /// divided "any number"), [`ControlEffect::TapTarget`](crate::ControlEffect::TapTarget) (Magma Opus's "tap two"),
+    /// [`DestroyEffect::ExileTarget`](crate::DestroyEffect::ExileTarget) (Curse of the Swine's "exile X target creatures"),
+    /// [`DestroyEffect::DestroyTarget`](crate::DestroyEffect::DestroyTarget) (Pest Infestation's "up to X target artifacts
+    /// and/or enchantments"), [`CountersEffect::PutCounters`](crate::CountersEffect::PutCounters) (Silkguard's "each of up to
+    /// X"), and [`DigEffect::ExileTargetGraveyardSpellCastFree`](crate::DigEffect::ExileTargetGraveyardSpellCastFree)
     /// (Renegade Bull's "up to one target," `{0, 1}`) carry a real count.
     pub(crate) fn target_count(self) -> TargetCount {
         match self {

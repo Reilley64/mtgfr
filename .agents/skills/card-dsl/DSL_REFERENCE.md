@@ -848,7 +848,7 @@ See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the
 
 ## 6. Effects (`[[abilities.effects]]` type + mode)
 
-**Authoring shape:** write nested `type` (family) + `mode` (leaf), as in [Effect families](#effect-families) above — e.g. legacy `deal_damage` is `type = "damage"`, `mode = "target"`. This table is a **lookup index**, not copy-paste TOML: the left column is the *legacy flat effect name* (search continuity from before the family fold). Find the row by that name, then map it to family `type` + leaf `mode` via `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md`. Effects that never joined a family (e.g. `anthem_static`, `search_library`) still use that string as the sole `type=` with no `mode`. **Do not put the left-column string in `type=` alone** when the row belongs to a family.
+**Authoring shape:** write nested `type` (family) + `mode` (leaf), as in [Effect families](#effect-families) above — e.g. legacy `deal_damage` is `type = "damage"`, `mode = "target"`; legacy `search_library` is `type = "dig"`, `mode = "search_library"`; legacy `anthem_static` is `type = "static"`, `mode = "anthem"`. Only structural composers (`sequence`, `conditional`, `choose_one`) use a sole `type=` with no `mode`. This table is a **lookup index**, not copy-paste TOML: the left column is the *legacy flat effect name* (search continuity). Find the row by that name, then map it to family `type` + leaf `mode` via `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md`. **Do not put the left-column string in `type=` alone** — always use family `type` + `mode` except for structural composers.
 
 "Target" column: does it read a `target` field (§7)?
 
@@ -1206,7 +1206,8 @@ type = "may_sacrifice"
 filter = "land"
 
 [[abilities.effects.then]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true
@@ -1651,14 +1652,16 @@ per-pick destination list is the generalization a third destination would need.
 ```toml
 # Diabolic Tutor: search for any card, put it into your hand, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "any_card"
 to_zone = "hand"
 ```
 ```toml
 # Buried Alive: search for up to three creature cards, put them into your graveyard, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "creature"
 to_zone = "graveyard"
 count = 3
@@ -1673,7 +1676,8 @@ pay_life = 1          # omit or 0 for a no-life fetch (Terramorphic/Fabled Passa
 sacrifice = "this"
 
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = false        # true to enter tapped (Rampant Growth, Terramorphic, Fabled Passage)
@@ -1682,7 +1686,8 @@ tapped = false        # true to enter tapped (Rampant Growth, Terramorphic, Fabl
 # Nature's Lore: "Search your library for a Forest card, put it onto the battlefield, then
 # shuffle." — matches the basic Forest and any nonbasic Forest-typed land.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { land_with_subtype = ["Forest"] }
 to_zone = "battlefield"
 tapped = false
@@ -1691,7 +1696,8 @@ tapped = false
 # Archaeomancer's Map: "search your library for up to two basic Plains cards, reveal them, put
 # them into your hand, then shuffle." — the Basic supertype excludes a nonbasic Plains-typed dual.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { basic_land_with_subtype = ["Plains"] }
 to_zone = "hand"
 count = 2
@@ -1700,7 +1706,8 @@ count = 2
 # Land Tax: "search your library for up to three basic land cards ... put them into your hand,
 # then shuffle." One search, up to three picks, a single shuffle after the last one.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "hand"
 count = 3
@@ -1710,7 +1717,8 @@ count = 3
 # battlefield tapped and the other into your hand, then shuffle." One search, two destinations,
 # one shuffle after the last pick.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 count = 2
 to_zone = "battlefield"
