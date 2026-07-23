@@ -67,6 +67,7 @@ Decisions → Testing Decisions → Out of Scope → Further Notes.
 - Follow the [`AGENTS.md` Feature specs section](../../../AGENTS.md#feature-specs).
 - Use [`CONTEXT.md`](../../../CONTEXT.md) vocabulary. Reference `DESIGN.md` token names rather
   than raw hex; canvas hex literals are the documented exception.
-- **PR / loop review:** Code review (see `.agents/skills/requesting-code-review/`) must fail
-  merge on PR-scoped design sidecars, missing surface-spec updates, or non-current narrative
-  in this directory. Plans live under [`../plans/`](../plans/), not here.
+- **PR / loop review:** Code review must fail merge on PR-scoped design sidecars, missing
+  surface-spec updates, or non-current narrative in this directory (see
+  [`AGENTS.md` Feature specs](../../../AGENTS.md#feature-specs)). Plans live under
+  [`../plans/`](../plans/), not here.

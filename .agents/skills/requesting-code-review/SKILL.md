@@ -45,12 +45,6 @@ Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md
 - Note Minor issues for later
 - Push back if reviewer is wrong (with reasoning)
 
-**Feature specs gate (this repo):** The reviewer template requires an explicit
-AGENTS.md Feature specs check. If the diff adds or edits `docs/superpowers/specs/`,
-treat PR-scoped `*-design.md` sidecars, migration/history narrative, missing
-surface-spec updates, or wrong template shape as **Critical** — fix before merge
-or before continuing the continuous improvement loop.
-
 ## Example
 
 ```
