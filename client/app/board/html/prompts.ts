@@ -21,7 +21,9 @@ import {
   FORMULATOR_FOR_KIND,
   initPromptDraft,
 } from "~/choice";
+import { costPipPlate } from "~/costPips";
 import { filterOptionLabels } from "~/optionFilter";
+import { manaFontClass } from "~/oracleText";
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
@@ -1194,27 +1196,58 @@ function colorPickPrompt(
   tableId: string | null,
 ): Html {
   const colors = [
-    { index: 0, label: "W" },
-    { index: 1, label: "U" },
-    { index: 2, label: "B" },
-    { index: 3, label: "R" },
-    { index: 4, label: "G" },
+    { index: 0, code: "W", name: "White" },
+    { index: 1, code: "U", name: "Blue" },
+    { index: 2, code: "B", name: "Black" },
+    { index: 3, code: "R", name: "Red" },
+    { index: 4, code: "G", name: "Green" },
   ] as const;
+  const sizePx = 28;
   return frame("pending-choice", pending.kind === "choose_mana_color" ? "Choose a mana color" : "Choose a color", [
     h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      colors.map((color) =>
-        answerButton(
-          pending,
-          `prompt-color-${color.index}`,
-          color.label,
-          pending.kind === "choose_mana_color"
-            ? { kind: "mana_color", color: color.index }
-            : { kind: "color", color: color.index },
-          false,
-          tableId == null,
-        ),
-      ),
+      [h.Class("flex flex-wrap items-center justify-center gap-2")],
+      colors.map((color) => {
+        const ms = manaFontClass(color.code) ?? color.code.toLowerCase();
+        return h.button(
+          [
+            h.Type("button"),
+            h.DataAttribute("testid", `prompt-color-${color.index}`),
+            h.AriaLabel(color.name),
+            h.Disabled(tableId == null),
+            h.OnClick(
+              PendingChoiceAnswered({
+                intent: choiceIntent(
+                  pending,
+                  pending.kind === "choose_mana_color"
+                    ? { kind: "mana_color", color: color.index }
+                    : { kind: "color", color: color.index },
+                ),
+              }),
+            ),
+            h.Class(
+              "group relative cursor-pointer rounded-hud border-0 bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-50",
+            ),
+          ],
+          [
+            h.span(
+              [
+                h.DataAttribute("testid", `prompt-color-pip-${color.index}`),
+                h.Class(
+                  "inline-flex shrink-0 items-center justify-center rounded-full shadow-[0_1px_2px_rgb(0_0_0/0.9)] transition-transform duration-150 ease-out group-hover:-translate-y-1",
+                ),
+                h.Style({
+                  width: `${sizePx}px`,
+                  height: `${sizePx}px`,
+                  "background-color": costPipPlate(color.code),
+                  color: "#111",
+                  "font-size": `${Math.round(sizePx * 0.82)}px`,
+                }),
+              ],
+              [h.i([h.Class(`ms ms-${ms}`)], [])],
+            ),
+          ],
+        );
+      }),
     ),
   ]);
 }
