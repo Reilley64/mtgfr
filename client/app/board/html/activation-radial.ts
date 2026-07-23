@@ -6,6 +6,7 @@
 
 import { Option } from "effect";
 import { type Html, html } from "foldkit/html";
+import { colors } from "~/design-tokens.generated";
 import type { VisibleState } from "~/wire/types";
 import { layout, ZONE } from "../geometry/layout";
 import {
@@ -97,8 +98,8 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
             h.AriaLabel(opt.label),
             h.Attribute("aria-disabled", opt.disabled ? "true" : "false"),
             h.FillRule("evenodd"),
-            h.Fill(opt.disabled ? "#26302a" : active ? "#276B3C" : "#15241c"),
-            h.Stroke(opt.disabled ? "#7a6a3a" : "#FFD76A"),
+            h.Fill(opt.disabled ? "#26302a" : active ? colors.llanowarDeep : "#15241c"),
+            h.Stroke(opt.disabled ? "#7a6a3a" : colors.priorityGold),
             h.StrokeWidth(active ? "2.5" : "2"),
             h.StrokeOpacity(opt.disabled ? "0.55" : "1"),
             h.Class(opt.disabled ? "cursor-not-allowed opacity-60 outline-none" : "cursor-pointer outline-none"),
@@ -120,7 +121,7 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
             h.TextAnchor("middle"),
             h.DominantBaseline("middle"),
             h.Class("pointer-events-none font-semibold"),
-            h.Fill(opt.disabled ? "#9aa39d" : "#EEFFFF"),
+            h.Fill(opt.disabled ? "#9aa39d" : colors.snow),
             h.FontSize("11px"),
           ],
           [truncateLabel(opt.label)],

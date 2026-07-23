@@ -1,4 +1,5 @@
 import { Canvas } from "foldkit";
+import { colors } from "~/design-tokens.generated";
 import type { PlayerView } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
 import { type Camera, worldToScreen } from "../geometry/camera";
@@ -47,7 +48,7 @@ export function avatarShapes(
     const pos = positions[player.player];
     if (pos == null) continue;
 
-    const stroke = priority === player.player ? "#ffd76a" : seatColor(player.player, 0.9);
+    const stroke = priority === player.player ? colors.priorityGold : seatColor(player.player, 0.9);
     const targeted = targetPlayers.has(player.player);
     shapes.push(
       Canvas.Circle({

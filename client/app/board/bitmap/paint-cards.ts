@@ -1,5 +1,7 @@
+import { colors } from "~/design-tokens.generated";
 import { cardBackUrl, imageUrlByPrint } from "../../../lib/deck-builder/scryfall";
 import type { ImageCache } from "../../../lib/image-cache";
+import { TARGET_COLOR } from "../action/targeting";
 import { CARD_RESTING_OUTLINE, COMMANDER_GOLD } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { type RenderCard, seatColor, ZONE } from "../geometry/layout";
@@ -14,8 +16,8 @@ export const CARD_OUTLINE = CARD_RESTING_OUTLINE;
 export const CARD_CORNER_RADIUS = 6;
 export const DIM_CARD_VEIL = 0.45;
 export const TAP_GLYPH = "\ue61a";
-export const TARGET_STROKE: Stroke = { color: "#77CCFF", dash: [2, 6] };
-export { TARGET_COLOR } from "../action/targeting";
+export const TARGET_STROKE: Stroke = { color: TARGET_COLOR, dash: [2, 6] };
+export { TARGET_COLOR };
 
 const ABILITY_GLYPH: Record<string, string> = {
   deathtouch: "\ue94b",
@@ -104,7 +106,7 @@ export function paintCard(
   }
 
   roundRect(ctx, tl.x, tl.y, w, h, r);
-  ctx.fillStyle = card.faceDown ? "#2a3742" : "#e8e4d8";
+  ctx.fillStyle = card.faceDown ? colors.morphSlate : colors.oracleIvory;
   ctx.fill();
   ctx.shadowBlur = 0;
   const baseStroke = card.isCommander ? COMMANDER_GOLD : (outline?.color ?? CARD_OUTLINE);
@@ -358,8 +360,8 @@ function paintFaceUp(
       15 * cam.zoom,
       `+${card.counters}`,
       cam.zoom,
-      "#2f7d46",
-      "#eafff0",
+      colors.llanowar,
+      colors.snowMint,
     );
   }
   if (card.markedDamage > 0) {
@@ -371,7 +373,7 @@ function paintFaceUp(
       15 * cam.zoom,
       `${card.markedDamage}`,
       cam.zoom,
-      "#8f2f2f",
+      colors.damageCrimson,
       "#ffecec",
     );
   }
@@ -467,11 +469,11 @@ function drawStatusBadges(
     railY = y + pad + iconR * 2 + 3 * zoom + iconR;
   }
   if (card.goaded) {
-    drawAbilityChip(ctx, x + pad + iconR, railY, iconR, "goaded", "#7a3b13", "#ffecec");
+    drawAbilityChip(ctx, x + pad + iconR, railY, iconR, "goaded", colors.reconnectRust, "#ffecec");
     railY += iconR * 2 + 3 * zoom;
   }
   if (card.prepared) {
-    badge(ctx, x + w - pad - 14 * zoom, y + pad, 14 * zoom, 12 * zoom, "P", zoom, "#55cc99", "#0c1412");
+    badge(ctx, x + w - pad - 14 * zoom, y + pad, 14 * zoom, 12 * zoom, "P", zoom, colors.phaseMint, "#0c1412");
   }
   if (card.isCommander) {
     dot(ctx, x + w - pad - 4 * zoom, y + pad + 4 * zoom + (card.prepared ? 14 * zoom : 0), 4 * zoom, COMMANDER_GOLD);
@@ -500,7 +502,7 @@ function drawStatusBadges(
         `+${hiddenKeywordCount(shown.length, painted, overflow)}`,
         zoom,
         "#1a2420",
-        "#ccddee",
+        colors.mist,
       );
       return;
     }
@@ -510,7 +512,7 @@ function drawStatusBadges(
   }
   const hidden = hiddenKeywordCount(shown.length, painted, overflow);
   if (hidden > 0 && railY + iconR <= railFloor) {
-    badge(ctx, x + pad, railY - iconR, 16 * zoom, 12 * zoom, `+${hidden}`, zoom, "#1a2420", "#ccddee");
+    badge(ctx, x + pad, railY - iconR, 16 * zoom, 12 * zoom, `+${hidden}`, zoom, "#1a2420", colors.mist);
   }
 }
 
@@ -539,8 +541,8 @@ function drawAbilityChip(
   cy: number,
   r: number,
   id: string,
-  bg = "#0c1412eb",
-  ink = "#eafff0",
+  bg: string = colors.forestHud,
+  ink: string = colors.snowMint,
 ): void {
   ctx.save();
   ctx.beginPath();

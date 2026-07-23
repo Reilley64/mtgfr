@@ -7,7 +7,7 @@
 //
 // tailwind-merge knows stock Tailwind's scales, not the ones DESIGN.md gives us. Unconfigured, it
 // classifies `text-caption` as a colour and drops it from `text-caption text-burn-red`. Hence
-// `THEME_SCALES` — guarded against drifting from global.css by cn.test.ts.
+// `THEME_SCALES` — guarded against drifting from tokens.generated.css by cn.test.ts.
 
 import { type ClassValue, clsx } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";

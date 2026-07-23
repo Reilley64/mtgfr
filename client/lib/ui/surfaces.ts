@@ -1,4 +1,4 @@
-// DESIGN.md §5 surface recipes — Foldkit ports of Solid `atoms/surfaces.tsx` + `field.tsx`.
+// Surface recipes for Foldkit views. Token values come from design.tokens.json via generated theme (see client/lib/ui/).
 
 import { cn } from "../cn";
 
@@ -22,7 +22,7 @@ export function feltClass(...extra: Array<string | false | null | undefined>): s
   return cn("bg-forest-floor font-sans text-body text-snow", ...extra);
 }
 
-/** Glass + vine input from DESIGN.md §5. */
+/** Glass + vine input field chrome. */
 export function fieldClass(...extra: Array<string | false | null | undefined>): string {
   return cn("rounded-control border border-vine bg-glass px-md py-sm text-body text-snow", ...extra);
 }

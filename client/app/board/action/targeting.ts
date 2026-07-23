@@ -8,12 +8,13 @@
 //   - graveyard/exile cards are collapsed into a single pile card, and stack objects live in the
 //     DOM overlay, so neither can be clicked → offer them as a picker instead
 
+import { colors } from "~/design-tokens.generated";
 import type { ActionView, VisibleState, WireTarget } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 
 /** Shared target-arrow / staged-preview accent (canvas stroke + DOM ring). */
-export const TARGET_COLOR = "#77CCFF";
+export const TARGET_COLOR = colors.islandBlue;
 
 export type Vec = { x: number; y: number };
 

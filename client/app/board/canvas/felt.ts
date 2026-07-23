@@ -1,4 +1,5 @@
 import { Canvas } from "foldkit";
+import { colors } from "~/design-tokens.generated";
 
 export function feltShapes(width: number, height: number): Canvas.Shape[] {
   const speckles = Array.from({ length: 24 }, (_, i) => {
@@ -8,7 +9,7 @@ export function feltShapes(width: number, height: number): Canvas.Shape[] {
   });
 
   return [
-    Canvas.Rect({ x: 0, y: 0, width, height, fill: "#0B1310" }),
+    Canvas.Rect({ x: 0, y: 0, width, height, fill: colors.forestFloor }),
     ...speckles,
     Canvas.Rect({ x: 0, y: 0, width, height, fill: "rgba(0,0,0,0.18)" }),
   ];

@@ -1,5 +1,7 @@
 // Shared stack geometry for the DOM overlay and canvas aim origins.
 
+export { TARGET_COLOR } from "../action/targeting";
+
 export const STACK_CARD_W = 180;
 export const STACK_OVERLAY_RIGHT = 16;
 /** Vertical peek of each lower card in the physical pile. */
@@ -14,8 +16,6 @@ export const STACK_STRIP_MIN_PEEK = 20;
 export const STACK_VERTICAL_RESERVED = 120;
 /** Horizontal inset when measuring strip/full width. */
 export const STACK_HORIZONTAL_MARGIN = 48;
-/** Targeting ring color for staged stack ghosts (DESIGN.md island-blue). */
-export const TARGET_COLOR = "#77CCFF";
 /** Server base hold + max dwell extension (ms) — bar denominator cap. */
 export const STACK_HOLD_MAX_MS = 5000;
 

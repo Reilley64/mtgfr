@@ -15,7 +15,7 @@ These concerns — routing, auth, deck management, card art CDN, state managemen
 
 ## Solution
 
-The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns all routes (`client/app/`: `Model` / `Message` / `update` / `view` with shell submodels). Async/wire work uses Effect at runtime boundaries (`client/lib/rpc-client.ts`, streams, BFF); Foldkit owns UI state. The wire contract is a hand-written Effect HTTP client over the same-origin `/api/rpc` BFF, which dials tonic gRPC. Design tokens live in `DESIGN.md` YAML and Tailwind v4 `@theme` in `client/styles/global.css`. Biome handles format/lint. Observability: Grafana Faro (browser) + `@effect/opentelemetry` (BFF) + OTLP/tonic (API), no-op locally unless OTLP is set.
+The client is a **Foldkit** SPA on **Nitro** (Vite). A single event-reactor owns all routes (`client/app/`: `Model` / `Message` / `update` / `view` with shell submodels). Async/wire work uses Effect at runtime boundaries (`client/lib/rpc-client.ts`, streams, BFF); Foldkit owns UI state. The wire contract is a hand-written Effect HTTP client over the same-origin `/api/rpc` BFF, which dials tonic gRPC. Design tokens are authored in `design.tokens.json` (DTCG) and generated under `bun run gen` into Tailwind v4 `@theme` (`client/styles/tokens.generated.css`) and canvas exports (`client/lib/design-tokens.generated.ts`). Biome handles format/lint. Observability: Grafana Faro (browser) + `@effect/opentelemetry` (BFF) + OTLP/tonic (API), no-op locally unless OTLP is set.
 
 ---
 
@@ -111,9 +111,9 @@ Missing CDN art is a broken `<img>` — no Scryfall fallback in production. The 
 
 **Deck image preload** (`lib/deckImagePreload.ts`): on Board mount, `preloadDecksIntoCache(ids, cache)` fetches all seated decks' art into `sharedImageCache` so gameplay hits the cache. `imageCache.ts` provides a simple URL→HTMLImageElement cache with a subscriber list for canvas redraws on image settle.
 
-### Design system (client-shell-deck-builder-and-observability spec, `DESIGN.md`, `global.css`)
+### Design system (client-shell-deck-builder-and-observability spec, `DESIGN.md`, `design.tokens.json`, `global.css`)
 
-DESIGN.md's YAML frontmatter is the **single source of truth** for design tokens. `global.css` mirrors those tokens into a Tailwind v4 `@theme` block. Foldkit HTML helpers and shared UI helpers in `client/lib/ui/` realize the DESIGN.md `components` map — never via `@apply`. Inline style is used only for CSS variables; classes carry appearance. Arbitrary values (`bg-[#18221ef5]`) are for one-off values that DESIGN.md does not name; they do not extend the token list.
+`design.tokens.json` (DTCG) is the **single source of truth** for design token values. `bun run gen` (Style Dictionary) generates `client/styles/tokens.generated.css` (Tailwind v4 `@theme`) and `client/lib/design-tokens.generated.ts` (canvas named colors). `global.css` imports generated theme output and keeps hand-authored keyframes/interaction rules. Foldkit HTML helpers and shared UI helpers in `client/lib/ui/` own component recipes — never via `@apply`, and not as token component maps. Inline style is used only for CSS variables; classes carry appearance. Arbitrary values (`bg-[#18221ef5]`) are for one-off values that token files do not name; they do not extend the token list.
 
 Key semantic tokens:
 - `forest-floor` (#0B1310) — canvas background, `index.html` inline background (prevents flash).
@@ -205,7 +205,7 @@ Single-page login/signup (toggled, not separate routes). `Login` and `Signup` ar
 
 ## Further Notes
 
-- **DESIGN.md is the token source.** Adding a token to `client/styles/global.css` that does not exist in DESIGN.md is drift. The two must stay in sync.
+- **`design.tokens.json` is the token source.** Token values are authored there, then generated into `client/styles/tokens.generated.css` and `client/lib/design-tokens.generated.ts`; never hand-edit generated outputs.
 - **Effect / `@effect/*` packages must be pinned to the same exact beta.** Breaking the pin causes runtime type mismatches between Effect fibers from different versions.
 - **Wire codegen.** `.proto` is the sole contract (wire-protocol-and-visibility spec). After proto changes: `just server-codegen` / `bun run gen` to regenerate the gitignored `client/lib/wire/generated/` directory. The BFF gRPC client imports from there.
 - **Faro size cap.** `FARO_MAX_BODY_BYTES = 512 KiB`. The `/api/faro/collect` route rejects oversized payloads with 413 before reading the full body (`contentLengthTooLarge` checks `Content-Length` header first; `readBodyCapped` streams and checks).

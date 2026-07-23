@@ -17,7 +17,8 @@ These documents are **not superseded** and must stay current alongside the specs
 | Doc | Purpose |
 |-----|---------|
 | [`CONTEXT.md`](../../../CONTEXT.md) | Domain glossary — ubiquitous language for engine and protocol |
-| [`DESIGN.md`](../../../DESIGN.md) | Design token source of truth |
+| [`DESIGN.md`](../../../DESIGN.md) | Design system rules / north star (prose) |
+| [`design.tokens.json`](../../../design.tokens.json) | DTCG design token source of truth |
 | [`PRODUCT.md`](../../../PRODUCT.md) | Product positioning and anti-references |
 | [`docs/fidelity/`](../../fidelity/) | Per-deck fidelity reports and increments backlogs (`fidelity-grind`) |
 | [`docs/WIRE_COMPAT.md`](../../WIRE_COMPAT.md) | Expand-only proto field rules during drain rolls |
@@ -65,8 +66,9 @@ Decisions → Testing Decisions → Out of Scope → Further Notes.
 - Document **current behavior only**: no TBD, no Solid/migration history, no historical client narrative.
 - When a target splits, merges, or renames, update the relevant specs in the same change.
 - Follow the [`AGENTS.md` Feature specs section](../../../AGENTS.md#feature-specs).
-- Use [`CONTEXT.md`](../../../CONTEXT.md) vocabulary. Reference `DESIGN.md` token names rather
-  than raw hex; canvas hex literals are the documented exception.
+- Use [`CONTEXT.md`](../../../CONTEXT.md) vocabulary. Reference DTCG token names
+  (`design.tokens.json`); canvas uses `design-tokens.generated.ts` for named colors; unnamed
+  paint literals remain the exception.
 - **PR / loop review:** Code review must fail merge on PR-scoped design sidecars, missing
   surface-spec updates, or non-current narrative in this directory (see
   [`AGENTS.md` Feature specs](../../../AGENTS.md#feature-specs)). Plans live under

@@ -1,6 +1,6 @@
-/* The design system, as Tailwind. DESIGN.md's frontmatter is the source of truth: its `colors`,
- * `typography`, `rounded` and `spacing` maps are the @theme below, and its `components` map is
- * realized as Foldkit HTML helpers + utility recipes in `client/app/` — never via `@apply`.
+/* The design system, as Tailwind. `design.tokens.json` is the source of truth and is generated
+ * into `tokens.generated.css`; DESIGN.md's `components` map is realized as Foldkit HTML helpers +
+ * utility recipes in `client/app/` — never via `@apply`.
  * A token that exists in one and not the other is drift.
  *
  * House rule for the TSX: classes carry styling, `style` carries only data — a dynamic value goes
@@ -13,6 +13,7 @@
 @import "tailwindcss";
 /* Oracle/approximates mana pips + mana-tray symbols (duo / color indicators) — subset of mana-font. */
 @import "./mana-oracle.css";
+@import "./tokens.generated.css";
 
 /* Prefer woff2 for canvas `ctx.fillText("…", …)` with `font: … Mana` (One Face Rule exception —
  * icon font only, never body/UI text). Overrides the package face which ships woff/ttf only. */
@@ -72,115 +73,7 @@
 }
 
 @theme {
-  /* The One Face Rule (DESIGN.md §3): system-ui only, everywhere, including the canvas. */
-  --font-sans: system-ui, sans-serif;
-
-  --color-forest-floor: #0b1310;
-  --color-forest-surface: #101816fa;
-  --color-forest-hud: #0c1412eb;
-  --color-llanowar: #2f7d46;
-  --color-llanowar-deep: #276b3c;
-  --color-vine: #22cc44;
-  --color-vine-dim: #11cc33;
-  --color-snow: #eeffff;
-  --color-seafoam: #ddffee;
-  --color-mist: #ccddee;
-  --color-lichen: #99ccbb;
-  --color-fog: #8899aa;
-  --color-snow-mint: #eafff0;
-  --color-glass: #ffffff0f;
-  --color-glass-dim: #ffffff0d;
-  --color-priority-gold: #ffd76a;
-  --color-playable-border: #eafff0;
-  --color-commander-gold: #e9b84a;
-  --color-graveyard-outline: #7b5cff;
-  --color-exile-outline: #3ddc97;
-  --color-oracle-ivory: #e8e4d8;
-  --color-morph-slate: #2a3742;
-  --color-mountain-red: #ff5555;
-  --color-wall-green: #66ff99;
-  --color-island-blue: #77ccff;
-  --color-burn-red: #ff8888;
-  --color-caution-amber: #ffee88;
-  --color-damage-crimson: #8f2f2f;
-  --color-tapped-out: #24312b;
-  --color-tapped-ink: #66786e;
-  --color-seat-forest: #5ac88c;
-  --color-seat-island: #5a96f0;
-  --color-seat-mountain: #f0785a;
-  --color-seat-arcane: #c88cf0;
-  --color-turn-mint: #8fdcaa;
-  --color-turn-ember: #e0a878;
-  --color-phase-mint: #55cc99;
-  --color-phase-ember: #cc8855;
-  --color-note-gold: #f0c674;
-  --color-auto-moss: #3a7d52;
-  --color-reconnect-rust: #7a3b13;
-  --color-assign-clover: #99ff99;
-  --color-watch-sage: #9fb4a8;
-  --color-watch-flare: #f87171;
-  --color-ready-sprout: #8fe3a8;
-  --color-phase-fern: #8fa398;
-  --color-preview-ash: #e8e8ea;
-  /* Not in DESIGN.md: the hairline the HUD panels actually ship with (§5 calls them borderless). */
-  --color-hud-edge: #5a786966;
-  /* Yielded pass control — amber earth, not priority gold (The Gold Means Act Rule). */
-  --color-yielded: #6b5a1f;
-  --color-yielded-hover: #7d6a26;
-  --color-yielded-ink: #ffe9a8;
-  --color-quiet-hover: #2c3f35;
-
-  /* Hierarchy is size and weight only — never a second family. */
-  --text-title: 18px;
-  --text-title--font-weight: 700;
-  --text-body: 14px;
-  --text-body--line-height: 1.5;
-  --text-button: 14px;
-  --text-button--font-weight: 600;
-  --text-label: 13px;
-  --text-caption: 12px;
-  /* HUD density steps below caption — board chrome only, not prose. */
-  --text-chip: 11px;
-  --text-micro: 10px;
-  --text-game: 15px;
-  --text-game--font-weight: 600;
-  --text-display: 22px;
-  --text-display--font-weight: 700;
-
-  --radius-panel: 12px;
-  --radius-modal: 10px;
-  --radius-game: 10px;
-  --radius-hud: 8px;
-  --radius-control: 6px;
-  --radius-focus: 4px;
-
-  --spacing-xs: 6px;
-  --spacing-sm: 8px;
-  --spacing-md: 10px;
-  --spacing-lg: 14px;
-  --spacing-xl: 16px;
-  --spacing-xxl: 24px;
-
-  /* Shadows say "this floats"; glow says "the game wants you" (DESIGN.md §4). */
-  --shadow-table: 0 12px 40px rgb(0 0 0 / 0.6);
-  --shadow-hand: 0 6px 18px rgb(0 0 0 / 0.5);
-  --shadow-hud: 0 6px 20px rgb(0 0 0 / 0.45);
-  --shadow-press: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 6px 16px rgb(0 0 0 / 0.4);
-  --shadow-press-active: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 3px 10px rgb(0 0 0 / 0.4);
-  --shadow-glow:
-    inset 0 1px 0 rgb(255 255 255 / 0.18), 0 0 0 2px rgb(90 200 140 / 0.55), 0 6px 20px rgb(47 140 90 / 0.45);
-  --shadow-pick: 0 0 0 3px #22cc44, 0 10px 24px rgb(0 0 0 / 0.6);
-  --drop-shadow-drag: 0 10px 24px rgb(0 0 0 / 0.6);
-
-  --ease-state: cubic-bezier(0.22, 1, 0.36, 1);
-
-  /* Motion is state-conveying, never required to use the interface. */
-  --animate-stack-in: stack-in 0.25s ease-out;
-  --animate-stack-return: stack-return 0.22s ease-in;
-  --animate-stack-resolve: stack-resolve 0.22s ease-out;
-  --animate-breathe: breathe 1.8s ease-in-out infinite;
-  --animate-skeleton: breathe 1.2s ease-in-out infinite;
-
+  /* Keyframes referenced by generated --animate-* tokens stay hand-authored here. */
   @keyframes stack-in {
     from {
       opacity: 0;

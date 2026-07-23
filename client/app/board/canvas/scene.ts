@@ -1,4 +1,5 @@
 import { Canvas } from "foldkit";
+import { colors } from "~/design-tokens.generated";
 import type { VisibleState, WireAttack, WireBlock } from "~/wire/types";
 import { TARGET_COLOR } from "../action/targeting";
 import { CARD_CORNER_RADIUS } from "../bitmap/paint-cards";
@@ -133,7 +134,7 @@ function cardShapes(
     const cardStroke = targeted
       ? TARGET_COLOR
       : selected
-        ? "#ffd76a"
+        ? colors.priorityGold
         : playable
           ? PLAYABLE_BORDER
           : card.isCommander
@@ -191,7 +192,7 @@ function cardShapes(
           y: top + 10 * camera.zoom,
           content: `x${card.pile || card.cluster}`,
           font: `700 ${Math.max(1, Math.round(11 * camera.zoom))}px system-ui, sans-serif`,
-          fill: "#ffd76a",
+          fill: colors.priorityGold,
           align: "Right",
           baseline: "Middle",
         }),
