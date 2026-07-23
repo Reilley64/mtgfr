@@ -8,7 +8,7 @@
 
 **Tech Stack:** Foldkit + Effect v4 beta (align to Foldkit’s pinned beta), Nitro + Vite, Tailwind v4, Biome, Vitest, existing Effect-gRPC BFF, Foldkit Story/Scene tests.
 
-**Spec:** [docs/superpowers/specs/2026-07-21-foldkit-client-migration-design.md](../specs/2026-07-21-foldkit-client-migration-design.md)
+**Spec:** Superseded by the current client specs: [client-shell-deck-builder-and-observability](../specs/2026-07-20-client-shell-deck-builder-and-observability.md) and [board-composition](../specs/2026-07-20-board-composition.md).
 
 ## Global Constraints
 
@@ -639,7 +639,7 @@ git commit -m "feat: Mount bitmap layer for card art and flights"
 
 - [ ] **Step 2: Port HTML overlays and action pipeline**
 
-Match behaviors in client-game-board-and-interaction spec: hand threshold, stack modes, inspect Alt, radial, combat drag, prompts.
+Match behaviors in the fine-grained board specs: hand threshold, stack modes, inspect Alt, radial, combat drag, prompts.
 
 - [ ] **Step 3: Unit/Scene tests PASS**
 
@@ -660,7 +660,7 @@ git commit -m "feat: Foldkit board HTML overlays and action session"
 - Delete deps: `@solidjs/start`, `@solidjs/router`, `solid-js`, `@effect/atom-solid`, `vinxi`
 - Delete: `client/app.config.ts`
 - Update: `docs/client-canvas-map.md` paths to `app/board/**`
-- Update: shell/board specs “Implementation Decisions” only if they claim SolidStart as current (or add Further Notes pointing at Foldkit migration design)
+- Update: shell/board specs “Implementation Decisions” only if they claim an obsolete client stack as current (or add Further Notes pointing at the current client specs)
 - Test: `just client-check`
 - Test: verify skill two-player live game
 

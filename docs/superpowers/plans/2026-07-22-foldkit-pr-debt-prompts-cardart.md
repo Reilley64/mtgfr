@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-22-foldkit-pr-debt-prompts-cardart-design.md`
+- Spec: `docs/superpowers/specs/2026-07-20-prompts-and-pending-choices.md`, `docs/superpowers/specs/2026-07-20-hand-and-zone-bar.md`, `docs/superpowers/specs/2026-07-20-card-inspect.md`
 - Same PR branch: `cursor/foldkit-migration-design-1ef0`
 - Two commits: (1) CardArt, (2) formulators — subjects lower-case, header ≤72, no `feat!:`
 - No production path may render `Limited UI` or call `stubPendingChoice`
@@ -485,7 +485,7 @@ git commit -m "feat(client): pending_choice formulators for all kinds"
 ### Task 5: Verify + PR debt status
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-22-foldkit-pr-debt-prompts-cardart-design.md` → Status **Done**
+- Modify: current prompt, hand/zone, and inspect specs → record landed behavior
 
 - [ ] **Step 1: Full client check**
 

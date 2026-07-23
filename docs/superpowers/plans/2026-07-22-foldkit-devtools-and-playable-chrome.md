@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-22-foldkit-devtools-and-playable-chrome-design.md`
+- Spec: `docs/superpowers/specs/2026-07-22-foldkit-devtools.md`, `docs/superpowers/specs/2026-07-20-battlefield.md`, `docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md`
 - Branch: `cursor/foldkit-migration-design-1ef0` (PR #74)
 - Delivery order is mandatory: tooling → MCP-assisted investigations → chrome
 - No Playwright CI matrix; no Foldkit git subtree; no restoring under-card name labels
@@ -579,7 +579,7 @@ git commit -m "feat(client): Arena playable borders and GY/exile outlines"
 ### Task 11: Spec Done + Interaction checklist
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-22-foldkit-devtools-and-playable-chrome-design.md` (Status → Done)
+- Modify: `docs/superpowers/specs/2026-07-22-foldkit-devtools.md`, `docs/superpowers/specs/2026-07-20-battlefield.md`, `docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md` (Status/current behavior notes)
 - Verify: `.agents/skills/verify/SKILL.md` Interaction checklist items relevant to this PR
 
 **Interfaces:**
@@ -605,7 +605,7 @@ Exercise at least: Alt inspect; top-left `?` + Sound side-by-side; concede top-r
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/superpowers/specs/2026-07-22-foldkit-devtools-and-playable-chrome-design.md
+git add docs/superpowers/specs/2026-07-22-foldkit-devtools.md docs/superpowers/specs/2026-07-20-battlefield.md docs/superpowers/specs/2026-07-20-turn-and-priority-chrome.md
 git commit -m "docs: mark foldkit playable chrome design done"
 ```
 

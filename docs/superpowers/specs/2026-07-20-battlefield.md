@@ -123,5 +123,4 @@ These are visual/layout rules only; they do not collapse engine objects.
 
 ## Further Notes
 
-- Sources: [`2026-07-20-client-game-board-and-interaction.md`](2026-07-20-client-game-board-and-interaction.md), [`2026-07-22-foldkit-devtools-and-playable-chrome-design.md`](2026-07-22-foldkit-devtools-and-playable-chrome-design.md).
 - Sibling specs: [`2026-07-20-board-composition.md`](2026-07-20-board-composition.md), [`2026-07-20-board-camera-and-layout.md`](2026-07-20-board-camera-and-layout.md), [`2026-07-20-flights.md`](2026-07-20-flights.md).

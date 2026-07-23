@@ -27,7 +27,7 @@ Stable top-level entry points:
 - **Framework source / types:** `client/node_modules/foldkit` (`dist/*.d.ts`, `README.md`)
 - **Project Foldkit app:** `client/app/` (Model, update, view, submodels), `client/vite.config.ts` (Vite + Foldkit plugin)
 - **Vendored skills:** `.agents/skills/generate-program/` (`architecture.md`, `conventions.md`, `checklist.md`)
-- **Project docs:** `docs/superpowers/specs/2026-07-21-foldkit-client-migration-design.md`, `docs/client-canvas-map.md`
+- **Project docs:** `docs/superpowers/specs/README.md`, `docs/superpowers/specs/2026-07-20-board-composition.md`, `docs/client-canvas-map.md`
 
 Names below the top level (subdirectories, individual filenames) can drift over time. List the directory contents to find what you need rather than relying on a path quoted from this skill.
 

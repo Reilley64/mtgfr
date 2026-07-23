@@ -120,5 +120,4 @@ Stable markers include `board-mount`, `board-connecting`, `board-keyboard-mount`
 
 ## Further Notes
 
-- Sources: [`2026-07-20-client-game-board-and-interaction.md`](2026-07-20-client-game-board-and-interaction.md), [`2026-07-23-board-native-selection-design.md`](2026-07-23-board-native-selection-design.md), [`2026-07-22-foldkit-hand-dim-and-table-audio-design.md`](2026-07-22-foldkit-hand-dim-and-table-audio-design.md).
 - Sibling specs: [`2026-07-20-board-camera-and-layout.md`](2026-07-20-board-camera-and-layout.md), [`2026-07-20-battlefield.md`](2026-07-20-battlefield.md), [`2026-07-20-flights.md`](2026-07-20-flights.md).
