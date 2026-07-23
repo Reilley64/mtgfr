@@ -24,7 +24,8 @@ timing = "static"
 
 # This artifact enters with X charge counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 kind = "charge"
 
@@ -36,6 +37,7 @@ taps_self = true
 
 # Add one mana of that color for each charge counter on this artifact.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]
 repeat = { per_counter_of_kind = "charge" }

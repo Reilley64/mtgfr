@@ -29,13 +29,15 @@ optional = true
 
 # destroy up to one target nonbasic land.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "land", nonbasic = true } }
 
 # Its controller may search their library for a basic land card, put it onto the battlefield
 # tapped, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true

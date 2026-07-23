@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_tokens_family(
+    pub(crate) fn mint_tokens(
         &self,
-        effect: Effect,
+        effect: TokenEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -16,7 +16,7 @@ impl Game {
     ) -> Vec<Event> {
         let source_name = self.source_name_of(source);
         match effect {
-            Effect::CreateToken {
+            TokenEffect::Create {
                 token,
                 count,
                 controller: token_controller,
@@ -155,7 +155,9 @@ impl Game {
                                 controller,
                                 source,
                                 fire_at: Step::End,
-                                effect: Effect::ExileObject { object: Some(next) },
+                                effect: Effect::Destroy(DestroyEffect::ExileObject {
+                                    object: Some(next),
+                                }),
                             });
                         }
                         next += 1;
@@ -165,7 +167,7 @@ impl Game {
             }
             // Treasures reuse the token machinery with the shared `treasure_token` def, entering
             // under the ability's controller or a chosen target player (Prismari Command).
-            Effect::CreateTreasure {
+            TokenEffect::CreateTreasure {
                 count,
                 target_player,
                 tapped,
@@ -202,7 +204,7 @@ impl Game {
             // A token copy of the target creature: reuse the token machinery with the target's
             // current copiable characteristics (its `CardDef`). If the target is itself a token,
             // `def_of` returns its token def — which is exactly what we want to copy.
-            Effect::CreateTokenCopy {
+            TokenEffect::CreateCopy {
                 count,
                 sacrifice_at_next_end_step,
                 exile_at_next_end_step,
@@ -239,15 +241,15 @@ impl Game {
                     }
                     // Determined Iteration: "Sacrifice it at the beginning of the next end step"
                     // — schedule the delayed sacrifice against this specific minted token, not a
-                    // re-scan (see `Effect::SacrificeObject`).
+                    // re-scan (see `Effect::Destroy(DestroyEffect::SacrificeObject)`).
                     if sacrifice_at_next_end_step {
                         events.push(Event::DelayedTriggerScheduled {
                             controller,
                             source,
                             fire_at: Step::End,
-                            effect: Effect::SacrificeObject {
+                            effect: Effect::Destroy(DestroyEffect::SacrificeObject {
                                 object: Some(token),
-                            },
+                            }),
                         });
                     }
                     // Twinflame: "Exile those tokens at the beginning of the next end step" —
@@ -258,9 +260,9 @@ impl Game {
                             controller,
                             source,
                             fire_at: Step::End,
-                            effect: Effect::ExileObject {
+                            effect: Effect::Destroy(DestroyEffect::ExileObject {
                                 object: Some(token),
-                            },
+                            }),
                         });
                     }
                 }
@@ -270,7 +272,7 @@ impl Game {
             // until end of turn, except it has myriad — the copy overwrite mirrors
             // `Game::answer_enter_as_copy`'s `BecameCopy`, and the myriad grant reuses the same
             // "gains a keyword" `TempBoost` shape that answer's `gains_haste` rider uses.
-            Effect::BecomeCopyOfTargetCreatureGainingMyriad { .. } => {
+            TokenEffect::BecomeCopyOfTargetCreatureGainingMyriad { .. } => {
                 let chosen =
                     expect_object_target(target, "become-copy-of-target-creature-gaining-myriad");
                 let def = self.def_of(chosen);
@@ -295,7 +297,7 @@ impl Game {
             // enters tapped and attacking that opponent (`Event::Tapped`/`Event::TokenEnteredAttacking`,
             // never `AttackerDeclared` — CR 508.4, so a minted copy can't re-trigger myriad), then
             // schedule it to be exiled at the true end of combat.
-            Effect::MyriadTokenCopies { attacking_context } => {
+            TokenEffect::MyriadTokenCopies { attacking_context } => {
                 let (attacker, defender) = attacking_context.expect(
                     "filled in by Game::queue_myriad_triggers when the ability is synthesized",
                 );
@@ -325,9 +327,9 @@ impl Game {
                             controller: attacker,
                             source,
                             fire_at: Step::EndCombat,
-                            effect: Effect::ExileObject {
+                            effect: Effect::Destroy(DestroyEffect::ExileObject {
                                 object: Some(token),
-                            },
+                            }),
                         });
                         next += 1;
                     }
@@ -339,7 +341,7 @@ impl Game {
             // beginning of the next end step, sacrifice those tokens." No chosen target — scan
             // the attacker's own battlefield for the matching tokens (CR 508.4: each mint enters
             // tapped and attacking, never declared, so it can't re-trigger this ability).
-            Effect::CopyEachEnteredThisTurnTokenTappedAttacking { attacking_context } => {
+            TokenEffect::CopyEachEnteredThisTurnTokenTappedAttacking { attacking_context } => {
                 let (attacker, defender) = attacking_context
                     .expect("filled in by contextualize_effect from the Attacks trigger context");
                 let filter = PermanentFilter {
@@ -371,18 +373,18 @@ impl Game {
                         controller,
                         source,
                         fire_at: Step::End,
-                        effect: Effect::SacrificeObject { object: Some(next) },
+                        effect: Effect::Destroy(DestroyEffect::SacrificeObject {
+                            object: Some(next),
+                        }),
                     });
                     next += 1;
                 }
                 events
             }
-
-            _ => unreachable!("tokens family mint received a non-family effect"),
         }
     }
 
-    /// [`Effect::CreateToken`]'s `enters_with` choreography: mint the token(s) (unchanged
+    /// [`TokenEffect::Create`]'s `enters_with` choreography: mint the token(s) (unchanged
     /// batch via `execute_effect`), then — "Put X +1/+1 counters on it" (Deekah's Magecraft
     /// Fractal) — place `enters_with` counters on each minted token, routed through the same
     /// doubler/Hardened-Scales replacement pipeline as a spell's own `EntersWithCounters`
@@ -391,7 +393,7 @@ impl Game {
     /// `resolve_spell` applying `PermanentEntered` before reading its counters.
     pub(crate) fn resolve_create_token(
         &mut self,
-        effect: Effect,
+        effect: TokenEffect,
         ctx: ResolveCtx,
         events: &mut Vec<Event>,
     ) {
@@ -402,10 +404,10 @@ impl Game {
             x,
             ..
         } = ctx;
-        let Effect::CreateToken { enters_with, .. } = effect else {
+        let TokenEffect::Create { enters_with, .. } = effect else {
             unreachable!("resolve_create_token received a non-family effect")
         };
-        let evs = self.execute_effect(effect, controller, source, target, x);
+        let evs = self.execute_effect(Effect::Token(effect), controller, source, target, x);
         self.apply_all(&evs);
         let minted: Vec<ObjectId> = evs
             .iter()

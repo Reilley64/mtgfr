@@ -24,10 +24,10 @@ impl Game {
             // "Counter target spell unless its controller pays {N}" (CR 701.5c-style): pause on
             // a PayOrCounter choice for the *target spell's* controller instead of countering
             // outright. `unless_pays: None` falls through to the catch-all's unconditional counter.
-            Effect::CounterTargetSpell {
+            Effect::Misc(MiscEffect::CounterTargetSpell {
                 unless_pays: Some(amount),
                 ..
-            } => {
+            }) => {
                 let original = expect_object_target(target, "a spell to counter");
                 // If the target already left the stack (countered/resolved in response), there's
                 // nothing to hold hostage — same no-op as the unconditional counter (CR 608.2b).
@@ -53,11 +53,11 @@ impl Game {
             // 701.5g), or exiles instead (flashback/escape, CR 702.34e/702.19d; Quintorius's CR
             // 614.6 bottom-library redirect) — those cases fall through to the ordinary
             // `counter_spell`, which has nothing left for this rider to redirect.
-            Effect::CounterTargetSpell {
+            Effect::Misc(MiscEffect::CounterTargetSpell {
                 unless_pays: None,
                 countered_dest: Some(CounteredDest::LibraryTopOrBottom),
                 ..
-            } => {
+            }) => {
                 let original = expect_object_target(target, "a spell to counter");
                 let is_spell = matches!(self.objects[original as usize], Object::Spell(_));
                 let goes_to_graveyard = is_spell
@@ -88,11 +88,11 @@ impl Game {
             // forced straight to the bottom — no player choice, so no pause. Unlike that arm
             // (whose pause answer never checks this), a copy (CR 707.10a) ceases to exist here
             // rather than tucking — reusing `Game::is_copy_object`, the #213 copy guard.
-            Effect::CounterTargetSpell {
+            Effect::Misc(MiscEffect::CounterTargetSpell {
                 unless_pays: None,
                 countered_dest: Some(CounteredDest::LibraryBottom),
                 ..
-            } => {
+            }) => {
                 let original = expect_object_target(target, "a spell to counter");
                 let is_spell = matches!(self.objects[original as usize], Object::Spell(_));
                 let goes_to_graveyard = is_spell

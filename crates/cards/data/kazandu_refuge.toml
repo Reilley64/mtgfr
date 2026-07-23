@@ -18,7 +18,8 @@ timing = "etb"
 
 # you gain 1 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1
 
 # {T}: Add {R} or {G}.
@@ -28,5 +29,6 @@ taps_self = true
 
 # Add {R} or {G}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["red", "green"]]

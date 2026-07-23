@@ -31,7 +31,8 @@ types = "creature"
 
 # create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = 1
 
@@ -40,5 +41,6 @@ timing = "static"
 
 # you gain that much life plus 1 instead
 [[abilities.effects]]
-type = "life_gain_replacement"
+type = "static"
+mode = "life_gain_replacement"
 plus = 1

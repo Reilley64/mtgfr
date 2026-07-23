@@ -17,7 +17,8 @@ taps_self = true
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 
 # {T}: Add {U} or {R}. This land deals 1 damage to you.
@@ -28,5 +29,6 @@ self_damage = 1
 
 # Add {U} or {R}. This land deals 1 damage to you.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["blue", "red"]]

@@ -22,7 +22,8 @@ timing = "static"
 
 # Enchanted creature can't attack or block, and its activated abilities can't be activated.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 cant_attack = true
 cant_block = true
 activated_abilities = "none"
@@ -36,4 +37,5 @@ optional = true
 
 # attach this Aura to that creature
 [[abilities.effects]]
-type = "attach_self_to_entering"
+type = "control"
+mode = "attach_self_to_entering"

@@ -22,15 +22,17 @@ taps_self = true
 
 # Add {C}{C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless", "colorless"]
 
 # When you next cast a spell with {X} in its mana cost this turn, you draw a card and gain half
 # X life, rounded down.
 [[abilities.effects]]
-type = "schedule_next_cast_trigger"
+type = "misc"
+mode = "schedule_next_cast_trigger"
 filter = "has_x"
 then = [
-        { type = "draw_cards", count = 1 },
-        { type = "gain_life", amount = "half_x_rounded_down" },
+        { type = "draw", mode = "cards", count = 1 },
+        { type = "life", mode = "gain", amount = "half_x_rounded_down" },
     ]

@@ -827,7 +827,7 @@
     "family": "dig",
     "mode": "search_library"
   },
-  "set_attached_base_pt": {
+  "set_attached_base_p_t": {
     "family": "static",
     "mode": "set_attached_base_pt"
   },

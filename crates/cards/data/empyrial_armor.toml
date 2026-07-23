@@ -21,6 +21,7 @@ timing = "static"
 
 # Enchanted creature gets +1/+1 for each card in your hand.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = "cards_in_your_hand"
 toughness = "cards_in_your_hand"

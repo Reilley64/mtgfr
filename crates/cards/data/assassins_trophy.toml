@@ -21,13 +21,15 @@ timing = "spell"
 
 # Destroy target permanent an opponent controls.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { controller = "opponent" } }
 
 # Its controller may search their library for a basic land card, put it onto the battlefield,
 # then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 searcher = "target_controller"

@@ -25,5 +25,6 @@ timing = "static"
 # Creatures can't attack you unless their controller pays {2} for each creature they control
 # that's attacking you.
 [[abilities.effects]]
-type = "attack_tax"
+type = "static"
+mode = "attack_tax"
 amount = 2

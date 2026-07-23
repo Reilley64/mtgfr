@@ -25,7 +25,8 @@ timing = "etb"
 
 # create a 1/1 white Spirit creature token with flying.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "dc4e2134-f0c2-49aa-9ea3-ebf83af1445c"
 count = 1
 
@@ -38,7 +39,8 @@ remove_counters_kind = "story"
 
 # Draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # Whenever you create one or more creature tokens, put a story counter on this artifact.
@@ -50,7 +52,8 @@ timing = "you_create_token"
 
 # put a story counter on this artifact.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"
 kind = "story"

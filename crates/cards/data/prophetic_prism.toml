@@ -18,7 +18,8 @@ timing = "etb"
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # {1}, {T}: Add one mana of any color.
@@ -29,5 +30,6 @@ activation_cost = { generic = 1 }
 
 # Add one mana of any color.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]

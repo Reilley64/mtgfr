@@ -32,4 +32,5 @@ black = 1
 
 # return this card from your graveyard to the battlefield.
 [[abilities.effects]]
-type = "return_this_from_graveyard_to_battlefield"
+type = "zone"
+mode = "return_this_from_graveyard_to_battlefield"

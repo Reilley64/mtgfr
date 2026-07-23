@@ -26,7 +26,8 @@ timing = "static"
 
 # Each creature that's enchanted by an Aura you control can't attack you or planeswalkers you control.
 [[abilities.effects]]
-type = "cant_be_attacked_by"
+type = "static"
+mode = "cant_be_attacked_by"
 filter = { enchanted_by_you = true }
 
 # At the beginning of your end step, each opponent loses X life and you gain X life, where X is
@@ -36,5 +37,6 @@ timing = "end_step"
 
 # each opponent loses X life and you gain X life, where X is the number of Auras you control
 [[abilities.effects]]
-type = "each_opponent_drain"
+type = "life"
+mode = "each_opponent_drain"
 amount = { per_permanent = { subtypes = ["Aura"], controller = "you" } }

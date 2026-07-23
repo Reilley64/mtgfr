@@ -24,7 +24,8 @@ timing = "etb"
 # search your library for up to two basic Plains cards, reveal them, put them into your hand,
 # then shuffle
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { basic_land_with_subtype = ["Plains"] }
 to_zone = "hand"
 count = 2
@@ -41,4 +42,5 @@ type = "opponent_controls_more_lands"
 
 # you may put a land card from your hand onto the battlefield
 [[abilities.effects]]
-type = "put_land_from_hand"
+type = "choice"
+mode = "put_land_from_hand"

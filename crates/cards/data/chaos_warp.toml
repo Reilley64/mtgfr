@@ -22,5 +22,6 @@ timing = "spell"
 # The owner of target permanent shuffles it into their library, then reveals the top card of
 # their library. If it's a permanent card, they put it onto the battlefield.
 [[abilities.effects]]
-type = "shuffle_target_permanent_into_library_then_reveal"
+type = "zone"
+mode = "shuffle_target_permanent_into_library_then_reveal"
 target = { permanent = {} }

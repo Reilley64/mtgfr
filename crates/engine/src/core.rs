@@ -447,7 +447,7 @@ impl Game {
         ts
     }
 
-    /// The control-changing Aura (CR 720 — [`Effect::ControlAttached`]) currently attached to
+    /// The control-changing Aura (CR 720 — [`Effect::Static(StaticEffect::ControlAttached)`]) currently attached to
     /// `host`, if any — the object whose owner controls `host` while it stays attached. `None`
     /// when no such Aura is attached. Applied additively over the base owner (engine-core-and-event-model spec), so the
     /// override vanishes on its own when the Aura leaves the battlefield.
@@ -456,7 +456,10 @@ impl Game {
             self.def_of(aura).abilities.iter().any(|a| {
                 matches!(
                     (a.timing, a.effect),
-                    (Timing::Static, Effect::ControlAttached)
+                    (
+                        Timing::Static,
+                        Effect::Static(StaticEffect::ControlAttached)
+                    )
                 )
             })
         })
@@ -507,7 +510,7 @@ impl Game {
     }
 
     /// The expiry payload of the exiled card at `id`: the `on_expiry` effects of its
-    /// [`Effect::ExileSelfWithTimeCounters`] step (All Hallow's Eve's scream-counter self-exile).
+    /// [`Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)`] step (All Hallow's Eve's scream-counter self-exile).
     /// Empty (Rousing Refrain's plain suspend, or any card without such a step) means "grant the
     /// suspend free-cast permission when the last counter is removed" — a non-empty slice replaces
     /// that with a graveyard move plus these effects (see [`Step::Upkeep`](crate::Step) tick).
@@ -515,7 +518,9 @@ impl Game {
     /// deep enough for the pool's self-exile cards; recurse when a card buries the step deeper.
     pub(crate) fn suspend_expiry_payload(&self, id: ObjectId) -> &'static [Effect] {
         let payload = |effect: &Effect| match effect {
-            Effect::ExileSelfWithTimeCounters { on_expiry, .. } => Some(*on_expiry),
+            Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { on_expiry, .. }) => {
+                Some(*on_expiry)
+            }
             _ => None,
         };
         for ability in self.def_of(id).abilities {

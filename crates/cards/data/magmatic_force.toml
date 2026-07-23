@@ -21,6 +21,7 @@ timing = "each_upkeep"
 
 # this creature deals 3 damage to any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 3
 target = "any"

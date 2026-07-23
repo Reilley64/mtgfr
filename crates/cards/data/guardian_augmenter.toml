@@ -26,7 +26,8 @@ timing = "static"
 
 # Commander creatures you control get +2/+2.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 2
 toughness = 2
 commander_only = true
@@ -40,6 +41,7 @@ timing = "static"
 
 # Commanders you control have hexproof.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 keywords = ["hexproof"]
 commander_only = true

@@ -24,6 +24,7 @@ timing = "static"
 
 # Prevent all combat damage that would be dealt to and dealt by this creature.
 [[abilities.effects]]
-type = "prevent_combat_damage_static"
+type = "static"
+mode = "prevent_combat_damage"
 to_self = true
 by_self = true

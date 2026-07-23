@@ -32,7 +32,8 @@ timing = "static"
 
 # Pegasus creatures you control have lifelink.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 keywords = ["lifelink"]
 subtypes = ["Pegasus"]
 
@@ -45,7 +46,8 @@ controller = "you"
 
 # create a 2/2 white Pegasus creature token with flying
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 
 token = "246d7a00-288d-448e-9b77-8af41e40a44d"
 

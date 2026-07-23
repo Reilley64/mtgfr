@@ -23,7 +23,8 @@ timing = "dies"
 
 # each player may search their library for up to two basic land cards, put them onto the battlefield, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 searcher = "all_players"

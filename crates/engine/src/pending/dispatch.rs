@@ -515,7 +515,7 @@ pub(crate) fn forced(game: &Game) -> Option<Intent> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Effect, PlayerId};
+    use crate::{DrawEffect, Effect, PlayerId};
 
     #[test]
     fn answer_rejects_wrong_intent_for_the_pending_discriminant() {
@@ -523,9 +523,9 @@ mod tests {
         game.pending_choice = Some(PendingChoice::MayYesNo {
             player: PlayerId(0),
             source: 0,
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: crate::Amount::Fixed(1),
-            },
+            }),
         });
         // ChooseTargets is a real answer Intent, but not for MayYesNo.
         let err = answer(
@@ -548,9 +548,9 @@ mod tests {
         game.pending_choice = Some(PendingChoice::MayYesNo {
             player: PlayerId(0),
             source: 0,
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: crate::Amount::Fixed(1),
-            },
+            }),
         });
         assert!(forced(&game).is_none());
     }
@@ -561,9 +561,9 @@ mod tests {
         game.pending_choice = Some(PendingChoice::OrderTriggers {
             player: PlayerId(0),
             source: 0,
-            effects: vec![Effect::DrawCards {
+            effects: vec![Effect::Draw(DrawEffect::Cards {
                 count: crate::Amount::Fixed(1),
-            }],
+            })],
         });
         assert_eq!(
             forced(&game),

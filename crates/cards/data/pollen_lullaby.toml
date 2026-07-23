@@ -22,15 +22,17 @@ timing = "spell"
 
 # Clash with an opponent.
 [[abilities.effects]]
-type = "clash"
+type = "dig"
+mode = "clash"
 
 # Prevent all combat damage that would be dealt this turn.
 [[abilities.effects]]
-type = "prevent_all_combat_damage_this_turn"
+type = "misc"
+mode = "prevent_all_combat_damage_this_turn"
 
 # If you win the clash, creatures your opponents control don't untap during their controllers' next
 # untap steps.
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "won_clash" }
-then = [{ type = "skip_next_untap_opponent_creatures" }]
+then = [{ type = "misc", mode = "skip_next_untap_opponent_creatures" }]

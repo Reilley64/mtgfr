@@ -22,15 +22,18 @@ timing = "upkeep"
 
 # create a 2/1 white and black Inkling creature token with flying
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 count = 1
 
 [[abilities.effects]]
-type = "reflexive_trigger"
+type = "zone"
+mode = "reflexive_trigger"
 
 # return up to one target Aura or Equipment card from your graveyard to the battlefield attached
 # to that token
 [[abilities.effects.then]]
-type = "return_from_graveyard_attached_to_token"
+type = "zone"
+mode = "return_from_graveyard_attached_to_token"
 filter = "aura_or_equipment"

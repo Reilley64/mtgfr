@@ -34,4 +34,5 @@ timing = "attacks"
 # ponytail: the fan-out asks one seat at a time (like councils_dilemma_vote), so naming is
 # sequential rather than the simultaneous hidden commit the CR wants. Upgrade when a card needs a
 # real everyone-commits-before-anyone-reveals primitive.
-type = "each_player_names_card_then_reveals_top"
+type = "choice"
+mode = "each_player_names_card_then_reveals_top"

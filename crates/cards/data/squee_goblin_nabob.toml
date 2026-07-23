@@ -27,4 +27,5 @@ optional = true
 
 # you may return this card from your graveyard to your hand.
 [[abilities.effects]]
-type = "return_this_to_hand"
+type = "zone"
+mode = "return_this_to_hand"

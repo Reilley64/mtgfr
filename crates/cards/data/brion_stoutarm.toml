@@ -32,6 +32,7 @@ sacrifice = { creature = { other = true } }
 # Brion Stoutarm deals damage equal to the sacrificed creature's power to target player or
 # planeswalker.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = "sacrificed_creature_power"
 target = "player_or_planeswalker"

@@ -27,12 +27,14 @@ timing = "first_main_phase"
 
 # mill a card,
 [[abilities.effects]]
-type = "mill_self"
+type = "mill"
+mode = "mill_self"
 count = 1
 
 # then exile a card from your graveyard at random. You may play the exiled card this turn.
 [[abilities.effects]]
-type = "exile_random_from_graveyard_may_play"
+type = "dig"
+mode = "exile_random_from_graveyard_may_play"
 
 # {1}{R}: Level 2
 [[abilities]]
@@ -45,7 +47,8 @@ red = 1
 
 # Level 2
 [[abilities.effects]]
-type = "level_up"
+type = "counters"
+mode = "level_up"
 level = 2
 
 # Whenever one or more cards leave your graveyard, this Class deals 2 damage to each opponent.
@@ -57,7 +60,8 @@ min_level = 2
 # ponytail: modeled as each opponent losing 2 life (the engine models player damage as life
 # loss); no combat/prevention interaction distinguishes the two for this card.
 [[abilities.effects]]
-type = "each_opponent_loses_life"
+type = "life"
+mode = "each_opponent_loses"
 amount = 2
 
 # {1}{R}: Level 3
@@ -71,7 +75,8 @@ red = 1
 
 # Level 3
 [[abilities.effects]]
-type = "level_up"
+type = "counters"
+mode = "level_up"
 level = 3
 
 # Spells you cast from anywhere other than your hand cost {2} less to cast.
@@ -81,6 +86,7 @@ min_level = 3
 
 # Spells you cast from anywhere other than your hand cost {2} less to cast.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = 2
 filter = "cast_from_non_hand_zone"

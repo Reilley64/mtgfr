@@ -21,4 +21,5 @@ timing = "etb"
 
 # exile target player's graveyard
 [[abilities.effects]]
-type = "exile_graveyard"
+type = "destroy"
+mode = "exile_graveyard"

@@ -28,6 +28,7 @@ generic = 2
 
 # Search your library for an Island card, reveal it, put it into your hand, then shuffle.
 [[hand_ability.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { land_with_subtype = ["Island"] }
 to_zone = "hand"

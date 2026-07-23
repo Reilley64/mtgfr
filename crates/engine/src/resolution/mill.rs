@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_mill_family(
+    pub(crate) fn mint_mill(
         &self,
-        effect: Effect,
+        effect: MillEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -16,7 +16,7 @@ impl Game {
     ) -> Vec<Event> {
         let _source_name = self.source_name_of(source);
         match effect {
-            Effect::Mill { count, .. } => {
+            MillEffect::Mill { count, .. } => {
                 let Some(Target::Player(player)) = target else {
                     panic!("mill resolves with a chosen player target");
                 };
@@ -25,7 +25,7 @@ impl Game {
                     self.resolve_count(count, controller, source, target, x),
                 )
             }
-            Effect::ExileTopMayPlay {
+            MillEffect::ExileTopMayPlay {
                 count,
                 until_next_turn,
                 face_down,
@@ -42,7 +42,7 @@ impl Game {
             }
             // Containment Construct's payoff: exile the just-discarded card from the graveyard
             // and grant permission to play it until end of turn.
-            Effect::ExileFromGraveyardMayPlay { card } => {
+            MillEffect::ExileFromGraveyardMayPlay { card } => {
                 let from = card.expect("the discarded card is filled in at placement");
                 vec![Event::ExiledFromGraveyardMayPlay {
                     player: controller,
@@ -55,7 +55,7 @@ impl Game {
             // ponytail: guard-returns rather than panics if `card` is missing or has already moved
             // out of the graveyard (e.g. a second effect exiled it first) — the "may" just does
             // nothing, same shape as a fizzled optional trigger.
-            Effect::ExileDiscardedWithThis { card } => {
+            MillEffect::ExileDiscardedWithThis { card } => {
                 let Some(from) = card else {
                     return Vec::new();
                 };
@@ -75,7 +75,7 @@ impl Game {
             // exiled-with pile — same shape as `ExileDiscardedWithThis` above, but the card is a
             // chosen target rather than a just-discarded one, and there's no impulse-play
             // permission (the free-cast permission comes later, from the activated ability). (CR 602, CR 601, CR 113)
-            Effect::ExileTargetFromGraveyardWithThis => {
+            MillEffect::ExileTargetFromGraveyardWithThis => {
                 let object = expect_object_target(target, "exile target from graveyard with this");
                 let exiled = self.next_object_id();
                 vec![
@@ -89,7 +89,7 @@ impl Game {
             // Restore Relic: exile the targeted graveyard card, then mint a token copy of its
             // copiable characteristics (CR 707.2) — `CreateTokenCopy`'s target-a-battlefield-
             // permanent shape, but reading `def` off the graveyard card before it moves.
-            Effect::ExileTargetFromGraveyardCreateTokenCopy { .. } => {
+            MillEffect::ExileTargetFromGraveyardCreateTokenCopy { .. } => {
                 let object =
                     expect_object_target(target, "exile target from graveyard, create a copy");
                 let def = self.def_of(object);
@@ -107,16 +107,14 @@ impl Game {
                 ]
             }
             // Perpetual Timepiece: untargeted self-mill (unlike Mill's target-player shape).
-            Effect::MillSelf { count } => {
+            MillEffect::MillSelf { count } => {
                 let count = self.resolve_count(count, controller, source, target, x);
                 self.mill_events(controller, count)
             }
-
-            _ => unreachable!("mill family mint received a non-family effect"),
         }
     }
 
-    /// Resolve [`Effect::MillSelf`]: mill → snapshot mana value into [`ResolutionFrame`] → apply.
+    /// Resolve [`MillEffect::MillSelf`]: mill → snapshot mana value into [`ResolutionFrame`] → apply.
     pub(crate) fn resolve_mill_self(
         &mut self,
         count: Amount,

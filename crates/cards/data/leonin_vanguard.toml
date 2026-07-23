@@ -28,13 +28,15 @@ timing = "begin_combat"
 
 # this creature gets +1/+1 until end of turn
 [[abilities.effects]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = 1
 toughness = 1
 
 # you gain 1 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1
 
 [abilities.condition]

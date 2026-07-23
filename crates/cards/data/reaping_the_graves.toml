@@ -21,7 +21,8 @@ timing = "spell"
 
 # Return target creature card from your graveyard to your hand.
 [[abilities.effects]]
-type = "return_from_graveyard_to_hand"
+type = "zone"
+mode = "return_from_graveyard_to_hand"
 target = { card_in_graveyard = { whose = "yours", filter = "creature" } }
 
 # Storm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for
@@ -31,7 +32,8 @@ timing = "when_you_cast_this"
 
 # copy it for each spell cast before it this turn. You may choose new targets for the copies.
 [[abilities.effects]]
-type = "copy_triggering_spell"
+type = "copy"
+mode = "copy_triggering_spell"
 count = "spells_cast_before_this_this_turn"
 may_choose_new_targets = true
 last_known_information = true

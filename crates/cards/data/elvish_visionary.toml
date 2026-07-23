@@ -22,5 +22,6 @@ timing = "etb"
 
 # draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

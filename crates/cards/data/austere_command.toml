@@ -24,7 +24,8 @@ timing = "spell"
 
 # Destroy all artifacts.
 [[abilities.effects]]
-type = "destroy_all"
+type = "destroy"
+mode = "destroy_all"
 filter = { types = "artifact" }
 
 # Mode 1 — "Destroy all enchantments."
@@ -33,7 +34,8 @@ timing = "spell"
 
 # Destroy all enchantments.
 [[abilities.effects]]
-type = "destroy_all"
+type = "destroy"
+mode = "destroy_all"
 filter = { types = "enchantment" }
 
 # Mode 2 — "Destroy all creatures with mana value 3 or less."
@@ -42,7 +44,8 @@ timing = "spell"
 
 # Destroy all creatures with mana value 3 or less.
 [[abilities.effects]]
-type = "destroy_all"
+type = "destroy"
+mode = "destroy_all"
 filter = { types = "creature", mv_max = 3 }
 
 # Mode 3 — "Destroy all creatures with mana value 4 or greater."
@@ -51,5 +54,6 @@ timing = "spell"
 
 # Destroy all creatures with mana value 4 or greater.
 [[abilities.effects]]
-type = "destroy_all"
+type = "destroy"
+mode = "destroy_all"
 filter = { types = "creature", mv_min = 4 }

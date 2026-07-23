@@ -28,6 +28,7 @@ timing = "static"
 
 # Spells you cast that target a creature cost {2} less to cast.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = 2
 filter = "targets_a_creature"

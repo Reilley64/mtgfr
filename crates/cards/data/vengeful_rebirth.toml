@@ -23,16 +23,19 @@ timing = "spell"
 
 # Return target card from your graveyard to your hand.
 [[abilities.effects]]
-type = "return_from_graveyard_to_hand"
+type = "zone"
+mode = "return_from_graveyard_to_hand"
 target = { card_in_graveyard = { whose = "yours", filter = "any_card" } }
 
 # If you return a nonland card to your hand this way, Vengeful Rebirth deals damage equal to that card's mana value to
 # any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = "returned_nonland_card_mana_value"
 target = "any"
 
 # Exile Vengeful Rebirth.
 [[abilities.effects]]
-type = "exile_self_on_resolve"
+type = "zone"
+mode = "exile_self_on_resolve"

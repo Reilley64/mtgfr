@@ -21,7 +21,7 @@ impl Game {
 
     /// Answer a [`PendingChoice::ChooseCounterTargetForPlayer`]: `chosen` is the up-to-one creature
     /// the chooser counters for `target_player` (empty declines — CR 603.3d). Put one +1/+1 counter
-    /// on it through the replacement pipeline [`Effect::PutCounters`] uses, then advance to the next
+    /// on it through the replacement pipeline [`Effect::Counters(CountersEffect::PutCounters)`] uses, then advance to the next
     /// player.
     pub(crate) fn answer_choose_counter_target(
         &mut self,
@@ -341,7 +341,7 @@ impl Game {
 
     /// Answer a [`PendingChoice::MayReturnFromGraveyard`]: `choice` is empty to decline, or names
     /// the one graveyard card (one of the choice's `options`) returned to `player`'s hand
-    /// ([`Effect::MayReturnFromGraveyard`] — Deadly Brew's rider).
+    /// ([`Effect::Choice(ChoiceEffect::MayReturnFromGraveyard)`] — Deadly Brew's rider).
     pub(crate) fn answer_may_return_from_graveyard(
         &mut self,
         _player: PlayerId,
@@ -371,7 +371,7 @@ impl Game {
     }
 
     /// Answer a discard choice — either a cleanup [`PendingChoice::DiscardToHandSize`] or an
-    /// [`Effect::Discard`]'s [`PendingChoice::DiscardCards`]: move the chosen cards to the
+    /// [`Effect::Choice(ChoiceEffect::Discard)`]'s [`PendingChoice::DiscardCards`]: move the chosen cards to the
     /// graveyard. A cleanup discard then resumes the interrupted step-transition (carrying the turn
     /// to the next player); an effect discard leaves any deferred sequence tail for
     /// [`Game::resume_deferred_sequence`].

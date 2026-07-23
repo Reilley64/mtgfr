@@ -27,6 +27,7 @@ timing = "spell"
 # deals X damage to each creature your opponents control, where X is the revealed card's mana
 # value.
 [[abilities.effects]]
-type = "damage_each_creature"
+type = "damage"
+mode = "each_creature"
 amount = "revealed_creature_mana_value"
 opponents_only = true

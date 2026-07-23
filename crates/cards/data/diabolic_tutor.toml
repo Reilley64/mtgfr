@@ -21,6 +21,7 @@ timing = "spell"
 
 # Search your library for a card, put that card into your hand, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "any_card"
 to_zone = "hand"

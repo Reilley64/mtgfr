@@ -160,9 +160,12 @@ fn load_from_data_dir() -> Pool {
 mod tests {
     use super::*;
     use engine::{
-        Amount, CardFilter, CardKind, Color, Condition, Cost, Effect, EnterController, Keyword,
-        LandProduces, Mana, PermanentFilter, ProtectionScope, SacrificeCost, SearchDest,
-        SpellFilter, SpellSpeed, TargetSpec, Timing, Trigger, TypeSet,
+        Amount, CardFilter, CardKind, ChoiceEffect, Color, Condition, ControlEffect, CopyEffect,
+        Cost, CountersEffect, DamageEffect, DestroyEffect, DigEffect, DrawEffect, Effect,
+        EnterController, Keyword, LandProduces, LifeEffect, Mana, ManaEffect, MillEffect,
+        MiscEffect, PermanentFilter, ProtectionScope, PumpEffect, SacrificeCost, SearchDest,
+        SpellFilter, SpellSpeed, StaticEffect, TargetSpec, Timing, TokenEffect, Trigger, TypeSet,
+        ZoneEffect,
     };
 
     #[test]
@@ -224,6 +227,39 @@ mod tests {
     }
 
     #[test]
+    fn nested_damage_target_deserializes() {
+        let toml = r#"
+name = "Fixture Bolt"
+id = "00000000-0000-0000-0000-000000000001"
+default_print = "00000000-0000-0000-0000-000000000002"
+oracle = "Fixture deals 3 damage to any target."
+
+[cost]
+red = 1
+
+[kind]
+type = "instant"
+
+[[abilities]]
+timing = "spell"
+
+[[abilities.effects]]
+type = "damage"
+mode = "target"
+amount = 3
+target = "any"
+"#;
+        let def: CardDef = toml::from_str(toml).expect("nested damage parses");
+        assert!(matches!(
+            def.abilities[0].effect,
+            Effect::Damage(DamageEffect::Target {
+                amount: Amount::Fixed(3),
+                ..
+            })
+        ));
+    }
+
+    #[test]
     fn set_and_subtypes_parse_and_default_empty() {
         // Catalog metadata for deck-builder search: a set code and printed subtypes, both
         // optional. Present:
@@ -267,7 +303,7 @@ legendery = true\n\n[kind]\ntype = \"creature\"\npower = 1\ntoughness = 1\n";
 
     #[test]
     fn dual_mana_spellings_parse_and_bad_ones_are_load_errors() {
-        // A dual in an `add_mana` batch is a nested two-color array (one credit).
+        // A dual in a nested mana-add batch is a nested two-color array (one credit).
         let card = r#"name = "Test Talisman"
 id = "00000000-0000-0000-0000-000000000001"
 default_print = "00000000-0000-0000-0000-000000000002"
@@ -280,12 +316,13 @@ timing = "activated"
 taps_self = true
 
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["black", "green"]]
 "#;
-        let def: CardDef = toml::from_str(card).expect("a dual add_mana batch parses");
-        let Effect::AddMana { mana: produced, .. } = def.abilities[0].effect else {
-            panic!("expected an add_mana effect");
+        let def: CardDef = toml::from_str(card).expect("a dual nested mana-add batch parses");
+        let Effect::Mana(ManaEffect::Add { mana: produced, .. }) = def.abilities[0].effect else {
+            panic!("expected a nested mana-add effect");
         };
         assert_eq!(
             produced,
@@ -298,10 +335,10 @@ mana = [["black", "green"]]
         );
 
         // A 3-color array (a triome's fixed choice — Treva's Ruins) normalizes to `Mana::OfColors`.
-        let triome = "name = \"Test Triome\"\n\n[kind]\ntype = \"artifact\"\n\n[[abilities]]\ntiming = \"activated\"\ntaps_self = true\n\n[[abilities.effects]]\ntype = \"add_mana\"\nmana = [[\"blue\", \"white\", \"green\"]]\n";
-        let def: CardDef = toml::from_str(triome).expect("a 3-color add_mana batch parses");
-        let Effect::AddMana { mana: produced, .. } = def.abilities[0].effect else {
-            panic!("expected an add_mana effect");
+        let triome = "name = \"Test Triome\"\n\n[kind]\ntype = \"artifact\"\n\n[[abilities]]\ntiming = \"activated\"\ntaps_self = true\n\n[[abilities.effects]]\ntype = \"mana\"\nmode = \"add\"\nmana = [[\"blue\", \"white\", \"green\"]]\n";
+        let def: CardDef = toml::from_str(triome).expect("a 3-color nested mana-add batch parses");
+        let Effect::Mana(ManaEffect::Add { mana: produced, .. }) = def.abilities[0].effect else {
+            panic!("expected a nested mana-add effect");
         };
         assert_eq!(
             produced,
@@ -354,14 +391,15 @@ type = "sorcery"
 timing = "spell"
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1
 token = "{pest_id}"
 "#
         );
         let def: CardDef = toml::from_str(&pest).expect("token id resolves");
-        let Effect::CreateToken { token, .. } = def.abilities[0].effect else {
-            panic!("expected a create_token effect");
+        let Effect::Token(TokenEffect::Create { token, .. }) = def.abilities[0].effect else {
+            panic!("expected a nested token-create effect");
         };
         assert_eq!(token.name, "Pest");
         assert_eq!(token.cost, Cost::FREE, "a token has no mana cost");
@@ -376,9 +414,9 @@ token = "{pest_id}"
         assert_eq!(token.abilities[0].timing, Timing::Triggered(Trigger::Dies));
         assert!(matches!(
             token.abilities[0].effect,
-            Effect::GainLife {
+            Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(1)
-            }
+            })
         ));
 
         let food = format!(
@@ -393,14 +431,15 @@ type = "sorcery"
 timing = "spell"
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1
 token = "{food_id}"
 "#
         );
         let def: CardDef = toml::from_str(&food).expect("food token id resolves");
-        let Effect::CreateToken { token, .. } = def.abilities[0].effect else {
-            panic!("expected a create_token effect");
+        let Effect::Token(TokenEffect::Create { token, .. }) = def.abilities[0].effect else {
+            panic!("expected a nested token-create effect");
         };
         assert_eq!(
             token.kind,
@@ -426,14 +465,15 @@ type = "sorcery"
 timing = "spell"
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 count = 1
 token = "{inkling_id}"
 "#
         );
         let def: CardDef = toml::from_str(&inkling).expect("inkling token id resolves");
-        let Effect::CreateToken { token, .. } = def.abilities[0].effect else {
-            panic!("expected a create_token effect");
+        let Effect::Token(TokenEffect::Create { token, .. }) = def.abilities[0].effect else {
+            panic!("expected a nested token-create effect");
         };
         assert_eq!(
             token.kind,
@@ -460,7 +500,8 @@ type = "sorcery"
 timing = "spell"
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "00000000-0000-0000-0000-000000000099"
 "#;
         assert!(
@@ -479,7 +520,8 @@ type = "sorcery"
 timing = "spell"
 
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = { name = "Inkling", power = 2, toughness = 1 }
 "#;
         assert!(
@@ -494,9 +536,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
     fn pool_token_profiles_carry_scryfall_art_ids() {
         fn collect(effect: &Effect, out: &mut Vec<(&'static str, CardDef)>) {
             match effect {
-                Effect::CreateToken { token, .. }
-                | Effect::PreventCombatDamageToYouCreatingTokens { token }
-                | Effect::EachPlayerCreatesFractalFromExiledPower { token } => {
+                Effect::Token(TokenEffect::Create { token, .. })
+                | Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { token })
+                | Effect::Choice(ChoiceEffect::EachPlayerCreatesFractalFromExiledPower { token }) =>
+                {
                     out.push((token.name, *token));
                 }
                 Effect::Sequence { steps } => {
@@ -505,13 +548,13 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                     }
                 }
                 Effect::Conditional { then, .. }
-                | Effect::ExileTargetGraveyardCardThenIfCreature { then }
-                | Effect::ReflexiveTrigger { then }
-                | Effect::DealDamageToEnteringPermanent { then, .. }
-                | Effect::ScheduleNextCastTrigger { then, .. }
-                | Effect::EachPlayerSacrifices { then, .. }
-                | Effect::MaySacrifice { then, .. }
-                | Effect::MayDiscard { then } => {
+                | Effect::Zone(ZoneEffect::ExileTargetGraveyardCardThenIfCreature { then })
+                | Effect::Zone(ZoneEffect::ReflexiveTrigger { then })
+                | Effect::Damage(DamageEffect::ToEnteringPermanent { then, .. })
+                | Effect::Misc(MiscEffect::ScheduleNextCastTrigger { then, .. })
+                | Effect::Choice(ChoiceEffect::EachPlayerSacrifices { then, .. })
+                | Effect::Choice(ChoiceEffect::MaySacrifice { then, .. })
+                | Effect::Choice(ChoiceEffect::MayDiscard { then }) => {
                     for step in *then {
                         collect(step, out);
                     }
@@ -577,7 +620,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let Effect::Sequence { steps } = beast.abilities[0].effect else {
             panic!("Beast Within spell body should be a Sequence");
         };
-        let Effect::CreateToken { token, .. } = steps[1] else {
+        let Effect::Token(TokenEffect::Create { token, .. }) = steps[1] else {
             panic!("expected create_token step");
         };
         assert_eq!(token.name, "Beast");
@@ -627,10 +670,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let shock = get_by_name("Shock").expect("Shock is in the pool");
         assert!(matches!(
             shock.abilities[0].effect,
-            Effect::DealDamage {
+            Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(2),
                 ..
-            }
+            })
         ));
 
         // Catalog metadata backfilled from Scryfall (tooling/backfill-card-meta.mjs): a set code
@@ -652,14 +695,14 @@ token = { name = "Inkling", power = 2, toughness = 1 }
 
         let elf = get_by_name("Llanowar Elves").expect("Llanowar Elves is in the pool");
         assert!(matches!(elf.abilities[0].timing, Timing::Activated(_)));
-        let Effect::AddMana { mana: produced, .. } = elf.abilities[0].effect else {
+        let Effect::Mana(ManaEffect::Add { mana: produced, .. }) = elf.abilities[0].effect else {
             panic!("Llanowar Elves has a mana ability");
         };
         assert_eq!(produced.colored[Color::Green.index()], 1);
 
         // Sol Ring's {T}: Add {C}{C} — colorless (not a color) and a multi-mana batch.
         let sol_ring = get_by_name("Sol Ring").expect("Sol Ring is in the pool");
-        let Effect::AddMana { mana: sol, .. } = sol_ring.abilities[0].effect else {
+        let Effect::Mana(ManaEffect::Add { mana: sol, .. }) = sol_ring.abilities[0].effect else {
             panic!("Sol Ring taps for mana");
         };
         assert_eq!(sol.colorless, 2, "Sol Ring adds two colorless");
@@ -716,11 +759,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let bolt = get_by_name("Lightning Bolt").expect("Lightning Bolt is in the pool");
         assert!(matches!(
             bolt.abilities[0].effect,
-            Effect::DealDamage {
+            Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(3),
                 target: TargetSpec::AnyTarget,
                 ..
-            }
+            })
         ));
 
         // Laelia: an attack trigger that impulse-exiles the top card (play it until end of turn).
@@ -732,12 +775,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         assert!(matches!(
             laelia.abilities[0].effect,
-            Effect::ExileTopMayPlay {
+            Effect::Mill(MillEffect::ExileTopMayPlay {
                 count: Amount::Fixed(1),
                 until_next_turn: false,
                 face_down: false,
                 free_while_source: false,
-            }
+            })
         ));
 
         // Expressive Iteration: look at the top three, route one each to hand/bottom/exile.
@@ -745,12 +788,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             get_by_name("Expressive Iteration").expect("Expressive Iteration is in the pool");
         assert!(matches!(
             iteration.abilities[0].effect,
-            Effect::DistributeTop {
+            Effect::Dig(DigEffect::DistributeTop {
                 count: 3,
                 to_hand: 1,
                 to_bottom: 1,
                 to_exile_may_play: 1,
-            }
+            })
         ));
 
         // Containment Construct: a body-only 2/1 (its discard trigger is dropped).
@@ -769,21 +812,21 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let recall = get_by_name("Ancestral Recall").expect("Ancestral Recall is in the pool");
         assert!(matches!(
             recall.abilities[0].effect,
-            Effect::TargetPlayerDraws {
+            Effect::Draw(DrawEffect::TargetPlayer {
                 count: Amount::Fixed(3),
                 opponent: false,
-            }
+            })
         ));
 
         // Sentinel's Eyes: an Aura granting +1/+1 and vigilance to the enchanted creature.
         let eyes = get_by_name("Sentinel's Eyes").expect("Sentinel's Eyes is in the pool");
         assert_eq!(eyes.kind, CardKind::Aura);
-        let Effect::GrantToAttached {
+        let Effect::Static(StaticEffect::GrantToAttached {
             power,
             toughness,
             keywords,
             ..
-        } = eyes.abilities[0].effect
+        }) = eyes.abilities[0].effect
         else {
             panic!("Sentinel's Eyes grants a static buff to its host");
         };
@@ -795,14 +838,17 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(bonesplitter.kind, CardKind::Artifact);
         assert!(matches!(
             bonesplitter.abilities[0].effect,
-            Effect::GrantToAttached {
+            Effect::Static(StaticEffect::GrantToAttached {
                 power: Amount::Fixed(2),
                 toughness: Amount::Fixed(0),
                 ..
-            }
+            })
         ));
         let equip = bonesplitter.abilities[1];
-        assert!(matches!(equip.effect, Effect::Equip));
+        assert!(matches!(
+            equip.effect,
+            Effect::Control(ControlEffect::Equip)
+        ));
         let Timing::Activated(cost) = equip.timing else {
             panic!("Equip is an activated ability");
         };
@@ -817,36 +863,36 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         };
         assert!(matches!(
             steps[0],
-            Effect::GainLifeTargetController {
+            Effect::Life(LifeEffect::GainTargetController {
                 amount: Amount::TargetPower
-            }
+            })
         ));
         assert!(matches!(
             steps[1],
-            Effect::ExileTarget {
+            Effect::Destroy(DestroyEffect::ExileTarget {
                 target: TargetSpec::Creature,
                 ..
-            }
+            })
         ));
 
         // Unsummon: "Return target creature to its owner's hand" — a bounce.
         let unsummon = get_by_name("Unsummon").expect("Unsummon is in the pool");
         assert!(matches!(
             unsummon.abilities[0].effect,
-            Effect::ReturnToHand {
+            Effect::Zone(ZoneEffect::ReturnToHand {
                 target: TargetSpec::Creature,
                 ..
-            }
+            })
         ));
 
         // Tome Scour: "Target player mills five cards" — a targeted mill.
         let tome = get_by_name("Tome Scour").expect("Tome Scour is in the pool");
         assert!(matches!(
             tome.abilities[0].effect,
-            Effect::Mill {
+            Effect::Mill(MillEffect::Mill {
                 count: Amount::Fixed(5),
                 target: TargetSpec::Player
-            }
+            })
         ));
 
         // Blood Artist: "Whenever this creature or another creature dies, target player loses
@@ -858,10 +904,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         assert!(matches!(
             blood_artist.abilities[0].effect,
-            Effect::DrainTarget {
+            Effect::Life(LifeEffect::DrainTarget {
                 amount: 1,
                 opponent: false,
-            }
+            })
         ));
 
         // Zulaport Cutthroat: "Whenever this creature or another creature you control dies,
@@ -874,10 +920,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         assert!(matches!(
             zulaport.abilities[0].effect,
-            Effect::EachOpponentDrain {
+            Effect::Life(LifeEffect::EachOpponentDrain {
                 amount: Amount::Fixed(1),
                 sum_gain: false
-            }
+            })
         ));
 
         // High Market: "{T}, Sacrifice a creature: You gain 1 life" — a sac-a-creature outlet
@@ -893,9 +939,9 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert!(sac_outlet.taps_self);
         assert!(matches!(
             high_market.abilities[1].effect,
-            Effect::GainLife {
+            Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(1)
-            }
+            })
         ));
 
         // Mogg Fanatic: "Sacrifice this creature: It deals 1 damage to any target" — a
@@ -907,11 +953,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(self_sac.sacrifice, SacrificeCost::This);
         assert!(matches!(
             mogg.abilities[0].effect,
-            Effect::DealDamage {
+            Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(1),
                 target: TargetSpec::AnyTarget,
                 ..
-            }
+            })
         ));
 
         // Blaze: "{X}{R}. Blaze deals X damage to any target." — a variable-cost X burn.
@@ -920,11 +966,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(blaze.cost.colored[Color::Red.index()], 1, "…and one red");
         assert!(matches!(
             blaze.abilities[0].effect,
-            Effect::DealDamage {
+            Effect::Damage(DamageEffect::Target {
                 amount: Amount::X,
                 target: TargetSpec::AnyTarget,
                 ..
-            }
+            })
         ));
 
         // Raise Dead: "Return target creature card from your graveyard to your hand."
@@ -932,10 +978,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(raise_dead.cost.colored[Color::Black.index()], 1);
         assert!(matches!(
             raise_dead.abilities[0].effect,
-            Effect::ReturnFromGraveyardToHand {
+            Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand {
                 target: TargetSpec::CreatureCardInYourGraveyard,
                 ..
-            }
+            })
         ));
 
         // Reanimate: "Put target creature card from a graveyard onto the battlefield under your
@@ -948,16 +994,16 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         };
         assert!(matches!(
             steps[0],
-            Effect::ReanimateToBattlefield {
+            Effect::Zone(ZoneEffect::ReanimateToBattlefield {
                 target: TargetSpec::CreatureCardInAnyGraveyard,
                 ..
-            }
+            })
         ));
         assert!(matches!(
             steps[1],
-            Effect::LoseLife {
+            Effect::Life(LifeEffect::Lose {
                 amount: Amount::TargetManaValue
-            }
+            })
         ));
 
         // Stroke of Genius: "{X}{2}{U}. Target player draws X cards." — a variable-cost draw.
@@ -967,10 +1013,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(stroke.cost.colored[Color::Blue.index()], 1);
         assert!(matches!(
             stroke.abilities[0].effect,
-            Effect::TargetPlayerDraws {
+            Effect::Draw(DrawEffect::TargetPlayer {
                 count: Amount::X,
                 opponent: false,
-            }
+            })
         ));
 
         // Augury Owl: "When this creature enters, scry 3." — an ETB scry.
@@ -978,9 +1024,9 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(owl.abilities[0].timing, Timing::Triggered(Trigger::Etb));
         assert!(matches!(
             owl.abilities[0].effect,
-            Effect::Scry {
+            Effect::Dig(DigEffect::Scry {
                 count: Amount::Fixed(3)
-            }
+            })
         ));
 
         // Dimir Informant: "When this creature enters, surveil 2." — an ETB surveil.
@@ -991,7 +1037,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         assert!(matches!(
             informant.abilities[0].effect,
-            Effect::Surveil { count: 2 }
+            Effect::Dig(DigEffect::Surveil { count: 2 })
         ));
 
         // Marauding Raptor: "Creature spells you cast cost {1} less to cast." — a static,
@@ -1000,11 +1046,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(raptor.abilities[0].timing, Timing::Static);
         assert!(matches!(
             raptor.abilities[0].effect,
-            Effect::ReduceSpellCost {
+            Effect::Static(StaticEffect::ReduceSpellCost {
                 amount: Amount::Fixed(1),
                 filter: SpellFilter::CreatureSpells,
                 ..
-            }
+            })
         ));
 
         // Killian, Ink Duelist: "Spells you cast that target a creature cost {2} less to cast."
@@ -1014,11 +1060,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert!(killian.keywords.contains(&Keyword::Menace));
         assert!(matches!(
             killian.abilities[0].effect,
-            Effect::ReduceSpellCost {
+            Effect::Static(StaticEffect::ReduceSpellCost {
                 amount: Amount::Fixed(2),
                 filter: SpellFilter::SpellsThatTargetACreature,
                 ..
-            }
+            })
         ));
 
         // Temple of Malady: a scry land whose ETB scries 1 (its enters-tapped / dual-mana
@@ -1028,9 +1074,9 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(temple.abilities[0].timing, Timing::Triggered(Trigger::Etb));
         assert!(matches!(
             temple.abilities[0].effect,
-            Effect::Scry {
+            Effect::Dig(DigEffect::Scry {
                 count: Amount::Fixed(1)
-            }
+            })
         ));
 
         // Besmirch: a sorcery that steals target creature until end of turn (with haste),
@@ -1047,20 +1093,20 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             besmirch.abilities[0].effect,
             Effect::Sequence {
                 steps: [
-                    Effect::GainControlUntilEndOfTurn {
+                    Effect::Control(ControlEffect::GainControlUntilEndOfTurn {
                         target: TargetSpec::Creature
-                    },
-                    Effect::PumpUntilEndOfTurn {
+                    }),
+                    Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
                         target: TargetSpec::Creature,
                         ..
-                    },
-                    Effect::UntapTarget {
+                    }),
+                    Effect::Control(ControlEffect::UntapTarget {
                         target: TargetSpec::Creature,
                         ..
-                    },
-                    Effect::GoadTarget {
+                    }),
+                    Effect::Control(ControlEffect::GoadTarget {
                         target: TargetSpec::Creature
-                    },
+                    }),
                 ]
             }
         ));
@@ -1080,30 +1126,30 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // Mode 0: put two +1/+1 counters on target creature.
         assert!(matches!(
             charm.abilities[0].effect,
-            Effect::PutCounters {
+            Effect::Counters(CountersEffect::PutCounters {
                 count: Amount::Fixed(2),
                 target: TargetSpec::Creature,
                 ..
-            }
+            })
         ));
         // Mode 1: exile target creature with power 2 or less.
         assert!(matches!(
             charm.abilities[1].effect,
-            Effect::ExileTarget {
+            Effect::Destroy(DestroyEffect::ExileTarget {
                 target: TargetSpec::Permanent(PermanentFilter {
                     power_max: Some(2),
                     ..
                 }),
                 ..
-            }
+            })
         ));
         // Mode 2: each opponent loses 3 / you gain 3 — no target.
         assert!(matches!(
             charm.abilities[2].effect,
-            Effect::EachOpponentDrain {
+            Effect::Life(LifeEffect::EachOpponentDrain {
                 amount: Amount::Fixed(3),
                 sum_gain: false
-            }
+            })
         ));
 
         // Quandrix Charm: a modal "choose one" instant — counter, destroy-enchantment, and
@@ -1113,28 +1159,28 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(qcharm.abilities.len(), 3, "three modeled modes");
         assert!(matches!(
             qcharm.abilities[0].effect,
-            Effect::CounterTargetSpell {
+            Effect::Misc(MiscEffect::CounterTargetSpell {
                 unless_pays: Some(Amount::Fixed(2)),
                 ..
-            }
+            })
         ));
         assert!(matches!(
             qcharm.abilities[1].effect,
-            Effect::DestroyTarget {
+            Effect::Destroy(DestroyEffect::DestroyTarget {
                 target: TargetSpec::Permanent(PermanentFilter {
                     types: TypeSet::ENCHANTMENT,
                     ..
                 }),
                 ..
-            }
+            })
         ));
         assert!(matches!(
             qcharm.abilities[2].effect,
-            Effect::SetBasePtTargetUntilEndOfTurn {
+            Effect::Pump(PumpEffect::SetBasePtTargetUntilEndOfTurn {
                 power: Amount::Fixed(5),
                 toughness: Amount::Fixed(5),
                 target: TargetSpec::Creature,
-            }
+            })
         ));
 
         // Prismari Command: a modal "choose two" instant — four modes, pick two distinct.
@@ -1144,45 +1190,45 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert!(prismari.abilities.iter().all(|a| a.timing == Timing::Spell));
         assert!(matches!(
             prismari.abilities[0].effect,
-            Effect::DealDamage {
+            Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(2),
                 target: TargetSpec::AnyTarget,
                 ..
-            }
+            })
         ));
         assert!(matches!(
             prismari.abilities[1].effect,
             Effect::Sequence {
                 steps: &[
-                    Effect::TargetPlayerDraws {
+                    Effect::Draw(DrawEffect::TargetPlayer {
                         count: Amount::Fixed(2),
                         opponent: false,
-                    },
-                    Effect::Discard {
+                    }),
+                    Effect::Choice(ChoiceEffect::Discard {
                         count: 2,
                         target_player: true,
                         or_one_matching: None,
-                    },
+                    }),
                 ],
             }
         ));
         assert!(matches!(
             prismari.abilities[2].effect,
-            Effect::CreateTreasure {
+            Effect::Token(TokenEffect::CreateTreasure {
                 count: Amount::Fixed(1),
                 target_player: true,
                 ..
-            }
+            })
         ));
         assert!(matches!(
             prismari.abilities[3].effect,
-            Effect::DestroyTarget {
+            Effect::Destroy(DestroyEffect::DestroyTarget {
                 target: TargetSpec::Permanent(PermanentFilter {
                     types: TypeSet::ARTIFACT,
                     ..
                 }),
                 ..
-            }
+            })
         ));
 
         // Witherbloom Command: a modal "choose two" sorcery — four modes, pick two distinct.
@@ -1194,20 +1240,20 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             wither.abilities[0].effect,
             Effect::Sequence {
                 steps: [
-                    Effect::Mill {
+                    Effect::Mill(MillEffect::Mill {
                         count: Amount::Fixed(3),
                         target: TargetSpec::Player,
-                    },
-                    Effect::MayReturnFromGraveyard {
+                    }),
+                    Effect::Choice(ChoiceEffect::MayReturnFromGraveyard {
                         filter: CardFilter::Land,
                         ..
-                    },
+                    }),
                 ],
             }
         ));
         assert!(matches!(
             wither.abilities[1].effect,
-            Effect::DestroyTarget {
+            Effect::Destroy(DestroyEffect::DestroyTarget {
                 target: TargetSpec::Permanent(PermanentFilter {
                     types: TypeSet::NONLAND,
                     exclude: TypeSet::CREATURE,
@@ -1215,23 +1261,23 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                     ..
                 }),
                 ..
-            }
+            })
         ));
         assert!(matches!(
             wither.abilities[2].effect,
-            Effect::PumpUntilEndOfTurn {
+            Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
                 power: Amount::Fixed(-3),
                 toughness: Amount::Fixed(-1),
                 target: TargetSpec::Creature,
                 ..
-            }
+            })
         ));
         assert!(matches!(
             wither.abilities[3].effect,
-            Effect::DrainTarget {
+            Effect::Life(LifeEffect::DrainTarget {
                 amount: 2,
                 opponent: true,
-            }
+            })
         ));
 
         // Quandrix Command: a modal "choose two" instant, all four printed modes modeled.
@@ -1239,36 +1285,36 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert!(quandrix.modal && quandrix.modal_choose == 2);
         assert_eq!(quandrix.abilities.len(), 4, "four modeled modes");
         match quandrix.abilities[0].effect {
-            Effect::ReturnToHand {
+            Effect::Zone(ZoneEffect::ReturnToHand {
                 target: TargetSpec::Permanent(filter),
                 ..
-            } => {
+            }) => {
                 assert_eq!(filter.types, TypeSet::CREATURE.union(TypeSet::PLANESWALKER));
             }
             other => panic!("mode 0 should bounce a creature or planeswalker, got {other:?}"),
         }
         assert!(matches!(
             quandrix.abilities[1].effect,
-            Effect::CounterTargetSpell {
+            Effect::Misc(MiscEffect::CounterTargetSpell {
                 unless_pays: None,
                 filter: SpellFilter::ArtifactOrEnchantment,
                 countered_dest: None,
-            }
+            })
         ));
         assert!(matches!(
             quandrix.abilities[2].effect,
-            Effect::PutCounters {
+            Effect::Counters(CountersEffect::PutCounters {
                 count: Amount::Fixed(2),
                 target: TargetSpec::Creature,
                 ..
-            }
+            })
         ));
         assert!(matches!(
             quandrix.abilities[3].effect,
-            Effect::ShuffleTargetCardsFromGraveyardIntoLibrary {
+            Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
                 max: 3,
                 target_player: true,
-            }
+            })
         ));
 
         // Killian, Decisive Mentor: the tap-and-goad half of the commander, on a watch for an
@@ -1289,13 +1335,13 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             killian.abilities[0].effect,
             Effect::Sequence {
                 steps: [
-                    Effect::TapTarget {
+                    Effect::Control(ControlEffect::TapTarget {
                         target: TargetSpec::Creature,
                         ..
-                    },
-                    Effect::GoadTarget {
+                    }),
+                    Effect::Control(ControlEffect::GoadTarget {
                         target: TargetSpec::Creature
-                    },
+                    }),
                 ]
             }
         ));
@@ -1315,14 +1361,14 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             leonin.abilities[0].effect,
             Effect::Sequence {
                 steps: [
-                    Effect::PumpSelfUntilEndOfTurn {
+                    Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
                         power: Amount::Fixed(1),
                         toughness: Amount::Fixed(1),
                         ..
-                    },
-                    Effect::GainLife {
+                    }),
+                    Effect::Life(LifeEffect::Gain {
                         amount: Amount::Fixed(1)
-                    },
+                    }),
                 ]
             }
         ));
@@ -1342,10 +1388,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         assert!(matches!(
             breena.abilities[0].effect,
-            Effect::AttackerDrawsControllerCounters {
+            Effect::Counters(CountersEffect::AttackerDrawsControllerCounters {
                 attacker: None,
                 counters: 2,
-            }
+            })
         ));
 
         // Quintorius, History Chaser: a Lorehold planeswalker commander — starting loyalty 5, with
@@ -1362,18 +1408,26 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             Some(1),
             "the ability's loyalty cost is +1"
         );
+        let Effect::Choice(ChoiceEffect::MayDiscard { then }) = quintorius.abilities[0].effect
+        else {
+            panic!("Quintorius's +1 is a may-discard rider");
+        };
+        assert_eq!(
+            then.len(),
+            2,
+            "the discard rider has draw-then-mill follow-ups"
+        );
         assert!(matches!(
-            quintorius.abilities[0].effect,
-            Effect::MayDiscard {
-                then: [
-                    Effect::DrawCards {
-                        count: Amount::Fixed(2)
-                    },
-                    Effect::MillSelf {
-                        count: Amount::Fixed(1)
-                    }
-                ]
-            }
+            then[0],
+            Effect::Draw(DrawEffect::Cards {
+                count: Amount::Fixed(2)
+            })
+        ));
+        assert!(matches!(
+            then[1],
+            Effect::Mill(MillEffect::MillSelf {
+                count: Amount::Fixed(1)
+            })
         ));
 
         // Rite of Replication: "Kicker {5} ... Create a token that's a copy of target creature.
@@ -1384,14 +1438,14 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert!(matches!(rite.cost.additional.kicker, Some(k) if k.generic == 5));
         assert!(matches!(
             rite.abilities[0].effect,
-            Effect::CreateTokenCopy {
+            Effect::Token(TokenEffect::CreateCopy {
                 count: Amount::IfSpellKicked { then, else_ },
                 target: TargetSpec::Creature,
                 sacrifice_at_next_end_step: false,
                 exile_at_next_end_step: false,
                 haste: false,
                 ..
-            } if *then == Amount::Fixed(5) && *else_ == Amount::Fixed(1)
+            }) if *then == Amount::Fixed(5) && *else_ == Amount::Fixed(1)
         ));
 
         // Twincast: "Copy target instant or sorcery spell." — {U}{U} instant, targets a spell
@@ -1407,7 +1461,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(twincast.abilities[0].timing, Timing::Spell);
         assert!(matches!(
             twincast.abilities[0].effect,
-            Effect::CopyTargetSpell
+            Effect::Copy(CopyEffect::TargetSpell)
         ));
 
         // Hardened Scales: "…that many plus one." — a static +1 counter-replacement.
@@ -1416,11 +1470,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(scales.abilities[0].timing, Timing::Static);
         assert!(matches!(
             scales.abilities[0].effect,
-            Effect::CounterReplacement {
+            Effect::Static(StaticEffect::CounterReplacement {
                 add: 1,
                 times: 1,
                 ..
-            }
+            })
         ));
 
         // Doubling Season: "…twice that many." — a static x2 token-creation replacement plus a
@@ -1429,15 +1483,15 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let doubling = get_by_name("Doubling Season").expect("Doubling Season is in the pool");
         assert!(matches!(
             doubling.abilities[0].effect,
-            Effect::TokenReplacement { times: 2 }
+            Effect::Static(StaticEffect::TokenReplacement { times: 2 })
         ));
         assert!(matches!(
             doubling.abilities[1].effect,
-            Effect::CounterReplacement {
+            Effect::Static(StaticEffect::CounterReplacement {
                 add: 0,
                 times: 2,
                 ..
-            }
+            })
         ));
 
         // Diabolic Tutor: "Search your library for a card, put it into your hand, then shuffle."
@@ -1446,12 +1500,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(tutor.cost.colored[Color::Black.index()], 2);
         assert!(matches!(
             tutor.abilities[0].effect,
-            Effect::SearchLibrary {
+            Effect::Dig(DigEffect::SearchLibrary {
                 filter: CardFilter::AnyCard,
                 to_zone: SearchDest::Hand,
                 tapped: false,
                 ..
-            }
+            })
         ));
 
         // Rampant Growth: "Search your library for a basic land card, put it onto the battlefield
@@ -1459,12 +1513,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let ramp = get_by_name("Rampant Growth").expect("Rampant Growth is in the pool");
         assert!(matches!(
             ramp.abilities[0].effect,
-            Effect::SearchLibrary {
+            Effect::Dig(DigEffect::SearchLibrary {
                 filter: CardFilter::BasicLand,
                 to_zone: SearchDest::Battlefield,
                 tapped: true,
                 ..
-            }
+            })
         ));
 
         // Terramorphic Expanse: "{T}, Sacrifice this land: search a basic land onto the
@@ -1484,12 +1538,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         assert!(matches!(
             terramorphic.abilities[0].effect,
-            Effect::SearchLibrary {
+            Effect::Dig(DigEffect::SearchLibrary {
                 filter: CardFilter::BasicLand,
                 to_zone: SearchDest::Battlefield,
                 tapped: true,
                 ..
-            }
+            })
         ));
 
         // Fabled Passage: same as Terramorphic (its "untap that land" rider is deferred).
@@ -1515,12 +1569,12 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         assert!(matches!(
             vista.abilities[0].effect,
-            Effect::SearchLibrary {
+            Effect::Dig(DigEffect::SearchLibrary {
                 filter: CardFilter::BasicLand,
                 to_zone: SearchDest::Battlefield,
                 tapped: false,
                 ..
-            }
+            })
         ));
 
         // Goldvein Hydra: {X}{G} 0/0 that "enters with X +1/+1 counters", with vigilance/trample/
@@ -1539,20 +1593,20 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(hydra.abilities[0].timing, Timing::Static);
         assert!(matches!(
             hydra.abilities[0].effect,
-            Effect::EntersWithCounters {
+            Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::X,
                 kind: None
-            }
+            })
         ));
 
         // Blasphemous Act: "13 damage to each creature." — a fixed mass-damage wipe.
         let blasphemous = get_by_name("Blasphemous Act").expect("Blasphemous Act is in the pool");
         assert!(matches!(
             blasphemous.abilities[0].effect,
-            Effect::DamageEachCreature {
+            Effect::Damage(DamageEffect::EachCreature {
                 amount: Amount::Fixed(13),
                 ..
-            }
+            })
         ));
 
         // Chain Reaction: "X damage to each creature, X = creatures on the battlefield." — a
@@ -1560,10 +1614,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let chain = get_by_name("Chain Reaction").expect("Chain Reaction is in the pool");
         assert!(matches!(
             chain.abilities[0].effect,
-            Effect::DamageEachCreature {
+            Effect::Damage(DamageEffect::EachCreature {
                 amount: Amount::PerCreatureOnBattlefield,
                 ..
-            }
+            })
         ));
 
         // Toxic Deluge: "pay X life, all creatures get -X/-X." — {X} models the life (see TOML).
@@ -1571,24 +1625,24 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert!(deluge.cost.x > 0, "Toxic Deluge's X is the pay-X source");
         assert!(matches!(
             deluge.abilities[0].effect,
-            Effect::WeakenEachCreature {
+            Effect::Pump(PumpEffect::WeakenEachCreature {
                 power: Amount::X,
                 toughness: Amount::X,
                 opponents_only: false,
-            }
+            })
         ));
 
         // Winds of Rath: "destroy all creatures that aren't enchanted."
         let winds = get_by_name("Winds of Rath").expect("Winds of Rath is in the pool");
         assert!(matches!(
             winds.abilities[0].effect,
-            Effect::DestroyAll {
+            Effect::Destroy(DestroyEffect::DestroyAll {
                 filter: PermanentFilter {
                     types: TypeSet::CREATURE,
                     enchanted: Some(false),
                     ..
                 }
-            }
+            })
         ));
 
         // Culling Ritual: "destroy each nonland permanent with mana value 2 or less. Add {B} or
@@ -1603,30 +1657,30 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         };
         assert!(matches!(
             wipe,
-            Effect::DestroyAll {
+            Effect::Destroy(DestroyEffect::DestroyAll {
                 filter: PermanentFilter {
                     types: TypeSet::NONLAND,
                     mv_max: Some(2),
                     ..
                 }
-            }
+            })
         ));
         assert!(matches!(
             rider,
-            Effect::AddMana {
+            Effect::Mana(ManaEffect::Add {
                 repeat: Amount::PermanentsDestroyedThisWay { .. },
                 ..
-            }
+            })
         ));
 
         // Fracture: "destroy target artifact, enchantment, or planeswalker." — noncreature removal.
         let fracture = get_by_name("Fracture").expect("Fracture is in the pool");
         assert!(matches!(
             fracture.abilities[0].effect,
-            Effect::DestroyTarget {
+            Effect::Destroy(DestroyEffect::DestroyTarget {
                 target: TargetSpec::ArtifactEnchantmentOrPlaneswalker,
                 ..
-            }
+            })
         ));
 
         // Storm-Kiln Artist: "This creature gets +1/+0 for each artifact you control. Magecraft —
@@ -1636,10 +1690,10 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(storm_kiln.abilities[0].timing, Timing::Static);
         assert!(matches!(
             storm_kiln.abilities[0].effect,
-            Effect::AnthemStatic {
+            Effect::Static(StaticEffect::Anthem {
                 self_only: true,
                 ..
-            }
+            })
         ));
         assert_eq!(
             storm_kiln.abilities[1].timing,
@@ -1647,11 +1701,11 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         );
         assert!(matches!(
             storm_kiln.abilities[1].effect,
-            Effect::CreateTreasure {
+            Effect::Token(TokenEffect::CreateTreasure {
                 count: Amount::Fixed(1),
                 target_player: false,
                 ..
-            }
+            })
         ));
 
         // Big Score: "Draw two cards and create two Treasure tokens." — a non-modal instant with two
@@ -1665,17 +1719,17 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         ));
         assert!(matches!(
             big_score.abilities[0].effect,
-            Effect::DrawCards {
+            Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(2)
-            }
+            })
         ));
         assert!(matches!(
             big_score.abilities[1].effect,
-            Effect::CreateTreasure {
+            Effect::Token(TokenEffect::CreateTreasure {
                 count: Amount::Fixed(2),
                 target_player: false,
                 ..
-            }
+            })
         ));
 
         // Darksteel Myr: a {3} 0/1 artifact creature with intrinsic indestructible.
@@ -1705,7 +1759,9 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // Shielded by Faith: an Aura granting indestructible to the enchanted creature.
         let shielded = get_by_name("Shielded by Faith").expect("Shielded by Faith is in the pool");
         assert_eq!(shielded.kind, CardKind::Aura);
-        let Effect::GrantToAttached { keywords, .. } = shielded.abilities[0].effect else {
+        let Effect::Static(StaticEffect::GrantToAttached { keywords, .. }) =
+            shielded.abilities[0].effect
+        else {
             panic!("Shielded by Faith grants a static keyword to its host");
         };
         assert_eq!(keywords, &[Keyword::Indestructible]);
@@ -1715,22 +1771,24 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         // abilities[0] is the "attacking Pests get +1/+0 and menace" anthem; abilities[1] is the
         // death-trigger token maker.
         let blight = get_by_name("Blight Mound").expect("Blight Mound is in the pool");
-        let Effect::CreateToken { token: pest, .. } = blight.abilities[1].effect else {
+        let Effect::Token(TokenEffect::Create { token: pest, .. }) = blight.abilities[1].effect
+        else {
             panic!("Blight Mound creates a Pest token");
         };
         assert_eq!(pest.name, "Pest");
         assert_eq!(pest.abilities[0].timing, Timing::Triggered(Trigger::Dies));
         assert!(matches!(
             pest.abilities[0].effect,
-            Effect::GainLife {
+            Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(1)
-            }
+            })
         ));
 
         // Gilded Goose's ETB makes a Food — an *artifact* token whose own activated ability
         // sacrifices it ("{2}, {T}, Sacrifice this token: You gain 3 life").
         let goose = get_by_name("Gilded Goose").expect("Gilded Goose is in the pool");
-        let Effect::CreateToken { token: food, .. } = goose.abilities[0].effect else {
+        let Effect::Token(TokenEffect::Create { token: food, .. }) = goose.abilities[0].effect
+        else {
             panic!("Gilded Goose's ETB creates a Food token");
         };
         assert_eq!(food.name, "Food");
@@ -1796,14 +1854,14 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         assert_eq!(
             steps,
             &[
-                Effect::DrawCards {
+                Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(2)
-                },
-                Effect::Discard {
+                }),
+                Effect::Choice(ChoiceEffect::Discard {
                     count: 2,
                     target_player: false,
                     or_one_matching: None,
-                },
+                }),
             ],
             "draw two, then discard two — in order"
         );
@@ -1813,7 +1871,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
         let shock = get_by_name("Shock").expect("Shock is in the pool");
         assert!(matches!(
             shock.abilities[0].effect,
-            Effect::DealDamage { .. }
+            Effect::Damage(DamageEffect::Target { .. })
         ));
 
         // The singular `effect` sugar was removed: only `effects` is accepted, so a lone `effect`

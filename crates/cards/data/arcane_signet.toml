@@ -20,5 +20,6 @@ taps_self = true
 
 # Add one mana of any color in your commander's color identity.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 identity = 1

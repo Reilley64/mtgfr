@@ -9,11 +9,13 @@ import re
 import sys
 from pathlib import Path
 
-EFFECT_TABLE_SUFFIXES = ("effects", "steps", "options", "then")
-INLINE_NESTED_KEYS = ("then", "modes", "options", "steps")
+EFFECT_TABLE_SUFFIXES = ("effects", "steps", "options", "then", "modes", "rider")
+INLINE_NESTED_KEYS = ("effects", "modes", "on_expiry", "options", "steps", "then")
 STRUCTURAL_TYPES = frozenset({"sequence", "conditional", "choose_one"})
 TABLE_HEADER_RE = re.compile(r"^\[\[(.+)\]\]\s*$")
+SINGLE_TABLE_HEADER_RE = re.compile(r"^\[(.+)\]\s*$")
 TYPE_LINE_RE = re.compile(r'^(\s*)type\s*=\s*"([^"]+)"\s*$')
+MODES_LINE_RE = re.compile(r"^(\s*)modes(\s*=\s*\[.*)$")
 INLINE_NESTED_START_RE = re.compile(
     rf'^\s*(?:{"|".join(INLINE_NESTED_KEYS)})\s*=\s*\['
 )
@@ -86,6 +88,15 @@ def _iter_unmigrated_inline_types(
     return hits
 
 
+def _rewrite_choose_one_modes_key(line: str) -> str:
+    match = MODES_LINE_RE.match(line.rstrip("\n"))
+    if match is None:
+        return line
+
+    newline = "\n" if line.endswith("\n") else ""
+    return f'{match.group(1)}options{match.group(2)}{newline}'
+
+
 def migrate_text(text: str, mapping: dict[str, dict[str, str]]) -> str:
     lines = text.splitlines(keepends=True)
     out: list[str] = []
@@ -95,11 +106,14 @@ def migrate_text(text: str, mapping: dict[str, dict[str, str]]) -> str:
     index = 0
     while index < len(lines):
         line = lines[index]
-        header_match = TABLE_HEADER_RE.match(line.rstrip("\n"))
+        rewritten_header = line.replace(".modes]]", ".options]]")
+        header_match = TABLE_HEADER_RE.match(rewritten_header.rstrip("\n"))
+        if header_match is None:
+            header_match = SINGLE_TABLE_HEADER_RE.match(rewritten_header.rstrip("\n"))
         if header_match is not None:
             in_effect_table = _table_suffix(header_match.group(1)) is not None
             inline_nested_depth = 0
-            out.append(line)
+            out.append(rewritten_header)
             index += 1
             continue
 
@@ -107,6 +121,8 @@ def migrate_text(text: str, mapping: dict[str, dict[str, str]]) -> str:
             out.append(line)
             index += 1
             continue
+
+        line = _rewrite_choose_one_modes_key(line)
 
         if inline_nested_depth == 0 and INLINE_NESTED_START_RE.match(line.rstrip("\n")):
             rewritten = _rewrite_inline_types(line, mapping)
@@ -121,6 +137,13 @@ def migrate_text(text: str, mapping: dict[str, dict[str, str]]) -> str:
             out.append(rewritten)
             index += 1
             continue
+
+        if TYPE_LINE_RE.match(line.rstrip("\n")) is None:
+            rewritten = _rewrite_inline_types(line, mapping)
+            if rewritten != line:
+                out.append(rewritten)
+                index += 1
+                continue
 
         type_match = TYPE_LINE_RE.match(line.rstrip("\n"))
         if type_match is None:
@@ -157,13 +180,20 @@ def find_unmigrated_types(
     inline_nested_depth = 0
 
     for line_number, line in enumerate(text.splitlines(), start=1):
-        header_match = TABLE_HEADER_RE.match(line)
+        normalized_header = line.replace(".modes]]", ".options]]")
+        header_match = TABLE_HEADER_RE.match(normalized_header)
+        if header_match is None:
+            header_match = SINGLE_TABLE_HEADER_RE.match(normalized_header)
         if header_match is not None:
             in_effect_table = _table_suffix(header_match.group(1)) is not None
             inline_nested_depth = 0
             continue
 
         if not in_effect_table:
+            continue
+
+        if MODES_LINE_RE.match(line):
+            hits.append((line_number, "modes"))
             continue
 
         if inline_nested_depth == 0 and INLINE_NESTED_START_RE.match(line):
@@ -177,6 +207,13 @@ def find_unmigrated_types(
                 hits.append((line_number, old_type))
             inline_nested_depth = max(0, inline_nested_depth + _inline_bracket_delta(line))
             continue
+
+        if TYPE_LINE_RE.match(line) is None:
+            inline_hits = _iter_unmigrated_inline_types(line, mapping)
+            if inline_hits:
+                for old_type in inline_hits:
+                    hits.append((line_number, old_type))
+                continue
 
         type_match = TYPE_LINE_RE.match(line)
         if type_match is None:
@@ -216,6 +253,29 @@ def check_paths(
     return failures
 
 
+def expand_paths(paths: list[Path]) -> list[Path]:
+    expanded: list[Path] = []
+    seen: set[Path] = set()
+
+    for path in paths:
+        if path.is_dir():
+            for child in sorted(path.glob("**/*.toml")):
+                resolved = child.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                expanded.append(child)
+            continue
+
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        expanded.append(path)
+
+    return expanded
+
+
 def default_card_pool_glob(root: Path) -> list[Path]:
     return sorted((root / "crates" / "cards" / "data").glob("**/*.toml"))
 
@@ -253,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         if args.paths:
-            targets = args.paths
+            targets = expand_paths(args.paths)
         else:
             targets = default_card_pool_glob(args.repo_root)
         failures = check_paths(targets, mapping)
@@ -268,7 +328,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("paths required unless --check scans the default card pool")
 
     changed = 0
-    for path in args.paths:
+    for path in expand_paths(args.paths):
         if migrate_file(path, mapping):
             changed += 1
             print(f"migrated {path}")

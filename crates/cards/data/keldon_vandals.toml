@@ -29,5 +29,6 @@ timing = "etb"
 
 # destroy target artifact.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = "artifact" }

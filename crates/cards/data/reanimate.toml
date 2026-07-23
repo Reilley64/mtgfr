@@ -20,10 +20,12 @@ timing = "spell"
 
 # Put target creature card from a graveyard onto the battlefield under your control.
 [[abilities.effects]]
-type = "reanimate_to_battlefield"
+type = "zone"
+mode = "reanimate_to_battlefield"
 target = "any_graveyard"
 
 # You lose life equal to that card's mana value.
 [[abilities.effects]]
-type = "lose_life"
+type = "life"
+mode = "lose"
 amount = "target_mana_value"

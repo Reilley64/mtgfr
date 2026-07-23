@@ -32,6 +32,7 @@ taps_self = true
 
 # Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains tapped.
 [[abilities.effects]]
-type = "gain_control_while"
+type = "control"
+mode = "gain_control_while"
 target = "creature"
 while_source_tapped = true

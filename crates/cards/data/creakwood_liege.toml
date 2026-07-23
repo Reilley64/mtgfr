@@ -25,7 +25,8 @@ timing = "static"
 
 # Other black creatures you control get +1/+1.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 1
 colors = ["black"]
@@ -37,7 +38,8 @@ timing = "static"
 
 # Other green creatures you control get +1/+1.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 1
 colors = ["green"]
@@ -50,7 +52,8 @@ optional = true
 
 # create a 1/1 black and green Worm creature token
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "318d6000-b6e0-4ef0-ad58-d470f4a271e6"
 count = 1
 

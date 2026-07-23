@@ -22,7 +22,8 @@ timing = "static"
 
 # Enchanted creature has indestructible.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 0
 toughness = 0
 keywords = ["indestructible"]
@@ -36,4 +37,5 @@ optional = true
 
 # attach this Aura to that creature
 [[abilities.effects]]
-type = "attach_self_to_entering"
+type = "control"
+mode = "attach_self_to_entering"

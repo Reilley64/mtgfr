@@ -20,6 +20,7 @@ timing = "spell"
 
 # Put target permanent on top of its owner's library.
 [[abilities.effects]]
-type = "tuck_permanent_into_library"
+type = "zone"
+mode = "tuck_permanent_into_library"
 target = { permanent = {} }
 to_top = true

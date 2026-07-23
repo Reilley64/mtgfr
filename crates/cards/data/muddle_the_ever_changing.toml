@@ -30,5 +30,6 @@ optional = true
 # Muddle becomes a copy of up to one target nonlegendary creature you control until end of
 # turn, except it has myriad.
 [[abilities.effects]]
-type = "become_copy_of_target_creature_gaining_myriad"
+type = "token"
+mode = "become_copy_of_target_creature_gaining_myriad"
 target = { permanent = { types = "creature", controller = "you", other = true, nonlegendary = true } }

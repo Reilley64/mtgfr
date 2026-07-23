@@ -22,7 +22,8 @@ who = "this"
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # Whenever you cast an instant or sorcery spell with mana value 5 or greater, create a token
@@ -38,7 +39,8 @@ at_least = 5
 
 # create a token that's a copy of this creature.
 [[abilities.effects]]
-type = "create_token_copy"
+type = "token"
+mode = "create_copy"
 target = "this"
 count = 1
 
@@ -52,7 +54,8 @@ activation_cost = { generic = 2, blue = 1 }
 # this card's own token copies (which share the printed name) — see the `PermanentFilter.name`
 # axis doc for the equality-only scope.
 [[abilities.effects]]
-type = "pump_creatures_you_control_until_end_of_turn"
+type = "pump"
+mode = "pump_creatures_you_control_until_end_of_turn"
 power = 0
 toughness = 0
 keywords = ["unblockable"]

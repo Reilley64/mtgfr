@@ -25,5 +25,6 @@ timing = "spell"
 
 # Destroy target artifact.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "artifact" } }

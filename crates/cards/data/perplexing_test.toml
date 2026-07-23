@@ -23,7 +23,8 @@ timing = "spell"
 
 # Return all creature tokens to their owners' hands.
 [[abilities.effects]]
-type = "return_all_to_hand"
+type = "zone"
+mode = "return_all_to_hand"
 filter = { types = "creature", token = "token" }
 
 # Mode 1 — Return all nontoken creatures to their owners' hands.
@@ -32,5 +33,6 @@ timing = "spell"
 
 # Return all nontoken creatures to their owners' hands.
 [[abilities.effects]]
-type = "return_all_to_hand"
+type = "zone"
+mode = "return_all_to_hand"
 filter = { types = "creature", token = "nontoken" }

@@ -311,8 +311,8 @@ impl Game {
 
     /// The total generic mana `declarer` must pay to declare `attackers` (CR 508.1g), summed across
     /// every defending player who controls a "pillow-fort" attack-tax static. A flat
-    /// [`Effect::AttackTax`] (Ghostly Prison) charges its `amount` per attacker aimed at that
-    /// defender; a [`Effect::CounterScaledAttackTax`] (Nils, Discipline Enforcer) charges each such
+    /// [`Effect::Static(StaticEffect::AttackTax)`] (Ghostly Prison) charges its `amount` per attacker aimed at that
+    /// defender; a [`Effect::Static(StaticEffect::CounterScaledAttackTax)`] (Nils, Discipline Enforcer) charges each such
     /// attacker its own counter count (0 — untaxed — when it has none). Several taxers a defender
     /// controls stack (their amounts add, per the Ghostly Prison / Propaganda stacking ruling).
     /// Zero when no attacker faces a taxing defender. Takes the *resolved* defending player of
@@ -336,8 +336,10 @@ impl Game {
             .into_iter()
             .flat_map(|id| self.def_of(id).abilities)
             .map(|ability| match (ability.timing, ability.effect) {
-                (Timing::Static, Effect::AttackTax { amount }) => amount as u32,
-                (Timing::Static, Effect::CounterScaledAttackTax) => counters,
+                (Timing::Static, Effect::Static(StaticEffect::AttackTax { amount })) => {
+                    amount as u32
+                }
+                (Timing::Static, Effect::Static(StaticEffect::CounterScaledAttackTax)) => counters,
                 _ => 0,
             })
             .sum()
@@ -396,7 +398,7 @@ impl Game {
         }
 
         // Attack-restriction statics (CR 509.1a — Combat Calligrapher, Eriette of the Charmed
-        // Apple): a defender may control an [`Effect::CantBeAttackedBy`] static that forbids
+        // Apple): a defender may control an [`Effect::Static(StaticEffect::CantBeAttackedBy)`] static that forbids
         // matching attackers from attacking them. Scanned per declared (attacker, defender) pair,
         // mirroring `attack_tax_owed`'s defender-permanent enumeration.
         for &(attacker, defender) in &resolved {
@@ -412,7 +414,7 @@ impl Game {
                         .map(move |ability| (id, ability))
                 })
                 .any(|(source, ability)| match (ability.timing, ability.effect) {
-                    (Timing::Static, Effect::CantBeAttackedBy { filter }) => {
+                    (Timing::Static, Effect::Static(StaticEffect::CantBeAttackedBy { filter })) => {
                         self.permanent_matches(&filter, attacker, defender, Some(source))
                     }
                     _ => false,
@@ -547,7 +549,7 @@ impl Game {
                         controller: player,
                         source: a,
                         fire_at: Step::EndCombat,
-                        effect: Effect::SacrificeObject { object: Some(a) },
+                        effect: Effect::Destroy(DestroyEffect::SacrificeObject { object: Some(a) }),
                     },
                 );
             }
@@ -1089,7 +1091,7 @@ impl Game {
         };
         self.push_apply(events, Event::CombatDamagePrevented { player, amount });
         // One token per point prevented (CR 615 / Inkshield), routed through the token-creation
-        // replacements (Doubling Season, CR 614) the same way `Effect::CreateToken`'s mint is.
+        // replacements (Doubling Season, CR 614) the same way `Effect::Token(TokenEffect::Create)`'s mint is.
         let count = self.token_count_after_replacements(player, amount as u32);
         for next in (self.next_object_id()..).take(count as usize) {
             self.push_apply(

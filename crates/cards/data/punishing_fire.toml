@@ -22,7 +22,8 @@ timing = "spell"
 
 # Punishing Fire deals 2 damage to any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 2
 target = "any"
 
@@ -37,4 +38,5 @@ red = 1
 
 # return this card from your graveyard to your hand.
 [[abilities.effects]]
-type = "return_this_to_hand"
+type = "zone"
+mode = "return_this_to_hand"

@@ -32,7 +32,8 @@ timing = "spell"
 # Add {R} for each card in target opponent's hand. Until end of turn, you don't lose this mana as
 # steps and phases end.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["red"]
 repeat = "cards_in_target_player_hand"
 target = "opponent"
@@ -40,5 +41,6 @@ persist_until_end_of_turn = true
 
 # Exile Rousing Refrain with three time counters on it.
 [[abilities.effects]]
-type = "exile_self_with_time_counters"
+type = "zone"
+mode = "exile_self_with_time_counters"
 counters = 3

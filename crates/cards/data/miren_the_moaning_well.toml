@@ -21,5 +21,6 @@ sacrifice = "creature"
 
 # You gain life equal to the sacrificed creature's toughness.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = "sacrificed_creature_toughness"

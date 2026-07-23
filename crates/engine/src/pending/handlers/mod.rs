@@ -146,12 +146,12 @@ mod tests {
                 player: P0,
                 source,
                 effects: vec![
-                    Effect::DrawCards {
+                    Effect::Draw(DrawEffect::Cards {
                         count: Amount::Fixed(1),
-                    },
-                    Effect::DrawCards {
+                    }),
+                    Effect::Draw(DrawEffect::Cards {
                         count: Amount::Fixed(2),
-                    },
+                    }),
                 ],
             },
         );
@@ -174,9 +174,9 @@ mod tests {
             PendingChoice::OrderTriggers {
                 player: P0,
                 source,
-                effects: vec![Effect::DrawCards {
+                effects: vec![Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(1),
-                }],
+                })],
             },
         );
         assert_eq!(game.choose_order(P1, vec![0]), Err(Reject::IllegalChoice));
@@ -191,12 +191,12 @@ mod tests {
         let mut game = Game::with_players(2, 0);
         let source = source_creature(&mut game);
         let effects = [
-            Effect::DrawCards {
+            Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
-            Effect::DrawCards {
+            }),
+            Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(2),
-            },
+            }),
         ];
         // `choose_order` re-splits the still-queued group, so the queue has to hold it (that is
         // what `place_pending_triggers` leaves behind when it raises the ordering choice).
@@ -234,17 +234,17 @@ mod tests {
                 StackEntry::Ability {
                     controller: P0,
                     source,
-                    effect: Effect::DrawCards {
+                    effect: Effect::Draw(DrawEffect::Cards {
                         count: Amount::Fixed(2)
-                    },
+                    }),
                     target: None,
                 },
                 StackEntry::Ability {
                     controller: P0,
                     source,
-                    effect: Effect::DrawCards {
+                    effect: Effect::Draw(DrawEffect::Cards {
                         count: Amount::Fixed(1)
-                    },
+                    }),
                     target: None,
                 },
             ]

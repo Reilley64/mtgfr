@@ -38,12 +38,14 @@ timing = "spell"
 # Target player mills three cards,
 [[abilities.effects]]
 type = "mill"
+mode = "mill"
 count = 3
 target = "player"
 
 # then you return a land card from your graveyard to your hand.
 [[abilities.effects]]
-type = "may_return_from_graveyard"
+type = "choice"
+mode = "may_return_from_graveyard"
 filter = "land"
 
 # Mode 1 — "Destroy target noncreature, nonland permanent with mana value 2 or less."
@@ -52,7 +54,8 @@ timing = "spell"
 
 # Destroy target noncreature, nonland permanent with mana value 2 or less.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "nonland", noncreature = true, mv_max = 2 } }
 
 # Mode 2 — "Target creature gets -3/-1 until end of turn." (a negative pump)
@@ -61,7 +64,8 @@ timing = "spell"
 
 # Target creature gets -3/-1 until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = -3
 toughness = -1
 target = "creature"
@@ -72,6 +76,7 @@ timing = "spell"
 
 # Target opponent loses 2 life and you gain 2 life.
 [[abilities.effects]]
-type = "drain_target"
+type = "life"
+mode = "drain_target"
 amount = 2
 opponent = true

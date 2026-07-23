@@ -24,16 +24,19 @@ timing = "spell"
 
 # Exile target instant or sorcery card from your graveyard.
 [[abilities.effects]]
-type = "exile_target_graveyard_card_record_mana_value"
+type = "dig"
+mode = "exile_target_graveyard_card_record_mana_value"
 filter = "instant_or_sorcery"
 
 # Creatures you control get +X/+0 until end of turn, where X is that card's mana value.
 [[abilities.effects]]
-type = "pump_creatures_you_control_until_end_of_turn"
+type = "pump"
+mode = "pump_creatures_you_control_until_end_of_turn"
 power = "exiled_card_mana_value_this_way"
 toughness = 0
 
 # Whenever a creature you control deals combat damage to a player this turn, copy the exiled
 # card. You may cast the copy without paying its mana cost.
 [[abilities.effects]]
-type = "schedule_this_turn_combat_damage_copy"
+type = "misc"
+mode = "schedule_this_turn_combat_damage_copy"

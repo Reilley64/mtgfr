@@ -33,7 +33,8 @@ nth_each_turn = 2
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # Back face — Vandal's Edit ({1}{W}{B} instant): "Draw two cards. Each player loses 2 life."
 [back]
@@ -55,15 +56,18 @@ timing = "spell"
 
 # Draw two cards.
 [[back.abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 # Each player loses 2 life (opponents' share).
 [[back.abilities.effects]]
-type = "each_opponent_loses_life"
+type = "life"
+mode = "each_opponent_loses"
 amount = 2
 
 # Each player loses 2 life (the caster's own share).
 [[back.abilities.effects]]
-type = "lose_life"
+type = "life"
+mode = "lose"
 amount = 2

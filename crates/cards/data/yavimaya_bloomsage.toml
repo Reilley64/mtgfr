@@ -29,7 +29,8 @@ timing = "end_step"
 
 # put a +1/+1 counter on target creature you control.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "creature_you_control"
 
@@ -38,7 +39,7 @@ target = "creature_you_control"
 type = "conditional"
 condition = { type = "target_power_at_least", at_least = 7 }
 then = [
-        { type = "become_prepared" },
+        { type = "misc", mode = "become_prepared" },
     ]
 
 # Back face — Channel: "Until end of turn, any time you could activate a mana ability, you may
@@ -56,4 +57,5 @@ timing = "spell"
 
 # Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}.
 [[back.abilities.effects]]
-type = "grant_channel_colorless_mana_this_turn"
+type = "misc"
+mode = "grant_channel_colorless_mana_this_turn"

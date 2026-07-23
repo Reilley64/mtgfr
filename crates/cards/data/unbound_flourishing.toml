@@ -18,7 +18,8 @@ timing = "static"
 
 # double the value of X.
 [[abilities.effects]]
-type = "cast_x_replacement"
+type = "static"
+mode = "cast_x_replacement"
 times = 2
 
 # Whenever you cast an instant or sorcery spell ..., if that spell's mana cost ... contains {X},
@@ -30,7 +31,8 @@ caster = "you"
 
 # copy that spell .... You may choose new targets for the copy.
 [[abilities.effects]]
-type = "copy_triggering_spell"
+type = "copy"
+mode = "copy_triggering_spell"
 count = 1
 may_choose_new_targets = true
 
@@ -42,5 +44,6 @@ caster = "you"
 
 # copy that ... ability. You may choose new targets for the copy.
 [[abilities.effects]]
-type = "copy_triggering_ability"
+type = "copy"
+mode = "copy_triggering_ability"
 may_choose_new_targets = true

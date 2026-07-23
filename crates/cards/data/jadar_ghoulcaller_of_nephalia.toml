@@ -30,7 +30,8 @@ keyword = "decayed"
 
 # create a 2/2 black Zombie creature token with decayed.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "888fef82-b8be-434a-9be2-609e1ded9a5e"
 count = 1
 

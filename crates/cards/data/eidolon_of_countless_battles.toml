@@ -30,7 +30,8 @@ timing = "static"
 
 # This creature ... get +1/+1 for each creature you control
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 self_only = true
 power = { per_permanent = { types = "creature", controller = "you" } }
 toughness = { per_permanent = { types = "creature", controller = "you" } }
@@ -41,7 +42,8 @@ timing = "static"
 
 # and enchanted creature ... get +1/+1 for each creature you control
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = { per_permanent = { types = "creature", controller = "you" } }
 toughness = { per_permanent = { types = "creature", controller = "you" } }
 
@@ -51,7 +53,8 @@ timing = "static"
 
 # This creature ... get +1/+1 for each Aura you control
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 self_only = true
 power = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
 toughness = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
@@ -62,6 +65,7 @@ timing = "static"
 
 # and enchanted creature ... get +1/+1 for each Aura you control
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = { per_permanent = { subtypes = ["Aura"], controller = "you" } }
 toughness = { per_permanent = { subtypes = ["Aura"], controller = "you" } }

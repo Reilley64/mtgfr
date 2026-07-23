@@ -29,7 +29,8 @@ at_least = 1
 
 # target creature gains deathtouch until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 target = "creature"
 power = 0
 toughness = 0
@@ -38,7 +39,8 @@ keywords = ["deathtouch"]
 # Whenever that creature deals combat damage to a player this combat, this creature becomes
 # prepared.
 [[abilities.effects]]
-type = "arm_combat_damage_watch"
+type = "misc"
+mode = "arm_combat_damage_watch"
 
 [back]
 name = "Exsanguinate"
@@ -57,6 +59,7 @@ timing = "spell"
 
 # Each opponent loses X life. You gain life equal to the life lost this way.
 [[back.abilities.effects]]
-type = "each_opponent_drain"
+type = "life"
+mode = "each_opponent_drain"
 amount = "x"
 sum_gain = true

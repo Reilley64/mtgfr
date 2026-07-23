@@ -28,4 +28,5 @@ timing = "etb"
 
 # any number of other target creatures you control phase out
 [[abilities.effects]]
-type = "phase_out"
+type = "choice"
+mode = "phase_out"

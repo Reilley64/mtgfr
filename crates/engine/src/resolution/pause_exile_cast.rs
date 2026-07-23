@@ -18,7 +18,7 @@ impl Game {
         match effect {
             // "Put a card exiled with this" pauses on a card-pick choice over this source's
             // exiled-with pile (up to one, or decline).
-            Effect::CashOutExiledWithThis => pending::raise(
+            Effect::Dig(DigEffect::CashOutExiledWithThis) => pending::raise(
                 self,
                 pending::ChoiceRequest::ChooseExiledWithCard {
                     player: controller,
@@ -28,7 +28,7 @@ impl Game {
             // Quintorius's activated ability pauses on a card-pick choice over this source's (CR 602, CR 113)
             // linked exile pile, granting the free-cast permission for the chosen card instead
             // of cashing it out.
-            Effect::CastExiledWithThisFree => pending::raise(
+            Effect::Dig(DigEffect::CastExiledWithThisFree) => pending::raise(
                 self,
                 pending::ChoiceRequest::ChooseExiledWithCardToCast {
                     player: controller,
@@ -40,7 +40,10 @@ impl Game {
             // player shuffles up to three target cards from their graveyard into their
             // library", `target_player = true`) both pause on a ShuffleFromGraveyard choice —
             // the graveyard owner is the ability's controller or the targeted player.
-            Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { max, target_player } => {
+            Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary {
+                max,
+                target_player,
+            }) => {
                 let owner = if target_player {
                     let Some(Target::Player(player)) = target else {
                         panic!("target-player shuffle resolves with a chosen player target");

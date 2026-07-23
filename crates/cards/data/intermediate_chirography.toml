@@ -26,7 +26,8 @@ timing = "etb"
 
 # create a 2/1 white and black Inkling creature token with flying.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 count = 1
 
@@ -40,7 +41,8 @@ black = 1
 
 # Level 2
 [[abilities.effects]]
-type = "level_up"
+type = "counters"
+mode = "level_up"
 level = 2
 
 # Whenever you lose life for the first time each turn, put a +1/+1 counter on target creature you control.
@@ -50,7 +52,8 @@ min_level = 2
 
 # put a +1/+1 counter on target creature you control.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "creature_you_control"
 
@@ -65,7 +68,8 @@ black = 1
 
 # Level 3
 [[abilities.effects]]
-type = "level_up"
+type = "counters"
+mode = "level_up"
 level = 3
 
 # At the beginning of each end step, if a modified creature died under your control this turn, create a 2/1 white and
@@ -79,7 +83,8 @@ type = "modified_creature_died_this_turn"
 
 # create a 2/1 white and black Inkling creature token with flying.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 count = 1
 

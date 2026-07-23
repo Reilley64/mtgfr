@@ -24,6 +24,7 @@ timing = "spell"
 
 # Create a token that's a copy of target permanent you control.
 [[abilities.effects]]
-type = "create_token_copy"
+type = "token"
+mode = "create_copy"
 count = 1
 target = { permanent = { controller = "you" } }

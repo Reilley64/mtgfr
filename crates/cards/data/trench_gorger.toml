@@ -29,7 +29,8 @@ optional = true
 
 # search your library for any number of land cards, exile them, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "land"
 to_zone = "exile"
 count = "any"
@@ -37,5 +38,6 @@ count = "any"
 # this creature has base power and base toughness each equal to the number of cards exiled this
 # way.
 [[abilities.effects]]
-type = "set_own_base_pt_from_amount"
+type = "pump"
+mode = "set_own_base_pt_from_amount"
 amount = "cards_exiled_by_search_this_way"

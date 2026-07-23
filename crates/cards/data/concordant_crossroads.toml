@@ -24,6 +24,7 @@ timing = "static"
 
 # All creatures have haste.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 keywords = ["haste"]
 all_players = true

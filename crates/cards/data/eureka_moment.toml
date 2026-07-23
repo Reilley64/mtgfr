@@ -22,9 +22,11 @@ timing = "spell"
 
 # Draw two cards.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 # You may put a land card from your hand onto the battlefield.
 [[abilities.effects]]
-type = "put_land_from_hand"
+type = "choice"
+mode = "put_land_from_hand"

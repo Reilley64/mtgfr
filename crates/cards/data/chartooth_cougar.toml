@@ -25,7 +25,8 @@ activation_cost = { red = 1 }
 
 # This creature gets +1/+0 until end of turn.
 [[abilities.effects]]
-type = "pump_self_until_end_of_turn"
+type = "pump"
+mode = "pump_self_until_end_of_turn"
 power = 1
 toughness = 0
 
@@ -38,6 +39,7 @@ generic = 2
 
 # Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.
 [[hand_ability.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { land_with_subtype = ["Mountain"] }
 to_zone = "hand"

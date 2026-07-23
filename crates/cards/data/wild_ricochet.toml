@@ -21,10 +21,12 @@ timing = "spell"
 
 # You may choose new targets for target instant or sorcery spell.
 [[abilities.effects]]
-type = "change_target_of_target_spell_or_ability"
+type = "copy"
+mode = "change_target_of_target_spell_or_ability"
 target = "instant_or_sorcery_spell_on_stack"
 optional = true
 
 # Then copy that spell. You may choose new targets for the copy.
 [[abilities.effects]]
-type = "copy_target_spell"
+type = "copy"
+mode = "target_spell"

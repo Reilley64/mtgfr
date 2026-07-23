@@ -19,6 +19,7 @@ timing = "spell"
 
 # Blaze deals X damage to any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = "x"
 target = "any"

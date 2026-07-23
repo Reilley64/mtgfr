@@ -26,7 +26,8 @@ timing = "static"
 # If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on
 # that permanent instead.
 [[abilities.effects]]
-type = "counter_replacement"
+type = "static"
+mode = "counter_replacement"
 add = 1
 
 # {T}: Add X mana of any one color, where X is this creature's power.
@@ -36,7 +37,8 @@ taps_self = true
 
 # Add X mana of any one color, where X is this creature's power.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]
 repeat = "source_power"
 single_color = true

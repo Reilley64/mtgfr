@@ -32,7 +32,8 @@ timing = "attacks"
 
 # create a Treasure token
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 1
 
 # Whenever this creature attacks or becomes the target of a spell, create a Treasure token.
@@ -41,7 +42,8 @@ timing = "becomes_targeted"
 
 # create a Treasure token
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 1
 
 # Treasures you control have "{T}, Sacrifice this artifact: Add two mana of any one color."
@@ -50,7 +52,8 @@ timing = "static"
 
 # Treasures you control have "{T}, Sacrifice this artifact: Add two mana of any one color."
 [[abilities.effects]]
-type = "grant_mana_ability"
+type = "static"
+mode = "grant_mana_ability"
 mana = ["any", "any"]
 
 [abilities.effects.filter]

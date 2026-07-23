@@ -26,7 +26,8 @@ white = 1
 
 # Tap target creature.
 [[abilities.effects]]
-type = "tap_target"
+type = "control"
+mode = "tap_target"
 target = "creature"
 
 # {2}{U}: Counter target activated ability. (Mana abilities can't be targeted.)
@@ -39,4 +40,5 @@ blue = 1
 
 # Counter target activated ability.
 [[abilities.effects]]
-type = "counter_target_activated_ability"
+type = "misc"
+mode = "counter_target_activated_ability"

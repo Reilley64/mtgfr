@@ -26,6 +26,7 @@ timing = "spell"
 
 # Create a 5/5 blue and red Elemental creature token with flying.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "66b91a2c-d5ac-421e-b210-039a20c71b16"
 count = 1

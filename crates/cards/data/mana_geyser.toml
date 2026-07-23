@@ -20,6 +20,7 @@ timing = "spell"
 
 # Add {R} for each tapped land an opponent controls.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["red"]
 repeat = { per_permanent = { types = "land", controller = "opponent", tapped = true } }

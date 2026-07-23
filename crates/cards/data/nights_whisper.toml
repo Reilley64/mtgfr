@@ -20,7 +20,8 @@ timing = "spell"
 
 # You draw two cards
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 # You draw two cards and lose 2 life.
@@ -31,5 +32,6 @@ timing = "spell"
 
 # lose 2 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = -2

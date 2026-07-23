@@ -20,7 +20,8 @@ taps_self = true
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 
 # {2}{B}{G}, {T}, Sacrifice a creature: Draw a card.
@@ -32,5 +33,6 @@ activation_cost = { generic = 2, black = 1, green = 1 }
 
 # Draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

@@ -28,7 +28,8 @@ timing = "static"
 
 # Enchanted creature gets +1/+1 and is goaded.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 1
 toughness = 1
 goad = true
@@ -39,10 +40,12 @@ timing = "enchanted_creature_attacks"
 
 # you draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # lose 1 life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = -1

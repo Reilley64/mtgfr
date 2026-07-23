@@ -1077,7 +1077,10 @@ impl Game {
                     let grants_control = self.def_of(object).abilities.iter().any(|a| {
                         matches!(
                             (a.timing, a.effect),
-                            (Timing::Static, Effect::ControlAttached)
+                            (
+                                Timing::Static,
+                                Effect::Static(StaticEffect::ControlAttached)
+                            )
                         )
                     });
                     if grants_control {
@@ -2359,7 +2362,7 @@ impl Game {
 
     /// Drop `object` from the current combat's attacker and blocker lists (CR 506.4) — shared by
     /// [`Event::Regenerated`]'s CR 701.15b removal, [`Event::RemovedFromCombat`]
-    /// ([`Effect::RemoveFromCombat`] — Spurnmage Advocate), and every control-change event
+    /// ([`Effect::Control(ControlEffect::RemoveFromCombat)`] — Spurnmage Advocate), and every control-change event
     /// ([`Event::ControlGained`]/[`Event::ControlGainedUntilEndOfTurn`]/
     /// [`Event::ConditionedControlGained`] — CR 506.4c, Goblin Cadets' "(This removes this
     /// creature from combat.)").

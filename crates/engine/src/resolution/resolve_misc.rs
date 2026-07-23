@@ -25,7 +25,7 @@ impl Game {
         } = ctx;
         match effect {
             // Creative Technique's "Shuffle your library, then reveal…" lead-in step.
-            Effect::ShuffleLibrary => {
+            Effect::Dig(DigEffect::ShuffleLibrary) => {
                 self.push_apply(events, Event::LibraryShuffled { player: controller })
             }
             // "Each player creates a 0/0 green and blue Fractal creature token and puts a number
@@ -34,7 +34,7 @@ impl Game {
             // order, applying each mint before computing its counters — `counters_after_replacements`
             // reads the token's controller off game state, mirroring `CreateToken`'s `enters_with`
             // below. No player choice, so this resolves in one pass, never pausing.
-            Effect::EachPlayerCreatesFractalFromExiledPower { token } => {
+            Effect::Choice(ChoiceEffect::EachPlayerCreatesFractalFromExiledPower { token }) => {
                 for player in self.apnap_order() {
                     let minted = self.next_object_id();
                     self.push_apply(
@@ -68,9 +68,9 @@ impl Game {
             }
             // "Each player discards their hand, then draws seven cards." (Wheel of Fortune):
             // loop APNAP order, each living player discarding their whole hand (`discard_ids` —
-            // no choice, so no `PendingChoice`, unlike a partial-hand `Effect::Discard`) then
+            // no choice, so no `PendingChoice`, unlike a partial-hand `Effect::Choice(ChoiceEffect::Discard)`) then
             // drawing `count`.
-            Effect::EachPlayerDiscardsHandThenDraws { count } => {
+            Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { count }) => {
                 let n = self.resolve_count(count, controller, source, target, x);
                 for player in self.apnap_order() {
                     let hand = self.hand_of(player);
@@ -84,7 +84,7 @@ impl Game {
             // random. You may play the exiled card this turn." The card is picked by the
             // injected RNG here (needs `&mut self`, unlike `ExileFromGraveyardMayPlay`'s
             // trigger-supplied card), then reuses that same event/permission plumbing.
-            Effect::ExileRandomFromGraveyardMayPlay => {
+            Effect::Dig(DigEffect::ExileRandomFromGraveyardMayPlay) => {
                 let graveyard = self.graveyard_cards(controller);
                 // CR 701.19a: if there's nothing to exile, this is a no-op.
                 if graveyard.is_empty() {
@@ -105,7 +105,7 @@ impl Game {
             // player this combat if able." The opponent is picked by the injected RNG here (needs
             // `&mut self`), then reuses the same `must_attack` requirement plumbing a token's
             // `must_attack_defender` uses.
-            Effect::MustAttackRandomOpponent => {
+            Effect::Misc(MiscEffect::MustAttackRandomOpponent) => {
                 let opponents: Vec<PlayerId> =
                     self.living_players().filter(|&p| p != controller).collect();
                 // CR 800.4a: no living opponents (a solitaire test rig) — nothing to choose.
@@ -126,33 +126,33 @@ impl Game {
             // point prevented. The tokens are created at the prevention itself (in `damage_player`),
             // not here — at resolution no combat damage has been prevented yet. Runtime
             // orchestration state (like the delayed combat-damage watches), not an event.
-            Effect::PreventCombatDamageToYouCreatingTokens { token } => self
+            Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { token }) => self
                 .combat_extras
                 .combat_damage_prevention_shields
                 .push((controller, token)),
             // Moment's Peace (#150): arm the this-turn table-wide combat-damage shield — every
             // player's combat damage, not just this ability's controller's, and no token mint.
             // Runtime orchestration state (like Inkshield's shield above), not an event.
-            Effect::PreventAllCombatDamageThisTurn => {
+            Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
                 self.combat_extras.prevent_all_combat_damage_this_turn = true;
             }
             // "Exile [this card] with N time counters on it" (Rousing Refrain): mark the resolving
             // spell so `finish_instant_sorcery_resolution` sends it to exile with time counters
             // instead of the graveyard (the resolving spell, `source`, is the card exiled).
-            Effect::ExileSelfWithTimeCounters { counters, .. } => {
+            Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { counters, .. }) => {
                 self.self_exile_time_counters = Some(counters);
             }
             // "Then put [this card] on the bottom of its owner's library" (Spell Crumple): mark
             // the resolving spell so `finish_instant_sorcery_resolution` sends it to the bottom
             // of its owner's library instead of the graveyard (`source`, the resolving spell
             // itself, is the card tucked).
-            Effect::TuckSelfToLibraryBottom => {
+            Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom) => {
                 self.self_tuck_to_library_bottom = true;
             }
             // "Exile [this card]" (Vengeful Rebirth): mark the resolving spell so
             // `finish_instant_sorcery_resolution` sends it to exile instead of the graveyard
             // (`source`, the resolving spell itself, is the card exiled).
-            Effect::ExileSelfOnResolve => {
+            Effect::Zone(ZoneEffect::ExileSelfOnResolve) => {
                 self.self_exile_on_resolve = true;
             }
             // Opal Palace's spend-to-cast rider: the commander spell (baked in as
@@ -160,10 +160,10 @@ impl Game {
             // record the additional-counter count keyed by its id for `resolve_spell` to place as it
             // enters. Guard-return if that spell already left the stack (countered in response, CR
             // 603.4) — nothing to enter, so nothing to record.
-            Effect::CommanderEntersWithBonusCounters {
+            Effect::Counters(CountersEffect::CommanderEntersWithBonusCounters {
                 triggering_spell,
                 count,
-            } => {
+            }) => {
                 let Some(spell) = triggering_spell else {
                     return;
                 };
@@ -184,7 +184,7 @@ impl Game {
             // plumbing `CastExiledWithThisFree` (Quintorius) grants — so the controller can
             // genuinely *cast* it (CR 601) at their next opportunity, firing real "whenever you
             // cast" watchers off it (including this card's own first ability above).
-            Effect::ExileTargetGraveyardSpellCastFree { .. } => {
+            Effect::Dig(DigEffect::ExileTargetGraveyardSpellCastFree { .. }) => {
                 let Some(object) = target.and_then(Target::object_id) else {
                     return;
                 };
@@ -205,7 +205,7 @@ impl Game {
             // ability otherwise). Snapshot the exiled card's id + mana value for the following
             // team-pump (`Amount::ExiledCardManaValueThisWay`) and combat-damage-copy arm
             // (`ScheduleThisTurnCombatDamageCopy`) steps sharing this resolution's `Sequence`.
-            Effect::ExileTargetGraveyardCardRecordManaValue { .. } => {
+            Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue { .. }) => {
                 let object =
                     expect_object_target(target, "exile target graveyard card, record mana value");
                 let mana_value = self.def_of(object).mana_value();

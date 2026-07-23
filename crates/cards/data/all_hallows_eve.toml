@@ -26,6 +26,7 @@ timing = "spell"
 # your graveyard and each player returns all creature cards from their graveyard to the battlefield" — resolve from
 # on_expiry when the final scream counter comes off.]
 [[abilities.effects]]
-type = "exile_self_with_time_counters"
+type = "zone"
+mode = "exile_self_with_time_counters"
 counters = 2
-on_expiry = [{ type = "mass_return_from_graveyard", filter = "creature", all_players = true }]
+on_expiry = [{ type = "zone", mode = "mass_return_from_graveyard", filter = "creature", all_players = true }]

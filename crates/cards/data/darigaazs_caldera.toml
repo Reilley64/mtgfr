@@ -20,7 +20,8 @@ timing = "etb"
 
 # sacrifice it unless you return a non-Lair land you control to its owner's hand.
 [[abilities.effects]]
-type = "sacrifice_self_unless_return_land"
+type = "choice"
+mode = "sacrifice_self_unless_return_land"
 filter = { types = "land", controller = "you", nonlair = true }
 
 # {T}: Add {B}, {R}, or {G}.
@@ -30,5 +31,6 @@ taps_self = true
 
 # Add {B}, {R}, or {G}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["black", "red", "green"]]

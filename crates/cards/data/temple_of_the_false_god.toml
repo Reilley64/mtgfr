@@ -23,5 +23,6 @@ at_least = 5
 
 # Add {C}{C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless", "colorless"]

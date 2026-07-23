@@ -23,5 +23,6 @@ timing = "etb"
 
 # surveil 2
 [[abilities.effects]]
-type = "surveil"
+type = "dig"
+mode = "surveil"
 count = 2

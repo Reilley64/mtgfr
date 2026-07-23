@@ -33,7 +33,8 @@ timing = "magecraft"
 # look at the top three cards of your library. You may reveal a land card from among them and put
 # that card into your hand. Put the rest on the bottom of your library in any order.
 [[abilities.effects]]
-type = "look_at_top"
+type = "dig"
+mode = "look_at_top"
 count = 3
 filter = "land"
 up_to = 1

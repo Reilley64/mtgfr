@@ -23,7 +23,8 @@ timing = "static"
 
 # Enchanted creature gets +1/+1, has deathtouch, and is goaded
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 1
 toughness = 1
 keywords = ["deathtouch"]
@@ -36,4 +37,5 @@ timing = "enchanted_creature_dies"
 
 # return this card to the battlefield at the beginning of the next end step
 [[abilities.effects]]
-type = "schedule_return_this_aura_from_graveyard_attached_to_chosen_host"
+type = "zone"
+mode = "schedule_return_this_aura_from_graveyard_attached_to_chosen_host"

@@ -34,7 +34,8 @@ count = 3
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 [back]
 name = "Restore Relic"
@@ -54,5 +55,6 @@ timing = "spell"
 
 # Exile target artifact or creature card from your graveyard. Create a token that's a copy of it.
 [[back.abilities.effects]]
-type = "exile_target_from_graveyard_create_token_copy"
+type = "mill"
+mode = "exile_target_from_graveyard_create_token_copy"
 filter = "artifact_or_creature"

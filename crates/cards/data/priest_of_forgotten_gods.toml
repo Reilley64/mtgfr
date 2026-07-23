@@ -26,17 +26,20 @@ sacrifice = { creature = { other = true }, count = 2 }
 
 # Any number of target players each lose 2 life and sacrifice a creature of their choice.
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "targeted_players"
 filter = "creature"
 life_loss = 2
 
 # You add {B}{B}
 [[abilities.effects.then]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["black", "black"]
 
 # and draw a card.
 [[abilities.effects.then]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

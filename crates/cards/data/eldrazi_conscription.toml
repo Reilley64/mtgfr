@@ -21,7 +21,8 @@ timing = "static"
 
 # Enchanted creature gets +10/+10 and has trample
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 10
 toughness = 10
 keywords = ["trample"]
@@ -32,5 +33,6 @@ timing = "enchanted_creature_attacks"
 
 # defending player sacrifices two permanents of their choice
 [[abilities.effects]]
-type = "defending_player_sacrifices"
+type = "choice"
+mode = "defending_player_sacrifices"
 count = 2

@@ -22,5 +22,6 @@ timing = "spell"
 # Counter target spell. If that spell is countered this way, put that card on your choice of the
 # top or bottom of its owner's library instead of into that player's graveyard.
 [[abilities.effects]]
-type = "counter_target_spell"
+type = "misc"
+mode = "counter_target_spell"
 countered_dest = "library_top_or_bottom"

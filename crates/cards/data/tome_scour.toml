@@ -19,5 +19,6 @@ timing = "spell"
 # Target player mills five cards.
 [[abilities.effects]]
 type = "mill"
+mode = "mill"
 count = 5
 target = "player"

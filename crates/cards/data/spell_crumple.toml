@@ -22,9 +22,11 @@ timing = "spell"
 # Counter target spell. If that spell is countered this way, put it on the bottom of its owner's library instead of
 # into that player's graveyard.
 [[abilities.effects]]
-type = "counter_target_spell"
+type = "misc"
+mode = "counter_target_spell"
 countered_dest = "library_bottom"
 
 # Put Spell Crumple on the bottom of its owner's library.
 [[abilities.effects]]
-type = "tuck_self_to_library_bottom"
+type = "zone"
+mode = "tuck_self_to_library_bottom"

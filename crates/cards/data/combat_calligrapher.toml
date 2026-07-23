@@ -26,7 +26,8 @@ timing = "static"
 
 # Inklings can't attack you or planeswalkers you control.
 [[abilities.effects]]
-type = "cant_be_attacked_by"
+type = "static"
+mode = "cant_be_attacked_by"
 filter = { subtypes = ["Inkling"] }
 
 # Whenever a player attacks one of your opponents, that attacking player creates a tapped 2/1
@@ -37,7 +38,8 @@ timing = "player_attacks_your_opponent"
 # that attacking player creates a tapped 2/1 white and black Inkling creature token with flying
 # that's attacking that opponent
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"
 enters_tapped_and_attacking = true
 

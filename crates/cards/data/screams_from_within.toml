@@ -22,7 +22,8 @@ timing = "static"
 
 # Enchanted creature gets -1/-1.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = -1
 toughness = -1
 
@@ -32,4 +33,5 @@ timing = "enchanted_creature_dies"
 
 # return this card from your graveyard to the battlefield
 [[abilities.effects]]
-type = "return_this_aura_from_graveyard_attached_to_chosen_host"
+type = "zone"
+mode = "return_this_aura_from_graveyard_attached_to_chosen_host"

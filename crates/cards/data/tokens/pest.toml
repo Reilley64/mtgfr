@@ -17,5 +17,6 @@ timing = "dies"
 
 # you gain 1 life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 1

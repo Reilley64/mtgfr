@@ -536,9 +536,9 @@ const FLASHBACK_DRAW: CardDef = CardDef {
     otags: &[],
     keywords: &[],
     conditional_keywords: &[],
-    abilities: &[spell_ability(Effect::DrawCards {
+    abilities: &[spell_ability(Effect::Draw(DrawEffect::Cards {
         count: Amount::Fixed(1),
-    })],
+    }))],
     cycling: None,
     cycling_sacrifice: SacrificeCost::None,
     flashback: Some(flash_cost(2, [0; 5], NO_ADD)),
@@ -603,9 +603,9 @@ const COMBAT_ONLY_INSTANT: CardDef = CardDef {
     otags: &[],
     keywords: &[],
     conditional_keywords: &[],
-    abilities: &[spell_ability(Effect::DrawCards {
+    abilities: &[spell_ability(Effect::Draw(DrawEffect::Cards {
         count: Amount::Fixed(1),
-    })],
+    }))],
     cycling: None,
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
@@ -1936,9 +1936,9 @@ const TWO_ETB: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Triggered(Trigger::Etb),
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -1947,9 +1947,9 @@ const TWO_ETB: CardDef = CardDef {
         },
         Ability {
             timing: Timing::Triggered(Trigger::Etb),
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(2),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -2025,7 +2025,7 @@ const PINGER: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::DealDamage {
+        effect: Effect::Damage(DamageEffect::Target {
             amount: Amount::Fixed(2),
             target: TargetSpec::Creature,
             count: TargetCount {
@@ -2036,7 +2036,7 @@ const PINGER: CardDef = CardDef {
                 strive_scaled: false,
             },
             divided: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -2109,9 +2109,9 @@ const MAY_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: true,
         min_level: 0,
         once_each_turn: false,
@@ -2184,9 +2184,9 @@ const MAY_PAY_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: true,
         min_level: 0,
         once_each_turn: false,
@@ -2246,7 +2246,7 @@ const MAY_PAY_DRAW: CardDef = CardDef {
 
 /// A test-only creature whose ETB looks at the top three cards, may put a land into hand, and
 /// puts the rest on the bottom — Quandrix Apprentice's magecraft payoff, wired as an ETB so a
-/// direct test can exercise [`Effect::LookAtTop`] without staging a magecraft cast.
+/// direct test can exercise [`Effect::Dig(DigEffect::LookAtTop)`] without staging a magecraft cast.
 const LOOK_DIG: CardDef = CardDef {
     name: "Test Look-Dig",
     id: "",
@@ -2280,7 +2280,7 @@ const LOOK_DIG: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::LookAtTop {
+        effect: Effect::Dig(DigEffect::LookAtTop {
             count: 3,
             filter: CardFilter::Land,
             up_to: 1,
@@ -2289,7 +2289,7 @@ const LOOK_DIG: CardDef = CardDef {
             dest_tapped: false,
             rest: RestDest::Bottom,
             mv_budget: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -2364,7 +2364,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::LookAtTop {
+        effect: Effect::Dig(DigEffect::LookAtTop {
             count: 7,
             filter: CardFilter::AnyCard,
             up_to: 2,
@@ -2373,7 +2373,7 @@ const LOOK_DIG_MANDATORY_TWO: CardDef = CardDef {
             dest_tapped: false,
             rest: RestDest::Bottom,
             mv_budget: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -2449,7 +2449,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::LookAtTop {
+        effect: Effect::Dig(DigEffect::LookAtTop {
             count: 3,
             filter: CardFilter::AuraOrEquipment,
             up_to: 1,
@@ -2458,7 +2458,7 @@ const LOOK_DIG_TO_BATTLEFIELD: CardDef = CardDef {
             dest_tapped: false,
             rest: RestDest::Bottom,
             mv_budget: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -2683,12 +2683,12 @@ const INKLING_SUBTYPED: CardDef = CardDef {
 const CALLIGRAPHER_STATIC: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::CantBeAttackedBy {
+        effect: Effect::Static(StaticEffect::CantBeAttackedBy {
             filter: PermanentFilter {
                 subtypes: &["Inkling"],
                 ..PermanentFilter::of(TypeSet::NONE)
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -2702,12 +2702,12 @@ const CALLIGRAPHER_STATIC: CardDef = CardDef {
 const ERIETTE_STATIC: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::CantBeAttackedBy {
+        effect: Effect::Static(StaticEffect::CantBeAttackedBy {
             filter: PermanentFilter {
                 enchanted_by_you: true,
                 ..PermanentFilter::of(TypeSet::NONE)
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5178,12 +5178,12 @@ const PUMP_POWER_PLUS_2: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PumpUntilEndOfTurn {
+        effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(2),
             toughness: Amount::Fixed(0),
             target: TargetSpec::Creature,
             keywords: &[],
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5256,12 +5256,12 @@ const GRANT_FLYING: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PumpUntilEndOfTurn {
+        effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             target: TargetSpec::Creature,
             keywords: &[Keyword::Flying],
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5332,12 +5332,12 @@ const GRANT_INDESTRUCTIBLE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PumpUntilEndOfTurn {
+        effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             target: TargetSpec::Creature,
             keywords: &[Keyword::Indestructible],
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5409,7 +5409,7 @@ const DESTROY: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
             target: TargetSpec::Creature,
             count: TargetCount {
                 min: 1,
@@ -5419,7 +5419,7 @@ const DESTROY: CardDef = CardDef {
                 strive_scaled: false,
             },
             cant_be_regenerated: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5491,7 +5491,7 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
             target: TargetSpec::Permanent(PermanentFilter {
                 exclude: TypeSet::ARTIFACT,
                 color: ColorFilter::NotColor(Color::Black),
@@ -5505,7 +5505,7 @@ const DESTROY_NONARTIFACT_NONBLACK: CardDef = CardDef {
                 strive_scaled: false,
             },
             cant_be_regenerated: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5577,7 +5577,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::NONE)),
             count: TargetCount {
                 min: 1,
@@ -5587,7 +5587,7 @@ const DESTROY_ANY_PERMANENT: CardDef = CardDef {
                 strive_scaled: false,
             },
             cant_be_regenerated: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5659,7 +5659,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
             target: TargetSpec::Permanent(PermanentFilter {
                 nonbasic: true,
                 ..PermanentFilter::of(TypeSet::LAND)
@@ -5672,7 +5672,7 @@ const DESTROY_NONBASIC_LAND: CardDef = CardDef {
                 strive_scaled: false,
             },
             cant_be_regenerated: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5744,7 +5744,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileTarget {
+        effect: Effect::Destroy(DestroyEffect::ExileTarget {
             target: TargetSpec::CreatureCardInAnyGraveyard,
             count: TargetCount {
                 min: 1,
@@ -5753,7 +5753,7 @@ const EXILE_FROM_ANY_GRAVEYARD: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5826,7 +5826,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileTarget {
+        effect: Effect::Destroy(DestroyEffect::ExileTarget {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Any,
                 filter: CardFilter::AnyCard,
@@ -5839,7 +5839,7 @@ const EXILE_ANY_CARD_FROM_ANY_GRAVEYARD: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5911,7 +5911,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileTarget {
+        effect: Effect::Destroy(DestroyEffect::ExileTarget {
             target: TargetSpec::Permanent(PermanentFilter {
                 exclude: TypeSet::CREATURE,
                 ..PermanentFilter::of(TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT))
@@ -5923,7 +5923,7 @@ const EXILE_NONCREATURE_ARTIFACT_OR_ENCHANTMENT: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -5995,7 +5995,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileTarget {
+        effect: Effect::Destroy(DestroyEffect::ExileTarget {
             target: TargetSpec::Permanent(PermanentFilter {
                 power_max: Some(2),
                 ..PermanentFilter::of(TypeSet::CREATURE)
@@ -6007,7 +6007,7 @@ const EXILE_SMALL_CREATURE: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -6079,7 +6079,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileTarget {
+        effect: Effect::Destroy(DestroyEffect::ExileTarget {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ENCHANTMENT)),
             count: TargetCount {
                 min: 1,
@@ -6088,7 +6088,7 @@ const EXILE_ENCHANTMENT: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -6160,7 +6160,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileTarget {
+        effect: Effect::Destroy(DestroyEffect::ExileTarget {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ARTIFACT)),
             count: TargetCount {
                 min: 1,
@@ -6169,7 +6169,7 @@ const EXILE_ARTIFACT: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -6374,12 +6374,12 @@ const MASS_INDESTRUCTIBLE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PumpCreaturesYouControlUntilEndOfTurn {
+        effect: Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             keywords: &[Keyword::Indestructible],
             filter: PermanentFilter::of(TypeSet::CREATURE),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -6451,12 +6451,12 @@ const MASS_FLYING_PER_CREATURE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PumpCreaturesYouControlUntilEndOfTurn {
+        effect: Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn {
             power: Amount::PerCreatureYouControl,
             toughness: Amount::PerCreatureYouControl,
             keywords: &[Keyword::Flying],
             filter: PermanentFilter::of(TypeSet::CREATURE),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -6529,12 +6529,12 @@ const GRANT_UNBLOCKABLE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PumpUntilEndOfTurn {
+        effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             target: TargetSpec::Creature,
             keywords: &[Keyword::Unblockable],
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -6986,7 +6986,7 @@ const GROWTH: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PutCounters {
+        effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::Fixed(2),
             target: TargetSpec::Creature,
             targets: TargetCount {
@@ -6998,7 +6998,7 @@ const GROWTH: CardDef = CardDef {
             },
             kind: None,
             divided: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -7170,7 +7170,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::CreateToken {
+        effect: Effect::Token(TokenEffect::Create {
             token: INKLING,
             count: Amount::Fixed(2),
             controller: TokenController::You,
@@ -7180,7 +7180,7 @@ const MAKE_INKLINGS: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -7353,27 +7353,27 @@ fn two_doubling_seasons_quadruple_tokens() {
 /// as a +4 swing.
 const GAIN_LIFE_3: CardDef = sorcery(
     "Gain 3 (test)",
-    &[spell_ability(Effect::GainLife {
+    &[spell_ability(Effect::Life(LifeEffect::Gain {
         amount: Amount::Fixed(3),
-    })],
+    }))],
 );
 
 /// A test sorcery that gains its caster 0 life — gaining 0 is not "gaining life", so the
 /// replacement must not fire.
 const GAIN_LIFE_0: CardDef = sorcery(
     "Gain 0 (test)",
-    &[spell_ability(Effect::GainLife {
+    &[spell_ability(Effect::Life(LifeEffect::Gain {
         amount: Amount::Fixed(0),
-    })],
+    }))],
 );
 
 /// A test sorcery that makes its caster lose 3 life — a loss, never modified by the life-gain
 /// replacement.
 const LOSE_LIFE_3: CardDef = sorcery(
     "Lose 3 (test)",
-    &[spell_ability(Effect::LoseLife {
+    &[spell_ability(Effect::Life(LifeEffect::Lose {
         amount: Amount::Fixed(3),
-    })],
+    }))],
 );
 
 #[test]
@@ -7524,7 +7524,9 @@ const X_GAIN_SORCERY: CardDef = CardDef {
     cost: Cost { x: 1, ..Cost::FREE },
     ..sorcery(
         "X Gain (test)",
-        &[spell_ability(Effect::GainLife { amount: Amount::X })],
+        &[spell_ability(Effect::Life(LifeEffect::Gain {
+            amount: Amount::X,
+        }))],
     )
 };
 
@@ -7533,7 +7535,7 @@ const X_GAIN_SORCERY: CardDef = CardDef {
 const CAST_X_DOUBLER: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::CastXReplacement { times: 2 },
+        effect: Effect::Static(StaticEffect::CastXReplacement { times: 2 }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -7707,7 +7709,7 @@ const X_DRAW_PERMANENT: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::DrawCards { count: Amount::X },
+        effect: Effect::Draw(DrawEffect::Cards { count: Amount::X }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -7739,9 +7741,9 @@ const FIXED_DRAW_PERMANENT: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -8078,7 +8080,7 @@ fn elementalists_palette_restricted_mana_funds_nins_x_activation() {
 
 /// Beast Within (msc): "Destroy target permanent. Its controller creates a 3/3 green Beast
 /// creature token." — the compensation token goes to the *destroyed permanent's* controller,
-/// not the caster (`Effect::CreateToken`'s `controller = "target_controller"`).
+/// not the caster (`Effect::Token(TokenEffect::Create)`'s `controller = "target_controller"`).
 #[test]
 fn beast_withins_compensation_beast_belongs_to_the_destroyed_permanents_controller() {
     let mut game = TestGame::new();
@@ -8321,7 +8323,7 @@ fn condemn_only_targets_attacking_creatures() {
 
 /// A token tucked by this primitive ceases to exist instead of entering a library (CR 111.7) —
 /// same rule Chaos Warp's fused sibling above already covers, exercised here through the
-/// standalone [`Effect::TuckPermanentIntoLibrary`].
+/// standalone [`Effect::Zone(ZoneEffect::TuckPermanentIntoLibrary)`].
 #[test]
 fn tuck_permanent_token_ceases_to_exist() {
     let mut game = TestGame::new();
@@ -8408,7 +8410,7 @@ fn oblation_on_a_token_shuffles_nothing_but_owner_still_draws_two() {
 /// "each_opponent"`).
 const MAKE_SQUIRREL_PER_OPPONENT: CardDef = sorcery(
     "Make Squirrel Per Opponent (test)",
-    &[spell_ability(Effect::CreateToken {
+    &[spell_ability(Effect::Token(TokenEffect::Create {
         token: creature("Squirrel", 1, 1, &[]),
         count: Amount::Fixed(1),
         controller: TokenController::EachOpponent,
@@ -8418,7 +8420,7 @@ const MAKE_SQUIRREL_PER_OPPONENT: CardDef = sorcery(
         enters_tapped_and_attacking: false,
         attacking_context: None,
         must_attack_defender: false,
-    })],
+    }))],
 );
 
 #[test]
@@ -8479,7 +8481,7 @@ fn an_each_opponent_token_effect_gives_one_token_to_every_opponent() {
 /// opponents (CR 111.4).
 const MAKE_PEST_PER_OPPONENT: CardDef = sorcery(
     "Make Pest Per Opponent (test)",
-    &[spell_ability(Effect::CreateToken {
+    &[spell_ability(Effect::Token(TokenEffect::Create {
         token: PEST,
         count: Amount::Fixed(1),
         controller: TokenController::OnePerOpponent,
@@ -8489,7 +8491,7 @@ const MAKE_PEST_PER_OPPONENT: CardDef = sorcery(
         enters_tapped_and_attacking: false,
         attacking_context: None,
         must_attack_defender: false,
-    })],
+    }))],
 );
 
 /// Turn Stones (Eccentric Pestfinder's back face): "For each opponent, you create a 1/1 ...
@@ -8806,9 +8808,9 @@ const PEST: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Dies),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -8879,7 +8881,7 @@ const MAKE_PEST: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::CreateToken {
+        effect: Effect::Token(TokenEffect::Create {
             token: PEST,
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -8889,7 +8891,7 @@ const MAKE_PEST: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -9219,9 +9221,9 @@ const HERALD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Attacks),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -10254,7 +10256,7 @@ fn lifelink_gains_life_equal_to_combat_damage() {
 
 /// A test-only lifelink permanent whose only activated ability deals 3 noncombat damage to a
 /// target player: "{T}: deals 3 damage to target player." Exercises lifelink (CR 702.15) on the
-/// `Effect::DealDamage` → `Target::Player` mint path, distinct from the combat path above.
+/// `Effect::Damage(DamageEffect::Target)` → `Target::Player` mint path, distinct from the combat path above.
 const LIFELINK_PINGER: CardDef = CardDef {
     keywords: &[Keyword::Lifelink],
     abilities: &[Ability {
@@ -10276,7 +10278,7 @@ const LIFELINK_PINGER: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::DealDamage {
+        effect: Effect::Damage(DamageEffect::Target {
             amount: Amount::Fixed(3),
             target: TargetSpec::Player,
             count: TargetCount {
@@ -10287,7 +10289,7 @@ const LIFELINK_PINGER: CardDef = CardDef {
                 strive_scaled: false,
             },
             divided: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -10377,9 +10379,9 @@ const LIFELINK_BLAST_EACH_PLAYER: CardDef = CardDef {
         "Lifelink Blast Each Player (test)",
         &[Ability {
             timing: Timing::Spell,
-            effect: Effect::DamageEachPlayer {
+            effect: Effect::Damage(DamageEffect::EachPlayer {
                 amount: Amount::Fixed(2),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -11344,7 +11346,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
     // past the permanent's own abilities (Treasure/Goldspan-style addressing).
     const GRANT: &[Ability] = &[Ability {
         timing: Timing::Static,
-        effect: Effect::GrantManaAbility {
+        effect: Effect::Static(StaticEffect::GrantManaAbility {
             filter: PermanentFilter {
                 controller: FilterController::You,
                 ..PermanentFilter::of(TypeSet::ARTIFACT)
@@ -11379,7 +11381,7 @@ fn auto_tap_pays_with_a_free_granted_mana_ability() {
                 }; 4],
             },
             restriction: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         cost: Cost::FREE,
@@ -12339,9 +12341,9 @@ fn the_stack_query_exposes_spells_and_abilities_in_resolution_order() {
         matches!(
             stack[0],
             StackEntry::Ability {
-                effect: Effect::DrawCards {
+                effect: Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(1)
-                },
+                }),
                 ..
             }
         ),
@@ -12809,7 +12811,7 @@ fn target_player_draws_makes_the_targeted_player_draw() {
 }
 
 /// A test-only "target opponent draws three cards" spell — exercises
-/// [`TargetSpec::OpponentPlayer`] via `Effect::TargetPlayerDraws { opponent: true }`
+/// [`TargetSpec::OpponentPlayer`] via `Effect::Draw(DrawEffect::TargetPlayer { opponent: true })`
 /// (Secret Rendezvous's "target opponent each draw three cards").
 const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     name: "Target Opponent Draws Three (test)",
@@ -12842,10 +12844,10 @@ const TARGET_OPPONENT_DRAWS_THREE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::TargetPlayerDraws {
+        effect: Effect::Draw(DrawEffect::TargetPlayer {
             count: Amount::Fixed(3),
             opponent: true,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -14182,7 +14184,7 @@ const ANTHEM_LORD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::AnthemStatic {
+        effect: Effect::Static(StaticEffect::Anthem {
             power: Amount::Fixed(1),
             toughness: Amount::Fixed(1),
             self_only: false,
@@ -14199,7 +14201,7 @@ const ANTHEM_LORD: CardDef = CardDef {
             condition: None,
             from_graveyard: false,
             all_players: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -14807,7 +14809,7 @@ fn hofri_ghostforge_no_return_if_exiled_card_already_moved() {
     // `remove_counter_cost_lethal_shrink_dies_to_state_based_actions`'s pattern.
     let mover_abilities: &'static [Ability] = Box::leak(Box::new([Ability {
         timing: Timing::Spell,
-        effect: Effect::ReturnExiledCardToOwnersGraveyard { exiled: exiled_ox },
+        effect: Effect::Zone(ZoneEffect::ReturnExiledCardToOwnersGraveyard { exiled: exiled_ox }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -15003,10 +15005,10 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Static,
-            effect: Effect::EntersWithCounters {
+            effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::Fixed(2),
                 kind: None,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -15032,9 +15034,9 @@ const TEST_COUNTER_SHEDDER: CardDef = CardDef {
                 exile_self: false,
                 graveyard_exile_target_count: 0,
             }),
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -15194,9 +15196,9 @@ const TEST_SAC_A_FOOD: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -15262,9 +15264,9 @@ const TEST_SAC_A_CREATURE: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -15384,9 +15386,9 @@ const TEST_NONTOKEN_COUNTER: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::NontokenCreaturesEnteredThisTurn,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -15401,7 +15403,7 @@ const TEST_NONTOKEN_COUNTER: CardDef = CardDef {
 /// path (unlike `spawn_token_on_battlefield`, which bypasses it).
 const MAKE_A_BEAR_TOKEN: CardDef = sorcery(
     "Make A Bear Token (test)",
-    &[spell_ability(Effect::CreateToken {
+    &[spell_ability(Effect::Token(TokenEffect::Create {
         token: creature("Bear Token", 2, 2, &[]),
         count: Amount::Fixed(1),
         controller: TokenController::You,
@@ -15411,7 +15413,7 @@ const MAKE_A_BEAR_TOKEN: CardDef = sorcery(
         enters_tapped_and_attacking: false,
         attacking_context: None,
         must_attack_defender: false,
-    })],
+    }))],
 );
 
 #[test]
@@ -15766,7 +15768,7 @@ const DESTROY_ENCHANTMENT_TEST: CardDef = CardDef {
     },
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::DestroyTarget {
+        effect: Effect::Destroy(DestroyEffect::DestroyTarget {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::ENCHANTMENT)),
             count: TargetCount {
                 min: 1,
@@ -15776,7 +15778,7 @@ const DESTROY_ENCHANTMENT_TEST: CardDef = CardDef {
                 strive_scaled: false,
             },
             cant_be_regenerated: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -15891,7 +15893,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Static,
-            effect: Effect::AnthemStatic {
+            effect: Effect::Static(StaticEffect::Anthem {
                 power: Amount::Fixed(1),
                 toughness: Amount::Fixed(1),
                 self_only: false,
@@ -15908,7 +15910,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
                 condition: None,
                 from_graveyard: false,
                 all_players: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -15917,7 +15919,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
         },
         Ability {
             timing: Timing::Static,
-            effect: Effect::AnthemStatic {
+            effect: Effect::Static(StaticEffect::Anthem {
                 power: Amount::Fixed(1),
                 toughness: Amount::Fixed(1),
                 self_only: false,
@@ -15934,7 +15936,7 @@ const RED_WHITE_ANTHEM_LORD: CardDef = CardDef {
                 condition: None,
                 from_graveyard: false,
                 all_players: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -18030,7 +18032,7 @@ const BRUDICLAD_ABILITIES: &[Ability] = &[Ability {
     timing: Timing::Triggered(Trigger::BeginCombat),
     effect: Effect::Sequence {
         steps: &[
-            Effect::CreateToken {
+            Effect::Token(TokenEffect::Create {
                 token: creature("Myr", 2, 1, &[]),
                 count: Amount::Fixed(1),
                 controller: TokenController::You,
@@ -18040,8 +18042,8 @@ const BRUDICLAD_ABILITIES: &[Ability] = &[Ability {
                 enters_tapped_and_attacking: false,
                 attacking_context: None,
                 must_attack_defender: false,
-            },
-            Effect::EachOtherTokenBecomesCopyOfChosen,
+            }),
+            Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen),
         ],
     },
     optional: false,
@@ -19521,7 +19523,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::AddMana {
+        effect: Effect::Mana(ManaEffect::Add {
             mana: ManaPool::of(Mana::Colorless, 1),
             identity: 0,
             opponent_colors: 0,
@@ -19532,7 +19534,7 @@ fn hybrid_filter_land(name: &'static str, a: Color, b: Color) -> CardDef {
             target: TargetSpec::None,
             persist_until_end_of_turn: false,
             recipient: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -19831,9 +19833,9 @@ const DIES_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Dies),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -20419,10 +20421,10 @@ const WATCHES_CREATURE_DIES: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::CreatureDies),
-        effect: Effect::DrainTarget {
+        effect: Effect::Life(LifeEffect::DrainTarget {
             amount: 1,
             opponent: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -20537,9 +20539,9 @@ const WATCHES_CREATURE_DIES_ONCE_EACH_TURN: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::CreatureDies),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         condition: None,
@@ -20815,7 +20817,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
                 ..PermanentFilter::of(TypeSet::NONE)
             },
         }),
-        effect: Effect::PutCounters {
+        effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::Fixed(1),
             target: TargetSpec::Creature,
             targets: TargetCount {
@@ -20827,7 +20829,7 @@ const WATCHES_ANY_SACRIFICE: CardDef = CardDef {
             },
             kind: None,
             divided: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -21404,9 +21406,9 @@ const UPKEEP_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Upkeep),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -21504,7 +21506,7 @@ const GRAVEYARD_UPKEEP_RETURN: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Upkeep),
-        effect: Effect::ReturnThisToHand,
+        effect: Effect::Zone(ZoneEffect::ReturnThisToHand),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -22064,9 +22066,9 @@ const EACH_UPKEEP_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::EachUpkeep),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -22183,9 +22185,9 @@ const END_STEP_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::EndStep),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -22274,9 +22276,9 @@ const BEGIN_COMBAT_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::BeginCombat),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -22397,9 +22399,9 @@ const GAIN_LIFE_ETB: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(3),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -22469,9 +22471,9 @@ const LIFE_GAIN_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::YouGainLife),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -22652,9 +22654,9 @@ const MAGECRAFT_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Magecraft),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -23152,9 +23154,9 @@ const INSTANT_FILLER: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -23230,11 +23232,11 @@ const BECOMES_TARGETED_TREASURE_MAKER: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::BecomesTargeted),
-        effect: Effect::CreateTreasure {
+        effect: Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
             target_player: false,
             tapped: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -23346,9 +23348,9 @@ const AURA_CAST_DRAW: CardDef = CardDef {
             nth_each_turn: None,
             from_hand: false,
         }),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -23464,9 +23466,9 @@ const X_INSTANT_FILLER: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -23986,10 +23988,10 @@ const DRAW_ONE_TARGET: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::TargetPlayerDraws {
+        effect: Effect::Draw(DrawEffect::TargetPlayer {
             count: Amount::Fixed(1),
             opponent: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -24656,11 +24658,11 @@ const COUNTER: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::CounterTargetSpell {
+        effect: Effect::Misc(MiscEffect::CounterTargetSpell {
             unless_pays: None,
             filter: SpellFilter::AllSpells,
             countered_dest: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -25624,7 +25626,7 @@ fn a_copy_of_spell_crumple_ceasing_to_exist_does_not_leak_its_self_tuck_onto_the
 
 // ── Vengeful Rebirth's self-exile rider (CR 406, exile_self_on_resolve) ──────────────
 
-/// A test-only free instant whose only effect is `Effect::ExileSelfOnResolve` — the exact twin
+/// A test-only free instant whose only effect is `Effect::Zone(ZoneEffect::ExileSelfOnResolve)` — the exact twin
 /// of `X_INSTANT_FILLER` above, but for the self-exile rider instead of a `GainLife` filler.
 const X_EXILE_SELF_ON_RESOLVE: CardDef = CardDef {
     name: "Exile Self On Resolve Filler (test)",
@@ -25657,7 +25659,7 @@ const X_EXILE_SELF_ON_RESOLVE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileSelfOnResolve,
+        effect: Effect::Zone(ZoneEffect::ExileSelfOnResolve),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -25698,7 +25700,7 @@ const X_EXILE_SELF_ON_RESOLVE: CardDef = CardDef {
 
 #[test]
 fn exile_self_on_resolve_exiles_the_resolving_sorcery_instead_of_the_graveyard() {
-    // The engine's exact twin of `Effect::TuckSelfToLibraryBottom` for the exile-flavored rider
+    // The engine's exact twin of `Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)` for the exile-flavored rider
     // (Vengeful Rebirth's "Exile Vengeful Rebirth"): the resolving instant/sorcery exiles itself
     // instead of going to the graveyard.
     let mut game = Game::new();
@@ -25985,7 +25987,7 @@ fn echo_label_renders_colored_pips() {
         reduce_own_generic: None,
     };
     assert_eq!(
-        Effect::SacrificeSelfUnlessPay { cost }.label(),
+        Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }).label(),
         "Sacrifice this unless you pay {2}{R}"
     );
 }
@@ -26164,7 +26166,7 @@ fn generic_only_sacrifice_unless_pay_label() {
         reduce_own_generic: None,
     };
     assert_eq!(
-        Effect::SacrificeSelfUnlessPay { cost }.label(),
+        Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { cost }).label(),
         "Sacrifice this unless you pay {1}"
     );
 }
@@ -26501,20 +26503,22 @@ fn mulldrifter_evoke_charges_the_evoke_cost() {
 }
 
 // ── Delayed triggered abilities (#27, CR 603.7) ──────────────────────────────────────
-// `Effect::ScheduleAtNextUpkeep` defers an effect to the very next upkeep, regardless of whose
+// `Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)` defers an effect to the very next upkeep, regardless of whose
 // turn it is — the mechanism behind Arcane Denial's delayed draws.
 
 /// A test-only free instant: "At the beginning of the next upkeep, you draw a card." Isolates
 /// the delayed-trigger primitive from Arcane Denial's counter half.
 const SCHEDULE_DRAW_ONE: CardDef = sorcery(
     "Schedule Draw One (test)",
-    &[spell_ability(Effect::ScheduleAtNextUpkeep {
-        who: DelayController::You,
-        then: &Effect::DrawCards {
-            count: Amount::Fixed(1),
+    &[spell_ability(Effect::Misc(
+        MiscEffect::ScheduleAtNextUpkeep {
+            who: DelayController::You,
+            then: &Effect::Draw(DrawEffect::Cards {
+                count: Amount::Fixed(1),
+            }),
+            fire_at: Step::Upkeep,
         },
-        fire_at: Step::Upkeep,
-    })],
+    ))],
 );
 
 #[test]
@@ -26756,7 +26760,7 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
     );
 }
 
-// `Effect::MayDrawUpTo` is a CR 120.4 / 601.2c declinable draw: its controller chooses any number
+// `Effect::Choice(ChoiceEffect::MayDrawUpTo)` is a CR 120.4 / 601.2c declinable draw: its controller chooses any number
 // 0..=N of cards to draw (Arcane Denial's "may draw up to two cards"). Resolution pauses that
 // controller on a `PendingChoice::MayDrawUpTo` count choice, clamped to `0..=max`.
 
@@ -26764,13 +26768,15 @@ fn arcane_denial_controller_may_draw_up_to_two_at_next_upkeep() {
 /// Isolates the declinable-draw count pause from Arcane Denial's counter half.
 const SCHEDULE_MAY_DRAW_UP_TO_TWO: CardDef = sorcery(
     "Schedule May Draw Up To Two (test)",
-    &[spell_ability(Effect::ScheduleAtNextUpkeep {
-        who: DelayController::You,
-        then: &Effect::MayDrawUpTo {
-            count: Amount::Fixed(2),
+    &[spell_ability(Effect::Misc(
+        MiscEffect::ScheduleAtNextUpkeep {
+            who: DelayController::You,
+            then: &Effect::Choice(ChoiceEffect::MayDrawUpTo {
+                count: Amount::Fixed(2),
+            }),
+            fire_at: Step::Upkeep,
         },
-        fire_at: Step::Upkeep,
-    })],
+    ))],
 );
 
 /// Roll a just-cast [`SCHEDULE_MAY_DRAW_UP_TO_TWO`] to its next-upkeep firing and resolve the
@@ -27059,7 +27065,7 @@ fn trade_secrets_only_the_target_opponent_may_answer_the_repeat() {
 }
 
 // ── Delayed until-next-cast one-shots (#74, #68 — Brass Infiniscope) ────────────────
-// `Effect::ScheduleNextCastTrigger` arms a CR 603.7 delayed one-shot that fires the next time
+// `Effect::Misc(MiscEffect::ScheduleNextCastTrigger)` arms a CR 603.7 delayed one-shot that fires the next time
 // its controller casts a spell matching a `SpellFilter` this turn — event-armed (drained off
 // `Event::SpellCast`), unlike `ScheduleAtNextUpkeep`'s step-armed schedule.
 
@@ -27254,7 +27260,7 @@ fn next_cast_trigger_expires_end_of_turn() {
 }
 
 // ── Copy-the-triggering-spell one-shots (#74 — Thunderclap Drake) ───────────────────
-// `Effect::CopyTriggeringSpell` is a `ScheduleNextCastTrigger`'s `then`: it copies the spell
+// `Effect::Copy(CopyEffect::CopyTriggeringSpell)` is a `ScheduleNextCastTrigger`'s `then`: it copies the spell
 // that fired the armed watch (threaded in as `TriggerContext::triggering_spell`), not a chosen
 // target and not the copying ability's own spell.
 
@@ -27848,7 +27854,7 @@ const FLIGHT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::GrantToAttached {
+        effect: Effect::Static(StaticEffect::GrantToAttached {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             keywords: &[Keyword::Flying],
@@ -27860,7 +27866,7 @@ const FLIGHT: CardDef = CardDef {
             cant_attack_controller: false,
             activated_abilities: None,
             legendary_only: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -27924,11 +27930,11 @@ const FALLEN_IDEAL_GRANT: GrantedAbility = GrantedAbility {
         exile_self: false,
         graveyard_exile_target_count: 0,
     },
-    effects: &[Effect::PumpSelfUntilEndOfTurn {
+    effects: &[Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
         power: Amount::Fixed(2),
         toughness: Amount::Fixed(1),
         keywords: &[],
-    }],
+    })],
 };
 
 /// A test-only Aura shaped like Fallen Ideal: its host gains flying and the granted "Sacrifice a
@@ -27937,7 +27943,7 @@ const FALLEN_IDEAL_TEST: CardDef = CardDef {
     name: "Fallen Ideal (test)",
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::GrantToAttached {
+        effect: Effect::Static(StaticEffect::GrantToAttached {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             keywords: &[Keyword::Flying],
@@ -27949,7 +27955,7 @@ const FALLEN_IDEAL_TEST: CardDef = CardDef {
             cant_attack_controller: false,
             activated_abilities: None,
             legendary_only: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -27965,7 +27971,7 @@ const VOW_TEST: CardDef = CardDef {
     name: "Vow (test)",
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::GrantToAttached {
+        effect: Effect::Static(StaticEffect::GrantToAttached {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             keywords: &[],
@@ -27977,7 +27983,7 @@ const VOW_TEST: CardDef = CardDef {
             cant_attack_controller: true,
             activated_abilities: None,
             legendary_only: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -28017,10 +28023,10 @@ const MUTATION: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::SetAttachedBasePT {
+        effect: Effect::Static(StaticEffect::SetAttachedBasePt {
             power: 0,
             toughness: 1,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -28126,7 +28132,7 @@ fn darksteel_mutation_makes_its_host_a_zero_one() {
 
 /// A test-only static anthem scoped to Angels ("Angels you control get +0/+2") — proves an
 /// enchanted creature that becomes an Angel (Angelic Destiny) is seen by the subtype axis of
-/// `Effect::AnthemStatic`, i.e. the type/subtype layer flows through the anthem match choke.
+/// `Effect::Static(StaticEffect::Anthem)`, i.e. the type/subtype layer flows through the anthem match choke.
 const ANGEL_ANTHEM: CardDef = CardDef {
     name: "Test Angel Anthem",
     id: "",
@@ -28134,7 +28140,7 @@ const ANGEL_ANTHEM: CardDef = CardDef {
     kind: CardKind::Enchantment,
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::AnthemStatic {
+        effect: Effect::Static(StaticEffect::Anthem {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(2),
             self_only: false,
@@ -28151,7 +28157,7 @@ const ANGEL_ANTHEM: CardDef = CardDef {
             condition: None,
             from_graveyard: false,
             all_players: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -28293,9 +28299,9 @@ const MUTABLE_FLYER: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Triggered(Trigger::Attacks),
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(1),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -28321,9 +28327,9 @@ const MUTABLE_FLYER: CardDef = CardDef {
                 exile_self: false,
                 graveyard_exile_target_count: 0,
             }),
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(1),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -29981,9 +29987,9 @@ const WATCHES_HOST_DIES_DRAW: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::EnchantedCreatureDies),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -31453,7 +31459,7 @@ fn skyclave_apparition_leaves_with_nothing_exiled_mints_no_illusion() {
     );
 }
 
-/// A test-only flash Aura with a static [`Effect::ControlAttached`] grant (CR 720) — Changing
+/// A test-only flash Aura with a static [`Effect::Static(StaticEffect::ControlAttached)`] grant (CR 720) — Changing
 /// Loyalty used to be modeled this way (a continuous control-changing Aura); #87 replaced it
 /// with a faithful dies-trigger reanimation, so this isolates `ControlAttached` itself, still a
 /// live primitive other cards can use.
@@ -31486,7 +31492,7 @@ const CONTROL_ATTACHED_AURA: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::ControlAttached,
+        effect: Effect::Static(StaticEffect::ControlAttached),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -31900,10 +31906,12 @@ fn deadly_brew_skips_return_when_caster_sacrificed_nothing() {
 // proving other consumers (Witch of the Moors, Witherbloom Command) are unaffected.
 const MAY_RETURN_UNGATED: CardDef = sorcery(
     "May Return Ungated",
-    &[spell_ability(Effect::MayReturnFromGraveyard {
-        filter: CardFilter::Permanent,
-        if_you_sacrificed_this_way: false,
-    })],
+    &[spell_ability(Effect::Choice(
+        ChoiceEffect::MayReturnFromGraveyard {
+            filter: CardFilter::Permanent,
+            if_you_sacrificed_this_way: false,
+        },
+    ))],
 );
 
 #[test]
@@ -32286,7 +32294,9 @@ const EACH_EXILE_GRAVEYARD: CardDef = CardDef {
     otags: &[],
     keywords: &[],
     conditional_keywords: &[],
-    abilities: &[spell_ability(Effect::EachPlayerExilesFromGraveyard)],
+    abilities: &[spell_ability(Effect::Choice(
+        ChoiceEffect::EachPlayerExilesFromGraveyard,
+    ))],
     cycling: None,
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
@@ -33374,9 +33384,9 @@ fn wild_mongrel_ability_rejected_with_no_legal_discard_pick() {
 const YOU_DISCARD_WATCHER: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::YouDiscard),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -33526,9 +33536,9 @@ const RELIC_SHAPED_TARGET_EXILE: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::TargetPlayerExilesFromGraveyard {
+        effect: Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard {
             target: TargetSpec::Player,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -36309,7 +36319,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ReturnFromGraveyardToHand {
+        effect: Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Yours,
                 filter: CardFilter::Land,
@@ -36322,7 +36332,7 @@ const RETURN_LAND_FROM_GRAVEYARD: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -36438,7 +36448,7 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ReturnFromGraveyardToHand {
+        effect: Effect::Zone(ZoneEffect::ReturnFromGraveyardToHand {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Yours,
                 filter: CardFilter::Sorcery,
@@ -36451,7 +36461,7 @@ const RETURN_SORCERY_FROM_GRAVEYARD: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -36700,7 +36710,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileTarget {
+        effect: Effect::Destroy(DestroyEffect::ExileTarget {
             target: TargetSpec::CardInGraveyard {
                 whose: GraveyardScope::Opponents,
                 filter: CardFilter::AnyCard,
@@ -36713,7 +36723,7 @@ const EXILE_CARD_FROM_OPPONENTS_GRAVEYARD: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -36901,10 +36911,10 @@ const REPLENISH: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::MassReturnFromGraveyard {
+        effect: Effect::Zone(ZoneEffect::MassReturnFromGraveyard {
             filter: CardFilter::Enchantment,
             all_players: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -37033,10 +37043,10 @@ const MASS_RETURN_ALL_CREATURES: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::MassReturnFromGraveyard {
+        effect: Effect::Zone(ZoneEffect::MassReturnFromGraveyard {
             filter: CardFilter::Creature,
             all_players: true,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -37438,7 +37448,7 @@ fn surveil_puts_the_bottom_pile_into_the_graveyard() {
 
 // ── Look at top N, select some into a zone (reveal-and-select, CR 120-style) ──────────
 
-/// Drive a [`LOOK_DIG`] creature's ETB [`Effect::LookAtTop`] to its pending selection choice,
+/// Drive a [`LOOK_DIG`] creature's ETB [`Effect::Dig(DigEffect::LookAtTop)`] to its pending selection choice,
 /// returning the top-three library ids it looked at.
 fn resolve_look_dig(game: &mut Game) -> ObjectId {
     let digger = game.spawn_in_hand(PlayerId(0), LOOK_DIG);
@@ -37640,7 +37650,7 @@ fn look_at_top_may_decline_leaves_cards() {
 
 // ── Look at top N, select onto the battlefield (Armored Skyhunter) ────────────────────
 
-/// Drive a [`LOOK_DIG_TO_BATTLEFIELD`] creature's ETB [`Effect::LookAtTop`] to its pending
+/// Drive a [`LOOK_DIG_TO_BATTLEFIELD`] creature's ETB [`Effect::Dig(DigEffect::LookAtTop)`] to its pending
 /// selection choice, returning the top-three library ids it looked at.
 fn resolve_look_dig_to_battlefield(game: &mut Game) -> ObjectId {
     let digger = game.spawn_in_hand(PlayerId(0), LOOK_DIG_TO_BATTLEFIELD);
@@ -38002,8 +38012,8 @@ fn armored_skyhunter_bottoms_rest_in_random_order() {
 fn armored_skyhunter_attaches_deployed_aura() {
     // Armored Skyhunter's attack trigger deploying an Aura instead of Equipment: the same
     // `SearchedToBattlefield` choke `songbirds_blessing_attaches_deployed_aura_to_chosen_creature`
-    // exercises via a different effect ([`Effect::LookAtTop`]'s `TopDest::Battlefield`, not
-    // [`Effect::RevealUntilMayDeploy`]) — proving the shared hook covers both.
+    // exercises via a different effect ([`Effect::Dig(DigEffect::LookAtTop)`]'s `TopDest::Battlefield`, not
+    // [`Effect::Dig(DigEffect::RevealUntilMayDeploy)`]) — proving the shared hook covers both.
     let mut game = Game::new();
     let skyhunter = game.spawn_on_battlefield(PlayerId(0), card("Armored Skyhunter")); // not summoning sick
     let lib = game.stack_library(
@@ -38162,7 +38172,7 @@ fn expressive_iteration_routes_top_three() {
     );
 }
 
-/// Drive a [`LOOK_DIG_MANDATORY_TWO`] creature's ETB [`Effect::LookAtTop`] to its pending
+/// Drive a [`LOOK_DIG_MANDATORY_TWO`] creature's ETB [`Effect::Dig(DigEffect::LookAtTop)`] to its pending
 /// selection choice.
 fn resolve_look_dig_mandatory(game: &mut Game) {
     let digger = game.spawn_in_hand(PlayerId(0), LOOK_DIG_MANDATORY_TWO);
@@ -39765,7 +39775,7 @@ fn an_ordinary_token_imposes_no_must_attack_requirement() {
 /// `one_per_opponent`) — the still-flattened path every non-Furygale must-attack token takes.
 const MAKE_FORCED_TOKEN_YOU: CardDef = sorcery(
     "Make Forced Token (test)",
-    &[spell_ability(Effect::CreateToken {
+    &[spell_ability(Effect::Token(TokenEffect::Create {
         token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
         count: Amount::Fixed(1),
         controller: TokenController::You,
@@ -39775,7 +39785,7 @@ const MAKE_FORCED_TOKEN_YOU: CardDef = sorcery(
         enters_tapped_and_attacking: false,
         attacking_context: None,
         must_attack_defender: true,
-    })],
+    }))],
 );
 
 #[test]
@@ -39828,7 +39838,7 @@ fn a_must_attack_token_under_token_controller_you_still_binds_to_the_single_flat
 /// single flattened one.
 const MAKE_FORCED_TOKENS_PER_OPPONENT: CardDef = sorcery(
     "Make Forced Tokens Per Opponent (test)",
-    &[spell_ability(Effect::CreateToken {
+    &[spell_ability(Effect::Token(TokenEffect::Create {
         token: creature("Forced Token", 2, 2, &[Keyword::Haste]),
         count: Amount::Fixed(2),
         controller: TokenController::OnePerOpponent,
@@ -39838,7 +39848,7 @@ const MAKE_FORCED_TOKENS_PER_OPPONENT: CardDef = sorcery(
         enters_tapped_and_attacking: false,
         attacking_context: None,
         must_attack_defender: true,
-    })],
+    }))],
 );
 
 #[test]
@@ -40609,7 +40619,7 @@ const NARROW_REATTACH: CardDef = CardDef {
             filter: PermanentFilter::of(TypeSet::CREATURE),
             controller: EnterController::Opponent,
         }),
-        effect: Effect::AttachSelfToEntering { entering: None },
+        effect: Effect::Control(ControlEffect::AttachSelfToEntering { entering: None }),
         optional: true,
         min_level: 0,
         once_each_turn: false,
@@ -40803,9 +40813,9 @@ const STEAL_UNTIL_EOT: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::GainControlUntilEndOfTurn {
+        effect: Effect::Control(ControlEffect::GainControlUntilEndOfTurn {
             target: TargetSpec::Creature,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -40919,10 +40929,10 @@ const RUBINIA: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::GainControlWhile {
+        effect: Effect::Control(ControlEffect::GainControlWhile {
             target: TargetSpec::Creature,
             while_source_tapped: true,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -41128,7 +41138,7 @@ const MV5: CardDef = CardDef {
 };
 
 /// A test-only sorcery "Gain control of target creature with mana value X." — isolates
-/// `Effect::GainControl`'s permanent steal and the `mv_eq_x` target filter from Entrancing
+/// `Effect::Control(ControlEffect::GainControl)`'s permanent steal and the `mv_eq_x` target filter from Entrancing
 /// Melody's real TOML.
 const MELODY: CardDef = CardDef {
     name: "Melody (test)",
@@ -41165,12 +41175,12 @@ const MELODY: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::GainControl {
+        effect: Effect::Control(ControlEffect::GainControl {
             target: TargetSpec::Permanent(PermanentFilter {
                 mv_eq_x: true,
                 ..PermanentFilter::of(TypeSet::CREATURE)
             }),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -41260,9 +41270,9 @@ const STEAL_PERMANENT: CardDef = CardDef {
     name: "Steal Permanent (test)",
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::GainControl {
+        effect: Effect::Control(ControlEffect::GainControl {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::NONE)),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -42426,7 +42436,7 @@ fn entrancing_melody_gains_permanent_control_of_a_mana_value_x_creature() {
 // ── Board-wide control reset (CR 720 — Homeward Path) ───────────────────────────────
 
 /// A test proxy for Homeward Path's `{T}: Each player gains control of all creatures they own.`
-/// — isolates `Effect::RevertAllCreaturesToOwners` from the land's mana ability and real TOML.
+/// — isolates `Effect::Control(ControlEffect::RevertAllCreaturesToOwners)` from the land's mana ability and real TOML.
 const REVERT_ALL_TEST: CardDef = CardDef {
     name: "Revert All Creatures To Owners (test)",
     abilities: &[Ability {
@@ -42448,7 +42458,7 @@ const REVERT_ALL_TEST: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::RevertAllCreaturesToOwners,
+        effect: Effect::Control(ControlEffect::RevertAllCreaturesToOwners),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -43148,7 +43158,7 @@ const CHOOSE_TWO: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Spell,
-            effect: Effect::DealDamage {
+            effect: Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(2),
                 target: TargetSpec::AnyTarget,
                 count: TargetCount {
@@ -43159,7 +43169,7 @@ const CHOOSE_TWO: CardDef = CardDef {
                     strive_scaled: false,
                 },
                 divided: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -43168,11 +43178,11 @@ const CHOOSE_TWO: CardDef = CardDef {
         },
         Ability {
             timing: Timing::Spell,
-            effect: Effect::CreateTreasure {
+            effect: Effect::Token(TokenEffect::CreateTreasure {
                 count: Amount::Fixed(1),
                 target_player: false,
                 tapped: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -43181,9 +43191,9 @@ const CHOOSE_TWO: CardDef = CardDef {
         },
         Ability {
             timing: Timing::Spell,
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(3),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -43192,9 +43202,9 @@ const CHOOSE_TWO: CardDef = CardDef {
         },
         Ability {
             timing: Timing::Spell,
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(7),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -43503,7 +43513,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Spell,
-            effect: Effect::DealDamage {
+            effect: Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(2),
                 target: TargetSpec::AnyTarget,
                 count: TargetCount {
@@ -43514,7 +43524,7 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
                     strive_scaled: false,
                 },
                 divided: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -43523,9 +43533,9 @@ const CHOOSE_ONE_OR_MORE: CardDef = CardDef {
         },
         Ability {
             timing: Timing::Spell,
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(3),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -43862,8 +43872,8 @@ fn shadrix_declining_the_may_resolves_to_nothing() {
 
 // ── Fight (CR 701.12, fidelity increment #48) ───────────────────────────────────────────
 
-/// A free instant that just fights: `Effect::Fight` targets an opponent's creature at cast, then
-/// pauses at resolution for the caster to pick their own creature (see `Effect::Fight`'s doc).
+/// A free instant that just fights: `Effect::Misc(MiscEffect::Fight)` targets an opponent's creature at cast, then
+/// pauses at resolution for the caster to pick their own creature (see `Effect::Misc(MiscEffect::Fight)`'s doc).
 const FIGHT_SPELL: CardDef = CardDef {
     name: "Fight (test)",
     id: "",
@@ -43895,10 +43905,10 @@ const FIGHT_SPELL: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::Fight {
+        effect: Effect::Misc(MiscEffect::Fight {
             enemy: None,
             ally_is_shared_target: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -45306,7 +45316,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::CardsLeaveYourGraveyard),
-        effect: Effect::CreateToken {
+        effect: Effect::Token(TokenEffect::Create {
             token: INKLING,
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -45316,7 +45326,7 @@ const GRAVEYARD_EXIT_WATCHER: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -45655,10 +45665,10 @@ static PACK_A_PUNCH: CardDef = CardDef {
         timing: Timing::Spell,
         effect: Effect::Sequence {
             steps: &[
-                Effect::MillSelf {
+                Effect::Mill(MillEffect::MillSelf {
                     count: Amount::Fixed(1),
-                },
-                Effect::PutCounters {
+                }),
+                Effect::Counters(CountersEffect::PutCounters {
                     count: Amount::Fixed(2),
                     target: TargetSpec::Creature,
                     targets: TargetCount {
@@ -45670,13 +45680,13 @@ static PACK_A_PUNCH: CardDef = CardDef {
                     },
                     kind: None,
                     divided: false,
-                },
-                Effect::PumpUntilEndOfTurn {
+                }),
+                Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
                     power: Amount::Fixed(0),
                     toughness: Amount::Fixed(0),
                     target: TargetSpec::Creature,
                     keywords: &[Keyword::Trample],
-                },
+                }),
             ],
         },
         optional: false,
@@ -45756,7 +45766,7 @@ static KIROL: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::CardsLeaveYourGraveyard),
-        effect: Effect::BecomePrepared,
+        effect: Effect::Misc(MiscEffect::BecomePrepared),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -46026,7 +46036,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ReturnToHand {
+        effect: Effect::Zone(ZoneEffect::ReturnToHand {
             target: TargetSpec::Permanent(PermanentFilter {
                 controller: FilterController::Opponent,
                 ..PermanentFilter::of(TypeSet::NONLAND)
@@ -46038,7 +46048,7 @@ static PETTY_THEFT_TEST: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -46186,7 +46196,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PutCounters {
+        effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::X,
             target: TargetSpec::Permanent(PermanentFilter {
                 controller: FilterController::You,
@@ -46201,7 +46211,7 @@ static GROVES_BOUNTY_TEST: CardDef = CardDef {
             },
             kind: None,
             divided: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -46899,10 +46909,10 @@ static BRAINGEYSER_TEST: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::TargetPlayerDraws {
+        effect: Effect::Draw(DrawEffect::TargetPlayer {
             count: Amount::X,
             opponent: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -46982,7 +46992,7 @@ static DIRGUR_TEST: CardDef = CardDef {
             nth_each_turn: None,
             from_hand: true,
         }),
-        effect: Effect::BecomePrepared,
+        effect: Effect::Misc(MiscEffect::BecomePrepared),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -47406,9 +47416,9 @@ fn unfiltered_cast_trigger_still_fires_from_any_zone() {
                 nth_each_turn: None,
                 from_hand: false,
             }),
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(7),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -48348,15 +48358,15 @@ const fn test_planeswalker(name: &'static str, loyalty: i32) -> CardDef {
 
 const PW_PLUS1: Ability = loyalty_ability(
     1,
-    Effect::GainLife {
+    Effect::Life(LifeEffect::Gain {
         amount: Amount::Fixed(2),
-    },
+    }),
 );
 const PW_MINUS2: Ability = loyalty_ability(
     -2,
-    Effect::GainLife {
+    Effect::Life(LifeEffect::Gain {
         amount: Amount::Fixed(5),
-    },
+    }),
 );
 const PW_ABILITIES: [Ability; 2] = [PW_PLUS1, PW_MINUS2];
 
@@ -49823,7 +49833,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::SearchLibrary {
+        effect: Effect::Dig(DigEffect::SearchLibrary {
             filter: CardFilter::Creature,
             to_zone: SearchDest::Hand,
             tapped: false,
@@ -49831,7 +49841,7 @@ const CREATURE_TUTOR: CardDef = CardDef {
             count: 1,
             count_amount: None,
             overflow: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -52083,7 +52093,7 @@ fn a_creature_search_cannot_find_a_land() {
 /// Path to Exile (msc): "Exile target creature. Its controller may search their library for a
 /// basic land card, put that card onto the battlefield tapped, then shuffle." — the ramp rider's
 /// search is owed to the *exiled creature's* controller (P1), not the caster (P0): `searcher =
-/// "target_controller"` on the sequenced `Effect::SearchLibrary`.
+/// "target_controller"` on the sequenced `Effect::Dig(DigEffect::SearchLibrary)`.
 #[test]
 fn path_to_exiles_ramp_search_belongs_to_the_exiled_creatures_controller() {
     let mut game = TestGame::new();
@@ -52192,7 +52202,7 @@ fn assassins_trophy_destroys_any_opponents_permanent_and_ramps_its_controller() 
 
 /// Veteran Explorer (cmd): "When this creature dies, each player may search their library for up
 /// to two basic land cards, put them onto the battlefield, then shuffle." — an all-players
-/// fan-out of `Effect::SearchLibrary` (`searcher = "all_players"`): one search per player in
+/// fan-out of `Effect::Dig(DigEffect::SearchLibrary)` (`searcher = "all_players"`): one search per player in
 /// APNAP order (CR 101.4), each under that player's own control (CR 701.19), not the Explorer's
 /// controller's.
 #[test]
@@ -52440,12 +52450,12 @@ const MASS_SHOCK: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::DamageEachCreature {
+        effect: Effect::Damage(DamageEffect::EachCreature {
             amount: Amount::Fixed(2),
             opponents_only: false,
             filter: None,
             include_planeswalkers: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -52485,7 +52495,7 @@ const MASS_SHOCK: CardDef = CardDef {
 };
 
 /// A mass-bounce sorcery: "Return all creatures to their owners' hands." Exercises
-/// Effect::ReturnAllToHand (the mass mirror of ReturnToHand) — Perplexing Test.
+/// Effect::Zone(ZoneEffect::ReturnAllToHand) (the mass mirror of ReturnToHand) — Perplexing Test.
 const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     name: "Test Mass-Bounce",
     id: "",
@@ -52517,9 +52527,9 @@ const MASS_BOUNCE_CREATURES: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ReturnAllToHand {
+        effect: Effect::Zone(ZoneEffect::ReturnAllToHand {
             filter: PermanentFilter::of(TypeSet::CREATURE),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -52643,7 +52653,7 @@ fn perplexing_test_mode_returns_only_nontoken_creatures() {
 }
 
 /// An enchantment that populates at its controller's end step: create a copy of a creature
-/// token you control. Exercises Effect::CreateTokenCopy via TargetSpec::CreatureTokenYouControl —
+/// token you control. Exercises Effect::Token(TokenEffect::CreateCopy) via TargetSpec::CreatureTokenYouControl —
 /// Determined Iteration.
 const POPULATE_AT_END_STEP: CardDef = CardDef {
     name: "Test Populate",
@@ -52674,7 +52684,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::EndStep),
-        effect: Effect::CreateTokenCopy {
+        effect: Effect::Token(TokenEffect::CreateCopy {
             target: TargetSpec::CreatureTokenYouControl,
             count: Amount::Fixed(1),
             targets: TargetCount {
@@ -52688,7 +52698,7 @@ const POPULATE_AT_END_STEP: CardDef = CardDef {
             exile_at_next_end_step: false,
             haste: false,
             entering: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -53449,11 +53459,11 @@ const MAKE_TREASURES: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::CreateTreasure {
+        effect: Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(3),
             target_player: false,
             tapped: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -53640,9 +53650,9 @@ fn magecraft_makes_a_treasure_with_storm_kiln_artist_out() {
 }
 
 /// The one ability shared by every [`instant_with_mana_value`] test spell.
-const INSTANT_DRAW_ABILITY: [Ability; 1] = [spell_ability(Effect::DrawCards {
+const INSTANT_DRAW_ABILITY: [Ability; 1] = [spell_ability(Effect::Draw(DrawEffect::Cards {
     count: Amount::Fixed(1),
-})];
+}))];
 
 /// A test-only instant "Draw a card." with a chosen generic cost — isolates a specific mana
 /// value for a `Trigger::CastSpell` payoff that reads the triggering spell's mana value
@@ -53883,7 +53893,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Magecraft),
-        effect: Effect::CreateToken {
+        effect: Effect::Token(TokenEffect::Create {
             token: creature("Fractal", 0, 0, &[]),
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -53893,7 +53903,7 @@ const DEEKAH_MAGECRAFT_FRACTAL: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -54161,7 +54171,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
             nth_each_turn: None,
             from_hand: false,
         }),
-        effect: Effect::CreateToken {
+        effect: Effect::Token(TokenEffect::Create {
             token: MANAFORM_DRAGON_TOKEN,
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -54171,7 +54181,7 @@ const MANAFORM_HELLKITE_TEST: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -54534,7 +54544,7 @@ const ROOTHA_TEST: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::BeginCombat),
-        effect: Effect::CreateToken {
+        effect: Effect::Token(TokenEffect::Create {
             token: ROOTHA_ELEMENTAL_TOKEN,
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -54544,7 +54554,7 @@ const ROOTHA_TEST: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -54733,7 +54743,7 @@ const RIONYA_TEST: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::BeginCombat),
-        effect: Effect::CreateTokenCopy {
+        effect: Effect::Token(TokenEffect::CreateCopy {
             target: TargetSpec::Permanent(PermanentFilter {
                 controller: FilterController::You,
                 other: true,
@@ -54751,7 +54761,7 @@ const RIONYA_TEST: CardDef = CardDef {
             exile_at_next_end_step: false,
             haste: true,
             entering: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -55002,12 +55012,12 @@ const IMPULSE: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::ExileTopMayPlay {
+        effect: Effect::Mill(MillEffect::ExileTopMayPlay {
             count: Amount::Fixed(1),
             until_next_turn: false,
             face_down: false,
             free_while_source: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -55142,7 +55152,7 @@ fn impulse_does_not_grant_a_second_land_drop() {
 #[test]
 fn laelia_impulses_the_top_card_on_attack_and_it_is_playable_from_exile() {
     // The real pool card: haste, an attack trigger that exiles the top card face-up to play
-    // until end of turn (Effect::ExileTopMayPlay).
+    // until end of turn (Effect::Mill(MillEffect::ExileTopMayPlay)).
     let mut game = Game::new();
     let laelia = game.spawn_on_battlefield(PlayerId(0), card("Laelia, the Blade Reforged"));
     let forest = game.stack_library(PlayerId(0), &[card("Forest")])[0];
@@ -55216,7 +55226,7 @@ const RANDOM_GRAVEYARD_EXILE: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::ExileRandomFromGraveyardMayPlay,
+        effect: Effect::Dig(DigEffect::ExileRandomFromGraveyardMayPlay),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -55481,18 +55491,18 @@ const MODAL_DRAGON: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Dies),
         effect: Effect::ChooseOne {
-            modes: &[
-                Effect::ExileTopMayPlay {
+            options: &[
+                Effect::Mill(MillEffect::ExileTopMayPlay {
                     count: Amount::Fixed(2),
                     until_next_turn: false,
                     face_down: false,
                     free_while_source: false,
-                },
-                Effect::CreateTreasure {
+                }),
+                Effect::Token(TokenEffect::CreateTreasure {
                     count: Amount::Fixed(3),
                     target_player: false,
                     tapped: false,
-                },
+                }),
             ],
         },
         optional: false,
@@ -55661,14 +55671,14 @@ fn atsushi_dies_trigger_offers_a_two_mode_choose_one() {
 
 // ── Discard trigger (CR 701.8) — "whenever you discard a card" ─────────────────────────
 
-/// A test-only sorcery whose one effect discards a single card (Effect::Discard).
+/// A test-only sorcery whose one effect discards a single card (Effect::Choice(ChoiceEffect::Discard)).
 const DISCARD_ONE: CardDef = sorcery(
     "Discard One",
-    &[spell_ability(Effect::Discard {
+    &[spell_ability(Effect::Choice(ChoiceEffect::Discard {
         count: 1,
         target_player: false,
         or_one_matching: None,
-    })],
+    }))],
 );
 
 /// Cast `DISCARD_ONE` and answer its `DiscardCards` pause by discarding `target_card`.
@@ -57030,7 +57040,7 @@ const NO_MAX_HAND_SIZE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::NoMaximumHandSize,
+        effect: Effect::Static(StaticEffect::NoMaximumHandSize),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -57193,21 +57203,21 @@ const HALF_X_TREASURES: CardDef = amount_spell!(
     "Half X Treasures (test)",
     SpellSpeed::Sorcery,
     X_COST,
-    Effect::CreateTreasure {
+    Effect::Token(TokenEffect::CreateTreasure {
         count: Amount::HalfX,
         target_player: false,
         tapped: false,
-    }
+    })
 );
 const TWICE_X_TREASURES: CardDef = amount_spell!(
     "Twice X Treasures (test)",
     SpellSpeed::Sorcery,
     X_COST,
-    Effect::CreateTreasure {
+    Effect::Token(TokenEffect::CreateTreasure {
         count: Amount::TwiceX,
         target_player: false,
         tapped: false,
-    }
+    })
 );
 
 #[test]
@@ -57229,7 +57239,7 @@ const PER_CREATURE_TREASURES: CardDef = amount_spell!(
     "Per Creature Treasures (test)",
     SpellSpeed::Sorcery,
     Cost::FREE,
-    Effect::CreateTreasure {
+    Effect::Token(TokenEffect::CreateTreasure {
         count: Amount::PerPermanentMatching {
             filter: PermanentFilter {
                 controller: FilterController::You,
@@ -57239,7 +57249,7 @@ const PER_CREATURE_TREASURES: CardDef = amount_spell!(
         },
         target_player: false,
         tapped: false,
-    }
+    })
 );
 
 #[test]
@@ -57295,10 +57305,10 @@ macro_rules! hydra_with_etb {
             abilities: &[
                 Ability {
                     timing: Timing::Static,
-                    effect: Effect::EntersWithCounters {
+                    effect: Effect::Static(StaticEffect::EntersWithCounters {
                         amount: Amount::X,
                         kind: None,
-                    },
+                    }),
                     optional: false,
                     min_level: 0,
                     once_each_turn: false,
@@ -57307,11 +57317,11 @@ macro_rules! hydra_with_etb {
                 },
                 Ability {
                     timing: Timing::Triggered(Trigger::Etb),
-                    effect: Effect::CreateTreasure {
+                    effect: Effect::Token(TokenEffect::CreateTreasure {
                         count: $count,
                         target_player: false,
                         tapped: false,
-                    },
+                    }),
                     optional: false,
                     min_level: 0,
                     once_each_turn: false,
@@ -57390,7 +57400,7 @@ const BURN_CREATURE_OR_PW: CardDef = amount_spell!(
     "Burn Creature or Planeswalker (test)",
     SpellSpeed::Instant,
     Cost::FREE,
-    Effect::DealDamage {
+    Effect::Damage(DamageEffect::Target {
         amount: Amount::Fixed(3),
         target: TargetSpec::CreatureOrPlaneswalker,
         count: TargetCount {
@@ -57401,13 +57411,13 @@ const BURN_CREATURE_OR_PW: CardDef = amount_spell!(
             strive_scaled: false,
         },
         divided: false,
-    }
+    })
 );
 const BURN_TARGET_POWER: CardDef = amount_spell!(
     "Burn = Power (test)",
     SpellSpeed::Instant,
     Cost::FREE,
-    Effect::DealDamage {
+    Effect::Damage(DamageEffect::Target {
         amount: Amount::TargetPower,
         target: TargetSpec::Creature,
         count: TargetCount {
@@ -57418,13 +57428,13 @@ const BURN_TARGET_POWER: CardDef = amount_spell!(
             strive_scaled: false,
         },
         divided: false,
-    }
+    })
 );
 const BURN_TARGET_MV: CardDef = amount_spell!(
     "Burn = MV (test)",
     SpellSpeed::Instant,
     Cost::FREE,
-    Effect::DealDamage {
+    Effect::Damage(DamageEffect::Target {
         amount: Amount::TargetManaValue,
         target: TargetSpec::Creature,
         count: TargetCount {
@@ -57435,7 +57445,7 @@ const BURN_TARGET_MV: CardDef = amount_spell!(
             strive_scaled: false,
         },
         divided: false,
-    }
+    })
 );
 
 /// Damage marked on `object` across `events`.
@@ -57508,37 +57518,37 @@ const GAIN_5: CardDef = amount_spell!(
     "Gain 5 (test)",
     SpellSpeed::Sorcery,
     Cost::FREE,
-    Effect::GainLife {
+    Effect::Life(LifeEffect::Gain {
         amount: Amount::Fixed(5)
-    }
+    })
 );
 const FILLER: CardDef = amount_spell!(
     "Filler (test)",
     SpellSpeed::Sorcery,
     Cost::FREE,
-    Effect::GainLife {
+    Effect::Life(LifeEffect::Gain {
         amount: Amount::Fixed(1)
-    }
+    })
 );
 const LIFE_GAINED_PAYOFF: CardDef = amount_spell!(
     "Life Gained Payoff (test)",
     SpellSpeed::Sorcery,
     Cost::FREE,
-    Effect::CreateTreasure {
+    Effect::Token(TokenEffect::CreateTreasure {
         count: Amount::LifeGainedThisTurn,
         target_player: false,
         tapped: false,
-    }
+    })
 );
 const SPELLS_CAST_PAYOFF: CardDef = amount_spell!(
     "Spells Cast Payoff (test)",
     SpellSpeed::Sorcery,
     Cost::FREE,
-    Effect::CreateTreasure {
+    Effect::Token(TokenEffect::CreateTreasure {
         count: Amount::SpellsCastThisTurn,
         target_player: false,
         tapped: false,
-    }
+    })
 );
 
 #[test]
@@ -57603,7 +57613,7 @@ fn spells_cast_this_turn_tallies_and_resets_next_turn() {
 /// never picks up Gorma's nontoken-only entering bonus.
 const MAKE_TOKEN_SQUIRREL: CardDef = sorcery(
     "Make Squirrel (test)",
-    &[spell_ability(Effect::CreateToken {
+    &[spell_ability(Effect::Token(TokenEffect::Create {
         token: creature("Squirrel", 1, 1, &[]),
         count: Amount::Fixed(1),
         controller: TokenController::You,
@@ -57613,7 +57623,7 @@ const MAKE_TOKEN_SQUIRREL: CardDef = sorcery(
         enters_tapped_and_attacking: false,
         attacking_context: None,
         must_attack_defender: false,
-    })],
+    }))],
 );
 
 #[test]
@@ -58183,7 +58193,7 @@ fn war_room_draw_index(game: &Game, room: ObjectId) -> usize {
     game.def_of(room)
         .abilities
         .iter()
-        .position(|a| matches!(a.effect, Effect::DrawCards { .. }))
+        .position(|a| matches!(a.effect, Effect::Draw(DrawEffect::Cards { .. })))
         .expect("War Room has a draw-a-card activated ability")
 }
 
@@ -58416,14 +58426,14 @@ const LOOT: CardDef = sorcery(
     "Loot",
     &[spell_ability(Effect::Sequence {
         steps: &[
-            Effect::DrawCards {
+            Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(2),
-            },
-            Effect::Discard {
+            }),
+            Effect::Choice(ChoiceEffect::Discard {
                 count: 2,
                 target_player: false,
                 or_one_matching: None,
-            },
+            }),
         ],
     })],
 );
@@ -58478,7 +58488,7 @@ fn a_sequence_draws_then_pauses_to_discard_the_drawn_cards() {
 }
 
 // Pull from Tomorrow ({X}{U}{U} instant — "Draw X cards, then discard a card.") — the draw is
-// `Effect::DrawCards` (controller-only), not `Effect::TargetPlayerDraws`, so casting it never
+// `Effect::Draw(DrawEffect::Cards)` (controller-only), not `Effect::Draw(DrawEffect::TargetPlayer)`, so casting it never
 // needs a player target.
 #[test]
 fn pull_from_tomorrow_draws_x_for_caster() {
@@ -58708,7 +58718,7 @@ fn brainstorm_puts_two_hand_cards_on_top_of_library_in_order() {
 }
 
 // Fewer cards in hand than the effect's count clamps to naming the whole hand (mirrors
-// `Effect::Discard`'s clamp) — Brainstorm resolving with only 1 card left after the draws
+// `Effect::Choice(ChoiceEffect::Discard)`'s clamp) — Brainstorm resolving with only 1 card left after the draws
 // forces "put 1 card back", not 2.
 #[test]
 fn brainstorm_clamps_to_hand_size_when_hand_is_smaller_than_count() {
@@ -58745,10 +58755,10 @@ const SURVEIL_THEN_DRAW: CardDef = sorcery(
     "Surveil Then Draw",
     &[spell_ability(Effect::Sequence {
         steps: &[
-            Effect::Surveil { count: 2 },
-            Effect::DrawCards {
+            Effect::Dig(DigEffect::Surveil { count: 2 }),
+            Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
         ],
     })],
 );
@@ -60034,7 +60044,7 @@ fn ominous_harvest_gravestorm_copies_per_permanent_died_this_turn() {
     resolve_top_of_stack(&mut game); // the original resolves, then mints its first copy and pauses
 
     // Answer each minted copy's retarget choice until the mint queue drains (see
-    // `Effect::CopyThisSpell`'s doc: one copy mints per `resolve_sequence` pause/resume step).
+    // `Effect::Copy(CopyEffect::ThisSpell)`'s doc: one copy mints per `resolve_sequence` pause/resume step).
     let mut copies = 0;
     while let Some(PendingChoice::ChooseSpellTargets { player, legal, .. }) = game.pending_choice()
     {
@@ -61091,7 +61101,7 @@ fn chain_lightning_decline_pay_does_not_copy() {
 fn chain_lightning_copy_chains() {
     // Paying twice in a row: the original mints a copy, and that copy's OWN resolution offers
     // the same rider again (it never checks "is this spell itself a copy" — that guard is
-    // `Effect::CopyThisSpell`'s storm-only "not cast" gate, not this reflexive rider's).
+    // `Effect::Copy(CopyEffect::ThisSpell)`'s storm-only "not cast" gate, not this reflexive rider's).
     let mut game = TestGame::new();
     game.fund_mana(PlayerId(1));
     let chain = game.spawn_in_hand(PlayerId(0), card("Chain Lightning"));
@@ -61360,10 +61370,10 @@ const TEST_STEELBANE: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Static,
-            effect: Effect::EntersWithCounters {
+            effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::Fixed(2),
                 kind: None,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -61408,7 +61418,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                 exile_self: false,
                 graveyard_exile_target_count: 0,
             }),
-            effect: Effect::DestroyTarget {
+            effect: Effect::Destroy(DestroyEffect::DestroyTarget {
                 target: TargetSpec::ArtifactEnchantmentOrPlaneswalker,
                 count: TargetCount {
                     min: 1,
@@ -61418,7 +61428,7 @@ const TEST_STEELBANE: CardDef = CardDef {
                     strive_scaled: false,
                 },
                 cant_be_regenerated: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -61547,10 +61557,10 @@ fn remove_counter_cost_lethal_shrink_dies_to_state_based_actions() {
     let abilities: &'static [Ability] = Box::leak(Box::new([
         Ability {
             timing: Timing::Static,
-            effect: Effect::EntersWithCounters {
+            effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::Fixed(1),
                 kind: None,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -61804,7 +61814,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
             filter: PermanentFilter::of(TypeSet::ENCHANTMENT),
             controller: EnterController::You,
         }),
-        effect: Effect::CreateToken {
+        effect: Effect::Token(TokenEffect::Create {
             token: CardDef {
                 name: "Test Cat",
                 id: "",
@@ -61876,7 +61886,7 @@ const WATCHES_ENCHANTMENTS_ENTER: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -61955,9 +61965,9 @@ const WATCHES_OPPONENT_LANDFALL: CardDef = CardDef {
             filter: PermanentFilter::of(TypeSet::LAND),
             controller: EnterController::Opponent,
         }),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -63009,9 +63019,9 @@ const FIVE_MANA_VALUE_SORCERY: CardDef = CardDef {
     otags: &[],
     keywords: &[],
     conditional_keywords: &[],
-    abilities: &[spell_ability(Effect::DrawCards {
+    abilities: &[spell_ability(Effect::Draw(DrawEffect::Cards {
         count: Amount::Fixed(1),
-    })],
+    }))],
     cycling: None,
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
@@ -64349,7 +64359,7 @@ fn green_beast_token_is_green() {
 
 /// A test-only static anthem scoped to Saprolings ("Saprolings you control get +1/+1") — the
 /// token-tribal analog of `quintorius_spirit_anthem_buffs_only_spirits`, proving a token's
-/// `subtypes` (this increment) are visible to `Effect::AnthemStatic`'s subtype axis exactly like
+/// `subtypes` (this increment) are visible to `Effect::Static(StaticEffect::Anthem)`'s subtype axis exactly like
 /// a real card's.
 const SAPROLING_ANTHEM: CardDef = CardDef {
     name: "Test Saproling Anthem",
@@ -64380,7 +64390,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::AnthemStatic {
+        effect: Effect::Static(StaticEffect::Anthem {
             power: Amount::Fixed(1),
             toughness: Amount::Fixed(1),
             self_only: false,
@@ -64397,7 +64407,7 @@ const SAPROLING_ANTHEM: CardDef = CardDef {
             condition: None,
             from_graveyard: false,
             all_players: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -64502,7 +64512,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::TapTarget {
+        effect: Effect::Control(ControlEffect::TapTarget {
             target: TargetSpec::Permanent(PermanentFilter::of(TypeSet::NONE)),
             count: TargetCount {
                 min: 2,
@@ -64511,7 +64521,7 @@ const TAP_TWO_PERMANENTS: CardDef = CardDef {
                 sacrifice_scaled: false,
                 strive_scaled: false,
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -64584,7 +64594,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PutCounters {
+        effect: Effect::Counters(CountersEffect::PutCounters {
             count: Amount::Fixed(1),
             target: TargetSpec::Creature,
             targets: TargetCount {
@@ -64596,7 +64606,7 @@ const COUNTER_EACH_UP_TO_TWO: CardDef = CardDef {
             },
             kind: None,
             divided: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -65597,7 +65607,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PumpCreaturesYouControlUntilEndOfTurn {
+        effect: Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             keywords: &[Keyword::Hexproof],
@@ -65606,7 +65616,7 @@ const MASS_HEXPROOF_TO_MODIFIED: CardDef = CardDef {
                 modified: true,
                 ..PermanentFilter::of(TypeSet::CREATURE)
             },
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -66625,10 +66635,10 @@ fn faerie_mastermind_fires_once_when_an_opponent_draws_two_at_once() {
     let mut def = DRAW_ONE_TARGET;
     def.abilities = &[Ability {
         timing: Timing::Spell,
-        effect: Effect::TargetPlayerDraws {
+        effect: Effect::Draw(DrawEffect::TargetPlayer {
             count: Amount::Fixed(2),
             opponent: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -67143,11 +67153,11 @@ fn staff_of_the_storyteller_accrues_one_story_counter_when_you_create_creature_t
 fn staff_of_the_storyteller_does_not_accrue_from_a_noncreature_token() {
     const MAKE_TREASURE: CardDef = sorcery(
         "Make Treasure (test)",
-        &[spell_ability(Effect::CreateTreasure {
+        &[spell_ability(Effect::Token(TokenEffect::CreateTreasure {
             count: Amount::Fixed(1),
             target_player: false,
             tapped: false,
-        })],
+        }))],
     );
     let mut g = TestGame::new();
     let staff = g.spawn_on_battlefield(PlayerId(0), card("Staff of the Storyteller"));
@@ -67470,10 +67480,10 @@ const TEST_STUDY_COUNTER_SOURCE: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::EntersWithCounters {
+        effect: Effect::Static(StaticEffect::EntersWithCounters {
             amount: Amount::Fixed(3),
             kind: Some(CounterKind::Study),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -68017,7 +68027,7 @@ const MOVE_ALL_PLUS_COUNTERS: CardDef = CardDef {
         speed: SpellSpeed::Instant,
     },
     abilities: &[Ability {
-        effect: Effect::MoveCounters {
+        effect: Effect::Counters(CountersEffect::MoveCounters {
             target: TargetSpec::Permanent(PermanentFilter {
                 controller: FilterController::You,
                 ..PermanentFilter::of(TypeSet::NONLAND)
@@ -68029,8 +68039,8 @@ const MOVE_ALL_PLUS_COUNTERS: CardDef = CardDef {
             all_kinds: false,
             distributed: false,
             from: None,
-        },
-        ..spell_ability(Effect::NoMaximumHandSize)
+        }),
+        ..spell_ability(Effect::Static(StaticEffect::NoMaximumHandSize))
     }],
     ..VANILLA
 };
@@ -68195,7 +68205,7 @@ fn grow_ancient_by_two(g: &mut TestGame, ancient: ObjectId) {
 
 /// Advances to `PlayerId(0)`'s upkeep, accepts Forgotten Ancient's may-move trigger, and passes
 /// priority until it pauses on its distribution choice (mirrors `Fight`'s cast/resolution split
-/// — see `Effect::MoveCounters`'s doc).
+/// — see `Effect::Counters(CountersEffect::MoveCounters)`'s doc).
 fn accept_ancient_upkeep_move(g: &mut TestGame) {
     advance_until(g, |g| {
         g.active_player() == PlayerId(0) && g.current_step() == Step::Upkeep
@@ -69916,12 +69926,12 @@ const GRANT_HEXPROOF_ANY_TARGET: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::PumpUntilEndOfTurn {
+        effect: Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
             power: Amount::Fixed(0),
             toughness: Amount::Fixed(0),
             target: TargetSpec::Creature,
             keywords: &[Keyword::Hexproof],
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -70203,9 +70213,9 @@ const SACRIFICE_A_CREATURE_OUTLET: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -70285,9 +70295,11 @@ fn ascend_grants_sticky_citys_blessing_and_gates_saproling_anthem() {
 /// paired with on naktamun_lorespinner's back face.
 const WHEEL_TEST: CardDef = sorcery(
     "Test Wheel",
-    &[spell_ability(Effect::EachPlayerDiscardsHandThenDraws {
-        count: Amount::Fixed(7),
-    })],
+    &[spell_ability(Effect::Choice(
+        ChoiceEffect::EachPlayerDiscardsHandThenDraws {
+            count: Amount::Fixed(7),
+        },
+    ))],
 );
 
 #[test]
@@ -70463,10 +70475,10 @@ const ZERO_POWER_WITH_COUNTER: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::EntersWithCounters {
+        effect: Effect::Static(StaticEffect::EntersWithCounters {
             amount: Amount::Fixed(1),
             kind: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -71162,7 +71174,7 @@ fn cascade_exiles_until_cheaper_nonland_and_casts_it_free() {
         matches!(
             stack.last(),
             Some(StackEntry::Ability {
-                effect: Effect::Cascade { .. },
+                effect: Effect::Dig(DigEffect::Cascade { .. }),
                 ..
             })
         ),
@@ -71360,7 +71372,7 @@ fn throes_of_chaos_cascades_on_cast() {
         matches!(
             stack.last(),
             Some(StackEntry::Ability {
-                effect: Effect::Cascade { .. },
+                effect: Effect::Dig(DigEffect::Cascade { .. }),
                 ..
             })
         ),
@@ -71377,7 +71389,7 @@ const DEMONSTRATE_TOKEN_MAKER: CardDef = CardDef {
     demonstrate: true,
     ..sorcery(
         "Demonstrate Token Maker (test)",
-        &[spell_ability(Effect::CreateToken {
+        &[spell_ability(Effect::Token(TokenEffect::Create {
             token: creature("Squirrel", 1, 1, &[]),
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -71387,7 +71399,7 @@ const DEMONSTRATE_TOKEN_MAKER: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        })],
+        }))],
     )
 };
 
@@ -71413,7 +71425,7 @@ fn demonstrate_declined_copies_nothing() {
         matches!(
             stack.last(),
             Some(StackEntry::Ability {
-                effect: Effect::Demonstrate { .. },
+                effect: Effect::Copy(CopyEffect::Demonstrate { .. }),
                 ..
             })
         ),
@@ -71916,7 +71928,7 @@ fn yavimaya_bloomsage_back_face_is_the_channel_grant() {
     assert_eq!(back.abilities.len(), 1);
     assert_eq!(
         back.abilities[0].effect,
-        Effect::GrantChannelColorlessManaThisTurn
+        Effect::Misc(MiscEffect::GrantChannelColorlessManaThisTurn)
     );
 }
 
@@ -73267,14 +73279,14 @@ fn plargg_and_nassari_next_opponent_in_turn_order_picks() {
 }
 
 /// A test-only instant "Regenerate target creature." — grants one regeneration shield, isolating
-/// `Effect::RegenerateShield` from any real shield-granting card (the pool has none).
+/// `Effect::Control(ControlEffect::RegenerateShield)` from any real shield-granting card (the pool has none).
 const REGENERATE: CardDef = amount_spell!(
     "Regenerate (test)",
     SpellSpeed::Instant,
     Cost::FREE,
-    Effect::RegenerateShield {
+    Effect::Control(ControlEffect::RegenerateShield {
         target: TargetSpec::Creature,
-    }
+    })
 );
 
 /// A test-only instant dealing 1 damage to a target creature — enough marked damage to observe a
@@ -73283,7 +73295,7 @@ const DEAL_ONE: CardDef = amount_spell!(
     "Deal One (test)",
     SpellSpeed::Instant,
     Cost::FREE,
-    Effect::DealDamage {
+    Effect::Damage(DamageEffect::Target {
         amount: Amount::Fixed(1),
         target: TargetSpec::Creature,
         count: TargetCount {
@@ -73294,7 +73306,7 @@ const DEAL_ONE: CardDef = amount_spell!(
             strive_scaled: false,
         },
         divided: false,
-    }
+    })
 );
 
 /// A test-only instant giving a target creature -0/-2 until end of turn — drops a 2/2 to 0
@@ -73303,12 +73315,12 @@ const SHRINK_TWO: CardDef = amount_spell!(
     "Shrink (test)",
     SpellSpeed::Instant,
     Cost::FREE,
-    Effect::PumpUntilEndOfTurn {
+    Effect::Pump(PumpEffect::PumpUntilEndOfTurn {
         power: Amount::Fixed(0),
         toughness: Amount::Fixed(-2),
         target: TargetSpec::Creature,
         keywords: &[],
-    }
+    })
 );
 
 #[test]
@@ -74257,7 +74269,7 @@ fn umbral_collar_zealot_cannot_sacrifice_itself() {
 }
 
 // ---------------------------------------------------------------------------
-// Class levels (#133): Permanent::level, Ability::min_level, Effect::LevelUp,
+// Class levels (#133): Permanent::level, Ability::min_level, Effect::Counters(CountersEffect::LevelUp),
 // Trigger::YouLoseLifeFirstTimeEachTurn, SpellFilter::CastFromNonHandZone.
 // ---------------------------------------------------------------------------
 
@@ -74282,7 +74294,7 @@ const fn level_up_ability(level: u8) -> Ability {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::LevelUp { level },
+        effect: Effect::Counters(CountersEffect::LevelUp { level }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -74325,9 +74337,9 @@ const TEST_CLASS: CardDef = CardDef {
         level_up_ability(3),
         Ability {
             timing: Timing::Triggered(Trigger::Upkeep),
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(1),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -74336,9 +74348,9 @@ const TEST_CLASS: CardDef = CardDef {
         },
         Ability {
             timing: Timing::Triggered(Trigger::EndStep),
-            effect: Effect::GainLife {
+            effect: Effect::Life(LifeEffect::Gain {
                 amount: Amount::Fixed(10),
-            },
+            }),
             optional: false,
             min_level: 2,
             once_each_turn: false,
@@ -74401,9 +74413,9 @@ const TEST_LOSE_1_LIFE: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::LoseLife {
+        effect: Effect::Life(LifeEffect::Lose {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -74841,9 +74853,9 @@ const TEST_MODIFIED_DEATH_WATCHER: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -75450,13 +75462,13 @@ const SCREAM_EXILE_RETURN_CREATURES: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::ExileSelfWithTimeCounters {
+        effect: Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters {
             counters: 1,
-            on_expiry: &[Effect::MassReturnFromGraveyard {
+            on_expiry: &[Effect::Zone(ZoneEffect::MassReturnFromGraveyard {
                 filter: CardFilter::Creature,
                 all_players: false,
-            }],
-        },
+            })],
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -75979,9 +75991,9 @@ fn manifest_noncreature_cannot_be_turned_face_up() {
 /// trigger), for the synthetic morph creature below.
 const TURNED_FACE_UP_DRAW: Ability = Ability {
     timing: Timing::Triggered(Trigger::TurnedFaceUp),
-    effect: Effect::DrawCards {
+    effect: Effect::Draw(DrawEffect::Cards {
         count: Amount::Fixed(1),
-    },
+    }),
     optional: false,
     min_level: 0,
     once_each_turn: false,
@@ -76104,7 +76116,7 @@ const CREATURE_BOLT: CardDef = CardDef {
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
     },
-    abilities: &[spell_ability(Effect::DealDamage {
+    abilities: &[spell_ability(Effect::Damage(DamageEffect::Target {
         amount: Amount::Fixed(3),
         target: TargetSpec::Creature,
         count: TargetCount {
@@ -76115,7 +76127,7 @@ const CREATURE_BOLT: CardDef = CardDef {
             strive_scaled: false,
         },
         divided: false,
-    })],
+    }))],
     ..creature("Test Creature Bolt", 0, 0, &[])
 };
 
@@ -76125,11 +76137,13 @@ const HARD_COUNTER: CardDef = CardDef {
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
     },
-    abilities: &[spell_ability(Effect::CounterTargetSpell {
-        unless_pays: None,
-        filter: SpellFilter::AllSpells,
-        countered_dest: None,
-    })],
+    abilities: &[spell_ability(Effect::Misc(
+        MiscEffect::CounterTargetSpell {
+            unless_pays: None,
+            filter: SpellFilter::AllSpells,
+            countered_dest: None,
+        },
+    ))],
     ..creature("Test Hard Counter", 0, 0, &[])
 };
 
@@ -76137,10 +76151,10 @@ const HARD_COUNTER: CardDef = CardDef {
 /// the target of target spell or ability with a single target."
 const WILLBENDER_RETARGET: Ability = Ability {
     timing: Timing::Triggered(Trigger::TurnedFaceUp),
-    effect: Effect::ChangeTargetOfTargetSpellOrAbility {
+    effect: Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility {
         target: TargetSpec::SingleTargetSpellOnStack,
         optional: false,
-    },
+    }),
     optional: false,
     min_level: 0,
     once_each_turn: false,
@@ -76383,7 +76397,7 @@ const MULTI_BOLT: CardDef = CardDef {
     },
     abilities: &[Ability {
         timing: Timing::Spell,
-        effect: Effect::DealDamage {
+        effect: Effect::Damage(DamageEffect::Target {
             amount: Amount::Fixed(1),
             target: TargetSpec::Creature,
             count: TargetCount {
@@ -76394,7 +76408,7 @@ const MULTI_BOLT: CardDef = CardDef {
                 strive_scaled: false,
             },
             divided: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -76412,11 +76426,11 @@ const WILD_RICOCHET_RETARGET: Ability = Ability {
     timing: Timing::Spell,
     effect: Effect::Sequence {
         steps: &[
-            Effect::ChangeTargetOfTargetSpellOrAbility {
+            Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility {
                 target: TargetSpec::InstantOrSorcerySpellOnStack,
                 optional: true,
-            },
-            Effect::CopyTargetSpell,
+            }),
+            Effect::Copy(CopyEffect::TargetSpell),
         ],
     },
     optional: false,
@@ -77238,9 +77252,9 @@ fn plain_morph_creature_does_not_flip_on_damage() {
 /// A plain enter-the-battlefield draw, reused by the trigger-doubling test creatures.
 const ETB_DRAW: Ability = Ability {
     timing: Timing::Triggered(Trigger::Etb),
-    effect: Effect::DrawCards {
+    effect: Effect::Draw(DrawEffect::Cards {
         count: Amount::Fixed(1),
-    },
+    }),
     optional: false,
     min_level: 0,
     once_each_turn: false,
@@ -77257,9 +77271,9 @@ const CAST_WATCH_DRAW: Ability = Ability {
         nth_each_turn: None,
         from_hand: false,
     }),
-    effect: Effect::DrawCards {
+    effect: Effect::Draw(DrawEffect::Cards {
         count: Amount::Fixed(1),
-    },
+    }),
     optional: false,
     min_level: 0,
     once_each_turn: false,
@@ -77292,11 +77306,11 @@ const CAST_WATCHER: CardDef = CardDef {
 const INSTANT_CAUSE_DOUBLER: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::TriggerDoublingStatic {
+        effect: Effect::Static(StaticEffect::TriggerDoubling {
             source_subtypes: &[],
             source_other: false,
             caused_by_instant_or_sorcery_cast: true,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -77311,9 +77325,9 @@ const TEST_INSTANT: CardDef = CardDef {
     kind: CardKind::Spell {
         speed: SpellSpeed::Instant,
     },
-    abilities: &[spell_ability(Effect::GainLife {
+    abilities: &[spell_ability(Effect::Life(LifeEffect::Gain {
         amount: Amount::Fixed(1),
-    })],
+    }))],
     ..creature("Test Instant", 0, 0, &[])
 };
 
@@ -77324,7 +77338,7 @@ fn draw_triggers_on_stack(game: &Game) -> usize {
             matches!(
                 e,
                 StackEntry::Ability {
-                    effect: Effect::DrawCards { .. },
+                    effect: Effect::Draw(DrawEffect::Cards { .. }),
                     ..
                 }
             )
@@ -77385,7 +77399,7 @@ fn harmonic_prodigy_does_not_double_its_own_prowess() {
             matches!(
                 e,
                 StackEntry::Ability {
-                    effect: Effect::PumpSelfUntilEndOfTurn { .. },
+                    effect: Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn { .. }),
                     ..
                 }
             )
@@ -77850,7 +77864,7 @@ fn moments_peace_flashback_from_graveyard() {
 const TAJIC_STATIC: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::PreventNoncombatDamageToOtherCreaturesYouControl,
+        effect: Effect::Static(StaticEffect::PreventNoncombatDamageToOtherCreaturesYouControl),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -77865,7 +77879,7 @@ const BURN_FIXED_2: CardDef = amount_spell!(
     "Burn 2 (test)",
     SpellSpeed::Instant,
     Cost::FREE,
-    Effect::DealDamage {
+    Effect::Damage(DamageEffect::Target {
         amount: Amount::Fixed(2),
         target: TargetSpec::Creature,
         count: TargetCount {
@@ -77876,7 +77890,7 @@ const BURN_FIXED_2: CardDef = amount_spell!(
             strive_scaled: false,
         },
         divided: false,
-    }
+    })
 );
 
 #[test]
@@ -79346,9 +79360,9 @@ const OPPONENT_DAMAGE_WATCHER: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Triggered(Trigger::DealsDamageToOpponent),
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -79374,7 +79388,7 @@ const OPPONENT_DAMAGE_WATCHER: CardDef = CardDef {
                 exile_self: false,
                 graveyard_exile_target_count: 0,
             }),
-            effect: Effect::DealDamage {
+            effect: Effect::Damage(DamageEffect::Target {
                 amount: Amount::Fixed(1),
                 target: TargetSpec::Player,
                 count: TargetCount {
@@ -79385,7 +79399,7 @@ const OPPONENT_DAMAGE_WATCHER: CardDef = CardDef {
                     strive_scaled: false,
                 },
                 divided: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -80708,9 +80722,9 @@ fn seal_of_cleansing_sacrifices_itself_to_destroy_an_artifact() {
 const ETB_GAIN_LIFE: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(2),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -81366,7 +81380,7 @@ fn armadillo_cloak_gains_life_on_noncombat_damage() {
 
 /// Questing Phelddagrif (tsb): "{G}: This creature gets +1/+1 until end of turn. Target opponent
 /// creates a 1/1 green Hippo creature token." The self-pump and the opponent's compensation both
-/// land off one activation — `Effect::PumpSelfUntilEndOfTurn` (no target of its own) shares the
+/// land off one activation — `Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn)` (no target of its own) shares the
 /// ability's one chosen target with `create_token`'s opponent-restricted `TokenController::TargetOpponent`.
 #[test]
 fn questing_phelddagrif_green_gives_opponent_hippo() {
@@ -81844,7 +81858,7 @@ fn terror_cannot_target_an_artifact_or_black_creature() {
 fn ashes_to_ashes_deals_real_damage_to_you() {
     // Ashes to Ashes: "Exile two target nonartifact creatures. Ashes to Ashes deals 5 damage to
     // you." The self-damage rider is real damage (CR 120.1), routed through
-    // `Effect::DealDamageToSelf` rather than plain life loss — observable as an
+    // `Effect::Damage(DamageEffect::ToSelf)` rather than plain life loss — observable as an
     // `Event::DamageDealtToPlayer` marker alongside the life total dropping.
     let mut game = Game::new();
     let bear1 = game.spawn_on_battlefield(PlayerId(1), VANILLA);
@@ -82983,9 +82997,9 @@ const MAY_DRAW_UPKEEP: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Upkeep),
-        effect: Effect::DrawCards {
+        effect: Effect::Draw(DrawEffect::Cards {
             count: Amount::Fixed(1),
-        },
+        }),
         optional: true,
         min_level: 0,
         once_each_turn: false,
@@ -83732,10 +83746,10 @@ const TEST_MINUS_ONE_COUNTER_CREATURE: CardDef = CardDef {
     abilities: &[
         Ability {
             timing: Timing::Static,
-            effect: Effect::EntersWithCounters {
+            effect: Effect::Static(StaticEffect::EntersWithCounters {
                 amount: Amount::Fixed(1),
                 kind: Some(CounterKind::MinusOneMinusOne),
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -83761,7 +83775,7 @@ const TEST_MINUS_ONE_COUNTER_CREATURE: CardDef = CardDef {
                 exile_self: false,
                 graveyard_exile_target_count: 0,
             }),
-            effect: Effect::DestroyTarget {
+            effect: Effect::Destroy(DestroyEffect::DestroyTarget {
                 target: TargetSpec::Permanent(PermanentFilter::of(
                     TypeSet::ARTIFACT.union(TypeSet::ENCHANTMENT),
                 )),
@@ -83773,7 +83787,7 @@ const TEST_MINUS_ONE_COUNTER_CREATURE: CardDef = CardDef {
                     strive_scaled: false,
                 },
                 cant_be_regenerated: false,
-            },
+            }),
             optional: false,
             min_level: 0,
             once_each_turn: false,
@@ -83939,7 +83953,7 @@ fn wickerbough_elder_enters_with_minus_one_counter_and_removes_it_to_destroy() {
 // may instead mill exactly N and return this card from your graveyard to your hand." A replacement,
 // not a trigger — no stack item. Illegal when the library holds fewer than N (CR 702.52a).
 
-/// A free draw-one sorcery — casting it exercises a single `Effect::DrawCards { count: 1 }` fork.
+/// A free draw-one sorcery — casting it exercises a single `Effect::Draw(DrawEffect::Cards { count: 1 })` fork.
 const DRAW_ONE: CardDef = CardDef {
     name: "Draw One (test)",
     id: "",
@@ -83969,9 +83983,9 @@ const DRAW_ONE: CardDef = CardDef {
     otags: &[],
     keywords: &[],
     conditional_keywords: &[],
-    abilities: &[spell_ability(Effect::DrawCards {
+    abilities: &[spell_ability(Effect::Draw(DrawEffect::Cards {
         count: Amount::Fixed(1),
-    })],
+    }))],
     cycling: None,
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
@@ -84004,7 +84018,7 @@ const DRAW_ONE: CardDef = CardDef {
     dredge: None,
 };
 
-/// A free draw-three sorcery — resolving it fires an `Effect::DrawCards { count: 3 }`, whose three
+/// A free draw-three sorcery — resolving it fires an `Effect::Draw(DrawEffect::Cards { count: 3 })`, whose three
 /// individual draws each get their own dredge choke (CR 702.52, #200 slice 2).
 const DRAW_THREE: CardDef = CardDef {
     name: "Draw Three (test)",
@@ -84035,9 +84049,9 @@ const DRAW_THREE: CardDef = CardDef {
     otags: &[],
     keywords: &[],
     conditional_keywords: &[],
-    abilities: &[spell_ability(Effect::DrawCards {
+    abilities: &[spell_ability(Effect::Draw(DrawEffect::Cards {
         count: Amount::Fixed(3),
-    })],
+    }))],
     cycling: None,
     cycling_sacrifice: SacrificeCost::None,
     flashback: None,
@@ -84168,9 +84182,9 @@ const DIES_FODDER: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Dies),
-        effect: Effect::GainLife {
+        effect: Effect::Life(LifeEffect::Gain {
             amount: Amount::Fixed(1),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -84798,7 +84812,7 @@ fn shambling_shell_dredges_three() {
 static FLIPPER_BACK: CardDef = creature("Flipper Back", 3, 4, &[Keyword::Flying]);
 
 /// A constructed CR 712 flip card: its front face is a plain 2/2 whose only activated ability
-/// flips it ([`Effect::FlipSource`]) to [`FLIPPER_BACK`]. Reuses the `[back]` inline-def slot as
+/// flips it ([`Effect::Misc(MiscEffect::FlipSource)`]) to [`FLIPPER_BACK`]. Reuses the `[back]` inline-def slot as
 /// the flipped face (the same representation morph's face-down override reads through, but one-way
 /// and permanent).
 static FLIPPER_FRONT: CardDef = CardDef {
@@ -84821,7 +84835,7 @@ static FLIPPER_FRONT: CardDef = CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::FlipSource,
+        effect: Effect::Misc(MiscEffect::FlipSource),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -87055,7 +87069,7 @@ const BLOCKING_ANTHEM_LORD: CardDef = CardDef {
     kind: CardKind::Enchantment,
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::AnthemStatic {
+        effect: Effect::Static(StaticEffect::Anthem {
             power: Amount::Fixed(1),
             toughness: Amount::Fixed(0),
             self_only: false,
@@ -87072,7 +87086,7 @@ const BLOCKING_ANTHEM_LORD: CardDef = CardDef {
             condition: None,
             from_graveyard: false,
             all_players: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -87775,10 +87789,10 @@ const TEST_LAND_WITH_CHARGE_COUNTERS: CardDef = CardDef {
     conditional_keywords: &[],
     abilities: &[Ability {
         timing: Timing::Static,
-        effect: Effect::EntersWithCounters {
+        effect: Effect::Static(StaticEffect::EntersWithCounters {
             amount: Amount::Fixed(2),
             kind: Some(CounterKind::Charge),
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,
@@ -88676,7 +88690,7 @@ fn magmatic_force_deals_three_at_the_beginning_of_each_upkeep() {
 const MAKE_TEST_TOKEN: CardDef = CardDef {
     abilities: &[Ability {
         timing: Timing::Triggered(Trigger::Etb),
-        effect: Effect::CreateToken {
+        effect: Effect::Token(TokenEffect::Create {
             token: creature("Squirrel", 1, 1, &[]),
             count: Amount::Fixed(1),
             controller: TokenController::You,
@@ -88686,7 +88700,7 @@ const MAKE_TEST_TOKEN: CardDef = CardDef {
             enters_tapped_and_attacking: false,
             attacking_context: None,
             must_attack_defender: false,
-        },
+        }),
         optional: false,
         min_level: 0,
         once_each_turn: false,

@@ -25,7 +25,8 @@ timing = "etb"
 
 # you gain 7 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 7
 
 # When this creature dies, draw a card.
@@ -34,5 +35,6 @@ timing = "dies"
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

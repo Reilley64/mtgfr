@@ -36,7 +36,8 @@ red = 1
 
 # copy that spell. You may choose new targets for the copy.
 [[abilities.effects]]
-type = "copy_triggering_spell"
+type = "copy"
+mode = "copy_triggering_spell"
 count = 1
 may_choose_new_targets = true
 
@@ -54,6 +55,7 @@ blue = 1
 
 # create a token that's a copy of that creature.
 [[abilities.effects]]
-type = "create_token_copy"
+type = "token"
+mode = "create_copy"
 target = "none"
 count = 1

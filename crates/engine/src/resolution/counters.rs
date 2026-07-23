@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_counters_family(
+    pub(crate) fn mint_counters(
         &self,
-        effect: Effect,
+        effect: CountersEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -18,7 +18,7 @@ impl Game {
         match effect {
             // `kind = Some(k)` (Staff of the Storyteller's story counter) bypasses the +1/+1
             // replacement pipeline entirely, same as `EntersWithCounters`'s own kind split above.
-            Effect::PutCounters {
+            CountersEffect::PutCounters {
                 count,
                 kind: Some(kind),
                 ..
@@ -34,7 +34,7 @@ impl Game {
                     count,
                 }]
             }
-            Effect::PutCounters {
+            CountersEffect::PutCounters {
                 count,
                 kind: None,
                 divided,
@@ -45,7 +45,7 @@ impl Game {
                 // targets were chosen — see `Game::maybe_begin_counter_division` — and recorded
                 // on the resolving spell (`source` is that spell's own object id; `divided` only
                 // appears on `Timing::Spell` effects, so this always resolves through the spell
-                // path, mirroring `Effect::DealDamage`'s own divided read).
+                // path, mirroring `Effect::Damage(DamageEffect::Target)`'s own divided read).
                 let count = if divided {
                     self.spell(source)
                         .counter_division
@@ -67,7 +67,7 @@ impl Game {
                 }]
             }
             // Double the target's +1/+1 counters: place as many more as it already has (CR 614).
-            Effect::DoubleCounters { .. } => {
+            CountersEffect::DoubleCounters { .. } => {
                 let object = expect_object_target(target, "a counter-doubling effect");
                 self.doubled_counters_event(object, source_name)
                     .into_iter()
@@ -78,7 +78,7 @@ impl Game {
             // player puts a +1/+1 counter on each creature they control" reads `filter`'s
             // `you`/`opponent` axis from the chosen Player target's perspective instead).
             // Ids are snapshotted via `battlefield()` up front, same as `DestroyAll`.
-            Effect::PutCountersEach {
+            CountersEffect::PutCountersEach {
                 filter,
                 count,
                 target_player,
@@ -111,7 +111,7 @@ impl Game {
             // the controller (the caster — "can't attack *you*") as the protected player. Scans
             // every player's creatures matching `filter` (the survivors an all-players keep-one
             // edict left — see the `PlaceVowCounters` doc), not just the controller's own.
-            Effect::PlaceVowCounters { filter } => self
+            CountersEffect::PlaceVowCounters { filter } => self
                 .battlefield()
                 .into_iter()
                 .filter(|&id| self.permanent_matches(&filter, id, controller, Some(source)))
@@ -122,7 +122,7 @@ impl Game {
                 .collect(),
             // Nexus Mentality's other mode: "Remove all counters from target nonland permanent
             // you control. Draw a card for each counter removed this way."
-            Effect::RemoveAllCountersThenDraw { .. } => {
+            CountersEffect::RemoveAllCountersThenDraw { .. } => {
                 let object = expect_object_target(target, "a remove-all-counters-then-draw effect");
                 let (mut events, removed) = self.remove_all_counters_events(object);
                 events.extend(self.draw_events(controller, removed as u32));
@@ -130,7 +130,7 @@ impl Game {
             }
             // Breena: the attacking player (context) draws one; the controller's chosen creature
             // gets `counters` +1/+1 counters.
-            Effect::AttackerDrawsControllerCounters { attacker, counters } => {
+            CountersEffect::AttackerDrawsControllerCounters { attacker, counters } => {
                 let drawer = attacker.expect("the attacking player is filled in at placement");
                 let object = expect_object_target(target, "Breena's counter half");
                 let mut events = self.draw_events(drawer, 1);
@@ -146,12 +146,12 @@ impl Game {
             }
             // A Class's "Level N" ability (CR 717.2): the activation gate only offered this while
             // the source sat at level N-1, so resolution just records the new level.
-            Effect::LevelUp { level } => vec![Event::LeveledUp { source, level }],
+            CountersEffect::LevelUp { level } => vec![Event::LeveledUp { source, level }],
             // Ingenious Prodigy: "you may remove a +1/+1 counter from it." A negative
             // `CountersPlaced`, mirroring `RemoveAllCountersThenDraw`'s removal above; guarded so
             // a source with none doesn't go negative (unreachable in practice — the enclosing
             // ability's `SourceHasCounters` intervening-if already requires at least one).
-            Effect::RemoveCounterFromSelf => {
+            CountersEffect::RemoveCounterFromSelf => {
                 if self.plus_counters(source) <= 0 {
                     return vec![];
                 }
@@ -167,10 +167,10 @@ impl Game {
     }
 
     /// The shared core of "double `object`'s +1/+1 counters" (CR 614): as many more as it
-    /// already has, through the same replaceable-step pipeline [`Effect::PutCounters`] uses.
+    /// already has, through the same replaceable-step pipeline [`CountersEffect::PutCounters`] uses.
     /// `None` when doubling is a no-op — zero counters, or a replacement effect zeroes the
     /// result out — the same "no event for a no-op doubling" rule
-    /// [`Effect::DoubleCounters`] and [`Effect::DoubleCountersOnAttachedCreature`] both follow.
+    /// [`CountersEffect::DoubleCounters`] and [`CountersEffect::DoubleCountersOnAttachedCreature`] both follow.
     pub(crate) fn doubled_counters_event(
         &self,
         object: ObjectId,
@@ -213,7 +213,7 @@ impl Game {
     }
 
     /// Fractal Harness's attack trigger: double the +1/+1 counters on the creature this
-    /// Equipment is attached to (CR 614) — a no-target sibling of [`Effect::DoubleCounters`]
+    /// Equipment is attached to (CR 614) — a no-target sibling of [`CountersEffect::DoubleCounters`]
     /// pinned to `source`'s own `attached_to` instead of a chosen target. An unattached
     /// Equipment (unequipped, or between equip targets) has nothing to double (guard-return).
     pub(crate) fn resolve_double_counters_on_attached_creature(

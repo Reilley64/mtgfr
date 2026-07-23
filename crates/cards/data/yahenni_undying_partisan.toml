@@ -26,7 +26,8 @@ timing = "creature_an_opponent_controls_dies"
 
 # put a +1/+1 counter on Yahenni.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"
 
@@ -37,7 +38,8 @@ sacrifice = { creature = { other = true } }
 
 # Yahenni gains indestructible until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 0
 toughness = 0
 target = "this"

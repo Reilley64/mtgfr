@@ -21,6 +21,7 @@ timing = "nonland_permanent_you_control_dies_including_this"
 
 # each opponent sacrifices a permanent of their choice that shares a card type with it.
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "each_opponent"
 filter = "shares_type_with_dying_permanent"

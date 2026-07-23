@@ -26,7 +26,8 @@ timing = "static"
 
 # creatures you control have trample
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 keywords = ["trample"]
 from_graveyard = true
 condition = { type = "controls_lands_with_subtype", subtypes = ["Forest"], count = 1 }

@@ -26,7 +26,8 @@ timing = "creature_dealt_damage_by_this_dies"
 
 # put a +1/+1 counter on this creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"
 
@@ -40,6 +41,7 @@ red = 1
 
 # This creature deals 1 damage to target creature.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 1
 target = "creature"

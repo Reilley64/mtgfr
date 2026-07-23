@@ -26,5 +26,6 @@ timing = "attacks"
 # defending player reveals the top card of their library. If it's a land card, that player puts
 # it into their hand.
 [[abilities.effects]]
-type = "reveal_top_to_hand"
+type = "reveal"
+mode = "top_to_hand"
 filter = "land"

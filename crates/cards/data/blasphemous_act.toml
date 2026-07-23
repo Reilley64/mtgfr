@@ -23,5 +23,6 @@ timing = "spell"
 
 # Blasphemous Act deals 13 damage to each creature.
 [[abilities.effects]]
-type = "damage_each_creature"
+type = "damage"
+mode = "each_creature"
 amount = 13

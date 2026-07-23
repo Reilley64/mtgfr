@@ -21,6 +21,7 @@ timing = "etb"
 
 # exchange control of target land you control and target land an opponent controls
 [[abilities.effects]]
-type = "exchange_control"
+type = "control"
+mode = "exchange_control"
 first = { permanent = { types = "land", controller = "you" } }
 second = { permanent = { types = "land", controller = "opponent" } }

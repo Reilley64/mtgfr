@@ -35,7 +35,8 @@ type = "you_gained_life_this_turn"
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # Back face — Turn Stones ({B}{G} sorcery): "For each opponent, you create a 1/1 black and green
 # Pest creature token with 'When this token dies, you gain 1 life.'"
@@ -58,7 +59,8 @@ timing = "spell"
 # For each opponent, you create a 1/1 black and green Pest creature token with "When this token
 # dies, you gain 1 life."
 [[back.abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = 1
 controller = "one_per_opponent"

@@ -25,7 +25,8 @@ timing = "attacks"
 
 # put a +1/+1 counter on target attacking creature with lesser power
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = { permanent = { types = "creature", attacking = true, power_less_than_source = true, other = true } }
 
@@ -35,7 +36,8 @@ timing = "static"
 
 # Prevent all noncombat damage that would be dealt to other creatures you control
 [[abilities.effects]]
-type = "prevent_noncombat_damage_to_other_creatures_you_control"
+type = "static"
+mode = "prevent_noncombat_damage_to_other_creatures_you_control"
 
 # {R}{W}: Tajic gains first strike until end of turn.
 [[abilities]]
@@ -44,7 +46,8 @@ activation_cost = { red = 1, white = 1 }
 
 # Tajic gains first strike until end of turn
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 0
 toughness = 0
 target = "this"

@@ -187,29 +187,29 @@ impl Game {
             );
             return Ok(events);
         };
-        // A fight's second creature (see `Effect::Fight`) is chosen mid-resolution, not placed
+        // A fight's second creature (see `Effect::Misc(MiscEffect::Fight)`) is chosen mid-resolution, not placed
         // as a new ability — apply the mutual damage directly instead of going back on the stack.
-        if let Effect::Fight { enemy, .. } = effect {
+        if let Effect::Misc(MiscEffect::Fight { enemy, .. }) = effect {
             let your_creature = expect_object_target(Some(target), "a fight's chosen creature");
             let enemy_creature =
                 expect_object_target(enemy, "a fight's pre-resolved opponent creature");
             self.fight(your_creature, enemy_creature, &mut events);
-        } else if let Effect::MoveCounters {
+        } else if let Effect::Counters(CountersEffect::MoveCounters {
             from, all_kinds, ..
-        } = effect
+        }) = effect
         {
-            // A move-counters effect's destination (see `Effect::MoveCounters`) is chosen
+            // A move-counters effect's destination (see `Effect::Counters(CountersEffect::MoveCounters)`) is chosen
             // mid-resolution, same "act directly, don't go back on the stack" treatment Fight
             // gets above.
             let from = expect_object_target(from, "a move-counters effect's stashed source");
             let to = expect_object_target(Some(target), "a move-counters effect's destination");
             self.move_counters(from, to, all_kinds, &mut events);
-        } else if let Effect::Demonstrate { spell } = effect {
+        } else if let Effect::Copy(CopyEffect::Demonstrate { spell }) = effect {
             // The chosen opponent (CR 702.147a) also gets a copy — mint the controller's own
             // copy now (with its usual CR 707.10c retarget); the opponent's copy is deferred to
             // `Game::resume_deferred_sequence` so it mints only after the controller's copy's own
             // retarget choice (if any) is fully answered — two different copies' controllers can't
-            // share one `mint_spell_copies` call (see `Effect::Demonstrate`'s doc).
+            // share one `mint_spell_copies` call (see `Effect::Copy(CopyEffect::Demonstrate)`'s doc).
             let Target::Player(opponent) = target else {
                 return Err(Reject::IllegalTarget);
             };

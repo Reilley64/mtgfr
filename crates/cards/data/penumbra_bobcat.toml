@@ -22,7 +22,8 @@ timing = "dies"
 
 # create a 2/1 black Cat creature token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 
 token = "b1612d71-4e81-4ea7-95d9-05ed7a70e5f1"
 

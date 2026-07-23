@@ -30,6 +30,7 @@ timing = "spell"
 
 # All creatures get -X/-X until end of turn.
 [[abilities.effects]]
-type = "weaken_each_creature"
+type = "pump"
+mode = "weaken_each_creature"
 power = "x"
 toughness = "x"

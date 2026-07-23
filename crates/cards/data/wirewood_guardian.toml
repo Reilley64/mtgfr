@@ -26,6 +26,7 @@ generic = 2
 
 # Search your library for a Forest card, reveal it, put it into your hand, then shuffle.
 [[hand_ability.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = { land_with_subtype = ["Forest"] }
 to_zone = "hand"

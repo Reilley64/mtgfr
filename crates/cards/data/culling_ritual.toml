@@ -21,11 +21,13 @@ timing = "spell"
 
 # Destroy each nonland permanent with mana value 2 or less.
 [[abilities.effects]]
-type = "destroy_all"
+type = "destroy"
+mode = "destroy_all"
 filter = { types = "nonland", mv_max = 2 }
 
 # Add {B} or {G} for each permanent destroyed this way.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = [["black", "green"]]
 repeat = { permanents_destroyed_this_way = {} }

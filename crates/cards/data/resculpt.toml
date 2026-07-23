@@ -22,11 +22,13 @@ timing = "spell"
 
 # Exile target artifact or creature.
 [[abilities.effects]]
-type = "exile_target"
+type = "destroy"
+mode = "exile_target"
 target = { permanent = { types = ["artifact", "creature"] } }
 
 # Its controller creates a 4/4 blue and red Elemental creature token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 controller = "target_controller"
 token = "f81c047d-de36-4aed-806b-f14a290771a4"

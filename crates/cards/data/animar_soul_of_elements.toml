@@ -29,7 +29,8 @@ caster = "you"
 
 # put a +1/+1 counter on Animar.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"
 
@@ -39,6 +40,7 @@ timing = "static"
 
 # Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = "per_counter_on_source"
 filter = "creature"

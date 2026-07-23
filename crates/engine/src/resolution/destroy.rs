@@ -7,9 +7,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_destroy_family(
+    pub(crate) fn mint_destroy(
         &self,
-        effect: Effect,
+        effect: DestroyEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -17,7 +17,7 @@ impl Game {
     ) -> Vec<Event> {
         let _source_name = self.source_name_of(source);
         match effect {
-            Effect::DestroyTarget {
+            DestroyEffect::DestroyTarget {
                 cant_be_regenerated,
                 ..
             } => {
@@ -41,7 +41,7 @@ impl Game {
             // Mass destruction: every matching permanent goes to the graveyard (a commander
             // diverts; a token ceases to exist). Ids are minted sequentially, matching the order
             // `apply` will push them (as the SBA death sweep does). (CR 704)
-            Effect::DestroyAll { filter } => {
+            DestroyEffect::DestroyAll { filter } => {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
@@ -72,7 +72,7 @@ impl Game {
             // ceases to exist). Unlike `DestroyAll`, there's no indestructible guard — exile (CR 702.12, CR 111.7, CR 406.5)
             // isn't "destroy" (CR 701.18a vs CR 702.12b) — and no graveyard branch, just the
             // exile-or-command-zone choke point `ExileTarget` already uses (CR 903.9b).
-            Effect::ExileAll { filter } => {
+            DestroyEffect::ExileAll { filter } => {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.battlefield() {
@@ -95,14 +95,14 @@ impl Game {
                 }
                 events
             }
-            Effect::ExileTarget { .. } => {
+            DestroyEffect::ExileTarget { .. } => {
                 let object = expect_object_target(target, "exile");
                 vec![self.exile_or_command(object, self.next_object_id())]
             }
             // The O-Ring pattern (CR 603.6e): exile the target, linking it to this ability's own
             // `source` (the Aura) so `Game::check_linked_exile_returns` can send it back once the
             // Aura leaves.
-            Effect::ExileUntilSourceLeaves { .. } => {
+            DestroyEffect::ExileUntilSourceLeaves { .. } => {
                 let object = expect_object_target(target, "exile-until-source-leaves");
                 // CR 111.7: a token that leaves the battlefield ceases to exist rather than
                 // changing zones — it's never actually placed in exile, so there's nothing to
@@ -130,7 +130,7 @@ impl Game {
             // fork of its list): exile the target, linking it to this ability's own `source` so
             // `Game::check_leaves_battlefield_illusions` can mint its owner an Illusion once
             // `source` leaves. Unlike the O-Ring pattern, the card is never returned.
-            Effect::ExileTargetMintingIllusionOnLeave { .. } => {
+            DestroyEffect::ExileTargetMintingIllusionOnLeave { .. } => {
                 let object = expect_object_target(target, "exile-minting-illusion-on-leave");
                 // CR 111.7: a token that leaves the battlefield ceases to exist rather than
                 // changing zones — nothing to link back to this source.
@@ -156,7 +156,7 @@ impl Game {
             // Bojuka Bog / Remorseful Cleric: exile every card in the target player's graveyard.
             // Ids are minted sequentially, matching the order `apply` will push them (same
             // pattern as ReturnAllToHand's mass bounce).
-            Effect::ExileGraveyard => {
+            DestroyEffect::ExileGraveyard => {
                 let Some(Target::Player(player)) = target else {
                     panic!("exile-graveyard resolves with a chosen player target");
                 };
@@ -176,7 +176,7 @@ impl Game {
             }
             // Final Act's "Exile all graveyards" mode: every player's graveyard, no target — the
             // mass twin of `ExileGraveyard` above, minus the `owner_of(id) != player` filter.
-            Effect::ExileAllGraveyards => {
+            DestroyEffect::ExileAllGraveyards => {
                 let mut next = self.next_object_id();
                 let mut events = Vec::new();
                 for id in self.live_object_ids() {
@@ -194,7 +194,7 @@ impl Game {
             // Sacrifice one already-resolved object (never authored directly — see the variant's
             // doc). Guard-return if it's already left the battlefield (destroyed/exiled some
             // other way before the delayed trigger fired): nothing left to sacrifice.
-            Effect::SacrificeObject { object } => {
+            DestroyEffect::SacrificeObject { object } => {
                 let id = object.expect("filled in when the delayed sacrifice was scheduled");
                 if self.zone_of(id) != Zone::Battlefield {
                     return Vec::new();
@@ -213,7 +213,7 @@ impl Game {
             // authorable directly (unlike `SacrificeObject` above). No zone guard needed: this
             // only ever runs synchronously off the source's own ETB, which can't have already
             // left the battlefield.
-            Effect::SacrificeSource => {
+            DestroyEffect::SacrificeSource => {
                 let def = self.def_of(source);
                 vec![
                     self.sacrifice_event(source),
@@ -231,7 +231,7 @@ impl Game {
             // bounced/exiled in response — the "that creature" reference fizzles). `by` reads the
             // creature's own current controller, not this ability's — CR "that creature's
             // controller", not "you".
-            Effect::SacrificeEnchantedCreature { creature } => {
+            DestroyEffect::SacrificeEnchantedCreature { creature } => {
                 let Some(id) = creature else {
                     return Vec::new();
                 };
@@ -253,7 +253,7 @@ impl Game {
             // some other way before the delayed trigger fired): nothing left to exile. A token
             // ceases to exist instead of actually changing zones (CR 111.7) — the same
             // exile-or-command-zone choke point `ExileAll`/`ExileTarget` already use (CR 903.9b).
-            Effect::ExileObject { object } => {
+            DestroyEffect::ExileObject { object } => {
                 let id = object.expect("filled in when the delayed exile was scheduled");
                 if self.zone_of(id) != Zone::Battlefield {
                     return Vec::new();
@@ -276,7 +276,7 @@ impl Game {
             // An ordinary destroy otherwise, same shield-honoring shape as `DestroyTarget`:
             // indestructible ignores it (CR 702.12b), and a regeneration shield replaces it (CR
             // 701.15b).
-            Effect::DestroyTriggeringDamagedCreature { creature } => {
+            DestroyEffect::DestroyTriggeringDamagedCreature { creature } => {
                 let Some(id) = creature else {
                     return Vec::new();
                 };
@@ -291,23 +291,22 @@ impl Game {
                 }
                 vec![self.graveyard_or_command(id, self.next_object_id())]
             }
-            _ => unreachable!("destroy family mint received a non-family effect"),
         }
     }
 
-    /// Resolve [`Effect::DestroyAll`]: mint → snapshot into [`ResolutionFrame`] → apply.
+    /// Resolve [`DestroyEffect::DestroyAll`]: mint → snapshot into [`ResolutionFrame`] → apply.
     /// Owns the "destroyed this way" choreography so [`Game::run`] stays a thin dispatcher.
     pub(crate) fn resolve_destroy_all(
         &mut self,
-        effect: Effect,
+        effect: DestroyEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
         x: u32,
         events: &mut Vec<Event>,
     ) {
-        debug_assert!(matches!(effect, Effect::DestroyAll { .. }));
-        let evs = self.execute_effect(effect, controller, source, target, x);
+        debug_assert!(matches!(effect, DestroyEffect::DestroyAll { .. }));
+        let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
         self.resolution_frame.destroyed_this_way.clear();
         for e in &evs {
             match *e {
@@ -342,18 +341,18 @@ impl Game {
         events.extend(evs);
     }
 
-    /// Resolve [`Effect::ExileAll`]: mint → snapshot power-exiled-this-way → apply.
+    /// Resolve [`DestroyEffect::ExileAll`]: mint → snapshot power-exiled-this-way → apply.
     pub(crate) fn resolve_exile_all(
         &mut self,
-        effect: Effect,
+        effect: DestroyEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
         x: u32,
         events: &mut Vec<Event>,
     ) {
-        debug_assert!(matches!(effect, Effect::ExileAll { .. }));
-        let evs = self.execute_effect(effect, controller, source, target, x);
+        debug_assert!(matches!(effect, DestroyEffect::ExileAll { .. }));
+        let evs = self.execute_effect(Effect::Destroy(effect), controller, source, target, x);
         self.resolution_frame.power_exiled_this_way.clear();
         for e in &evs {
             match *e {

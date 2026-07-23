@@ -30,7 +30,8 @@ timing = "static"
 
 # Enchanted creature gets +1/+1 and has vigilance.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 1
 toughness = 1
 keywords = ["vigilance"]

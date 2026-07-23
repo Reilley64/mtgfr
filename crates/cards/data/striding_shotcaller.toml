@@ -35,7 +35,8 @@ who = "your_creatures"
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # Back face — Run the Play ({X}{G}{U} sorcery): "Put a +1/+1 counter on each of up to X target
 # creatures. Those creatures gain flying until end of turn. Draw a card."
@@ -58,14 +59,16 @@ timing = "spell"
 
 # Put a +1/+1 counter on each of up to X target creatures.
 [[back.abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "creature"
 targets = { min = 0, max = 0, x_scaled = true }
 
 # Those creatures gain flying until end of turn.
 [[back.abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 0
 toughness = 0
 target = "creature"
@@ -77,5 +80,6 @@ timing = "spell"
 
 # Draw a card.
 [[back.abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

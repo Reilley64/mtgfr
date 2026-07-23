@@ -21,7 +21,8 @@ timing = "static"
 
 # Attacking Pests you control get +1/+0 and have deathtouch.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 0
 subtypes = ["Pest"]
@@ -40,11 +41,13 @@ green = 1
 # Exile target card from a graveyard. If a creature card is exiled this way, create a 1/1 black
 # and green Pest creature token with "When this token dies, you gain 1 life."
 [[abilities.effects]]
-type = "exile_target_graveyard_card_then_if_creature"
+type = "zone"
+mode = "exile_target_graveyard_card_then_if_creature"
 
 # create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."
 [[abilities.effects.then]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = 1
 

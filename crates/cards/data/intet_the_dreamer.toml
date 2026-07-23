@@ -39,7 +39,8 @@ blue = 1
 # remains exiled. You may play that card without paying its mana cost for as long as Intet remains
 # on the battlefield.
 [[abilities.effects]]
-type = "exile_top_may_play"
+type = "mill"
+mode = "exile_top_may_play"
 count = 1
 face_down = true
 free_while_source = true

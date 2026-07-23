@@ -27,6 +27,7 @@ taps_self = true
 
 # Destroy target creature. It can't be regenerated.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = "creature"
 cant_be_regenerated = true

@@ -26,7 +26,8 @@ timing = "etb"
 
 # create a Food token
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "a468338f-635e-4206-89d6-72d723071d45"
 count = 1
 
@@ -40,7 +41,8 @@ green = 1
 
 # Create a Food token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "a468338f-635e-4206-89d6-72d723071d45"
 count = 1
 
@@ -51,5 +53,6 @@ sacrifice = { permanent = { subtypes = ["Food"] } }
 
 # Add one mana of any color.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]

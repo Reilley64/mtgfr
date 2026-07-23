@@ -28,7 +28,8 @@ timing = "spell"
 
 # Each opponent sacrifices a nontoken artifact of their choice.
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "each_opponent"
 filter = { types = "artifact", token = "nontoken" }
 
@@ -39,7 +40,8 @@ timing = "spell"
 
 # Return target artifact or creature card with mana value 2 or less from your graveyard to the battlefield.
 [[abilities.effects]]
-type = "reanimate_to_battlefield"
+type = "zone"
+mode = "reanimate_to_battlefield"
 target = { card_in_graveyard = { whose = "yours", filter = { artifact_or_creature_with_mana_value_at_most = 2 } } }
 
 # Mode 3 — creatures you control get +1/+1 and gain trample until end of turn.
@@ -48,7 +50,8 @@ timing = "spell"
 
 # Creatures you control get +1/+1 and gain trample until end of turn.
 [[abilities.effects]]
-type = "pump_creatures_you_control_until_end_of_turn"
+type = "pump"
+mode = "pump_creatures_you_control_until_end_of_turn"
 power = 1
 toughness = 1
 keywords = ["trample"]

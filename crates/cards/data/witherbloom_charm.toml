@@ -24,11 +24,13 @@ timing = "spell"
 
 # You may sacrifice a permanent.
 [[abilities.effects]]
-type = "may_sacrifice"
+type = "choice"
+mode = "may_sacrifice"
 
 # If you do, draw two cards.
 [[abilities.effects.then]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 2
 
 # Mode 1 — "You gain 5 life."
@@ -37,7 +39,8 @@ timing = "spell"
 
 # You gain 5 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 5
 
 # Mode 2 — "Destroy target nonland permanent with mana value 2 or less."
@@ -46,5 +49,6 @@ timing = "spell"
 
 # Destroy target nonland permanent with mana value 2 or less.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "nonland", mv_max = 2 } }

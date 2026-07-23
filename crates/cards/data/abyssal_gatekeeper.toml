@@ -22,6 +22,7 @@ timing = "dies"
 
 # each player sacrifices a creature of their choice.
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "all_players"
 filter = "creature"

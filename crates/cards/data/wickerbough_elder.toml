@@ -22,7 +22,8 @@ timing = "static"
 
 # This creature enters with a -1/-1 counter on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = 1
 kind = "minus_one_minus_one"
 
@@ -37,5 +38,6 @@ green = 1
 
 # Destroy target artifact or enchantment.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "artifact_or_enchantment" } }

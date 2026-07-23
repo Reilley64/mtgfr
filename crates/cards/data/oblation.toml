@@ -18,10 +18,12 @@ timing = "spell"
 
 # The owner of target nonland permanent shuffles it into their library
 [[abilities.effects]]
-type = "shuffle_target_permanent_into_library"
+type = "zone"
+mode = "shuffle_target_permanent_into_library"
 target = { permanent = "nonland" }
 
 # then draws two cards.
 [[abilities.effects]]
-type = "target_owner_draws"
+type = "draw"
+mode = "target_owner"
 count = 2

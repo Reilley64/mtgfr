@@ -24,6 +24,7 @@ sacrifice = "creature"
 
 # Put a +1/+1 counter on this creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"

@@ -29,12 +29,14 @@ red = 1
 
 # Nin deals X damage to target creature.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = "x"
 target = "creature"
 
 # That creature's controller draws X cards.
 [[abilities.effects]]
-type = "target_owner_draws"
+type = "draw"
+mode = "target_owner"
 count = "x"
 controller = true

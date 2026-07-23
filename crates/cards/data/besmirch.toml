@@ -24,12 +24,14 @@ timing = "spell"
 
 # gain control of target creature
 [[abilities.effects]]
-type = "gain_control_until_end_of_turn"
+type = "control"
+mode = "gain_control_until_end_of_turn"
 target = "creature"
 
 # it gains haste
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 0
 toughness = 0
 target = "creature"
@@ -37,10 +39,12 @@ keywords = ["haste"]
 
 # Untap and goad that creature.
 [[abilities.effects]]
-type = "untap_target"
+type = "control"
+mode = "untap_target"
 target = "creature"
 
 # goad that creature
 [[abilities.effects]]
-type = "goad_target"
+type = "control"
+mode = "goad_target"
 target = "creature"

@@ -25,5 +25,6 @@ timing = "each_other_player_untap_step"
 
 # Untap all creatures you control
 [[abilities.effects]]
-type = "untap_all"
+type = "control"
+mode = "untap_all"
 filter = "creature"

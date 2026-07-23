@@ -23,13 +23,15 @@ timing = "spell"
 
 # Exile all creatures.
 [[abilities.effects]]
-type = "exile_all"
+type = "destroy"
+mode = "exile_all"
 filter = "creatures"
 
 # Each player creates a 0/0 green and blue Fractal creature token and puts a number of +1/+1
 # counters on it equal to the total power of creatures they controlled that were exiled this way.
 [[abilities.effects]]
-type = "each_player_creates_fractal_from_exiled_power"
+type = "choice"
+mode = "each_player_creates_fractal_from_exiled_power"
 
 token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
 

@@ -23,7 +23,8 @@ timing = "spell"
 
 # Abrade deals 3 damage to target creature.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 3
 target = "creature"
 
@@ -33,5 +34,6 @@ timing = "spell"
 
 # Destroy target artifact.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = "artifact" }

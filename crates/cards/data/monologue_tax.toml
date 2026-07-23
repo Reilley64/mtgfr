@@ -21,5 +21,6 @@ nth_each_turn = 2
 
 # you create a Treasure token.
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 1

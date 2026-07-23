@@ -26,7 +26,8 @@ timing = "static"
 
 # Instant and sorcery spells you cast cost {1} less to cast.
 [[abilities.effects]]
-type = "reduce_spell_cost"
+type = "static"
+mode = "reduce_spell_cost"
 amount = 1
 filter = "instant_or_sorcery"
 
@@ -44,8 +45,9 @@ blue = 1
 # When you next cast an instant or sorcery spell this turn, copy it for each time you've cast
 # your commander from the command zone this game. You may choose new targets for the copies.
 [[abilities.effects]]
-type = "schedule_next_cast_trigger"
+type = "misc"
+mode = "schedule_next_cast_trigger"
 filter = "instant_or_sorcery"
 then = [
-        { type = "copy_triggering_spell", count = "commander_casts_from_command_zone", may_choose_new_targets = true },
+        { type = "copy", mode = "copy_triggering_spell", count = "commander_casts_from_command_zone", may_choose_new_targets = true },
     ]

@@ -30,7 +30,8 @@ timing = "etb"
 
 # create a Treasure token
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 1
 
 # Artifacts you control have "{T}: Add one mana of any color. Spend this mana only to cast an
@@ -41,7 +42,8 @@ timing = "static"
 # Artifacts you control have "{T}: Add one mana of any color. Spend this mana only to cast an
 # instant or sorcery spell."
 [[abilities.effects]]
-type = "grant_mana_ability"
+type = "static"
+mode = "grant_mana_ability"
 mana = ["any"]
 restriction = "instant_or_sorcery"
 

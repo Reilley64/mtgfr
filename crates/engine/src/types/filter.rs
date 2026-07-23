@@ -80,11 +80,11 @@ pub enum TargetSpec {
     /// A spell currently on the stack matching a [`SpellFilter`] (Counterspell / Arcane Denial's
     /// unrestricted "counter target spell" is [`SpellFilter::AllSpells`]; Decisive Denial's
     /// "target noncreature spell" and Quandrix Command's "target artifact or enchantment spell"
-    /// narrow it). [`Effect::CounterTargetSpell::filter`] supplies the filter.
+    /// narrow it). [`Effect::Misc(MiscEffect::CounterTargetSpell)::filter`] supplies the filter.
     SpellOnStack(SpellFilter),
     /// A spell currently on the stack that has exactly one target (Willbender's "target spell …
     /// with a single target", CR 114.6). Targets the stack object; used by
-    /// [`Effect::ChangeTargetOfTargetSpellOrAbility`] to pick the spell to bend.
+    /// [`Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility)`] to pick the spell to bend.
     /// ponytail: CR's "spell or ability" also reaches a single-target activated/triggered ability
     /// on the stack, but stack abilities carry no object identity in this engine (they're keyed by
     /// source, not a chosen `Target`), so only spells are targetable here — see #163's residual gap.
@@ -110,7 +110,7 @@ pub enum TargetSpec {
     /// without a new variant; the older unit variants above stay as convenient sugar.
     Permanent(PermanentFilter),
     /// A creature *token* the choosing player controls — the "creature token you control" chosen
-    /// by Populate (CR 701.32), used with [`Effect::CreateTokenCopy`].
+    /// by Populate (CR 701.32), used with [`Effect::Token(TokenEffect::CreateCopy)`].
     /// ponytail: populate *chooses* a token, it doesn't *target* one (CR 701.32 is a choice, not a
     /// target); reusing the target machinery is faithful enough — the pool has no card where the
     /// choose/target distinction (hexproof, shroud) matters.
@@ -161,7 +161,7 @@ impl Target {
     }
 }
 
-/// Which spells a static cost-reducer ([`Effect::ReduceSpellCost`]) applies to — the "spells
+/// Which spells a static cost-reducer ([`Effect::Static(StaticEffect::ReduceSpellCost)`]) applies to — the "spells
 /// you cast" clause of a "…cost {N} less" ability. Matched against the card being cast.
 /// ponytail: the shapes the pool needs; color/tribe filters ("black creature spells", "Goblin
 /// spells") grow from a real card that wants one (they'd need a color/subtype read).
@@ -247,7 +247,7 @@ pub enum SpellFilter {
     Color(Color),
 }
 
-/// Which library cards a [`Effect::SearchLibrary`] may find (CR 701.19 — "search for a card").
+/// Which library cards a [`Effect::Dig(DigEffect::SearchLibrary)`] may find (CR 701.19 — "search for a card").
 /// ponytail: the shapes the pool needs; a color filter ("a black creature card") grows from a
 /// real card that wants one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -471,7 +471,7 @@ impl CardFilter {
     }
 }
 
-/// Where a found card goes at the end of a [`Effect::SearchLibrary`].
+/// Where a found card goes at the end of a [`Effect::Dig(DigEffect::SearchLibrary)`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -499,9 +499,9 @@ pub enum SearchDest {
     Exile,
 }
 
-/// Where a card selected by [`Effect::LookAtTop`] goes (the "put that card into …" destination).
-/// `Battlefield`'s `tapped` gate lives as a sibling flag on [`Effect::LookAtTop::dest_tapped`]
-/// (mirroring [`Effect::RevealUntil`]'s `matched_dest`/`matched_tapped` split) rather than a
+/// Where a card selected by [`Effect::Dig(DigEffect::LookAtTop)`] goes (the "put that card into …" destination).
+/// `Battlefield`'s `tapped` gate lives as a sibling flag on [`Effect::Dig(DigEffect::LookAtTop)::dest_tapped`]
+/// (mirroring [`Effect::Reveal(RevealEffect::Until)`]'s `matched_dest`/`matched_tapped` split) rather than a
 /// struct-variant field, so the TOML tag stays a bare `dest = "battlefield"` string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
@@ -514,13 +514,13 @@ pub enum TopDest {
     Hand,
     /// Onto the battlefield under the selecting player's control (Armored Skyhunter's "put an
     /// Aura or Equipment card from among them onto the battlefield"), routed through
-    /// [`Event::SearchedToBattlefield`] — the same event [`Effect::SearchLibrary`] /
-    /// [`Effect::RevealUntil`] use.
+    /// [`Event::SearchedToBattlefield`] — the same event [`Effect::Dig(DigEffect::SearchLibrary)`] /
+    /// [`Effect::Reveal(RevealEffect::Until)`] use.
     Battlefield,
 }
 
-/// Where the *non-matching* revealed/looked-at cards go, shared by [`Effect::LookAtTop`],
-/// [`Effect::RevealUntil`], and [`Effect::RevealTopCards`].
+/// Where the *non-matching* revealed/looked-at cards go, shared by [`Effect::Dig(DigEffect::LookAtTop)`],
+/// [`Effect::Reveal(RevealEffect::Until)`], and [`Effect::Reveal(RevealEffect::TopCards)`].
 /// ponytail: a `Graveyard` arm (a look-then-select whose rest is milled) is the next unlock;
 /// add it (routing through [`Event::Milled`], the surveil path) from the first card that needs
 /// it.
@@ -539,7 +539,7 @@ pub enum RestDest {
     Hand,
 }
 
-/// Whose library a [`Effect::SearchLibrary`] searches (CR 701.19 — "search their library").
+/// Whose library a [`Effect::Dig(DigEffect::SearchLibrary)`] searches (CR 701.19 — "search their library").
 /// Most search effects are self-tutors/ramp; a few (Path to Exile, Assassin's Trophy) hand the
 /// search to the *affected permanent's* controller as compensation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -643,8 +643,8 @@ pub enum ColorFilter {
 }
 
 /// A composable predicate over a battlefield permanent — the one filter behind targeted
-/// removal ([`TargetSpec::Permanent`]), mass effects ([`Effect::DestroyAll`] /
-/// [`Effect::ReturnAllToHand`]), and sacrifice edicts ([`Effect::EachPlayerSacrifices`]).
+/// removal ([`TargetSpec::Permanent`]), mass effects ([`Effect::Destroy(DestroyEffect::DestroyAll)`] /
+/// [`Effect::Zone(ZoneEffect::ReturnAllToHand)`]), and sacrifice edicts ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]).
 /// Every axis is independent; an unset axis imposes no restriction. Evaluated by
 /// [`Game::permanent_matches`], which reads the axes needing game state. Kept `Copy` so
 /// [`CardDef`] stays `Copy`.
@@ -657,7 +657,7 @@ pub struct PermanentFilter {
     pub types: TypeSet,
     /// Restrict to permanents carrying any of these subtypes (Goldspan Dragon's "Treasures you
     /// control" — `["Treasure"]`, distinguishing a Treasure from any other artifact); empty
-    /// matches every subtype. Same shape/rationale as [`Effect::AnthemStatic`]'s own `subtypes`
+    /// matches every subtype. Same shape/rationale as [`Effect::Static(StaticEffect::Anthem)`]'s own `subtypes`
     /// field (a separate axis there since an anthem always targets creatures specifically).
     /// Deserialized by hand alongside the rest of [`PermanentFilter`]'s table form (see `de.rs`)
     /// rather than a derive attribute — `PermanentFilter` has a hand-written `Deserialize` impl
@@ -826,7 +826,7 @@ impl PermanentFilter {
     }
 }
 
-/// Which players a multi-player sacrifice edict ([`Effect::EachPlayerSacrifices`]) affects.
+/// Which players a multi-player sacrifice edict ([`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`]) affects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(
     feature = "card-dsl",
@@ -846,7 +846,7 @@ pub enum EdictScope {
     TargetedPlayers,
 }
 
-/// Who controls a token minted by [`Effect::CreateToken`] (CR 111.4's "under its controller's
+/// Who controls a token minted by [`Effect::Token(TokenEffect::Create)`] (CR 111.4's "under its controller's
 /// control" default is the ability's own controller; some effects hand the token to a different
 /// player instead).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -893,7 +893,7 @@ pub enum TokenController {
     EachOtherPlayer,
 }
 
-/// Who acts when a [`Effect::ScheduleAtNextUpkeep`] delayed trigger fires (CR 603.7).
+/// Who acts when a [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`] delayed trigger fires (CR 603.7).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(
     feature = "card-dsl",

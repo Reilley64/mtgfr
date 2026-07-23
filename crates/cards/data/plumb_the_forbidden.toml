@@ -25,15 +25,18 @@ timing = "spell"
 
 # You draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # and lose 1 life.
 [[abilities.effects]]
-type = "lose_life"
+type = "life"
+mode = "lose"
 amount = 1
 
 # copy this spell for each creature sacrificed this way.
 [[abilities.effects]]
-type = "copy_this_spell"
+type = "copy"
+mode = "this_spell"
 count = "spell_sacrifice_count"

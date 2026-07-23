@@ -24,7 +24,8 @@ timing = "static"
 
 # This creature gets +1/+0 for each artifact you control.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 self_only = true
 power = { per_permanent = { types = "artifact", controller = "you" } }
 
@@ -34,5 +35,6 @@ timing = "magecraft"
 
 # create a Treasure token.
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 1

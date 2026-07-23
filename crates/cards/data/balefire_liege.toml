@@ -26,7 +26,8 @@ timing = "static"
 
 # Other red creatures you control get +1/+1.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 1
 colors = ["red"]
@@ -38,7 +39,8 @@ timing = "static"
 
 # Other white creatures you control get +1/+1.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 1
 colors = ["white"]
@@ -52,7 +54,8 @@ caster = "you"
 
 # this creature deals 3 damage to target player or planeswalker.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 3
 target = "player_or_planeswalker"
 
@@ -64,5 +67,6 @@ caster = "you"
 
 # you gain 3 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 3

@@ -24,5 +24,6 @@ who = "this"
 
 # it deals that much damage to each other opponent
 [[abilities.effects]]
-type = "damage_each_other_opponent"
+type = "damage"
+mode = "each_other_opponent"
 amount = "combat_damage_dealt"

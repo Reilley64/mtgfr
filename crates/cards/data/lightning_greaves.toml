@@ -21,7 +21,8 @@ timing = "static"
 
 # Equipped creature has haste and shroud.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 0
 toughness = 0
 keywords = ["haste", "shroud"]
@@ -32,4 +33,5 @@ timing = "activated"
 
 # Equip {0}
 [[abilities.effects]]
-type = "equip"
+type = "control"
+mode = "equip"

@@ -27,7 +27,8 @@ timing = "magecraft"
 # create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it, where X is
 # that spell's mana value.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
 count = 1
 enters_with = "triggering_spell_mana_value"
@@ -41,7 +42,8 @@ blue = 1
 
 # Target creature token can't be blocked this turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 0
 toughness = 0
 target = { permanent = { types = "creature", token = "token" } }

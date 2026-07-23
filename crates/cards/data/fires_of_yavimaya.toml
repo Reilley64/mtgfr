@@ -21,7 +21,8 @@ timing = "static"
 
 # Creatures you control have haste.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 keywords = ["haste"]
 
 # Sacrifice this enchantment: Target creature gets +2/+2 until end of turn.
@@ -31,7 +32,8 @@ sacrifice = "this"
 
 # Target creature gets +2/+2 until end of turn.
 [[abilities.effects]]
-type = "pump_until_end_of_turn"
+type = "pump"
+mode = "pump_until_end_of_turn"
 power = 2
 toughness = 2
 target = "creature"

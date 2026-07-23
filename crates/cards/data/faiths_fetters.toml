@@ -24,7 +24,8 @@ timing = "etb"
 
 # you gain 4 life.
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = 4
 
 # Enchanted permanent can't attack or block, and its activated abilities can't be activated
@@ -35,7 +36,8 @@ timing = "static"
 # Enchanted permanent can't attack or block, and its activated abilities can't be activated
 # unless they're mana abilities.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 cant_attack = true
 cant_block = true
 activated_abilities = "mana_only"

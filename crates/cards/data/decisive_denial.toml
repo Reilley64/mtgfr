@@ -27,7 +27,8 @@ timing = "spell"
 
 # Target creature you control fights target creature you don't control.
 [[abilities.effects]]
-type = "fight"
+type = "misc"
+mode = "fight"
 
 # Mode 1 — "Counter target noncreature spell unless its controller pays {3}."
 [[abilities]]
@@ -35,6 +36,7 @@ timing = "spell"
 
 # Counter target noncreature spell unless its controller pays {3}.
 [[abilities.effects]]
-type = "counter_target_spell"
+type = "misc"
+mode = "counter_target_spell"
 unless_pays = 3
 filter = "noncreature"

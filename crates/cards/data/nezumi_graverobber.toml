@@ -31,14 +31,15 @@ black = 1
 
 # Exile target card from an opponent's graveyard.
 [[abilities.effects]]
-type = "exile_target"
+type = "destroy"
+mode = "exile_target"
 target = { card_in_graveyard = { whose = "opponents", filter = "any_card" } }
 
 # If no cards are in that graveyard, flip this creature.
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "target_card_owner_graveyard_empty" }
-then = [{ type = "flip_source" }]
+then = [{ type = "misc", mode = "flip_source" }]
 
 [back]
 name = "Nighteyes the Desecrator"
@@ -61,5 +62,6 @@ black = 1
 
 # Put target creature card from a graveyard onto the battlefield under your control.
 [[back.abilities.effects]]
-type = "reanimate_to_battlefield"
+type = "zone"
+mode = "reanimate_to_battlefield"
 target = { card_in_graveyard = { whose = "any", filter = "creature" } }

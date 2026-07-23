@@ -23,7 +23,8 @@ activation_cost = { blue = 1, red = 1 }
 
 # this land becomes a 2/1 blue and red Elemental creature. It's still a land.
 [[abilities.effects]]
-type = "animate_self_until_end_of_turn"
+type = "pump"
+mode = "animate_self_until_end_of_turn"
 add_types = "creature"
 add_subtypes = ["Elemental"]
 base_power = 2
@@ -36,7 +37,8 @@ timing = "static"
 
 # this creature has first strike
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 self_only = true
 keywords = ["first_strike"]
 condition = { type = "during_your_turn" }
@@ -47,5 +49,6 @@ timing = "attacks"
 
 # scry 1.
 [[abilities.effects]]
-type = "scry"
+type = "dig"
+mode = "scry"
 count = 1

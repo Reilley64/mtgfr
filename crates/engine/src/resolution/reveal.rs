@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_reveal_family(
+    pub(crate) fn mint_reveal(
         &self,
-        effect: Effect,
+        effect: RevealEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -17,7 +17,7 @@ impl Game {
         let _source_name = self.source_name_of(source);
         match effect {
             // Goblin Guide's attack trigger: reveal the defender's top card; land, to hand.
-            Effect::RevealTopToHand { filter, defender } => {
+            RevealEffect::TopToHand { filter, defender } => {
                 let defender = defender.expect("filled from attack context when placed");
                 let Some(&card) = self.players[defender.0 as usize].library.first() else {
                     return Vec::new(); // an empty library reveals nothing (CR 120.3-ish).
@@ -42,7 +42,7 @@ impl Game {
             // out, CR 120-style "as many as possible"); each land goes to `matched_dest`
             // (battlefield tapped), every other revealed card to `rest_dest` (bottom of
             // library). Deterministic given the library, so no player choice is involved.
-            Effect::RevealUntil {
+            RevealEffect::Until {
                 filter,
                 count,
                 matched_dest,
@@ -129,7 +129,7 @@ impl Game {
             // possible"). Every match goes to `matched_dest`, deployed untapped instead of
             // `matched_tapped` when `deploy_untapped_if` holds (spell mastery); every other
             // revealed card goes to `rest_dest`.
-            Effect::RevealTopCards {
+            RevealEffect::TopCards {
                 count,
                 filter,
                 matched_dest,
@@ -212,7 +212,7 @@ impl Game {
             }
             // Keen Duelist's upkeep trigger: both players reveal their top card, each loses life
             // to the *other's* mana value, then each puts their own revealed card into hand.
-            Effect::RevealTopAndDrainMutual => {
+            RevealEffect::TopAndDrainMutual => {
                 let Some(Target::Player(opponent)) = target else {
                     panic!("reveal-top-and-drain-mutual resolves with a chosen opponent target");
                 };
@@ -267,8 +267,6 @@ impl Game {
                 }
                 events
             }
-
-            _ => unreachable!("reveal family mint received a non-family effect"),
         }
     }
 }

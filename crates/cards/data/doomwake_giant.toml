@@ -30,7 +30,8 @@ controller = "you"
 
 # creatures your opponents control get -1/-1 until end of turn
 [[abilities.effects]]
-type = "weaken_each_creature"
+type = "pump"
+mode = "weaken_each_creature"
 power = 1
 toughness = 1
 opponents_only = true

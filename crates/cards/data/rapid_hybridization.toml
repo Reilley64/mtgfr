@@ -20,12 +20,14 @@ timing = "spell"
 
 # Destroy target creature. It can't be regenerated.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = "creature"
 cant_be_regenerated = true
 
 # That creature's controller creates a 3/3 green Frog Lizard creature token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 controller = "target_controller"
 token = "8653c69b-99a9-4881-a14c-68ba928c34d5"

@@ -21,7 +21,8 @@ timing = "static"
 
 # Creatures you control get +1/+1.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 1
 
@@ -31,6 +32,7 @@ timing = "static"
 
 # Whenever you tap a land for mana, add one mana of any type that land produced.
 [[abilities.effects]]
-type = "tapped_for_mana_bonus"
+type = "static"
+mode = "tapped_for_mana_bonus"
 scope = "controller"
 bonus_color = "produced"

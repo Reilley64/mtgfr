@@ -24,12 +24,14 @@ timing = "spell"
 
 # Surveil 2
 [[abilities.effects]]
-type = "surveil"
+type = "dig"
+mode = "surveil"
 count = 2
 
 # then draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # Mode 1 — "Prismari Charm deals 1 damage to each of one or two targets."
@@ -38,7 +40,8 @@ timing = "spell"
 
 # Prismari Charm deals 1 damage to each of one or two targets.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 1
 target = "any"
 count = { min = 1, max = 2 }
@@ -49,5 +52,6 @@ timing = "spell"
 
 # Return target nonland permanent to its owner's hand.
 [[abilities.effects]]
-type = "return_to_hand"
+type = "zone"
+mode = "return_to_hand"
 target = { permanent = "nonland" }

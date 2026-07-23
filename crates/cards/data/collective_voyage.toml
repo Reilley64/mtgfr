@@ -21,12 +21,14 @@ timing = "spell"
 
 # Join forces — Starting with you, each player may pay any amount of mana.
 [[abilities.effects]]
-type = "join_forces_pay_mana"
+type = "choice"
+mode = "join_forces_pay_mana"
 
 # Each player searches their library for up to X basic land cards, where X is the total amount of
 # mana paid this way, puts them onto the battlefield tapped, then shuffles.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true

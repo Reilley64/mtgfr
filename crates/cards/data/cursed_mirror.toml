@@ -27,5 +27,6 @@ taps_self = true
 
 # Add {R}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["red"]

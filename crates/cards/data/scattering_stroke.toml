@@ -22,15 +22,17 @@ timing = "spell"
 
 # Clash with an opponent.
 [[abilities.effects]]
-type = "clash"
+type = "dig"
+mode = "clash"
 
 # Counter target spell.
 [[abilities.effects]]
-type = "counter_target_spell"
+type = "misc"
+mode = "counter_target_spell"
 
 # If you win the clash, at the beginning of your next main phase, add {C} for each 1 mana in that
 # spell's mana cost.
 [[abilities.effects]]
 type = "conditional"
 condition = { type = "won_clash" }
-then = [{ type = "schedule_colorless_mana_for_countered_spell_next_main_phase" }]
+then = [{ type = "misc", mode = "schedule_colorless_mana_for_countered_spell_next_main_phase" }]

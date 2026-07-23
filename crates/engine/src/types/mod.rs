@@ -8,6 +8,7 @@
 //! one chapter — start at `docs/CR_INDEX.md` for reverse lookup.
 
 mod card;
+#[path = "effect/mod.rs"]
 mod effect;
 mod filter;
 mod inspect;

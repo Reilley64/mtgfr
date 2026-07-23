@@ -27,7 +27,7 @@ pub struct Cost {
     pub additional: AdditionalCost,
     /// A spell's own board-derived generic reduction (CR 601.2f/118.9) — "This spell costs {1}
     /// less to cast for each ..." written on the spell itself (Blasphemous Act), as opposed to a
-    /// permanent's static [`Effect::ReduceSpellCost`] discounting *other* spells. Resolved once
+    /// permanent's static [`Effect::Static(StaticEffect::ReduceSpellCost)`] discounting *other* spells. Resolved once
     /// at [`Game::cast_cost`] and subtracted from generic after any permanent-static reducers,
     /// floored at 0 (CR 601.2f — cost reduction never touches colored pips).
     pub reduce_own_generic: Option<Amount>,
@@ -257,7 +257,7 @@ pub struct AdditionalCost {
     /// [`crate::Intent::Cast`]'s `replicate_count` (mirroring [`Self::strive`]'s own pre-stack
     /// declaration), multiplies this cost by that count in [`Game::cast_cost`], and is recorded
     /// on the resulting [`Spell::replicate_count`] so the cast choke can mint that many copies
-    /// (CR 702.108b — reusing [`Game::mint_spell_copies`], the same rider [`Effect::CopyThisSpell`]
+    /// (CR 702.108b — reusing [`Game::mint_spell_copies`], the same rider [`Effect::Copy(CopyEffect::ThisSpell)`]
     /// uses). A `&'static` reference for the same recursive-`Cost` reason as [`Self::kicker`].
     /// TOML `[cost.additional.replicate]` — the same shape as `[cost.additional.kicker]`.
     /// ponytail: single replicate cost only (Changing Loyalty is the pool's only replicate
@@ -561,7 +561,7 @@ impl ManaPool {
     }
 
     /// This pool's credits, each wrapped as [`Mana::Restricted`] under `restriction` — the
-    /// transform an `Effect::AddMana`/`GrantManaAbility`'s static batch takes everywhere it's
+    /// transform an `Effect::Mana(ManaEffect::Add)`/`GrantManaAbility`'s static batch takes everywhere it's
     /// read (its own resolution and the `available_mana` estimate), so a restricted batch reads
     /// restricted the same way everywhere. A no-op when `restriction` is `None`.
     ///

@@ -178,10 +178,10 @@ impl Game {
                             source: card,
                             abilities: vec![Ability {
                                 timing: Timing::Triggered(Trigger::ThisAuraLeaves),
-                                effect: Effect::ExileGraveyardObjectGainLife {
+                                effect: Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife {
                                     object: Some(card),
                                     amount: 2,
-                                },
+                                }),
                                 optional: false,
                                 min_level: 0,
                                 cost: Cost::FREE,
@@ -469,9 +469,9 @@ impl Game {
                             // as `fire_delayed_triggers` fabricates its groups.
                             abilities: vec![Ability {
                                 timing: Timing::Triggered(Trigger::YouCastThis),
-                                effect: Effect::Cascade {
+                                effect: Effect::Dig(DigEffect::Cascade {
                                     mana_value: def.mana_value(),
-                                },
+                                }),
                                 optional: false,
                                 min_level: 0,
                                 cost: Cost::FREE,
@@ -490,7 +490,7 @@ impl Game {
                             source: spell,
                             abilities: vec![Ability {
                                 timing: Timing::Triggered(Trigger::YouCastThis),
-                                effect: Effect::Demonstrate { spell },
+                                effect: Effect::Copy(CopyEffect::Demonstrate { spell }),
                                 optional: false,
                                 min_level: 0,
                                 cost: Cost::FREE,
@@ -576,7 +576,7 @@ impl Game {
                     );
                 }
                 // Noncombat damage dealt to a player (CR 120.1) — the marker
-                // `Effect::DealDamage`'s player arm pushes alongside its `LifeChanged`, never a
+                // `Effect::Damage(DamageEffect::Target)`'s player arm pushes alongside its `LifeChanged`, never a
                 // non-damage life loss (drain, pay-life), which only emits `LifeChanged`.
                 Event::DamageDealtToPlayer { source, player, .. } => {
                     self.queue_deals_damage_to_opponent_triggers(source, player);
@@ -735,7 +735,7 @@ impl Game {
             source: token,
             abilities: vec![Ability {
                 timing: Timing::Triggered(Trigger::ThisPermanentLeavesBattlefield),
-                effect: Effect::ReturnExiledCardToOwnersGraveyard { exiled },
+                effect: Effect::Zone(ZoneEffect::ReturnExiledCardToOwnersGraveyard { exiled }),
                 optional: false,
                 min_level: 0,
                 cost: Cost::FREE,
@@ -762,7 +762,7 @@ impl Game {
     }
 
     /// Queue "its controller sacrifices it" as `permanent`'s own single-ability [`TriggerGroup`],
-    /// reusing [`Effect::SacrificeObject`] against `permanent` itself — the same synthetic-`then`
+    /// reusing [`Effect::Destroy(DestroyEffect::SacrificeObject)`] against `permanent` itself — the same synthetic-`then`
     /// shape a delayed sacrifice trigger uses (see that variant's doc), fabricated here since it
     /// isn't one of the permanent's own printed abilities. Its `timing`/`condition` are inert
     /// placeholders, like [`Game::fire_delayed_triggers`]'s. Shared by evoke's "sacrificed when it
@@ -775,9 +775,9 @@ impl Game {
             source: permanent,
             abilities: vec![Ability {
                 timing: Timing::Triggered(Trigger::Etb),
-                effect: Effect::SacrificeObject {
+                effect: Effect::Destroy(DestroyEffect::SacrificeObject {
                     object: Some(permanent),
-                },
+                }),
                 optional: false,
                 min_level: 0,
                 cost: Cost::FREE,
@@ -1439,7 +1439,7 @@ impl Game {
     }
 
     /// Enqueue a reflexive "when you do" triggered ability (CR 603.3b — Forum Filibuster). Called
-    /// mid-resolution by [`Effect::ReflexiveTrigger`] once its "you do" condition is met (the
+    /// mid-resolution by [`Effect::Zone(ZoneEffect::ReflexiveTrigger)`] once its "you do" condition is met (the
     /// parent minted `token`): each effect in `then` becomes its own single-ability
     /// [`TriggerGroup`], with `token` threaded in ([`fill_reflexive_token`]), so it rides the
     /// normal APNAP placement path ([`Game::place_pending_triggers`], run later in the pipeline)
@@ -1905,7 +1905,7 @@ impl Game {
     }
 
     /// Queue `Trigger::YouDiscard` watchers on every permanent `player` controls (CR 701.8):
-    /// fires whenever they discard a card, regardless of source — an `Effect::Discard`
+    /// fires whenever they discard a card, regardless of source — an `Effect::Choice(ChoiceEffect::Discard)`
     /// resolution, a discard-cost payment, or the cleanup hand-size trim all route through here.
     /// Like [`queue_controller_triggers`](Self::queue_controller_triggers), but threads
     /// `discarded` (the discarded card's new graveyard-object id) into the [`TriggerContext`] so
@@ -2288,7 +2288,7 @@ impl Game {
                 cast_x: Some(x),
                 // The live cast-watch's own copy payoff (Unbound Flourishing / Owlin
                 // Spiralmancer's "copy it"): the spell that fired this watch, baked into a
-                // matched ability's `Effect::CopyTriggeringSpell` by `contextualize_effect`
+                // matched ability's `Effect::Copy(CopyEffect::CopyTriggeringSpell)` by `contextualize_effect`
                 // below, same last-known-information shape as `cast_x` above.
                 triggering_spell: Some(spell),
                 // Rhystic Study's "unless that player pays" payoff needs the caster's identity,
@@ -2358,7 +2358,7 @@ impl Game {
     /// ability on the stack from `source`. Called directly from [`Game::activate_ability`] once
     /// the ability is placed (like [`Self::queue_batch_attack_triggers`]), not from
     /// [`Self::enqueue_triggers`]'s per-event scan. `source` (the ability's own permanent) rides
-    /// in [`TriggerContext::triggering_ability`] so a matched [`Effect::CopyTriggeringAbility`]
+    /// in [`TriggerContext::triggering_ability`] so a matched [`Effect::Copy(CopyEffect::CopyTriggeringAbility)`]
     /// can find that ability on the stack and copy it.
     pub(crate) fn queue_activate_ability_triggers(
         &mut self,
@@ -2369,7 +2369,7 @@ impl Game {
             let controller = self.owner_of(id);
             let ctx = TriggerContext {
                 // CR 603.4: the triggering ability's source, locked in when the watch fires — the
-                // payoff's `Effect::CopyTriggeringAbility` reads it back via `contextualize_effect`.
+                // payoff's `Effect::Copy(CopyEffect::CopyTriggeringAbility)` reads it back via `contextualize_effect`.
                 // The copied ability carries its own chosen `{X}` on its stack item, so no `cast_x`
                 // context is needed here.
                 triggering_ability: Some(source),
@@ -2433,7 +2433,7 @@ impl Game {
                 && remaining.take_one(mana)
             {
                 // Thread the funded spell in so Opal Palace's rider
-                // (`Effect::CommanderEntersWithBonusCounters`) can key its bonus counters to it;
+                // (`Effect::Counters(CountersEffect::CommanderEntersWithBonusCounters)`) can key its bonus counters to it;
                 // Study Hall / Path of Ancestry's scry payoffs ignore it (harmless).
                 let ctx = TriggerContext {
                     triggering_spell: Some(spell),
@@ -2482,7 +2482,7 @@ impl Game {
         }
     }
 
-    /// Fire CR 603.7 delayed one-shots armed by [`Effect::ScheduleNextCastTrigger`] (Brass
+    /// Fire CR 603.7 delayed one-shots armed by [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`] (Brass
     /// Infiniscope's "When you next cast a spell with {X} in its mana cost this turn, …"): scans
     /// the just-applied batch for `Event::SpellCast` and, for every pending
     /// [`DelayedTriggers::pending_next_cast`](crate::state::DelayedTriggers::pending_next_cast)
@@ -2565,12 +2565,12 @@ impl Game {
         }
     }
 
-    /// Fire CR 603.7 delayed watches armed by [`Effect::ArmCombatDamageWatch`] (Stensian
+    /// Fire CR 603.7 delayed watches armed by [`Effect::Misc(MiscEffect::ArmCombatDamageWatch)`] (Stensian
     /// Sanguinist's "Whenever that creature deals combat damage to a player this combat, this
     /// creature becomes prepared"): scans the just-applied batch for
     /// [`Event::CombatDamageDealtToPlayer`] and, for every pending
     /// [`DelayedTriggers::pending_combat_damage_watch`](crate::state::DelayedTriggers::pending_combat_damage_watch)
-    /// entry whose watched creature just dealt that damage, fires [`Effect::BecomePrepared`] on
+    /// entry whose watched creature just dealt that damage, fires [`Effect::Misc(MiscEffect::BecomePrepared)`] on
     /// the arming ability's source — removed via [`Event::CombatDamageWatchConsumed`] before its
     /// `TriggerGroup` is queued, CR 603.7's "this combat" one-shot. A sibling of
     /// [`Self::fire_next_cast_triggers`] (filter-armed) but object-armed instead, hence its own
@@ -2610,7 +2610,7 @@ impl Game {
                         timing: Timing::Triggered(Trigger::DealsCombatDamageToPlayer {
                             who: CombatDamageScope::This,
                         }),
-                        effect: Effect::BecomePrepared,
+                        effect: Effect::Misc(MiscEffect::BecomePrepared),
                         optional: false,
                         min_level: 0,
                         cost: Cost::FREE,
@@ -2623,14 +2623,14 @@ impl Game {
     }
 
     /// Fire CR 603.7's *repeatable* delayed watches armed by
-    /// [`Effect::ScheduleThisTurnCombatDamageCopy`] (Surge to Victory's "Whenever a creature you
+    /// [`Effect::Misc(MiscEffect::ScheduleThisTurnCombatDamageCopy)`] (Surge to Victory's "Whenever a creature you
     /// control deals combat damage to a player this turn, copy the exiled card. You may cast the
     /// copy without paying its mana cost."): scans the just-applied batch for
     /// [`Event::CombatDamageDealtToPlayer`] and, for every armed
     /// [`DelayedTriggers::pending_combat_damage_copy`](crate::state::DelayedTriggers::pending_combat_damage_copy)
     /// entry whose `controller` controls the creature that just dealt the damage, queues a
     /// [`TriggerGroup`] that mints one free copy of the exiled `card` via
-    /// [`Effect::MintFreeCopyOfExiledCard`]. Unlike
+    /// [`Effect::Copy(CopyEffect::MintFreeCopyOfExiledCard)`]. Unlike
     /// [`Self::fire_combat_damage_watch_triggers`], entries are **not** removed here — CR 603.7's
     /// "this turn" fires again on every subsequent qualifying combat-damage event; an unconsumed
     /// entry is only cleared at the next turn's Untap step (`Game::apply`'s `Step::Untap` arm).
@@ -2665,7 +2665,9 @@ impl Game {
                         timing: Timing::Triggered(Trigger::DealsCombatDamageToPlayer {
                             who: CombatDamageScope::YourCreatures,
                         }),
-                        effect: Effect::MintFreeCopyOfExiledCard { card: Some(card) },
+                        effect: Effect::Copy(CopyEffect::MintFreeCopyOfExiledCard {
+                            card: Some(card),
+                        }),
                         optional: false,
                         min_level: 0,
                         cost: Cost::FREE,
@@ -2845,11 +2847,11 @@ impl Game {
                 source: id,
                 abilities: vec![Ability {
                     timing: Timing::Triggered(Trigger::Magecraft),
-                    effect: Effect::PumpSelfUntilEndOfTurn {
+                    effect: Effect::Pump(PumpEffect::PumpSelfUntilEndOfTurn {
                         power: Amount::Fixed(1),
                         toughness: Amount::Fixed(1),
                         keywords: &[],
-                    },
+                    }),
                     optional: false,
                     min_level: 0,
                     cost: Cost::FREE,
@@ -2876,9 +2878,9 @@ impl Game {
             source: object,
             abilities: vec![Ability {
                 timing: Timing::Triggered(Trigger::Attacks),
-                effect: Effect::MyriadTokenCopies {
+                effect: Effect::Token(TokenEffect::MyriadTokenCopies {
                     attacking_context: Some((self.controller_of(object), defender)),
-                },
+                }),
                 optional: false,
                 min_level: 0,
                 cost: Cost::FREE,
@@ -3190,7 +3192,7 @@ impl Game {
             }
             Condition::DuringYourTurn => self.active_player == ctx.controller,
             // Lash Out (CR 701.22d): the resolution-scoped won-the-clash flag a preceding
-            // `Effect::Clash` step in this same resolution set. Context-free (a plain `Game` field),
+            // `Effect::Dig(DigEffect::Clash)` step in this same resolution set. Context-free (a plain `Game` field),
             // so the `Effect::Conditional` resolve site reaches it straight through this arm.
             Condition::WonClash => self.clash_won,
         }
@@ -3554,7 +3556,7 @@ impl Game {
     }
 
     /// Trigger doubling (CR 603.3c — Harmonic Prodigy, Veyran, Voice of Duality): for each pending
-    /// trigger group, count the on-board [`Effect::TriggerDoublingStatic`] doublers whose filter
+    /// trigger group, count the on-board [`Effect::Static(StaticEffect::TriggerDoubling)`] doublers whose filter
     /// matches it and queue that many identical copies, so the ability triggers one additional time
     /// per doubler (two doublers → three instances total). Each copy is minted `expanded` so a copy
     /// is never itself re-doubled, and every considered group is marked `expanded` so a re-entrant
@@ -3580,7 +3582,7 @@ impl Game {
         self.pending_trigger_groups.extend(copies);
     }
 
-    /// How many on-board [`Effect::TriggerDoublingStatic`] doublers make a triggered ability whose
+    /// How many on-board [`Effect::Static(StaticEffect::TriggerDoubling)`] doublers make a triggered ability whose
     /// source permanent is `source` trigger an additional time (CR 603.3c). Both example cards
     /// double a triggered ability of a *permanent* (Harmonic: a Shaman/Wizard; Veyran: any
     /// permanent you control), so a non-permanent source (a spell's own cast trigger, a removed
@@ -3602,11 +3604,11 @@ impl Game {
             for ability in self.functional_abilities(doubler) {
                 let (
                     Timing::Static,
-                    Effect::TriggerDoublingStatic {
+                    Effect::Static(StaticEffect::TriggerDoubling {
                         source_subtypes,
                         source_other,
                         caused_by_instant_or_sorcery_cast,
-                    },
+                    }),
                 ) = (ability.timing, ability.effect)
                 else {
                     continue;
@@ -3792,13 +3794,13 @@ impl Game {
         // Donation (Zedruu): a single, non-`Sequence` effect that itself carries two independent
         // target clauses (CR 601.2c) — its first clause is the permanent (`Effect::target`); its
         // second is the recipient `player`, chosen here and read at resolution off `targets_second`.
-        if let Effect::TargetOpponentGainsControl { player, .. } = effect {
+        if let Effect::Control(ControlEffect::TargetOpponentGainsControl { player, .. }) = effect {
             return Some((player, TargetCount::default()));
         }
         // Exchange control (Vedalken Plotter / Chromeshell Crab): its first clause is the permanent
         // "you control" (`Effect::target`); its second is the "an opponent controls" clause, chosen
         // here and read at resolution off `targets_second` — same two-clause shape as donation.
-        if let Effect::ExchangeControl { second, .. } = effect {
+        if let Effect::Control(ControlEffect::ExchangeControl { second, .. }) = effect {
             return Some((second, TargetCount::default()));
         }
         let Effect::Sequence { steps } = effect else {
@@ -4063,10 +4065,13 @@ fn sacrifice_matches(
 /// the shape a Backup ETB uses (counter + grant).
 fn ability_grants_source_abilities(ability: Ability) -> bool {
     match ability.effect {
-        Effect::GrantSourceAbilitiesUntilEndOfTurn => true,
-        Effect::Sequence { steps } => steps
-            .iter()
-            .any(|s| matches!(s, Effect::GrantSourceAbilitiesUntilEndOfTurn)),
+        Effect::Control(ControlEffect::GrantSourceAbilitiesUntilEndOfTurn) => true,
+        Effect::Sequence { steps } => steps.iter().any(|s| {
+            matches!(
+                s,
+                Effect::Control(ControlEffect::GrantSourceAbilitiesUntilEndOfTurn)
+            )
+        }),
         _ => false,
     }
 }

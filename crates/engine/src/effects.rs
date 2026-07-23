@@ -453,7 +453,7 @@ impl Game {
         }
         // Opal Palace's spend-to-cast rider: additional +1/+1 counters this specific spell
         // was told to enter with at cast payment (captured by
-        // `Effect::CommanderEntersWithBonusCounters`, keyed by this spell's stack id). Runs
+        // `Effect::Counters(CountersEffect::CommanderEntersWithBonusCounters)`, keyed by this spell's stack id). Runs
         // through the same counter-replacement statics (Hardened Scales, a doubler) as the
         // printed `enters_with_counters` above.
         if let Some(pos) = self
@@ -499,7 +499,7 @@ impl Game {
 
     /// "Enters with N +1/+1 counters" (hydras: N = `x`) / "Enters with N `kind` counters"
     /// (mana_bloom/astral_cornucopia, Vivid Crag's own "two charge counters") — a card's own
-    /// [`Effect::EntersWithCounters`] static (CR 616.1) or its [`CardDef::vanishing`] time counters
+    /// [`Effect::Static(StaticEffect::EntersWithCounters)`] static (CR 616.1) or its [`CardDef::vanishing`] time counters
     /// (CR 702.63a), placed as `perm` enters the battlefield. A `None` kind (+1/+1) is grown by any
     /// counter-replacement static (Hardened Scales, a doubler) reading `controller`; a named `kind`
     /// instead places the raw amount — no replacement static touches a named kind. Shared by
@@ -552,7 +552,7 @@ impl Game {
     /// Move a resolved instant/sorcery `object` to its post-resolution zone: ceases to exist if
     /// it's a copy (CR 707.10a), exile if it was cast via flashback/escape (CR 702.34e/702.19d),
     /// its owner's hand if it was bought back (CR 702.27d), the bottom of its owner's library if
-    /// an [`Effect::TuckSelfToLibraryBottom`] step marked it (Spell Crumple), else the graveyard.
+    /// an [`Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)`] step marked it (Spell Crumple), else the graveyard.
     /// Split out of
     /// [`Self::resolve_spell`] so [`Game::resume_deferred_sequence`] can also call it once a
     /// [`ResumeState::spell_finish`] pause clears.
@@ -622,7 +622,7 @@ impl Game {
             return;
         }
         // Spell Crumple's own "Then put Spell Crumple on the bottom of its owner's library"
-        // rider: an `Effect::TuckSelfToLibraryBottom` step this resolution ran marked the spell
+        // rider: an `Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)` step this resolution ran marked the spell
         // to tuck itself rather than reach the graveyard below — the self-referential sibling of
         // the buyback fork above.
         if std::mem::take(&mut self.self_tuck_to_library_bottom) {
@@ -638,13 +638,13 @@ impl Game {
             return;
         }
         // Rousing Refrain's "Exile [this card] with three time counters on it" (CR 702.62): an
-        // `Effect::ExileSelfWithTimeCounters` step this resolution ran marked the spell to exile
+        // `Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)` step this resolution ran marked the spell to exile
         // itself (with counters) rather than reach the graveyard below.
         if let Some(counters) = self.self_exile_time_counters.take() {
             self.push_exile_with_time_counters(object, counters, events);
             return;
         }
-        // Vengeful Rebirth's own "Exile Vengeful Rebirth" rider: an `Effect::ExileSelfOnResolve`
+        // Vengeful Rebirth's own "Exile Vengeful Rebirth" rider: an `Effect::Zone(ZoneEffect::ExileSelfOnResolve)`
         // step this resolution ran marked the spell to exile itself (plain, no time counters)
         // rather than reach the graveyard below — the counter-less sibling of the time-counter
         // fork above.
@@ -724,9 +724,9 @@ impl Game {
     /// return-this effect only acts on the object in the zone the ability expects; if it left
     /// that zone — exiled by Nezumi Graverobber mid-trigger, say — it's a new object the effect
     /// does not track). Shared by every `ReturnThis*` arm, each passing its own `allowed` list:
-    /// [`Effect::ReturnThisFromGraveyardToBattlefield`]'s pool (Nether Traitor, Teacher's Pest)
+    /// [`Effect::Zone(ZoneEffect::ReturnThisFromGraveyardToBattlefield)`]'s pool (Nether Traitor, Teacher's Pest)
     /// only ever fires with its source already a graveyard card, so `&[Zone::Graveyard]`;
-    /// [`Effect::ReturnThisToHand`]'s pool fires from either a graveyard death trigger (Angelic
+    /// [`Effect::Zone(ZoneEffect::ReturnThisToHand)`]'s pool fires from either a graveyard death trigger (Angelic
     /// Destiny, Squee-shaped graveyard triggers) or a battlefield activated ability (Flickering
     /// Ward), so `&[Zone::Graveyard, Zone::Battlefield]`. Folds in the pre-existing
     /// left-the-game guard (`Object::Removed`), since `zone_of` panics on it.
@@ -798,157 +798,177 @@ impl Game {
         }
         match effect {
             // Scry/surveil — ArrangeTop pause peel (`resolution/pause_arrange`).
-            Effect::Scry { .. } | Effect::Surveil { .. } => {
+            Effect::Dig(DigEffect::Scry { .. }) | Effect::Dig(DigEffect::Surveil { .. }) => {
                 self.run_arrange_top(effect, controller, source, target, x)
             }
             // Clash (CR 701.22): pick an opponent, both reveal + scry-1 their top, score the clash.
             // Pauses on the shared opponent chooser and/or the two keep/bottom scries.
-            Effect::Clash => self.begin_clash(controller, source, events),
+            Effect::Dig(DigEffect::Clash) => self.begin_clash(controller, source, events),
             // LookAtTop / DistributeTop / SearchLibrary — look pause peel (`resolution/pause_look`).
-            Effect::LookAtTop { .. }
-            | Effect::DistributeTop { .. }
-            | Effect::SearchLibrary { .. } => self.run_look_pause(effect, ctx),
+            Effect::Dig(DigEffect::LookAtTop { .. })
+            | Effect::Dig(DigEffect::DistributeTop { .. })
+            | Effect::Dig(DigEffect::SearchLibrary { .. }) => self.run_look_pause(effect, ctx),
             // Exile the top N face-up, pause on a choose-up-to-one over the matching cards to
             // grant free-cast permission, then bottom the rest (Herald of Amity's ETB dig).
             // Pauses on a ChooseExiledDigToCastFree choice.
-            Effect::ExileTopCastMatchingFree { count, filter } => {
+            Effect::Dig(DigEffect::ExileTopCastMatchingFree { count, filter }) => {
                 self.exile_top_cast_matching_free(controller, source, count, filter, events)
             }
             // Songbirds' Blessing: reveal-until-Aura, pausing on a battlefield-or-hand choice
             // over the match.
-            Effect::RevealUntilMayDeploy { filter } => {
+            Effect::Dig(DigEffect::RevealUntilMayDeploy { filter }) => {
                 self.reveal_until_may_deploy(controller, filter, events)
             }
             // Creative Technique: reveal-until-nonland, pausing on the shared exiled-dig
             // may-cast-free choice over the match.
-            Effect::RevealUntilExileCastFree { filter } => {
+            Effect::Dig(DigEffect::RevealUntilExileCastFree { filter }) => {
                 self.reveal_until_exile_cast_free(controller, source, filter, events)
             }
             // ShuffleLibrary — see `resolution/resolve_misc.rs`.
-            Effect::ShuffleLibrary => self.run_misc_choreo(effect, ctx, events),
+            Effect::Dig(DigEffect::ShuffleLibrary) => self.run_misc_choreo(effect, ctx, events),
             // Dance with Calamity: the player-driven exile-until-stop loop, then a free cast of any
             // number of the exiled cards if the tally stayed under budget. Pauses on a
             // DanceExileMore choice.
-            Effect::ExileTopUntilStopCastFreeUnderBudget { budget } => {
+            Effect::Dig(DigEffect::ExileTopUntilStopCastFreeUnderBudget { budget }) => {
                 self.dance_with_calamity(controller, source, budget, events)
             }
             // Cascade (CR 702.85): reveal-until a cheaper nonland, may cast it free, bottom the
             // rest in random order. Pauses on a ChooseExiledDigToCastFree choice (reused from the
             // dig) when a hit is found.
-            Effect::Cascade { mana_value } => self.cascade(controller, source, mana_value, events),
+            Effect::Dig(DigEffect::Cascade { mana_value }) => {
+                self.cascade(controller, source, mana_value, events)
+            }
             // Edict / fan-out pauses — edict pause peel (`resolution/pause_edict`).
-            Effect::EachPlayerSacrifices { .. }
-            | Effect::EachPlayerExilesFromGraveyard
-            | Effect::TargetPlayerExilesFromGraveyard { .. }
-            | Effect::CasterKeepsOneOfEachTypePerPlayer
-            | Effect::EachPlayerControllerChoosesCounterTarget
-            | Effect::CouncilsDilemmaVote { .. }
-            | Effect::JoinForcesPayMana
-            | Effect::EachPlayerNamesCardThenRevealsTop
-            | Effect::EachOtherTokenBecomesCopyOfChosen
-            | Effect::PutCounterThenMayBecomeCopyOfCardFromList { .. }
-            | Effect::SacrificeOwn { .. }
-            | Effect::DefendingPlayerSacrifices { .. }
-            | Effect::SacrificeSelfUnlessReturnLand { .. } => {
+            Effect::Choice(ChoiceEffect::EachPlayerSacrifices { .. })
+            | Effect::Choice(ChoiceEffect::EachPlayerExilesFromGraveyard)
+            | Effect::Choice(ChoiceEffect::TargetPlayerExilesFromGraveyard { .. })
+            | Effect::Choice(ChoiceEffect::CasterKeepsOneOfEachTypePerPlayer)
+            | Effect::Choice(ChoiceEffect::EachPlayerControllerChoosesCounterTarget)
+            | Effect::Choice(ChoiceEffect::CouncilsDilemmaVote { .. })
+            | Effect::Choice(ChoiceEffect::JoinForcesPayMana)
+            | Effect::Choice(ChoiceEffect::EachPlayerNamesCardThenRevealsTop)
+            | Effect::Choice(ChoiceEffect::EachOtherTokenBecomesCopyOfChosen)
+            | Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList { .. })
+            | Effect::Choice(ChoiceEffect::SacrificeOwn { .. })
+            | Effect::Choice(ChoiceEffect::DefendingPlayerSacrifices { .. })
+            | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessReturnLand { .. }) => {
                 self.run_edict_pause(effect, ctx, events)
             }
             // Abstract Performance: split the top eight into two piles, an opponent picks one,
             // pausing on an OpponentChoosesPile choice.
-            Effect::OpponentSplitsExilePiles => {
+            Effect::Dig(DigEffect::OpponentSplitsExilePiles) => {
                 self.opponent_splits_exile_piles(controller, source, events)
             }
             // Fact or Fiction: reveal the top five, an opponent splits them into two piles,
             // pausing on a PartitionRevealed choice.
-            Effect::RevealTopSplitPiles => self.reveal_top_split_piles(controller, source, events),
+            Effect::Dig(DigEffect::RevealTopSplitPiles) => {
+                self.reveal_top_split_piles(controller, source, events)
+            }
             // Murmurs from Beyond: reveal the top `count`, an opponent picks one to graveyard,
             // the rest to hand — pausing on an OpponentChoosesRevealedToGraveyard choice.
-            Effect::RevealTopOpponentPicksOneToGraveyard { count } => {
+            Effect::Dig(DigEffect::RevealTopOpponentPicksOneToGraveyard { count }) => {
                 self.reveal_top_opponent_picks_one_to_graveyard(controller, source, count, events)
             }
             // Plargg and Nassari: each player exiles from the top until a nonland, an opponent
             // picks one, pausing on an OpponentChoosesExiledNonland choice.
-            Effect::EachPlayerExilesUntilNonlandOpponentPicks => {
+            Effect::Dig(DigEffect::EachPlayerExilesUntilNonlandOpponentPicks) => {
                 self.each_player_exiles_until_nonland(controller, source, events)
             }
             // MaySacrifice / MayReturnFromGraveyard / MayDiscard / MayDraw* /
             // SacrificeSelfUnlessPay — may pause peel (`resolution/pause_may`).
-            Effect::MaySacrifice { .. }
-            | Effect::MayReturnFromGraveyard { .. }
-            | Effect::MayDiscard { .. }
-            | Effect::MayDrawUnlessPays { .. }
-            | Effect::TargetPlayerMayDraw { .. }
-            | Effect::DamagingCreatureControllerMayDraw { .. }
-            | Effect::MayDrawUpTo { .. }
-            | Effect::MayDrawUpToThenOpponentMayRepeat { .. }
-            | Effect::SacrificeSelfUnlessPay { .. } => self.run_may_pause(effect, ctx),
+            Effect::Choice(ChoiceEffect::MaySacrifice { .. })
+            | Effect::Choice(ChoiceEffect::MayReturnFromGraveyard { .. })
+            | Effect::Choice(ChoiceEffect::MayDiscard { .. })
+            | Effect::Choice(ChoiceEffect::MayDrawUnlessPays { .. })
+            | Effect::Choice(ChoiceEffect::TargetPlayerMayDraw { .. })
+            | Effect::Choice(ChoiceEffect::DamagingCreatureControllerMayDraw { .. })
+            | Effect::Choice(ChoiceEffect::MayDrawUpTo { .. })
+            | Effect::Choice(ChoiceEffect::MayDrawUpToThenOpponentMayRepeat { .. })
+            | Effect::Choice(ChoiceEffect::SacrificeSelfUnlessPay { .. }) => {
+                self.run_may_pause(effect, ctx)
+            }
             // ChooseCreatureType / ChooseColor / SetOwnColorUntilEndOfTurn / ChooseOne /
             // Demonstrate / Proliferate / PhaseOut — choose pause peel (`resolution/pause_choose`).
-            Effect::ChooseCreatureType
-            | Effect::ChooseColor
-            | Effect::SetOwnColorUntilEndOfTurn
+            Effect::Choice(ChoiceEffect::ChooseCreatureType)
+            | Effect::Choice(ChoiceEffect::ChooseColor)
+            | Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)
             | Effect::ChooseOne { .. }
-            | Effect::Demonstrate { .. }
-            | Effect::Proliferate { .. }
-            | Effect::PhaseOut => self.run_choose_pause(effect, ctx),
+            | Effect::Copy(CopyEffect::Demonstrate { .. })
+            | Effect::Choice(ChoiceEffect::Proliferate { .. })
+            | Effect::Choice(ChoiceEffect::PhaseOut) => self.run_choose_pause(effect, ctx),
             // Kinetic Ooze — see `resolution/counters.rs::resolve_double_counters_on_target_creatures`.
-            Effect::DoubleCountersOnTargetCreatures { .. } => {
+            Effect::Counters(CountersEffect::DoubleCountersOnTargetCreatures { .. }) => {
                 self.resolve_double_counters_on_target_creatures(ctx, events)
             }
             // Donation — see `resolution/control.rs::resolve_target_opponent_gains_control`.
-            Effect::TargetOpponentGainsControl { .. } => {
+            Effect::Control(ControlEffect::TargetOpponentGainsControl { .. }) => {
                 self.resolve_target_opponent_gains_control(ctx, events)
             }
             // Exchange control — see `resolution/control.rs::resolve_exchange_control`.
-            Effect::ExchangeControl { .. } => self.resolve_exchange_control(ctx, events),
+            Effect::Control(ControlEffect::ExchangeControl { .. }) => {
+                self.resolve_exchange_control(ctx, events)
+            }
             // Perpetual Timepiece / Quandrix Command mode 3 — exile-cast pause peel
             // (`resolution/pause_exile_cast`).
-            Effect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. } => {
+            Effect::Dig(DigEffect::ShuffleTargetCardsFromGraveyardIntoLibrary { .. }) => {
                 self.run_exile_cast_pause(effect, ctx)
             }
             // Chaos Warp — see `resolution/zones.rs::resolve_shuffle_then_reveal`.
-            Effect::ShuffleTargetPermanentIntoLibraryThenReveal { .. } => {
+            Effect::Zone(ZoneEffect::ShuffleTargetPermanentIntoLibraryThenReveal { .. }) => {
                 self.resolve_shuffle_then_reveal(target, events)
             }
             // CounterTargetSpell unless-pays / destination — counter-spell peel
             // (`resolution/pause_counter_spell`).
-            Effect::CounterTargetSpell {
+            Effect::Misc(MiscEffect::CounterTargetSpell {
                 unless_pays: Some(_),
                 ..
-            }
-            | Effect::CounterTargetSpell {
+            })
+            | Effect::Misc(MiscEffect::CounterTargetSpell {
                 unless_pays: None,
                 countered_dest: Some(_),
                 ..
-            } => self.run_counter_spell(effect, ctx, events),
+            }) => self.run_counter_spell(effect, ctx, events),
             // Fight / MoveCounters — fight pause peel (`resolution/pause_fight`).
-            Effect::Fight { .. } | Effect::MoveCounters { .. } => self.run_fight_pause(effect, ctx),
+            Effect::Misc(MiscEffect::Fight { .. })
+            | Effect::Counters(CountersEffect::MoveCounters { .. }) => {
+                self.run_fight_pause(effect, ctx)
+            }
             // Copy-family choreography — see `resolution/copy.rs::run_copy`.
-            Effect::CopyTargetSpell
-            | Effect::CopyThisSpell { .. }
-            | Effect::RetargetSpellCopy { .. }
-            | Effect::MayPayToCopyThis { .. }
-            | Effect::ChangeTargetOfTargetSpellOrAbility { .. }
-            | Effect::CopyTriggeringSpell { .. }
-            | Effect::CopyTriggeringSpellForEachOtherCreatureYouControl { .. }
-            | Effect::CopyTriggeringAbility { .. } => self.run_copy(effect, ctx, events),
+            Effect::Copy(CopyEffect::TargetSpell)
+            | Effect::Copy(CopyEffect::ThisSpell { .. })
+            | Effect::Copy(CopyEffect::RetargetSpellCopy { .. })
+            | Effect::Copy(CopyEffect::MayPayToCopyThis { .. })
+            | Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility { .. })
+            | Effect::Copy(CopyEffect::CopyTriggeringSpell { .. })
+            | Effect::Copy(CopyEffect::CopyTriggeringSpellForEachOtherCreatureYouControl {
+                ..
+            })
+            | Effect::Copy(CopyEffect::CopyTriggeringAbility { .. }) => {
+                self.run_copy(effect, ctx, events)
+            }
             // Opal Palace / Renegade Bull / Surge to Victory record-mana-value — see
             // `resolution/resolve_misc.rs`.
-            Effect::CommanderEntersWithBonusCounters { .. }
-            | Effect::ExileTargetGraveyardSpellCastFree { .. }
-            | Effect::ExileTargetGraveyardCardRecordManaValue { .. } => {
+            Effect::Counters(CountersEffect::CommanderEntersWithBonusCounters { .. })
+            | Effect::Dig(DigEffect::ExileTargetGraveyardSpellCastFree { .. })
+            | Effect::Dig(DigEffect::ExileTargetGraveyardCardRecordManaValue { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Surge to Victory's mint-free-copy step — see `resolution/copy.rs::run_copy`.
-            Effect::MintFreeCopyOfExiledCard { .. } => self.run_copy(effect, ctx, events),
+            Effect::Copy(CopyEffect::MintFreeCopyOfExiledCard { .. }) => {
+                self.run_copy(effect, ctx, events)
+            }
             // Discard / PutFromHand* / CastCreatureFaceDown — hand pause peel (`resolution/pause_hand`).
-            Effect::Discard { .. }
-            | Effect::PutFromHandOnTop { .. }
-            | Effect::PutLandFromHand { .. }
-            | Effect::PutCreatureFromHand
-            | Effect::CastCreatureFaceDown => self.run_hand_pause(effect, ctx),
+            Effect::Choice(ChoiceEffect::Discard { .. })
+            | Effect::Choice(ChoiceEffect::PutFromHandOnTop { .. })
+            | Effect::Choice(ChoiceEffect::PutLandFromHand { .. })
+            | Effect::Choice(ChoiceEffect::PutCreatureFromHand)
+            | Effect::Choice(ChoiceEffect::CastCreatureFaceDown) => {
+                self.run_hand_pause(effect, ctx)
+            }
             // CashOutExiledWithThis / CastExiledWithThisFree — exile-cast pause peel
             // (`resolution/pause_exile_cast`).
-            Effect::CashOutExiledWithThis | Effect::CastExiledWithThisFree => {
+            Effect::Dig(DigEffect::CashOutExiledWithThis)
+            | Effect::Dig(DigEffect::CastExiledWithThisFree) => {
                 self.run_exile_cast_pause(effect, ctx)
             }
             // A sequence runs its steps in order, sharing this target/{X}; a pausing step defers
@@ -1005,76 +1025,86 @@ impl Game {
                 }
             }
             // Feral Appetite — see `resolution/sequence_steps.rs::run_sequence_step`.
-            Effect::ExileTargetGraveyardCardThenIfCreature { .. } => {
+            Effect::Zone(ZoneEffect::ExileTargetGraveyardCardThenIfCreature { .. }) => {
                 self.run_sequence_step(effect, ctx, events)
             }
             // Marauding Raptor — see `resolution/damage.rs::resolve_deal_damage_to_entering`.
-            Effect::DealDamageToEnteringPermanent { .. } => {
-                self.resolve_deal_damage_to_entering(effect, ctx, events)
+            Effect::Damage(damage @ DamageEffect::ToEnteringPermanent { .. }) => {
+                self.resolve_deal_damage_to_entering(damage, ctx, events)
             }
             // Fabled Passage / Ajani's Chosen / Forum Filibuster / Fractal Harness / Scriv /
             // Animate Dead — see `resolution/sequence_steps.rs::run_sequence_step`.
-            Effect::UntapSearchedLand
-            | Effect::AttachTriggeringAuraToMintedToken { .. }
-            | Effect::ReflexiveTrigger { .. }
-            | Effect::ReturnFromGraveyardAttachedToToken { .. }
-            | Effect::AttachSelfToReanimated
-            | Effect::AttachSelfToMintedToken
-            | Effect::AttachMintedAuraToTarget { .. } => {
+            Effect::Zone(ZoneEffect::UntapSearchedLand)
+            | Effect::Zone(ZoneEffect::AttachTriggeringAuraToMintedToken { .. })
+            | Effect::Zone(ZoneEffect::ReflexiveTrigger { .. })
+            | Effect::Zone(ZoneEffect::ReturnFromGraveyardAttachedToToken { .. })
+            | Effect::Zone(ZoneEffect::AttachSelfToReanimated)
+            | Effect::Zone(ZoneEffect::AttachSelfToMintedToken)
+            | Effect::Zone(ZoneEffect::AttachMintedAuraToTarget { .. }) => {
                 self.run_sequence_step(effect, ctx, events)
             }
             // Fractal Harness — see
             // `resolution/counters.rs::resolve_double_counters_on_attached_creature`.
-            Effect::DoubleCountersOnAttachedCreature => {
+            Effect::Counters(CountersEffect::DoubleCountersOnAttachedCreature) => {
                 self.resolve_double_counters_on_attached_creature(ctx, events)
             }
             // Gift of Immortality / Cauldron Dance / Screams from Within / Ghoulish Impetus —
             // see `resolution/sequence_steps.rs::run_sequence_step`.
-            Effect::ScheduleReturnThisAuraAttachedToReanimated
-            | Effect::ScheduleReturnReanimatedToHand
-            | Effect::ReturnThisAuraFromGraveyardAttachedToChosenHost
-            | Effect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost => {
+            Effect::Zone(ZoneEffect::ScheduleReturnThisAuraAttachedToReanimated)
+            | Effect::Zone(ZoneEffect::ScheduleReturnReanimatedToHand)
+            | Effect::Zone(ZoneEffect::ReturnThisAuraFromGraveyardAttachedToChosenHost)
+            | Effect::Zone(ZoneEffect::ScheduleReturnThisAuraFromGraveyardAttachedToChosenHost) => {
                 self.run_sequence_step(effect, ctx, events)
             }
             // Destroy / exile / mill "this way" snapshot choreography lives in the family modules
             // (`resolve_destroy_all` / `resolve_exile_all` / `resolve_mill_self`).
-            Effect::DestroyAll { .. } => {
-                self.resolve_destroy_all(effect, controller, source, target, x, events)
+            Effect::Destroy(destroy @ DestroyEffect::DestroyAll { .. }) => {
+                self.resolve_destroy_all(destroy, controller, source, target, x, events)
             }
-            Effect::ExileAll { .. } => {
-                self.resolve_exile_all(effect, controller, source, target, x, events)
+            Effect::Destroy(destroy @ DestroyEffect::ExileAll { .. }) => {
+                self.resolve_exile_all(destroy, controller, source, target, x, events)
             }
-            Effect::MillSelf { count } => {
+            Effect::Mill(MillEffect::MillSelf { count }) => {
                 self.resolve_mill_self(count, controller, source, target, x, events)
             }
             // Rousing Refrain / Spell Crumple / Vengeful Rebirth self-move riders — see
             // `resolution/resolve_misc.rs`.
-            Effect::ExileSelfWithTimeCounters { .. }
-            | Effect::TuckSelfToLibraryBottom
-            | Effect::ExileSelfOnResolve => self.run_misc_choreo(effect, ctx, events),
+            Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters { .. })
+            | Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)
+            | Effect::Zone(ZoneEffect::ExileSelfOnResolve) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Oversimplify — see `resolution/resolve_misc.rs`.
-            Effect::EachPlayerCreatesFractalFromExiledPower { .. } => {
+            Effect::Choice(ChoiceEffect::EachPlayerCreatesFractalFromExiledPower { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // Wheel of Fortune — see `resolution/resolve_misc.rs`.
-            Effect::EachPlayerDiscardsHandThenDraws { .. } => {
+            Effect::Choice(ChoiceEffect::EachPlayerDiscardsHandThenDraws { .. }) => {
                 self.run_misc_choreo(effect, ctx, events)
             }
             // `CreateToken`'s `enters_with` choreography — see
             // `resolution/tokens.rs::resolve_create_token`.
-            Effect::CreateToken { .. } => self.resolve_create_token(effect, ctx, events),
+            Effect::Token(token @ TokenEffect::Create { .. }) => {
+                self.resolve_create_token(token, ctx, events)
+            }
             // Advanced Reconstruction — see `resolution/resolve_misc.rs`.
-            Effect::ExileRandomFromGraveyardMayPlay => self.run_misc_choreo(effect, ctx, events),
+            Effect::Dig(DigEffect::ExileRandomFromGraveyardMayPlay) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Ruhan of the Fomori — see `resolution/resolve_misc.rs`.
-            Effect::MustAttackRandomOpponent => self.run_misc_choreo(effect, ctx, events),
+            Effect::Misc(MiscEffect::MustAttackRandomOpponent) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Inkshield / Moment's Peace — see `resolution/resolve_misc.rs`.
-            Effect::PreventCombatDamageToYouCreatingTokens { .. }
-            | Effect::PreventAllCombatDamageThisTurn => self.run_misc_choreo(effect, ctx, events),
+            Effect::Misc(MiscEffect::PreventCombatDamageToYouCreatingTokens { .. })
+            | Effect::Misc(MiscEffect::PreventAllCombatDamageThisTurn) => {
+                self.run_misc_choreo(effect, ctx, events)
+            }
             // Each of these draws may be replaced by dredge (CR 702.52): `draw_with_dredge` draws one
             // card at a time, pausing on `ChooseDredge` before any draw the controller has an eligible
             // dredger for (accepting mills + returns, declining draws). `answer_choose_dredge` re-enters
             // it for the remaining draws and resumes the deferred sequence once the batch is done.
-            Effect::DrawCards { count } => {
+            Effect::Draw(DrawEffect::Cards { count }) => {
                 let n = self.resolve_count(count, controller, source, target, x);
                 self.draw_with_dredge(controller, n, false, events);
             }
@@ -1089,8 +1119,8 @@ impl Game {
     /// Shared reanimation core: mint a `ReanimatedToBattlefield` event putting graveyard `card`
     /// onto the battlefield under `new_controller`'s control (enters via the usual ETB path —
     /// summoning-sick, ETB triggers fire). Both a chosen-target reanimation
-    /// ([`Effect::ReanimateToBattlefield`]) and a look-back one
-    /// ([`Effect::ReanimateDyingEnchantedCreature`]) mint through here.
+    /// ([`Effect::Zone(ZoneEffect::ReanimateToBattlefield)`]) and a look-back one
+    /// ([`Effect::Zone(ZoneEffect::ReanimateDyingEnchantedCreature)`]) mint through here.
     pub(crate) fn reanimate_event(
         &self,
         card: ObjectId,

@@ -30,13 +30,15 @@ timing = "etb"
 
 # create a 0/0 green and blue Fractal creature token. Put X +1/+1 counters on it
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
 count = 1
 enters_with = "x"
 
 [[abilities.effects]]
-type = "attach_self_to_minted_token"
+type = "zone"
+mode = "attach_self_to_minted_token"
 
 # Whenever equipped creature attacks, double the number of +1/+1 counters on it.
 [[abilities]]
@@ -44,7 +46,8 @@ timing = "equipped_creature_attacks"
 
 # double the number of +1/+1 counters on it.
 [[abilities.effects]]
-type = "double_counters_on_attached_creature"
+type = "counters"
+mode = "double_counters_on_attached_creature"
 
 # Equip {2}
 [[abilities]]
@@ -55,4 +58,5 @@ generic = 2
 
 # Equip {2}
 [[abilities.effects]]
-type = "equip"
+type = "control"
+mode = "equip"

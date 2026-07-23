@@ -38,7 +38,8 @@ timing = "spell"
 
 # Fire deals 2 damage divided as you choose among one or two targets.
 [[half.abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 2
 target = "any"
 count = { min = 1, max = 2 }
@@ -63,7 +64,8 @@ timing = "spell"
 
 # Tap target permanent.
 [[half.abilities.effects]]
-type = "tap_target"
+type = "control"
+mode = "tap_target"
 target = { permanent = {} }
 
 # Draw a card.
@@ -72,5 +74,6 @@ timing = "spell"
 
 # Draw a card.
 [[half.abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

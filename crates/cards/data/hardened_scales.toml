@@ -22,5 +22,6 @@ timing = "static"
 
 # that many plus one +1/+1 counters are put on it instead
 [[abilities.effects]]
-type = "counter_replacement"
+type = "static"
+mode = "counter_replacement"
 add = 1

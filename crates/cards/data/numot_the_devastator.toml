@@ -35,6 +35,7 @@ red = 1
 
 # destroy up to two target lands.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "land" } }
 count = { max = 2 }

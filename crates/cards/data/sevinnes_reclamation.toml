@@ -28,11 +28,13 @@ timing = "spell"
 
 # Return target permanent card with mana value 3 or less from your graveyard to the battlefield.
 [[abilities.effects]]
-type = "reanimate_to_battlefield"
+type = "zone"
+mode = "reanimate_to_battlefield"
 target = { card_in_graveyard = { whose = "yours", filter = { permanent_with_mana_value_at_most = 3 } } }
 
 # If this spell was cast from a graveyard, you may copy this spell and may choose a new target for the copy.
 [[abilities.effects]]
-type = "copy_this_spell"
+type = "copy"
+mode = "this_spell"
 cast_from_graveyard_only = true
 optional = true

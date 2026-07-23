@@ -28,10 +28,12 @@ graveyard_exile_target_count = 2
 
 # Remove target attacking or blocking creature from combat
 [[abilities.effects]]
-type = "remove_from_combat"
+type = "control"
+mode = "remove_from_combat"
 target = { permanent = { types = "creature", attacking = true } }
 
 # and tap it.
 [[abilities.effects]]
-type = "tap_target"
+type = "control"
+mode = "tap_target"
 target = { permanent = { types = "creature", attacking = true } }

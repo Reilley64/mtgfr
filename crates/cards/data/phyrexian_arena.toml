@@ -19,10 +19,12 @@ timing = "upkeep"
 
 # you draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # and you lose 1 life.
 [[abilities.effects]]
-type = "lose_life"
+type = "life"
+mode = "lose"
 amount = 1

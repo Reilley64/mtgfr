@@ -19,7 +19,8 @@ taps_self = true
 
 # Add {C}{C}{C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless", "colorless", "colorless"]
 
 # {3}, {T}, Sacrifice this artifact: Draw three cards.
@@ -33,5 +34,6 @@ generic = 3
 
 # Draw three cards.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 3

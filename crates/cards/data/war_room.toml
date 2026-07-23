@@ -20,7 +20,8 @@ taps_self = true
 
 # Add {C}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]
 
 # {3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a
@@ -33,5 +34,6 @@ pay_life = "commander_color_count"
 
 # Draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

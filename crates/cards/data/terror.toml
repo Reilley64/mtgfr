@@ -18,6 +18,7 @@ timing = "spell"
 
 # Destroy target nonartifact, nonblack creature. It can't be regenerated.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "creature", exclude = "artifact", not_color = "black" } }
 cant_be_regenerated = true

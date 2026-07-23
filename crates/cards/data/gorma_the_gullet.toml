@@ -33,7 +33,8 @@ timing = "creature_you_control_dies"
 
 # put a +1/+1 counter on Gorma
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"
 
@@ -45,6 +46,7 @@ timing = "static"
 # Nontoken creatures you control enter with an additional +1/+1 counter on them for each
 # creature that died under your control this turn
 [[abilities.effects]]
-type = "creatures_you_control_enter_with_counters"
+type = "static"
+mode = "creatures_you_control_enter_with_counters"
 filter = { types = "creature", token = "nontoken" }
 count = "creatures_died_this_turn"

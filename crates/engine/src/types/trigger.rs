@@ -104,7 +104,7 @@ pub enum Trigger {
     /// enchantment-only, and it self-fires off its own last-known information like the
     /// `*IncludingThis` creature arms. The dying permanent's own last-known card types ride along
     /// on [`TriggerContext::dying_permanent_types`] for a payoff that reads "shares a card type
-    /// with it" (`Effect::EachPlayerSacrifices`'s `shares_type_with_dying_permanent` filter axis).
+    /// with it" (`Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`'s `shares_type_with_dying_permanent` filter axis).
     /// See [`Game::queue_nonland_permanent_death_watchers`].
     NonlandPermanentYouControlDiesIncludingThis,
     /// At the beginning of the controller's upkeep step.
@@ -285,7 +285,7 @@ pub enum Trigger {
     /// (CR 701.12) or other noncombat creature damage only emits that, not this marker. The
     /// damaged creature's id rides in [`TriggerContext::damaged_creature`] (CR 603.10a
     /// last-known information) so
-    /// [`Effect::DestroyTriggeringDamagedCreature`](crate::Effect::DestroyTriggeringDamagedCreature)
+    /// [`Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature)`](crate::Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature))
     /// can act on "that creature". See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`].
     DealsCombatDamageToCreature,
@@ -687,14 +687,14 @@ pub(crate) struct TriggerContext {
     /// watch's source just dealt combat damage to (Stinkweed Imp's "destroy that creature"),
     /// named separately from `dying_enchanted_creature`/`dead_creature` above since the damaged
     /// creature need not be dead or even still on the battlefield. `None` for every other
-    /// trigger. Feeds [`Effect::DestroyTriggeringDamagedCreature`] via `contextualize_effect`;
+    /// trigger. Feeds [`Effect::Destroy(DestroyEffect::DestroyTriggeringDamagedCreature)`] via `contextualize_effect`;
     /// `def_of`/`owner_of`/`zone_of` all still resolve it whether it's still a live permanent or
     /// has since left. See the `Event::CombatDamageDealtToCreature` arm of
     /// [`Game::enqueue_triggers`] for where this is captured. Named so a future "all damage this
     /// source dealt this turn" generalization (fidelity increment #194) can extend it.
     pub(crate) damaged_creature: Option<ObjectId>,
     /// The triggering spell's stack object id, for a delayed [`Trigger::CastSpell`] one-shot
-    /// armed by [`Effect::ScheduleNextCastTrigger`] whose `then` copies that spell (Thunderclap
+    /// armed by [`Effect::Misc(MiscEffect::ScheduleNextCastTrigger)`] whose `then` copies that spell (Thunderclap
     /// Drake's "when you next cast an instant or sorcery spell this turn, copy it") — CR 603.4
     /// last-known information, same shape as `cast_x` above but naming the spell itself rather
     /// than its `{X}`. `None` for every other trigger. See
@@ -719,14 +719,14 @@ pub(crate) struct TriggerContext {
     /// [`Trigger::CreatureYouControlDies`]-family watch's exile-and-copy payoff (Hofri Ghostforge's
     /// "exile it. If you do, create a token that's a copy of that creature"). `None` for every
     /// trigger that doesn't read the dead creature's id. Feeds
-    /// [`Effect::ExileDeadCreatureCreateCopyWithSubtype`] via `contextualize_effect`; `def_of`/
+    /// [`Effect::Zone(ZoneEffect::ExileDeadCreatureCreateCopyWithSubtype)`] via `contextualize_effect`; `def_of`/
     /// `owner_of`/`zone_of` all still resolve it after the death (following the `Moved` lineage into
     /// its new graveyard card). See [`Game::queue_death_watcher`] for where this is captured.
     pub(crate) dead_creature: Option<ObjectId>,
     /// CR 603.10a last-known information: the dying permanent's own card types, for a
     /// [`Trigger::NonlandPermanentYouControlDiesIncludingThis`] watch's dynamic edict payoff
     /// (Martyr's Bond's "each opponent sacrifices a permanent that shares a card type with it").
-    /// `None` for every other trigger. Feeds `Effect::EachPlayerSacrifices`'s
+    /// `None` for every other trigger. Feeds `Effect::Choice(ChoiceEffect::EachPlayerSacrifices)`'s
     /// `shares_type_with_dying_permanent`-marked filter via `contextualize_effect`; see
     /// [`Game::queue_nonland_permanent_death_watchers`] for where this is captured.
     pub(crate) dying_permanent_types: Option<TypeSet>,
@@ -734,7 +734,7 @@ pub(crate) struct TriggerContext {
     /// batch, for a [`Trigger::CardsLeaveYourGraveyard`] payoff that becomes a copy of one of them
     /// (Spirit of Resilience's "become a copy of an artifact or creature card from among those
     /// cards"). `&[]` for every other trigger. Feeds
-    /// [`Effect::PutCounterThenMayBecomeCopyOfCardFromList`] via `contextualize_effect`'s
+    /// [`Effect::Choice(ChoiceEffect::PutCounterThenMayBecomeCopyOfCardFromList)`] via `contextualize_effect`'s
     /// `fill_cards_left_graveyard`; `def_of` still resolves each id after the move (following the
     /// `Moved` lineage). See `Game::queue_cards_leave_graveyard_triggers` for where this is set.
     /// ponytail: a leaked `&'static [ObjectId]` interned per fire so [`TriggerContext`] stays
@@ -748,14 +748,14 @@ pub(crate) struct TriggerContext {
     /// where this is captured.
     pub(crate) left_battlefield_host: Option<ObjectId>,
     /// The source permanent of the activated ability that fired a [`Trigger::ActivateAbility`]
-    /// watch (Unbound Flourishing), for its [`Effect::CopyTriggeringAbility`] payoff — the copy
+    /// watch (Unbound Flourishing), for its [`Effect::Copy(CopyEffect::CopyTriggeringAbility)`] payoff — the copy
     /// finds that ability still on the stack (its trigger sits directly above it, CR 603.3b) by
     /// this source and copies its effect/target/`{X}`. `None` for every other trigger. See
     /// [`Game::queue_activate_ability_triggers`] for where this is captured.
     pub(crate) triggering_ability: Option<ObjectId>,
     /// The player who cast the triggering spell, for a [`Trigger::CastSpell`] watch's own
     /// "unless that player pays" payoff (Rhystic Study's "you may draw a card unless that player
-    /// pays {1}" — [`Effect::MayDrawUnlessPays`]). Distinct from `TriggerContext::controller`
+    /// pays {1}" — [`Effect::Choice(ChoiceEffect::MayDrawUnlessPays)`]). Distinct from `TriggerContext::controller`
     /// (the watcher's own controller) precisely when `caster: CasterScope::Opponent`/`AnyPlayer`
     /// — `controller` alone can't name the payer for those scopes. `None` for every other
     /// trigger. See [`Game::queue_cast_spell_triggers`] for where this is captured.

@@ -22,4 +22,5 @@ timing = "static"
 
 # You control enchanted permanent.
 [[abilities.effects]]
-type = "control_attached"
+type = "static"
+mode = "control_attached"

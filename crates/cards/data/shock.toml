@@ -18,6 +18,7 @@ timing = "spell"
 
 # Shock deals 2 damage to any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 2
 target = "any"

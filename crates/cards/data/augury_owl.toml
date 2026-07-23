@@ -25,5 +25,6 @@ timing = "etb"
 
 # scry 3
 [[abilities.effects]]
-type = "scry"
+type = "dig"
+mode = "scry"
 count = 3

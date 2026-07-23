@@ -102,13 +102,13 @@ pub struct Game {
     /// spell finish) — drained by [`Game::resume_deferred_sequence`] once
     /// [`pending_choice`](Self::pending_choice) clears. See [`resolution::ResumeState`].
     pub(crate) resume: resolution::ResumeState,
-    /// Whether the current resolution's [`Effect::Clash`] was won by its controller (CR 701.22d),
+    /// Whether the current resolution's [`Effect::Dig(DigEffect::Clash)`] was won by its controller (CR 701.22d),
     /// read by a following [`Condition::WonClash`] step. Resolution-scoped, not a persistent board
     /// fact: each clash overwrites it and only a same-resolution `conditional` reads it, so it is
     /// never carried meaningfully between resolutions (see [`Condition::WonClash`]).
     pub(crate) clash_won: bool,
     /// Permanents that skip their controller's next untap step (Pollen Lullaby's win rider —
-    /// [`Effect::SkipNextUntapOpponentCreatures`]). Each id is consumed the next time that
+    /// [`Effect::Misc(MiscEffect::SkipNextUntapOpponentCreatures)`]). Each id is consumed the next time that
     /// permanent's controller reaches their untap step (see [`Game::advance_step`]'s `Untap` arm),
     /// whether or not it was tapped.
     pub(crate) skip_next_untap: Vec<ObjectId>,
@@ -174,7 +174,7 @@ pub struct Game {
     pub(crate) abilities_granted_until_eot: Vec<(ObjectId, ObjectId)>,
     /// Additional +1/+1 counters a specific about-to-resolve spell must enter with, keyed by the
     /// spell's stack object id. Captured at cast payment by Opal Palace's
-    /// [`Trigger::SpendManaToCast`] rider ([`Effect::CommanderEntersWithBonusCounters`]) and drained
+    /// [`Trigger::SpendManaToCast`] rider ([`Effect::Counters(CountersEffect::CommanderEntersWithBonusCounters)`]) and drained
     /// by [`Game::resolve_spell`] when the spell becomes a permanent (CR 601.2 — the "enters with"
     /// rider is set before resolution). Engine-internal scratch, never wire-mirrored.
     pub(crate) pending_enter_bonus_counters: Vec<(ObjectId, u32)>,
@@ -183,18 +183,18 @@ pub struct Game {
     /// [`Permanent`]); an entry is created as the card is suspended and dropped when the last
     /// counter is removed (the card becomes castable) — see [`Game::exile_time_counters`].
     pub(crate) exile_time_counters: Vec<(ObjectId, u32)>,
-    /// Set by an [`Effect::ExileSelfWithTimeCounters`] step while a spell resolves, so
+    /// Set by an [`Effect::Zone(ZoneEffect::ExileSelfWithTimeCounters)`] step while a spell resolves, so
     /// [`Game::finish_instant_sorcery_resolution`] exiles that spell with time counters rather
     /// than sending it to the graveyard (Rousing Refrain). Consumed (`take`) in `finish`, which
     /// always runs right after the spell's effects — only one spell resolves at a time.
     pub(crate) self_exile_time_counters: Option<u32>,
-    /// Set by an [`Effect::TuckSelfToLibraryBottom`] step while a spell resolves, so
+    /// Set by an [`Effect::Zone(ZoneEffect::TuckSelfToLibraryBottom)`] step while a spell resolves, so
     /// [`Game::finish_instant_sorcery_resolution`] tucks that spell to the bottom of its owner's
     /// library rather than sending it to the graveyard (Spell Crumple). Consumed (`take`) in
     /// `finish`, the same one-spell-at-a-time guarantee [`Self::self_exile_time_counters`] relies
     /// on.
     pub(crate) self_tuck_to_library_bottom: bool,
-    /// Set by an [`Effect::ExileSelfOnResolve`] step while a spell resolves, so
+    /// Set by an [`Effect::Zone(ZoneEffect::ExileSelfOnResolve)`] step while a spell resolves, so
     /// [`Game::finish_instant_sorcery_resolution`] exiles that spell rather than sending it to
     /// the graveyard (Vengeful Rebirth). Consumed (`take`) in `finish`, the same
     /// one-spell-at-a-time guarantee [`Self::self_tuck_to_library_bottom`] relies on.
@@ -599,9 +599,9 @@ mod forced_action_tests {
         game.pending_choice = Some(PendingChoice::MayYesNo {
             player: P0,
             source: 0,
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
         });
         assert_eq!(
             game.forced_action(),
@@ -616,9 +616,9 @@ mod forced_action_tests {
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
             source: 0,
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
             legal: vec![Target::Object(7)],
             count: TargetCount::default(),
             x: 0,
@@ -639,9 +639,9 @@ mod forced_action_tests {
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
             source: 0,
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
             legal: vec![Target::Object(7), Target::Object(8)],
             count: TargetCount::default(),
             x: 0,
@@ -658,9 +658,9 @@ mod forced_action_tests {
         game.pending_choice = Some(PendingChoice::ChooseTarget {
             player: P0,
             source: 0,
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
             legal: vec![Target::Object(7)],
             count: TargetCount {
                 min: 0,
@@ -679,9 +679,9 @@ mod forced_action_tests {
         game.pending_choice = Some(PendingChoice::OrderTriggers {
             player: P0,
             source: 0,
-            effects: vec![Effect::DrawCards {
+            effects: vec![Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            }],
+            })],
         });
         assert_eq!(
             game.forced_action(),
@@ -699,12 +699,12 @@ mod forced_action_tests {
             player: P0,
             source: 0,
             effects: vec![
-                Effect::DrawCards {
+                Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(1),
-                },
-                Effect::DrawCards {
+                }),
+                Effect::Draw(DrawEffect::Cards {
                     count: Amount::Fixed(2),
-                },
+                }),
             ],
         });
         assert_eq!(game.forced_action(), None);
@@ -1018,9 +1018,9 @@ mod refresh_actions_tests {
         game.pending_choice = Some(PendingChoice::MayYesNo {
             player: P0,
             source: 0,
-            effect: Effect::DrawCards {
+            effect: Effect::Draw(DrawEffect::Cards {
                 count: Amount::Fixed(1),
-            },
+            }),
         });
         game.refresh_actions();
         assert!(

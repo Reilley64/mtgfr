@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_misc_family(
+    pub(crate) fn mint_misc(
         &self,
-        effect: Effect,
+        effect: MiscEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -18,14 +18,14 @@ impl Game {
         match effect {
             // Kirol, History Buff: the source becomes prepared (idempotent if already prepared),
             // enabling its back-face copy cast (see `Game::cast_prepared`).
-            Effect::BecomePrepared => vec![Event::PreparedChanged {
+            MiscEffect::BecomePrepared => vec![Event::PreparedChanged {
                 object: source,
                 prepared: true,
             }],
             // Stensian Sanguinist's attack trigger: arm a delayed watch on the just-deathtouched
             // shared target — its own source becomes prepared the first time that creature deals
             // combat damage to a player this combat (see `Game::fire_combat_damage_watch_triggers`). (CR 510, CR 120.3, CR 506)
-            Effect::ArmCombatDamageWatch => {
+            MiscEffect::ArmCombatDamageWatch => {
                 let watched = expect_object_target(target, "a combat-damage watch's armed target");
                 vec![Event::CombatDamageWatchArmed {
                     controller,
@@ -38,7 +38,7 @@ impl Game {
             // exile step never ran) is unreachable in practice — CR 608.2b already fizzles the
             // whole ability before either step resolves without a legal target — but a silent
             // no-op rather than a panic, matching this resolution's other snapshot-read arms.
-            Effect::ScheduleThisTurnCombatDamageCopy => {
+            MiscEffect::ScheduleThisTurnCombatDamageCopy => {
                 match self.resolution_frame.surge_exiled_card {
                     Some((card, _)) => vec![Event::CombatDamageCopyArmed {
                         controller,
@@ -53,18 +53,18 @@ impl Game {
             // rather than a continuous "as though they had flash" static — behaviorally identical (CR 702.8)
             // for this pool (gone at cleanup either way; nothing reads it mid-resolution before
             // the flag is set here).
-            Effect::GrantFlashThisTurn => {
+            MiscEffect::GrantFlashThisTurn => {
                 vec![Event::FlashPermissionGranted { player: controller }]
             }
             // Yavimaya Bloomsage's Channel back face: "Until end of turn, any time you could (CR 605, CR 118.4)
             // activate a mana ability, you may pay 1 life. If you do, add {C}." Resolved as a
             // one-shot turn-flag set, mirroring `GrantFlashThisTurn` above.
-            Effect::GrantChannelColorlessManaThisTurn => {
+            MiscEffect::GrantChannelColorlessManaThisTurn => {
                 vec![Event::ChannelColorlessManaGranted { player: controller }]
             }
             // Counter target spell (the unconditional hard-counter path — `unless_pays: Some(_)`
             // is intercepted earlier, in `run`, so this arm only ever sees `None`).
-            Effect::CounterTargetSpell { .. } => {
+            MiscEffect::CounterTargetSpell { .. } => {
                 let original = expect_object_target(target, "a spell to counter");
                 self.counter_spell(original)
             }
@@ -73,7 +73,7 @@ impl Game {
             // `AbilityCountered` apply removes the topmost matching stack ability. A guard-return
             // (CR 608.2b) if it already left the stack is handled upstream by `target_still_legal`,
             // which fizzles this ability before it runs; this stays a no-op if nothing matches.
-            Effect::CounterTargetActivatedAbility => {
+            MiscEffect::CounterTargetActivatedAbility => {
                 let source_id = expect_object_target(target, "an activated ability to counter");
                 let on_stack = self.stack.iter().any(|item| {
                     matches!(item, StackItem::Ability { source, activated: true, .. } if *source == source_id)
@@ -86,7 +86,7 @@ impl Game {
             // Schedule a CR 603.7 delayed trigger: resolve `who` to a concrete player now (the
             // effect itself doesn't fire until the matching step begins — see
             // `Game::fire_delayed_triggers`).
-            Effect::ScheduleAtNextUpkeep { who, then, fire_at } => {
+            MiscEffect::ScheduleAtNextUpkeep { who, then, fire_at } => {
                 let player = match who {
                     DelayController::You => controller,
                     DelayController::TargetSpellController => self.controller_of(
@@ -106,7 +106,7 @@ impl Game {
             // already moved the shared target spell to the graveyard). `Main1` firing is
             // controller-scoped in `Game::fire_delayed_triggers`, so this only fires on the
             // caster's own turn.
-            Effect::ScheduleColorlessManaForCounteredSpellNextMainPhase => {
+            MiscEffect::ScheduleColorlessManaForCounteredSpellNextMainPhase => {
                 let spell =
                     expect_object_target(target, "the countered spell for the delayed mana");
                 let mana_value = self.def_of(spell).mana_value().min(u8::MAX as u32) as u8;
@@ -121,7 +121,7 @@ impl Game {
             // controls so it skips that controller's next untap step (CR "creatures your opponents
             // control don't untap during their controllers' next untap steps"). Each mark is
             // consumed at that permanent's controller's next untap step (see `Game::advance_step`).
-            Effect::SkipNextUntapOpponentCreatures => self
+            MiscEffect::SkipNextUntapOpponentCreatures => self
                 .battlefield()
                 .into_iter()
                 .filter(|&id| {
@@ -132,7 +132,7 @@ impl Game {
             // Arm a CR 603.7 delayed one-shot: always the ability's own controller/source (Brass
             // Infiniscope has no "someone else's spell" wrinkle) — the watch itself doesn't fire
             // until a matching cast happens, see `Game::fire_next_cast_triggers`.
-            Effect::ScheduleNextCastTrigger { filter, then } => {
+            MiscEffect::ScheduleNextCastTrigger { filter, then } => {
                 vec![Event::NextCastTriggerArmed {
                     controller,
                     source,
@@ -144,7 +144,7 @@ impl Game {
             // Nezumi Graverobber: the source permanent flips to its back face (CR 712). One-way and
             // idempotent — flipping an already-flipped or vanished source is a no-op (guard-return
             // before minting, since the apply choke reads `permanent_mut`).
-            Effect::FlipSource => match self.as_permanent(source) {
+            MiscEffect::FlipSource => match self.as_permanent(source) {
                 Some(p) if !p.flipped => vec![Event::Flipped { object: source }],
                 _ => vec![],
             },
@@ -155,7 +155,7 @@ impl Game {
     /// Counter `spell` (CR 701.5a): move it from the stack to its owner's graveyard, so it never
     /// resolves. A no-op if `spell` already left the stack (CR 608.2b) — a response emptied that
     /// stack slot (countered/resolved) before this counter could act. Shared by the unconditional
-    /// [`Effect::CounterTargetSpell`] arm and the [`PendingChoice::PayOrCounter`] decline handler.
+    /// [`MiscEffect::CounterTargetSpell`] arm and the [`PendingChoice::PayOrCounter`] decline handler.
     pub(crate) fn counter_spell(&self, spell: ObjectId) -> Vec<Event> {
         if !matches!(self.objects[spell as usize], Object::Spell(_)) {
             return Vec::new();

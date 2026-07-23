@@ -23,7 +23,8 @@ timing = "static"
 
 # Enchanted creature gets +2/+2 and has trample
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 2
 toughness = 2
 keywords = ["trample"]
@@ -34,5 +35,6 @@ timing = "enchanted_creature_deals_damage"
 
 # you gain that much life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = "triggering_damage_dealt"

@@ -23,7 +23,8 @@ taps_self = true
 
 # Add {G}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["green"]
 
 # Threshold — This creature gets +3/+3 as long as there are seven or more cards in your graveyard.
@@ -32,7 +33,8 @@ timing = "static"
 
 # This creature gets +3/+3 as long as there are seven or more cards in your graveyard.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 3
 toughness = 3
 self_only = true

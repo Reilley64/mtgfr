@@ -20,5 +20,6 @@ timing = "spell"
 
 # Gain control of target creature with mana value X.
 [[abilities.effects]]
-type = "gain_control"
+type = "control"
+mode = "gain_control"
 target = { permanent = { types = "creature", mv_eq_x = true } }

@@ -27,7 +27,8 @@ optional = true
 
 # put a +1/+1 counter on this creature
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"
 
@@ -39,7 +40,8 @@ optional = true
 
 # move any number of +1/+1 counters from this creature onto other creatures
 [[abilities.effects]]
-type = "move_counters"
+type = "counters"
+mode = "move_counters"
 target = "this"
 to_filter = { types = "creature" }
 distributed = true

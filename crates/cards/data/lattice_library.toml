@@ -23,7 +23,8 @@ timing = "static"
 
 # This enchantment enters with X study counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 kind = "study"
 
@@ -35,7 +36,8 @@ timing = "etb"
 # create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it
 # equal to the number of study counters on this enchantment.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
 count = 1
 enters_with = { per_counter_of_kind = "study" }
@@ -49,7 +51,8 @@ nth_each_turn = 1
 # create a 0/0 green and blue Fractal creature token. Put a number of +1/+1 counters on it
 # equal to the number of study counters on this enchantment.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "23c6a041-b8ff-449c-8a2c-e3939668c017"
 count = 1
 enters_with = { per_counter_of_kind = "study" }

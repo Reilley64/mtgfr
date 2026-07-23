@@ -19,10 +19,12 @@ timing = "spell"
 
 # Draw X cards
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = "x"
 
 # then discard a card.
 [[abilities.effects]]
-type = "discard"
+type = "choice"
+mode = "discard"
 count = 1

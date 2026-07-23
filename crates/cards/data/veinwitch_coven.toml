@@ -33,5 +33,6 @@ black = 1
 
 # return target creature card from your graveyard to your hand.
 [[abilities.effects]]
-type = "return_from_graveyard_to_hand"
+type = "zone"
+mode = "return_from_graveyard_to_hand"
 target = "your_graveyard"

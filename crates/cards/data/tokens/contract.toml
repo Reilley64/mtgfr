@@ -18,7 +18,8 @@ timing = "enchanted_creature_attacks"
 # it gets +2/+0 until end of turn if it's attacking one of your opponents. Otherwise, its
 # controller loses 2 life.
 [[abilities.effects]]
-type = "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life"
+type = "pump"
+mode = "enchanted_attacker_pump_attacking_opponent_else_controller_loses_life"
 power = 2
 toughness = 0
 life = 2

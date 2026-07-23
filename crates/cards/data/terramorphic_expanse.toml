@@ -22,7 +22,8 @@ sacrifice = "this"
 
 # Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true

@@ -31,5 +31,6 @@ at_least = 2
 
 # that opponent loses 3 life and you draw a card.
 [[abilities.effects]]
-type = "attacker_loses_life_you_draw"
+type = "life"
+mode = "attacker_loses_you_draw"
 life_loss = 3

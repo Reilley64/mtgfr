@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_control_family(
+    pub(crate) fn mint_control(
         &self,
-        effect: Effect,
+        effect: ControlEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -18,7 +18,7 @@ impl Game {
         match effect {
             // Equip resolves by attaching the Equipment (the ability's source) to the chosen
             // creature, replacing any prior attachment.
-            Effect::Equip => {
+            ControlEffect::Equip => {
                 let host = expect_object_target(target, "equip");
                 vec![Event::AttachedTo {
                     object: source,
@@ -32,7 +32,7 @@ impl Game {
             // never reaches resolution. Re-checks the Aura's own `enchant` filter against the
             // entering permanent (CR 303.4f-style legality) — a no-op if it isn't a legal host,
             // even though the "you may" was accepted (deck fidelity increments #156).
-            Effect::AttachSelfToEntering { entering } => {
+            ControlEffect::AttachSelfToEntering { entering } => {
                 let host = entering.expect("filled in from the entering trigger at placement");
                 if !self.attachment_host_legal(source, host) {
                     return Vec::new();
@@ -42,7 +42,7 @@ impl Game {
                     host: Some(host),
                 }]
             }
-            Effect::GoadTarget { .. } => {
+            ControlEffect::GoadTarget { .. } => {
                 let object = expect_object_target(target, "goad");
                 vec![Event::Goaded {
                     object,
@@ -50,23 +50,23 @@ impl Game {
                     source_name,
                 }]
             }
-            Effect::TapTarget { .. } => {
+            ControlEffect::TapTarget { .. } => {
                 let object = expect_object_target(target, "tap");
                 vec![Event::Tapped { object }]
             }
-            Effect::RegenerateShield { .. } => {
+            ControlEffect::RegenerateShield { .. } => {
                 let object = expect_object_target(target, "a regeneration shield");
                 vec![Event::RegenerationShieldCreated { object }]
             }
-            Effect::UntapTarget { .. } => {
+            ControlEffect::UntapTarget { .. } => {
                 let object = expect_object_target(target, "untap");
                 vec![Event::Untapped { object }]
             }
-            Effect::RemoveFromCombat { .. } => {
+            ControlEffect::RemoveFromCombat { .. } => {
                 let object = expect_object_target(target, "remove from combat");
                 vec![Event::RemovedFromCombat { object }]
             }
-            Effect::GainControlUntilEndOfTurn { .. } => {
+            ControlEffect::GainControlUntilEndOfTurn { .. } => {
                 let object = expect_object_target(target, "a steal");
                 vec![Event::ControlGainedUntilEndOfTurn {
                     object,
@@ -74,7 +74,7 @@ impl Game {
                     source_name,
                 }]
             }
-            Effect::GainControl { .. } => {
+            ControlEffect::GainControl { .. } => {
                 let object = expect_object_target(target, "a permanent control change");
                 vec![Event::ControlGained { object, controller }]
             }
@@ -83,7 +83,7 @@ impl Game {
             // steal can't feed the second — CR 800.4a), untap them all, swap each to the OTHER
             // player (each `ControlGainedUntilEndOfTurn` is freshly timestamped at apply, so it
             // outranks any earlier steal/donation), and grant haste. Ownership is untouched.
-            Effect::ExchangeAllCreaturesUntilEndOfTurn { .. } => {
+            ControlEffect::ExchangeAllCreaturesUntilEndOfTurn { .. } => {
                 let Some(Target::Player(opponent)) = target else {
                     return Vec::new();
                 };
@@ -136,7 +136,7 @@ impl Game {
             // scoping, unlike `UntapAll` below). Snapshot the matching set BEFORE minting any event,
             // untap them all, hand each to the caster (freshly timestamped so it outranks any
             // earlier steal/donation — CR 800.4a), and grant haste. Ownership is untouched.
-            Effect::GainControlAllUntilEndOfTurn { filter } => {
+            ControlEffect::GainControlAllUntilEndOfTurn { filter } => {
                 let creatures: Vec<ObjectId> = self
                     .battlefield()
                     .into_iter()
@@ -173,7 +173,7 @@ impl Game {
             // `ExchangeAllCreaturesUntilEndOfTurn` above), then mint one `ControlGained` per
             // creature naming its owner — every player's stolen creatures, not just the
             // activator's.
-            Effect::RevertAllCreaturesToOwners => self
+            ControlEffect::RevertAllCreaturesToOwners => self
                 .battlefield()
                 .into_iter()
                 .filter(|&id| {
@@ -185,7 +185,7 @@ impl Game {
                     controller: self.owner_of(object),
                 })
                 .collect(),
-            Effect::GainControlWhile {
+            ControlEffect::GainControlWhile {
                 while_source_tapped,
                 ..
             } => {
@@ -202,7 +202,7 @@ impl Game {
             // Backup's rider (CR 702.166): the shared target creature gains the source's other
             // abilities until end of turn — but only "if that's another creature", so the source
             // targeting itself grants nothing (the counter still landed in the preceding step).
-            Effect::GrantSourceAbilitiesUntilEndOfTurn => {
+            ControlEffect::GrantSourceAbilitiesUntilEndOfTurn => {
                 let object = expect_object_target(target, "Backup's ability grant");
                 if object == source {
                     return Vec::new();
@@ -214,7 +214,7 @@ impl Game {
             }
             // Beledros: untap every matching permanent the controller controls — the mass
             // mirror of UntapTarget, same "you control" scoping as PumpCreaturesYouControlUntilEndOfTurn.
-            Effect::UntapAll { filter } => self
+            ControlEffect::UntapAll { filter } => self
                 .battlefield()
                 .into_iter()
                 .filter(|&id| {

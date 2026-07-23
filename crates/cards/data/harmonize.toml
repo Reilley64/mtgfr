@@ -19,5 +19,6 @@ timing = "spell"
 
 # Draw three cards.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 3

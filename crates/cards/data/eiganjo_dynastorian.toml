@@ -32,7 +32,8 @@ at_least = 2
 
 # this creature becomes prepared.
 [[abilities.effects]]
-type = "become_prepared"
+type = "misc"
+mode = "become_prepared"
 
 # Back face — Replenish ({3}{W} sorcery): "Return all enchantment cards from your graveyard to
 # the battlefield."
@@ -53,5 +54,6 @@ timing = "spell"
 
 # Return all enchantment cards from your graveyard to the battlefield.
 [[back.abilities.effects]]
-type = "mass_return_from_graveyard"
+type = "zone"
+mode = "mass_return_from_graveyard"
 filter = "enchantment"

@@ -24,13 +24,15 @@ timing = "etb"
 
 # you may sacrifice a land.
 [[abilities.effects]]
-type = "may_sacrifice"
+type = "choice"
+mode = "may_sacrifice"
 filter = "land"
 
 # If you do, search your library for up to two basic land cards, put them onto the battlefield
 # tapped, then shuffle.
 [[abilities.effects.then]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true

@@ -20,5 +20,6 @@ taps_self = true
 
 # Add one mana of any color that a land an opponent controls could produce.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 opponent_colors = 1

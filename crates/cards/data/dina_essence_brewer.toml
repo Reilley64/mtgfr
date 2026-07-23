@@ -31,7 +31,8 @@ once_each_turn = true
 
 # draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # {2}, {T}, Sacrifice another creature: You gain X life and put X +1/+1 counters on target
@@ -44,11 +45,13 @@ sacrifice = { creature = { other = true } }
 
 # You gain X life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = "sacrificed_creature_power"
 
 # put X +1/+1 counters on target creature you control, where X is the sacrificed creature's power
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = "sacrificed_creature_power"
 target = "creature_you_control"

@@ -26,7 +26,8 @@ timing = "etb"
 
 # return another target creature card from your graveyard to your hand.
 [[abilities.effects]]
-type = "return_from_graveyard_to_hand"
+type = "zone"
+mode = "return_from_graveyard_to_hand"
 target = { card_in_graveyard = { whose = "yours", filter = "creature", other = true } }
 
 # When this creature enters or leaves the battlefield, return another target creature card from your graveyard to your
@@ -36,5 +37,6 @@ timing = "this_leaves_battlefield"
 
 # return another target creature card from your graveyard to your hand.
 [[abilities.effects]]
-type = "return_from_graveyard_to_hand"
+type = "zone"
+mode = "return_from_graveyard_to_hand"
 target = { card_in_graveyard = { whose = "yours", filter = "creature", other = true } }

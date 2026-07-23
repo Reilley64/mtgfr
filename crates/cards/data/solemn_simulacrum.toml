@@ -30,7 +30,8 @@ optional = true
 # you may search your library for a basic land card, put that card onto the battlefield tapped,
 # then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "basic_land"
 to_zone = "battlefield"
 tapped = true
@@ -42,5 +43,6 @@ optional = true
 
 # you may draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

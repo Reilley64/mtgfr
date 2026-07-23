@@ -24,5 +24,6 @@ timing = "creature_you_control_dies_including_this"
 
 # each opponent loses 1 life and you gain 1 life.
 [[abilities.effects]]
-type = "each_opponent_drain"
+type = "life"
+mode = "each_opponent_drain"
 amount = 1

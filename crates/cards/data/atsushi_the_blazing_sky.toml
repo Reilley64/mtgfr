@@ -36,7 +36,7 @@ timing = "dies"
 # • Create three Treasure tokens.
 [[abilities.effects]]
 type = "choose_one"
-modes = [
-    { type = "exile_top_may_play", count = 2, until_next_turn = true },
-    { type = "create_treasure", count = 3 },
+options = [
+    { type = "mill", mode = "exile_top_may_play", count = 2, until_next_turn = true },
+    { type = "token", mode = "create_treasure", count = 3 },
 ]

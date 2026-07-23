@@ -27,7 +27,8 @@ timing = "spell"
 # Look at the top seven cards of your library. Put two of them into your hand and the rest on
 # the bottom of your library in any order.
 [[abilities.effects]]
-type = "look_at_top"
+type = "dig"
+mode = "look_at_top"
 count = 7
 up_to = 2
 min = 2

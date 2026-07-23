@@ -22,7 +22,8 @@ timing = "static"
 
 # Equipped creature gets +2/+0.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = 2
 toughness = 0
 
@@ -35,4 +36,5 @@ generic = 1
 
 # Equip {1}
 [[abilities.effects]]
-type = "equip"
+type = "control"
+mode = "equip"

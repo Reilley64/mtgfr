@@ -25,7 +25,8 @@ timing = "etb"
 # reveal the top card of your library. If it's a land card, put it onto the battlefield.
 # Otherwise, put that card into your hand.
 [[abilities.effects]]
-type = "reveal_top_cards"
+type = "reveal"
+mode = "top_cards"
 count = 1
 filter = "land"
 matched_dest = "battlefield"

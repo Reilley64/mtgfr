@@ -22,7 +22,8 @@ timing = "etb"
 
 # choose a creature type.
 [[abilities.effects]]
-type = "choose_creature_type"
+type = "choice"
+mode = "choose_creature_type"
 
 # Creatures you control of the chosen type get +1/+1.
 [[abilities]]
@@ -30,7 +31,8 @@ timing = "static"
 
 # Creatures you control of the chosen type get +1/+1.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 1
 chosen_subtype = true
@@ -42,5 +44,6 @@ taps_self = true
 
 # Add one mana of any color.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]

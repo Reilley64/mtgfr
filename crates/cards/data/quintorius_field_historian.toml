@@ -30,7 +30,8 @@ timing = "static"
 
 # Spirits you control get +1/+0.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 0
 subtypes = ["Spirit"]
@@ -41,7 +42,8 @@ timing = "cards_leave_your_graveyard"
 
 # create a 3/2 red and white Spirit creature token.
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 
 token = "994879c3-48a7-4da5-9a42-46561fafdd69"
 

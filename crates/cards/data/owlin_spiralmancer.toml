@@ -27,6 +27,7 @@ optional = true
 
 # you may copy it. You may choose new targets for the copy.
 [[abilities.effects]]
-type = "copy_triggering_spell"
+type = "copy"
+mode = "copy_triggering_spell"
 count = 1
 may_choose_new_targets = true

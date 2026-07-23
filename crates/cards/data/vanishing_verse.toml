@@ -19,5 +19,6 @@ timing = "spell"
 
 # Exile target monocolored permanent.
 [[abilities.effects]]
-type = "exile_target"
+type = "destroy"
+mode = "exile_target"
 target = { permanent = { color = "monocolored" } }

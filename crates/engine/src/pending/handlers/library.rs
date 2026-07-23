@@ -344,7 +344,7 @@ impl Game {
 
     /// Answer a [`PendingChoice::ShuffleFromGraveyard`]: shuffle up to `max` (`0` = unbounded) of
     /// the offered `candidates` from `owner`'s graveyard into `owner`'s library, via the same
-    /// [`Event::TuckedToLibrary`] zone move [`Effect::TuckFromGraveyard`] uses, then shuffle that
+    /// [`Event::TuckedToLibrary`] zone move [`Effect::Zone(ZoneEffect::TuckFromGraveyard)`] uses, then shuffle that
     /// library (CR 701.19-style mandatory shuffle after cards enter it).
     pub(crate) fn shuffle_from_graveyard(
         &mut self,
@@ -619,9 +619,9 @@ impl Game {
                     controller: player,
                     source,
                     fire_at: Step::End,
-                    effect: Effect::SacrificeObject {
+                    effect: Effect::Destroy(DestroyEffect::SacrificeObject {
                         object: Some(permanent),
-                    },
+                    }),
                 },
             );
         }

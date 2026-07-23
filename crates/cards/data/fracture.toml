@@ -20,5 +20,6 @@ timing = "spell"
 
 # Destroy target artifact, enchantment, or planeswalker.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = "artifact_enchantment_or_planeswalker"

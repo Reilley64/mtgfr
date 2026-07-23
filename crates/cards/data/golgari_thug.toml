@@ -27,6 +27,7 @@ timing = "dies"
 
 # put target creature card from your graveyard on top of your library.
 [[abilities.effects]]
-type = "tuck_from_graveyard"
+type = "zone"
+mode = "tuck_from_graveyard"
 target = { card_in_graveyard = { whose = "yours", filter = "creature" } }
 to_top = true

@@ -21,7 +21,8 @@ timing = "static"
 
 # Attacking Pests you control get +1/+0 and have menace.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 0
 subtypes = ["Pest"]
@@ -36,7 +37,8 @@ timing = "creature_you_control_dies_nontoken"
 # create a 1/1 black and green Pest creature token with "When this token dies, you gain 1
 # life."
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = 1
 

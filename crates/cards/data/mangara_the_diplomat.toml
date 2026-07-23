@@ -29,7 +29,8 @@ at_least = 2
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # Whenever an opponent casts their second spell each turn, draw a card.
@@ -40,5 +41,6 @@ nth_each_turn = 2
 
 # draw a card.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

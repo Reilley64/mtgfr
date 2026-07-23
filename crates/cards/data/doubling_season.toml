@@ -22,7 +22,8 @@ timing = "static"
 
 # it creates twice that many of those tokens instead
 [[abilities.effects]]
-type = "token_replacement"
+type = "static"
+mode = "token_replacement"
 times = 2
 
 # If an effect would put one or more counters on a permanent you control, it puts twice that many
@@ -32,5 +33,6 @@ timing = "static"
 
 # it puts twice that many of those counters on that permanent instead
 [[abilities.effects]]
-type = "counter_replacement"
+type = "static"
+mode = "counter_replacement"
 times = 2

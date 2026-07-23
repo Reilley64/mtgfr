@@ -26,7 +26,8 @@ timing = "static"
 
 # This creature gets +1/+1 for each creature card in your graveyard.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 self_only = true
 power = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
 toughness = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
@@ -40,7 +41,8 @@ sacrifice = { creature = { other = true } }
 
 # Search your library for a land card, put it onto the battlefield tapped, then shuffle.
 [[abilities.effects]]
-type = "search_library"
+type = "dig"
+mode = "search_library"
 filter = "land"
 to_zone = "battlefield"
 tapped = true

@@ -1,0 +1,37 @@
+mod choice;
+mod control;
+mod copy;
+mod counters;
+mod damage;
+mod destroy;
+mod dig;
+mod draw;
+mod life;
+mod mana;
+mod mill;
+mod misc;
+mod pump;
+mod reveal;
+mod r#static;
+mod token;
+mod zone;
+
+pub use choice::ChoiceEffect;
+pub use control::ControlEffect;
+pub use copy::CopyEffect;
+pub use counters::CountersEffect;
+pub use damage::DamageEffect;
+pub use destroy::DestroyEffect;
+pub use dig::DigEffect;
+pub use draw::DrawEffect;
+pub use life::LifeEffect;
+pub use mana::ManaEffect;
+pub use mill::MillEffect;
+pub use misc::MiscEffect;
+pub use pump::PumpEffect;
+pub use reveal::RevealEffect;
+pub use r#static::StaticEffect;
+pub use token::TokenEffect;
+pub use zone::ZoneEffect;
+
+include!("shared.rs");

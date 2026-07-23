@@ -21,15 +21,18 @@ timing = "spell"
 
 # Target player draws a card
 [[abilities.effects]]
-type = "target_player_draws"
+type = "draw"
+mode = "target_player"
 count = 1
 
 # loses 1 life.
 [[abilities.effects]]
-type = "target_player_loses_life"
+type = "life"
+mode = "target_player_loses"
 amount = 1
 
 # Gravestorm: copy it for each permanent put into a graveyard from the battlefield this turn.
 [[abilities.effects]]
-type = "copy_this_spell"
+type = "copy"
+mode = "this_spell"
 count = "permanents_died_this_turn"

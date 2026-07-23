@@ -29,7 +29,8 @@ timing = "each_upkeep"
 
 # create a 1/1 black and green Pest creature token
 [[abilities.effects]]
-type = "create_token"
+type = "token"
+mode = "create"
 token = "37c4adc8-7455-4725-95fb-169a8b0254e5"
 count = 1
 
@@ -40,5 +41,6 @@ once_each_turn = true
 
 # Untap all lands you control.
 [[abilities.effects]]
-type = "untap_all"
+type = "control"
+mode = "untap_all"
 filter = "land"

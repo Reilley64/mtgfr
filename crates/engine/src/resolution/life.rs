@@ -6,9 +6,9 @@
 use crate::*;
 
 impl Game {
-    pub(crate) fn mint_life_family(
+    pub(crate) fn mint_life(
         &self,
-        effect: Effect,
+        effect: LifeEffect,
         controller: PlayerId,
         source: ObjectId,
         target: Option<Target>,
@@ -16,7 +16,7 @@ impl Game {
     ) -> Vec<Event> {
         let _source_name = self.source_name_of(source);
         match effect {
-            Effect::GainLife { amount } => {
+            LifeEffect::Gain { amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 vec![Event::LifeChanged {
                     player: controller,
@@ -24,9 +24,9 @@ impl Game {
                     source: Some(source),
                 }]
             }
-            // Invigorate's alternative-cost rider (CR 601.2f — see `Effect::OpponentGainsLife`'s
+            // Invigorate's alternative-cost rider (CR 601.2f — see `LifeEffect::OpponentGains`'s
             // own doc for the deterministic-opponent-pick ponytail note).
-            Effect::OpponentGainsLife { amount } => {
+            LifeEffect::OpponentGains { amount } => {
                 let Some(opponent) = self.living_players().find(|&p| p != controller) else {
                     return Vec::new();
                 };
@@ -37,14 +37,14 @@ impl Game {
                     source: Some(source),
                 }]
             }
-            Effect::LoseLife { amount } => vec![Event::LifeChanged {
+            LifeEffect::Lose { amount } => vec![Event::LifeChanged {
                 player: controller,
                 amount: -self.resolve_amount(amount, controller, source, target, x),
                 source: Some(source),
             }],
             // Swords to Plowshares' rider: the *target's* controller (its owner, per the
             // engine's control/ownership conflation) gains life, not this ability's controller.
-            Effect::GainLifeTargetController { amount } => {
+            LifeEffect::GainTargetController { amount } => {
                 let object = expect_object_target(target, "a controller-gains-life amount");
                 let gainer = self.owner_of(object);
                 let amount = self.resolve_amount(amount, controller, source, target, x);
@@ -56,7 +56,7 @@ impl Game {
             }
             // Parasitic Impetus: the enchanted creature's controller (context) loses `amount`
             // life; this ability's controller (the Aura's controller) gains the same.
-            Effect::AttackerLosesLifeYouGain { attacker, amount } => {
+            LifeEffect::AttackerLosesYouGain { attacker, amount } => {
                 let loser = attacker.expect("the attacking player is filled in at placement");
                 let amount = amount as i32;
                 vec![
@@ -74,7 +74,7 @@ impl Game {
             }
             // Tomik: the attacking opponent (context) loses `life_loss` life; this ability's
             // controller draws a card.
-            Effect::AttackerLosesLifeYouDraw {
+            LifeEffect::AttackerLosesYouDraw {
                 attacker,
                 life_loss,
             } => {
@@ -88,7 +88,7 @@ impl Game {
                 events
             }
             // Blood Artist: the target player loses life, the controller gains the same.
-            Effect::DrainTarget { amount, .. } => {
+            LifeEffect::DrainTarget { amount, .. } => {
                 let Some(Target::Player(loser)) = target else {
                     panic!("a targeted drain resolves with a chosen player target");
                 };
@@ -106,7 +106,7 @@ impl Game {
                 ]
             }
             // Questing Phelddagrif: the target player gains life, with no matching loss.
-            Effect::TargetPlayerGainsLife { amount, .. } => {
+            LifeEffect::TargetPlayerGains { amount, .. } => {
                 let Some(Target::Player(gainer)) = target else {
                     panic!("target-player-gains-life resolves with a chosen player target");
                 };
@@ -118,7 +118,7 @@ impl Game {
             }
             // Zulaport Cutthroat: each opponent loses life; the controller gains a flat
             // `amount` — or, for Exsanguinate's "life lost this way", the summed total.
-            Effect::EachOpponentDrain { amount, sum_gain } => {
+            LifeEffect::EachOpponentDrain { amount, sum_gain } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 let opponents: Vec<PlayerId> =
                     self.living_players().filter(|&p| p != controller).collect();
@@ -144,7 +144,7 @@ impl Game {
             }
             // Dina, Soul Steeper: each opponent loses life, with no lifegain half (a gain would
             // re-trigger her "whenever you gain life" ability into a loop).
-            Effect::EachOpponentLosesLife { amount } => {
+            LifeEffect::EachOpponentLoses { amount } => {
                 let amount = self.resolve_amount(amount, controller, source, target, x);
                 self.living_players()
                     .filter(|&p| p != controller)
@@ -159,7 +159,7 @@ impl Game {
             // among all players (CR 118.5 — a set is a gain/loss of the difference). A player
             // already at the highest gets no event; every other living player's delta is routed
             // through the same gain/lose choke so lifegain watchers/replacements fire correctly.
-            Effect::EachPlayerLifeBecomesHighest => {
+            LifeEffect::EachPlayerBecomesHighest => {
                 let highest = self
                     .living_players()
                     .map(|p| self.life(p))
@@ -185,7 +185,7 @@ impl Game {
                     .collect()
             }
             // Ominous Harvest: the target player loses life, with no matching gain.
-            Effect::TargetPlayerLosesLife { amount } => {
+            LifeEffect::TargetPlayerLoses { amount } => {
                 let Some(Target::Player(player)) = target else {
                     panic!("target-player-loses-life resolves with a chosen player target");
                 };
@@ -195,8 +195,6 @@ impl Game {
                     source: Some(source),
                 }]
             }
-
-            _ => unreachable!("life family mint received a non-family effect"),
         }
     }
 }

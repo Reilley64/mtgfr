@@ -28,7 +28,8 @@ timing = "static"
 
 # You have no maximum hand size.
 [[abilities.effects]]
-type = "no_maximum_hand_size"
+type = "static"
+mode = "no_maximum_hand_size"
 
 # Whenever a creature token you control deals combat damage to a player, draw a card.
 [[abilities]]
@@ -37,5 +38,6 @@ who = "your_tokens"
 
 # draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1

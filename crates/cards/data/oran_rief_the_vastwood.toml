@@ -20,6 +20,7 @@ taps_self = true
 
 # Put a +1/+1 counter on each green creature that entered this turn.
 [[abilities.effects]]
-type = "put_counters_each"
+type = "counters"
+mode = "put_counters_each"
 count = 1
 filter = { types = "creature", color = "green", entered_this_turn = true }

@@ -28,7 +28,8 @@ timing = "etb"
 # look at the top three cards of your library, then put one of them into your hand and the rest on
 # the bottom of your library in any order.
 [[abilities.effects]]
-type = "look_at_top"
+type = "dig"
+mode = "look_at_top"
 count = 3
 up_to = 1
 min = 1
@@ -44,4 +45,4 @@ timing = "etb"
 type = "conditional"
 condition = { type = "color_was_spent_to_cast_this", color = "white" }
 negate = true
-then = [{ type = "sacrifice_source" }]
+then = [{ type = "destroy", mode = "sacrifice_source" }]

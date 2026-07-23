@@ -29,7 +29,8 @@ timing = "begin_combat"
 # populate. (To populate, create a token that's a copy of a creature token you control.) The token
 # created this way gains haste. Sacrifice it at the beginning of the next end step.
 [[abilities.effects]]
-type = "create_token_copy"
+type = "token"
+mode = "create_copy"
 count = 1
 target = "creature_token_you_control"
 sacrifice_at_next_end_step = true

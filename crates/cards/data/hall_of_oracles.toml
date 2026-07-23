@@ -24,7 +24,8 @@ activation_cost = { generic = 1 }
 
 # Add one mana of any color.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any"]
 
 # {T}: Put a +1/+1 counter on target creature. Activate only as a sorcery and only if you've
@@ -39,6 +40,7 @@ type = "cast_instant_or_sorcery_this_turn"
 
 # Put a +1/+1 counter on target creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "creature"

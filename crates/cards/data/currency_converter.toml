@@ -27,12 +27,14 @@ taps_self = true
 
 # Draw a card
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = 1
 
 # then discard a card
 [[abilities.effects]]
-type = "discard"
+type = "choice"
+mode = "discard"
 count = 1
 
 [abilities.activation_cost]
@@ -45,7 +47,8 @@ optional = true
 
 # you may exile that card from your graveyard
 [[abilities.effects]]
-type = "exile_discarded_with_this"
+type = "mill"
+mode = "exile_discarded_with_this"
 
 # {T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card,
 # create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.
@@ -56,4 +59,5 @@ taps_self = true
 # Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create
 # a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.
 [[abilities.effects]]
-type = "cash_out_exiled_with_this"
+type = "dig"
+mode = "cash_out_exiled_with_this"

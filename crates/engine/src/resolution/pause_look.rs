@@ -1,5 +1,5 @@
-//! Library-look / search pause family — [`Effect::LookAtTop`], [`Effect::DistributeTop`],
-//! [`Effect::SearchLibrary`].
+//! Library-look / search pause family — [`Effect::Dig(DigEffect::LookAtTop)`], [`Effect::Dig(DigEffect::DistributeTop)`],
+//! [`Effect::Dig(DigEffect::SearchLibrary)`].
 //!
 //! Pause peel behind [`Game::run`] (card-dsl-and-card-pool spec deepen). Pause bookkeeping stays in
 //! [`crate::pending`]; this module only raises the choice.
@@ -15,7 +15,7 @@ impl Game {
         match effect {
             // Look at the top N, select up to `up_to` matching cards into `dest`, rest to `rest`
             // (Quandrix Apprentice). Pauses on a SelectFromTop choice.
-            Effect::LookAtTop {
+            Effect::Dig(DigEffect::LookAtTop {
                 count,
                 filter,
                 up_to,
@@ -24,7 +24,7 @@ impl Game {
                 dest_tapped,
                 rest,
                 mv_budget,
-            } => pending::raise(
+            }) => pending::raise(
                 self,
                 pending::ChoiceRequest::SelectFromTop {
                     player: controller,
@@ -40,12 +40,12 @@ impl Game {
             ),
             // Look at the top N, route one card each to hand / bottom / exile-may-play
             // (Expressive Iteration). Pauses on a DistributeTop choice.
-            Effect::DistributeTop {
+            Effect::Dig(DigEffect::DistributeTop {
                 count,
                 to_hand,
                 to_bottom,
                 to_exile_may_play,
-            } => pending::raise(
+            }) => pending::raise(
                 self,
                 pending::ChoiceRequest::DistributeTop {
                     player: controller,
@@ -63,7 +63,7 @@ impl Game {
             // 101.4): this player searches now, the rest queue in `resolution_frame.search_fanout`
             // for `Game::search_library` to continue once this player's own search (and its
             // shuffle, CR 701.19f) finishes — see that fan-out's doc comment.
-            Effect::SearchLibrary {
+            Effect::Dig(DigEffect::SearchLibrary {
                 filter,
                 to_zone,
                 tapped,
@@ -71,7 +71,7 @@ impl Game {
                 count,
                 overflow,
                 count_amount,
-            } => {
+            }) => {
                 // Collective Voyage's "up to X basic land cards, where X is the total amount of
                 // mana paid this way": resolve the dynamic cap once, here, so every seat of an
                 // `AllPlayers` fan-out searches for the same X.

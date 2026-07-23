@@ -20,7 +20,8 @@ timing = "etb"
 
 # sacrifice two lands.
 [[abilities.effects]]
-type = "sacrifice_own"
+type = "choice"
+mode = "sacrifice_own"
 filter = "land"
 count = 2
 
@@ -31,6 +32,7 @@ taps_self = true
 
 # Add three mana of any one color.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["any", "any", "any"]
 single_color = true

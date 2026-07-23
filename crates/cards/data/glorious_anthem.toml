@@ -19,6 +19,7 @@ timing = "static"
 
 # Creatures you control get +1/+1.
 [[abilities.effects]]
-type = "anthem_static"
+type = "static"
+mode = "anthem"
 power = 1
 toughness = 1

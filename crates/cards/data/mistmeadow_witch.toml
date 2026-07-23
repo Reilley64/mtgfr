@@ -30,6 +30,7 @@ blue = 1
 # Exile target creature. Return that card to the battlefield under its owner's control at the beginning of the next
 # end step.
 [[abilities.effects]]
-type = "flicker_target"
+type = "zone"
+mode = "flicker_target"
 target = "creature"
 return_at = "end"

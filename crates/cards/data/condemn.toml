@@ -21,10 +21,12 @@ timing = "spell"
 # Its controller gains life equal to its toughness. (Read before the tuck moves the creature off
 # the battlefield — same last-known-information ordering as Swords to Plowshares' power rider.)
 [[abilities.effects]]
-type = "gain_life_target_controller"
+type = "life"
+mode = "gain_target_controller"
 amount = "target_toughness"
 
 # Put target attacking creature on the bottom of its owner's library.
 [[abilities.effects]]
-type = "tuck_permanent_into_library"
+type = "zone"
+mode = "tuck_permanent_into_library"
 target = { permanent = { types = "creature", attacking = true } }

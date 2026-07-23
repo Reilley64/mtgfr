@@ -31,7 +31,7 @@ pub enum Zone {
 )]
 pub enum Step {
     Untap,
-    /// The default [`Effect::ScheduleAtNextUpkeep`] `fire_at` — CR 603.7's "next upkeep".
+    /// The default [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`] `fire_at` — CR 603.7's "next upkeep".
     #[default]
     Upkeep,
     Draw,
@@ -394,7 +394,7 @@ pub struct Ability {
     /// ability, and every permanent's trivial "level 1") is unconditional. Checked at each scan
     /// that reads a permanent's abilities — trigger placement ([`Game::queue_trigger_group`]),
     /// the static anthem/cost-reduction recomputes, and the activation gate. A "Level N"
-    /// activated ability (an [`Effect::LevelUp`]) keeps `min_level` 0; its own exact-predecessor
+    /// activated ability (an [`Effect::Counters(CountersEffect::LevelUp)`]) keeps `min_level` 0; its own exact-predecessor
     /// gate supersedes this. `min_level = N` in TOML (`#[serde(default)]` 0).
     pub min_level: u8,
     /// Whether this triggered ability is optional ("you may …"): raises a yes/no (or, with a
@@ -439,7 +439,7 @@ pub struct AlternativeCost {
     /// The non-mana cost paid instead of the printed mana cost, fired at cast time (CR 601.2f —
     /// before the spell is put on the stack), not a resolution effect. Leaked to `'static` like
     /// every other nested [`Effect`] a `Copy` struct holds ([`GrantedAbility::effects`],
-    /// [`Effect::ScheduleAtNextUpkeep`]'s `then`) — `Effect` can't hold itself by value, and
+    /// [`Effect::Misc(MiscEffect::ScheduleAtNextUpkeep)`]'s `then`) — `Effect` can't hold itself by value, and
     /// `CardDef` (which owns an `AlternativeCost`) has to stay `Copy`.
     #[cfg_attr(feature = "card-dsl", serde(deserialize_with = "de::static_effect"))]
     pub rider: &'static Effect,
@@ -491,7 +491,7 @@ pub struct CardDef {
     pub legendary: bool,
     /// "This spell can't be countered" (CR 701.5g, e.g. Altered Ego). Checked in
     /// [`Game::counter_spell`], the shared choke for both the unconditional
-    /// [`Effect::CounterTargetSpell`] arm and a declined `PayOrCounter` — the counter fizzles,
+    /// [`Effect::Misc(MiscEffect::CounterTargetSpell)`] arm and a declined `PayOrCounter` — the counter fizzles,
     /// the spell stays on the stack.
     pub uncounterable: bool,
     /// Whether this is a modal spell (CR 700.2). When set, the card's `Timing::Spell` abilities
@@ -596,7 +596,7 @@ pub struct CardDef {
     pub set: &'static str,
     /// The card's printed subtypes (the segment after the "—": creature types like "Goblin",
     /// "Wizard"; also artifact/enchantment subtypes). Gameplay-relevant, not just catalog
-    /// metadata: [`PermanentFilter::subtypes`] and [`Effect::AnthemStatic`]'s `subtypes` axis
+    /// metadata: [`PermanentFilter::subtypes`] and [`Effect::Static(StaticEffect::Anthem)`]'s `subtypes` axis
     /// both match against this (Goldspan Dragon's "Treasures you control", a tribal anthem). A
     /// *land's* types stay on [`CardKind::Land::subtypes`] (rules use those); `schema::catalog_card`
     /// unions the two for the wire. `subtypes = […]` in TOML; empty when unrecorded or genuinely
@@ -730,14 +730,14 @@ pub struct CardDef {
     /// until you exile a nonland card that costs less. You may cast it without paying its mana
     /// cost. Put the exiled cards on the bottom of your library in a random order." `false` for a
     /// card without cascade. A rules-keyword (not a `[[abilities]]`): a `true` flag places an
-    /// [`Effect::Cascade`](crate::Effect::Cascade) triggered ability on the stack above the
+    /// [`Effect::Dig(DigEffect::Cascade)`](crate::Effect::Dig(DigEffect::Cascade)) triggered ability on the stack above the
     /// cascading spell when it's cast (CR 702.85e), wired at the cast choke like `retrace`/`echo`.
     /// `cascade = true` in TOML.
     pub cascade: bool,
     /// Demonstrate (CR 702.147): "When you cast this spell, you may copy it. If you do, choose an
     /// opponent to also copy it. Players may choose new targets for their copies." `false` for a
     /// card without demonstrate. A rules-keyword (not a `[[abilities]]`): a `true` flag fabricates
-    /// an [`Effect::Demonstrate`](crate::Effect::Demonstrate) triggered ability on the stack above
+    /// an [`Effect::Copy(CopyEffect::Demonstrate)`](crate::Effect::Copy(CopyEffect::Demonstrate)) triggered ability on the stack above
     /// the cast spell (CR 702.147a), wired at the cast choke like `cascade`. `demonstrate = true`
     /// in TOML.
     pub demonstrate: bool,
@@ -1108,7 +1108,7 @@ fn treasure_token_builtin() -> CardDef {
             exile_self: false,
             graveyard_exile_target_count: 0,
         }),
-        effect: Effect::AddMana {
+        effect: Effect::Mana(ManaEffect::Add {
             mana: ManaPool {
                 colored: [0; Color::COUNT],
                 colorless: 0,
@@ -1129,7 +1129,7 @@ fn treasure_token_builtin() -> CardDef {
             target: TargetSpec::None,
             persist_until_end_of_turn: false,
             recipient: None,
-        },
+        }),
         optional: false,
         min_level: 0,
         cost: Cost::FREE,
@@ -1267,7 +1267,7 @@ pub(crate) fn rogue_token_stub() -> CardDef {
 
 /// Skyclave Apparition's leaves-battlefield payoff: a blue Illusion creature token, base power
 /// and toughness 0/0. The caller (`Game::check_leaves_battlefield_illusions`) bakes in the
-/// exiled card's mana value as base P/T before minting, the same way `Effect::CreateToken`'s
+/// exiled card's mana value as base P/T before minting, the same way `Effect::Token(TokenEffect::Create)`'s
 /// `set_base_pt` does.
 pub(crate) fn illusion_token() -> CardDef {
     CardDef {
@@ -1397,22 +1397,22 @@ pub(crate) struct Spell {
     /// hand"); read at [`Event::SpellCast`] apply time off the source card's zone before it
     /// moves to the stack (see `apply.rs`).
     pub(crate) cast_from_hand: bool,
-    /// CR 601.2d's damage division for a `divided: true` `Effect::DealDamage` on this spell
+    /// CR 601.2d's damage division for a `divided: true` `Effect::Damage(DamageEffect::Target)` on this spell
     /// (Magma Opus's "4 damage divided as you choose"): `(target, assigned amount)` pairs,
     /// settled right after `targets` above by [`Game::maybe_begin_damage_division`]. Empty for a
     /// spell with no divided-damage effect. Reuses [`DamageAssignment`], the same `Copy`
     /// division shape combat's [`Event::CombatDamageDivided`] uses (CR 510.1c) — a divided
-    /// spell's targets are always permanents (see [`Effect::DealDamage`]'s doc), so the same
+    /// spell's targets are always permanents (see [`Effect::Damage(DamageEffect::Target)`]'s doc), so the same
     /// `ObjectId`-keyed shape fits without a parallel type.
     pub(crate) damage_division: DamageAssignment,
-    /// CR 601.2d's *player* shares of a `divided: true` `Effect::DealDamage`'s division (Magma
+    /// CR 601.2d's *player* shares of a `divided: true` `Effect::Damage(DamageEffect::Target)`'s division (Magma
     /// Opus's "any number of targets" includes players): `(player, assigned amount)` pairs,
     /// settled alongside [`Self::damage_division`] by [`Game::maybe_begin_damage_division`]. A
     /// separate fixed `Copy` array (not `DamageAssignment`, which is `ObjectId`-keyed and shared
     /// with combat — a player isn't an object) so `Spell` stays `Copy`; `[None; MAX_TARGETS]` for a
     /// spell with no player among its divided targets.
     pub(crate) damage_division_players: [Option<(PlayerId, i32)>; MAX_TARGETS],
-    /// CR 601.2d's counter division for a `divided: true` `Effect::PutCounters` on this spell
+    /// CR 601.2d's counter division for a `divided: true` `Effect::Counters(CountersEffect::PutCounters)` on this spell
     /// (Grove's Bounty's "Distribute X +1/+1 counters among any number of target creatures you
     /// control"): `(target, assigned count)` pairs, settled right after `targets` above by
     /// [`Game::maybe_begin_counter_division`]. Empty for a spell with no divided-counters effect.
@@ -1455,7 +1455,7 @@ pub(crate) struct Spell {
     /// [`Game::mint_spell_copies`] (CR 702.108b).
     pub(crate) replicate_count: u8,
     /// Whether this spell was cast from a graveyard under Serra Paragon's permission (CR 118.9 —
-    /// [`Effect::PlayFromGraveyardOncePerTurn`]). Copied onto the resulting
+    /// [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`]). Copied onto the resulting
     /// [`Permanent::serra_recursion`] when the spell resolves ([`Event::PermanentEntered`]), so the
     /// recurred permanent carries the granted "exile-and-gain-2-life" rider. `false` for any other
     /// cast (from hand, flashback, escape, …).
@@ -1498,7 +1498,7 @@ pub(crate) struct Permanent {
     pub(crate) def: CardDef,
     pub(crate) owner: PlayerId,
     /// This permanent's Class level (CR 717.4 — a Class enchantment's level counter). Raised one
-    /// step at a time by [`Effect::LevelUp`] (via [`Event::LeveledUp`]); read by every
+    /// step at a time by [`Effect::Counters(CountersEffect::LevelUp)`] (via [`Event::LeveledUp`]); read by every
     /// level-gated ability's [`Ability::min_level`] check. Runtime state, not TOML-authored —
     /// **defaults to 1** at every construction site (a Class enters at level 1; every ordinary
     /// permanent is trivially level 1, so a `min_level = 0/1` ability always functions). Not
@@ -1553,14 +1553,14 @@ pub(crate) struct Permanent {
     /// handler). Not a `CardDef`/TOML surface — runtime bookkeeping like its type-layer siblings.
     pub(crate) added_colors_eot: &'static [Color],
     /// A CR 613.3c layer-5 color-SET until end of turn (Wild Mongrel's "becomes the color of
-    /// your choice until end of turn" — [`Effect::SetOwnColorUntilEndOfTurn`]): while `Some`,
+    /// your choice until end of turn" — [`Effect::Choice(ChoiceEffect::SetOwnColorUntilEndOfTurn)`]): while `Some`,
     /// [`Game::colors_of`] returns exactly this one color, *replacing* the derived/`added_colors_eot`
     /// colors rather than unioning with them (unlike `added_colors_eot`'s CR 613.3c layer-5 ADD).
     /// Cleared alongside `added_colors_eot` at cleanup (see [`Event::TempBoostsEnded`]'s handler).
     /// Not a `CardDef`/TOML surface — the color is a runtime player choice, not printed data.
     pub(crate) set_color_eot: Option<Color>,
-    /// Keywords granted until end of turn (a [`Effect::PumpUntilEndOfTurn`]/
-    /// [`Effect::PumpCreaturesYouControlUntilEndOfTurn`] grant), cleared at cleanup alongside
+    /// Keywords granted until end of turn (a [`Effect::Pump(PumpEffect::PumpUntilEndOfTurn)`]/
+    /// [`Effect::Pump(PumpEffect::PumpCreaturesYouControlUntilEndOfTurn)`] grant), cleared at cleanup alongside
     /// the temp P/T. `&'static` because it's usually copied straight from the granting
     /// ability's already-leaked `CardDef` data (see the `de` module) — no runtime leak. When a
     /// second non-empty grant lands on the same permanent the same turn (e.g. Selfless Spirit +
@@ -1607,7 +1607,7 @@ pub(crate) struct Permanent {
     /// leaves the battlefield it ceases to exist (a state-based action).
     pub(crate) token: bool,
     /// The permanent this is attached to, for an Aura/Equipment (CR 301.5/303.4). `None`
-    /// when unattached. Its grant (see [`Effect::GrantToAttached`]) applies to that host.
+    /// when unattached. Its grant (see [`Effect::Static(StaticEffect::GrantToAttached)`]) applies to that host.
     pub(crate) attached_to: Option<ObjectId>,
     /// A planeswalker's current loyalty (its loyalty counters, CR 606.5b). 0 for a non-planeswalker.
     pub(crate) loyalty: i32,
@@ -1623,12 +1623,12 @@ pub(crate) struct Permanent {
     /// How many regeneration shields this permanent currently has (CR 701.15b): each is a
     /// replacement effect that replaces the next "destroy" this turn with a regeneration (tap,
     /// remove from combat, heal all damage). Consumed one at a time by the destroy path unless
-    /// the destruction carries [`Effect::DestroyTarget::cant_be_regenerated`] (CR 701.15d); all
+    /// the destruction carries [`Effect::Destroy(DestroyEffect::DestroyTarget)::cant_be_regenerated`] (CR 701.15d); all
     /// reset to 0 at cleanup (CR 701.15b's "this turn"). Runtime state, not TOML-authored,
-    /// defaulted 0 like `finality_counter`. Granted by [`Effect::RegenerateShield`].
+    /// defaulted 0 like `finality_counter`. Granted by [`Effect::Control(ControlEffect::RegenerateShield)`].
     pub(crate) regeneration_shields: u8,
     /// Whether this permanent is "prepared" (soc/sos prepare DFCs — CR-style status): a front-face
-    /// ability ([`Effect::BecomePrepared`]) set it, and while set its controller may cast a copy of
+    /// ability ([`Effect::Misc(MiscEffect::BecomePrepared)`]) set it, and while set its controller may cast a copy of
     /// its back-face spell ([`CardDef::back`], via [`Game::cast_prepared`]), which clears the flag.
     /// The status persists across turns until the copy is cast (it is *not* reset at turn
     /// boundaries). `false` for every ordinary permanent.
@@ -1641,13 +1641,13 @@ pub(crate) struct Permanent {
     pub(crate) echo_unpaid: bool,
     /// The creature type named by an as-enters choice (CR 614.12/700.9-style "as ~ enters,
     /// choose a creature type" — Patchwork Banner), read back by a chosen-type-gated anthem
-    /// ([`Effect::AnthemStatic`]'s `chosen_subtype`). `None` until the choice is answered (see
-    /// [`Effect::ChooseCreatureType`]), and for every permanent without such a choice.
+    /// ([`Effect::Static(StaticEffect::Anthem)`]'s `chosen_subtype`). `None` until the choice is answered (see
+    /// [`Effect::Choice(ChoiceEffect::ChooseCreatureType)`]), and for every permanent without such a choice.
     pub(crate) chosen_subtype: Option<&'static str>,
     /// The color named by an as-enters choice (CR 614.12/700.9-style "as this Aura enters, choose
     /// a color" — Flickering Ward), read back by a `protection_from_chosen_color`
-    /// [`Effect::GrantToAttached`] to confer [`Keyword::ProtectionFrom`] of that color on the
-    /// enchanted creature. `None` until the choice is answered (see [`Effect::ChooseColor`]), and
+    /// [`Effect::Static(StaticEffect::GrantToAttached)`] to confer [`Keyword::ProtectionFrom`] of that color on the
+    /// enchanted creature. `None` until the choice is answered (see [`Effect::Choice(ChoiceEffect::ChooseColor)`]), and
     /// for every permanent without such a choice.
     pub(crate) chosen_color: Option<Color>,
     /// The {X} chosen for the spell that became this permanent (CR 601.2b), fixed for the rest
@@ -1686,7 +1686,7 @@ pub(crate) struct Permanent {
     /// Whether this permanent is *phased out* (CR 702.26): treated as though it doesn't exist —
     /// excluded from every battlefield scan (statics, combat, SBAs, targeting, board counts) until
     /// it phases in at the start of its controller's next turn (CR 702.26f, before untapping).
-    /// Set by [`Effect::PhaseOut`] (Guardian of Faith's ETB) and on anything attached to a
+    /// Set by [`Effect::Choice(ChoiceEffect::PhaseOut)`] (Guardian of Faith's ETB) and on anything attached to a
     /// phased-out permanent (CR 702.26g — indirect phasing); cleared at that untap step. `false`
     /// for every permanent that hasn't phased out.
     /// ponytail: a plain "did/didn't phase out" flag — no "phased in tapped" bit (CR 702.26e: a
@@ -1700,7 +1700,7 @@ pub(crate) struct Permanent {
     /// [`Spell::serra_recursion`], or directly for a land-play); read at the [`Event::MovedToGraveyard`]
     /// apply choke ([`Game::apply`]) into `Game`'s batch scratch — the permanent is genuinely
     /// dying, so `Game::enqueue_triggers` fabricates the real placed trigger off that scratch
-    /// (see [`crate::Effect::ExileGraveyardObjectGainLife`]). Runtime state, not TOML-authored,
+    /// (see [`crate::Effect::Zone(ZoneEffect::ExileGraveyardObjectGainLife)`]). Runtime state, not TOML-authored,
     /// defaulted `false` like `finality_counter`.
     pub(crate) serra_recursion: bool,
     /// Whether this permanent was cast via bestow (CR 702.103 — Eidolon of Countless Battles) and
@@ -1728,7 +1728,7 @@ pub(crate) struct Permanent {
     /// [`Game::def_of`], which every characteristic accessor funnels through. Unlike morph's
     /// `face_down`, flipping is one-way and permanent: nothing clears it. The object itself is
     /// unchanged (CR 712.5), so counters, attachments, and tapped state ride across untouched.
-    /// Set by [`Effect::FlipSource`](crate::Effect::FlipSource) via [`Event::Flipped`]; runtime
+    /// Set by [`Effect::Misc(MiscEffect::FlipSource)`](crate::Effect::Misc(MiscEffect::FlipSource)) via [`Event::Flipped`]; runtime
     /// state, not TOML-authored, defaulted `false` like `face_down`.
     pub(crate) flipped: bool,
     /// Whether this face-down permanent was put onto the battlefield by Illusionary Mask (CR 615):
@@ -1884,19 +1884,19 @@ pub(crate) struct Player {
     /// same "cast" boundary as `instant_or_sorcery_cast_this_turn` above.
     pub(crate) instants_and_sorceries_cast_this_turn: u32,
     /// Whether this player may cast spells this turn as though they had flash (turn-scoped;
-    /// reset each turn at untap) — CR 601.3a, granted by [`Effect::GrantFlashThisTurn`]
+    /// reset each turn at untap) — CR 601.3a, granted by [`Effect::Misc(MiscEffect::GrantFlashThisTurn)`]
     /// (Alchemist's Refuge). Unfiltered: every spell, not a subset. Read by
     /// [`CardDef::is_instant_speed`]'s cast-timing gate.
     pub(crate) flash_permission_this_turn: bool,
     /// Whether this player may, at mana-ability timing, pay 1 life to add {C} (turn-scoped;
     /// reset each turn at untap) — Yavimaya Bloomsage's Channel back face, granted by
-    /// [`Effect::GrantChannelColorlessManaThisTurn`]. Read by
+    /// [`Effect::Misc(MiscEffect::GrantChannelColorlessManaThisTurn)`]. Read by
     /// [`Game::channel_colorless_mana`](crate::Game::channel_colorless_mana).
     pub(crate) channel_colorless_mana_this_turn: bool,
     /// Whether this player has already used Serra Paragon's graveyard-play permission this turn
     /// (turn-scoped; reset each turn at untap) — CR 118.9's "once during each of your turns."
     /// Set when a land / permanent spell is played or cast from the graveyard under
-    /// [`Effect::PlayFromGraveyardOncePerTurn`], read by [`Game::playable_zone`] to reject a
+    /// [`Effect::Static(StaticEffect::PlayFromGraveyardOncePerTurn)`], read by [`Game::playable_zone`] to reject a
     /// second such play the same turn. `false` until the permission is used.
     pub(crate) graveyard_play_used_this_turn: bool,
     /// Monotonic counter for derive-per-op RNG — bumped once per random operation for this seat.
@@ -1916,7 +1916,7 @@ pub(crate) struct Player {
     /// Hall / Path of Ancestry / Opal Palace): one `(producing source, mana kind)` entry per unit
     /// of provenance-tagged mana this player currently holds, kept beside the summed
     /// [`mana_pool`](Self::mana_pool) which can't tag individual credits. Pushed when an
-    /// [`Effect::AddMana`] flagged `track_provenance` resolves (see `Game::activate_ability`),
+    /// [`Effect::Mana(ManaEffect::Add)`] flagged `track_provenance` resolves (see `Game::activate_ability`),
     /// read at a spell-cast payment to fire the source's `Trigger::SpendManaToCast`
     /// (see `Game::queue_spend_to_cast_triggers`), and cleared wholesale with the pool at
     /// [`Event::ManaEmptied`].
@@ -1930,7 +1930,7 @@ pub(crate) struct Player {
     /// "Until end of turn, you don't lose this mana as steps and phases end" side-channel (CR
     /// 500.4 exception; Rousing Refrain) — a mirror pool in lockstep with the "persist" credits
     /// still floating in [`mana_pool`](Self::mana_pool), same shape as [`mana_provenance`](Self::mana_provenance)'s
-    /// own side-channel. Populated by an [`Effect::AddMana`] flagged `persist_until_end_of_turn`
+    /// own side-channel. Populated by an [`Effect::Mana(ManaEffect::Add)`] flagged `persist_until_end_of_turn`
     /// (see `Game::effects.rs`'s mint arm and [`Event::ManaAdded`]'s `persist` flag). Read at
     /// [`Event::ManaEmptied`]: a mid-turn boundary keeps only the credits still present in both
     /// pools (some may have been spent since); the turn-ending boundary (CR 514.2 cleanup) clears

@@ -29,5 +29,6 @@ caster = "you"
 
 # return target creature card with mana value 3 or less from your graveyard to the battlefield.
 [[abilities.effects]]
-type = "reanimate_to_battlefield"
+type = "zone"
+mode = "reanimate_to_battlefield"
 target = { card_in_graveyard = { whose = "yours", filter = { creature_with_mana_value_at_most = 3 } } }

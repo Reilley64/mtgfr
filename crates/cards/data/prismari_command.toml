@@ -33,7 +33,8 @@ timing = "spell"
 
 # Prismari Command deals 2 damage to any target.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 2
 target = "any"
 
@@ -45,12 +46,14 @@ timing = "spell"
 
 # Target player draws two cards
 [[abilities.effects]]
-type = "target_player_draws"
+type = "draw"
+mode = "target_player"
 count = 2
 
 # then discards two cards.
 [[abilities.effects]]
-type = "discard"
+type = "choice"
+mode = "discard"
 count = 2
 target_player = true
 
@@ -61,7 +64,8 @@ timing = "spell"
 
 # Target player creates a Treasure token.
 [[abilities.effects]]
-type = "create_treasure"
+type = "token"
+mode = "create_treasure"
 count = 1
 target_player = true
 
@@ -71,5 +75,6 @@ timing = "spell"
 
 # Destroy target artifact.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "artifact" } }

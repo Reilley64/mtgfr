@@ -25,7 +25,8 @@ timing = "spell"
 
 # Rip Apart deals 3 damage to target creature or planeswalker.
 [[abilities.effects]]
-type = "deal_damage"
+type = "damage"
+mode = "target"
 amount = 3
 target = "creature_or_planeswalker"
 
@@ -35,5 +36,6 @@ timing = "spell"
 
 # Destroy target artifact or enchantment.
 [[abilities.effects]]
-type = "destroy_target"
+type = "destroy"
+mode = "destroy_target"
 target = { permanent = { types = "artifact_or_enchantment" } }

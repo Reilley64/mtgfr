@@ -28,4 +28,5 @@ optional = true
 
 # you may exile that card from your graveyard. If you do, you may play that card this turn.
 [[abilities.effects]]
-type = "exile_from_graveyard_may_play"
+type = "mill"
+mode = "exile_from_graveyard_may_play"

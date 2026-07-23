@@ -22,5 +22,6 @@ timing = "etb"
 
 # exile another target nonland permanent
 [[abilities.effects]]
-type = "exile_until_source_leaves"
+type = "destroy"
+mode = "exile_until_source_leaves"
 target = { permanent = { types = "nonland", other = true } }

@@ -28,7 +28,8 @@ timing = "static"
 
 # enters with a +1/+1 counter on it for each creature card in your graveyard.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = { per_permanent = { types = "creature", controller = "you" }, zone = "graveyard" }
 
 # {1}, Remove a +1/+1 counter from this creature: Regenerate this creature.
@@ -39,5 +40,6 @@ remove_counters = 1
 
 # Regenerate this creature.
 [[abilities.effects]]
-type = "regenerate_shield"
+type = "control"
+mode = "regenerate_shield"
 target = "this"

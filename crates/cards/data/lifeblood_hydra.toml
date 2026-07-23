@@ -25,7 +25,8 @@ timing = "static"
 
 # This creature enters with X +1/+1 counters on it.
 [[abilities.effects]]
-type = "enters_with_counters"
+type = "static"
+mode = "enters_with_counters"
 count = "x"
 
 # When this creature dies, you gain life and draw cards equal to its power.
@@ -34,10 +35,12 @@ timing = "dies"
 
 # you gain life
 [[abilities.effects]]
-type = "gain_life"
+type = "life"
+mode = "gain"
 amount = "source_power"
 
 # draw cards equal to its power.
 [[abilities.effects]]
-type = "draw_cards"
+type = "draw"
+mode = "cards"
 count = "source_power"

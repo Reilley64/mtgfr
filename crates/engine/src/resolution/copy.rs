@@ -2,10 +2,10 @@
 //! abilities, changing targets, minting free copies of exiled cards).
 //!
 //! Peeled out of [`Game::run`] (card-dsl-and-card-pool spec deepen). Each `run_copy` arm needs `&mut self`
-//! either to mint a new stack object ([`Effect::CopyTargetSpell`], `CopyThisSpell`),
-//! reuse [`Self::mint_spell_copies`] behind [`Effect::RetargetSpellCopy`]'s pause queue,
-//! or pause on a retarget/pay-cost choice ([`Effect::MayPayToCopyThis`],
-//! [`Effect::ChangeTargetOfTargetSpellOrAbility`]).
+//! either to mint a new stack object ([`Effect::Copy(CopyEffect::TargetSpell)`], `CopyThisSpell`),
+//! reuse [`Self::mint_spell_copies`] behind [`Effect::Copy(CopyEffect::RetargetSpellCopy)`]'s pause queue,
+//! or pause on a retarget/pay-cost choice ([`Effect::Copy(CopyEffect::MayPayToCopyThis)`],
+//! [`Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility)`]).
 
 use crate::*;
 
@@ -27,7 +27,7 @@ impl Game {
             // `choose_spell_targets` machinery a multi-target spell uses at cast (auto-fills a
             // single legal target, else pauses on `ChooseSpellTargets`), just run here because
             // the copy doesn't exist until this event applies.
-            Effect::CopyTargetSpell => {
+            Effect::Copy(CopyEffect::TargetSpell) => {
                 let original = expect_object_target(target, "a spell copy");
                 // CR 707.10: if the target spell has left the stack (countered/resolved), the copy
                 // effect does nothing.
@@ -59,11 +59,11 @@ impl Game {
             // (`source`, not a chosen target). CR 706.9's "when you cast this spell" trigger
             // never re-fires for an uncast copy — guard that here rather than modeling a real
             // cast trigger, since this rider runs as one of the spell's own resolution effects.
-            Effect::CopyThisSpell {
+            Effect::Copy(CopyEffect::ThisSpell {
                 count,
                 cast_from_graveyard_only,
                 optional,
-            } => {
+            }) => {
                 if self.spell(source).copy {
                     return;
                 }
@@ -84,11 +84,11 @@ impl Game {
                         pending::ChoiceRequest::MayYesNo {
                             player: controller,
                             source,
-                            effect: Effect::CopyThisSpell {
+                            effect: Effect::Copy(CopyEffect::ThisSpell {
                                 count,
                                 cast_from_graveyard_only: false,
                                 optional: false,
-                            },
+                            }),
                         },
                     );
                     return;
@@ -102,7 +102,7 @@ impl Game {
             // permanent spell — an Aura's "enchant creature" is a cast-target requirement, not a
             // spell-timed effect (CR 303.4a/601.2c) — gets a real retarget spec too (Changing
             // Loyalty's Replicate copies, CR 702.108b/707.10a).
-            Effect::RetargetSpellCopy { copy } => {
+            Effect::Copy(CopyEffect::RetargetSpellCopy { copy }) => {
                 let def = self.def_of(copy);
                 let spec = self.required_target(def, None);
                 if spec == TargetSpec::None {
@@ -126,7 +126,7 @@ impl Game {
             // already fizzles the whole ability before this step could run without one — but
             // stays a defensive no-op rather than a panic, matching this resolution's other
             // guard arms.
-            Effect::MayPayToCopyThis { cost, count } => {
+            Effect::Copy(CopyEffect::MayPayToCopyThis { cost, count }) => {
                 let payer = match target {
                     Some(Target::Player(p)) => Some(p),
                     Some(Target::Object(id)) => Some(self.controller_of(id)),
@@ -141,11 +141,11 @@ impl Game {
                         player: payer,
                         source,
                         cost,
-                        effect: Effect::CopyThisSpell {
+                        effect: Effect::Copy(CopyEffect::ThisSpell {
                             count,
                             cast_from_graveyard_only: false,
                             optional: false,
-                        },
+                        }),
                     },
                 );
             }
@@ -153,7 +153,7 @@ impl Game {
             // ability's own chosen target (CR 603.3d for Willbender's trigger; the cast target for
             // Wild Ricochet), already re-checked legal by CR 608.2b before this ran (so a spell that
             // left the stack fizzles). Guard the shape defensively.
-            Effect::ChangeTargetOfTargetSpellOrAbility { optional, .. } => {
+            Effect::Copy(CopyEffect::ChangeTargetOfTargetSpellOrAbility { optional, .. }) => {
                 let Some(Target::Object(spell)) = target else {
                     return;
                 };
@@ -223,12 +223,12 @@ impl Game {
             // `ScheduleNextCastTrigger` watch (baked in as `triggering_spell` at trigger
             // placement — see `fill_triggering_spell`), not a chosen target or this ability's
             // own spell.
-            Effect::CopyTriggeringSpell {
+            Effect::Copy(CopyEffect::CopyTriggeringSpell {
                 triggering_spell,
                 count,
                 may_choose_new_targets,
                 last_known_information,
-            } => {
+            }) => {
                 let Some(original) = triggering_spell else {
                     return;
                 };
@@ -271,7 +271,9 @@ impl Game {
             // each other creature they control that the spell could target. Each copy targets a
             // different one of those creatures." Same CR 603.4 "already left the stack" guard as
             // `CopyTriggeringSpell` above.
-            Effect::CopyTriggeringSpellForEachOtherCreatureYouControl { triggering_spell } => {
+            Effect::Copy(CopyEffect::CopyTriggeringSpellForEachOtherCreatureYouControl {
+                triggering_spell,
+            }) => {
                 let Some(original) = triggering_spell else {
                     return;
                 };
@@ -337,10 +339,10 @@ impl Game {
             // that fired the watch (its source baked in as `triggering_ability`). The copy goes on
             // the stack above the original (CR 707.10c), carrying its effect/target and its chosen
             // `{X}` unchanged (CR 706.10 — an already-doubled X isn't re-doubled).
-            Effect::CopyTriggeringAbility {
+            Effect::Copy(CopyEffect::CopyTriggeringAbility {
                 triggering_ability,
                 may_choose_new_targets,
-            } => {
+            }) => {
                 let Some(original) = triggering_ability else {
                     return;
                 };
@@ -399,7 +401,7 @@ impl Game {
             // arming watch names — the exile already happened when the watch was armed, so this
             // only mints. `card` is `None` only if this were ever misfired with no armed card,
             // which `fire_combat_damage_copy_triggers` never does.
-            Effect::MintFreeCopyOfExiledCard { card } => {
+            Effect::Copy(CopyEffect::MintFreeCopyOfExiledCard { card }) => {
                 let Some(card) = card else {
                     return;
                 };
@@ -409,7 +411,7 @@ impl Game {
         }
     }
 
-    /// Mint `count` copies of `source` (`Effect::CopyThisSpell`'s mandatory mint, and
+    /// Mint `count` copies of `source` (`Effect::Copy(CopyEffect::ThisSpell)`'s mandatory mint, and
     /// `Game::answer_may`'s inline "yes" for its `optional` gate): mint every copy up front —
     /// minting itself never pauses, and `source` (this resolving spell) is still on the stack for
     /// all of them, unlike a queued per-copy mint that would resume after `source` has already
@@ -441,7 +443,7 @@ impl Game {
                         controller,
                     },
                 );
-                Effect::RetargetSpellCopy { copy }
+                Effect::Copy(CopyEffect::RetargetSpellCopy { copy })
             })
             .collect();
         self.run_sequence(

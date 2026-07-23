@@ -25,7 +25,8 @@ timing = "etb"
 
 # each player sacrifices a creature of their choice.
 [[abilities.effects]]
-type = "each_player_sacrifices"
+type = "choice"
+mode = "each_player_sacrifices"
 scope = "all_players"
 filter = "creature"
 
@@ -36,6 +37,7 @@ filter = {}
 
 # put a +1/+1 counter on this creature.
 [[abilities.effects]]
-type = "put_counters"
+type = "counters"
+mode = "put_counters"
 count = 1
 target = "this"

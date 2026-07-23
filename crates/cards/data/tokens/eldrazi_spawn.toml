@@ -18,5 +18,6 @@ sacrifice = "this"
 
 # Add {C}
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["colorless"]

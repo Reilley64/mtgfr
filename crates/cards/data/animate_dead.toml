@@ -27,12 +27,14 @@ timing = "etb"
 
 # Return enchanted creature card to the battlefield under your control
 [[abilities.effects]]
-type = "reanimate_to_battlefield"
+type = "zone"
+mode = "reanimate_to_battlefield"
 target = "this_auras_graveyard_target"
 
 # attach this Aura to it
 [[abilities.effects]]
-type = "attach_self_to_reanimated"
+type = "zone"
+mode = "attach_self_to_reanimated"
 
 # Enchanted creature gets -1/-0.
 [[abilities]]
@@ -40,7 +42,8 @@ timing = "static"
 
 # Enchanted creature gets -1/-0.
 [[abilities.effects]]
-type = "grant_to_attached"
+type = "static"
+mode = "grant_to_attached"
 power = -1
 toughness = 0
 
@@ -50,4 +53,5 @@ timing = "this_leaves_battlefield"
 
 # that creature's controller sacrifices it
 [[abilities.effects]]
-type = "sacrifice_enchanted_creature"
+type = "destroy"
+mode = "sacrifice_enchanted_creature"

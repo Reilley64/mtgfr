@@ -20,5 +20,6 @@ timing = "each_player_first_main_phase"
 
 # that player adds {G}{G}.
 [[abilities.effects]]
-type = "add_mana"
+type = "mana"
+mode = "add"
 mana = ["green", "green"]
