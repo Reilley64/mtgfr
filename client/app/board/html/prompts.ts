@@ -976,7 +976,10 @@ function pendingGraveyardAimCoach(
     | "shuffle_from_graveyard"
     | "choose_dredge"
     | "pay_cumulative_upkeep_or_sacrifice"
-    | "choose_activation_cost_targets",
+    | "choose_activation_cost_targets"
+    | "choose_target"
+    | "choose_spell_targets"
+    | "choose_ability_targets",
   oneClick: boolean,
 ): string {
   switch (kind) {
@@ -996,6 +999,10 @@ function pendingGraveyardAimCoach(
       return oneClick
         ? "Click a card in the graveyard for the activation cost"
         : "Click cards in the graveyard for the activation cost";
+    case "choose_target":
+    case "choose_spell_targets":
+    case "choose_ability_targets":
+      return oneClick ? "Click a card in the graveyard to target" : "Click cards in the graveyard to target";
     default: {
       const _exhaustive: never = kind;
       return _exhaustive;
@@ -1074,7 +1081,10 @@ function cardPickForKind(
       kind !== "shuffle_from_graveyard" &&
       kind !== "choose_dredge" &&
       kind !== "pay_cumulative_upkeep_or_sacrifice" &&
-      kind !== "choose_activation_cost_targets"
+      kind !== "choose_activation_cost_targets" &&
+      kind !== "choose_target" &&
+      kind !== "choose_spell_targets" &&
+      kind !== "choose_ability_targets"
     ) {
       return null;
     }
@@ -1083,7 +1093,13 @@ function cardPickForKind(
     const picked = draft.kind === "card-pick" ? draft.picked : [];
     const ready = !oneClick && cardPickReady(pending, picked);
     const required = cardPickRequiredCount(pending);
-    const maxHint = kind === "shuffle_from_graveyard" ? pending.max : required;
+    const maxHint =
+      kind === "shuffle_from_graveyard" ||
+      kind === "choose_target" ||
+      kind === "choose_spell_targets" ||
+      kind === "choose_ability_targets"
+        ? pending.max
+        : required;
     const countLine =
       !oneClick && maxHint != null
         ? h.div(

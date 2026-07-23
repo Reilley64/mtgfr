@@ -1492,6 +1492,39 @@ test("PileCardClicked during choose_dredge submits dredge intent", () => {
   });
 });
 
+test("PileCardClicked during choose_target in graveyard submits choose_targets", () => {
+  const gy = creature(8, 0, { name: "Reanimate me", zone: ZONE.Graveyard });
+  const pending = {
+    kind: "choose_target" as const,
+    label: "Target creature card in a graveyard",
+    max: 1,
+    optional: false,
+    player: 0,
+    source: 1,
+    items: [{ id: 8, label: "Reanimate me" }],
+  };
+  const gameFold = fold(
+    state({
+      objects: [gy],
+      pending_choice: pending,
+      can_act: true,
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+    pendingChoiceKey: choiceDraftKey(pending),
+    promptDraft: { kind: "card-pick", picked: [], filter: "" },
+  };
+  const [next, commands] = updateBoard(board, PileCardClicked({ id: 8 }), gameFold, "T1");
+  expect(next.pileExpand).toBeNull();
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_targets",
+    player: 0,
+    targets: [{ kind: "object", id: 8 }],
+  });
+});
+
 test("GyExileChosen during gyExilePick settles a one-card exile cost", () => {
   const caster = creature(10, 0, { name: "Caster", zone: ZONE.Hand });
   const gy = creature(8, 0, { name: "Fodder", zone: ZONE.Graveyard });

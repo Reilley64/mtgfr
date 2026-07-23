@@ -1336,6 +1336,37 @@ test("pending gy aim shows coach when exile_from_graveyard cards share a pile", 
   );
 });
 
+test("pending gy aim shows coach for choose_target when cards share a pile", () => {
+  const gy = card(8, {
+    name: "Reanimate me",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({
+        objects: [gy],
+        pending_choice: {
+          kind: "choose_target",
+          label: "Target creature card in a graveyard",
+          max: 1,
+          optional: false,
+          player: 0,
+          source: 1,
+          items: [{ id: 8, label: "Reanimate me" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-gy-aim")).toExist(),
+    Scene.expect(Scene.testId("pile-card-8")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("gy exile cost aim shows coach when choices share a graveyard", () => {
   const caster = card(10, {
     name: "Caster",
