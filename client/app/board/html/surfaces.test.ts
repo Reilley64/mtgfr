@@ -1033,6 +1033,48 @@ test("divide_spell_damage on-board aim shows coach when targets are battlefield"
   );
 });
 
+test("divide_counters on-board aim shows coach when targets are battlefield", () => {
+  const wolf = card(12, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+    name: "Wolf",
+  });
+  const cat = card(13, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+    power: 1,
+    toughness: 1,
+    name: "Cat",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "damage", amounts: { 12: 1, 13: 1 } },
+      },
+      gameState({
+        objects: [wolf, cat],
+        pending_choice: {
+          kind: "divide_counters",
+          player: 0,
+          spell: 77,
+          total: 2,
+          items: [
+            { id: 12, label: "Wolf" },
+            { id: 13, label: "Cat" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("pending-divide-counters-aim")).toExist(),
+    Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 2 / 2"),
+    Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+  );
+});
+
 test("sacrifice pick prompt renders as a board surface", () => {
   const sacrificeAction = action(14, {
     kind: "activate",

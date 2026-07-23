@@ -360,6 +360,26 @@ describe("pendingDamageAssignOverlay", () => {
     );
     expect(blockers).toBeNull();
   });
+
+  it("highlights battlefield permanents for divide_counters", () => {
+    const wolf = object({ id: 12, name: "Wolf" });
+    const cat = object({ id: 13, name: "Cat" });
+    const overlay = pendingDamageAssignOverlay(
+      {
+        kind: "divide_counters",
+        items: [
+          { id: 12, label: "Wolf" },
+          { id: 13, label: "Cat" },
+        ],
+        player: 0,
+        spell: 77,
+        total: 2,
+      },
+      state([wolf, cat]),
+    );
+    expect(overlay.aiming).toBe(true);
+    expect([...overlay.targetObjects].sort()).toEqual([12, 13]);
+  });
 });
 
 describe("pendingDivideSpellOverlay", () => {

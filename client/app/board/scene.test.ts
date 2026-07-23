@@ -655,6 +655,63 @@ test("Space confirms on-board divide_spell_damage when draft matches total", () 
   });
 });
 
+test("pointer up on divide_counters target moves one counter onto it", () => {
+  const wolf = creature(12, 0, { name: "Wolf" });
+  const cat = creature(13, 0, { name: "Cat" });
+  const pending = {
+    kind: "divide_counters" as const,
+    items: [
+      { id: 12, label: "Wolf" },
+      { id: 13, label: "Cat" },
+    ],
+    player: 0,
+    spell: 77,
+    total: 2,
+  };
+  const gameFold = fold(state({ objects: [wolf, cat], pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "damage", amounts: { 12: 2, 13: 0 } },
+    pendingChoiceKey: choiceDraftKey(pending),
+    pointer: { kind: "drag", card: renderStub(13), x: 100, y: 100, moved: false },
+  };
+  const [next, commands] = updateBoard(board, BoardPointerUp({ x: 100, y: 100 }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(next.promptDraft).toEqual({ kind: "damage", amounts: { 12: 1, 13: 1 } });
+});
+
+test("Space confirms on-board divide_counters when draft matches total", () => {
+  const wolf = creature(12, 0, { name: "Wolf" });
+  const cat = creature(13, 0, { name: "Cat" });
+  const pending = {
+    kind: "divide_counters" as const,
+    items: [
+      { id: 12, label: "Wolf" },
+      { id: 13, label: "Cat" },
+    ],
+    player: 0,
+    spell: 77,
+    total: 2,
+  };
+  const gameFold = fold(state({ objects: [wolf, cat], pending_choice: pending }));
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "damage", amounts: { 12: 1, 13: 1 } },
+    pendingChoiceKey: choiceDraftKey(pending),
+  };
+  const [, commands] = updateBoard(board, KeyboardSpacePressed(), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "assign_damage",
+    player: 0,
+    assignment: [
+      { blocker: 12, amount: 1 },
+      { blocker: 13, amount: 1 },
+    ],
+  });
+});
+
 test("pointer up on choose_target_players avatar accumulates seat picks", () => {
   const pending = {
     kind: "choose_target_players" as const,

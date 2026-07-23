@@ -185,12 +185,13 @@ export function pendingTargetingOverlay(
   };
 }
 
-/** Blocker object ids when combat damage can be assigned by clicking battlefield permanents. */
+/** Object ids when combat damage or counter division can be assigned by clicking battlefield permanents. */
 export function pendingDamageAssignBlockers(
   pc: PendingChoiceView | null | undefined,
   state: VisibleState,
 ): ReadonlySet<number> | null {
-  if (pc == null || pc.kind !== "assign_combat_damage") return null;
+  if (pc == null) return null;
+  if (pc.kind !== "assign_combat_damage" && pc.kind !== "divide_counters") return null;
   if (pc.player !== state.viewer) return null;
   if (pc.items.length === 0) return null;
   const ids = new Set<number>();
@@ -202,7 +203,7 @@ export function pendingDamageAssignBlockers(
   return ids;
 }
 
-/** Highlight blockers during on-board combat damage assign (no aim arrow). */
+/** Highlight permanents during on-board combat damage / counter assign (no aim arrow). */
 export function pendingDamageAssignOverlay(
   pc: PendingChoiceView | null | undefined,
   state: VisibleState,
