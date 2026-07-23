@@ -494,7 +494,7 @@ client-tokens-check:
 Change:
 
 ```just
-client-check: server-codegen client-tokens-check client-format client-lint client-typecheck client-test
+client-check: client-tokens-check server-codegen client-format client-lint client-typecheck client-test
 ```
 
 (`server-codegen` already runs full `bun run gen`, so tokens regenerate before check; `client-tokens-check` then asserts the committed tree matches — if gen rewrites the working tree during check, ensure check compares to git or run check **without** rewriting: `--check` must not write. Task 1's `--check` already generates to temp and diffs.)

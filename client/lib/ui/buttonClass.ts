@@ -1,4 +1,4 @@
-// DESIGN.md §5 button vocabulary for Foldkit views.
+// Button recipes for Foldkit views. Token values come from design.tokens.json via generated theme.
 
 import { cn } from "../cn";
 

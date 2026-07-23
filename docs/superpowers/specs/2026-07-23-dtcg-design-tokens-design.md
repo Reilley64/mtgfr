@@ -1,6 +1,6 @@
 # DTCG design tokens
 
-**Status:** Draft  
+**Status:** Done  
 **Date:** 2026-07-23
 
 ## Goal
