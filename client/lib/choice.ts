@@ -431,9 +431,13 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "put_from_hand_on_top":
       if (draft.kind !== "card-pick") return null;
       return { kind: "hand_on_top", cards: draft.picked };
-    case "choose_dredge":
+    case "choose_dredge": {
       if (draft.kind !== "card-pick") return null;
-      return { kind: "dredge", dredger: pickSingleCard(draft.picked) };
+      if (draft.picked.length !== 1) return null;
+      const dredger = draft.picked[0];
+      if (dredger == null) return null;
+      return { kind: "dredge", dredger };
+    }
     case "cast_creature_face_down":
       if (draft.kind !== "card-pick") return null;
       return { kind: "cast_face_down_choice", choice: pickSingleCard(draft.picked) };
@@ -470,6 +474,8 @@ export function declineAnswer(pc: PendingChoiceView): AnswerInput | null {
     case "pay_cumulative_upkeep_or_sacrifice":
       // Empty sacrifices = decline payment (engine sacrifices the permanent).
       return { kind: "sacrifice", ids: [] };
+    case "choose_dredge":
+      return { kind: "dredge", dredger: null };
     default:
       return null;
   }
@@ -490,6 +496,7 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "choose_attach_host":
     case "choose_target":
     case "cast_creature_face_down":
+    case "choose_dredge":
       return 1;
     case "discard":
     case "put_from_hand_on_top":
@@ -513,7 +520,6 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "choose_counter_target_for_player":
     case "may_return_from_graveyard":
     case "may_discard":
-    case "choose_dredge":
       return null;
     default:
       return null;

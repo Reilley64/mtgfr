@@ -16,6 +16,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a non-deciding player or spectator, I do not see interactive prompt buttons for someone else’s choice.
 - As a player choosing X, I adjust a clamped stepper within server `min_x`…`max_x` and see what I will pay before confirming.
 - As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
+- As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player choosing cards, prompts use the same cached card art behavior as hand and stack.
 
 ## Behavior
@@ -36,6 +37,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - When `maxX < minX`, `clampX` returns `minX` (client stays safe if the server sends a bad range).
 - `assign_combat_damage` readiness (`damageAssignReady`) mirrors the engine: non-trample requires the sum of non-negative blocker amounts to equal the attacker’s power; trample requires `0 ≤ sum ≤ power` (overflow trampling is automatic).
 - Trample’s prompt shows `assigned N / power` plus a `to defender: R` overflow line (`prompt-damage-overflow`). Non-trample prompts omit that line.
+- `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
 
 ## Implementation Decisions
 
@@ -54,6 +56,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Unit tests cover `clampX`, `costWithChosenX` (multi-symbol X and colored pips), and `costText` for large generics.
 - Unit tests cover `damageAssignReady` for exact-sum non-trample and under-assign / over-assign / negative trample cases.
 - Scene tests cover trample overflow copy and Assign enabled when under-assigned.
+- Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 
 ## Out of Scope

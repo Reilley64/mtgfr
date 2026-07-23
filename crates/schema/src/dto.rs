@@ -482,8 +482,7 @@ pub enum PendingChoiceView {
     DeclineUntap { player: u8, items: Vec<ChoiceItem> },
     /// This player is about to draw and may dredge instead (CR 702.52): `items` are the eligible
     /// dredgers in their own graveyard (public to them). Answering picks one to mill-and-return, or
-    /// declines to draw normally. ponytail: full client rendering of the decline option is #200
-    /// slice 3 — this terse projection just names the eligible dredgers.
+    /// declines (`dredger: null`) to draw normally. Client chrome: Draw normally decline + single pick.
     ChooseDredge { player: u8, items: Vec<ChoiceItem> },
     /// The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
     /// effect label so the client can say what paying does.

@@ -192,6 +192,60 @@ test("scry prompt submit emits arrange_top intent", () => {
   });
 });
 
+test("choose_dredge shows Draw normally and disables Dredge until one pick", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_dredge",
+      player: 0,
+      items: [
+        { id: 61, label: "Stinkweed Imp" },
+        { id: 62, label: "Golgari Thug" },
+      ],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Draw normally"),
+    Scene.click(Scene.testId("prompt-card-61")),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+  );
+});
+
+test("choose_dredge decline emits choose_dredge with null dredger", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "choose_dredge",
+        player: 0,
+        items: [{ id: 61, label: "Stinkweed Imp" }],
+      },
+    }),
+    Scene.click(Scene.testId("prompt-decline")),
+  );
+  expect(intents).toEqual([{ kind: "choose_dredge", player: 0, dredger: null }]);
+});
+
+test("choose_dredge submit emits chosen dredger", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_dredge",
+      player: 0,
+      items: [{ id: 61, label: "Stinkweed Imp" }],
+    },
+  });
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 61 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_dredge",
+    player: 0,
+    dredger: 61,
+  });
+});
+
 test("assign_combat_damage submit when damage sums to power", () => {
   const attacker: ObjectView = {
     controller: 0,
