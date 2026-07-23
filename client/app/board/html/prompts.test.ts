@@ -627,6 +627,30 @@ test("choose_color prompt emits choose_color intent from UI", () => {
   expect(intents).toEqual([{ kind: "choose_color", player: 0, color: 4 }]);
 });
 
+test("choose_color prompt renders mana-font pips instead of letter labels", () => {
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(
+      viewModel(
+        state({
+          pending_choice: {
+            kind: "choose_color",
+            player: 0,
+            source: 1,
+          },
+        }),
+      ),
+    ),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-color-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-color-pip-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-color-pip-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-color-pip-2")).toExist(),
+    Scene.expect(Scene.testId("prompt-color-pip-3")).toExist(),
+    Scene.expect(Scene.testId("prompt-color-pip-4")).toExist(),
+  );
+});
+
 test("choose_creature_type prompt emits choose_creature_type intent from UI", () => {
   const intents = clickPromptIntent(
     state({
