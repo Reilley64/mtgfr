@@ -2,11 +2,21 @@ import { Submodel } from "foldkit";
 import { html } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { expect, test } from "vitest";
+import { choiceDraftKey } from "~/choice";
 import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/types";
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
 import { emptyCostPicks } from "../action/execution";
-import { type Message, PromptCardToggled, PromptDamageSet, PromptSubmitted, XDraftSet, XSubmitted } from "../messages";
+import {
+  type Message,
+  PromptCardToggled,
+  PromptDamageSet,
+  PromptNumberSet,
+  PromptStringSet,
+  PromptSubmitted,
+  XDraftSet,
+  XSubmitted,
+} from "../messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
@@ -191,6 +201,60 @@ test("scry prompt submit emits arrange_top intent", () => {
   });
 });
 
+test("choose_dredge shows Draw normally and disables Dredge until one pick", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_dredge",
+      player: 0,
+      items: [
+        { id: 61, label: "Stinkweed Imp" },
+        { id: 62, label: "Golgari Thug" },
+      ],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Draw normally"),
+    Scene.click(Scene.testId("prompt-card-61")),
+    Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
+  );
+});
+
+test("choose_dredge decline emits choose_dredge with null dredger", () => {
+  const intents = clickPromptIntent(
+    state({
+      pending_choice: {
+        kind: "choose_dredge",
+        player: 0,
+        items: [{ id: 61, label: "Stinkweed Imp" }],
+      },
+    }),
+    Scene.click(Scene.testId("prompt-decline")),
+  );
+  expect(intents).toEqual([{ kind: "choose_dredge", player: 0, dredger: null }]);
+});
+
+test("choose_dredge submit emits chosen dredger", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_dredge",
+      player: 0,
+      items: [{ id: 61, label: "Stinkweed Imp" }],
+    },
+  });
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 61 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_dredge",
+    player: 0,
+    dredger: 61,
+  });
+});
+
 test("assign_combat_damage submit when damage sums to power", () => {
   const attacker: ObjectView = {
     controller: 0,
@@ -228,6 +292,104 @@ test("assign_combat_damage submit when damage sums to power", () => {
   });
 });
 
+test("assign_combat_damage stepper increments a blocker amount", () => {
+  const attacker: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 9,
+    is_commander: false,
+    kind: { kind: "creature", power: 4, toughness: 4 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
+    marked_damage: 0,
+    name: "Attacker",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 4,
+    print: "",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 4,
+    zone: 2,
+  };
+  const pending = {
+    kind: "assign_combat_damage" as const,
+    player: 0,
+    source: 9,
+    items: [
+      { id: 20, label: "Bear" },
+      { id: 21, label: "Elf" },
+    ],
+  };
+  const s = state({ objects: [attacker], pending_choice: pending });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(
+      viewModel(s, {
+        ...initialBoardModel(),
+        pendingChoiceKey: choiceDraftKey(pending),
+        promptDraft: { kind: "damage", amounts: { 20: 4, 21: 0 } },
+      }),
+    ),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-damage-20-value")).toHaveText("4"),
+    Scene.expect(Scene.testId("prompt-damage-20-inc")).toBeDisabled(),
+    Scene.click(Scene.testId("prompt-damage-20-dec")),
+    Scene.expect(Scene.testId("prompt-damage-20-value")).toHaveText("3"),
+    Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 3 / 4"),
+  );
+});
+
+test("trample assign_combat_damage submit allows under-assign overflow to defender", () => {
+  const attacker: ObjectView = {
+    controller: 0,
+    has_haste: false,
+    id: 9,
+    is_commander: false,
+    keywords: ["trample"],
+    kind: { kind: "creature", power: 5, toughness: 5 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
+    marked_damage: 0,
+    name: "Trampler",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 5,
+    print: "",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 5,
+    zone: 2,
+  };
+  const pending = {
+    kind: "assign_combat_damage" as const,
+    player: 0,
+    source: 9,
+    items: [
+      { id: 20, label: "Bear" },
+      { id: 21, label: "Elf" },
+    ],
+  };
+  const s = state({
+    objects: [attacker],
+    pending_choice: pending,
+  });
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    pendingChoiceKey: choiceDraftKey(pending),
+    promptDraft: { kind: "damage", amounts: { 20: 2, 21: 0 } },
+  };
+  const [, commands] = updateBoard(board, PromptSubmitted(), gameFold(s), "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "assign_damage",
+    player: 0,
+    assignment: [
+      { blocker: 20, amount: 2 },
+      { blocker: 21, amount: 0 },
+    ],
+  });
+});
+
 test("may_yes_no prompt emits answer_may intent from UI", () => {
   const intents = clickPromptIntent(
     state({
@@ -257,6 +419,61 @@ test("pay_cost prompt emits pay_optional_cost intent from UI", () => {
     Scene.click(Scene.testId("prompt-pay")),
   );
   expect(intents).toEqual([{ kind: "pay_optional_cost", player: 0, pay: true }]);
+});
+
+test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_cost",
+      cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
+      label: "Create a Fungus Beast",
+      player: 0,
+      source: 1,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
+  );
+});
+
+test("pay_echo_or_sacrifice decline is labeled Sacrifice", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_echo_or_sacrifice",
+      cost: { colored: [], generic: 1 },
+      player: 0,
+      source: 9,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {1}"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Sacrifice"),
+  );
+});
+
+test("pay_or_counter decline is labeled Let it be countered", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_or_counter",
+      cost: { colored: [0, 1, 0, 0, 0], generic: 0 },
+      player: 0,
+      spell: 3,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {U}"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Let it be countered"),
+  );
 });
 
 test("choose_mode prompt emits choose_mode intent from UI", () => {
@@ -425,6 +642,33 @@ test("choose_creature_type prompt emits choose_creature_type intent from UI", ()
   expect(intents).toEqual([{ kind: "choose_creature_type", player: 0, subtype: "Cleric" }]);
 });
 
+test("choose_card_name prompt has placeholder and Names a typed card", () => {
+  const s = state({
+    pending_choice: {
+      kind: "choose_card_name",
+      player: 0,
+      source: 5,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.placeholder("Card name")).toExist(),
+    Scene.expect(Scene.testId("prompt-name-input")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+  );
+
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptStringSet({ value: "Lightning Bolt" }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_card_name",
+    player: 0,
+    name: "Lightning Bolt",
+  });
+});
+
 test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
   const intents = clickPromptIntent(
     state({
@@ -437,6 +681,37 @@ test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
     Scene.click(Scene.testId("prompt-number-2")),
   );
   expect(intents).toEqual([{ kind: "choose_draw_count", player: 0, count: 2 }]);
+});
+
+test("pay_any_amount_of_mana uses a stepper and submits the draft amount", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_any_amount_of_mana",
+      max: 12,
+      player: 0,
+      source: 7,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
+    Scene.expect(Scene.testId("prompt-number-0")).not.toExist(),
+    Scene.expect(Scene.testId("prompt-number-dec")).toBeDisabled(),
+    Scene.click(Scene.testId("prompt-number-inc")),
+    Scene.click(Scene.testId("prompt-number-inc")),
+    Scene.expect(Scene.testId("prompt-number-value")).toHaveText("2"),
+  );
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptNumberSet({ count: 2 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "pay_optional_cost",
+    player: 0,
+    pay: true,
+    x: 2,
+  });
 });
 
 test("choose_countered_spell_destination prompt emits choose_top_or_bottom intent from UI", () => {

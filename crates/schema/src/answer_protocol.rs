@@ -96,6 +96,17 @@ pub enum Answer {
     CreatureType {
         subtype: String,
     },
+    /// A freely chosen card name (CR 201.2/703.2j — Conundrum Sphinx). Free text: the engine
+    /// checks only its shape (trimmed non-empty, bounded), never against a real card list.
+    CardName {
+        name: String,
+    },
+    /// Pay a chosen amount toward a cost whose X the payer picks (join forces' "any amount of
+    /// mana", and the X rider on an optional `PayCost`). `pay: false` declines.
+    PayX {
+        pay: bool,
+        x: u32,
+    },
     Color {
         color: u8,
     },
@@ -138,7 +149,16 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
                 .collect(),
         },
         Answer::May { yes } => WireIntent::AnswerMay { player, yes },
-        Answer::Pay { pay } => WireIntent::PayOptionalCost { player, pay },
+        Answer::Pay { pay } => WireIntent::PayOptionalCost {
+            player,
+            pay,
+            x: None,
+        },
+        Answer::PayX { pay, x } => WireIntent::PayOptionalCost {
+            player,
+            pay,
+            x: Some(x),
+        },
         Answer::Assign { assignment } => WireIntent::AssignDamage { player, assignment },
         Answer::Arrange { top, bottom } => WireIntent::ArrangeTop {
             player,
@@ -187,6 +207,7 @@ pub fn encode_answer(view: &PendingChoiceView, answer: Answer) -> WireIntent {
         Answer::TriggerModes { modes } => WireIntent::ChooseTriggerModes { player, modes },
         Answer::ManaColor { color } => WireIntent::ChooseManaColor { player, color },
         Answer::CreatureType { subtype } => WireIntent::ChooseCreatureType { player, subtype },
+        Answer::CardName { name } => WireIntent::ChooseCardName { player, name },
         Answer::Color { color } => WireIntent::ChooseColor { player, color },
         Answer::OpponentPile { pile } => WireIntent::ChooseOpponentPile { player, pile },
         Answer::Revealed { choice } => {
@@ -206,6 +227,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::ChooseTargetPlayers { player, .. }
         | PendingChoiceView::MayYesNo { player, .. }
         | PendingChoiceView::MayDrawUpTo { player, .. }
+        | PendingChoiceView::PayAnyAmountOfMana { player, .. }
         | PendingChoiceView::TradeSecretsCasterDraw { player, .. }
         | PendingChoiceView::TradeSecretsRepeat { player, .. }
         | PendingChoiceView::DeclineUntap { player, .. }
@@ -263,6 +285,7 @@ fn view_player(view: &PendingChoiceView) -> u8 {
         | PendingChoiceView::ChooseManaColor { player, .. }
         | PendingChoiceView::ChooseCreatureType { player, .. }
         | PendingChoiceView::ChooseColor { player, .. }
+        | PendingChoiceView::ChooseCardName { player, .. }
         | PendingChoiceView::ChooseAttachHost { player, .. }
         | PendingChoiceView::ChooseCopyTarget { player, .. } => *player,
     }
@@ -310,6 +333,28 @@ mod tests {
             WireIntent::AnswerMay {
                 player: 0,
                 yes: false
+            }
+        );
+    }
+
+    /// Conundrum Sphinx's "choose a card name" answers with the free-text name the prompt form
+    /// collected, addressed to the seat the view names.
+    #[test]
+    fn card_name_encodes_choose_card_name() {
+        let view = PendingChoiceView::ChooseCardName {
+            player: 2,
+            source: 9,
+        };
+        assert_eq!(
+            encode_answer(
+                &view,
+                Answer::CardName {
+                    name: "Forest".into()
+                }
+            ),
+            WireIntent::ChooseCardName {
+                player: 2,
+                name: "Forest".into(),
             }
         );
     }

@@ -442,6 +442,7 @@ impl Game {
                 flashback,
                 escape,
                 sacrifice_count,
+                revealed_creature_mana_value,
                 kicked,
                 bought_back,
                 strive_count,
@@ -494,6 +495,7 @@ impl Game {
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
                         sacrifice_count,
+                        revealed_creature_mana_value,
                         kicked,
                         bought_back,
                         strive_count,
@@ -571,6 +573,7 @@ impl Game {
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
+                        revealed_creature_mana_value: 0,
                         kicked: false,
                         bought_back: false,
                         strive_count: 0,
@@ -603,6 +606,79 @@ impl Game {
                     player.greatest_instant_or_sorcery_mana_value_cast_this_turn = player
                         .greatest_instant_or_sorcery_mana_value_cast_this_turn
                         .max(adventure.mana_value());
+                    player.instants_and_sorceries_cast_this_turn += 1;
+                }
+            }
+            Event::SplitHalfSpellCast {
+                spell,
+                source,
+                half,
+                controller,
+                target,
+                x,
+            } => {
+                // Only the cast half is on the stack (CR 709.4); the card moves from hand onto the
+                // stack as that face. `create_object` restores the fused card on the way out, off
+                // the `split_halves_on_stack` entry recorded below.
+                let fused = self.def_of(source);
+                let face = *fused
+                    .halves
+                    .get(half as usize)
+                    .expect("a split-half cast names one of the card's halves");
+                let commander = self.is_commander(source);
+                let id = self.create_object(
+                    Some(source),
+                    Object::Spell(Spell {
+                        def: face,
+                        controller,
+                        targets: TargetList::single(target),
+                        targets_second: TargetList::default(),
+                        commander,
+                        x,
+                        modes: Modes::default(),
+                        copy: false,
+                        flashback: false,
+                        escape: false,
+                        // Cast from the card's owner's hand (CR 601's default cast zone).
+                        cast_from_hand: true,
+                        damage_division: DamageAssignment::default(),
+                        damage_division_players: [None; MAX_TARGETS],
+                        counter_division: DamageAssignment::default(),
+                        sacrifice_count: 0,
+                        revealed_creature_mana_value: 0,
+                        kicked: false,
+                        bought_back: false,
+                        strive_count: 0,
+                        replicate_count: 0,
+                        serra_recursion: false,
+                        bestowed: false,
+                        face_down: false,
+                        masked: false,
+                        evoked: false,
+                        // ponytail: a split half pays real mana (`settle_payment` runs in
+                        // `Game::cast_split_half`), but no pool split card reads color-spent —
+                        // wire this from the same `Event::ManaSpent` snapshot `Event::SpellCast`
+                        // uses if one ever does.
+                        spent_colors: [false; Color::COUNT],
+                    }),
+                );
+                assert_eq!(id, spell);
+                self.stack.push(StackItem::Spell(spell));
+                self.play_permissions
+                    .split_halves_on_stack
+                    .push((spell, fused));
+                // Casting a half is casting a spell — the same bookkeeping `SpellCast` does.
+                self.players[controller.0 as usize].spells_cast_this_turn += 1;
+                if face.cost.x > 0 {
+                    self.players[controller.0 as usize].x_spells_cast_this_turn += 1;
+                }
+                // Both halves of a split card are instants or sorceries (CR 709.1).
+                if matches!(face.kind, CardKind::Spell { .. }) {
+                    let player = &mut self.players[controller.0 as usize];
+                    player.instant_or_sorcery_cast_this_turn = true;
+                    player.greatest_instant_or_sorcery_mana_value_cast_this_turn = player
+                        .greatest_instant_or_sorcery_mana_value_cast_this_turn
+                        .max(face.mana_value());
                     player.instants_and_sorceries_cast_this_turn += 1;
                 }
             }
@@ -665,6 +741,7 @@ impl Game {
                             damage_division_players: [None; MAX_TARGETS],
                             counter_division: DamageAssignment::default(),
                             sacrifice_count: 0,
+                            revealed_creature_mana_value: 0,
                             kicked: false,
                             bought_back: false,
                             strive_count: 0,
@@ -751,6 +828,7 @@ impl Game {
                         damage_division_players: [None; MAX_TARGETS],
                         counter_division: DamageAssignment::default(),
                         sacrifice_count: 0,
+                        revealed_creature_mana_value: 0,
                         kicked: false,
                         bought_back: false,
                         strive_count: 0,
@@ -1074,6 +1152,15 @@ impl Game {
             Event::AddedSubtypes { object, subtypes } => {
                 self.permanent_mut(object).added_subtypes = subtypes;
             }
+            // Trench Gorger (CR 613.3(7b)): the indefinite base-P/T-only sibling of
+            // `ReanimatedCreatureBecame` above.
+            Event::BasePtSetIndefinite {
+                object,
+                power,
+                toughness,
+            } => {
+                self.permanent_mut(object).set_base_pt = Some((power, toughness));
+            }
             // A permanent became a copy of another creature as it entered (CR 706/707.2). Overwrite
             // its `def` with the copied `def`; for an until-EOT copy, stash the original first so
             // cleanup can restore it (Cursed Mirror). `CardDef: Copy`, so both are plain moves.
@@ -1173,13 +1260,21 @@ impl Game {
                 .play_permissions
                 .conditioned_control_overrides
                 .retain(|&(o, ..)| o != object),
-            Event::AttackerDeclared { object, defender } => {
+            Event::AttackerDeclared {
+                object,
+                defender,
+                defender_planeswalker,
+            } => {
                 self.combat.attackers.push(object);
-                self.combat.attack_targets.push((object, defender));
+                let target = defender_planeswalker
+                    .map_or(Defender::Player(defender), Defender::Planeswalker);
+                self.combat.attack_targets.push((object, target));
             }
             Event::TokenEnteredAttacking { token, defender } => {
                 self.combat.attackers.push(token);
-                self.combat.attack_targets.push((token, defender));
+                self.combat
+                    .attack_targets
+                    .push((token, Defender::Player(defender)));
             }
             Event::Goaded {
                 object,
@@ -1275,6 +1370,8 @@ impl Game {
                 card,
                 from,
                 until_next_turn,
+                face_down,
+                free_while_source,
             } => {
                 let def = self.def_of(from);
                 let commander = self.is_commander(from);
@@ -1285,16 +1382,26 @@ impl Game {
                         owner: self.owner_of(from),
                         zone: Zone::Exile,
                         commander,
-                        face_down: false,
+                        face_down,
                     }),
                 );
                 assert_eq!(id, card);
                 self.players[player.0 as usize]
                     .library
                     .retain(|&o| o != from);
-                self.play_permissions
-                    .play_from_exile
-                    .push((card, player, until_next_turn));
+                // Intet, the Dreamer's grant lives in its own registry: free, and scoped to the
+                // granting permanent's presence rather than to a cleanup step.
+                match free_while_source {
+                    Some(source) => self
+                        .play_permissions
+                        .play_from_exile_free_while_source
+                        .push((card, player, source)),
+                    None => {
+                        self.play_permissions
+                            .play_from_exile
+                            .push((card, player, until_next_turn))
+                    }
+                }
             }
             // Herald of Amity's dig: exile face-up, no permission attached — the follow-up
             // choice grants `CastFromExileFreePermissionGranted` for at most one of the batch.
@@ -1889,6 +1996,14 @@ impl Game {
                 // A bounce sends the permanent to its *owner's* hand, not the caster's.
                 let def = self.def_of(from);
                 let owner = self.owner_of(from);
+                // Vengeful Rebirth's "If you return a nonland card to your hand this way" — record
+                // it for a later step of this same resolution (`Amount::ReturnedNonlandCardManaValue`).
+                // Written unconditionally (a bounce or a land clears it), the same
+                // apply-time-scratch shape `vanished_permanent_owner` uses.
+                self.resolution_frame.returned_nonland_card_mana_value = (self.zone_of(from)
+                    == Zone::Graveyard
+                    && !matches!(def.kind, CardKind::Land { .. }))
+                .then(|| def.mana_value());
                 let commander = self.is_commander(from);
                 if matches!(self.objects[from as usize], Object::Permanent(_)) {
                     // CR 603.10a last-known information — see `MovedToGraveyard`'s
@@ -2104,9 +2219,11 @@ impl Game {
                     StackItem::Ability { source, .. } => !removed(source),
                 });
                 self.combat.attackers.retain(|&a| !removed(a));
-                self.combat
-                    .attack_targets
-                    .retain(|&(a, d)| !removed(a) && d != player);
+                self.combat.attack_targets.retain(|&(a, d)| {
+                    !removed(a)
+                        && d != Defender::Player(player)
+                        && !d.object_id().is_some_and(removed)
+                });
                 self.combat
                     .blocks
                     .retain(|&(b, a)| !removed(b) && !removed(a));

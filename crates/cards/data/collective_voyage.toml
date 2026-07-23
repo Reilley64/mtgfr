@@ -1,0 +1,34 @@
+# Join forces — Starting with you, each player may pay any amount of mana. Each player searches their library for up to X
+# basic land cards, where X is the total amount of mana paid this way, puts them onto the battlefield tapped, then
+# shuffles.
+name = "Collective Voyage"
+id = "00f82f84-81a5-45e5-9c35-9d627a180950"
+default_print = "3f2d44f0-c71e-4061-bb7c-1f91fbce8f51"
+oracle = "Join forces — Starting with you, each player may pay any amount of mana. Each player searches their library for up to X basic land cards, where X is the total amount of mana paid this way, puts them onto the battlefield tapped, then shuffles."
+set = "c16"
+
+[cost]
+green = 1
+
+[kind]
+type = "sorcery"
+
+# Join forces — Starting with you, each player may pay any amount of mana. Each player searches
+# their library for up to X basic land cards, where X is the total amount of mana paid this way,
+# puts them onto the battlefield tapped, then shuffles.
+[[abilities]]
+timing = "spell"
+
+# Join forces — Starting with you, each player may pay any amount of mana.
+[[abilities.effects]]
+type = "join_forces_pay_mana"
+
+# Each player searches their library for up to X basic land cards, where X is the total amount of
+# mana paid this way, puts them onto the battlefield tapped, then shuffles.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+tapped = true
+searcher = "all_players"
+count_amount = "mana_paid_this_way"

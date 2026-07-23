@@ -1,0 +1,12 @@
+# Token: Beast
+# Sources: hunting_pack.toml
+name = "Beast"
+id = "695b14a0-920a-47bd-bd4a-7989862cdd0a"
+default_print = "eb243b20-85e6-4eba-9403-42272975e8a5"
+colors = ["green"]
+subtypes = ["Beast"]
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4

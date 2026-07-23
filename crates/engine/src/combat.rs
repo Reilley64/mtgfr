@@ -55,8 +55,10 @@ impl Game {
         {
             return false;
         }
-        // A blocker can only block a declared attacker that's attacking its controller.
-        if !self.combat.attackers.contains(&attacker) || self.defender_of(attacker) != Some(player)
+        // A blocker can only block a declared attacker that's attacking its controller — or one of
+        // that controller's planeswalkers (CR 509.1a: the defending player declares the blocks).
+        if !self.combat.attackers.contains(&attacker)
+            || self.defending_player_of(attacker) != Some(player)
         {
             return false;
         }
@@ -95,9 +97,9 @@ impl Game {
         !self.protection_blocks_source(attacker, blocker)
     }
 
-    /// The player a declared attacker is attacking, or `None` if that player has since been
-    /// eliminated (CR 800.4a drops the target pair but leaves the attacker in combat).
-    pub(crate) fn defender_of(&self, attacker: ObjectId) -> Option<PlayerId> {
+    /// What a declared attacker is attacking (CR 508.1a), or `None` if the defending player has
+    /// since been eliminated (CR 800.4a drops the target pair but leaves the attacker in combat).
+    pub(crate) fn defender_of(&self, attacker: ObjectId) -> Option<Defender> {
         self.combat
             .attack_targets
             .iter()
@@ -105,9 +107,32 @@ impl Game {
             .map(|(_, d)| *d)
     }
 
-    /// Whether `player` is being attacked by at least one creature this combat.
+    /// The player defending against `defender` — itself for a player, the controller for a
+    /// planeswalker (CR 508.1a). `None` once the planeswalker has left the battlefield, which is
+    /// exactly when its attacker assigns no combat damage (CR 510.1a).
+    pub fn defender_controller(&self, defender: Defender) -> Option<PlayerId> {
+        match defender {
+            Defender::Player(player) => Some(player),
+            Defender::Planeswalker(pw) => self.as_permanent(pw).map(|_| self.controller_of(pw)),
+        }
+    }
+
+    /// The defending *player* a declared attacker is attacking — the single choke every rule
+    /// scoped to "the player being attacked" (block legality, attack taxes, the Vow cycle's "you
+    /// or planeswalkers you control", attack triggers) reads, so a planeswalker defender behaves
+    /// like its controller without each rule knowing about planeswalkers.
+    pub(crate) fn defending_player_of(&self, attacker: ObjectId) -> Option<PlayerId> {
+        self.defender_of(attacker)
+            .and_then(|d| self.defender_controller(d))
+    }
+
+    /// Whether `player` is being attacked by at least one creature this combat — directly, or
+    /// through a planeswalker they control (CR 509.1a: either way they declare the blocks).
     pub(crate) fn is_attacked_player(&self, player: PlayerId) -> bool {
-        self.combat.attack_targets.iter().any(|&(_, d)| d == player)
+        self.combat
+            .attack_targets
+            .iter()
+            .any(|&(_, d)| self.defender_controller(d) == Some(player))
     }
 
     /// The players who have goaded `creature` (CR 701.38); empty if it isn't goaded.
@@ -139,6 +164,26 @@ impl Game {
                 .on_adventure
                 .iter()
                 .any(|&(card, p)| card == object && p == player)
+            || self.may_play_from_exile_free_while_source(object, player)
+    }
+
+    /// Whether `player` may play the exiled card `object` **without paying its mana cost** because
+    /// the permanent that granted the permission is still on the battlefield (Intet, the Dreamer —
+    /// CR 118.5). Deliberately *not* folded into
+    /// [`Game::may_cast_from_exile_free`](Self::may_cast_from_exile_free): that permission also
+    /// waives timing (CR 601.3e — it arrives mid-resolution), while Intet's grant is an ordinary
+    /// "you may play that card" that keeps normal timing.
+    pub(crate) fn may_play_from_exile_free_while_source(
+        &self,
+        object: ObjectId,
+        player: PlayerId,
+    ) -> bool {
+        self.play_permissions
+            .play_from_exile_free_while_source
+            .iter()
+            .any(|&(card, p, source)| {
+                card == object && p == player && self.as_permanent(source).is_some()
+            })
     }
 
     /// Whether `player` has an active free-cast permission (CR 118.5, "without paying its mana
@@ -198,7 +243,7 @@ impl Game {
     /// paired with a legal defender that satisfies the "attack a non-goader if able" rule.
     /// Used by the declare-attackers action projection so the client can seed staging instead of
     /// offering an empty confirm the engine would reject.
-    pub fn required_attacks(&self, player: PlayerId) -> Vec<(ObjectId, PlayerId)> {
+    pub fn required_attacks(&self, player: PlayerId) -> Vec<(ObjectId, Defender)> {
         let mut out = Vec::new();
         for id in self.controlled_battlefield(player) {
             let goaders = self.goaders_of(id);
@@ -213,7 +258,7 @@ impl Game {
             else {
                 continue;
             };
-            out.push((id, defender));
+            out.push((id, Defender::Player(defender)));
         }
         for id in self.controlled_battlefield(player) {
             let Some(&(_, required)) = self
@@ -236,7 +281,7 @@ impl Game {
             if out.iter().any(|&(a, _)| a == id) {
                 continue;
             }
-            out.push((id, required));
+            out.push((id, Defender::Player(required)));
         }
         out
     }
@@ -270,12 +315,10 @@ impl Game {
     /// defender; a [`Effect::CounterScaledAttackTax`] (Nils, Discipline Enforcer) charges each such
     /// attacker its own counter count (0 — untaxed — when it has none). Several taxers a defender
     /// controls stack (their amounts add, per the Ghostly Prison / Propaganda stacking ruling).
-    /// Zero when no attacker faces a taxing defender.
-    pub(crate) fn attack_tax_owed(
-        &self,
-        _declarer: PlayerId,
-        attackers: &[(ObjectId, PlayerId)],
-    ) -> u32 {
+    /// Zero when no attacker faces a taxing defender. Takes the *resolved* defending player of
+    /// each attack (see [`Game::defender_controller`]) — a planeswalker's controller taxes an
+    /// attack on that planeswalker exactly as they tax an attack on themself.
+    pub(crate) fn attack_tax_owed(&self, attackers: &[(ObjectId, PlayerId)]) -> u32 {
         attackers
             .iter()
             .map(|&(attacker, defender)| self.attacker_tax_owed(attacker, defender))
@@ -300,13 +343,36 @@ impl Game {
             .sum()
     }
 
+    /// The player `defender` resolves to when `declarer` declares an attack on it, or `None` when
+    /// it isn't a legal attack target (CR 508.1a): the defending player must be a living opponent,
+    /// and a planeswalker defender must be an un-phased planeswalker on the battlefield that
+    /// opponent controls.
+    fn legal_defending_player(&self, declarer: PlayerId, defender: Defender) -> Option<PlayerId> {
+        let player = match defender {
+            Defender::Player(player) => player,
+            Defender::Planeswalker(pw) => {
+                // A phased-out permanent is treated as though it doesn't exist (CR 702.26e).
+                let live = self.as_permanent(pw).is_some_and(|p| !p.phased_out)
+                    && self.effective_types(pw).intersects(TypeSet::PLANESWALKER);
+                if !live {
+                    return None;
+                }
+                self.controller_of(pw)
+            }
+        };
+        let legal = player != declarer
+            && (player.0 as usize) < self.players.len()
+            && !self.players[player.0 as usize].lost;
+        legal.then_some(player)
+    }
+
     /// The active player declares attackers during their declare-attackers step. Each must be
-    /// an untapped, non-sick creature they control, attacking a living opponent; each taps
-    /// unless it has vigilance.
+    /// an untapped, non-sick creature they control, attacking a living opponent or one of that
+    /// opponent's planeswalkers (CR 508.1a); each taps unless it has vigilance.
     pub(crate) fn declare_attackers(
         &mut self,
         player: PlayerId,
-        attackers: &[(ObjectId, PlayerId)],
+        attackers: &[(ObjectId, Defender)],
     ) -> Result<Vec<Event>, Reject> {
         if player != self.active_player
             || self.step != Step::DeclareAttackers
@@ -314,25 +380,26 @@ impl Game {
         {
             return Err(Reject::IllegalDeclaration);
         }
+        // Every attack resolved to its defending player (CR 508.1a) — the form every restriction
+        // below reads, so a planeswalker defender is checked as its controller throughout.
+        let mut resolved: Vec<(ObjectId, PlayerId)> = Vec::with_capacity(attackers.len());
         for &(a, defender) in attackers {
-            let legal_defender = defender != player
-                && (defender.0 as usize) < self.players.len()
-                && !self.players[defender.0 as usize].lost;
             // `can_attack` first: it is safe on any object id, and once it holds `a` is a live
             // permanent, so `controller_of` can't panic on untrusted input.
-            if !self.can_attack(a) || self.controller_of(a) != player || !legal_defender {
+            if !self.can_attack(a) || self.controller_of(a) != player {
                 return Err(Reject::IllegalDeclaration);
             }
+            let Some(defending_player) = self.legal_defending_player(player, defender) else {
+                return Err(Reject::IllegalDeclaration);
+            };
+            resolved.push((a, defending_player));
         }
 
         // Attack-restriction statics (CR 509.1a — Combat Calligrapher, Eriette of the Charmed
         // Apple): a defender may control an [`Effect::CantBeAttackedBy`] static that forbids
         // matching attackers from attacking them. Scanned per declared (attacker, defender) pair,
         // mirroring `attack_tax_owed`'s defender-permanent enumeration.
-        // ponytail: only the "can't attack you" clause is enforced; "or planeswalkers you control"
-        // is unobservable while every attack target is a `PlayerId` (planeswalker defenders aren't
-        // modeled — same as Mangara/Tomik). Wire it through when planeswalker defenders land.
-        for &(attacker, defender) in attackers {
+        for &(attacker, defender) in &resolved {
             // Battlefield only — `controller_of` panics on Removed (ceased tokens), so never walk
             // the full object arena here (mirrors `attack_tax_owed`).
             let restricted = self
@@ -358,9 +425,9 @@ impl Game {
         // Vow counters (CR 122.1 — Promise of Loyalty): a creature marked with a vow counter
         // "can't attack" the player recorded on it, for as long as it has the counter. Read live
         // off `kind_counters[Vow]` + `vow_protected`, so removing the counter lifts the restriction.
-        // ponytail: the printed "or planeswalkers you control" clause is unobservable while every
-        // attack target is a `PlayerId` (planeswalker defenders unmodeled) — same as `CantBeAttackedBy`.
-        for &(attacker, defender) in attackers {
+        // The printed "or planeswalkers you control" half falls out of `resolved`: an attack on a
+        // planeswalker is recorded against that planeswalker's controller.
+        for &(attacker, defender) in &resolved {
             let vowed = self.as_permanent(attacker).is_some_and(|p| {
                 p.kind_counters[CounterKind::Vow as usize] > 0 && p.vow_protected == Some(defender)
             });
@@ -371,8 +438,9 @@ impl Game {
 
         // Vow auras (Vow of Duty/Flight/Lightning — CR 122.1 sibling): a live attached Aura can
         // restrict the host from attacking *that Aura's own controller*, sourced from the
-        // attachment rather than a counter. Distinct from `host_cant_attack`'s blanket ban.
-        for &(attacker, defender) in attackers {
+        // attachment rather than a counter. Distinct from `host_cant_attack`'s blanket ban. Reads
+        // `resolved`, so the printed "or planeswalkers you control" half is covered too.
+        for &(attacker, defender) in &resolved {
             if self.host_cant_attack_controller(attacker, defender) {
                 return Err(Reject::IllegalDeclaration);
             }
@@ -392,7 +460,12 @@ impl Game {
             let nongoader_available = self
                 .living_players()
                 .any(|d| d != player && !goaders.contains(&d));
-            if goaders.contains(&defender) && nongoader_available {
+            // CR 701.38a: "attacks a *player* other than you if able" — attacking a goader's
+            // planeswalker is not attacking a player at all, so it doesn't satisfy the
+            // requirement either.
+            let attacks_a_nongoader =
+                matches!(defender, Defender::Player(d) if !goaders.contains(&d));
+            if !attacks_a_nongoader && nongoader_available {
                 return Err(Reject::IllegalDeclaration); // must attack a non-goader if able
             }
         }
@@ -420,7 +493,9 @@ impl Game {
             let required_legal = required != player
                 && (required.0 as usize) < self.players.len()
                 && !self.players[required.0 as usize].lost;
-            if required_legal && defender != required {
+            // "Attacks that opponent this turn if able" names the *player*, so attacking one of
+            // their planeswalkers doesn't discharge the requirement (CR 508.1a).
+            if required_legal && defender != Defender::Player(required) {
                 return Err(Reject::IllegalDeclaration); // must attack the required opponent if able
             }
         }
@@ -436,7 +511,7 @@ impl Game {
         // "must attack" (CR 701.38) but whose controller can't pay is technically "not able"
         // (CR 701.38 "if able"); the goad loop above still forces it. Unmodeled residual; no pool
         // card exercises goad + a tax at once. (CR 701.38)
-        let tax = self.attack_tax_owed(player, attackers);
+        let tax = self.attack_tax_owed(&resolved);
         if tax > 0 {
             let cost = Cost {
                 generic: tax as u8,
@@ -445,12 +520,13 @@ impl Game {
             self.settle_payment(player, cost, None, None, &mut events)
                 .map_err(|_| Reject::IllegalDeclaration)?;
         }
-        for &(a, defender) in attackers {
+        for (&(a, defender), &(_, defending_player)) in attackers.iter().zip(&resolved) {
             self.push_apply(
                 &mut events,
                 Event::AttackerDeclared {
                     object: a,
-                    defender,
+                    defender: defending_player,
+                    defender_planeswalker: defender.object_id(),
                 },
             );
             if !self.has_keyword(a, Keyword::Vigilance) {
@@ -479,7 +555,7 @@ impl Game {
         // The whole attacker set is now known — scan it once for the batch attack-count
         // triggers (CR 508.1, "attack with two or more creatures"), rather than per single
         // `AttackerDeclared` event above (a per-event fire can't see "two or more").
-        self.queue_batch_attack_triggers(player, attackers);
+        self.queue_batch_attack_triggers(player, &resolved);
         self.combat.attackers_declared = true; // even a zero-attacker declaration is final
         self.consecutive_passes = 0;
         self.priority = self.active_player;
@@ -605,18 +681,23 @@ impl Game {
             if self.deals_this_batch(attacker, first_strike_batch) {
                 self.flip_masked(attacker, events);
             }
-            // The defending player may have been eliminated by the between-substeps SBA sweep (CR 704)
-            // (first strike killed them); their attackers stay in combat but have nothing to hit. (CR 702.7, CR 506)
-            let Some(defender) = self.defender_of(attacker) else {
-                continue;
-            };
+            // The defender may have gone between substeps (CR 704 killed the defending player, or
+            // first-strike damage killed the attacked planeswalker): the attacker stays in combat
+            // but assigns no damage to it (CR 510.1a). Its *blockers* still deal theirs below. (CR 702.7, CR 506)
+            let defender = self
+                .defender_of(attacker)
+                .filter(|&d| self.defender_controller(d).is_some());
             let blockers = self.blockers_of(attacker);
 
             if self.deals_this_batch(attacker, first_strike_batch) {
-                if blockers.is_empty() {
-                    self.damage_player(attacker, defender, self.power(attacker), events);
-                } else {
-                    self.assign_attacker_damage(attacker, &blockers, defender, events);
+                match (blockers.is_empty(), defender) {
+                    (true, Some(defender)) => {
+                        self.damage_defender(attacker, defender, self.power(attacker), events)
+                    }
+                    (true, None) => {}
+                    (false, _) => {
+                        self.assign_attacker_damage(attacker, &blockers, defender, events)
+                    }
                 }
             }
             for blocker in blockers {
@@ -632,14 +713,16 @@ impl Game {
         }
     }
 
-    /// Assign a blocked attacker's power across its blockers, then any leftover to the player if
-    /// it tramples. A multi-blocked attacker uses the controller's chosen division (stored in
-    /// `combat.damage`); otherwise damage falls lethal-to-each in declaration order.
+    /// Assign a blocked attacker's power across its blockers, then any leftover to the defender it
+    /// is attacking if it tramples (CR 510.1c — the player *or* the planeswalker, whichever it
+    /// attacked; `None` once that defender is gone). A multi-blocked attacker uses the
+    /// controller's chosen division (stored in `combat.damage`); otherwise damage falls
+    /// lethal-to-each in declaration order.
     pub(crate) fn assign_attacker_damage(
         &mut self,
         attacker: ObjectId,
         blockers: &[ObjectId],
-        defender: PlayerId,
+        defender: Option<Defender>,
         events: &mut Vec<Event>,
     ) {
         // CR 615: a masked blocker that would be dealt combat damage is turned face up first, before
@@ -746,9 +829,62 @@ impl Game {
         }
         self.gain_lifelink(attacker, dealt, events);
         let leftover = power - assigned;
-        if leftover > 0 && self.has_keyword(attacker, Keyword::Trample) {
-            self.damage_player(attacker, defender, leftover, events);
+        if leftover > 0
+            && self.has_keyword(attacker, Keyword::Trample)
+            && let Some(defender) = defender
+        {
+            self.damage_defender(attacker, defender, leftover, events);
         }
+    }
+
+    /// Deal `amount` combat damage from `source` to whatever it's attacking (CR 508.1a): the
+    /// defending player's life, or the attacked planeswalker's loyalty.
+    fn damage_defender(
+        &mut self,
+        source: ObjectId,
+        defender: Defender,
+        amount: i32,
+        events: &mut Vec<Event>,
+    ) {
+        match defender {
+            Defender::Player(player) => self.damage_player(source, player, amount, events),
+            Defender::Planeswalker(pw) => self.damage_planeswalker(source, pw, amount, events),
+        }
+    }
+
+    /// Deal `amount` combat damage from `source` to the planeswalker it's attacking: that many
+    /// loyalty counters are removed (CR 120.3c/306.8), never marked damage — a planeswalker has no
+    /// toughness. No commander-damage tally (CR 903.10a is player-only); lifelink still applies
+    /// (CR 702.15b — damage dealt is damage dealt).
+    fn damage_planeswalker(
+        &mut self,
+        source: ObjectId,
+        planeswalker: ObjectId,
+        amount: i32,
+        events: &mut Vec<Event>,
+    ) {
+        if amount <= 0 || self.as_permanent(planeswalker).is_none() {
+            return;
+        }
+        // Protection from the source's color prevents it entirely (CR 702.16d).
+        if self.damage_prevented_by_protection(planeswalker, Some(source)) {
+            return;
+        }
+        // Fog Bank's "prevent all combat damage ... dealt by" static on the attacker, and Moment's
+        // Peace's table-wide this-turn shield (CR 615) — both silent, as on the creature path.
+        if self.combat_damage_prevented_by_source(source)
+            || self.combat_extras.prevent_all_combat_damage_this_turn
+        {
+            return;
+        }
+        self.push_apply(
+            events,
+            Event::LoyaltyChanged {
+                object: planeswalker,
+                amount: -amount,
+            },
+        );
+        self.gain_lifelink(source, amount, events);
     }
 
     /// `source` deals its combat damage to a creature `target`.

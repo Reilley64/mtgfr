@@ -74,6 +74,7 @@ impl Game {
             exile_time_counters: Vec::new(),
             self_exile_time_counters: None,
             self_tuck_to_library_bottom: false,
+            self_exile_on_resolve: false,
         }
     }
 
@@ -242,8 +243,22 @@ impl Game {
     }
 
     /// Push `object`, returning its (new) id. If `from` is given, tombstone it to point here.
-    pub(crate) fn create_object(&mut self, from: Option<ObjectId>, object: Object) -> ObjectId {
+    pub(crate) fn create_object(&mut self, from: Option<ObjectId>, mut object: Object) -> ObjectId {
         let id = self.objects.len() as ObjectId;
+        // CR 709.4: a split card is only the half that was cast while that half is on the stack;
+        // as a card in any other zone it has both halves' combined characteristics again. This
+        // same object-move choke point catches every way a spell leaves the stack (resolution,
+        // being countered, a tuck), so the restore lives here rather than in each of them.
+        if let Object::Card(card) = &mut object
+            && let Some(from) = from
+            && let Some(&(_, fused)) = self
+                .play_permissions
+                .split_halves_on_stack
+                .iter()
+                .find(|&&(spell, _)| spell == from)
+        {
+            card.def = fused;
+        }
         // A card leaving a graveyard (reanimation, graveyard recursion, cast-from-graveyard) marks
         // its owner's turn-scoped "a card left your graveyard this turn" flag — the CR 603.4
         // intervening-if behind Relic Retriever / Primary Research. This single object-move choke
@@ -626,6 +641,28 @@ impl Game {
         )
     }
 
+    /// Target need and legal targets for casting half `half` of the split card `card` (CR 709.4a).
+    /// Empty when `card` has no such half, or when the half picks its targets *after* the cast
+    /// (a multi-target clause like Fire's "divided among one or two targets" — a
+    /// `ChooseSpellTargets` pending choice handles those, exactly as for a directly-cast spell).
+    pub fn split_half_cast_targets(&self, card: ObjectId, half: u8) -> (TargetSpec, Vec<Target>) {
+        let Some(&face) = self.def_of(card).halves.get(half as usize) else {
+            return (TargetSpec::None, Vec::new());
+        };
+        if self.spell_multi_target(face).is_some() {
+            return (TargetSpec::None, Vec::new());
+        }
+        let spec = self.required_target(face, None);
+        if spec == TargetSpec::None {
+            return (spec, Vec::new());
+        }
+        let controller = self.controller_of(card);
+        (
+            spec,
+            self.legal_targets_for(spec, card, controller, color_identity(face), 0),
+        )
+    }
+
     /// What activating ability `index` on the permanent at `id` targets (`TargetSpec::None` if it
     /// takes no target). [`Game::target_spec_of`]'s sibling for an activated ability rather than a
     /// cast — the wire layer's `needs_target` for an `Activate` action reads this.
@@ -668,6 +705,18 @@ impl Game {
         }
     }
 
+    /// The mana value of the creature card revealed to pay the spell at `id`'s
+    /// [`AdditionalCost::reveal_creature_from_hand`] (CR 601.2g — Disaster Radius's "reveal a
+    /// creature card from your hand"), 0 if `id` isn't a spell or has no such cost. The seam
+    /// [`Amount::RevealedCreatureManaValue`] reads, the reveal-cost sibling of
+    /// [`Self::spell_sacrifice_count`]'s read.
+    pub fn revealed_creature_mana_value(&self, id: ObjectId) -> u8 {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.revealed_creature_mana_value,
+            _ => 0,
+        }
+    }
+
     /// Whether the spell at `id` was cast with its kicker cost paid (CR 702.33d —
     /// [`AdditionalCost::kicker`]), `false` if `id` isn't a spell, has no kicker, or the caster
     /// declined. The seam [`Amount::IfSpellKicked`] reads (Rite of Replication's "If this spell
@@ -677,6 +726,18 @@ impl Game {
         match &self.objects[id as usize] {
             Object::Spell(s) => s.kicked,
             _ => false,
+        }
+    }
+
+    /// The colors of mana spent to cast the spell at `id` (CR 106.9 — [`Spell::spent_colors`]),
+    /// `[false; Color::COUNT]` if `id` isn't a spell. The spell-side read
+    /// [`Condition::ColorWasSpentToCastThis`] falls back to when `source` is still on the stack
+    /// (Firespout's "if {R} was spent to cast this spell") rather than a resolved permanent
+    /// (Court Hussar's "unless {W} was spent to cast it") — sibling of [`Self::spell_was_kicked`].
+    pub fn spell_spent_colors(&self, id: ObjectId) -> [bool; Color::COUNT] {
+        match &self.objects[id as usize] {
+            Object::Spell(s) => s.spent_colors,
+            _ => [false; Color::COUNT],
         }
     }
 
@@ -707,8 +768,8 @@ impl Game {
         self.combat.attackers.clone()
     }
 
-    /// Each declared attacker paired with the player it is attacking.
-    pub fn attack_targets(&self) -> Vec<(ObjectId, PlayerId)> {
+    /// Each declared attacker paired with what it is attacking (CR 508.1a).
+    pub fn attack_targets(&self) -> Vec<(ObjectId, Defender)> {
         self.combat.attack_targets.clone()
     }
 

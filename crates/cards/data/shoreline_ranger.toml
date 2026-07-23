@@ -21,7 +21,7 @@ toughness = 4
 
 # Islandcycling {2} ({2}, Discard this card: Search your library for an Island card, reveal it,
 # put it into your hand, then shuffle.)
-[hand_ability]
+[[hand_ability]]
 
 [hand_ability.cost]
 generic = 2

@@ -1,0 +1,46 @@
+# Untap target creature an opponent controls and gain control of it until end of turn. That creature gains haste
+# until end of turn. When you lose control of the creature, tap it.
+# Ray of Command {3}{U} — instant. "Untap target creature an opponent controls and gain control of it until end of
+# turn. That creature gains haste until end of turn. When you lose control of the creature, tap it."
+# ponytail: the "When you lose control of the creature, tap it" delayed trigger has no engine
+# support — delayed triggers exist only for "at the beginning of the next upkeep"
+# (schedule_at_next_upkeep), not for a control-change event. Dropped: the stolen creature reverts
+# at cleanup as usual, just untapped (the printed tap-on-loss is a tactical detail, not the
+# card's core threaten effect). Upgrade: a general schedule_on_control_loss { then = tap_target }
+# variant if more "lose control → tap" cards land.
+name = "Ray of Command"
+id = "adf41d29-403d-4936-9689-3148d103e700"
+default_print = "7ca8a427-5c20-4650-bbb5-9895e4f2c009"
+otags = ["control-change-temporary", "single-target-instant-sorcery", "threaten", "untapper-creature"]
+oracle = "Untap target creature an opponent controls and gain control of it until end of turn. That creature gains haste until end of turn. When you lose control of the creature, tap it."
+set = "ddm"
+
+[cost]
+generic = 3
+blue = 1
+
+[kind]
+type = "instant"
+
+# Untap target creature an opponent controls and gain control of it until end of turn. That
+# creature gains haste until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Untap target creature an opponent controls
+[[abilities.effects]]
+type = "untap_target"
+target = { permanent = { types = "creature", controller = "opponent" } }
+
+# and gain control of it until end of turn.
+[[abilities.effects]]
+type = "gain_control_until_end_of_turn"
+target = { permanent = { types = "creature", controller = "opponent" } }
+
+# That creature gains haste until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 0
+toughness = 0
+target = { permanent = { types = "creature", controller = "opponent" } }
+keywords = ["haste"]

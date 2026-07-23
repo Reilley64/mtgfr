@@ -1,5 +1,28 @@
 use super::*;
 
+/// What an attacking creature is attacking (CR 506.2/508.1a): the defending player, or a
+/// planeswalker that player controls. (Battles — CR 506.2c — have no card in the pool yet; add a
+/// `Battle(ObjectId)` arm when one does.) Every rule that asks "which player is being attacked"
+/// resolves through [`Game::defending_player_of`] / [`Game::defender_controller`], so a restriction
+/// scoped to a player (the Vow cycle's "you or planeswalkers you control", Nils' attack tax, block
+/// legality) covers both arms without knowing which one it got.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Defender {
+    Player(PlayerId),
+    Planeswalker(ObjectId),
+}
+
+impl Defender {
+    /// The object id this defender names, if any — a planeswalker defender must exist for the
+    /// declaration to be legal, so [`Intent::object_ids`] checks it like any other referenced id.
+    pub(crate) fn object_id(self) -> Option<ObjectId> {
+        match self {
+            Defender::Player(_) => None,
+            Defender::Planeswalker(id) => Some(id),
+        }
+    }
+}
+
 /// A player's requested action. Fed to [`Game::submit`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Intent {
@@ -63,6 +86,14 @@ pub enum Intent {
         /// recorded on the resulting [`Spell::replicate_count`], read by the cast choke to mint
         /// that many copies (CR 702.108b).
         replicate_count: u8,
+        /// Whether the caster is casting the spell for its printed alternative cost (CR 601.2f —
+        /// [`CardDef::alternative_cost`]) instead of its printed mana cost — Invigorate's "rather
+        /// than pay this spell's mana cost, you may have an opponent gain 3 life." Mirrors
+        /// `evoked`'s opt-in shape: `false` (the default) for a spell with none, or to cast it
+        /// normally. Substitutes the mana cost entirely (no reductions on top) and fires
+        /// [`AlternativeCost::rider`] at cast time, alongside — not folded into — the mana
+        /// settlement.
+        alternative_cost: bool,
     },
     /// Play a land from hand (a special action — no stack, once per turn).
     PlayLand { player: PlayerId, object: ObjectId },
@@ -75,12 +106,17 @@ pub enum Intent {
         card: ObjectId,
         sacrifice: Option<ObjectId>,
     },
-    /// Activate a hand card's [`CardDef::hand_ability`] (CR 113.6/602.5e — a hand-activated,
-    /// discard-this-card ability with an authored payload, e.g. Magma Opus's "{U/R}{U/R},
-    /// Discard this card: Create a Treasure token."). The general sibling of [`Self::Cycle`]
-    /// for a card whose from-hand ability isn't cycling's fixed draw-1. See
-    /// [`Game::activate_hand_ability`].
-    ActivateHandAbility { player: PlayerId, card: ObjectId },
+    /// Activate a hand card's [`CardDef::hand_ability`] entry at `index` (CR 113.6/602.5e — a
+    /// hand-activated, discard-this-card ability with an authored payload, e.g. Magma Opus's
+    /// "{U/R}{U/R}, Discard this card: Create a Treasure token."; CR 702.29d — typecycling grants
+    /// one ability per named type, so Valley Rannet's mountaincycling and forestcycling are two
+    /// entries selected by `index`). The general sibling of [`Self::Cycle`] for a card whose
+    /// from-hand ability isn't cycling's fixed draw-1. See [`Game::activate_hand_ability`].
+    ActivateHandAbility {
+        player: PlayerId,
+        card: ObjectId,
+        index: usize,
+    },
     /// Suspend a hand card (CR 702.62): pay its [`CardDef::suspend`] cost and exile it with N time
     /// counters, instead of casting it. A special action from the hand, like [`Self::Cycle`].
     Suspend { player: PlayerId, card: ObjectId },
@@ -115,6 +151,18 @@ pub enum Intent {
     CastAdventure {
         player: PlayerId,
         source: ObjectId,
+        target: Option<Target>,
+        x: u32,
+    },
+    /// Cast one half of a split card from hand (CR 709.4a — Fire // Ice). `source` is the card in
+    /// `player`'s hand (its [`CardDef::halves`] are the two faces); `half` indexes that list;
+    /// `target` and `x` are that half's chosen target and `{X}`, exactly as for
+    /// [`Self::CastAdventure`]. The fused card itself is never cast. See
+    /// [`Game::cast_split_half`].
+    CastSplitHalf {
+        player: PlayerId,
+        source: ObjectId,
+        half: u8,
         target: Option<Target>,
         x: u32,
     },
@@ -157,12 +205,13 @@ pub enum Intent {
         /// `{X}` symbol); `0` for an ability with no `{X}` in its cost.
         x: u32,
     },
-    /// The active player declares attackers, each attacking a chosen defending player
-    /// (CR 508.1 — a creature picks its own defender; you may split across opponents).
+    /// The active player declares attackers, each attacking a chosen defender (CR 508.1a — a
+    /// creature picks its own defending player or one of that player's planeswalkers; you may
+    /// split across opponents).
     DeclareAttackers {
         player: PlayerId,
-        /// (attacking creature, the player it attacks).
-        attackers: Vec<(ObjectId, PlayerId)>,
+        /// (attacking creature, what it attacks).
+        attackers: Vec<(ObjectId, Defender)>,
     },
     /// The defending player declares blocks as (blocker, attacker) pairs.
     DeclareBlockers {
@@ -355,6 +404,11 @@ pub enum Intent {
     /// Answer a [`PendingChoice::ChooseColor`] (CR 614.12/700.9-style "as ~ enters, choose a
     /// color" — Flickering Ward): `color` is the chosen color, stored on the source permanent.
     ChooseColor { player: PlayerId, color: Color },
+    /// Answer a [`PendingChoice::ChooseCardName`] (CR 201.2/703.2j "choose a card name" —
+    /// Conundrum Sphinx's attack trigger): `name` is the freely chosen card name. It need not
+    /// name a card that exists — only checked for shape (trimmed non-empty, bounded length) at
+    /// this trust boundary, not against any real card list.
+    ChooseCardName { player: PlayerId, name: String },
     /// Answer a [`PendingChoice::ChooseAttachHost`]: `host` is the chosen creature the deployed
     /// Aura or Equipment attaches to (must be one of the choice's own `candidates`). `None` only
     /// legal when the choice is `optional` (a deployed Equipment declining to attach, CR
@@ -402,7 +456,7 @@ pub enum Intent {
         discard_cost: Vec<ObjectId>,
         /// Graveyard cards paying delve or escape exile (CR 702.66 / 702.19); empty when neither.
         graveyard_exile: Vec<ObjectId>,
-        attackers: Vec<(ObjectId, PlayerId)>,
+        attackers: Vec<(ObjectId, Defender)>,
         blocks: Vec<(ObjectId, ObjectId)>,
     },
 }
@@ -453,15 +507,17 @@ impl Intent {
             | Intent::CastFaceDown { card, .. } => vec![*card],
             Intent::TurnFaceUp { permanent, .. } => vec![*permanent],
             Intent::CastPrepared { source, target, .. }
-            | Intent::CastAdventure { source, target, .. } => once(*source)
+            | Intent::CastAdventure { source, target, .. }
+            | Intent::CastSplitHalf { source, target, .. } => once(*source)
                 .chain(target.and_then(Target::object_id))
                 .collect(),
             Intent::CastBestow { object, target, .. } => once(*object)
                 .chain(target.and_then(Target::object_id))
                 .collect(),
-            Intent::DeclareAttackers { attackers, .. } => {
-                attackers.iter().map(|&(a, _)| a).collect()
-            }
+            Intent::DeclareAttackers { attackers, .. } => attackers
+                .iter()
+                .flat_map(|&(a, d)| once(a).chain(d.object_id()))
+                .collect(),
             Intent::DeclareBlockers { blocks, .. } => {
                 blocks.iter().flat_map(|&(b, a)| [b, a]).collect()
             }
@@ -545,6 +601,7 @@ impl Intent {
             | Intent::ChooseManaColor { .. }
             | Intent::ChooseCreatureType { .. }
             | Intent::ChooseColor { .. }
+            | Intent::ChooseCardName { .. }
             | Intent::ChooseTopOrBottom { .. }
             | Intent::KeepHand { .. }
             | Intent::Mulligan { .. }
@@ -567,6 +624,7 @@ impl Intent {
             | Intent::TurnFaceUp { player, .. }
             | Intent::CastPrepared { player, .. }
             | Intent::CastAdventure { player, .. }
+            | Intent::CastSplitHalf { player, .. }
             | Intent::CastBestow { player, .. }
             | Intent::CastFaceDown { player, .. }
             | Intent::TapForMana { player, .. }
@@ -607,6 +665,7 @@ impl Intent {
             | Intent::ChooseManaColor { player, .. }
             | Intent::ChooseCreatureType { player, .. }
             | Intent::ChooseColor { player, .. }
+            | Intent::ChooseCardName { player, .. }
             | Intent::ChooseCopyTarget { player, .. }
             | Intent::ChooseAttachHost { player, .. }
             | Intent::ChooseTopOrBottom { player, .. }
@@ -658,6 +717,7 @@ impl Intent {
             | Intent::ChooseManaColor { .. }
             | Intent::ChooseCreatureType { .. }
             | Intent::ChooseColor { .. }
+            | Intent::ChooseCardName { .. }
             | Intent::ChooseCopyTarget { .. }
             | Intent::ChooseAttachHost { .. }
             | Intent::ChooseTopOrBottom { .. } => true,
@@ -672,6 +732,7 @@ impl Intent {
             | Intent::TurnFaceUp { .. }
             | Intent::CastPrepared { .. }
             | Intent::CastAdventure { .. }
+            | Intent::CastSplitHalf { .. }
             | Intent::CastBestow { .. }
             | Intent::CastFaceDown { .. }
             | Intent::TapForMana { .. }
@@ -1216,6 +1277,15 @@ pub enum PendingChoice {
     /// index into `options`. `remaining` are the still-to-vote players (turn order from the caster)
     /// after this one. Votes are public; the payoff rides in the enclosing `Sequence`, resumed once
     /// every player has voted (like [`Self::ExileFromGraveyard`]).
+    /// `player` may pay any amount of mana into a join-forces round (Collective Voyage), which
+    /// `source` totals into `X`. Answered by [`Intent::PayOptionalCostX`] — `pay: false` (or
+    /// `x: 0`) pays nothing, which is always legal. `remaining` is the rest of the table, in turn
+    /// order from the effect's controller, the same shape as [`Self::CastVote`].
+    JoinForcesPayment {
+        player: PlayerId,
+        source: ObjectId,
+        remaining: Vec<PlayerId>,
+    },
     CastVote {
         player: PlayerId,
         source: ObjectId,
@@ -1514,6 +1584,23 @@ pub enum PendingChoice {
         source: ObjectId,
         until_end_of_turn: bool,
     },
+    /// `player` chooses a card name for [`Effect::EachPlayerNamesCardThenRevealsTop`]'s per-seat
+    /// fan-out (CR 201.2/703.2j "choose a card name" — Conundrum Sphinx's attack trigger).
+    /// Answered by [`Intent::ChooseCardName`]'s free-text `name`. On answer, the game reveals
+    /// `player`'s own top library card and resolves the match immediately (into hand on a name
+    /// match, to the bottom of the library otherwise) before advancing to the next seat.
+    /// `remaining` are the still-to-choose players (APNAP order from the ability's controller)
+    /// after this one — never skipped, since naming is mandatory even with an empty library.
+    /// ponytail: CR 701.x has every player choose without seeing anyone else's name; this
+    /// fan-out resolves seats one at a time (like [`Self::CastVote`]), so a later seat could in
+    /// principle see this session's earlier public reveal/hand-or-bottom result before naming
+    /// their own. No pool card threads a real "everyone commits before anyone reveals" primitive
+    /// yet — upgrade if that ever matters.
+    ChooseCardName {
+        player: PlayerId,
+        source: ObjectId,
+        remaining: Vec<PlayerId>,
+    },
     /// `player` (an entering permanent's controller) may have `source` enter as a copy of one of
     /// `candidates` (every other object of the marker's [`EnterAsCopy::of`] type on the
     /// battlefield — CR 706/707.2: a creature for Altered Ego/Cursed Mirror, an enchantment
@@ -1709,6 +1796,7 @@ impl PendingChoice {
             | PendingChoice::ChooseTargetPlayers { player, .. }
             | PendingChoice::ExileFromGraveyard { player, .. }
             | PendingChoice::CastVote { player, .. }
+            | PendingChoice::JoinForcesPayment { player, .. }
             | PendingChoice::MaySacrifice { player, .. }
             | PendingChoice::MayReturnFromGraveyard { player, .. }
             | PendingChoice::MayDiscard { player, .. }
@@ -1737,6 +1825,7 @@ impl PendingChoice {
             | PendingChoice::ChooseManaColor { player, .. }
             | PendingChoice::ChooseCreatureType { player, .. }
             | PendingChoice::ChooseColor { player, .. }
+            | PendingChoice::ChooseCardName { player, .. }
             | PendingChoice::ChooseCopyTarget { player, .. }
             | PendingChoice::ChooseTokenToCopy { player, .. }
             | PendingChoice::ChooseCopyCardFromList { player, .. }
@@ -1763,8 +1852,8 @@ impl PendingChoice {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CombatState {
     pub(crate) attackers: Vec<ObjectId>,
-    /// Each attacker → the player it's attacking (its defending player).
-    pub(crate) attack_targets: Vec<(ObjectId, PlayerId)>,
+    /// Each attacker → what it's attacking (a defending player or one of their planeswalkers).
+    pub(crate) attack_targets: Vec<(ObjectId, Defender)>,
     /// (blocker, attacker) pairs.
     pub(crate) blocks: Vec<(ObjectId, ObjectId)>,
     /// Attacker → how its combat damage is divided among its blockers (multi-block only).
@@ -1872,6 +1961,10 @@ pub enum Event {
         /// How many permanents were sacrificed to pay [`AdditionalCost::sacrifice`] (0 for a
         /// spell with no such cost, or a decline); see [`Spell::sacrifice_count`].
         sacrifice_count: u8,
+        /// The mana value of the creature card revealed to pay
+        /// [`AdditionalCost::reveal_creature_from_hand`] (0 for a spell with no such cost); see
+        /// [`Spell::revealed_creature_mana_value`].
+        revealed_creature_mana_value: u8,
         /// Whether the caster paid the spell's kicker cost (CR 702.33d); see [`Spell::kicked`].
         kicked: bool,
         /// Whether the caster paid the spell's buyback cost (CR 702.27c); see
@@ -1980,6 +2073,20 @@ pub enum Event {
         controller: PlayerId,
         target: Option<Target>,
         /// The adventure spell's chosen `{X}` (0 for a non-`{X}` adventure — Grove's Bounty).
+        x: u32,
+    },
+    /// One half of a split card (CR 709) was cast from hand and put on the stack. `source` is the
+    /// hand card (its [`CardDef::halves`] hold the two faces); `half` indexes which one is being
+    /// cast; `spell` is the freshly-minted spell object, controlled by `controller`, targeting
+    /// `target` with `x`. Distinct from [`Self::SpellCast`] because the spell's characteristics
+    /// come from that one half rather than from the fused card (CR 709.4).
+    SplitHalfSpellCast {
+        spell: ObjectId,
+        source: ObjectId,
+        half: u8,
+        controller: PlayerId,
+        target: Option<Target>,
+        /// The half's chosen `{X}` (0 for a non-`{X}` half — neither Fire nor Ice has one).
         x: u32,
     },
     /// A triggered or activated ability was put on the stack. `x` is the chosen `{X}` for an
@@ -2138,6 +2245,19 @@ pub enum Event {
         object: ObjectId,
         subtypes: &'static [&'static str],
     },
+    /// A permanent's base power and toughness were SET *indefinitely* (CR 613.3(7b) —
+    /// Trench Gorger's "this creature has base power and toughness each equal to the number of
+    /// cards exiled this way"), added on top of no types/subtypes/keywords and **not** cleared at
+    /// cleanup (resets with the object per CR 400.7). A narrow base-P/T-only sibling of
+    /// `ReanimatedCreatureBecame` that leaves types/subtypes/keywords untouched (mirrors how
+    /// `AddedSubtypes` is `ReanimatedCreatureBecame`'s subtype-only sibling). Written to
+    /// `Permanent::set_base_pt`, the same field `ReanimatedCreatureBecame` writes. Public
+    /// battlefield status, like `BasePtSetUntilEndOfTurn`.
+    BasePtSetIndefinite {
+        object: ObjectId,
+        power: i32,
+        toughness: i32,
+    },
     /// `object` became a copy of another creature as it entered (CR 706/707.2 — Altered Ego,
     /// Cursed Mirror): its `def` is overwritten with the copied creature's copyable `def`. When
     /// `until_eot`, the original `def` is stashed on [`Permanent::reverts_to_def_eot`] first and
@@ -2197,10 +2317,16 @@ pub enum Event {
     /// (the source untapped, left the battlefield, or changed controller — CR 611.2b); control
     /// reverts to the owner (or an active `ControlAttached` Aura, if still attached).
     ConditionedControlEnded { object: ObjectId },
-    /// A creature was declared as an attacker, attacking `defender`.
+    /// A creature was declared as an attacker (CR 508.1a). `defender` is always the *defending
+    /// player*; `defender_planeswalker` names the planeswalker of theirs it's attacking, if it
+    /// attacked one rather than the player directly. Flat rather than a bare [`Defender`] because
+    /// every consumer downstream of the event (auto-pass yields, attack triggers, the wire
+    /// projection) wants the defending player and has no board to resolve a planeswalker against;
+    /// [`CombatState::attack_targets`] recombines the two into a [`Defender`] on apply.
     AttackerDeclared {
         object: ObjectId,
         defender: PlayerId,
+        defender_planeswalker: Option<ObjectId>,
     },
     /// A token was put onto the battlefield already tapped and attacking `defender` (Combat
     /// Calligrapher's minted Inkling), *not* via the declare-attackers step. CR 508.4: such a
@@ -2321,11 +2447,19 @@ pub enum Event {
     /// Impulse draw (CR 118.6): the top library card `from` was exiled face-up as the card `card`,
     /// and `player` may play it until end of turn (or until the end of `player`'s next turn, if
     /// `until_next_turn` — Atsushi, the Blazing Sky's die-trigger mode).
+    ///
+    /// Intet, the Dreamer instead exiles `face_down` (CR 701.9) and names the granting permanent in
+    /// `free_while_source`: `player` may then play the card **without paying its mana cost** for as
+    /// long as that permanent remains on the battlefield (CR 118.5), a permission with no cleanup
+    /// expiry at all — see
+    /// [`PlayPermissions::play_from_exile_free_while_source`](crate::state::PlayPermissions).
     ExiledFromLibraryMayPlay {
         player: PlayerId,
         card: ObjectId,
         from: ObjectId,
         until_next_turn: bool,
+        face_down: bool,
+        free_while_source: Option<ObjectId>,
     },
     /// Herald of Amity's dig (CR 118.5 / 701.17): the top library card `from` was exiled — face-up
     /// unless `face_down` (Abstract Performance's first pile, CR 701.9 "exile a card face down" —
@@ -2826,9 +2960,9 @@ pub enum MeaningfulAction {
     Activate { source: ObjectId, ability: usize },
     /// Cycle `card` from hand (CR 702.29a): pay its cycling cost, discard it, draw one.
     Cycle { card: ObjectId },
-    /// Activate `card`'s [`CardDef::hand_ability`] (CR 113.6/602.5e): pay its cost, discard it,
-    /// run its authored effects. The general sibling of [`Self::Cycle`].
-    ActivateHandAbility { card: ObjectId },
+    /// Activate `card`'s [`CardDef::hand_ability`] entry at `index` (CR 113.6/602.5e): pay its
+    /// cost, discard it, run its authored effects. The general sibling of [`Self::Cycle`].
+    ActivateHandAbility { card: ObjectId, index: usize },
     /// Suspend `card` from hand (CR 702.62): pay its suspend cost, exile it with time counters.
     Suspend { card: ObjectId },
     /// Encore `card` from the graveyard (CR 702.140): pay its encore mana cost, exile it, and mint
@@ -2840,6 +2974,9 @@ pub enum MeaningfulAction {
     TurnFaceUp { permanent: ObjectId },
     /// Cast a prepared permanent's back-face spell (soc/sos prepare DFCs).
     CastPrepared { source: ObjectId },
+    /// Cast one half of the split card `card` from hand (CR 709.4a). A split card lists one of
+    /// these per half instead of a single [`Self::Cast`] — the fused card is never cast itself.
+    CastSplitHalf { card: ObjectId, half: u8 },
     /// Cast `card` from hand face down as a 2/2 for {3} (CR 702.37b — morph). Offered only for a
     /// hand card whose [`CardDef::morph`] is `Some` and whose controller can pay the {3}.
     CastFaceDown { card: ObjectId },
@@ -3075,10 +3212,71 @@ pub(crate) fn nth_mode(def: CardDef, mode: usize) -> Option<Ability> {
         .nth(mode)
 }
 
+/// One ability's independent target clauses, in printed order (CR 601.2c/700.2) — Hull Breach's
+/// third mode "Destroy target artifact and target enchantment" is a `Sequence` of two
+/// `DestroyTarget` steps with *different* target specs (artifact, enchantment), so this reports two
+/// clauses. Read for a modal spell's chosen mode ([`Game::modal_target_clauses`]) and for a
+/// non-modal spell's own `Timing::Spell` ability alike ([`Game::spell_target_clauses`] — Vengeful
+/// Rebirth's graveyard-return clause plus its "any target" damage clause).
+/// Distinct from [`Effect::target`]/[`Effect::target_count`], which read only a `Sequence`'s
+/// *first* targeted step. A rider step that shares the enclosing sequence's one chosen target
+/// (Prismari Command's "target player draws two cards, then discards two cards" — CR 111.4's
+/// discard step still reports `TargetSpec::Player`, same as the draw step, not `None`) reports the
+/// *same* spec back-to-back, so it's folded into the preceding clause instead of starting a new
+/// one — a mode whose steps are that shape reports at most one clause here too, so existing
+/// shared-target modal cards (Prismari Command, Prismari Charm, Casualties of War) are unaffected.
+/// A mode with no target at all (Prismari Charm's surveil mode) reports zero clauses.
+/// ponytail: same-spec-as-preceding is the only "shared, not independent" signal available —
+/// a hypothetical card with two *genuinely* independent same-spec clauses (no pool card prints
+/// one) would misclassify as one shared clause; promote to an explicit per-effect marker if one
+/// ever does.
+pub(crate) fn ability_target_clauses(ability: Ability) -> Vec<(TargetSpec, TargetCount)> {
+    let Effect::Sequence { steps } = ability.effect else {
+        if ability.effect.target() == TargetSpec::None {
+            return Vec::new();
+        }
+        return vec![(ability.effect.target(), ability.effect.target_count())];
+    };
+    let mut clauses: Vec<(TargetSpec, TargetCount)> = Vec::new();
+    for step in steps.iter() {
+        let spec = step.target();
+        if spec == TargetSpec::None || clauses.last().is_some_and(|&(prev, _)| prev == spec) {
+            continue;
+        }
+        clauses.push((spec, step.target_count()));
+    }
+    clauses
+}
+
+/// The chosen mode (if any) whose target(s) route through the post-cast clause-pause chain
+/// rather than being supplied directly in the cast intent's per-mode target slot — either a
+/// same-spec multi-target mode (Prismari Charm's "one or two targets", a single clause with
+/// `count` not single) or a multi-clause mode (Hull Breach's "target artifact and target
+/// enchantment", two single-target clauses). `None` once every chosen mode's target(s) are
+/// already fully supplied synchronously at cast (the ubiquitous single-target-or-no-target mode).
+pub(crate) fn modal_clause_ability(
+    def: CardDef,
+    modes: impl Iterator<Item = (usize, Option<Target>)>,
+) -> Option<Ability> {
+    modes.filter_map(|(m, _)| nth_mode(def, m)).find(|&a| {
+        let clauses = ability_target_clauses(a);
+        clauses.len() > 1 || !a.effect.target_count().is_single()
+    })
+}
+
 /// The `(amount, kind)` of a card's "enters with N counters" static ability (a hydra's
 /// `(Amount::X, None)` for +1/+1; mana_bloom/astral_cornucopia's `(Amount::X, Some(Charge))` for
 /// a named kind), if it has one. `None` for a card that enters with no counters.
+///
+/// Vanishing N (CR 702.63a — Deadwood Treefolk) *is* an "enters with N time counters" static, so
+/// it answers here rather than through a printed `[[abilities]]` block, and so rides every
+/// enters-with-counters site for free.
+/// ponytail: vanishing short-circuits a printed static rather than stacking with it — no pool card
+/// has both, so there is no ordering to get right; place both when one does.
 pub(crate) fn enters_with_counters(def: CardDef) -> Option<(Amount, Option<CounterKind>)> {
+    if let Some(counters) = def.vanishing {
+        return Some((Amount::Fixed(counters as i32), Some(CounterKind::Time)));
+    }
     def.abilities
         .iter()
         .find_map(|a| match (a.timing, a.effect) {

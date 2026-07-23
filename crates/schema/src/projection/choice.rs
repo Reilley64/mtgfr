@@ -155,6 +155,16 @@ impl<'a> ChoiceCtx<'a> {
                 player: player.0,
                 max,
             },
+            engine::PendingChoice::JoinForcesPayment { player, source, .. } => {
+                PendingChoiceView::PayAnyAmountOfMana {
+                    player: player.0,
+                    source,
+                    max: self.game.max_payable_x(player, None, |x| engine::Cost {
+                        generic: x.min(u32::from(u8::MAX)) as u8,
+                        ..Default::default()
+                    }),
+                }
+            }
             engine::PendingChoice::TradeSecretsCasterDraw {
                 player,
                 max,
@@ -765,6 +775,16 @@ impl<'a> ChoiceCtx<'a> {
                     source,
                 }
             }
+            // `remaining` (who still has to name after this seat) stays engine-internal — the
+            // prompt only needs to know who is naming and for which source. Nothing about the
+            // chooser's library or their eventual name is projected: the reveal is a separate
+            // public event.
+            engine::PendingChoice::ChooseCardName { player, source, .. } => {
+                PendingChoiceView::ChooseCardName {
+                    player: player.0,
+                    source,
+                }
+            }
             engine::PendingChoice::ChooseAttachHost {
                 player,
                 attachment,
@@ -1042,6 +1062,14 @@ mod coverage_tests {
                     modes: CHOOSE_ONE_MODES,
                 },
                 |view| matches!(view, PendingChoiceView::ChooseMode { .. }),
+            ),
+            (
+                PendingChoice::ChooseCardName {
+                    player: PlayerId(0),
+                    source,
+                    remaining: vec![PlayerId(1)],
+                },
+                |view| matches!(view, PendingChoiceView::ChooseCardName { .. }),
             ),
         ];
 

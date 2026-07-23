@@ -59,6 +59,11 @@ export function extractProvenance(
       Match.discriminator("kind")("spell_cast", (e) => {
         stackEntrances.set(e.spell, { controller: e.controller, from: e.from });
       }),
+      // A split half enters the stack from its fused card in hand (CR 709.4a) — same glide as a
+      // whole spell, just anchored on `source` rather than `from`.
+      Match.discriminator("kind")("split_half_spell_cast", (e) => {
+        stackEntrances.set(e.spell, { controller: e.controller, from: e.source });
+      }),
       Match.discriminator("kind")("token_created", (e) => {
         if (e.creator != null) tokenCreators.set(e.token, e.creator);
       }),
@@ -72,6 +77,7 @@ export function extractProvenance(
         "added_subtypes",
         "attached_to",
         "attacker_declared",
+        "base_pt_set_indefinite",
         "base_pt_set_until_end_of_turn",
         "became_copy",
         "cast_from_exile_free_bottoms_library_on_leave",
@@ -213,7 +219,9 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       moved_to_graveyard: (e) => `${name(e.card)} dies`,
       moved_to_command_zone: (e) => `${name(e.card)} returns to the command zone`,
       counters_placed: (e) => `${name(e.object)} gets ${e.count} +1/+1 counter${e.count === 1 ? "" : "s"}`,
-      attacker_declared: (e) => `${name(e.object)} attacks`,
+      // CR 508.1a: an attacker is declared against a player *or* a planeswalker they control.
+      attacker_declared: (e) =>
+        `${name(e.object)} attacks ${e.defender_planeswalker != null ? name(e.defender_planeswalker) : p(e.defender)}`,
       blocker_declared: (e) => `${name(e.blocker)} blocks ${name(e.attacker)}`,
       card_drawn: (e) => `${p(e.player)} draws${e.card ? ` ${e.card}` : " a card"}`,
       // Decking out is the one loss with no visible cause on the board — no lethal damage, no
@@ -242,6 +250,9 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       phased_in: (e) => `${name(e.object)} phases in`,
       adventure_spell_cast: (e) =>
         `${p(e.controller)} casts ${name(e.spell)}${e.target != null ? ` → ${t(e.target)}` : ""}`,
+      // CR 709.4a: only the half is on the stack, and the stack object is named for that half.
+      split_half_spell_cast: (e) =>
+        `${p(e.controller)} casts ${name(e.spell)}${e.target != null ? ` → ${t(e.target)}` : ""}`,
       regenerated: (e) => `${name(e.object)} regenerates`,
       // Face-down transformations — don't leak a manifested card's identity (CR 708.2).
       manifested: (e) => `${p(e.controller)} manifests a card`,
@@ -261,6 +272,7 @@ export function describe(e: VisibleEvent, state: VisibleState): string | null {
       "ability_resolved",
       "added_subtypes",
       "attached_to",
+      "base_pt_set_indefinite",
       "base_pt_set_until_end_of_turn",
       "cast_from_exile_free_bottoms_library_on_leave",
       "channel_colorless_mana_granted",

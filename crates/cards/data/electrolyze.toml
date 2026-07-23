@@ -1,0 +1,37 @@
+# Electrolyze deals 2 damage divided as you choose among one or two targets.
+# Draw a card.
+name = "Electrolyze"
+id = "07b222d7-24f2-4994-9004-ff6672ebe161"
+default_print = "5112af09-1305-4e00-8273-403eac40786f"
+otags = ["burn-any", "cantrip", "divided-damage", "hand-neutral", "multi-removal", "multiple-targets", "pure-draw"]
+oracle = "Electrolyze deals 2 damage divided as you choose among one or two targets.\nDraw a card."
+set = "ima"
+
+[cost]
+generic = 1
+blue = 1
+red = 1
+
+[kind]
+type = "instant"
+
+# Electrolyze deals 2 damage divided as you choose among one or two targets.
+[[abilities]]
+timing = "spell"
+
+# Electrolyze deals 2 damage divided as you choose among one or two targets.
+[[abilities.effects]]
+type = "deal_damage"
+amount = 2
+target = "any"
+count = { min = 1, max = 2 }
+divided = true
+
+# Draw a card.
+[[abilities]]
+timing = "spell"
+
+# Draw a card.
+[[abilities.effects]]
+type = "draw_cards"
+count = 1

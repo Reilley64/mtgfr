@@ -31,7 +31,7 @@ struct Source {
 
 /// The precons with their fixed ids. Ids are negative so they can never collide with a DB deck's
 /// autoincrement id; each new precon takes the next id down.
-static SOURCES: [Source; 8] = [
+static SOURCES: [Source; 9] = [
     Source {
         id: -1,
         name: "Silverquill Influence",
@@ -71,6 +71,11 @@ static SOURCES: [Source; 8] = [
         id: -8,
         name: "Political Puppets",
         json: include_str!("../fixtures/decks/political_puppets.json"),
+    },
+    Source {
+        id: -9,
+        name: "Mirror Mastery",
+        json: include_str!("../fixtures/decks/mirror_mastery.json"),
     },
 ];
 

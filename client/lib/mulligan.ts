@@ -1,6 +1,9 @@
 import type { PlayerView } from "~/wire/types";
 
-type MulliganPlayer = Pick<PlayerView, "can_mulligan" | "hand_kept" | "lost" | "mulligans_taken" | "player">;
+type MulliganPlayer = Pick<
+  PlayerView,
+  "can_mulligan" | "hand_kept" | "lost" | "mulligans_taken" | "player" | "username"
+>;
 
 export type MulliganChromeInput = {
   mulliganing?: boolean;
@@ -32,10 +35,23 @@ const hiddenChrome = (): MulliganChrome => ({
   mulliganLabel: "Mulligan",
 });
 
-const waitingStatus = (count: number): string => {
-  if (count === 0) return "All players kept. Starting game…";
-  if (count === 1) return "Waiting for 1 player to choose.";
-  return `Waiting for ${count} players to choose.`;
+function seatLabel(player: MulliganPlayer): string {
+  const name = player.username?.trim();
+  if (name) return name;
+  return `P${player.player}`;
+}
+
+function joinNames(names: readonly string[]): string {
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0] ?? "";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  const head = names.slice(0, -1).join(", ");
+  return `${head}, and ${names[names.length - 1]}`;
+}
+
+const waitingStatus = (waiting: readonly MulliganPlayer[]): string => {
+  if (waiting.length === 0) return "All players kept. Starting game…";
+  return `Waiting for ${joinNames(waiting.map(seatLabel))} to choose.`;
 };
 
 export function mulliganChrome(input: MulliganChromeInput): MulliganChrome {
@@ -44,7 +60,8 @@ export function mulliganChrome(input: MulliganChromeInput): MulliganChrome {
   const local = input.players.find((p) => p.player === input.localSeat);
   if (!local) return hiddenChrome();
 
-  const waitingCount = input.players.filter((p) => !p.hand_kept && !p.lost).length;
+  const waiting = input.players.filter((p) => !p.hand_kept && !p.lost);
+  const waitingCount = waiting.length;
   const mulligansTaken = local.mulligans_taken ?? 0;
   const showControls = !local.hand_kept;
 
@@ -55,7 +72,7 @@ export function mulliganChrome(input: MulliganChromeInput): MulliganChrome {
     waitingCount,
     mulligansTaken,
     title: "Opening hand",
-    status: showControls ? "Keep this hand or take a mulligan." : waitingStatus(waitingCount),
+    status: showControls ? "Keep this hand or take a mulligan." : waitingStatus(waiting),
     keepLabel: "Keep",
     mulliganLabel: mulligansTaken === 0 ? "Mulligan" : `Mulligan (${mulligansTaken} taken)`,
   };

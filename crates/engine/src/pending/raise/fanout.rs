@@ -74,6 +74,23 @@ pub(super) fn next_counter_target(
     None
 }
 
+/// Next seat in a join-forces payment round — mandatory to *address* (paying nothing is a legal
+/// answer), so no seat is skipped, the same shape as [`next_vote`].
+pub(super) fn next_join_forces_payment(
+    mut remaining: Vec<PlayerId>,
+    source: ObjectId,
+) -> Option<PendingChoice> {
+    if remaining.is_empty() {
+        return None;
+    }
+    let player = remaining.remove(0);
+    Some(PendingChoice::JoinForcesPayment {
+        player,
+        source,
+        remaining,
+    })
+}
+
 pub(super) fn next_vote(
     mut remaining: Vec<PlayerId>,
     source: ObjectId,
@@ -87,6 +104,23 @@ pub(super) fn next_vote(
         player,
         source,
         options,
+        remaining,
+    })
+}
+
+/// Next seat in Conundrum Sphinx's name-a-card fan-out (mandatory — naming is required even with
+/// an empty library, so no seat is ever skipped, same shape as [`next_vote`]).
+pub(super) fn next_card_name(
+    mut remaining: Vec<PlayerId>,
+    source: ObjectId,
+) -> Option<PendingChoice> {
+    if remaining.is_empty() {
+        return None;
+    }
+    let player = remaining.remove(0);
+    Some(PendingChoice::ChooseCardName {
+        player,
+        source,
         remaining,
     })
 }

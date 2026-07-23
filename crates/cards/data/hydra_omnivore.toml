@@ -1,0 +1,28 @@
+# Whenever this creature deals combat damage to an opponent, it deals that much damage to each other opponent.
+name = "Hydra Omnivore"
+id = "8f504855-f3df-4284-a189-e799bcddf620"
+default_print = "c669fb72-1dfe-498d-9f4e-f17e060b0b93"
+otags = ["burn-player", "cycle-cns-m-monocolor", "multiplayer", "triggered-ability", "omnivore-ability"]
+oracle = "Whenever this creature deals combat damage to an opponent, it deals that much damage to each other opponent."
+set = "cmd"
+subtypes = ["Hydra"]
+
+[cost]
+generic = 4
+green = 2
+
+[kind]
+type = "creature"
+power = 8
+toughness = 8
+
+# Whenever this creature deals combat damage to an opponent, it deals that much damage to each
+# other opponent.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "this"
+
+# it deals that much damage to each other opponent
+[[abilities.effects]]
+type = "damage_each_other_opponent"
+amount = "combat_damage_dealt"

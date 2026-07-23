@@ -3,13 +3,15 @@ import {
   answerFromDraft,
   assertAllKindsRegistered,
   buildAnswerFromDraft,
+  cardPickReady,
   choiceDraftKey,
   choiceIntent,
+  damageAssignReady,
   declineAnswer,
   FORMULATOR_FOR_KIND,
   type PromptDraft,
 } from "~/choice";
-import type { PendingChoiceView, WireIntent, WireModeChoice } from "~/wire/types";
+import type { ObjectView, PendingChoiceView, VisibleState, WireIntent, WireModeChoice } from "~/wire/types";
 
 const ALL_PENDING_CHOICE_KINDS = [
   "order_triggers",
@@ -76,6 +78,8 @@ const ALL_PENDING_CHOICE_KINDS = [
   "pay_cumulative_upkeep_or_sacrifice",
   "may_draw_up_to",
   "trade_secrets_caster_draw",
+  "pay_any_amount_of_mana",
+  "choose_card_name",
   "trade_secrets_repeat",
 ] as const satisfies readonly PendingChoiceView["kind"][];
 
@@ -152,9 +156,82 @@ test("choiceIntent maps assign combat damage", () => {
   });
 });
 
+function attackerObject(overrides: Partial<ObjectView> = {}): ObjectView {
+  return {
+    controller: 0,
+    has_haste: false,
+    id: 9,
+    is_commander: false,
+    kind: { kind: "creature", power: 4, toughness: 4 },
+    mana_cost: { colored: [0, 0, 0, 0, 0], generic: 0 },
+    marked_damage: 0,
+    name: "Attacker",
+    needs_target: false,
+    owner: 0,
+    plus_counters: 0,
+    power: 4,
+    print: "",
+    summoning_sick: false,
+    tapped: false,
+    toughness: 4,
+    zone: 2,
+    ...overrides,
+  };
+}
+
+function damageState(attacker: ObjectView): VisibleState {
+  return {
+    active_player: 0,
+    can_act: true,
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    objects: [attacker],
+    pending_choice: null,
+    players: [],
+    priority: 0,
+    stack: [],
+    step: 3,
+    viewer: 0,
+  };
+}
+
+describe("damageAssignReady", () => {
+  const pc = {
+    kind: "assign_combat_damage" as const,
+    items: [
+      { id: 4, label: "Bear" },
+      { id: 5, label: "Elf" },
+    ],
+    player: 0,
+    source: 9,
+  };
+
+  test("non-trample requires exact power sum", () => {
+    const state = damageState(attackerObject());
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 3, 5: 1 } }, state)).toBe(true);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 2, 5: 1 } }, state)).toBe(false);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 5, 5: 0 } }, state)).toBe(false);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 5, 5: -1 } }, state)).toBe(false);
+  });
+
+  test("trample allows under-assign; rejects over-assign and negatives", () => {
+    const state = damageState(attackerObject({ keywords: ["trample"] }));
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 2, 5: 0 } }, state)).toBe(true);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 0, 5: 0 } }, state)).toBe(true);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 3, 5: 1 } }, state)).toBe(true);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: 5, 5: 0 } }, state)).toBe(false);
+    expect(damageAssignReady(pc, { kind: "damage", amounts: { 4: -1, 5: 0 } }, state)).toBe(false);
+  });
+});
+
 test("choiceDraftKey changes when scry items change", () => {
   const a = { kind: "scry" as const, items: [{ id: 1, label: "A" }], player: 0 };
   const b = { kind: "scry" as const, items: [{ id: 2, label: "B" }], player: 0 };
+  expect(choiceDraftKey(a)).not.toBe(choiceDraftKey(b));
+});
+
+test("choiceDraftKey changes when pay_any_amount max shrinks", () => {
+  const a = { kind: "pay_any_amount_of_mana" as const, max: 12, player: 0, source: 7 };
+  const b = { kind: "pay_any_amount_of_mana" as const, max: 4, player: 0, source: 7 };
   expect(choiceDraftKey(a)).not.toBe(choiceDraftKey(b));
 });
 
@@ -517,6 +594,7 @@ describe("answerFromDraft builds accepted intents", () => {
         kind: "choose_target",
         items: [{ id: 11, label: "Bear" }],
         label: "Choose target",
+        max: 1,
         optional: false,
         player: 0,
         source: 1,
@@ -526,6 +604,32 @@ describe("answerFromDraft builds accepted intents", () => {
         kind: "choose_targets",
         player: 0,
         targets: [{ kind: "object", id: 11 }],
+      },
+    );
+  });
+
+  test("submits every required target for a mandatory multi-target choose_target", () => {
+    expectDraftIntent(
+      {
+        kind: "choose_target",
+        items: [
+          { id: 21, label: "Forest" },
+          { id: 22, label: "Island" },
+        ],
+        label: "Untap two target lands",
+        max: 2,
+        optional: false,
+        player: 0,
+        source: 1,
+      },
+      { kind: "card-pick", picked: [21, 22] },
+      {
+        kind: "choose_targets",
+        player: 0,
+        targets: [
+          { kind: "object", id: 21 },
+          { kind: "object", id: 22 },
+        ],
       },
     );
   });
@@ -559,6 +663,24 @@ describe("answerFromDraft builds accepted intents", () => {
       kind: "choose_sacrifices",
       player: 0,
       sacrifices: [],
+    });
+  });
+
+  test("declines dredge to draw normally", () => {
+    const pc = {
+      kind: "choose_dredge" as const,
+      items: [{ id: 61, label: "Stinkweed Imp" }],
+      player: 0,
+    };
+    expect(cardPickReady(pc, [])).toBe(false);
+    expect(cardPickReady(pc, [61])).toBe(true);
+    const answer = declineAnswer(pc);
+    expect(answer).toEqual({ kind: "dredge", dredger: null });
+    if (answer == null) return;
+    expect(choiceIntent(pc, answer)).toEqual({
+      kind: "choose_dredge",
+      player: 0,
+      dredger: null,
     });
   });
 

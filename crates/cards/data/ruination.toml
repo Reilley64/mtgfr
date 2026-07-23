@@ -1,0 +1,23 @@
+# Destroy all nonbasic lands.
+name = "Ruination"
+id = "59dbc873-72d9-4e7b-9442-2c7b8e8523e1"
+default_print = "6330d925-96a8-47e1-855d-035ddc2af709"
+otags = ["cycle-c11-utter-end", "mass-land-destruction", "removal-destroy", "removal-land", "sweeper"]
+oracle = "Destroy all nonbasic lands."
+set = "cmd"
+
+[cost]
+generic = 3
+red = 1
+
+[kind]
+type = "sorcery"
+
+# Destroy all nonbasic lands.
+[[abilities]]
+timing = "spell"
+
+# Destroy all nonbasic lands.
+[[abilities.effects]]
+type = "destroy_all"
+filter = { types = "land", nonbasic = true }

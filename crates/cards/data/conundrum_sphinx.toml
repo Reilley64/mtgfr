@@ -1,0 +1,37 @@
+# Flying
+# Whenever this creature attacks, each player chooses a card name. Then each player reveals the top card of their
+# library. If the card a player revealed has the name they chose, that player puts it into their hand. If it
+# doesn't, that player puts it on the bottom of their library.
+name = "Conundrum Sphinx"
+id = "fb1bd39c-c870-4f63-9e4f-32c94ac46555"
+default_print = "2905cea6-77cb-4d9b-93f4-e22211af25e1"
+otags = ["attack-trigger", "card-draw", "flying", "library-manipulation", "named-choice"]
+oracle = "Flying\nWhenever this creature attacks, each player chooses a card name. Then each player reveals the top card of their library. If the card a player revealed has the name they chose, that player puts it into their hand. If it doesn't, that player puts it on the bottom of their library."
+set = "c18"
+subtypes = ["Sphinx"]
+keywords = ["flying"]
+approximates = "Players name and resolve one seat at a time in APNAP order rather than all choosing simultaneously — a later seat sees an earlier seat's public reveal (and whether it hit) before naming their own."
+
+[cost]
+generic = 2
+blue = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# Whenever this creature attacks, each player chooses a card name. Then each player reveals the top
+# card of their library. If the card a player revealed has the name they chose, that player puts it
+# into their hand. If it doesn't, that player puts it on the bottom of their library.
+[[abilities]]
+timing = "attacks"
+
+# each player chooses a card name. Then each player reveals the top card of their library. If the
+# card a player revealed has the name they chose, that player puts it into their hand. If it
+# doesn't, that player puts it on the bottom of their library.
+[[abilities.effects]]
+# ponytail: the fan-out asks one seat at a time (like councils_dilemma_vote), so naming is
+# sequential rather than the simultaneous hidden commit the CR wants. Upgrade when a card needs a
+# real everyone-commits-before-anyone-reveals primitive.
+type = "each_player_names_card_then_reveals_top"

@@ -1,0 +1,30 @@
+# When this creature dies, each player may search their library for up to two basic land cards, put them onto the
+# battlefield, then shuffle.
+name = "Veteran Explorer"
+otags = ["death-trigger-self", "each-player", "tutor-land-basic", "tutor-land-to-battlefield", "type-addition-human"]
+oracle = "When this creature dies, each player may search their library for up to two basic land cards, put them onto the battlefield, then shuffle."
+set = "cmd"
+subtypes = ["Human", "Soldier", "Scout"]
+id = "fa9677d2-1535-4c57-baa8-c0408e15da47"
+default_print = "31e93641-3370-46e4-8940-af09b33024cb"
+
+[cost]
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature dies, each player may search their library for up to two basic land cards, put them onto the
+# battlefield, then shuffle.
+[[abilities]]
+timing = "dies"
+
+# each player may search their library for up to two basic land cards, put them onto the battlefield, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "basic_land"
+to_zone = "battlefield"
+searcher = "all_players"
+count = 2

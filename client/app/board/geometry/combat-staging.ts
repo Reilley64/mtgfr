@@ -1,6 +1,6 @@
 import * as Match from "effect/Match";
 import type { WireAttack, WireBlock, WireIntent } from "~/wire/types";
-import { attackDrop, blockDrop, type CombatMode, type PrimaryAction } from "./interaction";
+import { attackablePlaneswalker, attackDrop, blockDrop, type CombatMode, type PrimaryAction } from "./interaction";
 import type { RenderCard } from "./layout";
 
 export type CombatDropResult =
@@ -19,9 +19,11 @@ export function handleCombatDrop(
   blockTarget: RenderCard | null,
   declaredAttackers: WireAttack[],
   me: number,
+  opponents: number[] = [],
 ): CombatDropResult {
   if (mode === "attackers") {
-    const next = attackDrop(currentAttackers, from, defender);
+    const pw = attackablePlaneswalker(blockTarget, opponents);
+    const next = attackDrop(currentAttackers, from, defender, pw?.id);
     return next ? { kind: "attackers", value: next } : { kind: "none" };
   }
   if (mode === "blockers") {

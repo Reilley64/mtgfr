@@ -56,6 +56,13 @@ impl Game {
                 let evs = self.draw_events(player, n);
                 self.apply_all(&evs);
                 events.extend(evs);
+            } else if let Effect::DamagingCreatureControllerMayDraw { count, .. } = effect {
+                // Edric: `player` here is the controller of the creature that dealt the combat
+                // damage (baked in at trigger placement), not Edric's own controller — draw them
+                // `count` cards directly, the same shape as `TargetPlayerMayDraw` above.
+                let evs = self.draw_events(player, count);
+                self.apply_all(&evs);
+                events.extend(evs);
             } else if let Effect::MayDrawUnlessPays { cost, caster } = effect {
                 // Rhystic Study: `player` (the controller) said they want to draw, so now
                 // `caster` (the triggering opponent, baked in by `contextualize_effect`) gets a

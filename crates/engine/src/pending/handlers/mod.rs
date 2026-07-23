@@ -97,6 +97,7 @@ mod tests {
                 enters_tapped: false,
                 enters_tapped_unless: None,
                 free_cast_if: None,
+                alternative_cost: None,
                 cast_only_during_combat: false,
                 approximates: None,
                 oracle: None,
@@ -120,12 +121,14 @@ mod tests {
                 functions_in_graveyard: false,
                 back: None,
                 adventure: None,
+                halves: &[],
                 suspend: None,
+                vanishing: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: None,
+                hand_ability: &[],
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,
@@ -187,19 +190,39 @@ mod tests {
     fn choose_order_accepts_a_valid_permutation() {
         let mut game = Game::with_players(2, 0);
         let source = source_creature(&mut game);
+        let effects = [
+            Effect::DrawCards {
+                count: Amount::Fixed(1),
+            },
+            Effect::DrawCards {
+                count: Amount::Fixed(2),
+            },
+        ];
+        // `choose_order` re-splits the still-queued group, so the queue has to hold it (that is
+        // what `place_pending_triggers` leaves behind when it raises the ordering choice).
+        game.pending_trigger_groups.push(TriggerGroup {
+            controller: P0,
+            source,
+            abilities: effects
+                .iter()
+                .map(|&effect| Ability {
+                    timing: Timing::Triggered(Trigger::Upkeep),
+                    effect,
+                    optional: false,
+                    min_level: 0,
+                    cost: Cost::FREE,
+                    condition: None,
+                    once_each_turn: false,
+                })
+                .collect(),
+            expanded: true,
+        });
         crate::pending::raise_choice(
             &mut game,
             PendingChoice::OrderTriggers {
                 player: P0,
                 source,
-                effects: vec![
-                    Effect::DrawCards {
-                        count: Amount::Fixed(1),
-                    },
-                    Effect::DrawCards {
-                        count: Amount::Fixed(2),
-                    },
-                ],
+                effects: effects.to_vec(),
             },
         );
         assert!(game.choose_order(P0, vec![1, 0]).is_ok());

@@ -63,12 +63,17 @@ impl Game {
     /// hand cards for a discard rider, and enough life for a pay-life / pay-X-life rider (CR 119.4).
     /// Shared by [`Game::cast`] and [`Game::cast_listable`] so list and execute agree.
     /// Chosen discard/exile picks still re-validate in [`Game::validate_cast`].
+    ///
+    /// `zone` gates retrace's discard-a-land rider (CR 702.83a): it's an "in addition to paying
+    /// its other costs" surcharge that only applies when the card is actually being cast from the
+    /// graveyard — casting the same card from hand pays just the printed cost, no discard.
     pub(crate) fn cast_additional_cost_gate(
         &self,
         player: PlayerId,
         object: ObjectId,
         cost: Cost,
         x: u32,
+        zone: Zone,
     ) -> Result<(), Reject> {
         let discard_n = cost.additional.discard as usize;
         if discard_n > 0 {
@@ -82,8 +87,9 @@ impl Game {
             }
         }
         // Retrace (CR 702.83a): can't pay without a land card in hand to discard (CR 601.2f —
-        // no land in hand means the additional cost can't be paid, so the cast is illegal).
-        if cost.additional.discard_land {
+        // no land in hand means the additional cost can't be paid, so the cast is illegal). Only
+        // a factor when casting from the graveyard — see the `zone` doc above.
+        if cost.additional.discard_land && zone == Zone::Graveyard {
             let has_land = self
                 .hand_of(player)
                 .into_iter()
@@ -98,7 +104,35 @@ impl Game {
         if self.life(player) < cost.additional.pay_life as i32 {
             return Err(Reject::CannotPayCost);
         }
+        // "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius): can't be cast
+        // without a creature card in hand to reveal (CR 601.2f — an unpayable additional cost
+        // makes the cast illegal).
+        if cost.additional.reveal_creature_from_hand {
+            let has_creature = self.hand_of(player).into_iter().any(|id| {
+                id != object && matches!(self.def_of(id).kind, CardKind::Creature { .. })
+            });
+            if !has_creature {
+                return Err(Reject::CannotPayCost);
+            }
+        }
         Ok(())
+    }
+
+    /// The highest mana value among creature cards in `player`'s hand, excluding `object` itself
+    /// (the spell being cast) — [`AdditionalCost::reveal_creature_from_hand`]'s automatic pick
+    /// (CR 601.2g — Disaster Radius). 0 if there is no such card; [`Game::cast_additional_cost_gate`]
+    /// already rejects the cast in that case, so a live call always finds at least one.
+    pub(crate) fn highest_creature_mana_value_in_hand(
+        &self,
+        player: PlayerId,
+        object: ObjectId,
+    ) -> u8 {
+        self.hand_of(player)
+            .into_iter()
+            .filter(|&id| id != object && matches!(self.def_of(id).kind, CardKind::Creature { .. }))
+            .map(|id| self.def_of(id).mana_value() as u8)
+            .max()
+            .unwrap_or(0)
     }
 
     /// The full cost to cast `def` right now: the chosen `{X}` folded into the generic
@@ -141,6 +175,11 @@ impl Game {
     /// count itself (CR 702.108 — each payment is a full extra instance of the cost, unlike
     /// Strive's "beyond the first") — 0 for a spell with no Replicate, or when pricing without a
     /// declared count.
+    /// `alternative_cost` charges [`CardDef::alternative_cost`]'s non-mana rider *instead of* the
+    /// printed cost (CR 601.2f), same opt-in shape as `evoked` — `false` for a spell with none, or
+    /// when pricing without declaring it. Unlike every other flag above, this replaces the whole
+    /// cost outright rather than folding onto it: no reduction, kicker, delve, etc. applies on top
+    /// (CR 601.2f's "rather than pay this spell's mana cost").
     #[allow(clippy::too_many_arguments)]
     pub fn cast_cost(
         &self,
@@ -156,12 +195,26 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        alternative_cost: bool,
     ) -> Cost {
+        // A printed alternative cost (CR 601.2f — Invigorate): declaring it replaces the mana
+        // cost entirely with a non-mana rider paid alongside (see `Game::cast`'s
+        // `alternative_cost` fold), so no reduction/kicker/delve/etc. below ever applies.
+        // `Game::validate_cast_cost_picks` already rejects declaring this on a card with no
+        // alternative cost, or when its condition doesn't hold, so this only sees a real one.
+        if alternative_cost && def.alternative_cost.is_some() {
+            return Cost::FREE;
+        }
         // Quintorius, Loremaster's free-cast permission (CR 118.5 "without paying its mana
         // cost"): the mana cost is zero. No pool card stacks an additional cost onto a
         // free-cast-eligible card, so `Cost::FREE` covers it; split mana from `additional` if one
         // ever does.
-        if zone == Zone::Exile && self.may_cast_from_exile_free(object, player) {
+        // Intet, the Dreamer's grant is the same CR 118.5 "without paying its mana cost", just with
+        // a live source-scoped duration instead of a turn-scoped one.
+        if zone == Zone::Exile
+            && (self.may_cast_from_exile_free(object, player)
+                || self.may_play_from_exile_free_while_source(object, player))
+        {
             return Cost::FREE;
         }
         // A printed conditional free-cast permission (CR 118.5, `CardDef::free_cast_if` —
@@ -312,6 +365,7 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        alternative_cost: bool,
     ) -> Result<Vec<Event>, Reject> {
         self.cast_with_kind(
             player,
@@ -327,6 +381,7 @@ impl Game {
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
             playable::CastPlayKind::Full,
         )
     }
@@ -347,6 +402,7 @@ impl Game {
         evoked: bool,
         strive_count: u8,
         replicate_count: u8,
+        alternative_cost: bool,
         kind: CastPlayKind,
     ) -> Result<Vec<Event>, Reject> {
         let validated = self.validate_cast(
@@ -364,6 +420,7 @@ impl Game {
                 evoked,
                 strive_count,
                 replicate_count,
+                alternative_cost,
             },
             kind,
         )?;
@@ -391,10 +448,29 @@ impl Game {
             Some(def.spell_characteristics()),
             &mut events,
         )?;
+        // A printed alternative cost's non-mana rider (CR 601.2f — Invigorate's "you may have an
+        // opponent gain 3 life"): fired here, alongside the (zeroed) mana settlement above, not
+        // folded into it — `validate_cast_cost_picks` already confirmed `def.alternative_cost`
+        // is real and its condition holds, so this only sees a genuine one.
+        if alternative_cost && let Some(alt) = def.alternative_cost {
+            let rider_events = self.execute_effect(*alt.rider, player, object, None, 0);
+            for event in rider_events {
+                self.push_apply(&mut events, event);
+            }
+        }
         // CR 106.9's "spent to cast" query (Court Hussar's "unless {W} was spent to cast it"):
         // read right off the `Event::ManaSpent` `settle_payment` just appended, before any later
         // event dilutes the `events` tail.
         let spent_colors = spent_colors_from(&events);
+        // "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius): read before any
+        // of this cast's own discard/sacrifice picks touch the hand below. See
+        // `AdditionalCost::reveal_creature_from_hand`'s own doc for why the pick is automatic
+        // (always the highest mana value — no genuine choice to make).
+        let revealed_creature_mana_value = if cost.additional.reveal_creature_from_hand {
+            self.highest_creature_mana_value_in_hand(player, object)
+        } else {
+            0
+        };
         // ponytail: the additional discard is a *cost* (CR 601.2h — paid pre-stack, before
         // SpellCast below), distinct from a resolution-time `Effect::Discard`. Applied
         // incrementally (not a single `apply_all`) so each `next_object_id()` — one per discarded
@@ -475,6 +551,7 @@ impl Game {
                 flashback: cast_via_flashback,
                 escape: cast_via_escape,
                 sacrifice_count: sacrifice_cost.len() as u8,
+                revealed_creature_mana_value,
                 kicked,
                 bought_back,
                 strive_count,
@@ -520,9 +597,10 @@ impl Game {
     /// "one or more" is the open-max case, further gated by `controller` controlling a commander
     /// when `modal_choose_max_if_commander` is set — see [`Game::modal_choose_max`]), each a
     /// distinct in-range printed mode whose target is legal for that mode. A mode whose own effect
-    /// is multi-target (Prismari Charm's "one or two targets") takes no target here — like a
-    /// non-modal multi-target spell, its targets are chosen after cast (CR 601.2c), so
-    /// `modal_multi_target` below is where that mode's spec/count is read.
+    /// is multi-target (Prismari Charm's "one or two targets") or carries more than one
+    /// independent target clause (Hull Breach's "target artifact and target enchantment") takes
+    /// no target here — like a non-modal multi-target spell, its targets are chosen after cast
+    /// (CR 601.2c), so `modal_target_clauses` below is where that mode's clause(s) are read.
     pub(crate) fn validate_modes(
         &self,
         object: ObjectId,
@@ -544,7 +622,14 @@ impl Game {
                 return Err(Reject::IllegalMode);
             }
             seen.push(m);
-            if !ability.effect.target_count().is_single() {
+            // A chosen mode's target(s) are deferred to the post-cast clause-pause chain (CR
+            // 601.2c) rather than supplied here directly when the mode's own effect is
+            // multi-target (Prismari Charm's "one or two targets") *or* carries more than one
+            // independent target clause (Hull Breach mode 2's "target artifact and target
+            // enchantment") — see `modal_clause_ability`.
+            if !ability.effect.target_count().is_single()
+                || ability_target_clauses(ability).len() > 1
+            {
                 if target.is_some() {
                     return Err(Reject::IllegalTarget);
                 }
@@ -557,55 +642,76 @@ impl Game {
         Ok(())
     }
 
-    /// A non-modal spell's multi-target effect (its target spec and count), if it has one —
-    /// i.e. a `Timing::Spell` ability whose effect chooses more than one target (Aether Gale).
-    /// `None` for the overwhelming single-target majority. The pool never sequences two
-    /// multi-target spell effects under one spell, so the first is authoritative. Modal spells
-    /// use [`Self::modal_multi_target`] instead, scoped to the chosen mode.
+    /// A non-modal spell's *first* independent target clause deferred to the post-cast
+    /// clause-pause chain (CR 601.2c), if it has one. `None` for the overwhelming
+    /// single-target majority, which supplies its one target synchronously in the cast intent.
+    /// The head of [`Self::spell_target_clauses`]; modal spells use
+    /// [`Self::modal_target_clauses`] instead, scoped to the chosen mode.
     pub(crate) fn spell_multi_target(&self, def: CardDef) -> Option<(TargetSpec, TargetCount)> {
-        def.abilities
-            .iter()
-            .filter(|a| matches!(a.timing, Timing::Spell))
-            .map(|a| (a.effect.target(), a.effect.target_count()))
-            .find(|(_, count)| !count.is_single())
+        self.spell_target_clauses(def).first().copied()
     }
 
-    /// A modal spell's chosen mode's multi-target effect (its target spec and count), if the mode
-    /// picked needs one (Prismari Charm mode 1's "deals 1 damage to each of one or two targets").
-    /// Mirrors [`Self::spell_multi_target`] but scoped to just the *chosen* modes — a modal spell
-    /// resolves only what was chosen, so at most one multi-target clause is ever in play.
-    pub(crate) fn modal_multi_target(
+    /// A non-modal spell's independent target clauses, in printed order (CR 601.2c) — the ones
+    /// whose targets are chosen *after* the spell is on the stack rather than supplied in the cast
+    /// intent. Two shapes qualify:
+    ///
+    /// - a `Timing::Spell` ability whose own effect chooses more than one target (Aether Gale;
+    ///   Magma Opus's damage clause 0 and tap clause 1, one clause per ability), and
+    /// - a `Timing::Spell` ability carrying more than one clause of its own (Vengeful Rebirth's
+    ///   "Return target card from your graveyard to your hand … deals damage … to any target" —
+    ///   two independent *single*-target clauses in one `Sequence`, the non-modal twin of Hull
+    ///   Breach's third mode).
+    ///
+    /// An ordinary single-target ability contributes nothing (its target rides the cast intent).
+    /// Empty for a modal spell.
+    pub(crate) fn spell_target_clauses(&self, def: CardDef) -> Vec<(TargetSpec, TargetCount)> {
+        if def.modal {
+            return Vec::new();
+        }
+        def.abilities
+            .iter()
+            .copied()
+            .filter(|a| matches!(a.timing, Timing::Spell))
+            .flat_map(|a| {
+                let clauses = ability_target_clauses(a);
+                if clauses.len() > 1 {
+                    return clauses;
+                }
+                if a.effect.target_count().is_single() {
+                    return Vec::new();
+                }
+                vec![(a.effect.target(), a.effect.target_count())]
+            })
+            .collect()
+    }
+
+    /// The chosen mode's independent target clauses (CR 601.2c/700.2), in printed order, if it
+    /// needs any deferred to the post-cast clause-pause chain — either a same-spec multi-target
+    /// mode (Prismari Charm mode 1's "deals 1 damage to each of one or two targets", one clause
+    /// with `count` not single) or a multi-clause mode (Hull Breach mode 2's "target artifact and
+    /// target enchantment", two single-target clauses). Empty when the chosen mode(s) need no
+    /// deferred target (or supply their one target synchronously in `modes` already). Mirrors
+    /// [`Self::spell_multi_target`]/[`Self::spell_target_clause`] but scoped to just the *chosen*
+    /// modes — a modal spell resolves only what was chosen.
+    pub(crate) fn modal_target_clauses(
         &self,
         def: CardDef,
         modes: &[(usize, Option<Target>)],
-    ) -> Option<(TargetSpec, TargetCount)> {
-        modes
-            .iter()
-            .filter_map(|&(m, _)| nth_mode(def, m))
-            .map(|a| (a.effect.target(), a.effect.target_count()))
-            .find(|(_, count)| !count.is_single())
+    ) -> Vec<(TargetSpec, TargetCount)> {
+        modal_clause_ability(def, modes.iter().copied())
+            .map(ability_target_clauses)
+            .unwrap_or_default()
     }
 
-    /// The `clause`-th *independent* target clause of a non-modal spell — the spec/count of its
-    /// `clause`-th `Timing::Spell` ability that chooses more than one target (CR 601.2c). `None`
-    /// once every clause is exhausted (and always for a modal spell, whose per-mode targets go
-    /// through [`Self::modal_multi_target`] — a modal spell resolves at most one multi-target
-    /// clause). Clause 0 is what [`Self::spell_multi_target`] reports; Magma Opus adds clause 1 (its
-    /// "Tap two target permanents").
+    /// The `clause`-th entry of [`Self::spell_target_clauses`] — `None` once every clause is
+    /// exhausted (and always for a modal spell, whose chosen mode's clauses go through
+    /// [`Self::modal_target_clauses`] instead, read at [`Self::advance_spell_target_clauses`]).
     pub(crate) fn spell_target_clause(
         &self,
         def: CardDef,
         clause: usize,
     ) -> Option<(TargetSpec, TargetCount)> {
-        if def.modal {
-            return None;
-        }
-        def.abilities
-            .iter()
-            .filter(|a| matches!(a.timing, Timing::Spell))
-            .map(|a| (a.effect.target(), a.effect.target_count()))
-            .filter(|(_, count)| !count.is_single())
-            .nth(clause)
+        self.spell_target_clauses(def).get(clause).copied()
     }
 
     /// `def`'s first `Timing::Spell` ability with a target — spec and count (CR 707.10c/CR
@@ -647,7 +753,9 @@ impl Game {
 
     /// After clause `clause` of `spell` is settled, choose the next independent clause (CR 601.2c —
     /// all a spell's targets are chosen at once, in printed order) or, once none remain, run the
-    /// CR 601.2d divided-damage/counter split over the finished target sets. See
+    /// CR 601.2d divided-damage/counter split over the finished target sets. A modal spell reads
+    /// its clauses off the chosen mode ([`Self::modal_target_clauses`], Hull Breach mode 2's two
+    /// `destroy_target` clauses) instead of [`Self::spell_target_clause`]. See
     /// [`Self::choose_spell_targets`] for `anchor`/`chooser`.
     pub(crate) fn advance_spell_target_clauses(
         &mut self,
@@ -658,7 +766,15 @@ impl Game {
         events: &mut Vec<Event>,
     ) {
         let def = self.def_of(spell);
-        if let Some((spec, count)) = self.spell_target_clause(def, clause) {
+        let next = if def.modal {
+            let modes = self.spell(spell).modes;
+            self.modal_target_clauses(def, &modes.chosen().collect::<Vec<_>>())
+                .get(clause)
+                .copied()
+        } else {
+            self.spell_target_clause(def, clause)
+        };
+        if let Some((spec, count)) = next {
             self.choose_spell_target_clause(spell, clause, spec, count, anchor, chooser, events);
             return;
         }
@@ -871,12 +987,17 @@ impl Game {
             return Err(Reject::WrongTiming);
         }
 
-        let events = vec![Event::LandPlayed {
-            permanent: self.next_object_id(),
+        let permanent = self.next_object_id();
+        let mut events = vec![Event::LandPlayed {
+            permanent,
             from: object,
             player,
         }];
         self.apply_all(&events);
+        // A land's own as-enters static (CR 616.1 — Vivid Crag's "enters with two charge
+        // counters"): no spell/target context at this special action, unlike the cast-resolution
+        // choke `push_enters_with_counters` also serves.
+        self.push_enters_with_counters(card.def, permanent, player, None, 0, &mut events);
         Ok(events)
     }
 
@@ -1020,19 +1141,23 @@ impl Game {
         Ok(events)
     }
 
-    /// Activate a hand card's [`CardDef::hand_ability`] (CR 113.6/602.5e — a hand-activated,
-    /// discard-this-card ability with an authored payload, e.g. Magma Opus's "{U/R}{U/R},
-    /// Discard this card: Create a Treasure token.") or [`CardDef::forecast`] (CR 702.57 —
-    /// Skyscribing's Forecast, which *reveals* rather than discards its card and is gated to the
-    /// controller's own upkeep, once each turn). The general sibling of [`Game::cycle`] for a
-    /// card whose from-hand ability isn't cycling's fixed draw-1 — same skeleton (priority,
-    /// hand+owner check, pay cost, then discard-or-reveal), an authored effect list instead of a
-    /// hardcoded draw. No pool card has both `hand_ability` and `forecast`, so `hand_ability` (if
-    /// present) always wins; only `forecast`'s own gates apply when it's the one carried.
+    /// Activate a hand card's [`CardDef::hand_ability`] entry at `index` (CR 113.6/602.5e — a
+    /// hand-activated, discard-this-card ability with an authored payload, e.g. Magma Opus's
+    /// "{U/R}{U/R}, Discard this card: Create a Treasure token."; CR 702.29d — Valley Rannet's
+    /// mountaincycling and forestcycling are two separate entries, selected by `index`) or
+    /// [`CardDef::forecast`] (CR 702.57 — Skyscribing's Forecast, which *reveals* rather than
+    /// discards its card and is gated to the controller's own upkeep, once each turn; `index` is
+    /// ignored — always 0 — since a card carries at most one). The general sibling of
+    /// [`Game::cycle`] for a card whose from-hand ability isn't cycling's fixed draw-1 — same
+    /// skeleton (priority, hand+owner check, pay cost, then discard-or-reveal), an authored
+    /// effect list instead of a hardcoded draw. No pool card has both `hand_ability` and
+    /// `forecast`, so a valid `hand_ability` index (if any) always wins; only `forecast`'s own
+    /// gates apply when it's the one carried.
     pub(crate) fn activate_hand_ability(
         &mut self,
         player: PlayerId,
         card: ObjectId,
+        index: usize,
     ) -> Result<Vec<Event>, Reject> {
         // A hand-activated ability is still an activated ability (CR 602) — requires priority
         // (CR 117.1b).
@@ -1045,30 +1170,29 @@ impl Game {
         if c.zone != Zone::Hand || c.owner != player {
             return Err(Reject::CannotActivate);
         }
-        let forecast = c.def.hand_ability.is_none();
-        let ability = match (c.def.hand_ability, c.def.forecast) {
-            (Some(ability), _) => ability,
-            (None, Some(ability)) => {
-                // Forecast (CR 702.57a): activated only during the controller's own upkeep, and
-                // only once each turn.
-                if self.step != Step::Upkeep || self.active_player != player {
-                    return Err(Reject::CannotActivate);
-                }
-                // ponytail: reuses the battlefield `once_each_turn` activation-cap store
-                // (`(source, ability_index)`, normally a real ability array index) with a fixed
-                // sentinel index of 0 — a hand card carries at most one `forecast`/`hand_ability`,
-                // so there's no battlefield ability index to collide with on the same object id.
-                if self
-                    .once_per_turn
-                    .activated
-                    .iter()
-                    .any(|&(o, i)| o == card && i == 0)
-                {
-                    return Err(Reject::CannotActivate);
-                }
-                ability
+        let (ability, forecast) = if let Some(&ability) = c.def.hand_ability.get(index) {
+            (ability, false)
+        } else if let Some(ability) = c.def.forecast {
+            // Forecast (CR 702.57a): activated only during the controller's own upkeep, and
+            // only once each turn.
+            if self.step != Step::Upkeep || self.active_player != player {
+                return Err(Reject::CannotActivate);
             }
-            (None, None) => return Err(Reject::CannotActivate),
+            // ponytail: reuses the battlefield `once_each_turn` activation-cap store
+            // (`(source, ability_index)`, normally a real ability array index) with a fixed
+            // sentinel index of 0 — a hand card carries at most one `forecast`/`hand_ability`,
+            // so there's no battlefield ability index to collide with on the same object id.
+            if self
+                .once_per_turn
+                .activated
+                .iter()
+                .any(|&(o, i)| o == card && i == 0)
+            {
+                return Err(Reject::CannotActivate);
+            }
+            (ability, true)
+        } else {
+            return Err(Reject::CannotActivate);
         };
 
         // Pay the cost — mana (settled first, auto-tapping lands; an unpayable cost rejects
@@ -1416,6 +1540,7 @@ impl Game {
             false,
             0,
             0,
+            false,
         );
         let mut events = Vec::new();
         self.settle_payment(
@@ -1518,6 +1643,7 @@ impl Game {
             false,
             0,
             0,
+            false,
         );
         let mut events = Vec::new();
         self.settle_payment(
@@ -1534,6 +1660,100 @@ impl Game {
             Event::AdventureSpellCast {
                 spell,
                 source,
+                controller: player,
+                target,
+                x,
+            },
+        );
+        if let Some((spec, count)) = multi_target {
+            self.choose_spell_targets(spell, spec, count, player, player, &mut events);
+        }
+        // Casting is an action: reset the pass count; the caster keeps priority. (CR 117, CR 601)
+        self.consecutive_passes = 0;
+        self.priority = player;
+        Ok(events)
+    }
+
+    /// Cast one half of a split card from hand (CR 709.4a — Fire // Ice). `source` is the card in
+    /// `player`'s hand; `half` indexes its [`CardDef::halves`]. Only that half goes on the stack
+    /// (CR 709.4) — the fused card is not itself castable. Mirrors [`Game::cast_adventure`], minus
+    /// the exile-on-resolution rider: a split half is an ordinary instant/sorcery that puts the
+    /// whole card into the graveyard when it finishes.
+    pub(crate) fn cast_split_half(
+        &mut self,
+        player: PlayerId,
+        source: ObjectId,
+        half: u8,
+        target: Option<Target>,
+        x: u32,
+    ) -> Result<Vec<Event>, Reject> {
+        // Casting requires priority (CR 117.1a).
+        if player != self.priority {
+            return Err(Reject::NotYourPriority);
+        }
+        // A split card is cast from its owner's hand (no pool split card is castable elsewhere).
+        if self.playable_zone(source, player) != Some(Zone::Hand) {
+            return Err(Reject::NotCastable);
+        }
+        let Some(&face) = self.def_of(source).halves.get(half as usize) else {
+            return Err(Reject::NotCastable);
+        };
+        // Each half obeys its own timing (Fire and Ice are both instants; a sorcery half would be
+        // sorcery-speed only).
+        if !face.is_instant_speed() && !self.can_take_sorcery_speed_action(player) {
+            return Err(Reject::WrongTiming);
+        }
+        // CR 601.2b: {X} is chosen ahead of targets, same clamp `Game::validate_cast` applies.
+        let x = x.min(u8::MAX as u32);
+        // Fire's "2 damage divided as you choose among one or two targets" is a multi-target
+        // clause: its targets are chosen after the cast, like a directly-cast multi-target spell.
+        let multi_target = self.spell_multi_target(face);
+        if let Some((spec, count)) = multi_target {
+            if target.is_some() {
+                return Err(Reject::IllegalTarget);
+            }
+            let n = self
+                .legal_targets_for(spec, source, player, color_identity(face), x)
+                .len();
+            if count.min > 0 && n == 0 {
+                return Err(Reject::IllegalTarget);
+            }
+        } else if !self.targets_are_legal(source, face, target, player, None, x) {
+            return Err(Reject::IllegalTarget);
+        }
+
+        // Pay the cast half's own mana cost (settling is the last fallible step — an unpayable
+        // cost rejects here with nothing tapped and the card still in hand).
+        let cost = self.cast_cost(
+            player,
+            source,
+            face,
+            target,
+            x,
+            Zone::Hand,
+            0,
+            false,
+            false,
+            false,
+            0,
+            0,
+            false,
+        );
+        let mut events = Vec::new();
+        self.settle_payment(
+            player,
+            cost,
+            None,
+            Some(face.spell_characteristics()),
+            &mut events,
+        )?;
+        let spell = self.next_object_id();
+        self.push_apply(
+            &mut events,
+            Event::SplitHalfSpellCast {
+                spell,
+                source,
+                half,
                 controller: player,
                 target,
                 x,
@@ -1614,6 +1834,7 @@ impl Game {
                 flashback: false,
                 escape: false,
                 sacrifice_count: 0,
+                revealed_creature_mana_value: 0,
                 kicked: false,
                 bought_back: false,
                 strive_count: 0,
@@ -1706,6 +1927,7 @@ impl Game {
                 flashback: false,
                 escape: false,
                 sacrifice_count: 0,
+                revealed_creature_mana_value: 0,
                 kicked: false,
                 bought_back: false,
                 strive_count: 0,
@@ -1834,7 +2056,9 @@ impl Game {
         // A remove-a-counter cost (CR 118 — Steelbane Hydra's "Remove a +1/+1 counter from this
         // creature"; staff_of_the_storyteller's "remove a story counter") can only be paid if the
         // source has that many counters of the right kind on it (CR 602.2b — an uncompletable
-        // cost makes the activation illegal).
+        // cost makes the activation illegal). A `remove_counters_x` cost carries `remove_counters
+        // == 0` here (its real, chosen-`x`-bounded check lives in `activate_ability`, where `x` is
+        // known), so this trivially passes and never double-gates it.
         let has_enough = match cost.remove_counters_kind {
             None => self.plus_counters(source) >= cost.remove_counters as i32,
             Some(kind) => self.counters_of_kind(source, kind) >= cost.remove_counters,
@@ -1883,6 +2107,19 @@ impl Game {
         x: u32,
     ) -> Result<Vec<Event>, Reject> {
         let (ability, cost) = self.ability_activation_gate(player, object, ability_index)?;
+        // A player-declared-X counter-removal cost (CR 601.2b/602.2b — Fungal Reaches' "Remove X
+        // storage counters from this land"): the chosen `x` can't exceed the source's actual count
+        // of that kind (X = 0 is always legal, CR 107.3c, so this only ever rejects a too-large X,
+        // never gates the ability's existence the way `ability_activation_gate`'s fixed
+        // `remove_counters` check does).
+        if cost.remove_counters_x {
+            let kind = cost
+                .remove_counters_kind
+                .expect("remove_counters_x always names a kind");
+            if x > self.counters_of_kind(object, kind) as u32 {
+                return Err(Reject::CannotActivate);
+            }
+        }
         // The ability's source's own colors (CR 702.16b) — Nin, the Pain Artist (a UR source)
         // can't target a permanent with protection from red or blue.
         let source_colors = color_identity(self.def_of(object));
@@ -1929,6 +2166,19 @@ impl Game {
                     active: true,
                 },
             );
+            // A multi-target loyalty ability (CR 601.2c — Garruk Wildspeaker's "+1: Untap two
+            // target lands") can't name its targets on the intent, which carries one `target`
+            // slot: route it through the same counted `ChooseTarget` pause a multi-target
+            // triggered ability uses, which decomposes the answer into one stack ability per
+            // chosen target.
+            // ponytail: CR 601.2c chooses targets *before* CR 601.2h pays costs; here the
+            // loyalty change is already applied when the pause is raised. Nothing observes the
+            // gap (a loyalty payment can't fail once the activation gate passed), so the
+            // ordering is left as-is — revisit if a cost that can fail joins a loyalty ability.
+            if !ability.effect.target_count().is_single() {
+                self.place_targeted_ability(player, object, ability.effect, 0, true, &mut events);
+                return Ok(events);
+            }
             self.push_ability_group(
                 player,
                 object,
@@ -1976,6 +2226,7 @@ impl Game {
                 TargetSpec::CardInGraveyard {
                     whose: GraveyardScope::Opponents,
                     filter: CardFilter::AnyCard,
+                    other: false,
                 },
                 object,
                 player,
@@ -2051,8 +2302,15 @@ impl Game {
                 },
             );
         }
-        if cost.remove_counters > 0 {
-            let removal = -(cost.remove_counters as i32);
+        // A player-declared-X removal (Fungal Reaches) removes `x` of the named kind instead of
+        // the fixed `remove_counters` count; `x` was already bounds-checked above.
+        let removal_count = if cost.remove_counters_x {
+            x as u8
+        } else {
+            cost.remove_counters
+        };
+        if removal_count > 0 {
+            let removal = -(removal_count as i32);
             let event = match cost.remove_counters_kind {
                 None => Event::CountersPlaced {
                     object,
@@ -2186,7 +2444,11 @@ impl Game {
                     source: object,
                     target,
                     targets_second: TargetList::default(),
-                    x: 0,
+                    // The activation's own chosen `{X}` (CR 107.3/601.2b — Fungal Reaches' "Remove
+                    // X storage counters ...: Add X mana ..."), not a cast spell's; every
+                    // pre-existing mana ability's `repeat`/`mana` ignore `x` entirely, so this is
+                    // behavior-preserving for them.
+                    x,
                     spent_mana: [0; 6],
                 },
                 &mut events,

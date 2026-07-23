@@ -1221,22 +1221,27 @@ function combatDropModel(
       blockersDeclared: model.blockersConfirmed || state.combat.blockers_declared.includes(state.viewer),
     },
   );
-  const attackerCard = blockAttackerId != null ? (state.objects.find((o) => o.id === blockAttackerId) ?? null) : null;
+  const dropOn = blockAttackerId != null ? (state.objects.find((o) => o.id === blockAttackerId) ?? null) : null;
+  // ObjectView.kind is a WireKind object; RenderCard.kind (what attackablePlaneswalker reads) is the
+  // bare tag string — normalize so the planeswalker check is live, not a runtime type mismatch.
+  const dropTarget = dropOn != null ? { ...dropOn, kind: dropOn.kind.kind } : null;
   const cardShape = {
     id: from.id,
     tapped: from.tapped,
     summoningSick: from.summoning_sick,
     hasHaste: from.has_haste,
   };
+  const opponents = state.players.map((p) => p.player).filter((p) => p !== state.viewer);
   const result = handleCombatDrop(
     mode,
     model.combatAttackers,
     model.combatBlocks,
     cardShape as unknown as Parameters<typeof handleCombatDrop>[3],
     defenderSeat,
-    attackerCard as unknown as Parameters<typeof handleCombatDrop>[5],
+    dropTarget as unknown as Parameters<typeof handleCombatDrop>[5],
     state.combat.attackers,
     state.viewer,
+    opponents,
   );
   if (result.kind === "attackers") return [{ ...model, combatAttackers: result.value }, []];
   if (result.kind === "blockers") return [{ ...model, combatBlocks: result.value }, []];
@@ -1558,7 +1563,14 @@ export function updateBoard(
     case "PromptDamageSet": {
       const synced = syncPromptDraft(model, fold);
       if (synced.promptDraft == null) return [synced, []];
-      const amount = Math.max(0, Number.parseInt(String(message.amount), 10) || 0);
+      const pc = fold.state?.pending_choice;
+      let amount = Math.max(0, Number.parseInt(String(message.amount), 10) || 0);
+      if (pc?.kind === "assign_combat_damage") {
+        const power = fold.state?.objects.find((o) => o.id === pc.source)?.power ?? amount;
+        amount = clampX(amount, 0, power);
+      } else if (pc?.kind === "divide_spell_damage" || pc?.kind === "divide_counters") {
+        amount = clampX(amount, 0, pc.total);
+      }
       if (synced.promptDraft.kind === "divide") {
         return [
           {
@@ -1582,6 +1594,18 @@ export function updateBoard(
         },
         [],
       ];
+    }
+    case "PromptStringSet": {
+      const synced = syncPromptDraft(model, fold);
+      if (synced.promptDraft?.kind !== "string") return [synced, []];
+      return [{ ...synced, promptDraft: { kind: "string", value: message.value } }, []];
+    }
+    case "PromptNumberSet": {
+      const synced = syncPromptDraft(model, fold);
+      const pc = fold.state?.pending_choice;
+      if (synced.promptDraft?.kind !== "number" || pc == null || !("max" in pc)) return [synced, []];
+      const count = clampX(message.count, 0, pc.max);
+      return [{ ...synced, promptDraft: { kind: "number", count } }, []];
     }
     case "PromptModeChoiceToggled": {
       const synced = syncPromptDraft(model, fold);

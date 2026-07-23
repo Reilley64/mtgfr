@@ -443,6 +443,52 @@ test("inspect overlay renders from a pinned inspect card", () => {
   );
 });
 
+test("inspect overlay shows marked damage for a damaged battlefield permanent", () => {
+  const bear = card(42, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+    power: 2,
+    toughness: 2,
+    name: "Grizzly Bears",
+    print: "bears-print",
+    marked_damage: 3,
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        inspectPin: {
+          name: "Grizzly Bears",
+          objectId: 42,
+          prepared: false,
+          print: "bears-print",
+        },
+        inspectCard: {
+          id: "grizzly-bears",
+          name: "Grizzly Bears",
+          oracle: "",
+          approximates: null,
+          back: null,
+          color_identity: [],
+          cost: cost({ generic: 1, colored: [0, 1, 0, 0, 0] }),
+          default_print: "bears-print",
+          keywords: [],
+          kind: { kind: "creature", power: 2, toughness: 2 },
+          legendary: false,
+          otags: [],
+          set: "soc",
+          subtypes: ["Bear"],
+          summary: "Bear",
+        },
+      },
+      gameState({ objects: [bear] }),
+    ),
+    resolveBoardCardArtMounts(),
+    Scene.expect(Scene.testId("inspect-overlay")).toExist(),
+    Scene.expect(Scene.testId("inspect-marked-damage")).toHaveText("Marked damage: 3"),
+  );
+});
+
 test("pile overlay renders with its close control", () => {
   const graveyardCard = card(60, {
     owner: 1,
@@ -536,6 +582,86 @@ test("modal mode picker renders before modes are chosen", () => {
   overlayScene(
     overlayModel({ ...initialBoardModel(), modalCast }),
     Scene.expect(Scene.testId("modal-mode-picker")).toExist(),
+  );
+});
+
+test("join-forces mana prompt shows a stepper instead of per-amount buttons", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "pay_any_amount_of_mana",
+          max: 20,
+          player: 0,
+          source: 3,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
+    Scene.expect(Scene.testId("prompt-number-min")).toExist(),
+    Scene.expect(Scene.testId("prompt-number-max")).toExist(),
+    Scene.expect(Scene.testId("prompt-number-0")).not.toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
+test("choose_card_name prompt shows a Card name placeholder field", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_card_name",
+          player: 0,
+          source: 9,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.placeholder("Card name")).toExist(),
+    Scene.expect(Scene.testId("prompt-name-input")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+  );
+});
+
+test("trample combat damage assign shows overflow to defender and enables Assign under power", () => {
+  const attacker = card(9, {
+    zone: ZONE.Battlefield,
+    kind: { kind: "creature", power: 5, toughness: 5 },
+    power: 5,
+    toughness: 5,
+    name: "Trampler",
+    keywords: ["trample"],
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "damage", amounts: { 20: 2, 21: 0 } },
+      },
+      gameState({
+        objects: [attacker],
+        pending_choice: {
+          kind: "assign_combat_damage",
+          player: 0,
+          source: 9,
+          items: [
+            { id: 20, label: "Bear" },
+            { id: 21, label: "Elf" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("prompt-damage-assigned")).toHaveText("assigned 2 / 5"),
+    Scene.expect(Scene.testId("prompt-damage-overflow")).toHaveText("to defender: 3"),
+    Scene.expect(Scene.testId("prompt-submit")).not.toBeDisabled(),
+    Scene.expect(Scene.testId("prompt-damage-20-value")).toHaveText("2"),
+    Scene.expect(Scene.testId("prompt-damage-20-inc")).toExist(),
+    Scene.expect(Scene.testId("prompt-damage-20-dec")).toExist(),
+    Scene.expect(Scene.selector('input[type="number"]')).not.toExist(),
   );
 });
 

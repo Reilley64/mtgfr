@@ -1,0 +1,38 @@
+# When you cast this spell, you may return target creature card from your graveyard to the battlefield.
+# Annihilator 2 (Whenever this creature attacks, defending player sacrifices two permanents of their choice.)
+name = "Artisan of Kozilek"
+id = "19409704-09c4-4a4b-a5a7-f95120b425db"
+default_print = "e0d37261-b0a4-49be-b682-3b6d5e8e6bb7"
+otags = ["attack-trigger", "attacking-matters-self", "cast-trigger-self", "namesake-spell", "reanimate-creature", "removal-permanent", "removal-sacrifice", "repeatable-removal", "spot-removal", "unique-p-t"]
+oracle = "When you cast this spell, you may return target creature card from your graveyard to the battlefield.\nAnnihilator 2 (Whenever this creature attacks, defending player sacrifices two permanents of their choice.)"
+set = "cmd"
+subtypes = ["Eldrazi"]
+
+[cost]
+generic = 9
+
+[kind]
+type = "creature"
+power = 10
+toughness = 9
+
+# When you cast this spell, you may return target creature card from your graveyard to the
+# battlefield.
+[[abilities]]
+timing = "when_you_cast_this"
+optional = true
+
+# you may return target creature card from your graveyard to the battlefield.
+[[abilities.effects]]
+type = "reanimate_to_battlefield"
+target = { card_in_graveyard = { whose = "yours", filter = "creature" } }
+
+# Annihilator 2 (Whenever this creature attacks, defending player sacrifices two permanents of
+# their choice.)
+[[abilities]]
+timing = "attacks"
+
+# defending player sacrifices two permanents of their choice
+[[abilities.effects]]
+type = "defending_player_sacrifices"
+count = 2

@@ -4,7 +4,6 @@ id = "52bd4331-67b6-4eb8-9566-e00359889fc6"
 default_print = "18f3a850-b2e1-4970-9971-5f662fb3df31"
 oracle = "{W}, Sacrifice this enchantment: Exile target creature that's attacking you or a planeswalker you control."
 set = "mkc"
-approximates = "\"or a planeswalker you control\" is unmodeled — no planeswalker permanent exists in the pool, the same standing pool-wide limitation cant_be_attacked_by/myriad_token_copies already carry."
 
 [cost]
 white = 1

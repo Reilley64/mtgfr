@@ -1,0 +1,33 @@
+# Trample
+# When this creature enters, destroy target land.
+# Evoke {4}{R} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)
+name = "Faultgrinder"
+id = "4aa34391-d532-48e5-a125-2619d04f27ff"
+default_print = "b66ca1a0-d638-48df-8474-143228c23382"
+otags = ["cycle-evoke-elemental", "evasion", "removal-land", "triggered-ability"]
+oracle = "Trample\nWhen this creature enters, destroy target land.\nEvoke {4}{R} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)"
+set = "cmd"
+subtypes = ["Elemental"]
+keywords = ["trample"]
+
+[cost]
+generic = 6
+red = 1
+
+[evoke]
+generic = 4
+red = 1
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# When this creature enters, destroy target land.
+[[abilities]]
+timing = "etb"
+
+# destroy target land.
+[[abilities.effects]]
+type = "destroy_target"
+target = { permanent = { types = "land" } }

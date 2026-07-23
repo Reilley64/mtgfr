@@ -40,7 +40,7 @@ mod sequence_steps;
 mod tokens;
 mod zones;
 
-pub(crate) use frame::ResolutionFrame;
+pub(crate) use frame::{ResolutionFrame, SearchFanout};
 pub(crate) use resume::ResumeState;
 
 use crate::*;
@@ -197,6 +197,7 @@ mod tests {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -225,12 +226,14 @@ mod tests {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         suspend: None,
+        vanishing: None,
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,

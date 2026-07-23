@@ -37,6 +37,23 @@ describe("handleCombatDrop", () => {
     expect(result).toEqual({ kind: "blockers", value: [{ blocker: 4, attacker: 9 }] });
   });
 
+  // CR 508.1a: dropping onto an opponent's planeswalker declares the attack against it, not the
+  // face — the seat avatar under the drop point loses to the permanent on top of it.
+  it("stages an attacker onto an opponent's planeswalker instead of their face", () => {
+    const pw = creature(9, { kind: "planeswalker", zone: ZONE.Battlefield, controller: 1 });
+    const result = handleCombatDrop("attackers", [], [], creature(3), 1, pw, [], 0, [1, 2, 3]);
+    expect(result).toEqual({
+      kind: "attackers",
+      value: [{ attacker: 3, defender: 1, defender_planeswalker: 9 }],
+    });
+  });
+
+  it("dropping on a non-planeswalker permanent still attacks the seat under it", () => {
+    const bear = creature(9, { zone: ZONE.Battlefield, controller: 1 });
+    const result = handleCombatDrop("attackers", [], [], creature(3), 1, bear, [], 0, [1, 2, 3]);
+    expect(result).toEqual({ kind: "attackers", value: [{ attacker: 3, defender: 1 }] });
+  });
+
   it("returns none outside a combat mode", () => {
     expect(handleCombatDrop(null, [], [], creature(3), 1, null, [], 0)).toEqual({ kind: "none" });
   });

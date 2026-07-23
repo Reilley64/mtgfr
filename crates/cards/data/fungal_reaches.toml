@@ -1,0 +1,48 @@
+# {T}: Add {C}.
+# {1}, {T}: Put a storage counter on this land.
+# {1}, Remove X storage counters from this land: Add X mana in any combination of {R} and/or {G}.
+name = "Fungal Reaches"
+id = "6f18ea44-3efa-4a45-abc6-86a0627e40f2"
+default_print = "f45269bd-82f8-4682-86b6-229fd81ce979"
+otags = ["activated-ability", "adds-multiple-mana", "aesthetic-counter", "counter-fuel-aesthetic", "cycle-tsp-storage-land", "ramp"]
+oracle = "{T}: Add {C}.\n{1}, {T}: Put a storage counter on this land.\n{1}, Remove X storage counters from this land: Add X mana in any combination of {R} and/or {G}."
+set = "cmd"
+
+[kind]
+type = "land"
+
+# {T}: Add {C}.
+[[abilities]]
+timing = "activated"
+taps_self = true
+
+# Add {C}.
+[[abilities.effects]]
+type = "add_mana"
+mana = ["colorless"]
+
+# {1}, {T}: Put a storage counter on this land.
+[[abilities]]
+timing = "activated"
+taps_self = true
+activation_cost = { generic = 1 }
+
+# Put a storage counter on this land.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"
+kind = "storage"
+
+# {1}, Remove X storage counters from this land: Add X mana in any combination of {R} and/or {G}.
+[[abilities]]
+timing = "activated"
+activation_cost = { generic = 1 }
+remove_counters_x = true
+remove_counters_kind = "storage"
+
+# Add X mana in any combination of {R} and/or {G}.
+[[abilities.effects]]
+type = "add_mana"
+mana = [["red", "green"]]
+repeat = "x"

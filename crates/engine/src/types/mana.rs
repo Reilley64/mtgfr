@@ -51,6 +51,7 @@ impl Cost {
         additional: AdditionalCost {
             discard: 0,
             discard_land: false,
+            reveal_creature_from_hand: false,
             pay_life_x: false,
             pay_life: 0,
             sacrifice: None,
@@ -159,10 +160,11 @@ fn hybrid_pips_assignable(pips: &[(Color, Color)], remaining: &mut [u8; 6]) -> b
 /// [`Game::activate_ability`] takes its sacrifice choice as an intent parameter), so casting
 /// never has to pause mid-cast on a [`PendingChoice`].
 /// ponytail: `discard` (Big Score, Seize the Spoils's "discard a card"), `discard_land`
-/// (Throes of Chaos's retrace), `pay_life_x` (Toxic Deluge's "pay X life"), and `sacrifice`
-/// (Plumb the Forbidden's "you may sacrifice one or more creatures") only. A remove-a-counter
-/// additional cost isn't modeled yet — grow this struct from the real card that needs the next
-/// one.
+/// (Throes of Chaos's retrace), `pay_life_x` (Toxic Deluge's "pay X life"), `sacrifice`
+/// (Plumb the Forbidden's "you may sacrifice one or more creatures"), and
+/// `reveal_creature_from_hand` (Disaster Radius's "reveal a creature card") only. A
+/// remove-a-counter additional cost isn't modeled yet — grow this struct from the real card that
+/// needs the next one.
 /// Deserialized by a hand-written `Deserialize` impl in `de.rs` (not derived here), since
 /// `pay_life_x` spells as the TOML marker string `pay_life = "x"`, not a bool key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -173,6 +175,23 @@ pub struct AdditionalCost {
     /// one card that's a land, distinct from [`Self::discard`]'s unfiltered discard(s) (no pool
     /// card combines the two). `false` for a card without it. TOML `discard_land = true`.
     pub discard_land: bool,
+    /// "As an additional cost to cast this spell, reveal a creature card from your hand" (CR
+    /// 601.2g — Disaster Radius). `false` for a card without it. The revealed card stays in hand
+    /// (a reveal, not a discard/exile) — [`Game::cast_additional_cost_gate`] rejects the cast
+    /// outright if the caster has no creature card to reveal, and [`Game::cast`] records the
+    /// revealed card's mana value on the resulting [`Spell::revealed_creature_mana_value`] (read
+    /// by [`Amount::RevealedCreatureManaValue`]). Which specific card is revealed is never a real
+    /// decision: revealing has no cost or downside, so a rational caster always reveals the
+    /// highest-mana-value creature card in hand (Disaster Radius wants the biggest X) — the same
+    /// "no real choice" idiom [`Condition::HandHasLandWithSubtype`]'s reveal lands already use.
+    /// TOML `reveal_creature_from_hand = true`.
+    /// ponytail: an automatic hand scan rather than a genuine reveal choice, mirroring
+    /// `HandHasLandWithSubtype`'s own note; a bare bool (not a filtered struct like
+    /// [`Self::sacrifice`]) since only a creature-card reveal exists in the pool — widen to a
+    /// [`CardFilter`] if a future card reveals a different card type. Grow a real pick (a
+    /// `PendingChoice`) if a future card makes concealment matter (an opponent reacting to which
+    /// specific card is revealed).
+    pub reveal_creature_from_hand: bool,
     /// Whether this spell's chosen `{X}` (CR 601.2b) is paid as life rather than mana (CR
     /// 601.2f) — Toxic Deluge's "As an additional cost to cast this spell, pay X life." When
     /// set, [`Game::cast_cost`] keeps `{X}` out of the mana cost and [`Game::cast`] pays it as

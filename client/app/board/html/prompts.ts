@@ -2,6 +2,7 @@
 //
 // Pending-choice formulators collect answers and route every submission through `choiceIntent`.
 
+import { Option } from "effect";
 import { type Html, html } from "foldkit/html";
 import {
   type AnswerInput,
@@ -17,7 +18,7 @@ import {
 import { isActivePlayer } from "~/spectator";
 import { cardArt } from "~/ui/card-art";
 import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireTarget } from "~/wire/types";
-import { costText, costWithChosenX } from "~/xCost";
+import { clampX, costText, costWithChosenX } from "~/xCost";
 import { modeAvailable } from "../action/modal";
 import { objectName, playerSeatLabel, stagedPickTargets, stagedTargetTitle } from "../action/targeting";
 import { seatColor } from "../geometry/layout";
@@ -33,8 +34,10 @@ import {
   PromptDamageSet,
   PromptDeclined,
   PromptModeChoiceToggled,
+  PromptNumberSet,
   PromptOrderMoved,
   PromptPartitionSet,
+  PromptStringSet,
   PromptSubmitted,
   SacrificeChosen,
   TargetChosen,
@@ -241,6 +244,26 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
   ]);
 }
 
+function amountStepper(id: number, amount: number, max: number): Html {
+  const value = clampX(amount, 0, max);
+  return h.div(
+    [h.Class("flex flex-wrap items-center gap-1")],
+    [
+      itemButton("Min", `prompt-damage-${id}-min`, PromptDamageSet({ id, amount: 0 })),
+      itemButton("−", `prompt-damage-${id}-dec`, PromptDamageSet({ id, amount: value - 1 }), value <= 0),
+      h.span(
+        [
+          h.DataAttribute("testid", `prompt-damage-${id}-value`),
+          h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+        ],
+        [String(value)],
+      ),
+      itemButton("+", `prompt-damage-${id}-inc`, PromptDamageSet({ id, amount: value + 1 }), value >= max),
+      itemButton("Max", `prompt-damage-${id}-max`, PromptDamageSet({ id, amount: max })),
+    ],
+  );
+}
+
 function damageAssignPrompt(
   pending: Extract<PendingChoiceView, { kind: "assign_combat_damage" }>,
   state: VisibleState,
@@ -248,31 +271,33 @@ function damageAssignPrompt(
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const amounts = draft.kind === "damage" ? draft.amounts : {};
-  const power = state.objects.find((o) => o.id === pending.source)?.power ?? 0;
+  const source = state.objects.find((o) => o.id === pending.source);
+  const power = source?.power ?? 0;
+  const trample = source?.keywords?.includes("trample") ?? false;
   const assigned = Object.values(amounts).reduce((s, n) => s + n, 0);
   const ready = damageAssignReady(pending, draft, state);
+  const overflow = trample ? Math.max(0, power - assigned) : 0;
   const rows = pending.items.map((it) =>
     h.div(
       [h.Class("flex items-center gap-2")],
-      [
-        h.span([h.Class("w-28 truncate text-body")], [it.label]),
-        h.input([
-          h.Type("number"),
-          h.Min("0"),
-          h.DataAttribute("testid", `prompt-damage-${it.id}`),
-          h.Value(String(amounts[it.id] ?? 0)),
-          h.OnInput((value) => PromptDamageSet({ id: it.id, amount: Number.parseInt(value, 10) || 0 })),
-          h.Class("w-16 rounded-hud bg-glass px-2 py-1 text-body text-snow"),
-        ]),
-      ],
+      [h.span([h.Class("w-28 truncate text-body")], [it.label]), amountStepper(it.id, amounts[it.id] ?? 0, power)],
     ),
   );
   return frame("pending-choice", `Divide ${power} damage among blockers`, [
     ...rows,
     h.div(
-      [h.Class(assigned === power ? "text-assign-clover" : "text-caution-amber")],
+      [
+        h.DataAttribute("testid", "prompt-damage-assigned"),
+        h.Class(ready ? "text-assign-clover" : "text-caution-amber"),
+      ],
       [`assigned ${assigned} / ${power}`],
     ),
+    trample
+      ? h.div(
+          [h.DataAttribute("testid", "prompt-damage-overflow"), h.Class("text-body text-mist")],
+          [`to defender: ${overflow}`],
+        )
+      : null,
     submitButton("Assign", !ready),
   ]);
 }
@@ -550,6 +575,8 @@ function cardPickDeclineLabel(pending: PendingChoiceView): string | null {
       return pending.optional ? "No target" : null;
     case "pay_cumulative_upkeep_or_sacrifice":
       return "Don't pay";
+    case "choose_dredge":
+      return "Draw normally";
     default:
       return null;
   }
@@ -645,7 +672,7 @@ function cardPickConfig(pending: PendingChoiceView): {
         declineLabel,
       };
     case "choose_dredge":
-      return { title: "Choose a card to dredge", submitLabel: "Dredge" };
+      return { title: "Choose a card to dredge", submitLabel: "Dredge", declineLabel };
     case "cast_creature_face_down":
       return { title: "Choose a creature to cast face down", submitLabel: "Cast face down" };
     case "choose_exiled_with_card":
@@ -740,6 +767,34 @@ function yesNoPrompt(
   ]);
 }
 
+function payCostDeclineLabel(
+  kind:
+    | "pay_cost"
+    | "pay_or_counter"
+    | "pay_or_controller_draws"
+    | "pay_echo_or_sacrifice"
+    | "pay_recover_or_exile"
+    | "sacrifice_unless_pay",
+): string {
+  switch (kind) {
+    case "pay_or_counter":
+      return "Let it be countered";
+    case "pay_or_controller_draws":
+      return "Let them draw";
+    case "pay_echo_or_sacrifice":
+    case "sacrifice_unless_pay":
+      return "Sacrifice";
+    case "pay_recover_or_exile":
+      return "Exile";
+    case "pay_cost":
+      return "Don't pay";
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
 function payCostPrompt(
   pending: Extract<
     PendingChoiceView,
@@ -756,12 +811,14 @@ function payCostPrompt(
   tableId: string | null,
 ): Html {
   const title = "label" in pending ? pending.label : pendingChoiceTitle(pending);
+  const payLabel = `Pay ${costText(pending.cost)}`;
+  const declineLabel = payCostDeclineLabel(pending.kind);
   return frame("pending-choice", title, [
     h.div(
       [h.Class("flex flex-wrap gap-2")],
       [
-        answerButton(pending, "prompt-pay", "Pay", { kind: "pay", pay: true }, true, tableId == null),
-        answerButton(pending, "prompt-decline", "Don't pay", { kind: "pay", pay: false }, false, tableId == null),
+        answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null),
+        answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
       ],
     ),
   ]);
@@ -914,19 +971,15 @@ function divideTotalPrompt(
           [h.Class("flex items-center gap-2")],
           [
             h.span([h.Class("w-44 truncate text-body")], [item.label]),
-            h.input([
-              h.Type("number"),
-              h.Min("0"),
-              h.DataAttribute("testid", `prompt-damage-${index}`),
-              h.Value(String(amounts[index] ?? 0)),
-              h.OnInput((value) => PromptDamageSet({ id: index, amount: Number.parseInt(value, 10) || 0 })),
-              h.Class("w-16 rounded-hud bg-glass px-2 py-1 text-body text-snow"),
-            ]),
+            amountStepper(index, amounts[index] ?? 0, pending.total),
           ],
         ),
       ),
       h.div(
-        [h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber")],
+        [
+          h.DataAttribute("testid", "prompt-damage-assigned"),
+          h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber"),
+        ],
         [`assigned ${assigned} / ${pending.total}`],
       ),
       submitButton("Assign", !ready),
@@ -941,19 +994,15 @@ function divideTotalPrompt(
         [h.Class("flex items-center gap-2")],
         [
           h.span([h.Class("w-44 truncate text-body")], [item.label]),
-          h.input([
-            h.Type("number"),
-            h.Min("0"),
-            h.DataAttribute("testid", `prompt-damage-${item.id}`),
-            h.Value(String(amounts[item.id] ?? 0)),
-            h.OnInput((value) => PromptDamageSet({ id: item.id, amount: Number.parseInt(value, 10) || 0 })),
-            h.Class("w-16 rounded-hud bg-glass px-2 py-1 text-body text-snow"),
-          ]),
+          amountStepper(item.id, amounts[item.id] ?? 0, pending.total),
         ],
       ),
     ),
     h.div(
-      [h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber")],
+      [
+        h.DataAttribute("testid", "prompt-damage-assigned"),
+        h.Class(assigned === pending.total ? "text-assign-clover" : "text-caution-amber"),
+      ],
       [`assigned ${assigned} / ${pending.total}`],
     ),
     submitButton("Assign", !ready),
@@ -1109,9 +1158,32 @@ function colorPickPrompt(
 }
 
 function stringPickPrompt(
-  pending: Extract<PendingChoiceView, { kind: "choose_creature_type" }>,
+  pending: Extract<PendingChoiceView, { kind: "choose_creature_type" | "choose_card_name" }>,
+  board: BoardModel,
+  state: VisibleState,
   tableId: string | null,
 ): Html {
+  if (pending.kind === "choose_card_name") {
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const value = draft.kind === "string" ? draft.value : "";
+    const canSubmit = value.trim() !== "" && tableId != null;
+    return frame("pending-choice", "Name a card", [
+      h.input([
+        h.DataAttribute("testid", "prompt-name-input"),
+        h.Placeholder("Card name"),
+        h.Autofocus(true),
+        h.AriaLabel("Card name"),
+        h.Value(value),
+        h.OnInput((v) => PromptStringSet({ value: v })),
+        h.OnKeyDownPreventDefault((key) => {
+          if (key !== "Enter" || !canSubmit) return Option.none();
+          return Option.some(PromptSubmitted());
+        }),
+        h.Class("w-full rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+      ]),
+      submitButton("Name", !canSubmit),
+    ]);
+  }
   return frame("pending-choice", "Choose a creature type", [
     h.div(
       [h.Class("flex flex-wrap gap-2")],
@@ -1129,15 +1201,52 @@ function stringPickPrompt(
   ]);
 }
 
+function numberPickTitle(
+  pending: Extract<
+    PendingChoiceView,
+    { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
+  >,
+): string {
+  if (pending.kind === "trade_secrets_caster_draw") return `Choose how many cards to draw (up to ${pending.max})`;
+  if (pending.kind === "pay_any_amount_of_mana") return `Pay any amount of mana (up to ${pending.max})`;
+  return `Draw up to ${pending.max}`;
+}
+
 function numberPickPrompt(
-  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "trade_secrets_caster_draw" }>,
+  pending: Extract<
+    PendingChoiceView,
+    { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }
+  >,
+  board: BoardModel,
+  state: VisibleState,
   tableId: string | null,
 ): Html {
-  const title =
-    pending.kind === "trade_secrets_caster_draw"
-      ? `Choose how many cards to draw (up to ${pending.max})`
-      : `Draw up to ${pending.max}`;
-  return frame("pending-choice", title, [
+  if (pending.kind === "pay_any_amount_of_mana") {
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const max = pending.max;
+    const count = clampX(draft.kind === "number" ? draft.count : 0, 0, max);
+    return frame("pending-choice", numberPickTitle(pending), [
+      h.div(
+        [h.Class("flex flex-wrap items-center justify-center gap-2")],
+        [
+          itemButton("Min", "prompt-number-min", PromptNumberSet({ count: 0 })),
+          itemButton("−", "prompt-number-dec", PromptNumberSet({ count: count - 1 }), count <= 0),
+          h.span(
+            [
+              h.DataAttribute("testid", "prompt-number-value"),
+              h.Class("min-w-[2ch] text-center text-body font-semibold text-snow"),
+            ],
+            [String(count)],
+          ),
+          itemButton("+", "prompt-number-inc", PromptNumberSet({ count: count + 1 }), count >= max),
+          itemButton("Max", "prompt-number-max", PromptNumberSet({ count: max })),
+        ],
+      ),
+      submitButton(count === 0 ? "Pay 0 (decline)" : `Pay {${count}}`, tableId == null),
+    ]);
+  }
+  const answerFor = (count: number): AnswerInput => ({ kind: "draw_count", count });
+  return frame("pending-choice", numberPickTitle(pending), [
     h.div(
       [h.Class("flex flex-wrap gap-2")],
       Array.from({ length: pending.max + 1 }, (_, count) =>
@@ -1145,7 +1254,7 @@ function numberPickPrompt(
           pending,
           `prompt-number-${count}`,
           String(count),
-          { kind: "draw_count", count },
+          answerFor(count),
           count === pending.max,
           tableId == null,
         ),
@@ -1279,13 +1388,19 @@ function pendingChoicePrompt(
       }
       return colorPickPrompt(pending, tableId);
     case "stringPick":
-      if (pending.kind !== "choose_creature_type") return frame("pending-choice", pendingChoiceTitle(pending), []);
-      return stringPickPrompt(pending, tableId);
-    case "numberPick":
-      if (pending.kind !== "may_draw_up_to" && pending.kind !== "trade_secrets_caster_draw") {
+      if (pending.kind !== "choose_creature_type" && pending.kind !== "choose_card_name") {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
-      return numberPickPrompt(pending, tableId);
+      return stringPickPrompt(pending, board, state, tableId);
+    case "numberPick":
+      if (
+        pending.kind !== "may_draw_up_to" &&
+        pending.kind !== "trade_secrets_caster_draw" &&
+        pending.kind !== "pay_any_amount_of_mana"
+      ) {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return numberPickPrompt(pending, board, state, tableId);
     case "destinationPick":
       if (
         pending.kind !== "choose_countered_spell_destination" &&

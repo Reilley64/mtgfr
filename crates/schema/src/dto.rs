@@ -467,6 +467,14 @@ pub enum PendingChoiceView {
     /// (CR 120.4 / 601.2c — Arcane Denial's "may draw up to two cards"). Reveals only the maximum,
     /// never hand or library contents.
     MayDrawUpTo { player: u8, max: u8 },
+    /// Join forces (Collective Voyage): this player may pay any amount of mana toward the shared
+    /// X (CR 101.4 — each player in turn order starting with the caster). `max` is the largest
+    /// generic cost their available mana can pay right now; paying `0` declines.
+    PayAnyAmountOfMana {
+        player: u8,
+        source: ObjectId,
+        max: u32,
+    },
     /// Trade Secrets' declinable draw: this player (the caster), after `opponent` drew two
     /// mandatorily, chooses any number `0..=max` of cards to draw. Reveals only the maximum,
     /// never hand or library contents.
@@ -482,8 +490,7 @@ pub enum PendingChoiceView {
     DeclineUntap { player: u8, items: Vec<ChoiceItem> },
     /// This player is about to draw and may dredge instead (CR 702.52): `items` are the eligible
     /// dredgers in their own graveyard (public to them). Answering picks one to mill-and-return, or
-    /// declines to draw normally. ponytail: full client rendering of the decline option is #200
-    /// slice 3 — this terse projection just names the eligible dredgers.
+    /// declines (`dredger: null`) to draw normally. Client chrome: Draw normally decline + single pick.
     ChooseDredge { player: u8, items: Vec<ChoiceItem> },
     /// The cost to accept an optional paid trigger (Trudge Garden's "you may pay {2}"), plus the
     /// effect label so the client can say what paying does.
@@ -882,6 +889,12 @@ pub enum PendingChoiceView {
     /// 614.12/700.9-style "as ~ enters, choose a color" — Flickering Ward). The candidates are the
     /// fixed five WUBRG colors, so no `options` list is carried.
     ChooseColor { player: u8, source: ObjectId },
+    /// This player must choose a card name for `source` (CR 201.2/703.2j "choose a card name" —
+    /// Conundrum Sphinx's attack trigger). Free text: any name may be chosen, including one no
+    /// real card bears (CR 201.3), so no candidate list is carried. The choice itself is public
+    /// (everyone sees *that* this seat is naming), but the name is private until the answering
+    /// intent lands — it is never projected back into any view.
+    ChooseCardName { player: u8, source: ObjectId },
     /// This player (an entering permanent's controller) may have `source` enter as a copy of one
     /// of `items` (every other creature on the battlefield, public — CR 706/707.2, Altered Ego,
     /// Cursed Mirror). Answered with the chosen creature, or a decline (the "you may").
@@ -966,6 +979,7 @@ impl PendingChoiceView {
             Self::OrderTriggers { .. }
             | Self::MayYesNo { .. }
             | Self::MayDrawUpTo { .. }
+            | Self::PayAnyAmountOfMana { .. }
             | Self::TradeSecretsCasterDraw { .. }
             | Self::TradeSecretsRepeat { .. }
             | Self::PayCost { .. }
@@ -979,7 +993,8 @@ impl PendingChoiceView {
             | Self::ChooseTriggerModes { .. }
             | Self::ChooseManaColor { .. }
             | Self::ChooseCreatureType { .. }
-            | Self::ChooseColor { .. } => {}
+            | Self::ChooseColor { .. }
+            | Self::ChooseCardName { .. } => {}
         }
     }
 }

@@ -18,13 +18,13 @@ use serde::Deserialize;
 use serde::de::{self, Deserializer, IntoDeserializer, Visitor};
 
 use crate::{
-    Ability, ActivationCost, AdditionalCost, Amount, AmountZone, CardDef, CardFilter, CardKind,
-    CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost, CounterKind,
-    CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy, EnterController, EscapeCost,
-    FilterController, GrantedAbility, HandActivatedAbility, Keyword, LandProduces, Mana, ManaPool,
-    Parity, PermanentFilter, ProtectionScope, ReanimateBecomes, SacrificeAdditionalCost,
-    SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed, SpendToCastPredicate,
-    Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
+    Ability, ActivationCost, AdditionalCost, AlternativeCost, Amount, AmountZone, CardDef,
+    CardFilter, CardKind, CasterScope, Color, ColorFilter, CombatDamageScope, Condition, Cost,
+    CounterKind, CumulativeUpkeepCost, EdictScope, Effect, EnterAsCopy, EnterController,
+    EscapeCost, FilterController, GrantedAbility, HandActivatedAbility, Keyword, LandProduces,
+    Mana, ManaPool, Parity, PermanentFilter, ProtectionScope, ReanimateBecomes,
+    SacrificeAdditionalCost, SacrificeAdditionalCostCount, SacrificeCost, SpellFilter, SpellSpeed,
+    SpendToCastPredicate, Suspend, TargetCount, Timing, TokenFilter, Trigger, TypeSet,
 };
 
 /// Token profiles loaded from `cards/data/tokens/` before deckable cards deserialize. Keyed by
@@ -144,6 +144,28 @@ pub(crate) fn one() -> i32 {
 /// serde default for `modal_choose`: a modal spell chooses one mode unless it says more.
 pub(crate) fn one_u8() -> u8 {
     1
+}
+
+/// `deserialize_with` for [`Effect::SearchLibrary`]'s `count`: either a fixed integer (the
+/// common "up to N") or the `"any"` marker (CR 701.19's "any number of" — Trench Gorger),
+/// untagged so TOML's own scalar type picks the arm, mirroring `AdditionalCost::pay_life`'s
+/// `PayLife` marker-or-fixed shape. `"any"` becomes `u8::MAX` — no real library holds anywhere
+/// close to that many cards, so the search re-pauses until the searcher fails to find or the
+/// matches run out, same as a genuinely unbounded count.
+pub(crate) fn count_or_any<'de, D: Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum CountOrAny {
+        Marker(String),
+        Fixed(u8),
+    }
+    match CountOrAny::deserialize(d)? {
+        CountOrAny::Fixed(n) => Ok(n),
+        CountOrAny::Marker(marker) if marker == "any" => Ok(u8::MAX),
+        CountOrAny::Marker(other) => Err(serde::de::Error::custom(format!(
+            "unknown SearchLibrary count marker {other:?}, expected \"any\""
+        ))),
+    }
 }
 
 /// serde default for [`Effect::LookAtTop`]'s `up_to`: the printed "put *that card*" ⇒ one.
@@ -293,6 +315,10 @@ impl<'de> Deserialize<'de> for CardDef {
             /// card without one.
             #[serde(default)]
             free_cast_if: Option<Condition>,
+            /// A printed non-mana alternative cost (CR 601.2f) — `alternative_cost = { condition =
+            /// { .. }, rider = { .. } }`; absent for a card without one.
+            #[serde(default)]
+            alternative_cost: Option<AlternativeCost>,
             /// "Cast this spell only during combat" (CR 601.3e) — `cast_only_during_combat = true`;
             /// absent (`false`) for every ordinary card.
             #[serde(default)]
@@ -382,6 +408,11 @@ impl<'de> Deserialize<'de> for CardDef {
             /// to `'static` below. Absent for ordinary cards.
             #[serde(default)]
             adventure: Option<CardDef>,
+            /// A split card's two castable halves (CR 709, Fire // Ice) — `[[half]]` tables, each
+            /// its own inline `CardDef` (name, oracle, `cost`, `kind`, `abilities`) parsed like
+            /// `adventure`. Empty for every non-split card.
+            #[serde(default)]
+            half: Vec<CardDef>,
             /// Suspend N—[cost] (CR 702.62, Rousing Refrain) — a `[suspend]` table whose `cost`
             /// sub-table is leaked to `'static` by the `Suspend` impl. Absent for ordinary cards.
             #[serde(default)]
@@ -396,11 +427,12 @@ impl<'de> Deserialize<'de> for CardDef {
             /// without encore.
             #[serde(default)]
             encore: Option<Cost>,
-            /// A hand-activated, discard-this-card ability (CR 113.6/602.5e, Magma Opus) — an
-            /// `[hand_ability]` table (`[hand_ability.cost]` + `[[hand_ability.effects]]`).
-            /// Absent for a card without one.
+            /// A hand-activated, discard-this-card ability (CR 113.6/602.5e, Magma Opus) — zero or
+            /// more `[[hand_ability]]` tables (`[hand_ability.cost]` + `[[hand_ability.effects]]`
+            /// each), one per typecycling type (CR 702.29d — Valley Rannet's mountaincycling and
+            /// forestcycling). Empty for a card without one.
             #[serde(default)]
-            hand_ability: Option<HandActivatedAbility>,
+            hand_ability: Vec<HandActivatedAbility>,
             /// Forecast (CR 702.57, Skyscribing) — a `[forecast]` table (`[forecast.cost]` +
             /// `[[forecast.effects]]`), the reveal-and-keep sibling of `hand_ability`. Absent for
             /// a card without one.
@@ -414,10 +446,15 @@ impl<'de> Deserialize<'de> for CardDef {
             /// Dredge N (CR 702.52) — `dredge = N` for a dredger; absent (`None`) otherwise.
             #[serde(default)]
             dredge: Option<u8>,
+            /// Vanishing N (CR 702.63) — `vanishing = N` for a vanishing permanent; absent
+            /// (`None`) for every other card.
+            #[serde(default)]
+            vanishing: Option<u8>,
         }
 
         let card = Card::deserialize(d)?;
-        Ok(CardDef {
+        let halves = card.half;
+        let mut def = CardDef {
             id: Box::leak(card.id.into_boxed_str()),
             default_print: Box::leak(card.default_print.into_boxed_str()),
             name: Box::leak(card.name.into_boxed_str()),
@@ -445,6 +482,7 @@ impl<'de> Deserialize<'de> for CardDef {
             enters_tapped: card.enters_tapped,
             enters_tapped_unless: card.enters_tapped_unless,
             free_cast_if: card.free_cast_if,
+            alternative_cost: card.alternative_cost,
             cast_only_during_combat: card.cast_only_during_combat,
             approximates: card.approximates.map(|s| &*Box::leak(s.into_boxed_str())),
             oracle: card.oracle.map(|s| &*Box::leak(s.into_boxed_str())),
@@ -478,11 +516,15 @@ impl<'de> Deserialize<'de> for CardDef {
             // Leak the encore cost to `'static` (like `suspend`'s cost) so a `Copy` `&'static Cost`
             // reference can live on the `CardDef`.
             encore: card.encore.map(|cost| &*Box::leak(Box::new(cost))),
-            hand_ability: card.hand_ability,
+            hand_ability: intern(card.hand_ability),
             forecast: card.forecast,
             may_choose_not_to_untap: card.may_choose_not_to_untap,
             dredge: card.dredge,
-        })
+            vanishing: card.vanishing,
+            halves: &[],
+        };
+        def.halves = intern(halves);
+        Ok(def)
     }
 }
 
@@ -578,7 +620,8 @@ impl<'de> Deserialize<'de> for Cost {
 /// `buyback = { generic = 3 }` spells Buyback (CR 702.27) — same table shape.
 /// `strive = { generic = 2, red = 1 }` spells Strive (CR 702.42) — same table shape, the
 /// per-extra-target cost. `replicate = { generic = 2 }` spells Replicate (CR 702.108) — same
-/// table shape, the per-payment cost.
+/// table shape, the per-payment cost. `reveal_creature_from_hand = true` spells "reveal a
+/// creature card from your hand" (CR 601.2g — Disaster Radius).
 impl<'de> Deserialize<'de> for AdditionalCost {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         /// `pay_life` is a string marker (`"x"`) or a fixed count (`3`); untagged so TOML's own
@@ -613,6 +656,9 @@ impl<'de> Deserialize<'de> for AdditionalCost {
             discard: u8,
             /// Retrace's "discard a land card" (CR 702.83a) — `discard_land = true`.
             discard_land: bool,
+            /// "Reveal a creature card from your hand" (CR 601.2g — Disaster Radius) —
+            /// `reveal_creature_from_hand = true`.
+            reveal_creature_from_hand: bool,
             pay_life: Option<PayLife>,
             sacrifice: Option<RawSacrifice>,
             /// `[cost.additional.kicker]` — Kicker (CR 702.33), the same table shape as `[cost]`.
@@ -663,6 +709,7 @@ impl<'de> Deserialize<'de> for AdditionalCost {
         Ok(AdditionalCost {
             discard: raw.discard,
             discard_land: raw.discard_land,
+            reveal_creature_from_hand: raw.reveal_creature_from_hand,
             pay_life_x,
             pay_life,
             sacrifice,
@@ -885,8 +932,9 @@ impl<'de> Deserialize<'de> for ProtectionScope {
 /// `"spells_cast_this_turn"`, `"commander_casts_from_command_zone"`, `"creatures_died_this_turn"`,
 /// `"nontoken_creatures_entered_this_turn"`,
 /// `"sacrificed_creature_power"`, `"commander_color_count"`, `"total_power_you_control"`,
-/// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"permanents_died_this_turn"`,
-/// `"past_votes"`, `"present_votes"`, `"total_mana_value_milled_this_way"`,
+/// `"triggering_spell_mana_value"`, `"spell_sacrifice_count"`, `"revealed_creature_mana_value"`,
+/// `"permanents_died_this_turn"`,
+/// `"mana_paid_this_way"`, `"past_votes"`, `"present_votes"`, `"total_mana_value_milled_this_way"`,
 /// `"exiled_card_mana_value_this_way"`, `"combat_damage_dealt"`, `"spells_cast_before_this_this_turn"`),
 /// or a table for a filtered count
 /// (`{ per_permanent = <filter>, zone = "graveyard" }`), a per-kind counter count
@@ -928,12 +976,16 @@ impl<'de> Deserialize<'de> for Amount {
             "triggering_spell_mana_value",
             "triggering_spell_mana_spent",
             "spell_sacrifice_count",
+            "revealed_creature_mana_value",
             "permanents_died_this_turn",
             "nonland_cards_exiled_this_way",
+            "cards_exiled_by_search_this_way",
+            "mana_paid_this_way",
             "past_votes",
             "present_votes",
             "total_mana_value_milled_this_way",
             "exiled_card_mana_value_this_way",
+            "returned_nonland_card_mana_value",
             "auras_you_controlled_attached_to_dying_creature",
             "greatest_instant_or_sorcery_mana_value_cast_this_turn",
             "one_plus_instants_and_sorceries_cast_this_turn",
@@ -990,12 +1042,16 @@ impl<'de> Deserialize<'de> for Amount {
                     "triggering_spell_mana_value" => Amount::TriggeringSpellManaValue,
                     "triggering_spell_mana_spent" => Amount::TriggeringSpellManaSpent,
                     "spell_sacrifice_count" => Amount::SpellSacrificeCount,
+                    "revealed_creature_mana_value" => Amount::RevealedCreatureManaValue,
                     "permanents_died_this_turn" => Amount::PermanentsDiedThisTurn,
                     "nonland_cards_exiled_this_way" => Amount::NonlandCardsExiledThisWay,
+                    "cards_exiled_by_search_this_way" => Amount::CardsExiledBySearchThisWay,
+                    "mana_paid_this_way" => Amount::ManaPaidThisWay,
                     "past_votes" => Amount::PastVotes,
                     "present_votes" => Amount::PresentVotes,
                     "total_mana_value_milled_this_way" => Amount::TotalManaValueMilledThisWay,
                     "exiled_card_mana_value_this_way" => Amount::ExiledCardManaValueThisWay,
+                    "returned_nonland_card_mana_value" => Amount::ReturnedNonlandCardManaValue,
                     "auras_you_controlled_attached_to_dying_creature" => {
                         Amount::AurasYouControlledAttachedToDyingCreature
                     }
@@ -1270,9 +1326,9 @@ impl<'de> Deserialize<'de> for TypeSet {
 /// `enchanted_by_you`, `mv_max`, `mv_min`, `mv_eq_x`, `mv_max_x`, `power_max`, `power_parity`,
 /// `noncreature`, `exclude`, `color`, `not_color`, `modified`, `attacking`, `attacking_you`,
 /// `power_less_than_source`, `entered_this_turn`, `nonbasic`, `nonlegendary`, `nonlair`,
-/// `without_flying`). `noncreature` is sugar for `exclude = "creature"`; `not_color` is sugar for
-/// `color`'s negated-color arm — both fold into the same [`PermanentFilter`] fields as their
-/// general spelling (see below).
+/// `without_flying`, `with_flying`). `noncreature` is sugar for `exclude = "creature"`;
+/// `not_color` is sugar for `color`'s negated-color arm — both fold into the same
+/// [`PermanentFilter`] fields as their general spelling (see below).
 impl<'de> Deserialize<'de> for PermanentFilter {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         struct FilterVisitor;
@@ -1375,6 +1431,8 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     nonlair: bool,
                     #[serde(default)]
                     without_flying: bool,
+                    #[serde(default)]
+                    with_flying: bool,
                     /// Martyr's Bond's dynamic "shares a card type with it" edict gate — see the
                     /// bare-string shorthand of the same name above.
                     #[serde(default)]
@@ -1417,6 +1475,7 @@ impl<'de> Deserialize<'de> for PermanentFilter {
                     nonlegendary: t.nonlegendary,
                     nonlair: t.nonlair,
                     without_flying: t.without_flying,
+                    with_flying: t.with_flying,
                     shares_type_with_dying_permanent: t.shares_type_with_dying_permanent,
                 })
             }
@@ -1537,6 +1596,7 @@ enum TriggerTag {
     Upkeep,
     EachUpkeep,
     FirstMainPhase,
+    EachPlayerFirstMainPhase,
     BeginCombat,
     EndStep,
     EachEndStep,
@@ -1637,6 +1697,10 @@ impl<'de> Deserialize<'de> for Ability {
             /// path above (staff_of_the_storyteller's "remove a story counter" sets this).
             #[serde(default)]
             remove_counters_kind: Option<CounterKind>,
+            /// "Remove X storage counters from this land" (fungal_reaches.toml) — the removal
+            /// count is a player-declared `{X}` instead of `remove_counters`'s fixed count.
+            #[serde(default)]
+            remove_counters_x: bool,
             #[serde(default)]
             self_damage: u8,
             #[serde(default)]
@@ -1790,6 +1854,7 @@ impl<'de> Deserialize<'de> for Ability {
                 TriggerTag::Upkeep => Trigger::Upkeep,
                 TriggerTag::EachUpkeep => Trigger::EachUpkeep,
                 TriggerTag::FirstMainPhase => Trigger::FirstMainPhase,
+                TriggerTag::EachPlayerFirstMainPhase => Trigger::EachPlayerFirstMainPhase,
                 TriggerTag::BeginCombat => Trigger::BeginCombat,
                 TriggerTag::EndStep => Trigger::EndStep,
                 TriggerTag::EachEndStep => Trigger::EachEndStep,
@@ -1889,6 +1954,7 @@ impl<'de> Deserialize<'de> for Ability {
                 pay_life: flat.pay_life,
                 remove_counters: flat.remove_counters,
                 remove_counters_kind: flat.remove_counters_kind,
+                remove_counters_x: flat.remove_counters_x,
                 self_damage: flat.self_damage,
                 loyalty: flat.loyalty,
                 once_each_turn: flat.once_each_turn,

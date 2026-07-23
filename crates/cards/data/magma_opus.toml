@@ -1,7 +1,6 @@
 # Magma Opus deals 4 damage divided as you choose among any number of targets. Tap two target permanents. Create a 4/4
 # blue and red Elemental creature token. Draw two cards.
 # {U/R}{U/R}, Discard this card: Create a Treasure token.
-# Magma Opus {6}{U}{R} — instant.
 name = "Magma Opus"
 id = "985f9dd7-e693-48ff-9dd6-a1a3cbaa236b"
 default_print = "0fd4a0f7-ba03-4158-95cd-4effe798aec0"
@@ -49,6 +48,7 @@ type = "create_token"
 token = "f81c047d-de36-4aed-806b-f14a290771a4"
 count = 1
 
+# Draw two cards.
 [[abilities]]
 timing = "spell"
 
@@ -58,7 +58,7 @@ type = "draw_cards"
 count = 2
 
 # {U/R}{U/R}, Discard this card: Create a Treasure token.
-[hand_ability]
+[[hand_ability]]
 
 [hand_ability.cost]
 hybrid = [["blue", "red"], ["blue", "red"]]

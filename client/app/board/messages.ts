@@ -121,6 +121,10 @@ export const PromptDeclined = m("PromptDeclined");
 export const PromptOrderMoved = m("PromptOrderMoved", { pos: S.Number, delta: S.Number });
 /** Set combat damage assigned to a blocker. */
 export const PromptDamageSet = m("PromptDamageSet", { id: S.Number, amount: S.Number });
+/** Type into a free-text prompt (naming a card). */
+export const PromptStringSet = m("PromptStringSet", { value: S.String });
+/** Set a numeric pending-choice draft (join-forces mana amount, etc.). */
+export const PromptNumberSet = m("PromptNumberSet", { count: S.Number });
 /** Toggle a trigger-mode choice while assembling a pending-choice answer. */
 export const PromptModeChoiceToggled = m("PromptModeChoiceToggled", {
   index: S.Number,
@@ -251,6 +255,8 @@ export const Message = S.Union([
   PromptDeclined,
   PromptOrderMoved,
   PromptDamageSet,
+  PromptStringSet,
+  PromptNumberSet,
   PromptModeChoiceToggled,
   PromptPartitionSet,
   ModalModeToggled,

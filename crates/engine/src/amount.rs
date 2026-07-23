@@ -136,6 +136,7 @@ impl Game {
             // `fill_cast_mana_spent` rewrites it to `Fixed` before the ability reaches the stack.
             Amount::TriggeringSpellManaSpent => 0,
             Amount::SpellSacrificeCount => self.spell_sacrifice_count(source) as i32,
+            Amount::RevealedCreatureManaValue => self.revealed_creature_mana_value(source) as i32,
             Amount::PermanentsDiedThisTurn => self.permanents_died_this_turn as i32,
             // Reads the snapshot `Effect::DestroyAll`'s resolve path just recorded on
             // [`ResolutionFrame`], restricted to `filter` (empty/default matches every destroyed
@@ -154,8 +155,17 @@ impl Game {
             Amount::NonlandCardsExiledThisWay => {
                 self.resolution_frame.nonland_cards_exiled_this_way as i32
             }
+            // Reads the snapshot this resolution's own `Effect::SearchLibrary` step just recorded
+            // (Trench Gorger's "the number of cards exiled this way"); resolution-scoped, like
+            // `NonlandCardsExiledThisWay`.
+            Amount::CardsExiledBySearchThisWay => {
+                self.resolution_frame.cards_exiled_by_search_this_way as i32
+            }
             // Reads the tallies this resolution's own `Effect::CouncilsDilemmaVote` round
             // accumulated (Fateful Tempest); resolution-scoped, like `NonlandCardsExiledThisWay`.
+            // Reads the tally this resolution's own `Effect::JoinForcesPayMana` round
+            // accumulated (Collective Voyage); resolution-scoped, like `PastVotes`.
+            Amount::ManaPaidThisWay => self.resolution_frame.join_forces_mana as i32,
             Amount::PastVotes => self.resolution_frame.council_past_votes as i32,
             Amount::PresentVotes => self.resolution_frame.council_present_votes as i32,
             // Reads the mana value the preceding `Effect::MillSelf` step snapshotted (Fateful
@@ -170,6 +180,14 @@ impl Game {
                 .resolution_frame
                 .surge_exiled_card
                 .map_or(0, |(_, mv)| mv as i32),
+            // Reads the mana value the preceding `Effect::ReturnFromGraveyardToHand` step
+            // snapshotted (Vengeful Rebirth's conditional damage); `0` when a land came back or
+            // the return fizzled — CR 120.8 turns that into "no damage at all", which is the
+            // oracle's "if you return a nonland card" gate.
+            Amount::ReturnedNonlandCardManaValue => self
+                .resolution_frame
+                .returned_nonland_card_mana_value
+                .unwrap_or(0) as i32,
             // A placeholder [`fill_auras_attached_to_dying_creature`] must have already rewritten
             // to `Fixed` before the ability reaches the stack — see the variant's own doc comment.
             Amount::AurasYouControlledAttachedToDyingCreature => panic!(

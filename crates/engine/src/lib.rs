@@ -51,6 +51,9 @@ mod zones;
 pub use mulligan::hand_size_after_mulligans;
 /// Shared Effect-resolution context for [`Game::run`] / [`Game::run_sequence`].
 pub(crate) use resolution::ResolveCtx;
+/// All-players search fan-out continuation state (Veteran Explorer) — see
+/// [`resolution::SearchFanout`].
+pub(crate) use resolution::SearchFanout;
 pub use state::ControlCondition;
 pub use types::*;
 
@@ -191,6 +194,11 @@ pub struct Game {
     /// `finish`, the same one-spell-at-a-time guarantee [`Self::self_exile_time_counters`] relies
     /// on.
     pub(crate) self_tuck_to_library_bottom: bool,
+    /// Set by an [`Effect::ExileSelfOnResolve`] step while a spell resolves, so
+    /// [`Game::finish_instant_sorcery_resolution`] exiles that spell rather than sending it to
+    /// the graveyard (Vengeful Rebirth). Consumed (`take`) in `finish`, the same
+    /// one-spell-at-a-time guarantee [`Self::self_tuck_to_library_bottom`] relies on.
+    pub(crate) self_exile_on_resolve: bool,
 }
 
 impl Game {
@@ -270,6 +278,7 @@ impl Game {
                     evoked,
                     strive_count,
                     replicate_count,
+                    alternative_cost,
                 } => self.cast(
                     player,
                     object,
@@ -284,6 +293,7 @@ impl Game {
                     evoked,
                     strive_count,
                     replicate_count,
+                    alternative_cost,
                 )?,
                 Intent::PlayLand { player, object } => self.play_land(player, object)?,
                 Intent::Cycle {
@@ -291,9 +301,11 @@ impl Game {
                     card,
                     sacrifice,
                 } => self.cycle(player, card, sacrifice)?,
-                Intent::ActivateHandAbility { player, card } => {
-                    self.activate_hand_ability(player, card)?
-                }
+                Intent::ActivateHandAbility {
+                    player,
+                    card,
+                    index,
+                } => self.activate_hand_ability(player, card, index)?,
                 Intent::Suspend { player, card } => self.suspend(player, card)?,
                 Intent::Encore { player, card } => self.encore(player, card)?,
                 Intent::TurnFaceUp { player, permanent } => self.turn_face_up(player, permanent)?,
@@ -309,6 +321,13 @@ impl Game {
                     target,
                     x,
                 } => self.cast_adventure(player, source, target, x)?,
+                Intent::CastSplitHalf {
+                    player,
+                    source,
+                    half,
+                    target,
+                    x,
+                } => self.cast_split_half(player, source, half, target, x)?,
                 Intent::CastBestow {
                     player,
                     object,
@@ -421,7 +440,7 @@ impl Game {
         sacrifice: Vec<ObjectId>,
         discard_cost: &[ObjectId],
         graveyard_exile: &[ObjectId],
-        attackers: Vec<(ObjectId, PlayerId)>,
+        attackers: Vec<(ObjectId, Defender)>,
         blocks: Vec<(ObjectId, ObjectId)>,
     ) -> Result<Vec<Event>, Reject> {
         // `LegalAction` is `Copy`, so this ends the immutable borrow before dispatch.
@@ -449,6 +468,7 @@ impl Game {
                 false,
                 0,
                 0,
+                false,
                 playable::CastPlayKind::OneClick,
             ),
             MeaningfulAction::Activate { source, ability } => self.activate_ability(
@@ -463,14 +483,17 @@ impl Game {
             MeaningfulAction::Cycle { card } => {
                 self.cycle(player, card, sacrifice.first().copied())
             }
-            MeaningfulAction::ActivateHandAbility { card } => {
-                self.activate_hand_ability(player, card)
+            MeaningfulAction::ActivateHandAbility { card, index } => {
+                self.activate_hand_ability(player, card, index)
             }
             MeaningfulAction::Suspend { card } => self.suspend(player, card),
             MeaningfulAction::Encore { card } => self.encore(player, card),
             MeaningfulAction::TurnFaceUp { permanent } => self.turn_face_up(player, permanent),
             MeaningfulAction::CastPrepared { source } => {
                 self.cast_prepared(player, source, target, x)
+            }
+            MeaningfulAction::CastSplitHalf { card, half } => {
+                self.cast_split_half(player, card, half, target, x)
             }
             MeaningfulAction::CastFaceDown { card } => self.cast_face_down(player, card),
             MeaningfulAction::DeclareAttackers => self.declare_attackers(player, &attackers),
@@ -776,6 +799,7 @@ mod refresh_actions_tests {
             enters_tapped: false,
             enters_tapped_unless: None,
             free_cast_if: None,
+            alternative_cost: None,
             cast_only_during_combat: false,
             approximates: None,
             oracle: None,
@@ -799,12 +823,14 @@ mod refresh_actions_tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
+            halves: &[],
             suspend: None,
+            vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: None,
+            hand_ability: &[],
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,
@@ -885,6 +911,7 @@ mod refresh_actions_tests {
                 enters_tapped: false,
                 enters_tapped_unless: None,
                 free_cast_if: None,
+                alternative_cost: None,
                 cast_only_during_combat: false,
                 approximates: None,
                 oracle: None,
@@ -908,12 +935,14 @@ mod refresh_actions_tests {
                 functions_in_graveyard: false,
                 back: None,
                 adventure: None,
+                halves: &[],
                 suspend: None,
+                vanishing: None,
                 devour: None,
                 demonstrate: false,
                 enter_as_copy: None,
                 encore: None,
-                hand_ability: None,
+                hand_ability: &[],
                 forecast: None,
                 may_choose_not_to_untap: false,
                 dredge: None,

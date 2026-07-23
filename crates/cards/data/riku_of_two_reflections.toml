@@ -1,0 +1,59 @@
+# Whenever you cast an instant or sorcery spell, you may pay {U}{R}. If you do, copy that spell.
+# You may choose new targets for the copy.
+# Whenever another nontoken creature you control enters, you may pay {G}{U}. If you do, create a
+# token that's a copy of that creature.
+name = "Riku of Two Reflections"
+id = "f697c78d-7e4f-4320-bfc6-2a25e6d7dc94"
+default_print = "716d0b3b-bac9-4fb8-882e-bd6171864043"
+otags = ["cast-trigger-you", "copy-permanent", "copy-spell", "legendary-matters"]
+oracle = "Whenever you cast an instant or sorcery spell, you may pay {U}{R}. If you do, copy that spell. You may choose new targets for the copy.\nWhenever another nontoken creature you control enters, you may pay {G}{U}. If you do, create a token that's a copy of that creature."
+set = "cmd"
+subtypes = ["Human", "Wizard"]
+legendary = true
+
+[cost]
+generic = 2
+green = 1
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever you cast an instant or sorcery spell, you may pay {U}{R}. If you do, copy that spell.
+# You may choose new targets for the copy.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "instant_or_sorcery"
+caster = "you"
+optional = true
+
+[abilities.cost]
+blue = 1
+red = 1
+
+# copy that spell. You may choose new targets for the copy.
+[[abilities.effects]]
+type = "copy_triggering_spell"
+count = 1
+may_choose_new_targets = true
+
+# Whenever another nontoken creature you control enters, you may pay {G}{U}. If you do, create a
+# token that's a copy of that creature.
+[[abilities]]
+timing = "permanent_enters"
+filter = { types = "creature", token = "nontoken" }
+controller = "you"
+optional = true
+
+[abilities.cost]
+green = 1
+blue = 1
+
+# create a token that's a copy of that creature.
+[[abilities.effects]]
+type = "create_token_copy"
+target = "none"
+count = 1

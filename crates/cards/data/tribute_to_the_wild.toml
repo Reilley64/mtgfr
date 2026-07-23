@@ -1,0 +1,24 @@
+# Each opponent sacrifices an artifact or enchantment of their choice.
+name = "Tribute to the Wild"
+id = "ba0fc2ca-7084-454a-9d4e-5cbca945a7ca"
+default_print = "54945049-b5ae-444a-bec0-0bdeb9d075a1"
+otags = ["card-advantage-edge", "edict-conditional", "removal-artifact", "removal-enchantment", "removal-sacrifice", "sweeper-asymmetric"]
+oracle = "Each opponent sacrifices an artifact or enchantment of their choice."
+set = "c20"
+
+[cost]
+generic = 1
+green = 1
+
+[kind]
+type = "instant"
+
+# Each opponent sacrifices an artifact or enchantment of their choice.
+[[abilities]]
+timing = "spell"
+
+# Each opponent sacrifices an artifact or enchantment of their choice.
+[[abilities.effects]]
+type = "each_player_sacrifices"
+scope = "each_opponent"
+filter = { types = "artifact_or_enchantment" }

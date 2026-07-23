@@ -1,0 +1,26 @@
+# Target creature gets +4/+2 and gains trample until end of turn.
+name = "Colossal Might"
+id = "1d8e39c9-e04d-4328-af66-db6e1241ac06"
+default_print = "6f5d699f-5c15-4a38-8e83-c84f762d9fe9"
+otags = ["enlarge", "gruul-pump", "single-target-instant-sorcery"]
+oracle = "Target creature gets +4/+2 and gains trample until end of turn."
+set = "cmd"
+
+[cost]
+red = 1
+green = 1
+
+[kind]
+type = "instant"
+
+# Target creature gets +4/+2 and gains trample until end of turn.
+[[abilities]]
+timing = "spell"
+
+# Target creature gets +4/+2 and gains trample until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 4
+toughness = 2
+target = "creature"
+keywords = ["trample"]
