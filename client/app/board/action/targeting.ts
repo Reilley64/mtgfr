@@ -9,7 +9,7 @@
 //     DOM overlay, so neither can be clicked → offer them as a picker instead
 
 import { colors } from "~/design-tokens.generated";
-import type { ActionView, VisibleState, WireTarget } from "~/wire/types";
+import type { ActionView, PendingChoiceView, VisibleState, WireTarget } from "~/wire/types";
 import { ZONE } from "../geometry/layout";
 import type { StagedAction } from "./execution";
 
@@ -120,6 +120,57 @@ export function objectName(state: VisibleState, id: number): string {
 export function playerSeatLabel(state: VisibleState, seat: number): string {
   const name = state.players.find((p) => p.player === seat)?.username?.trim();
   return name || `P${seat}`;
+}
+
+export function choiceItemsAsWireTargets(items: ReadonlyArray<{ id: number; player?: number | null }>): WireTarget[] {
+  return items.map((item) =>
+    item.player != null ? { kind: "player" as const, player: item.player } : { kind: "object" as const, id: item.id },
+  );
+}
+
+/** True when this pending choice can be answered with one on-board click (Arena aim). */
+export function pendingBoardTargetMode(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+): Extract<TargetMode, { kind: "arrow" }> | null {
+  if (pc == null) return null;
+  if (pc.player !== state.viewer) return null;
+  if (!("items" in pc) || !Array.isArray(pc.items)) return null;
+
+  if (pc.kind === "choose_target") {
+    if (pc.max !== 1) return null;
+  } else if (pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets") {
+    if (pc.min !== 1 || pc.max !== 1) return null;
+  } else {
+    return null;
+  }
+
+  const mode = askFor(choiceItemsAsWireTargets(pc.items), state);
+  if (mode.kind !== "arrow") return null;
+  return mode;
+}
+
+/** Aim overlay for a one-click on-board pending target; idle when the modal picker should ask. */
+export function pendingTargetingOverlay(
+  pc: PendingChoiceView | null | undefined,
+  state: VisibleState,
+  viewport: { width: number; height: number },
+  stackLen: number,
+): StagingOverlay {
+  const idle: StagingOverlay = {
+    aiming: false,
+    targetObjects: new Set(),
+    targetPlayers: new Set(),
+    aimFrom: null,
+  };
+  const mode = pendingBoardTargetMode(pc, state);
+  if (mode == null) return idle;
+  return {
+    aiming: true,
+    targetObjects: mode.objects,
+    targetPlayers: mode.players,
+    aimFrom: stackAimOrigin(viewport.width, viewport.height, stackLen + 1),
+  };
 }
 
 /** Title while the player is aiming a staged cast or activation before submitting. */

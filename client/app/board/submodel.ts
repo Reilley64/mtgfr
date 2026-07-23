@@ -1,5 +1,6 @@
 import type { Command as FoldkitCommand } from "foldkit";
 import {
+  answerFromBoardTarget,
   buildAnswerFromDraft,
   cardPickReady,
   cardPickRequiredCount,
@@ -51,7 +52,7 @@ import {
   type XPromptState,
 } from "./action/execution";
 import { advance } from "./action/modal";
-import { stagedPickTargets } from "./action/targeting";
+import { pendingBoardTargetMode, stagedPickTargets } from "./action/targeting";
 import type { Camera, Vec2 } from "./geometry/camera";
 import { panBy, screenToWorld, worldToScreen } from "./geometry/camera";
 import {
@@ -680,6 +681,14 @@ function pointerUpModel(
       }
       return [idle, []];
     }
+    const pc = fold.state?.pending_choice ?? null;
+    const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
+    if (pendingAim != null && pc != null && pendingAim.objects.has(release.card.id)) {
+      const answer = answerFromBoardTarget(pc, { kind: "object", id: release.card.id });
+      if (answer != null) {
+        return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      }
+    }
     if (
       !canSelectPermanent(release.card.id, release.card.tapsForMana, fold.state?.actions, {
         summoningSick: release.card.summoningSick,
@@ -696,6 +705,17 @@ function pointerUpModel(
     const seat = avatarSeatAt(fold, model, x, y);
     if (seat != null && stagedLegalPlayerSeats(model.staged).has(seat)) {
       return completeStagedTarget(idle, fold, tableId, { kind: "player", player: seat });
+    }
+  }
+  const pc = fold.state?.pending_choice ?? null;
+  const pendingAim = fold.state != null ? pendingBoardTargetMode(pc, fold.state) : null;
+  if (pendingAim != null && pc != null) {
+    const seat = avatarSeatAt(fold, model, x, y);
+    if (seat != null && pendingAim.players.has(seat)) {
+      const answer = answerFromBoardTarget(pc, { kind: "player", player: seat });
+      if (answer != null) {
+        return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
+      }
     }
   }
   // Empty board click dismisses the activation radial.

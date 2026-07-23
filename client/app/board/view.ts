@@ -5,7 +5,7 @@ import { colors } from "~/design-tokens.generated";
 import { isActivePlayer } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
-import { stagingOverlay } from "./action/targeting";
+import { pendingTargetingOverlay, stagingOverlay } from "./action/targeting";
 import { MountBitmapLayer, MountFlightLayer, publishBitmapFrame } from "./bitmap/mount";
 import { sceneShapes } from "./canvas/scene";
 import { worldToScreen } from "./geometry/camera";
@@ -74,7 +74,9 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
   if (state == null) return connectingBoard();
 
   const cards = layout(state, state.viewer);
-  const overlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
+  const stagedOverlay = stagingOverlay(model.board.staged, state, model.board.viewport, state.stack.length);
+  const pendingOverlay = pendingTargetingOverlay(state.pending_choice, state, model.board.viewport, state.stack.length);
+  const overlay = stagedOverlay.aiming ? stagedOverlay : pendingOverlay;
   const previewAction = paymentPreviewAction(model.board, state.actions);
   const paymentPreviewIds = autoTapPreviewIds(previewAction);
   const combatDrag =
