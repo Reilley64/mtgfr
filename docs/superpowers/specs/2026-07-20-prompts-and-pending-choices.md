@@ -17,6 +17,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player choosing X, I adjust a clamped stepper within server `min_x`…`max_x` and see what I will pay before confirming.
 - As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
+- As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
 - As a player choosing cards, prompts use the same cached card art behavior as hand and stack.
 
 ## Behavior
