@@ -13,8 +13,8 @@ The in-game Commander table must stay readable while showing four seats, hundred
 
 The board is a Foldkit submodel with three coordinated surfaces:
 
-- Foldkit Canvas for vector battlefield furniture, seats, avatars, and arrows.
-- Foldkit Mount canvases for bitmap resting card art and in-flight card art.
+- Foldkit Canvas for vector battlefield furniture, seats, arrows, and vector helpers.
+- Foldkit Mount canvases for bitmap resting card art, authoritative avatar life orbs, and in-flight card art.
 - HTML overlays for hand, stack, prompts, priority chrome, mana tray, inspect, sound, legend, concede, and result UI.
 
 `view.ts` is the composition root. `submodel.ts` owns board state and update logic, and `messages.ts` defines the board message protocol. The authoritative layer stack lives in [`docs/client-canvas-map.md`](../../client-canvas-map.md); board visual changes must follow that map.
@@ -41,7 +41,7 @@ The live board composes:
 
 - `Canvas.view` for vector scene shapes and pointer events.
 - `manaTrayView` projected from world coordinates as DOM below resting permanents.
-- `board-bitmap-layer` for resting battlefield faces and card chrome.
+- `board-bitmap-layer` for resting battlefield faces, card chrome, and avatar life orbs.
 - `boardOverlays` for hand, stack, prompts, priority, discoverability, concede, pile expand, result, and inspect.
 - `board-flight-layer` for in-flight cards above hand and stack.
 - `board-reconnecting` when the stream is disconnected.
