@@ -819,7 +819,7 @@ test("scry aim shows docked Top and Bottom arrange lanes", () => {
   );
 });
 
-test("order_triggers prompt shows drag rows, click-to-place, and arrow controls", () => {
+test("order_triggers aim shows docked drag rows, click-to-place, and arrow controls", () => {
   overlayScene(
     overlayModel(
       initialBoardModel(),
@@ -833,11 +833,101 @@ test("order_triggers prompt shows drag rows, click-to-place, and arrow controls"
         },
       }),
     ),
+    Scene.expect(Scene.testId("pending-order-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-order-list")).toExist(),
     Scene.expect(Scene.selector('[data-testid="prompt-order-0"][draggable="true"]')).toExist(),
     Scene.expect(Scene.testId("prompt-order-pick-0")).toHaveText("ETB draw"),
     Scene.expect(Scene.testId("prompt-order-up-0")).toExist(),
     Scene.expect(Scene.testId("prompt-order-down-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
+test("choose_countered_spell_destination aim shows docked Top and Bottom", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "choose_countered_spell_destination",
+          player: 0,
+          spell: 5,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-destination-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-destination-top")).toExist(),
+    Scene.expect(Scene.testId("prompt-destination-bottom")).toExist(),
+  );
+});
+
+test("revealed_card_to_battlefield_or_hand aim shows face and destination buttons", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "revealed_card_to_battlefield_or_hand",
+          player: 0,
+          item: { id: 17, label: "Beast" },
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-revealed-destination-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-revealed-face")).toHaveText("Beast"),
+    Scene.expect(Scene.testId("prompt-destination-battlefield")).toExist(),
+    Scene.expect(Scene.testId("prompt-destination-hand")).toExist(),
+  );
+});
+
+test("partition_revealed aim shows docked Pile A and Pile B lanes", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "partition_revealed",
+          player: 0,
+          source: 9,
+          items: [
+            { id: 1, label: "A" },
+            { id: 2, label: "B" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-partition-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-partition-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
+test("distribute_top aim shows docked Hand Bottom Exile lanes", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "distribute_top",
+          player: 0,
+          to_hand: 1,
+          to_bottom: 1,
+          to_exile_may_play: 1,
+          items: [
+            { id: 1, label: "A" },
+            { id: 2, label: "B" },
+            { id: 3, label: "C" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-distribute-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-distribute-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toExist(),
   );
 });
@@ -869,6 +959,47 @@ test("select_from_top aim shows docked Take and Bottom lanes", () => {
   );
 });
 
+test("pay_cost aim shows docked Pay and decline", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "pay_cost",
+          cost: { colored: [0, 0, 0, 1, 0], generic: 2 },
+          label: "Create a Fungus Beast",
+          player: 0,
+          source: 1,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
+    Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
+  );
+});
+
+test("may_yes_no aim shows docked Yes and No", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "may_yes_no",
+          label: "Scry?",
+          player: 0,
+          source: 3,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-yes-no-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-yes")).toExist(),
+    Scene.expect(Scene.testId("prompt-no")).toExist(),
+  );
+});
+
 test("non-decider sees waiting banner instead of pending-choice controls", () => {
   overlayScene(
     overlayModel(
@@ -884,6 +1015,7 @@ test("non-decider sees waiting banner instead of pending-choice controls", () =>
       }),
     ),
     Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+    Scene.expect(Scene.testId("pending-yes-no-aim")).toBeAbsent(),
     Scene.expect(Scene.testId("pending-choice-waiting")).toHaveText("Waiting for Alice…"),
   );
 });

@@ -499,18 +499,34 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
       ],
     );
   });
-  return frame("pending-choice", "Order these triggers — the last one resolves first", [
-    h.div(
-      [h.Class("shrink-0 text-caption text-mist")],
-      [
-        pick == null
-          ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
-          : "Drop on another row to place it — or click / release to cancel.",
-      ],
-    ),
-    h.div([h.DataAttribute("testid", "prompt-order-list"), h.Class("flex flex-col gap-1")], rows),
-    submitButton("Submit", false),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-order-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,560px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("shrink-0 font-semibold text-body")], ["Order these triggers — the last one resolves first"]),
+      h.div(
+        [h.Class("shrink-0 text-caption text-mist")],
+        [
+          pick == null
+            ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
+            : "Drop on another row to place it — or click / release to cancel.",
+        ],
+      ),
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-order-list"),
+          h.Class("flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain"),
+        ],
+        rows,
+      ),
+      submitButton("Submit", false),
+    ],
+  );
 }
 
 function amountStepper(id: number, amount: number, max: number): Html {
@@ -1553,15 +1569,28 @@ function yesNoPrompt(
   pending: Extract<PendingChoiceView, { kind: "may_yes_no" | "dance_exile_more" | "trade_secrets_repeat" }>,
   tableId: string | null,
 ): Html {
-  return frame("pending-choice", pendingChoiceTitle(pending), [
-    h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      [
-        answerButton(pending, "prompt-yes", "Yes", { kind: "may", yes: true }, true, tableId == null),
-        answerButton(pending, "prompt-no", "No", { kind: "may", yes: false }, false, tableId == null),
-      ],
-    ),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-yes-no-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div(
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        [pendingChoiceTitle(pending)],
+      ),
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        [
+          answerButton(pending, "prompt-yes", "Yes", { kind: "may", yes: true }, true, tableId == null),
+          answerButton(pending, "prompt-no", "No", { kind: "may", yes: false }, false, tableId == null),
+        ],
+      ),
+    ],
+  );
 }
 
 function payCostDeclineLabel(
@@ -1610,15 +1639,25 @@ function payCostPrompt(
   const title = "label" in pending ? pending.label : pendingChoiceTitle(pending);
   const payLabel = `Pay ${costText(pending.cost)}`;
   const declineLabel = payCostDeclineLabel(pending.kind);
-  return frame("pending-choice", title, [
-    h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      [
-        answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null),
-        answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
-      ],
-    ),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-pay-cost-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("pointer-events-none text-center font-semibold text-body text-snow")], [title]),
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
+        [
+          answerButton(pending, "prompt-pay", payLabel, { kind: "pay", pay: true }, true, tableId == null),
+          answerButton(pending, "prompt-decline", declineLabel, { kind: "pay", pay: false }, false, tableId == null),
+        ],
+      ),
+    ],
+  );
 }
 
 function modeListPrompt(
@@ -1911,51 +1950,64 @@ function partitionPrompt(
       return item != null ? [item] : [];
     });
     const pileBItems = pending.items.filter((it) => !pileAIds.includes(it.id));
-    return frame("pending-choice", "Choose cards for Pile A", [
-      h.div(
-        [h.DataAttribute("testid", "prompt-partition-lanes"), h.Class("flex flex-col gap-3")],
-        [
-          h.div([h.Class("shrink-0 text-caption text-mist")], ["Click a card to move it between Pile A and Pile B."]),
-          h.div(
-            [h.DataAttribute("testid", "prompt-partition-a"), h.Class("flex flex-col gap-2")],
-            [
-              h.div(
-                [
-                  h.DataAttribute("testid", "prompt-partition-a-label"),
-                  h.Class("text-caption font-semibold text-seafoam"),
-                ],
-                [`Pile A (${pileAIds.length})`],
-              ),
-              h.div(
-                [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                pileAItems.length > 0
-                  ? pileAItems.map((item) => arrangeLaneCard(item, state, pileAIds, false))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-          h.div(
-            [h.DataAttribute("testid", "prompt-partition-b"), h.Class("flex flex-col gap-2")],
-            [
-              h.div(
-                [
-                  h.DataAttribute("testid", "prompt-partition-b-label"),
-                  h.Class("text-caption font-semibold text-seafoam"),
-                ],
-                [`Pile B (${pileBItems.length})`],
-              ),
-              h.div(
-                [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-                pileBItems.length > 0
-                  ? pileBItems.map((item) => arrangeLaneCard(item, state, [], false))
-                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-              ),
-            ],
-          ),
-        ],
-      ),
-      h.div([h.Class("flex gap-2")], [submitButton("Lock piles", false), cancelButton()]),
-    ]);
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-partition-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
+        ),
+      ],
+      [
+        h.div([h.Class("shrink-0 font-semibold text-body")], ["Choose cards for Pile A"]),
+        h.div(
+          [
+            h.DataAttribute("testid", "prompt-partition-lanes"),
+            h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+          ],
+          [
+            h.div([h.Class("shrink-0 text-caption text-mist")], ["Click a card to move it between Pile A and Pile B."]),
+            h.div(
+              [h.DataAttribute("testid", "prompt-partition-a"), h.Class("flex flex-col gap-2")],
+              [
+                h.div(
+                  [
+                    h.DataAttribute("testid", "prompt-partition-a-label"),
+                    h.Class("text-caption font-semibold text-seafoam"),
+                  ],
+                  [`Pile A (${pileAIds.length})`],
+                ),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  pileAItems.length > 0
+                    ? pileAItems.map((item) => arrangeLaneCard(item, state, pileAIds, false))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+            h.div(
+              [h.DataAttribute("testid", "prompt-partition-b"), h.Class("flex flex-col gap-2")],
+              [
+                h.div(
+                  [
+                    h.DataAttribute("testid", "prompt-partition-b-label"),
+                    h.Class("text-caption font-semibold text-seafoam"),
+                  ],
+                  [`Pile B (${pileBItems.length})`],
+                ),
+                h.div(
+                  [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                  pileBItems.length > 0
+                    ? pileBItems.map((item) => arrangeLaneCard(item, state, [], false))
+                    : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+                ),
+              ],
+            ),
+          ],
+        ),
+        h.div([h.Class("flex shrink-0 gap-2")], [submitButton("Lock piles", false), cancelButton()]),
+      ],
+    );
   }
 
   return distributeTopLanesPrompt(pending, board, state, tableId);
@@ -2051,7 +2103,7 @@ function distributeTopLanesPrompt(
       [
         h.div([h.Class("text-caption font-semibold text-seafoam")], [`${label} (${ids.length} / ${cap})`]),
         h.div(
-          [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+          [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
           items.length > 0
             ? items.map((item) => laneCard(item))
             : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
@@ -2060,33 +2112,46 @@ function distributeTopLanesPrompt(
     );
   };
 
-  return frame("pending-choice", "Distribute the revealed cards", [
-    h.div(
-      [h.DataAttribute("testid", "prompt-distribute-lanes"), h.Class("flex flex-col gap-3")],
-      [
-        h.div(
-          [h.Class("shrink-0 text-caption text-mist")],
-          ["Click a card to cycle Hand → Bottom → Exile (skips full lanes)."],
-        ),
-        h.div(
-          [h.DataAttribute("testid", "prompt-distribute-pool"), h.Class("flex flex-col gap-2")],
-          [
-            h.div([h.Class("text-caption font-semibold text-seafoam")], [`Revealed (${pool.length})`]),
-            h.div(
-              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
-              pool.length > 0
-                ? pool.map((item) => laneCard(item))
-                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
-            ),
-          ],
-        ),
-        lane("prompt-distribute-hand", "Hand", toHand, pending.to_hand),
-        lane("prompt-distribute-bottom", "Bottom of library", toBottom, pending.to_bottom),
-        lane("prompt-distribute-exile", "Exile (may play)", toExile, pending.to_exile_may_play),
-      ],
-    ),
-    h.div([h.Class("flex gap-2")], [submitButton("Distribute", !ready), cancelButton()]),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-distribute-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,720px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("shrink-0 font-semibold text-body")], ["Distribute the revealed cards"]),
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-distribute-lanes"),
+          h.Class("flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain"),
+        ],
+        [
+          h.div(
+            [h.Class("shrink-0 text-caption text-mist")],
+            ["Click a card to cycle Hand → Bottom → Exile (skips full lanes)."],
+          ),
+          h.div(
+            [h.DataAttribute("testid", "prompt-distribute-pool"), h.Class("flex flex-col gap-2")],
+            [
+              h.div([h.Class("text-caption font-semibold text-seafoam")], [`Revealed (${pool.length})`]),
+              h.div(
+                [h.Class("flex min-h-[100px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+                pool.length > 0
+                  ? pool.map((item) => laneCard(item))
+                  : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+              ),
+            ],
+          ),
+          lane("prompt-distribute-hand", "Hand", toHand, pending.to_hand),
+          lane("prompt-distribute-bottom", "Bottom of library", toBottom, pending.to_bottom),
+          lane("prompt-distribute-exile", "Exile (may play)", toExile, pending.to_exile_may_play),
+        ],
+      ),
+      h.div([h.Class("flex shrink-0 gap-2")], [submitButton("Distribute", !ready), cancelButton()]),
+    ],
+  );
 }
 
 function colorPickPrompt(
@@ -2317,56 +2382,103 @@ function destinationPickPrompt(
     PendingChoiceView,
     { kind: "choose_countered_spell_destination" | "revealed_card_to_battlefield_or_hand" }
   >,
+  state: VisibleState,
   tableId: string | null,
 ): Html {
   if (pending.kind === "choose_countered_spell_destination") {
-    return frame("pending-choice", "Put the countered spell on top or bottom?", [
+    return h.div(
+      [
+        h.DataAttribute("testid", "pending-destination-aim"),
+        h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+        h.Class(
+          "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+        ),
+      ],
+      [
+        h.div(
+          [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+          ["Put the countered spell on top or bottom?"],
+        ),
+        h.div(
+          [h.Class("flex flex-wrap justify-center gap-2")],
+          [
+            answerButton(
+              pending,
+              "prompt-destination-top",
+              "Top",
+              { kind: "top_or_bottom", top: true },
+              true,
+              tableId == null,
+            ),
+            answerButton(
+              pending,
+              "prompt-destination-bottom",
+              "Bottom",
+              { kind: "top_or_bottom", top: false },
+              false,
+              tableId == null,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+  const print = choiceItemPrint(pending.item, state);
+  const face = print
+    ? cardArt(h, {
+        print,
+        size: "large",
+        alt: "",
+        className: "block aspect-[150/209] w-[120px] rounded-[6px] bg-morph-slate",
+      })
+    : h.div(
+        [
+          h.DataAttribute("testid", "prompt-revealed-face"),
+          h.Class(
+            "flex aspect-[150/209] w-[120px] items-center justify-center rounded-[6px] bg-morph-slate px-2 text-caption text-snow",
+          ),
+        ],
+        [pending.item.label],
+      );
+  const faceEl =
+    print !== "" ? h.div([h.DataAttribute("testid", "prompt-revealed-face"), h.Class("relative")], [face]) : face;
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-revealed-destination-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-sm rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+      ),
+    ],
+    [
       h.div(
-        [h.Class("flex gap-2")],
+        [h.Class("pointer-events-none text-center font-semibold text-body text-snow")],
+        ["Put the revealed card onto the battlefield or into your hand?"],
+      ),
+      faceEl,
+      h.div(
+        [h.Class("flex flex-wrap justify-center gap-2")],
         [
           answerButton(
             pending,
-            "prompt-destination-top",
-            "Top",
-            { kind: "top_or_bottom", top: true },
+            "prompt-destination-battlefield",
+            "Battlefield",
+            { kind: "revealed", choice: pending.item.id },
             true,
             tableId == null,
           ),
           answerButton(
             pending,
-            "prompt-destination-bottom",
-            "Bottom",
-            { kind: "top_or_bottom", top: false },
+            "prompt-destination-hand",
+            "Hand",
+            { kind: "revealed", choice: null },
             false,
             tableId == null,
           ),
         ],
       ),
-    ]);
-  }
-  return frame("pending-choice", "Put the revealed card onto the battlefield or into your hand?", [
-    h.div(
-      [h.Class("flex gap-2")],
-      [
-        answerButton(
-          pending,
-          "prompt-destination-battlefield",
-          "Battlefield",
-          { kind: "revealed", choice: pending.item.id },
-          true,
-          tableId == null,
-        ),
-        answerButton(
-          pending,
-          "prompt-destination-hand",
-          "Hand",
-          { kind: "revealed", choice: null },
-          false,
-          tableId == null,
-        ),
-      ],
-    ),
-  ]);
+    ],
+  );
 }
 
 function pendingChoicePrompt(
@@ -2457,7 +2569,7 @@ function pendingChoicePrompt(
       ) {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
-      return destinationPickPrompt(pending, tableId);
+      return destinationPickPrompt(pending, state, tableId);
     default: {
       const _exhaustive: never = id;
       return _exhaustive;

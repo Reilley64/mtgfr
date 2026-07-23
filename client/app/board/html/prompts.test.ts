@@ -353,7 +353,7 @@ test("select_from_top Take lane click emits select_from_top intent", () => {
   });
 });
 
-test("distribute_top shows Hand Bottom Exile lanes", () => {
+test("distribute_top shows docked Hand Bottom Exile lanes", () => {
   const s = state({
     pending_choice: {
       kind: "distribute_top",
@@ -372,6 +372,8 @@ test("distribute_top shows Hand Bottom Exile lanes", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-distribute-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-distribute-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-distribute-pool")).toExist(),
     Scene.expect(Scene.testId("prompt-distribute-hand")).toExist(),
@@ -408,7 +410,7 @@ test("distribute_top card click cycles into Hand then Bottom", () => {
   });
 });
 
-test("partition_revealed shows Pile A and Pile B lanes", () => {
+test("partition_revealed shows docked Pile A and Pile B lanes", () => {
   const s = state({
     pending_choice: {
       kind: "partition_revealed",
@@ -424,6 +426,8 @@ test("partition_revealed shows Pile A and Pile B lanes", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-partition-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-partition-lanes")).toExist(),
     Scene.expect(Scene.testId("prompt-partition-a")).toExist(),
     Scene.expect(Scene.testId("prompt-partition-b")).toExist(),
@@ -540,6 +544,30 @@ test("choose_dredge submit emits chosen dredger", () => {
     player: 0,
     dredger: 61,
   });
+});
+
+test("revealed_card_to_battlefield_or_hand Battlefield submits revealed choice", () => {
+  const s = state({
+    pending_choice: {
+      kind: "revealed_card_to_battlefield_or_hand",
+      player: 0,
+      item: { id: 17, label: "Beast" },
+    },
+  });
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-destination-battlefield")));
+  expect(intents).toEqual([{ kind: "revealed_card_to_battlefield_or_hand", player: 0, choice: 17 }]);
+});
+
+test("revealed_card_to_battlefield_or_hand Hand puts the card in hand", () => {
+  const s = state({
+    pending_choice: {
+      kind: "revealed_card_to_battlefield_or_hand",
+      player: 0,
+      item: { id: 17, label: "Beast" },
+    },
+  });
+  const intents = clickPromptIntent(s, Scene.click(Scene.testId("prompt-destination-hand")));
+  expect(intents).toEqual([{ kind: "revealed_card_to_battlefield_or_hand", player: 0, choice: null }]);
 });
 
 test("search_library Choose submits selected card", () => {
@@ -790,6 +818,8 @@ test("pay_cost prompt shows cost on Pay and Don't pay decline", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("pending-pay-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
     Scene.expect(Scene.testId("prompt-pay")).toHaveText("Pay {2}{R}"),
     Scene.expect(Scene.testId("prompt-decline")).toHaveText("Don't pay"),
   );
