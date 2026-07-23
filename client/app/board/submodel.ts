@@ -696,14 +696,22 @@ function pointerUpModel(
     }
     const pc = fold.state?.pending_choice ?? null;
     const damageBlockers = fold.state != null ? pendingDamageAssignBlockers(pc, fold.state) : null;
-    if (damageBlockers != null && pc?.kind === "assign_combat_damage" && damageBlockers.has(release.card.id)) {
+    if (
+      damageBlockers != null &&
+      damageBlockers.has(release.card.id) &&
+      (pc?.kind === "assign_combat_damage" || pc?.kind === "divide_counters")
+    ) {
       const synced = syncPromptDraft(idle, fold);
       const draft = synced.promptDraft?.kind === "damage" ? synced.promptDraft : null;
       if (draft == null) return [synced, []];
-      const source = fold.state?.objects.find((o) => o.id === pc.source);
-      const power = source?.power ?? 0;
-      const trample = source?.keywords?.includes("trample") ?? false;
-      const amounts = clickDamageAssign(draft.amounts, release.card.id, power, trample);
+      if (pc.kind === "assign_combat_damage") {
+        const source = fold.state?.objects.find((o) => o.id === pc.source);
+        const power = source?.power ?? 0;
+        const trample = source?.keywords?.includes("trample") ?? false;
+        const amounts = clickDamageAssign(draft.amounts, release.card.id, power, trample);
+        return [{ ...synced, promptDraft: { kind: "damage", amounts } }, []];
+      }
+      const amounts = clickDamageAssign(draft.amounts, release.card.id, pc.total, false);
       return [{ ...synced, promptDraft: { kind: "damage", amounts } }, []];
     }
     const divideIndexes = fold.state != null ? pendingDivideSpellObjectIndexes(pc, fold.state) : null;
@@ -1349,7 +1357,7 @@ function trySubmitReadyPendingDraft(
     }
   }
   if (
-    pc?.kind === "assign_combat_damage" &&
+    (pc?.kind === "assign_combat_damage" || pc?.kind === "divide_counters") &&
     pendingDamageAssignBlockers(pc, state) != null &&
     synced.promptDraft != null &&
     damageAssignReady(pc, synced.promptDraft, state)

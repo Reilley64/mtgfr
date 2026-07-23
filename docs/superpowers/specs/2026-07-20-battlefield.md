@@ -52,7 +52,7 @@ Resting permanent chrome includes:
 - Commander gold outline.
 - Playable border when the object has a current battlefield action.
 - Target highlight for staged object targets.
-- Combat-damage assign and on-board divide-spell draft amounts paint a crimson badge on targets (`assignAmounts` / `paintCardAssignAmount`).
+- Combat-damage assign, on-board divide-spell, and divide-counters draft amounts paint a crimson badge on targets (`assignAmounts` / `paintCardAssignAmount`).
 - Auto-tap preview glyphs.
 - Summoning-sick, keyword, goaded, prepared, owner-strip, P/T, loyalty, counter, and marked-damage badges where the wire exposes those values.
 
