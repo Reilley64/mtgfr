@@ -283,10 +283,12 @@ bases (no shell, no package manager):
    on Argo prune (`Delete=false`, `helm.sh/resource-policy: keep`).
 
 **`mtgfr-web` (`docker/web/Dockerfile`):**
-1. Deps: `oven/bun` — `bun install --frozen-lockfile`.
-2. Build: `node:22-bookworm` — `bun run gen` (Effect-gRPC codegen from `.proto` into gitignored
-   `client/lib/wire/generated/`), `bun run build` → `.output/`.
-3. Runtime: `gcr.io/distroless/nodejs22-debian12:nonroot` — copy `.output/`; `CMD [".output/server/index.mjs"]`.
+1. Deps: `oven/bun:1.3.14` — `bun install --frozen-lockfile` (pin matches `client/package.json`).
+2. Build: `oven/bun:1.3.14` — copy `client/`, `proto/`, and repo-root `design.tokens.json`;
+   `bun run build` (Effect-gRPC codegen, DTCG token gen, typecheck, Nitro/Vite → `.output/`).
+   Nitro emits a Bun server.
+3. Runtime: `oven/bun:1.3.14-distroless` as `nonroot` — copy `.output/`; entrypoint `bun`,
+   `CMD [".output/server/index.mjs"]`.
 
 Both images are pushed to public GHCR (`ghcr.io/<owner>/mtgfr-server`, `mtgfr-web`) tagged with
 the release semver. No moving `latest` tag — pin explicit versions in `terraform.tfvars`.
@@ -341,7 +343,7 @@ Not published to npm. `@semantic-release/npm` bumps `package.json` version only 
 - **Cloudflare Tunnel fully Terraform-managed**: no manual tunnel creation in the Cloudflare UI
   for steady state. Tunnel credentials as a K8s Secret consumed by `cloudflared`.
 - **Distroless runtime images** (this spec): no shell in prod. Ephemeral debug containers
-  for inspection. `cc` variant for dynamically-linked Rust; `nodejs22` for the web BFF.
+  for inspection. `cc` variant for dynamically-linked Rust; `oven/bun:*-distroless` for the web BFF.
 - **No `.releaserc`, no custom release rules**: semantic-release default config only. Version
   bumps follow the built-in Angular analyzer. `@semantic-release/git` not used (no committed
   `CHANGELOG.md`).

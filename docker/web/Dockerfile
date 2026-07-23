@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1
-# mtgfr-web — Foldkit SPA + Nitro BFF on distroless Node (see production-topology spec).
+# mtgfr-web — Foldkit SPA + Nitro BFF on distroless Bun (see production-topology spec).
+# Pin matches client/package.json `packageManager` / engines.bun.
 
-FROM oven/bun:1 AS deps
+FROM oven/bun:1.3.14 AS deps
 WORKDIR /client
 COPY client/package.json client/bun.lock* ./
 RUN bun install --frozen-lockfile
 
-FROM oven/bun:1 AS build
+FROM oven/bun:1.3.14 AS build
 WORKDIR /src
 COPY --from=deps /client/node_modules ./client/node_modules
 COPY client ./client
@@ -25,9 +26,11 @@ ENV VITE_GIT_COMMIT=$GIT_COMMIT
 ENV APP_VERSION=$APP_VERSION
 ENV GIT_COMMIT=$GIT_COMMIT
 # `bun run build` regenerates gitignored Effect-gRPC clients, typechecks, then writes Nitro/Vite output.
+# Nitro detects Bun and emits a Bun.serve server — runtime must be Bun, not Node.
 RUN bun run build
 
-FROM gcr.io/distroless/nodejs22-debian12:nonroot
+# ENTRYPOINT is `/usr/local/bin/bun`; CMD is the Nitro server entry (same shape as nodejs distroless).
+FROM oven/bun:1.3.14-distroless
 WORKDIR /app
 # Nitro writes `.output/public` and `.output/server`; keep both under the runtime root.
 COPY --from=build /src/client/.output ./.output
