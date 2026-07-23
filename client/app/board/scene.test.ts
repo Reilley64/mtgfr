@@ -22,6 +22,7 @@ import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardM
 import {
   BoardPointerUp,
   HandActionActivated,
+  KeyboardEnterPressed,
   type Message,
   PendingChoiceAnswered,
   PromptSubmitted,
@@ -404,6 +405,43 @@ test("pointer up on multi on-board choose_target accumulates picks until Confirm
   expect(next.promptDraft).toEqual({ kind: "card-pick", picked: [1, 2], filter: "" });
   const [, submitCmds] = updateBoard(next, PromptSubmitted(), gameFold, "T1");
   expect(intentFromCommand(submitCmds[0])).toEqual({
+    kind: "choose_targets",
+    player: 0,
+    targets: [
+      { kind: "object", id: 1 },
+      { kind: "object", id: 2 },
+    ],
+  });
+});
+
+test("Enter confirms multi on-board choose_target when draft is ready", () => {
+  const a = creature(1, 1, { name: "A" });
+  const b = creature(2, 1, { name: "B" });
+  const gameFold = fold(
+    state({
+      objects: [a, b],
+      pending_choice: {
+        kind: "choose_target",
+        label: "Target creatures",
+        max: 2,
+        optional: false,
+        player: 0,
+        source: 1,
+        items: [
+          { id: 1, label: "A" },
+          { id: 2, label: "B" },
+        ],
+      },
+    }),
+  );
+  const board: BoardModel = {
+    ...initialBoardModel(),
+    promptDraft: { kind: "card-pick", picked: [1, 2], filter: "" },
+  };
+  const [, commands] = updateBoard(board, KeyboardEnterPressed(), gameFold, "T1");
+  expect(commands).toHaveLength(1);
+  expect(commands[0]?.name).toBe(SubmitIntent.name);
+  expect(intentFromCommand(commands[0])).toEqual({
     kind: "choose_targets",
     player: 0,
     targets: [
