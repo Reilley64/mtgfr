@@ -499,18 +499,34 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
       ],
     );
   });
-  return frame("pending-choice", "Order these triggers — the last one resolves first", [
-    h.div(
-      [h.Class("shrink-0 text-caption text-mist")],
-      [
-        pick == null
-          ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
-          : "Drop on another row to place it — or click / release to cancel.",
-      ],
-    ),
-    h.div([h.DataAttribute("testid", "prompt-order-list"), h.Class("flex flex-col gap-1")], rows),
-    submitButton("Submit", false),
-  ]);
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-order-aim"),
+      h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+      h.Class(
+        "pointer-events-auto fixed left-1/2 z-30 flex max-h-[min(70vh,560px)] w-[min(92vw,560px)] -translate-x-1/2 flex-col gap-2 overflow-hidden rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-snow shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.Class("shrink-0 font-semibold text-body")], ["Order these triggers — the last one resolves first"]),
+      h.div(
+        [h.Class("shrink-0 text-caption text-mist")],
+        [
+          pick == null
+            ? "Drag a trigger to reorder, or click then click where it should go (↑↓ also work)."
+            : "Drop on another row to place it — or click / release to cancel.",
+        ],
+      ),
+      h.div(
+        [
+          h.DataAttribute("testid", "prompt-order-list"),
+          h.Class("flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain"),
+        ],
+        rows,
+      ),
+      submitButton("Submit", false),
+    ],
+  );
 }
 
 function amountStepper(id: number, amount: number, max: number): Html {

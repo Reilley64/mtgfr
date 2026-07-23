@@ -32,7 +32,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player selecting from the top of my library, I assign cards into Take vs Bottom lanes in docked `pending-select-top-aim` (up to the allowed count).
 - As a player distributing revealed cards from the top, I click cards across Hand / Bottom / Exile lanes in docked `pending-distribute-aim` (capacity per lane).
 - As a player partitioning revealed cards, I click cards between Pile A and Pile B lanes in docked `pending-partition-aim`.
-- As a player ordering triggers, I drag rows, click-to-place, or use ↑↓ so the last listed resolves first.
+- As a player ordering triggers, I drag rows, click-to-place, or use ↑↓ in docked `pending-order-aim` so the last listed resolves first.
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
 - As a player joining forces (`pay_any_amount_of_mana`), I adjust a Min/−/value/+/Max stepper up to my affordable max and confirm (0 declines).
@@ -79,7 +79,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `select_from_top` uses docked `pending-select-top-aim` with Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
 - `distribute_top` uses docked `pending-distribute-aim` with Revealed / Hand / Bottom / Exile lanes (`prompt-distribute-lanes`); click cycles a card through lanes with room (`nextDistributeBucket`), then back to Revealed; Distribute enables when each lane hits its exact count.
 - `partition_revealed` uses docked `pending-partition-aim` with Pile A / Pile B lanes (`prompt-partition-lanes`); click toggles a card between piles via `PromptCardToggled`.
-- `order_triggers` rows support HTML5 drag reorder (`Draggable` / `OnDrop` → `PromptOrderRowClicked`, `OnDragEnd` → `PromptOrderDragEnded`), click-to-place (`orderPickPos`), and ↑↓ (`PromptOrderMoved`); list lives under `prompt-order-list`. Submit still emits `choose_order`.
+- `order_triggers` uses docked `pending-order-aim`; rows support HTML5 drag reorder (`Draggable` / `OnDrop` → `PromptOrderRowClicked`, `OnDragEnd` → `PromptOrderDragEnded`), click-to-place (`orderPickPos`), and ↑↓ (`PromptOrderMoved`); list lives under `prompt-order-list`. Submit still emits `choose_order`.
 - Enter or Space submits a ready lane / order draft (`order_triggers`, `scry`, `surveil`, `select_from_top`, `distribute_top`, `partition_revealed`) the same way the Done / Confirm button does (`trySubmitReadyPendingDraft`).
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
 - Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
