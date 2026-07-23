@@ -36,6 +36,35 @@ export function radialScreenCenter(
   return worldToScreen(camera, card.x + card.w / 2, card.y + card.h / 2);
 }
 
+/**
+ * CSS box for the radial SVG over a board canvas that paints in logical viewport
+ * pixels but CSS-stretches to the window (`h-full w-full`). Percentages of that
+ * same box keep the donut on the painted card at any window size; logical `px`
+ * `left`/`top` only align when window == viewport.
+ */
+export function radialOverlayPlacement(
+  center: { x: number; y: number },
+  size: number,
+  viewport: { width: number; height: number },
+): { left: string; top: string; width: string; height: string; transform: string } {
+  if (viewport.width <= 0 || viewport.height <= 0) {
+    return {
+      left: "0%",
+      top: "0%",
+      width: "0%",
+      height: "0%",
+      transform: "translate(-50%, -50%)",
+    };
+  }
+  return {
+    left: `${(center.x / viewport.width) * 100}%`,
+    top: `${(center.y / viewport.height) * 100}%`,
+    width: `${(size / viewport.width) * 100}%`,
+    height: `${(size / viewport.height) * 100}%`,
+    transform: "translate(-50%, -50%)",
+  };
+}
+
 export function radialOptionKey(opt: RadialOption): string {
   if (opt.kind === "tap_for_mana") return "tap_for_mana";
   return `action:${opt.action.id}`;

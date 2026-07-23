@@ -16,7 +16,7 @@ import { emptyCostPicks } from "./action/execution";
 import { worldToScreen } from "./geometry/camera";
 import type { RenderCard } from "./geometry/layout";
 import { avatarPos, layout, STEP, ZONE } from "./geometry/layout";
-import { activationRadialOuterRadius } from "./geometry/radial";
+import { activationRadialOuterRadius, radialOverlayPlacement } from "./geometry/radial";
 import { boardOverlays } from "./html/overlays";
 import { resolveBoardCardArtMounts, resolveBoardOverlayMounts, resolveLiveBoardMounts } from "./html/scene-helpers";
 import {
@@ -511,13 +511,16 @@ test("activation radial svg is centered on the selected card screen center", () 
   if (card == null) return;
   const center = worldToScreen(board.camera, card.x + card.w / 2, card.y + card.h / 2);
   const size = activationRadialOuterRadius(board.camera.zoom) * 2 + 8;
+  const place = radialOverlayPlacement(center, size, board.viewport);
   const selected: ViewModel = { board, fold: gameFold, tableId: "T1" };
 
   overlayScene(
     selected,
-    Scene.expect(Scene.selector("svg")).toHaveStyle("left", `${center.x - size / 2}px`),
-    Scene.expect(Scene.selector("svg")).toHaveStyle("top", `${center.y - size / 2}px`),
-    Scene.expect(Scene.selector("svg")).not.toHaveStyle("transform"),
+    Scene.expect(Scene.selector("svg")).toHaveStyle("left", place.left),
+    Scene.expect(Scene.selector("svg")).toHaveStyle("top", place.top),
+    Scene.expect(Scene.selector("svg")).toHaveStyle("width", place.width),
+    Scene.expect(Scene.selector("svg")).toHaveStyle("height", place.height),
+    Scene.expect(Scene.selector("svg")).toHaveStyle("transform", place.transform),
   );
 });
 

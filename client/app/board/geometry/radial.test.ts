@@ -11,6 +11,7 @@ import {
   type RadialPress,
   radialOptionKey,
   radialOptions,
+  radialOverlayPlacement,
   radialPressDown,
   radialPressUp,
   radialScreenCenter,
@@ -48,6 +49,21 @@ describe("radialScreenCenter", () => {
     const card = { x: 10, y: 20, w: 120, h: 80 };
 
     expect(radialScreenCenter(camera, card)).toEqual({ x: 145, y: 107 });
+  });
+});
+
+describe("radialOverlayPlacement", () => {
+  it("places the SVG in % of the viewport so CSS-stretched canvases stay aligned", () => {
+    // Board canvases paint in logical viewport px but CSS-stretch to the window
+    // (`h-full w-full`). Fixed left/top in logical px only centers when window ==
+    // viewport; percentages of the same box track the painted card at any size.
+    expect(radialOverlayPlacement({ x: 720, y: 450 }, 200, { width: 1440, height: 900 })).toEqual({
+      left: "50%",
+      top: "50%",
+      width: `${(200 / 1440) * 100}%`,
+      height: `${(200 / 900) * 100}%`,
+      transform: "translate(-50%, -50%)",
+    });
   });
 });
 

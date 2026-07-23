@@ -14,6 +14,7 @@ import {
   type RadialOption,
   radialOptionKey,
   radialOptions,
+  radialOverlayPlacement,
   radialScreenCenter,
   wedgeLabelPoint,
   wedgePath,
@@ -76,6 +77,7 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
   const outer = activationRadialOuterRadius(zoom);
   const size = outer * 2 + 8;
   const origin = size / 2;
+  const placement = radialOverlayPlacement(center, size, board.viewport);
   const n = options.length;
   const armed = board.radialPress.armed;
   const hover = board.radialHover;
@@ -146,12 +148,8 @@ export function activationRadialView(board: BoardModel, state: VisibleState): Ht
           h.Role("group"),
           h.AriaLabel("Activation options"),
           h.Class("pointer-events-none absolute z-[31]"),
-          h.Width(String(size)),
-          h.Height(String(size)),
-          h.Style({
-            left: `${center.x - size / 2}px`,
-            top: `${center.y - size / 2}px`,
-          }),
+          h.Attribute("viewBox", `0 0 ${size} ${size}`),
+          h.Style(placement),
         ],
         [h.g([h.Transform(`translate(${origin}, ${origin})`), h.Class("pointer-events-auto")], wedges)],
       ),
