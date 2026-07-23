@@ -1,0 +1,41 @@
+# Trample
+# When this creature enters, you may search your library for any number of land cards, exile
+# them, then shuffle. If you do, this creature has base power and base toughness each equal to the
+# number of cards exiled this way.
+name = "Trench Gorger"
+id = "a5e37c6e-ae42-4c98-ba20-840ea3c4a6ab"
+default_print = "b631b71b-78f6-41bc-a26a-c761ee1671a1"
+otags = ["extract", "shapechange", "triggered-ability", "tutor-land-any", "tutor-to-exile", "untracked-indefinite-effect"]
+oracle = "Trample\nWhen this creature enters, you may search your library for any number of land cards, exile them, then shuffle. If you do, this creature has base power and base toughness each equal to the number of cards exiled this way."
+set = "cmd"
+subtypes = ["Leviathan"]
+keywords = ["trample"]
+
+[cost]
+generic = 6
+blue = 2
+
+[kind]
+type = "creature"
+power = 6
+toughness = 6
+
+# When this creature enters, you may search your library for any number of land cards, exile
+# them, then shuffle. If you do, this creature has base power and base toughness each equal to the
+# number of cards exiled this way.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# search your library for any number of land cards, exile them, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = "land"
+to_zone = "exile"
+count = "any"
+
+# this creature has base power and base toughness each equal to the number of cards exiled this
+# way.
+[[abilities.effects]]
+type = "set_own_base_pt_from_amount"
+amount = "cards_exiled_by_search_this_way"

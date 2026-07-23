@@ -28,6 +28,7 @@ impl Game {
                 repeat,
                 restriction,
                 persist_until_end_of_turn,
+                recipient,
                 ..
             } => {
                 // Wrap the static batch as [`Mana::Restricted`] if this ability's mana is
@@ -39,12 +40,16 @@ impl Game {
                 let repeat = self
                     .resolve_count(repeat, controller, source, target, x)
                     .min(u8::MAX as u32) as u8;
+                // Magus of the Vineyard: "that player adds {G}{G}" — the mana lands in the
+                // filled-in recipient's pool, not this ability's controller's. `None` (every
+                // other `add_mana` ability) leaves it with the controller, unchanged.
+                let recipient = recipient.unwrap_or(controller);
                 let mut events = Vec::new();
                 let mut push = |mana: Mana, amount: u8| {
                     let amount = amount.saturating_mul(repeat);
                     if amount > 0 {
                         events.push(Event::ManaAdded {
-                            player: controller,
+                            player: recipient,
                             mana,
                             amount,
                             persist: persist_until_end_of_turn,

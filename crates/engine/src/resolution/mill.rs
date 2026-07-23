@@ -28,9 +28,17 @@ impl Game {
             Effect::ExileTopMayPlay {
                 count,
                 until_next_turn,
+                face_down,
+                free_while_source,
             } => {
                 let n = self.resolve_count(count, controller, source, target, x);
-                self.exile_top_may_play_events(controller, n, until_next_turn)
+                self.exile_top_may_play_events(
+                    controller,
+                    n,
+                    until_next_turn,
+                    face_down,
+                    free_while_source.then_some(source),
+                )
             }
             // Containment Construct's payoff: exile the just-discarded card from the graveyard
             // and grant permission to play it until end of turn.

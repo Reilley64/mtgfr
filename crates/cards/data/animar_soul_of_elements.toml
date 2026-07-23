@@ -1,0 +1,44 @@
+# Protection from white and from black
+# Whenever you cast a creature spell, put a +1/+1 counter on Animar.
+# Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar.
+name = "Animar, Soul of Elements"
+id = "725880b2-1675-414f-b61b-cf6533797dbf"
+default_print = "cb073d5b-9515-492d-9b2d-0f64e85f1da8"
+otags = ["cast-trigger-you", "cost-reducer-creature", "gains-pp-counters", "hate-black", "hate-white", "pp-counters-matter", "repeatable-pp-counters"]
+oracle = "Protection from white and from black\nWhenever you cast a creature spell, put a +1/+1 counter on Animar.\nCreature spells you cast cost {1} less to cast for each +1/+1 counter on Animar."
+set = "cmd"
+subtypes = ["Elemental"]
+legendary = true
+keywords = [{ protection = "white" }, { protection = "black" }]
+
+[cost]
+green = 1
+blue = 1
+red = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# Whenever you cast a creature spell, put a +1/+1 counter on Animar.
+[[abilities]]
+timing = "cast_spell"
+spell_filter = "creature"
+caster = "you"
+
+# put a +1/+1 counter on Animar.
+[[abilities.effects]]
+type = "put_counters"
+count = 1
+target = "this"
+
+# Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar.
+[[abilities]]
+timing = "static"
+
+# Creature spells you cast cost {1} less to cast for each +1/+1 counter on Animar.
+[[abilities.effects]]
+type = "reduce_spell_cost"
+amount = "per_counter_on_source"
+filter = "creature"

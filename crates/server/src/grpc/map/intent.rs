@@ -65,6 +65,7 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
         } => Intent::Cast(pb::WireIntentCast {
             player: u32::from(player),
             object,
@@ -79,6 +80,7 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             evoked,
             strive_count: u32::from(strive_count),
             replicate_count: u32::from(replicate_count),
+            alternative_cost,
         }),
         WireIntent::PlayLand { player, object } => Intent::PlayLand(pb::WireIntentPlayLand {
             player: u32::from(player),
@@ -145,10 +147,11 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 count: u32::from(count),
             })
         }
-        WireIntent::PayOptionalCost { player, pay } => {
+        WireIntent::PayOptionalCost { player, pay, x } => {
             Intent::PayOptionalCost(pb::WireIntentPayOptionalCost {
                 player: u32::from(player),
                 pay,
+                x,
             })
         }
         WireIntent::AssignDamage { player, assignment } => {
@@ -296,6 +299,12 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
                 color: u32::from(color),
             })
         }
+        WireIntent::ChooseCardName { player, name } => {
+            Intent::ChooseCardName(pb::WireIntentChooseCardName {
+                player: u32::from(player),
+                name,
+            })
+        }
         WireIntent::ChooseAttachHost { player, host } => {
             Intent::ChooseAttachHost(pb::WireIntentChooseAttachHost {
                 player: u32::from(player),
@@ -317,12 +326,15 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
             card,
             sacrifice,
         }),
-        WireIntent::ActivateHandAbility { player, card } => {
-            Intent::ActivateHandAbility(pb::WireIntentActivateHandAbility {
-                player: u32::from(player),
-                card,
-            })
-        }
+        WireIntent::ActivateHandAbility {
+            player,
+            card,
+            index,
+        } => Intent::ActivateHandAbility(pb::WireIntentActivateHandAbility {
+            player: u32::from(player),
+            card,
+            index,
+        }),
         WireIntent::Suspend { player, card } => Intent::Suspend(pb::WireIntentSuspend {
             player: u32::from(player),
             card,
@@ -356,6 +368,19 @@ pub fn wire_intent_to_pb(intent: WireIntent) -> pb::WireIntent {
         } => Intent::CastAdventure(pb::WireIntentCastAdventure {
             player: u32::from(player),
             source,
+            target: target.map(wire_target_to_pb),
+            x,
+        }),
+        WireIntent::CastSplitHalf {
+            player,
+            source,
+            half,
+            target,
+            x,
+        } => Intent::CastSplitHalf(pb::WireIntentCastSplitHalf {
+            player: u32::from(player),
+            source,
+            half: u32::from(half),
             target: target.map(wire_target_to_pb),
             x,
         }),
@@ -458,6 +483,7 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             evoked,
             strive_count,
             replicate_count,
+            alternative_cost,
         }) => WireIntent::Cast {
             player: u8_trunc(player),
             object,
@@ -472,6 +498,7 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             evoked,
             strive_count: u8_trunc(strive_count),
             replicate_count: u8_trunc(replicate_count),
+            alternative_cost,
         },
         Intent::PlayLand(pb::WireIntentPlayLand { player, object }) => WireIntent::PlayLand {
             player: u8_trunc(player),
@@ -541,10 +568,11 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
                 count: u8_trunc(count),
             }
         }
-        Intent::PayOptionalCost(pb::WireIntentPayOptionalCost { player, pay }) => {
+        Intent::PayOptionalCost(pb::WireIntentPayOptionalCost { player, pay, x }) => {
             WireIntent::PayOptionalCost {
                 player: u8_trunc(player),
                 pay,
+                x,
             }
         }
         Intent::AssignDamage(pb::WireIntentAssignDamage { player, assignment }) => {
@@ -691,6 +719,12 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
                 color: u8_trunc(color),
             }
         }
+        Intent::ChooseCardName(pb::WireIntentChooseCardName { player, name }) => {
+            WireIntent::ChooseCardName {
+                player: u8_trunc(player),
+                name,
+            }
+        }
         Intent::ChooseAttachHost(pb::WireIntentChooseAttachHost { player, host }) => {
             WireIntent::ChooseAttachHost {
                 player: u8_trunc(player),
@@ -712,12 +746,15 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
             card,
             sacrifice,
         },
-        Intent::ActivateHandAbility(pb::WireIntentActivateHandAbility { player, card }) => {
-            WireIntent::ActivateHandAbility {
-                player: u8_trunc(player),
-                card,
-            }
-        }
+        Intent::ActivateHandAbility(pb::WireIntentActivateHandAbility {
+            player,
+            card,
+            index,
+        }) => WireIntent::ActivateHandAbility {
+            player: u8_trunc(player),
+            card,
+            index,
+        },
         Intent::Suspend(pb::WireIntentSuspend { player, card }) => WireIntent::Suspend {
             player: u8_trunc(player),
             card,
@@ -751,6 +788,19 @@ pub fn wire_intent_from_pb(intent: pb::WireIntent) -> Result<WireIntent, String>
         }) => WireIntent::CastAdventure {
             player: u8_trunc(player),
             source,
+            target: opt_wire_target_from_pb(target)?,
+            x,
+        },
+        Intent::CastSplitHalf(pb::WireIntentCastSplitHalf {
+            player,
+            source,
+            half,
+            target,
+            x,
+        }) => WireIntent::CastSplitHalf {
+            player: u8_trunc(player),
+            source,
+            half: u8_trunc(half),
             target: opt_wire_target_from_pb(target)?,
             x,
         },
@@ -854,6 +904,7 @@ mod tests {
             evoked: false,
             strive_count: 2,
             replicate_count: 0,
+            alternative_cost: false,
         };
         let pb = wire_intent_to_pb(cast.clone());
         assert_eq!(wire_intent_from_pb(pb).unwrap(), cast);
@@ -886,6 +937,16 @@ mod tests {
             let pb = wire_intent_to_pb(intent.clone());
             assert_eq!(wire_intent_from_pb(pb).unwrap(), intent);
         }
+    }
+
+    #[test]
+    fn choose_card_name_round_trips_through_pb() {
+        let intent = WireIntent::ChooseCardName {
+            player: 2,
+            name: "Conundrum Sphinx".to_string(),
+        };
+        let pb = wire_intent_to_pb(intent.clone());
+        assert_eq!(wire_intent_from_pb(pb).unwrap(), intent);
     }
 
     #[test]

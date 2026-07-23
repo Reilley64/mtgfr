@@ -96,17 +96,37 @@ export function pointerUp(phase: PointerPhase, x: number, y: number, hitAtUp: Re
 // ── Combat staging ───────────────────────────────────────────────────────────────────
 
 /** Stage `from` as an attacker on `defender` (a seat), or null if it can't attack / no avatar was
- * hit. Re-dropping an already-staged attacker retargets it. */
+ * hit. `defenderPlaneswalker` narrows the declaration to a planeswalker that seat controls
+ * (CR 508.1a). Re-dropping an already-staged attacker retargets it. */
 export function attackDrop(
   attackers: WireAttack[],
   from: Pick<RenderCard, "id" | "tapped" | "summoningSick" | "hasHaste">,
   defender: number | null,
+  defenderPlaneswalker?: number,
 ): WireAttack[] | null {
   // Can't attack if tapped, or summoning sick without haste (matches the engine).
   if (from.tapped || (from.summoningSick && !from.hasHaste)) return null;
   if (defender == null) return null;
   const rest = attackers.filter((w) => w.attacker !== from.id);
-  return [...rest, { attacker: from.id, defender }];
+  return [
+    ...rest,
+    {
+      attacker: from.id,
+      defender,
+      ...(defenderPlaneswalker != null && { defender_planeswalker: defenderPlaneswalker }),
+    },
+  ];
+}
+
+/** The battlefield planeswalker an opponent controls that a drop landed on, or null — the only
+ * permanent a creature may be declared attacking (CR 508.1a). Dropping on your own planeswalker,
+ * or on any other permanent, is not an attack declaration. */
+export function attackablePlaneswalker(target: RenderCard | null, opponents: number[]): RenderCard | null {
+  if (!target) return null;
+  if (target.zone !== ZONE.Battlefield) return null;
+  if (target.kind !== "planeswalker") return null;
+  if (!opponents.includes(target.controller)) return null;
+  return target;
 }
 
 /** Stage `blockerId` blocking the creature dropped onto, or null if that card isn't an attacker

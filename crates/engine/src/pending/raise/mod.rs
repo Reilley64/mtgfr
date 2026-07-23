@@ -238,11 +238,22 @@ pub(crate) enum ChoiceRequest {
         chooser: crate::PlayerId,
         source: crate::ObjectId,
     },
+    /// Next seat in a join-forces payment round — empty remaining skips.
+    NextJoinForcesPayment {
+        remaining: Vec<crate::PlayerId>,
+        source: crate::ObjectId,
+    },
     /// Next seat in a council's-dilemma vote — empty remaining skips.
     NextVote {
         remaining: Vec<crate::PlayerId>,
         source: crate::ObjectId,
         options: &'static [&'static str],
+    },
+    /// Next seat in Conundrum Sphinx's name-a-card fan-out — mandatory, empty remaining skips
+    /// (same "every living seat, never skipped" posture as [`Self::NextVote`]).
+    NextCardName {
+        remaining: Vec<crate::PlayerId>,
+        source: crate::ObjectId,
     },
     /// Next seat in a multi-player sacrifice edict — no real choice left → `None` (caller runs
     /// follow-up).
@@ -489,11 +500,17 @@ pub(super) fn choice_from_request(game: &Game, request: ChoiceRequest) -> Option
             chooser,
             source,
         } => fanout::next_counter_target(game, remaining, chooser, source),
+        ChoiceRequest::NextJoinForcesPayment { remaining, source } => {
+            fanout::next_join_forces_payment(remaining, source)
+        }
         ChoiceRequest::NextVote {
             remaining,
             source,
             options,
         } => fanout::next_vote(remaining, source, options),
+        ChoiceRequest::NextCardName { remaining, source } => {
+            fanout::next_card_name(remaining, source)
+        }
         ChoiceRequest::NextSacrificeEdict {
             remaining,
             keep_one,

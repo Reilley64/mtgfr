@@ -117,6 +117,17 @@ pub enum VisibleEvent {
         /// The adventure's chosen `{X}` value (0 for a non-`{X}` adventure) — public.
         x: u32,
     },
+    /// One half of a split card went on the stack (CR 709). Public — the stack is visible.
+    SplitHalfSpellCast {
+        spell: ObjectId,
+        source: ObjectId,
+        /// Which of the card's halves was cast (its index in `CardDef::halves`) — public.
+        half: u8,
+        controller: u8,
+        target: Option<WireTarget>,
+        /// The half's chosen `{X}` value (0 for a non-`{X}` half) — public.
+        x: u32,
+    },
     StepBegan {
         /// Step discriminant; see `engine::Step`.
         step: u8,
@@ -237,6 +248,11 @@ pub enum VisibleEvent {
     AddedSubtypes {
         object: ObjectId,
     },
+    /// A permanent's base power and toughness were SET indefinitely (Trench Gorger's search-and-
+    /// exile ETB). Public battlefield status, like `ReanimatedCreatureBecame`.
+    BasePtSetIndefinite {
+        object: ObjectId,
+    },
     /// A permanent became a copy of another creature as it entered (Altered Ego, Cursed Mirror).
     /// Its projected name/types change accordingly — a copy is public. The copied `def` isn't
     /// threaded onto the wire event (the client's per-object state comes from a fresh snapshot each
@@ -284,9 +300,12 @@ pub enum VisibleEvent {
     ConditionedControlEnded {
         object: ObjectId,
     },
+    /// A creature was declared as an attacker (CR 508.1a). `defender` is the defending player;
+    /// `defender_planeswalker` names their planeswalker it's attacking, if it attacked one.
     AttackerDeclared {
         object: ObjectId,
         defender: u8,
+        defender_planeswalker: Option<ObjectId>,
     },
     /// A token was put onto the battlefield already tapped and attacking `defender` (Combat
     /// Calligrapher), not via the declare-attackers step (CR 508.4).

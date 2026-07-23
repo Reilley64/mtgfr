@@ -1,0 +1,53 @@
+# +1: Untap two target lands.
+# −1: Create a 3/3 green Beast creature token.
+# −4: Creatures you control get +3/+3 and gain trample until end of turn.
+name = "Garruk Wildspeaker"
+id = "186b4def-4fff-4a2b-bcbf-5318b0ac5fa9"
+default_print = "08cf7ee6-ba30-42cd-a5b3-fd2fe7252f11"
+otags = ["beast-tokens", "cycle-lrw-mono-color-lt", "creature-token-maker", "enlarge-team", "mana-accel-self", "planeswalker", "ramp", "untapper-land"]
+oracle = "+1: Untap two target lands.\n−1: Create a 3/3 green Beast creature token.\n−4: Creatures you control get +3/+3 and gain trample until end of turn."
+set = "cmd"
+subtypes = ["Garruk"]
+legendary = true
+
+[cost]
+generic = 2
+green = 2
+
+[kind]
+type = "planeswalker"
+loyalty = 3
+
+# +1: Untap two target lands.
+[[abilities]]
+timing = "activated"
+loyalty = 1
+
+# Untap two target lands.
+[[abilities.effects]]
+type = "untap_target"
+target = { permanent = { types = "land" } }
+count = { min = 2, max = 2 }
+
+# −1: Create a 3/3 green Beast creature token.
+[[abilities]]
+timing = "activated"
+loyalty = -1
+
+# Create a 3/3 green Beast creature token.
+[[abilities.effects]]
+type = "create_token"
+token = "6bb61f34-5d57-4eaa-a02c-f5d08c1ee920"
+count = 1
+
+# −4: Creatures you control get +3/+3 and gain trample until end of turn.
+[[abilities]]
+timing = "activated"
+loyalty = -4
+
+# Creatures you control get +3/+3 and gain trample until end of turn.
+[[abilities.effects]]
+type = "pump_creatures_you_control_until_end_of_turn"
+power = 3
+toughness = 3
+keywords = ["trample"]

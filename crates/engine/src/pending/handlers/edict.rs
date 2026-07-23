@@ -4,10 +4,17 @@ use crate::*;
 
 impl Game {
     pub(crate) fn apnap_order(&self) -> Vec<PlayerId> {
+        self.turn_order_from(self.active_player)
+    }
+
+    /// Every living player in turn order starting with `first` — a "starting with you" round
+    /// (CR 101.4: council's dilemma, join forces), which is [`Self::apnap_order`] when `first` is
+    /// the active player.
+    pub(crate) fn turn_order_from(&self, first: PlayerId) -> Vec<PlayerId> {
         let n = self.players.len();
-        let active = self.active_player.0 as usize;
+        let start = first.0 as usize;
         (0..n)
-            .map(|i| PlayerId(((active + i) % n) as u8))
+            .map(|i| PlayerId(((start + i) % n) as u8))
             .filter(|&p| !self.players[p.0 as usize].lost)
             .collect()
     }
@@ -660,7 +667,8 @@ impl Game {
         }
         // Match each kept permanent to a distinct type slot it has, and require the keep set to be
         // maximal — as many slots as `options` can simultaneously fill. Only three slots are
-        // reachable (no planeswalker permanent in the pool), so small brute force suffices.
+        // reachable (the planeswalker slot is dropped, see `CasterKeepsOneOfEachTypePerPlayer`),
+        // so small brute force suffices.
         let slots = [TypeSet::ARTIFACT, TypeSet::CREATURE, TypeSet::ENCHANTMENT];
         let keep_masks: Vec<TypeSet> = keeps
             .iter()

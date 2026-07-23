@@ -1,0 +1,31 @@
+# When this creature enters, return target nonland permanent to its owner's hand.
+# Evoke {1}{U}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)
+name = "Aethersnipe"
+id = "3e0be003-4f42-4917-b85d-46baf2afd734"
+default_print = "2cc9b5ee-4d6d-42ea-8b13-b8a7059781c9"
+otags = ["cycle-evoke-elemental", "removal-bounce", "removal-nonland", "triggered-ability"]
+oracle = "When this creature enters, return target nonland permanent to its owner's hand.\nEvoke {1}{U}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)"
+set = "2x2"
+subtypes = ["Elemental"]
+
+[cost]
+generic = 5
+blue = 1
+
+[evoke]
+generic = 1
+blue = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# When this creature enters, return target nonland permanent to its owner's hand.
+[[abilities]]
+timing = "etb"
+
+# return target nonland permanent to its owner's hand.
+[[abilities.effects]]
+type = "return_to_hand"
+target = { permanent = { types = "nonland" } }

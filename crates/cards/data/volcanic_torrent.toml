@@ -26,12 +26,10 @@ type = "sorcery"
 [[abilities]]
 timing = "spell"
 
-# deals X damage to each creature ... your opponents control, where X is the number of spells
-# you've cast this turn.
-# ponytail: planeswalkers are dropped — no pool card fields a planeswalker permanent to damage
-# (mirrors #91's Mangara/Tomik planeswalker-attack gap; upgrade when a planeswalker permanent
-# type lands).
+# deals X damage to each creature and planeswalker your opponents control, where X is the
+# number of spells you've cast this turn.
 [[abilities.effects]]
 type = "damage_each_creature"
 amount = "spells_cast_this_turn"
 opponents_only = true
+include_planeswalkers = true

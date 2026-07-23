@@ -113,6 +113,15 @@ pub(crate) struct PlayPermissions {
     /// ([`Event::PlayFromExilePermissionArmed`](crate::Event::PlayFromExilePermissionArmed)), then
     /// clears like a normal entry at that turn's cleanup.
     pub play_from_exile: Vec<(ObjectId, PlayerId, bool)>,
+    /// Intet, the Dreamer's "you may play that card without paying its mana cost for as long as
+    /// Intet remains on the battlefield" (CR 118.5 plus a live, source-scoped duration): each entry
+    /// is `(an exiled card, the player who may play it, the granting permanent)`. Unlike
+    /// [`play_from_exile`](Self::play_from_exile) there is no cleanup expiry — the duration is read
+    /// live by [`Game::may_play_from_exile_free_while_source`](crate::Game), which requires
+    /// `source` to still be on the battlefield, so an entry for a dead source simply stops
+    /// matching. Granted by [`Effect::ExileTopMayPlay`](crate::Effect::ExileTopMayPlay)'s
+    /// `free_while_source` mode.
+    pub play_from_exile_free_while_source: Vec<(ObjectId, PlayerId, ObjectId)>,
     /// Free-cast-from-exile (CR 118.5, "without paying its mana cost") — each entry is `(an
     /// exiled card, the player who may cast it for free)`, granted by
     /// [`Effect::CastExiledWithThisFree`](crate::Effect::CastExiledWithThisFree) (Quintorius,
@@ -151,6 +160,15 @@ pub(crate) struct PlayPermissions {
     /// entry here stale — keyed on a now-dead spell id it can never re-match, so it's harmless. No
     /// pool card counters an adventure; drop the entry in `counter_spell` if one ever does.
     pub adventure_fronts: Vec<(ObjectId, CardDef)>,
+    /// Split-card halves currently on the stack, each `(the half's spell object, the fused card to
+    /// restore)` — the same off-`Copy` shape as [`adventure_fronts`](Self::adventure_fronts). Only
+    /// the cast half is on the stack (CR 709.4a); in every other zone the object is the whole split
+    /// card again (CR 709.4), so [`Game::create_object`](crate::Game) swaps the fused def back in
+    /// on the way out — one choke covering resolution, being countered, and a tuck alike.
+    /// ponytail: entries are never removed. Object ids retire on zone change (CR 400.7), so a stale
+    /// entry can never re-match; drop it in the stack-exit paths if a game ever runs long enough
+    /// for the list's length to matter.
+    pub split_halves_on_stack: Vec<(ObjectId, CardDef)>,
 }
 
 /// Transient per-batch scratch for trigger enqueueing — not event-sourced.

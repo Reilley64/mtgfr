@@ -113,6 +113,12 @@ impl Game {
                         // `Event::Milled` arm here, mirroring `SearchDest::Graveyard`'s
                         // `search_library` arm, from the first card that needs it.
                         SearchDest::Graveyard => {}
+                        // ponytail: no pool card sets `matched_dest = "exile"` on
+                        // `reveal_until`/`reveal_top_cards` either (Trench Gorger's #182 search is
+                        // a genuine `search_library`, not a top-down reveal) — wire an
+                        // `Event::MovedToExile` arm here, mirroring `SearchDest::Exile`'s
+                        // `search_library` arm, from the first card that needs it.
+                        SearchDest::Exile => {}
                     }
                     next += 1;
                 }
@@ -193,6 +199,12 @@ impl Game {
                         // ponytail: see the sibling arm in `RevealUntil`'s resolution above — no
                         // pool card sets `matched_dest = "graveyard"` on `reveal_top_cards` either.
                         SearchDest::Graveyard => {}
+                        // ponytail: no pool card sets `matched_dest = "exile"` on
+                        // `reveal_until`/`reveal_top_cards` either (Trench Gorger's #182 search is
+                        // a genuine `search_library`, not a top-down reveal) — wire an
+                        // `Event::MovedToExile` arm here, mirroring `SearchDest::Exile`'s
+                        // `search_library` arm, from the first card that needs it.
+                        SearchDest::Exile => {}
                     }
                     next += 1;
                 }

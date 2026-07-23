@@ -229,6 +229,8 @@ impl Game {
                 card: self.next_object_id(),
                 from,
                 until_next_turn: false,
+                face_down: false,
+                free_while_source: None,
             };
             self.push_apply(&mut events, event);
         }
@@ -420,6 +422,7 @@ impl Game {
         let Some(from) = choice else {
             // Fail to find ends the search outright (CR 701.19c is always legal).
             self.shuffle(player);
+            self.continue_search_fanout();
             return Ok(events);
         };
         let event = match dest {
@@ -451,7 +454,16 @@ impl Game {
                 card: self.next_object_id(),
                 from,
             },
+            // Trench Gorger: "search your library for any number of land cards, exile them" — the
+            // same library-to-exile choke a battlefield/graveyard exile uses (CR 400.4).
+            SearchDest::Exile => Event::MovedToExile {
+                card: self.next_object_id(),
+                from,
+            },
         };
+        if dest == SearchDest::Exile {
+            self.resolution_frame.cards_exiled_by_search_this_way += 1;
+        }
         self.push_apply(&mut events, event);
 
         let remaining = remaining.saturating_sub(1);
@@ -479,7 +491,51 @@ impl Game {
         } else {
             self.shuffle(player);
         }
+        self.continue_search_fanout();
         Ok(events)
+    }
+
+    /// After a searching player's own search fully ends (library shuffled), continue an
+    /// all-players fan-out ([`SearchScope::AllPlayers`], Veteran Explorer) to the next queued
+    /// player — a fresh [`PendingChoice::SearchLibrary`] over their own library, same
+    /// filter/destination/count. A no-op (single-searcher search, or the fan-out's last player
+    /// just finished) when [`ResolutionFrame::search_fanout`](crate::resolution::ResolutionFrame::search_fanout)
+    /// is unset or its queue is empty.
+    fn continue_search_fanout(&mut self) {
+        let Some(SearchFanout {
+            mut remaining,
+            filter,
+            to_zone,
+            tapped,
+            count,
+            overflow,
+        }) = self.resolution_frame.search_fanout.take()
+        else {
+            return;
+        };
+        if remaining.is_empty() {
+            return;
+        }
+        let next_player = remaining.remove(0);
+        self.resolution_frame.search_fanout = Some(SearchFanout {
+            remaining,
+            filter,
+            to_zone,
+            tapped,
+            count,
+            overflow,
+        });
+        pending::raise(
+            self,
+            pending::ChoiceRequest::SearchLibrary {
+                player: next_player,
+                filter,
+                dest: to_zone,
+                tapped,
+                count,
+                overflow,
+            },
+        );
     }
 
     /// Answer a [`PendingChoice::PutLandFromHand`]: put the chosen land (one of the offered

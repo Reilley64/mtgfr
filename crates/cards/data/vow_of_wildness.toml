@@ -1,0 +1,27 @@
+# Enchant creature
+# Enchanted creature gets +3/+3, has trample, and can't attack you or planeswalkers you control.
+name = "Vow of Wildness"
+id = "569a65fb-e35f-4388-ab49-f57be46b4889"
+default_print = "764fa7f1-b92b-42cc-983e-e0b5457369a7"
+oracle = "Enchant creature\nEnchanted creature gets +3/+3, has trample, and can't attack you or planeswalkers you control."
+set = "cmr"
+subtypes = ["Aura"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "aura"
+
+# Enchanted creature gets +3/+3, has trample, and can't attack you or planeswalkers you control.
+[[abilities]]
+timing = "static"
+
+# Enchanted creature gets +3/+3, has trample, and can't attack you or planeswalkers you control.
+[[abilities.effects]]
+type = "grant_to_attached"
+power = 3
+toughness = 3
+keywords = ["trample"]
+cant_attack_controller = true

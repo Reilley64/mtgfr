@@ -77,6 +77,8 @@ const ALL_PENDING_CHOICE_KINDS = [
   "pay_cumulative_upkeep_or_sacrifice",
   "may_draw_up_to",
   "trade_secrets_caster_draw",
+  "pay_any_amount_of_mana",
+  "choose_card_name",
   "trade_secrets_repeat",
 ] as const satisfies readonly PendingChoiceView["kind"][];
 
@@ -585,6 +587,7 @@ describe("answerFromDraft builds accepted intents", () => {
         kind: "choose_target",
         items: [{ id: 11, label: "Bear" }],
         label: "Choose target",
+        max: 1,
         optional: false,
         player: 0,
         source: 1,
@@ -594,6 +597,32 @@ describe("answerFromDraft builds accepted intents", () => {
         kind: "choose_targets",
         player: 0,
         targets: [{ kind: "object", id: 11 }],
+      },
+    );
+  });
+
+  test("submits every required target for a mandatory multi-target choose_target", () => {
+    expectDraftIntent(
+      {
+        kind: "choose_target",
+        items: [
+          { id: 21, label: "Forest" },
+          { id: 22, label: "Island" },
+        ],
+        label: "Untap two target lands",
+        max: 2,
+        optional: false,
+        player: 0,
+        source: 1,
+      },
+      { kind: "card-pick", picked: [21, 22] },
+      {
+        kind: "choose_targets",
+        player: 0,
+        targets: [
+          { kind: "object", id: 21 },
+          { kind: "object", id: 22 },
+        ],
       },
     );
   });

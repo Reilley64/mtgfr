@@ -94,6 +94,8 @@ export const FORMULATOR_FOR_KIND: { [K in PendingChoiceView["kind"]]: Formulator
   pay_cumulative_upkeep_or_sacrifice: "cardPick",
   may_draw_up_to: "numberPick",
   trade_secrets_caster_draw: "numberPick",
+  pay_any_amount_of_mana: "numberPick",
+  choose_card_name: "stringPick",
   trade_secrets_repeat: "yesNo",
 };
 
@@ -164,7 +166,9 @@ export type AnswerInput =
   | { kind: "cast_face_down_choice"; choice: number | null }
   | { kind: "dredge"; dredger: number | null }
   | { kind: "hand_on_top"; cards: number[] }
-  | { kind: "draw_count"; count: number };
+  | { kind: "draw_count"; count: number }
+  | { kind: "pay_amount"; amount: number }
+  | { kind: "name"; name: string };
 
 export function chooseTargetIsCardPick(
   items: ReadonlyArray<{ id?: number; label?: string; player?: number | null }>,
@@ -248,6 +252,10 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
       return { kind: "number", count: 0 };
     case "trade_secrets_caster_draw":
       return { kind: "number", count: pc.max };
+    case "pay_any_amount_of_mana":
+      return { kind: "number", count: 0 };
+    case "choose_card_name":
+      return { kind: "string", value: "" };
     case "choose_countered_spell_destination":
       return { kind: "destination", choice: false };
     case "revealed_card_to_battlefield_or_hand":
@@ -345,6 +353,15 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
     case "trade_secrets_caster_draw":
       if (draft.kind !== "number") return null;
       return { kind: "draw_count", count: draft.count };
+    case "pay_any_amount_of_mana":
+      if (draft.kind !== "number") return null;
+      return { kind: "pay_amount", amount: draft.count };
+    case "choose_card_name": {
+      if (draft.kind !== "string") return null;
+      const name = draft.value.trim();
+      if (name === "") return null;
+      return { kind: "name", name };
+    }
     case "choose_countered_spell_destination":
       if (draft.kind !== "destination" || typeof draft.choice !== "boolean") return null;
       return { kind: "top_or_bottom", top: draft.choice };
@@ -391,8 +408,10 @@ export function answerFromDraft(pc: PendingChoiceView, draft: PromptDraft): Answ
       return { kind: "sacrifice", ids: draft.picked };
     case "choose_target":
       if (draft.kind === "target") return { kind: "target", id: draft.id, player: draft.player };
-      if (draft.kind !== "card-pick" || draft.picked.length !== 1) return null;
-      return { kind: "target", id: draft.picked[0] };
+      if (draft.kind !== "card-pick") return null;
+      if (draft.picked.length === 0) return pc.optional ? { kind: "targets", ids: [] } : null;
+      if (draft.picked.length > pc.max) return null;
+      return { kind: "targets", ids: draft.picked };
     case "choose_spell_targets":
     case "choose_ability_targets":
     case "choose_activation_cost_targets":
@@ -488,9 +507,11 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
     case "sacrifice_unless_return_land":
     case "choose_copy_target":
     case "choose_attach_host":
-    case "choose_target":
     case "cast_creature_face_down":
       return 1;
+    case "choose_target":
+      // Up to `max` targets (CR 601.2c — "up to two target lands"); `1` for the common case.
+      return pc.max;
     case "discard":
     case "put_from_hand_on_top":
     case "pay_cumulative_upkeep_or_sacrifice":
@@ -521,6 +542,11 @@ export function cardPickRequiredCount(pc: PendingChoiceView): number | null {
 }
 
 export function cardPickReady(pc: PendingChoiceView, picked: number[]): boolean {
+  // Up-to-max targeting: any 1..=max (or 0 when optional) is a submittable answer.
+  if (pc.kind === "choose_target") {
+    if (picked.length > pc.max) return false;
+    return pc.optional || picked.length >= 1;
+  }
   const required = cardPickRequiredCount(pc);
   if (required != null) return picked.length === required;
   if (pc.kind === "select_from_top") return picked.length <= pc.up_to;
@@ -599,6 +625,8 @@ export function choiceIntent(pc: PendingChoiceView, answer: AnswerInput): WireIn
       dredge: (a) => ({ kind: "choose_dredge", player, dredger: a.dredger }),
       hand_on_top: (a) => ({ kind: "put_from_hand_on_top", player, cards: a.cards }),
       draw_count: (a) => ({ kind: "choose_draw_count", player, count: a.count }),
+      pay_amount: (a) => ({ kind: "pay_optional_cost", player, pay: a.amount > 0, x: a.amount }),
+      name: (a) => ({ kind: "choose_card_name", player, name: a.name }),
     }),
   );
 }

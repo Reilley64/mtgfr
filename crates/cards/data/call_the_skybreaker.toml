@@ -1,0 +1,31 @@
+# Create a 5/5 blue and red Elemental creature token with flying.
+# Retrace (You may cast this card from your graveyard by discarding a land card in addition to paying its other costs.)
+name = "Call the Skybreaker"
+id = "a7213bef-0e9c-44e1-97cb-d1da0ef370bf"
+default_print = "e52586f2-dcf2-4605-b354-3ab441a43638"
+oracle = "Create a 5/5 blue and red Elemental creature token with flying.\nRetrace (You may cast this card from your graveyard by discarding a land card in addition to paying its other costs.)"
+set = "ncc"
+
+# Retrace (You may cast this card from your graveyard by discarding a land card in addition to
+# paying its other costs.)
+retrace = true
+
+[cost]
+generic = 5
+hybrid = [["blue", "red"], ["blue", "red"]]
+
+[cost.additional]
+discard_land = true
+
+[kind]
+type = "sorcery"
+
+# Create a 5/5 blue and red Elemental creature token with flying.
+[[abilities]]
+timing = "spell"
+
+# Create a 5/5 blue and red Elemental creature token with flying.
+[[abilities.effects]]
+type = "create_token"
+token = "66b91a2c-d5ac-421e-b210-039a20c71b16"
+count = 1

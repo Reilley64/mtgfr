@@ -6,7 +6,6 @@ default_print = "210920ef-917b-4e2c-a5da-1180baa37959"
 oracle = "Enchant creature\nEnchanted creature gets +2/+2, has vigilance, and can't attack you or planeswalkers you control."
 set = "mkc"
 subtypes = ["Aura"]
-approximates = "\"or planeswalkers you control\" is unmodeled — no planeswalker permanent exists in the pool, the same standing pool-wide limitation cant_be_attacked_by/the vow-counter attack restriction already carry."
 
 [cost]
 generic = 2

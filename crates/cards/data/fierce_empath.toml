@@ -1,0 +1,30 @@
+# When this creature enters, you may search your library for a creature card with mana value 6
+# or greater, reveal it, put it into your hand, then shuffle.
+name = "Fierce Empath"
+id = "5104053a-d394-4b00-82a4-60fd9f051a6e"
+default_print = "28a1dd7f-2e42-4062-a941-b489b98a49fc"
+oracle = "When this creature enters, you may search your library for a creature card with mana value 6 or greater, reveal it, put it into your hand, then shuffle."
+set = "fdn"
+subtypes = ["Elf"]
+
+[cost]
+generic = 2
+green = 1
+
+[kind]
+type = "creature"
+power = 1
+toughness = 1
+
+# When this creature enters, you may search your library for a creature card with mana value 6 or
+# greater, reveal it, put it into your hand, then shuffle.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# search your library for a creature card with mana value 6 or greater, reveal it, put it into
+# your hand, then shuffle.
+[[abilities.effects]]
+type = "search_library"
+filter = { creature_with_mana_value_at_least = 6 }
+to_zone = "hand"

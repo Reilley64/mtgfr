@@ -1,0 +1,29 @@
+# Whenever a creature deals combat damage to one of your opponents, its controller may draw a card.
+name = "Edric, Spymaster of Trest"
+id = "9a1de7e4-9930-4db3-a8f3-d146d0abf38b"
+default_print = "60fc9e0e-7ba5-4c27-b051-c314858cab5d"
+otags = ["curiosity", "cycle-cmd-enemy-legend", "cycle-cns-r-two-color", "cycle-vma-r-two-color", "draw-engine", "group-hug", "repeatable-pure-draw", "triggered-ability", "unique-type-line"]
+oracle = "Whenever a creature deals combat damage to one of your opponents, its controller may draw a card."
+set = "cmd"
+subtypes = ["Elf", "Rogue"]
+legendary = true
+
+[cost]
+generic = 1
+green = 1
+blue = 1
+
+[kind]
+type = "creature"
+power = 2
+toughness = 2
+
+# Whenever a creature deals combat damage to one of your opponents, its controller may draw a card.
+[[abilities]]
+timing = "deals_combat_damage_to_player"
+who = "any_creature_damaging_your_opponent"
+
+# its controller may draw a card
+[[abilities.effects]]
+type = "damaging_creature_controller_may_draw"
+count = 1

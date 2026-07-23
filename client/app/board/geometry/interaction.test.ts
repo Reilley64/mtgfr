@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ActionView, ObjectView, VisibleState } from "~/wire/types";
 import { worldToScreen } from "./camera";
 import {
+  attackablePlaneswalker,
   attackDrop,
   blockDrop,
   combatMode,
@@ -143,6 +144,35 @@ describe("combat staging", () => {
       { attacker: 3, defender: 1 },
     ]);
     expect(attackDrop([], card({ id: 3 }), null)).toBeNull();
+  });
+
+  // CR 508.1a: "the attacking player ... chooses a player or planeswalker for each attacker".
+  it("attacks an opponent's planeswalker, keeping the seat as the defender", () => {
+    const pw = card({ id: 9, kind: "planeswalker", controller: 1, zone: ZONE.Battlefield });
+    expect(attackablePlaneswalker(pw, [1, 2, 3])).toBe(pw);
+    expect(attackDrop([], card({ id: 3 }), 1, 9)).toEqual([{ attacker: 3, defender: 1, defender_planeswalker: 9 }]);
+  });
+
+  it("only an opponent's battlefield planeswalker is an attack target", () => {
+    const opponents = [1, 2, 3];
+    expect(attackablePlaneswalker(null, opponents)).toBeNull();
+    // Your own planeswalker: you can't attack yourself.
+    expect(
+      attackablePlaneswalker(card({ id: 9, kind: "planeswalker", controller: 0, zone: ZONE.Battlefield }), opponents),
+    ).toBeNull();
+    // A creature is not a legal defender.
+    expect(
+      attackablePlaneswalker(card({ id: 9, kind: "creature", controller: 1, zone: ZONE.Battlefield }), opponents),
+    ).toBeNull();
+    // A planeswalker card in a hidden zone isn't on the battlefield.
+    expect(
+      attackablePlaneswalker(card({ id: 9, kind: "planeswalker", controller: 1, zone: ZONE.Hand }), opponents),
+    ).toBeNull();
+  });
+
+  it("retargeting an attacker onto a face drops the planeswalker defender", () => {
+    const staged = [{ attacker: 3, defender: 1, defender_planeswalker: 9 }];
+    expect(attackDrop(staged, card({ id: 3 }), 2)).toEqual([{ attacker: 3, defender: 2 }]);
   });
 
   it("blocks only a declared attacker", () => {

@@ -167,6 +167,24 @@ impl Game {
                 }
                 events
             }
+            // Homeward Path (CR 720): "Each player gains control of all creatures they own."
+            // Snapshot every mismatched creature BEFORE minting any event (so an earlier
+            // reversion in this same resolution can't feed a later one, mirroring
+            // `ExchangeAllCreaturesUntilEndOfTurn` above), then mint one `ControlGained` per
+            // creature naming its owner — every player's stolen creatures, not just the
+            // activator's.
+            Effect::RevertAllCreaturesToOwners => self
+                .battlefield()
+                .into_iter()
+                .filter(|&id| {
+                    self.is_creature_on_battlefield(id)
+                        && self.controller_of(id) != self.owner_of(id)
+                })
+                .map(|object| Event::ControlGained {
+                    object,
+                    controller: self.owner_of(object),
+                })
+                .collect(),
             Effect::GainControlWhile {
                 while_source_tapped,
                 ..

@@ -555,7 +555,7 @@ mod tests {
     use crate::db;
     use crate::decks::{keep_all_hands, master_from_u64, seed_game};
     use crate::test_support::{as_user, seat_deck, user_with_deck};
-    use engine::{PlayerId, SacrificeCost};
+    use engine::{Defender, PlayerId, SacrificeCost};
     use schema::{IntentEnvelope, WireIntent, to_intent};
 
     use crate::game_loop::{set_yield_core, submit_intent_core};
@@ -623,7 +623,7 @@ mod tests {
         advance_to(&mut game, Step::DeclareAttackers);
         game.submit(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         })
         .unwrap();
         advance_to(&mut game, Step::DeclareBlockers);
@@ -735,6 +735,7 @@ mod tests {
         enters_tapped: false,
         enters_tapped_unless: None,
         free_cast_if: None,
+        alternative_cost: None,
         cast_only_during_combat: false,
         approximates: None,
         oracle: None,
@@ -782,15 +783,17 @@ mod tests {
         enchant_graveyard: false,
         back: None,
         adventure: None,
+        halves: &[],
         devour: None,
         demonstrate: false,
         enter_as_copy: None,
         encore: None,
-        hand_ability: None,
+        hand_ability: &[],
         forecast: None,
         may_choose_not_to_untap: false,
         dredge: None,
         suspend: None,
+        vanishing: None,
     };
 
     fn held(disposition: Disposition) -> bool {
@@ -816,6 +819,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         })
     }
 
@@ -1051,7 +1055,7 @@ mod tests {
 
         let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         });
         assert!(result.accepted);
 
@@ -1100,7 +1104,7 @@ mod tests {
 
         let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         });
         assert!(result.accepted);
         assert!(!table.chrome.turn_yields()[1]);
@@ -1127,6 +1131,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         });
         assert!(
             result.accepted,
@@ -1187,7 +1192,7 @@ mod tests {
         advance_table_to_step(&mut table, Step::DeclareAttackers);
         let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         });
         assert!(result.accepted);
 
@@ -1219,7 +1224,7 @@ mod tests {
         advance_table_to_step(&mut table, Step::DeclareAttackers);
         let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         });
         assert!(result.accepted);
 
@@ -1307,7 +1312,7 @@ mod tests {
         advance_table_to_step(&mut table, Step::DeclareAttackers);
         let (result, _) = TableSession::new(&mut table).submit_system(Intent::DeclareAttackers {
             player: PlayerId(0),
-            attackers: vec![(attacker, PlayerId(1))],
+            attackers: vec![(attacker, Defender::Player(PlayerId(1)))],
         });
         assert!(result.accepted);
 
@@ -1402,6 +1407,7 @@ mod tests {
             evoked: false,
             strive_count: 0,
             replicate_count: 0,
+            alternative_cost: false,
         });
         assert!(result.accepted, "P1 casts Shock: {:?}", result.reason);
         assert!(

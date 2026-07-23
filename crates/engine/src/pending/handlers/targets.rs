@@ -18,45 +18,36 @@ impl Game {
         }
 
         let mut events = Vec::new();
-        match choice {
-            PendingChoice::OrderTriggers {
-                source, effects, ..
-            } => {
-                // CR 603.3d: each ability's target is chosen as *it* goes on the stack, in the
-                // chosen order — so re-queue the ordered abilities as N one-ability
-                // `TriggerGroup`s (front of the queue, in `order`) and place them one at a time
-                // through the normal path (`Game::place_pending_triggers` /
-                // `place_targeted_ability`), the same way a delayed or reflexive trigger rides
-                // that path. `expanded: true`: this group already ran its trigger-doubling pass
-                // before `OrderTriggers` was raised (see `place_pending_triggers`), so it must
-                // not double again.
-                for (offset, &i) in order.iter().enumerate() {
-                    self.pending_trigger_groups.insert(
-                        offset,
-                        TriggerGroup {
-                            controller: player,
-                            source,
-                            abilities: vec![Ability {
-                                // Fabricated placeholder — the real `Ability` (with its own
-                                // `optional`/`cost`/`condition`) was already consumed building
-                                // `effects` above; `place_pending_triggers` only reads
-                                // `effect`/`optional`/`cost`/`once_each_turn` off this one.
-                                timing: Timing::Triggered(Trigger::Upkeep),
-                                effect: effects[i],
-                                optional: false,
-                                min_level: 0,
-                                cost: Cost::FREE,
-                                condition: None,
-                                once_each_turn: false,
-                            }],
-                            expanded: true,
-                        },
-                    );
-                }
-                self.place_pending_triggers(&mut events);
-            }
-            _ => unreachable!("guarded to ordering choices above"),
+        // CR 603.3d: each ability's target is chosen as *it* goes on the stack, in the chosen
+        // order — so re-split the still-queued group into N one-ability `TriggerGroup`s (front
+        // of the queue, in `order`) and place them one at a time through the normal path
+        // (`Game::place_pending_triggers` / `place_targeted_ability`), the same way a delayed or
+        // reflexive trigger rides that path. The group was deliberately left on the queue while
+        // the choice was pending (see `place_pending_triggers`), so each ability arrives with its
+        // own `optional` / `cost` / `condition` intact. `expanded: true`: this group already ran
+        // its trigger-doubling pass before `OrderTriggers` was raised, so it must not double again.
+        let Some(group) = self
+            .pending_trigger_groups
+            .first()
+            .filter(|g| g.abilities.len() == choice.len())
+            .cloned()
+        else {
+            self.restore_pause(choice);
+            return Err(Reject::IllegalChoice);
+        };
+        self.pending_trigger_groups.remove(0);
+        for (offset, &i) in order.iter().enumerate() {
+            self.pending_trigger_groups.insert(
+                offset,
+                TriggerGroup {
+                    controller: group.controller,
+                    source: group.source,
+                    abilities: vec![group.abilities[i]],
+                    expanded: true,
+                },
+            );
         }
+        self.place_pending_triggers(&mut events);
         Ok(events)
     }
 

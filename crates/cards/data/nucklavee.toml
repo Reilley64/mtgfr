@@ -1,0 +1,37 @@
+# When this creature enters, you may return target red sorcery card from your graveyard to your hand.
+# When this creature enters, you may return target blue instant card from your graveyard to your hand.
+name = "Nucklavee"
+id = "09c2d504-f2e1-4799-b948-c7b9502d5088"
+default_print = "aaafbb32-f330-43aa-a7e2-b8f99eceac0b"
+oracle = "When this creature enters, you may return target red sorcery card from your graveyard to your hand.\nWhen this creature enters, you may return target blue instant card from your graveyard to your hand."
+set = "cmd"
+subtypes = ["Beast"]
+
+[cost]
+generic = 4
+hybrid = [["blue", "red"], ["blue", "red"]]
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# When this creature enters, you may return target red sorcery card from your graveyard to your hand.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# you may return target red sorcery card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = { sorcery_with_color = "red" } } }
+
+# When this creature enters, you may return target blue instant card from your graveyard to your hand.
+[[abilities]]
+timing = "etb"
+optional = true
+
+# you may return target blue instant card from your graveyard to your hand.
+[[abilities.effects]]
+type = "return_from_graveyard_to_hand"
+target = { card_in_graveyard = { whose = "yours", filter = { instant_with_color = "blue" } } }

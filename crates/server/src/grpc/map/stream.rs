@@ -232,6 +232,15 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
             source,
             label,
         }),
+        PendingChoiceView::PayAnyAmountOfMana {
+            player,
+            source,
+            max,
+        } => Choice::PayAnyAmountOfMana(pb::PendingChoiceViewPayAnyAmountOfMana {
+            player: u32::from(player),
+            source,
+            max,
+        }),
         PendingChoiceView::MayDrawUpTo { player, max } => {
             Choice::MayDrawUpTo(pb::PendingChoiceViewMayDrawUpTo {
                 player: u32::from(player),
@@ -688,6 +697,12 @@ pub fn pending_choice_view_to_pb(choice: PendingChoiceView) -> pb::PendingChoice
                 source,
             })
         }
+        PendingChoiceView::ChooseCardName { player, source } => {
+            Choice::ChooseCardName(pb::PendingChoiceViewChooseCardName {
+                player: u32::from(player),
+                source,
+            })
+        }
         PendingChoiceView::ChooseCopyTarget {
             player,
             source,
@@ -880,6 +895,21 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
             target: target.map(wire_target_to_pb),
             x,
         }),
+        VisibleEvent::SplitHalfSpellCast {
+            spell,
+            source,
+            half,
+            controller,
+            target,
+            x,
+        } => Event::SplitHalfSpellCast(pb::VisibleEventSplitHalfSpellCast {
+            spell,
+            source,
+            half: u32::from(half),
+            controller: u32::from(controller),
+            target: target.map(wire_target_to_pb),
+            x,
+        }),
         VisibleEvent::StepBegan {
             step,
             active_player,
@@ -986,6 +1016,9 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
         VisibleEvent::AddedSubtypes { object } => {
             Event::AddedSubtypes(pb::VisibleEventAddedSubtypes { object })
         }
+        VisibleEvent::BasePtSetIndefinite { object } => {
+            Event::BasePtSetIndefinite(pb::VisibleEventBasePtSetIndefinite { object })
+        }
         VisibleEvent::BecameCopy { object } => {
             Event::BecameCopy(pb::VisibleEventBecameCopy { object })
         }
@@ -1013,12 +1046,15 @@ pub fn visible_event_to_pb(event: VisibleEvent) -> Option<pb::VisibleEvent> {
                 controller: u32::from(controller),
             })
         }
-        VisibleEvent::AttackerDeclared { object, defender } => {
-            Event::AttackerDeclared(pb::VisibleEventAttackerDeclared {
-                object,
-                defender: u32::from(defender),
-            })
-        }
+        VisibleEvent::AttackerDeclared {
+            object,
+            defender,
+            defender_planeswalker,
+        } => Event::AttackerDeclared(pb::VisibleEventAttackerDeclared {
+            object,
+            defender: u32::from(defender),
+            defender_planeswalker,
+        }),
         VisibleEvent::TokenEnteredAttacking { token, defender } => {
             Event::TokenEnteredAttacking(pb::VisibleEventTokenEnteredAttacking {
                 token,

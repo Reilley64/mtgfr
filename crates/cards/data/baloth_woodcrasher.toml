@@ -1,0 +1,33 @@
+# Landfall — Whenever a land you control enters, this creature gets +4/+4 and gains trample until end of turn. (It can
+# deal excess combat damage to the player or planeswalker it's attacking.)
+name = "Baloth Woodcrasher"
+id = "faaf9975-74df-4e9d-be0c-19a446cd507c"
+default_print = "5c15f211-2c59-4b02-ac91-955f695816ec"
+otags = ["enlarge-self", "landfall", "triggered-ability"]
+oracle = "Landfall — Whenever a land you control enters, this creature gets +4/+4 and gains trample until end of turn. (It can deal excess combat damage to the player or planeswalker it's attacking.)"
+set = "c18"
+subtypes = ["Beast"]
+
+[cost]
+generic = 4
+green = 2
+
+[kind]
+type = "creature"
+power = 4
+toughness = 4
+
+# Landfall — Whenever a land you control enters, this creature gets +4/+4 and gains trample
+# until end of turn.
+[[abilities]]
+timing = "permanent_enters"
+filter = "land"
+controller = "you"
+
+# this creature gets +4/+4 and gains trample until end of turn.
+[[abilities.effects]]
+type = "pump_until_end_of_turn"
+power = 4
+toughness = 4
+target = "this"
+keywords = ["trample"]

@@ -1183,7 +1183,7 @@ impl Game {
                 };
                 for delve in (0..=max_delve).rev() {
                     let cost = self.cast_cost(
-                        player, card, def, None, 0, zone, delve, false, false, false, 0, 0,
+                        player, card, def, None, 0, zone, delve, false, false, false, 0, 0, false,
                     );
                     if let Some(plan) =
                         self.plan_auto_taps(player, cost, None, Some(def.spell_characteristics()))
@@ -1192,6 +1192,30 @@ impl Game {
                     }
                 }
                 return Vec::new();
+            }
+            MeaningfulAction::CastSplitHalf { card, half } => {
+                let Some(&face) = self.def_of(card).halves.get(half as usize) else {
+                    return Vec::new();
+                };
+                (
+                    self.cast_cost(
+                        player,
+                        card,
+                        face,
+                        None,
+                        0,
+                        Zone::Hand,
+                        0,
+                        false,
+                        false,
+                        false,
+                        0,
+                        0,
+                        false,
+                    ),
+                    None,
+                    Some(face.spell_characteristics()),
+                )
             }
             MeaningfulAction::CastPrepared { source } => {
                 let Some(back) = self.def_of(source).back else {
@@ -1212,6 +1236,7 @@ impl Game {
                         false,
                         0,
                         0,
+                        false,
                     ),
                     None,
                     Some(back.spell_characteristics()),
@@ -1223,8 +1248,9 @@ impl Game {
                 };
                 (cost, None, None)
             }
-            MeaningfulAction::ActivateHandAbility { card } => {
-                let Some(ability) = self.def_of(card).hand_ability else {
+            MeaningfulAction::ActivateHandAbility { card, index } => {
+                let def = self.def_of(card);
+                let Some(ability) = def.hand_ability.get(index).copied().or(def.forecast) else {
                     return Vec::new();
                 };
                 (ability.cost, None, None)
@@ -1546,6 +1572,38 @@ impl Game {
                     };
                     self.run_sequence(payload, ctx, events);
                 }
+                // Vanishing (CR 702.63b — Deadwood Treefolk): at the beginning of its controller's
+                // upkeep, *if it has a time counter on it*, remove one from each vanishing
+                // permanent they control (the intervening-if is the `left == 0` skip below). When
+                // the last one comes off, its controller sacrifices it (CR 702.63c).
+                // ponytail: the removal happens directly here rather than through a triggered
+                // ability of its own, the same shortcut suspend's tick above takes — nothing in
+                // the pool can respond to the removal itself. The sacrifice *is* a real trigger, so
+                // responses still get their window, but it is only fired from this tick — emptying
+                // the last time counter any other way (a "remove all counters" effect) wouldn't
+                // fire it. Its controller is read as the permanent's *owner* (see
+                // `queue_self_sacrifice_trigger`), so a stolen vanishing permanent would be
+                // sacrificed by the wrong player; nothing in the pool steals one.
+                for id in self.controlled_battlefield(active) {
+                    if self.def_of(id).vanishing.is_none() {
+                        continue;
+                    }
+                    let left = self.counters_of_kind(id, CounterKind::Time);
+                    if left == 0 {
+                        continue;
+                    }
+                    self.push_apply(
+                        events,
+                        Event::KindCountersPlaced {
+                            object: id,
+                            kind: CounterKind::Time,
+                            count: -1,
+                        },
+                    );
+                    if left == 1 {
+                        self.queue_self_sacrifice_trigger(id);
+                    }
+                }
             }
             Step::Draw => {
                 // The starting player skips their first draw step in a two-player game (CR 103.8a);
@@ -1735,6 +1793,7 @@ mod tests {
             enters_tapped: false,
             enters_tapped_unless: None,
             free_cast_if: None,
+            alternative_cost: None,
             cast_only_during_combat: false,
             approximates: None,
             oracle: None,
@@ -1758,12 +1817,14 @@ mod tests {
             functions_in_graveyard: false,
             back: None,
             adventure: None,
+            halves: &[],
             suspend: None,
+            vanishing: None,
             devour: None,
             demonstrate: false,
             enter_as_copy: None,
             encore: None,
-            hand_ability: None,
+            hand_ability: &[],
             forecast: None,
             may_choose_not_to_untap: false,
             dredge: None,

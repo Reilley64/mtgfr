@@ -35,6 +35,7 @@ import {
   PromptModeChoiceToggled,
   PromptOrderMoved,
   PromptPartitionSet,
+  PromptStringSet,
   PromptSubmitted,
   SacrificeChosen,
   TargetChosen,
@@ -1121,9 +1122,24 @@ function colorPickPrompt(
 }
 
 function stringPickPrompt(
-  pending: Extract<PendingChoiceView, { kind: "choose_creature_type" }>,
+  pending: Extract<PendingChoiceView, { kind: "choose_creature_type" | "choose_card_name" }>,
+  board: BoardModel,
+  state: VisibleState,
   tableId: string | null,
 ): Html {
+  if (pending.kind === "choose_card_name") {
+    const draft = board.promptDraft ?? initPromptDraft(pending, state);
+    const value = draft.kind === "string" ? draft.value : "";
+    return frame("pending-choice", "Name a card", [
+      h.input([
+        h.DataAttribute("testid", "prompt-name-input"),
+        h.Value(value),
+        h.OnInput((v) => PromptStringSet({ value: v })),
+        h.Class("w-full rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+      ]),
+      submitButton("Name", value.trim() === "" || tableId == null),
+    ]);
+  }
   return frame("pending-choice", "Choose a creature type", [
     h.div(
       [h.Class("flex flex-wrap gap-2")],
@@ -1141,15 +1157,21 @@ function stringPickPrompt(
   ]);
 }
 
+function numberPickTitle(
+  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }>,
+): string {
+  if (pending.kind === "trade_secrets_caster_draw") return `Choose how many cards to draw (up to ${pending.max})`;
+  if (pending.kind === "pay_any_amount_of_mana") return `Pay any amount of mana (up to ${pending.max})`;
+  return `Draw up to ${pending.max}`;
+}
+
 function numberPickPrompt(
-  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "trade_secrets_caster_draw" }>,
+  pending: Extract<PendingChoiceView, { kind: "may_draw_up_to" | "trade_secrets_caster_draw" | "pay_any_amount_of_mana" }>,
   tableId: string | null,
 ): Html {
-  const title =
-    pending.kind === "trade_secrets_caster_draw"
-      ? `Choose how many cards to draw (up to ${pending.max})`
-      : `Draw up to ${pending.max}`;
-  return frame("pending-choice", title, [
+  const answerFor = (count: number): AnswerInput =>
+    pending.kind === "pay_any_amount_of_mana" ? { kind: "pay_amount", amount: count } : { kind: "draw_count", count };
+  return frame("pending-choice", numberPickTitle(pending), [
     h.div(
       [h.Class("flex flex-wrap gap-2")],
       Array.from({ length: pending.max + 1 }, (_, count) =>
@@ -1157,7 +1179,7 @@ function numberPickPrompt(
           pending,
           `prompt-number-${count}`,
           String(count),
-          { kind: "draw_count", count },
+          answerFor(count),
           count === pending.max,
           tableId == null,
         ),
@@ -1291,10 +1313,16 @@ function pendingChoicePrompt(
       }
       return colorPickPrompt(pending, tableId);
     case "stringPick":
-      if (pending.kind !== "choose_creature_type") return frame("pending-choice", pendingChoiceTitle(pending), []);
-      return stringPickPrompt(pending, tableId);
+      if (pending.kind !== "choose_creature_type" && pending.kind !== "choose_card_name") {
+        return frame("pending-choice", pendingChoiceTitle(pending), []);
+      }
+      return stringPickPrompt(pending, board, state, tableId);
     case "numberPick":
-      if (pending.kind !== "may_draw_up_to" && pending.kind !== "trade_secrets_caster_draw") {
+      if (
+        pending.kind !== "may_draw_up_to" &&
+        pending.kind !== "trade_secrets_caster_draw" &&
+        pending.kind !== "pay_any_amount_of_mana"
+      ) {
         return frame("pending-choice", pendingChoiceTitle(pending), []);
       }
       return numberPickPrompt(pending, tableId);

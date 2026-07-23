@@ -525,7 +525,7 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             for ability in def.abilities {
                 collect(&ability.effect, &mut tokens);
             }
-            if let Some(hand) = def.hand_ability {
+            for hand in def.hand_ability {
                 for effect in hand.effects {
                     collect(effect, &mut tokens);
                 }
@@ -735,6 +735,8 @@ token = { name = "Inkling", power = 2, toughness = 1 }
             Effect::ExileTopMayPlay {
                 count: Amount::Fixed(1),
                 until_next_turn: false,
+                face_down: false,
+                free_while_source: false,
             }
         ));
 
@@ -1053,7 +1055,8 @@ token = { name = "Inkling", power = 2, toughness = 1 }
                         ..
                     },
                     Effect::UntapTarget {
-                        target: TargetSpec::Creature
+                        target: TargetSpec::Creature,
+                        ..
                     },
                     Effect::GoadTarget {
                         target: TargetSpec::Creature

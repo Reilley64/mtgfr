@@ -89,6 +89,23 @@ impl Game {
                     },
                 );
             }
+            // Edric, Spymaster of Trest: "its controller may draw a card." Like
+            // `TargetPlayerMayDraw` above, the drawing player answers — here the controller of the
+            // creature that dealt the combat damage, baked in at trigger placement.
+            Effect::DamagingCreatureControllerMayDraw { count, drawer } => {
+                let player = drawer.expect(
+                    "the damaging creature's controller is baked in by contextualize_effect at \
+                     combat-damage trigger placement",
+                );
+                pending::raise(
+                    self,
+                    pending::ChoiceRequest::MayYesNo {
+                        player,
+                        source,
+                        effect: Effect::DamagingCreatureControllerMayDraw { count, drawer },
+                    },
+                );
+            }
             // Arcane Denial's countered-spell rider: "Its controller may draw up to two cards"
             // (CR 120.4 / 601.2c). Pause the resolving controller on a count choice `0..=max`;
             // the answer (`Game::answer_may_draw_up_to`) draws exactly the chosen number.
