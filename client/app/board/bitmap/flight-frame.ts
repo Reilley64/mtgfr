@@ -35,6 +35,7 @@ function cardPaintKey(card: RenderCard): Record<string, unknown> {
     owner: card.owner ?? 0,
     controller: card.controller ?? 0,
     name: card.name ?? "",
+    fanAngle: card.fanAngle ?? 0,
   };
 }
 

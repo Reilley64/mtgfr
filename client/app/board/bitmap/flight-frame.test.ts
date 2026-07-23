@@ -36,6 +36,12 @@ describe("restingPaintChanged", () => {
     const b = restingPaintSnapshot({ ...baseResting, hideCardIds: new Set() } as never);
     expect(restingPaintChanged(a, b)).toBe(true);
   });
+
+  it("is true when only fanAngle changes on a card", () => {
+    const flat = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, fanAngle: 0 }] } as never);
+    const fanned = restingPaintSnapshot({ ...baseResting, cards: [{ id: 1, fanAngle: 0.12 }] } as never);
+    expect(restingPaintChanged(flat, fanned)).toBe(true);
+  });
 });
 
 describe("mergeFlightPoses", () => {
