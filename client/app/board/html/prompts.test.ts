@@ -14,6 +14,7 @@ import {
   PromptDamageSet,
   PromptNumberSet,
   PromptOrderRowClicked,
+  PromptPartitionSet,
   PromptStringSet,
   PromptSubmitted,
   XDraftSet,
@@ -312,6 +313,61 @@ test("select_from_top Take lane click emits select_from_top intent", () => {
     kind: "select_from_top",
     player: 0,
     cards: [1],
+  });
+});
+
+test("distribute_top shows Hand Bottom Exile lanes", () => {
+  const s = state({
+    pending_choice: {
+      kind: "distribute_top",
+      player: 0,
+      to_hand: 1,
+      to_bottom: 1,
+      to_exile_may_play: 1,
+      items: [
+        { id: 1, label: "A" },
+        { id: 2, label: "B" },
+        { id: 3, label: "C" },
+      ],
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-distribute-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-distribute-pool")).toExist(),
+    Scene.expect(Scene.testId("prompt-distribute-hand")).toExist(),
+    Scene.expect(Scene.testId("prompt-distribute-bottom")).toExist(),
+    Scene.expect(Scene.testId("prompt-distribute-exile")).toExist(),
+    Scene.expect(Scene.testId("prompt-partition-1-to_hand")).not.toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toBeDisabled(),
+  );
+});
+
+test("distribute_top card click cycles into Hand then Bottom", () => {
+  const pending = {
+    kind: "distribute_top" as const,
+    player: 0,
+    to_hand: 1,
+    to_bottom: 1,
+    to_exile_may_play: 1,
+    items: [
+      { id: 1, label: "A" },
+      { id: 2, label: "B" },
+      { id: 3, label: "C" },
+    ],
+  };
+  const gf = gameFold(state({ pending_choice: pending }));
+  let board = updateBoard(initialBoardModel(), PromptPartitionSet({ id: 1, bucket: "to_hand" }), gf, "T1")[0];
+  expect(board.promptDraft).toEqual({
+    kind: "partition",
+    buckets: { to_hand: [1], to_bottom: [], to_exile_may_play: [] },
+  });
+  board = updateBoard(board, PromptPartitionSet({ id: 1, bucket: "to_bottom" }), gf, "T1")[0];
+  expect(board.promptDraft).toEqual({
+    kind: "partition",
+    buckets: { to_hand: [], to_bottom: [1], to_exile_may_play: [] },
   });
 });
 
