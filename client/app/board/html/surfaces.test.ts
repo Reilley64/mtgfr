@@ -1347,6 +1347,29 @@ test("gy exile cost aim shows coach when choices share a graveyard", () => {
   );
 });
 
+test("pending face-down cast aim shows coach when creatures are in hand", () => {
+  const bear = card(22, {
+    name: "Bear",
+    zone: ZONE.Hand,
+    kind: { kind: "creature", power: 2, toughness: 2 },
+  });
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        objects: [bear],
+        pending_choice: {
+          kind: "cast_creature_face_down",
+          player: 0,
+          items: [{ id: 22, label: "Bear" }],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-hand-aim")).toExist(),
+    Scene.expect(Scene.testId("pending-choice")).toBeAbsent(),
+  );
+});
+
 test("pending put-from-hand aim shows coach when cards are in hand", () => {
   const forest = card(20, {
     name: "Forest",

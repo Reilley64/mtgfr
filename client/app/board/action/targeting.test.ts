@@ -623,6 +623,20 @@ describe("pendingHandPickIds", () => {
     expect([...ids]).toEqual([21]);
   });
 
+  it("returns hand ids for cast_creature_face_down", () => {
+    const ids = pendingHandPickIds(
+      {
+        kind: "cast_creature_face_down",
+        player: 0,
+        items: [{ id: 22, label: "Bear" }],
+      },
+      state([object({ id: 22, zone: ZONE.Hand, name: "Bear" })]),
+    );
+    expect(ids).not.toBeNull();
+    if (ids == null) throw new Error("expected face-down hand ids");
+    expect([...ids]).toEqual([22]);
+  });
+
   it("returns hand ids for put_from_hand_on_top", () => {
     const ids = pendingHandPickIds(
       {
