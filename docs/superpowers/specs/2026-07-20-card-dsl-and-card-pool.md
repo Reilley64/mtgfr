@@ -110,7 +110,9 @@ Each ability block has a `timing` field and one or more `[[abilities.effects]]` 
 
 ### Effect vocabulary (representative sample)
 
-The `Effect` enum grows only from real cards. Currently implemented effect types include:
+The `Effect` enum grows only from real cards. Leaf effects are authored as nested **`type` (family) + `mode` (leaf)** — e.g. legacy `deal_damage` → `type = "damage"`, `mode = "target"`; legacy `create_token` → `type = "token"`, `mode = "create"`. Structural composers (`sequence`, `conditional`, `choose_one`) have no `mode`. The names below are the legacy flat identifiers (and family-less `type` values where no family exists); see `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the full family map.
+
+Currently implemented effect types include:
 
 **Damage:** `deal_damage` (to target or player), `damage_each_creature` (mass damage), `fight` (two creatures deal damage to each other), `damage_player_for_each` (Torment of Hailfire shape).
 

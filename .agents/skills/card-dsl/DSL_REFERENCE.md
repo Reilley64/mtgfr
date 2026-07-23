@@ -848,9 +848,11 @@ See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the
 
 ## 6. Effects (`[[abilities.effects]]` type + mode)
 
-Every accepted leaf `mode` (grouped by family `type`). "Target" column: does it read a `target` field (§7)?
+**Authoring shape:** write nested `type` (family) + `mode` (leaf), as in [Effect families](#effect-families) above — e.g. legacy `deal_damage` is `type = "damage"`, `mode = "target"`. This table is a **lookup index**, not copy-paste TOML: the left column is the *legacy flat effect name* (search continuity from before the family fold). Find the row by that name, then map it to family `type` + leaf `mode` via `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md`. Effects that never joined a family (e.g. `anthem_static`, `search_library`) still use that string as the sole `type=` with no `mode`. **Do not put the left-column string in `type=` alone** when the row belongs to a family.
 
-| `type` | Fields | Target |
+"Target" column: does it read a `target` field (§7)?
+
+| `mode` (legacy flat type) | Fields | Target |
 |--------|--------|--------|
 | `deal_damage` | `amount` (amount), `target`, `count` (target-count, §7 — default one mandatory target; "up to two target" is `{ max = 2 }`, each taking `amount`), `divided` (bool, default `false` — one `amount` total split across the chosen targets, ≥1 each; Magma Opus's "divided as you choose among any number of targets" is `target = "any"`, `count = { max = 4 }`, `divided = true` — the targets are whatever `target` admits, so `"any"` lets the split fall on **players and planeswalkers** as well as creatures) | yes |
 | `draw_cards` | `count` (amount) | no |
@@ -1856,7 +1858,7 @@ restriction and its own `[[abilities]]`) minted attached to a target via
   ```toml
   [[abilities.effects]]
   type = "token"
-mode = "create"
+  mode = "create"
   controller = "target_player"
   token = "fbdbff76-c1ea-47ea-bfcc-7c64c23dad70"  # data/tokens/inkling.toml
   ```
@@ -1875,7 +1877,7 @@ mode = "create"
   ```toml
   [[abilities.effects]]
   type = "token"
-mode = "create"
+  mode = "create"
   controller = "each_other_player"
   token = "60fe4897-6760-4c5a-8074-c92bd64df52b"  # data/tokens/dragon.toml
   ```
