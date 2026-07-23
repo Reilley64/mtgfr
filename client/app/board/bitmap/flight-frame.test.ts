@@ -26,7 +26,7 @@ const baseResting = {
 
 describe("restingPaintChanged", () => {
   it("is false when only flights would differ (snapshot omits flights)", () => {
-    const a = restingPaintSnapshot({ ...baseResting, /* snapshot factory ignores flights */ } as never);
+    const a = restingPaintSnapshot({ ...baseResting /* snapshot factory ignores flights */ } as never);
     const b = restingPaintSnapshot({ ...baseResting } as never);
     expect(restingPaintChanged(a, b)).toBe(false);
   });
@@ -79,7 +79,7 @@ describe("mergeFlightPoses", () => {
         kind: "battlefield",
       }),
     ];
-    const incoming = [{ ...live[0], targetX: 300, targetY: 400, x: 0, y: 0, scale: 0.5, phase: "launching" as const }];
+    const incoming = [{ ...live[0], targetX: 300, targetY: 400, x: 0, y: 0, scale: 0.5, phase: "settled" as const }];
     expect(mergeFlightPoses(live, incoming)[0]).toMatchObject({
       targetX: 300,
       targetY: 400,

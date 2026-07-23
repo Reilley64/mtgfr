@@ -141,11 +141,7 @@ export const view = Submodel.defineView<BoardViewModel, Message>((model) => {
     ],
     [
       h.div(
-        [
-          h.Class("hidden"),
-          h.DataAttribute("testid", "board-keyboard-mount"),
-          h.OnMount(MountBoardKeyboard()),
-        ],
+        [h.Class("hidden"), h.DataAttribute("testid", "board-keyboard-mount"), h.OnMount(MountBoardKeyboard())],
         [],
       ),
       h.div(

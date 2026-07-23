@@ -1,17 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyManaPool } from "~/manaPips";
 import type { ObjectView, PlayerView, VisibleState } from "~/wire/types";
-import {
-  AVATAR_R,
-  avatarPos,
-  boardBounds,
-  layout,
-  manaTrayPos,
-  STEP,
-  STEP_NAMES,
-  seatBand,
-  ZONE,
-} from "./layout";
+import { AVATAR_R, avatarPos, boardBounds, layout, manaTrayPos, STEP, STEP_NAMES, seatBand, ZONE } from "./layout";
 
 // Geometry constants mirrored from layout.ts (CARD_W=96, CARD_H=134, GAP=8, AVATAR_R=40):
 // STEP=104, ROW_H=142, BATTLE_H=426, BAND_GAP=8, BAND_STRIDE=434, COL_X=-64, COL_STRIDE=106.5.

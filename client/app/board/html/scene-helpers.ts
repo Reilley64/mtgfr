@@ -1,13 +1,7 @@
 import { Scene } from "foldkit/test";
 import { BindCardArt } from "~/ui/card-art";
 import { MountBitmapLayer, MountFlightLayer } from "../bitmap/mount";
-import {
-  AltDown,
-  ArtLoaded,
-  HandActionHovered,
-  HintAutoHidden,
-  PriorityElapsed,
-} from "../messages";
+import { AltDown, ArtLoaded, HandActionHovered, HintAutoHidden, PriorityElapsed } from "../messages";
 import { MountBoardAudio, MountHintAutoHide, MountPriorityWatch } from "./audio-mount";
 import { MountHandBarDrag } from "./hand-drag-mount";
 import { MountBoardKeyboard } from "./keyboard-mount";

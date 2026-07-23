@@ -3,15 +3,7 @@ import { Story } from "foldkit";
 import { expect, test } from "vitest";
 import { init } from "./init";
 import { NavigationCompleted, ReceivedMe } from "./messages";
-import {
-  DeckRoute,
-  HomeRoute,
-  PlayRoute,
-  pathWithSearch,
-  routeFromUrl,
-  routePath,
-  TableRoute,
-} from "./routes";
+import { DeckRoute, HomeRoute, PlayRoute, pathWithSearch, routeFromUrl, routePath, TableRoute } from "./routes";
 import { update } from "./update";
 
 /** Foldkit `Url.search` is without a leading `?` (e.g. `deck=-1`). */
@@ -49,10 +41,7 @@ test("PlayRoute entry with currentPath /play?deck=-1 sets lobby.selectedDeckId t
   const [base] = init(url("/play", "deck=-1"));
   expect(base.currentPath).toBe("/play?deck=-1");
 
-  const [model] = update(
-    base,
-    ReceivedMe({ me: { id: 1, email: "alice@example.com", username: "alice" } }),
-  );
+  const [model] = update(base, ReceivedMe({ me: { id: 1, email: "alice@example.com", username: "alice" } }));
 
   expect(model.route).toEqual(PlayRoute());
   expect(model.lobby.selectedDeckId).toBe(-1);

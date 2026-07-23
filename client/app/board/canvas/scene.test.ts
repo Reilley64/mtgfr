@@ -149,8 +149,7 @@ function groupWithCardFill(shape: Shape, fill: string): Group | null {
 
   if (
     shape.shapes.some(
-      (child) =>
-        (child._tag === "Path" || child._tag === "Rect") && "fill" in child && child.fill === fill,
+      (child) => (child._tag === "Path" || child._tag === "Rect") && "fill" in child && child.fill === fill,
     )
   ) {
     return shape;

@@ -33,9 +33,10 @@ describe("playableBattlefieldObjectIds", () => {
   });
 
   it("keeps playable chrome on sick creatures with haste", () => {
-    const ids = playableBattlefieldObjectIds([activate(7, { taps_self: true })], [
-      { id: 7, summoningSick: true, hasHaste: true },
-    ]);
+    const ids = playableBattlefieldObjectIds(
+      [activate(7, { taps_self: true })],
+      [{ id: 7, summoningSick: true, hasHaste: true }],
+    );
     expect(ids.has(7)).toBe(true);
   });
 });

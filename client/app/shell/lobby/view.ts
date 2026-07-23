@@ -51,11 +51,7 @@ function bringAndBack(model: LobbySlice, decks: ReadonlyArray<DeckSummary>): Htm
         ["Bring: ", h.b([], [pickedDeckName(model, decks)])],
       ),
       h.a(
-        [
-          h.Href(routePath(HomeRoute())),
-          h.DataAttribute("testid", "lobby-back"),
-          h.Class(buttonClass("ghost")),
-        ],
+        [h.Href(routePath(HomeRoute())), h.DataAttribute("testid", "lobby-back"), h.Class(buttonClass("ghost"))],
         ["Back"],
       ),
     ],
@@ -87,11 +83,7 @@ function entry(model: LobbySlice, decks: ReadonlyArray<DeckSummary>, decksLoadin
   }
 
   const deckRow =
-    model.selectedDeckId != null
-      ? bringAndBack(model, decks)
-      : decks.length > 0
-        ? deckPicker(model, decks)
-        : null;
+    model.selectedDeckId != null ? bringAndBack(model, decks) : decks.length > 0 ? deckPicker(model, decks) : null;
 
   return h.div(
     [h.Class("flex flex-col gap-md")],

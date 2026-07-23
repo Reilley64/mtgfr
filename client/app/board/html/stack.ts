@@ -44,10 +44,7 @@ type StackItem = {
   staged: boolean;
 };
 
-function objectMeta(
-  state: VisibleState,
-  source: number,
-): { print: string; name: string | null; cardId?: string } {
+function objectMeta(state: VisibleState, source: number): { print: string; name: string | null; cardId?: string } {
   const obj = state.objects.find((o) => o.id === source);
   return { print: obj?.print ?? "", name: obj?.name ?? null, cardId: obj?.card_id };
 }

@@ -2,13 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ActionView, ObjectView } from "~/wire/types";
 import type { GameFoldState } from "../game/fold";
 import { ZONE } from "./geometry/layout";
-import {
-  CancelActionClicked,
-  HandActionHovered,
-  HandDragEnded,
-  HandDragMoved,
-  HandDragStarted,
-} from "./messages";
+import { CancelActionClicked, HandActionHovered, HandDragEnded, HandDragMoved, HandDragStarted } from "./messages";
 import { BOARD_VIEWPORT, HAND_BAR_H, initialBoardModel, updateBoard } from "./submodel";
 
 function fold(objects: ObjectView[], actions: ActionView[]): GameFoldState {
@@ -144,12 +138,7 @@ describe("hand drag submodel", () => {
       fold([bolt], [castAction]),
       "T1",
     );
-    const [next, commands] = updateBoard(
-      dragging,
-      HandDragEnded({ x: 400, y: 200 }),
-      fold([bolt], [castAction]),
-      "T1",
-    );
+    const [next, commands] = updateBoard(dragging, HandDragEnded({ x: 400, y: 200 }), fold([bolt], [castAction]), "T1");
     expect(commands).toHaveLength(1);
     expect(next.handHidden.has(42)).toBe(true);
     expect(next.flights.get(42)).toMatchObject({

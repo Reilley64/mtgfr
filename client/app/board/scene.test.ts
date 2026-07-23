@@ -125,10 +125,7 @@ function staticOverlayScene(model: ViewModel, ...steps: readonly unknown[]) {
   Scene.scene<ViewModel, Message>({ update, view }, Scene.with(model), ...(steps as []));
 }
 
-function liveBoardScene(
-  model: BoardViewModel,
-  ...steps: readonly unknown[]
-) {
+function liveBoardScene(model: BoardViewModel, ...steps: readonly unknown[]) {
   const hint = !model.board.hintDismissed && !model.board.hintAutoHidden;
   Scene.scene<BoardViewModel, Message>(
     { update: (m) => [m, []], view: fullBoardView },
