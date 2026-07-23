@@ -3,7 +3,15 @@ import type { ActionView, PlayerView } from "~/wire/types";
 import type { RenderCard } from "../geometry/layout";
 import { ZONE } from "../geometry/layout";
 import { spawnFlight } from "../motion/flights";
-import { bitmapFrameNeedsRaf, paintBitmapLayer, paintFlightLayer } from "./mount";
+import {
+  applyPublishedFrame,
+  type BitmapFrame,
+  bitmapFrameNeedsRaf,
+  type FlightClockState,
+  paintBitmapLayer,
+  paintFlightLayer,
+  tickFlightClock,
+} from "./mount";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -110,6 +118,39 @@ function battlefieldAction(objectId: number, overrides: Partial<ActionView> = {}
     needs_target: false,
     object: objectId,
     section: "battlefield",
+    ...overrides,
+  };
+}
+
+function frame(overrides: Partial<BitmapFrame> = {}): BitmapFrame {
+  return {
+    width: 800,
+    height: 600,
+    camera: { panX: 0, panY: 0, zoom: 1 },
+    cards: [card()],
+    viewer: 0,
+    players: [player()],
+    priority: 0,
+    combat: { attackers: [], blocks: [], attackers_declared: false, blockers_declared: [] },
+    stagedAttackers: [],
+    stagedBlocks: [],
+    flights: [],
+    hideCardIds: new Set(),
+    targetObjects: new Set(),
+    targetPlayers: new Set(),
+    aimFrom: null,
+    cursor: { x: 0, y: 0 },
+    combatDragFrom: null,
+    combatDragStroke: null,
+    paymentPreviewIds: new Set(),
+    ...overrides,
+  };
+}
+
+function flightClockState(overrides: Partial<FlightClockState> = {}): FlightClockState {
+  return {
+    liveFlights: [],
+    lastRestingSnapshot: null,
     ...overrides,
   };
 }
@@ -613,5 +654,42 @@ describe("bitmapFrameNeedsRaf", () => {
         ],
       }),
     ).toBe(true);
+  });
+});
+
+describe("flight clock helpers", () => {
+  it("pose-only flight tick does not request resting paint", () => {
+    const flight = spawnFlight({
+      id: 3,
+      print: "p",
+      name: "Bolt",
+      x: 0,
+      y: 0,
+      scale: 1,
+      targetX: 100,
+      targetY: 0,
+      targetScale: 1,
+      kind: "battlefield",
+    });
+    const publishedFrame = frame({ flights: [flight] });
+    let state = flightClockState({ liveFlights: [flight] });
+
+    const published = applyPublishedFrame(state, publishedFrame);
+
+    expect(published.paintResting).toBe(true);
+    expect(published.paintFlight).toBe(true);
+    state = published.state;
+
+    const tick = tickFlightClock(state, published.frame, 16, 16, false);
+
+    expect(tick.paintFlight).toBe(true);
+    expect(tick.sync).toBeNull();
+    expect(tick.frame.flights[0]?.x).toBeGreaterThan(0);
+    expect(tick.frame.flights[0]?.phase).toBe("flying");
+
+    const republish = applyPublishedFrame(tick.state, frame({ flights: [flight] }));
+
+    expect(republish.paintResting).toBe(false);
+    expect(republish.frame.flights[0]?.x).not.toBe(0);
   });
 });

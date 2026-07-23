@@ -24,12 +24,7 @@ export function playableBattlefieldObjectIds(
     if (action.object == null) continue;
     const card = byId.get(action.object);
     // CR 302.6: summoning-sick creatures can't pay {T}/{Q}. Don't advertise those activates.
-    if (
-      card != null &&
-      card.summoningSick &&
-      !card.hasHaste &&
-      action.taps_self === true
-    ) {
+    if (card?.summoningSick && !card.hasHaste && action.taps_self === true) {
       continue;
     }
     ids.add(action.object);

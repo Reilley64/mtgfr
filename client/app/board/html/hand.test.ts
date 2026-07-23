@@ -134,7 +134,7 @@ describe("handView unplayable brightness", () => {
       name: "Atraxa",
       zone: ZONE.Command,
       is_commander: true,
-      kind: { kind: "creature" },
+      kind: { kind: "creature", power: 4, toughness: 4 },
     });
     const tree = renderHand(state({ objects: [commander], actions: [] }));
     const face = findTestId(tree, "hand-card-face-9");

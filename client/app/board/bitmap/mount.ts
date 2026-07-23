@@ -8,8 +8,9 @@ import { TARGET_COLOR } from "../action/targeting";
 import { PLAYABLE_BORDER, playableBattlefieldObjectIds } from "../chrome";
 import { type Camera, worldToScreen } from "../geometry/camera";
 import { AVATAR_R, avatarPos, type RenderCard, seatColor } from "../geometry/layout";
-import { ArtLoaded, TickedFrame } from "../messages";
-import type { CardFlight } from "../motion/flights";
+import { ArtLoaded, FlightsSynced } from "../messages";
+import { type CardFlight, stepFlights } from "../motion/flights";
+import { mergeFlightPoses, restingPaintChanged, restingPaintSnapshot } from "./flight-frame";
 import { paintAutoTapPreview, paintCard, paintCardTargetHighlight } from "./paint-cards";
 import { paintFlightCard } from "./paint-flights";
 
@@ -37,9 +38,18 @@ export type BitmapFrame = {
   actions?: readonly ActionView[];
 };
 
-type LayerQueue = EffectQueue.Enqueue<typeof ArtLoaded.Type | typeof TickedFrame.Type>;
+export type FlightClockState = {
+  liveFlights: CardFlight[];
+  lastRestingSnapshot: ReturnType<typeof restingPaintSnapshot> | null;
+};
+
+type LayerQueue = EffectQueue.Enqueue<typeof ArtLoaded.Type | typeof FlightsSynced.Type>;
 
 let currentFrame: BitmapFrame | null = null;
+let flightClockState: FlightClockState = {
+  liveFlights: [],
+  lastRestingSnapshot: null,
+};
 const mountedLayers = new Set<BitmapMountHandle>();
 
 type BitmapMountHandle = {
@@ -50,20 +60,122 @@ type BitmapMountHandle = {
   animates: boolean;
   unsubscribe: () => void;
   rafId: number;
+  lastFlightTick: number | null;
   kickRaf: () => void;
 };
 
 export function publishBitmapFrame(frame: BitmapFrame): void {
-  currentFrame = frame;
-  preloadFrameArt(frame, sharedImageCache);
+  const published = applyPublishedFrame(flightClockState, frame);
+  flightClockState = published.state;
+  currentFrame = published.frame;
+  preloadFrameArt(published.frame, sharedImageCache);
   for (const handle of mountedLayers) {
-    handle.render(handle.canvas);
-    handle.kickRaf();
+    if (handle.animates) {
+      if (published.paintFlight) handle.render(handle.canvas);
+      handle.kickRaf();
+      continue;
+    }
+    if (published.paintResting) handle.render(handle.canvas);
   }
 }
 
+export function applyPublishedFrame(
+  state: FlightClockState,
+  frame: BitmapFrame,
+): { state: FlightClockState; paintResting: boolean; paintFlight: boolean; frame: BitmapFrame } {
+  const liveFlights = mergeFlightPoses(state.liveFlights, frame.flights);
+  const mergedFrame = { ...frame, flights: liveFlights };
+  const { flights: _flights, ...restingFrame } = mergedFrame;
+  const nextRestingSnapshot = restingPaintSnapshot(restingFrame);
+
+  return {
+    state: {
+      liveFlights,
+      lastRestingSnapshot: nextRestingSnapshot,
+    },
+    paintResting: restingPaintChanged(state.lastRestingSnapshot, nextRestingSnapshot),
+    paintFlight: state.lastRestingSnapshot == null || flightsChanged(state.liveFlights, liveFlights),
+    frame: mergedFrame,
+  };
+}
+
+export function tickFlightClock(
+  state: FlightClockState,
+  frame: BitmapFrame,
+  now: number,
+  dtMs: number,
+  reducedMotion: boolean,
+): {
+  state: FlightClockState;
+  frame: BitmapFrame;
+  paintFlight: boolean;
+  sync: { flights: CardFlight[]; now: number } | null;
+} {
+  const stepped = stepFlights(new Map(state.liveFlights.map((flight) => [flight.id, flight])), dtMs, reducedMotion);
+  const liveFlights = [...stepped.flights.values()];
+  const prevFlyingIds = flyingIds(state.liveFlights);
+  const nextFlyingIds = flyingIds(liveFlights);
+  const flyingMembershipChanged = !sameIdSet(prevFlyingIds, nextFlyingIds);
+  const allSettled = prevFlyingIds.size > 0 && nextFlyingIds.size === 0;
+
+  return {
+    state: {
+      ...state,
+      liveFlights,
+    },
+    frame: { ...frame, flights: liveFlights },
+    paintFlight: true,
+    sync: flyingMembershipChanged || allSettled ? { flights: liveFlights, now } : null,
+  };
+}
+
+function flightsChanged(prev: readonly CardFlight[], next: readonly CardFlight[]): boolean {
+  if (prev.length !== next.length) return true;
+
+  for (let index = 0; index < prev.length; index += 1) {
+    const before = prev[index];
+    const after = next[index];
+    if (before == null || after == null) return true;
+    if (
+      before.id !== after.id ||
+      before.print !== after.print ||
+      before.name !== after.name ||
+      before.targetX !== after.targetX ||
+      before.targetY !== after.targetY ||
+      before.targetScale !== after.targetScale ||
+      before.phase !== after.phase ||
+      before.kind !== after.kind ||
+      before.fromCardId !== after.fromCardId
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function flyingIds(flights: readonly CardFlight[]): Set<number> {
+  return new Set(flights.filter((flight) => flight.phase === "flying").map((flight) => flight.id));
+}
+
+function sameIdSet(a: ReadonlySet<number>, b: ReadonlySet<number>): boolean {
+  if (a.size !== b.size) return false;
+  for (const id of a) {
+    if (!b.has(id)) return false;
+  }
+  return true;
+}
+
+function resetClockState(): void {
+  currentFrame = null;
+  flightClockState = {
+    liveFlights: [],
+    lastRestingSnapshot: null,
+  };
+}
+
 export function bitmapFrameNeedsRaf(frame: Pick<BitmapFrame, "flights"> | null): boolean {
-  return (frame?.flights.length ?? 0) > 0;
+  return frame?.flights.some((flight) => flight.phase === "flying") ?? false;
 }
 
 /** Size the backing store to the DPR, reset the transform, and clear. Returns the 2D context. */
@@ -150,20 +262,28 @@ function registerLayer(
     handle?.kickRaf();
   });
   const frame = (now: number): void => {
-    if (handle == null) return;
+    if (handle == null || currentFrame == null) return;
     handle.rafId = 0;
-    Queue.offerUnsafe(queue, TickedFrame({ now, reducedMotion: prefersReducedMotion() }));
-    render(handle.canvas);
+    const dtMs = handle.lastFlightTick == null ? 16 : Math.max(0, now - handle.lastFlightTick);
+    handle.lastFlightTick = now;
+    const tick = tickFlightClock(flightClockState, currentFrame, now, dtMs, prefersReducedMotion());
+    flightClockState = tick.state;
+    currentFrame = tick.frame;
+    if (tick.paintFlight) render(handle.canvas);
+    if (tick.sync != null) Queue.offerUnsafe(queue, FlightsSynced(tick.sync));
     handle.kickRaf();
   };
   const kickRaf = (): void => {
     if (handle == null) return;
     if (!animates) return;
     if (handle.rafId !== 0) return;
-    if (!bitmapFrameNeedsRaf(currentFrame)) return;
+    if (!bitmapFrameNeedsRaf(currentFrame)) {
+      handle.lastFlightTick = null;
+      return;
+    }
     handle.rafId = requestAnimationFrame(frame);
   };
-  handle = { canvas: element, render, animates, unsubscribe, rafId: 0, kickRaf };
+  handle = { canvas: element, render, animates, unsubscribe, rafId: 0, lastFlightTick: null, kickRaf };
   mountedLayers.add(handle);
   render(handle.canvas);
   kickRaf();
@@ -176,15 +296,16 @@ function releaseLayer(handle: BitmapMountHandle | null): void {
   mountedLayers.delete(handle);
   handle.unsubscribe();
   if (handle.rafId !== 0) cancelAnimationFrame(handle.rafId);
+  if (mountedLayers.size === 0) resetClockState();
 }
 
 function defineLayerMount(name: string, render: (canvas: HTMLCanvasElement) => void, animates: boolean) {
   return Mount.defineStream(
     name,
     ArtLoaded,
-    TickedFrame,
+    FlightsSynced,
   )((element) =>
-    Stream.callback<typeof ArtLoaded.Type | typeof TickedFrame.Type>((queue) =>
+    Stream.callback<typeof ArtLoaded.Type | typeof FlightsSynced.Type>((queue) =>
       Effect.gen(function* () {
         yield* Effect.acquireRelease(
           Effect.sync(() => registerLayer(element, render, animates, queue)),
