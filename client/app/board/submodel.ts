@@ -1526,7 +1526,7 @@ export function updateBoard(
         } else {
           next = [...picked, message.id];
         }
-        return [{ ...synced, promptDraft: { kind: "card-pick", picked: next } }, []];
+        return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter } }, []];
       }
 
       if (synced.promptDraft.kind === "player-pick") {
@@ -1602,6 +1602,17 @@ export function updateBoard(
       const synced = syncPromptDraft(model, fold);
       if (synced.promptDraft?.kind !== "string") return [synced, []];
       return [{ ...synced, promptDraft: { kind: "string", value: message.value } }, []];
+    }
+    case "PromptCardFilterSet": {
+      const synced = syncPromptDraft(model, fold);
+      if (synced.promptDraft?.kind !== "card-pick") return [synced, []];
+      return [
+        {
+          ...synced,
+          promptDraft: { kind: "card-pick", picked: synced.promptDraft.picked, filter: message.query },
+        },
+        [],
+      ];
     }
     case "PromptNumberSet": {
       const synced = syncPromptDraft(model, fold);

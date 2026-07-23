@@ -113,7 +113,7 @@ export function assertAllKindsRegistered(kinds: readonly PendingChoiceView["kind
 }
 
 export type PromptDraft =
-  | { kind: "card-pick"; picked: number[] }
+  | { kind: "card-pick"; picked: number[]; filter?: string }
   | { kind: "order"; order: number[] }
   | { kind: "damage"; amounts: Record<number, number> }
   | { kind: "divide"; amounts: Record<number, number> }
@@ -266,7 +266,7 @@ export function initPromptDraft(pc: PendingChoiceView, state: VisibleState): Pro
     case "revealed_card_to_battlefield_or_hand":
       return { kind: "destination", choice: null };
     default:
-      return { kind: "card-pick", picked: [] };
+      return { kind: "card-pick", picked: [], filter: "" };
   }
 }
 

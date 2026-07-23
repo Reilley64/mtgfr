@@ -685,6 +685,38 @@ test("non-decider sees waiting banner instead of pending-choice controls", () =>
   );
 });
 
+test("library search prompt shows name filter and pinned scroll chrome", () => {
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        promptDraft: { kind: "card-pick", picked: [], filter: "sol" },
+      },
+      gameState({
+        pending_choice: {
+          kind: "search_library",
+          player: 0,
+          items: [
+            { id: 1, label: "Sol Ring" },
+            { id: 2, label: "Forest" },
+            { id: 3, label: "Forest" },
+            { id: 4, label: "Sol Talisman" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("pick-title")).toHaveText("Search your library"),
+    Scene.expect(Scene.testId("pick-card-filter")).toExist(),
+    Scene.expect(Scene.placeholder("Filter by name…")).toExist(),
+    Scene.expect(Scene.testId("pick-card-scroll")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-4")).toExist(),
+    Scene.expect(Scene.testId("prompt-card-2")).toBeAbsent(),
+    Scene.expect(Scene.testId("prompt-decline")).toExist(),
+  );
+});
+
 test("choose_card_name prompt shows a Card name placeholder field", () => {
   overlayScene(
     overlayModel(

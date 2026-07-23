@@ -5,6 +5,12 @@
 import { Option } from "effect";
 import { type Html, html } from "foldkit/html";
 import {
+  cardPickIsSearchable,
+  filterChoiceItems,
+  PICK_CARD_SCROLL_MIN_CLASS,
+  searchableChoiceItems,
+} from "~/cardPickSearch";
+import {
   type AnswerInput,
   buildAnswerFromDraft,
   cardPickReady,
@@ -30,6 +36,7 @@ import {
   ModalModesChosen,
   ModalModeToggled,
   PendingChoiceAnswered,
+  PromptCardFilterSet,
   PromptCardToggled,
   PromptDamageSet,
   PromptDeclined,
@@ -186,27 +193,80 @@ function cardPickPrompt(
 ): Html {
   const draft = board.promptDraft ?? initPromptDraft(pending, state);
   const picked = draft.kind === "card-pick" ? draft.picked : [];
+  const filter = draft.kind === "card-pick" ? (draft.filter ?? "") : "";
   const ready = cardPickReady(pending, picked);
-  const body: Html[] = [];
-  if (config.hint) body.push(h.div([h.Class("text-caption text-mist")], [config.hint]));
-  body.push(
-    h.div(
-      [h.Class("flex flex-wrap justify-center gap-2")],
-      items.map((item) => cardPickButton(item, state, picked, config.ordered ?? false)),
+  const searchable = cardPickIsSearchable(pending.kind);
+  const required = searchable ? 1 : null;
+  const shown = searchable
+    ? required === 1
+      ? searchableChoiceItems(items, filter)
+      : filterChoiceItems(items, filter)
+    : items;
+
+  const hintEl = config.hint != null ? h.div([h.Class("shrink-0 text-caption text-mist")], [config.hint]) : null;
+  const filterEl = searchable
+    ? h.input([
+        h.DataAttribute("testid", "pick-card-filter"),
+        h.Type("search"),
+        h.Placeholder("Filter by name…"),
+        h.Autofocus(true),
+        h.AriaLabel("Filter cards by name"),
+        h.Value(filter),
+        h.OnInput((v) => PromptCardFilterSet({ query: v })),
+        h.Class("w-[min(90vw,320px)] shrink-0 rounded-hud bg-glass px-3 py-1 text-body text-snow"),
+      ])
+    : null;
+  const emptyEl =
+    searchable && filter.trim() !== "" && shown.length === 0
+      ? h.div([h.Class("text-label text-mist")], ["No cards match."])
+      : null;
+  const cardsEl = h.div(
+    [h.Class("flex flex-wrap justify-center gap-2")],
+    [...shown.map((item) => cardPickButton(item, state, picked, config.ordered ?? false)), emptyEl].filter(
+      (v): v is Html => v !== null,
     ),
   );
-  body.push(
-    h.div(
-      [h.Class("flex flex-wrap gap-2")],
-      [
-        submitButton(config.submitLabel, !ready),
-        config.declineLabel != null
-          ? itemButton(config.declineLabel, "prompt-decline", PromptDeclined())
-          : h.span([], []),
-      ],
-    ),
+  const actionsEl = h.div(
+    [h.Class("flex shrink-0 flex-wrap gap-2")],
+    [
+      submitButton(config.submitLabel, !ready),
+      config.declineLabel != null
+        ? itemButton(config.declineLabel, "prompt-decline", PromptDeclined())
+        : h.span([], []),
+    ],
   );
-  return frame("pending-choice", config.title, body);
+
+  if (!searchable) {
+    const body: Html[] = [];
+    if (hintEl != null) body.push(hintEl);
+    body.push(cardsEl);
+    body.push(actionsEl);
+    return frame("pending-choice", config.title, body);
+  }
+
+  return h.div(
+    [
+      h.DataAttribute("testid", "pending-choice"),
+      h.Class(
+        "pointer-events-auto fixed top-1/2 left-1/2 z-40 flex max-h-[min(90vh,720px)] max-w-[min(90vw,1040px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-2 overflow-hidden rounded-panel bg-black/70 p-4 text-snow shadow-hud",
+      ),
+    ],
+    [
+      h.div([h.DataAttribute("testid", "pick-title"), h.Class("shrink-0 font-semibold text-body")], [config.title]),
+      hintEl,
+      filterEl,
+      h.div(
+        [
+          h.DataAttribute("testid", "pick-card-scroll"),
+          h.Class(
+            `${PICK_CARD_SCROLL_MIN_CLASS} w-full max-w-[min(90vw,1040px)] flex-1 overflow-y-auto overscroll-contain`,
+          ),
+        ],
+        [cardsEl],
+      ),
+      actionsEl,
+    ].filter((v): v is Html => v !== null),
+  );
 }
 
 function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers" }>, board: BoardModel): Html {
