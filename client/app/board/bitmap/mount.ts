@@ -42,6 +42,8 @@ export type BitmapFrame = {
   /** Combat-damage assign draft amounts keyed by blocker object id. */
   assignAmounts: ReadonlyMap<number, number>;
   targetPlayers: ReadonlySet<number>;
+  /** Multi player-aim seats already toggled in the player-pick draft (Priority Gold solid ring). */
+  pickedPlayers: ReadonlySet<number>;
   aimFrom: Vec | null;
   cursor: Vec;
   combatDragFrom: Vec | null;
@@ -357,7 +359,14 @@ function paintAvatars(ctx: CanvasRenderingContext2D, frame: BitmapFrame): void {
     ctx.lineWidth = frame.priority === player.player ? 4 : 2;
     ctx.stroke();
 
-    if (frame.targetPlayers.has(player.player)) {
+    if (frame.pickedPlayers.has(player.player)) {
+      ctx.beginPath();
+      ctx.arc(screen.x, screen.y, radius + 5, 0, Math.PI * 2);
+      ctx.strokeStyle = colors.priorityGold;
+      ctx.lineWidth = 4;
+      ctx.setLineDash([]);
+      ctx.stroke();
+    } else if (frame.targetPlayers.has(player.player)) {
       ctx.beginPath();
       ctx.arc(screen.x, screen.y, radius + 5, 0, Math.PI * 2);
       ctx.strokeStyle = TARGET_COLOR;

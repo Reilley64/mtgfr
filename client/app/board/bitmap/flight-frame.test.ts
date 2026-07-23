@@ -18,6 +18,7 @@ const baseResting = {
   pickedObjects: new Set<number>(),
   assignAmounts: new Map<number, number>(),
   targetPlayers: new Set<number>(),
+  pickedPlayers: new Set<number>(),
   aimFrom: null,
   cursor: { x: 0, y: 0 },
   combatDragFrom: null,
