@@ -1033,9 +1033,76 @@ function cardPickForKind(
     return arrangeLanesPrompt(pending, state, board);
   }
 
+  if (pending.kind === "select_from_top") {
+    return selectFromTopLanesPrompt(pending, state, board);
+  }
+
   const items = "items" in pending ? pending.items : [];
   const config = cardPickConfig(pending);
   return cardPickPrompt(pending, items, state, board, config);
+}
+
+function selectFromTopLanesPrompt(
+  pending: Extract<PendingChoiceView, { kind: "select_from_top" }>,
+  state: VisibleState,
+  board: BoardModel,
+): Html {
+  const draft = board.promptDraft ?? initPromptDraft(pending, state);
+  const picked = draft.kind === "card-pick" ? draft.picked : [];
+  const byId = new Map(pending.items.map((it) => [it.id, it]));
+  const takeItems = picked.flatMap((id) => {
+    const item = byId.get(id);
+    return item != null ? [item] : [];
+  });
+  const restItems = pending.items.filter((it) => !picked.includes(it.id));
+  return frame("pending-choice", `Select up to ${pending.up_to} from the top`, [
+    h.div(
+      [h.DataAttribute("testid", "prompt-select-top-lanes"), h.Class("flex flex-col gap-3")],
+      [
+        h.div(
+          [h.Class("shrink-0 text-caption text-mist")],
+          ["Click a card to take it or put it back. Untaken cards go to the bottom."],
+        ),
+        h.div(
+          [h.DataAttribute("testid", "prompt-select-top-take"), h.Class("flex flex-col gap-2")],
+          [
+            h.div(
+              [
+                h.DataAttribute("testid", "prompt-select-top-take-label"),
+                h.Class("text-caption font-semibold text-seafoam"),
+              ],
+              [`Take (${picked.length} / ${pending.up_to})`],
+            ),
+            h.div(
+              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+              takeItems.length > 0
+                ? takeItems.map((item) => arrangeLaneCard(item, state, picked, true))
+                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+            ),
+          ],
+        ),
+        h.div(
+          [h.DataAttribute("testid", "prompt-select-top-rest"), h.Class("flex flex-col gap-2")],
+          [
+            h.div(
+              [
+                h.DataAttribute("testid", "prompt-select-top-rest-label"),
+                h.Class("text-caption font-semibold text-seafoam"),
+              ],
+              ["Bottom of library"],
+            ),
+            h.div(
+              [h.Class("flex min-h-[140px] flex-wrap justify-center gap-2 rounded-panel bg-glass/40 p-2")],
+              restItems.length > 0
+                ? restItems.map((item) => arrangeLaneCard(item, state, [], false))
+                : [h.div([h.Class("self-center text-caption text-mist")], ["None"])],
+            ),
+          ],
+        ),
+      ],
+    ),
+    h.div([h.Class("flex shrink-0 flex-wrap gap-2")], [submitButton("Done", false)]),
+  ]);
 }
 
 function yesNoPrompt(

@@ -293,6 +293,28 @@ test("scry card click moves from Bottom lane to Top lane", () => {
   });
 });
 
+test("select_from_top Take lane click emits select_from_top intent", () => {
+  const s = state({
+    pending_choice: {
+      kind: "select_from_top",
+      up_to: 2,
+      player: 0,
+      items: [
+        { id: 1, label: "A" },
+        { id: 2, label: "B" },
+      ],
+    },
+  });
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptCardToggled({ id: 1 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "select_from_top",
+    player: 0,
+    cards: [1],
+  });
+});
+
 test("choose_dredge shows Draw normally and disables Dredge until one pick", () => {
   const s = state({
     pending_choice: {

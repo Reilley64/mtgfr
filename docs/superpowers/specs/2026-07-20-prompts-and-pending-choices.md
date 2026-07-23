@@ -24,6 +24,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player choosing a color or mana color, I pick from mana-font pip buttons (not letter labels).
 - As a player answering a one-click on-board target choice, I aim at highlighted permanents/players (no card grid); optional choices keep Decline on the aim chrome.
 - As a player scrying or surveilling, I assign looked-at cards into Top vs Bottom (or Graveyard) lanes instead of a flat ordered pick list.
+- As a player selecting from the top of my library, I assign cards into Take vs Bottom lanes (up to the allowed count).
 - As a player ordering triggers, I click-to-place rows (or use ↑↓) so the last listed resolves first.
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
@@ -56,6 +57,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - `choose_color` / `choose_mana_color` render WUBRG as mana-font pip buttons (`prompt-color-{i}` / `prompt-color-pip-{i}`) with color aria-labels; click still emits `choose_color` / `choose_mana_color` intents.
 - One-click on-board `choose_target` / spell / ability targets suppress the `pending-choice` card grid and show `pending-target-aim` label chrome (plus optional Decline). Multi-target on-board aim shows `pending-target-count` and Confirm instead of the card grid. Off-board items keep the card / player picker.
 - `scry` / `surveil` use two-lane arrange chrome (`prompt-arrange-lanes`): cards start in Bottom (library bottom or Graveyard for Surveil); click toggles a card between Top and Bottom, preserving left-to-right order in each lane. Done always submits `arrange_top` via partition draft `{ top, bottom }`.
+- `select_from_top` uses Take vs Bottom lanes (`prompt-select-top-lanes`); click toggles into Take (capped at `up_to`); Done submits `select_from_top` with the Take ids.
 - `order_triggers` rows support click-to-place reorder (`PromptOrderRowClicked` / `orderPickPos`) plus ↑↓ (`PromptOrderMoved`); list lives under `prompt-order-list`. Submit still emits `choose_order`.
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
 - Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
