@@ -1,0 +1,152 @@
+{
+  "color": {
+    "forest-floor": {
+      "$type": "color",
+      "$value": "#0B1310",
+      "$description": "Canvas / app background"
+    },
+    "forest-surface": { "$type": "color", "$value": "#101816FA" },
+    "forest-hud": { "$type": "color", "$value": "#0C1412EB" },
+    "llanowar": { "$type": "color", "$value": "#2F7D46" },
+    "llanowar-deep": { "$type": "color", "$value": "#276B3C" },
+    "vine": { "$type": "color", "$value": "#22CC44" },
+    "vine-dim": { "$type": "color", "$value": "#11CC33" },
+    "snow": { "$type": "color", "$value": "#EEFFFF" },
+    "seafoam": { "$type": "color", "$value": "#DDFFEE" },
+    "mist": { "$type": "color", "$value": "#CCDDEE" },
+    "lichen": { "$type": "color", "$value": "#99CCBB" },
+    "fog": { "$type": "color", "$value": "#8899AA" },
+    "snow-mint": { "$type": "color", "$value": "#EAFFF0" },
+    "glass": { "$type": "color", "$value": "#FFFFFF0F" },
+    "glass-dim": { "$type": "color", "$value": "#FFFFFF0D" },
+    "priority-gold": {
+      "$type": "color",
+      "$value": "#FFD76A",
+      "$description": "Gold Means Act — a decision is owed"
+    },
+    "playable-border": { "$type": "color", "$value": "#EAFFF0" },
+    "commander-gold": { "$type": "color", "$value": "#E9B84A" },
+    "graveyard-outline": { "$type": "color", "$value": "#7B5CFF" },
+    "exile-outline": { "$type": "color", "$value": "#3DDC97" },
+    "oracle-ivory": { "$type": "color", "$value": "#E8E4D8" },
+    "morph-slate": { "$type": "color", "$value": "#2A3742" },
+    "mountain-red": { "$type": "color", "$value": "#FF5555" },
+    "wall-green": { "$type": "color", "$value": "#66FF99" },
+    "island-blue": { "$type": "color", "$value": "#77CCFF" },
+    "burn-red": { "$type": "color", "$value": "#FF8888" },
+    "caution-amber": { "$type": "color", "$value": "#FFEE88" },
+    "damage-crimson": { "$type": "color", "$value": "#8F2F2F" },
+    "tapped-out": { "$type": "color", "$value": "#24312B" },
+    "tapped-ink": { "$type": "color", "$value": "#66786E" },
+    "seat-forest": { "$type": "color", "$value": "#5AC88C" },
+    "seat-island": { "$type": "color", "$value": "#5A96F0" },
+    "seat-mountain": { "$type": "color", "$value": "#F0785A" },
+    "seat-arcane": { "$type": "color", "$value": "#C88CF0" },
+    "turn-mint": { "$type": "color", "$value": "#8FDCAA" },
+    "turn-ember": { "$type": "color", "$value": "#E0A878" },
+    "phase-mint": { "$type": "color", "$value": "#55CC99" },
+    "phase-ember": { "$type": "color", "$value": "#CC8855" },
+    "note-gold": { "$type": "color", "$value": "#F0C674" },
+    "auto-moss": { "$type": "color", "$value": "#3A7D52" },
+    "reconnect-rust": { "$type": "color", "$value": "#7A3B13" },
+    "assign-clover": { "$type": "color", "$value": "#99FF99" },
+    "watch-sage": { "$type": "color", "$value": "#9FB4A8" },
+    "watch-flare": { "$type": "color", "$value": "#F87171" },
+    "ready-sprout": { "$type": "color", "$value": "#8FE3A8" },
+    "phase-fern": { "$type": "color", "$value": "#8FA398" },
+    "preview-ash": { "$type": "color", "$value": "#E8E8EA" },
+    "hud-edge": { "$type": "color", "$value": "#5A786966" },
+    "yielded": { "$type": "color", "$value": "#6B5A1F" },
+    "yielded-hover": { "$type": "color", "$value": "#7D6A26" },
+    "yielded-ink": { "$type": "color", "$value": "#FFE9A8" },
+    "quiet-hover": { "$type": "color", "$value": "#2C3F35" }
+  },
+  "font": {
+    "sans": {
+      "$type": "fontFamily",
+      "$value": "system-ui, sans-serif",
+      "$description": "One Face Rule"
+    }
+  },
+  "text": {
+    "title": {
+      "$type": "dimension",
+      "$value": "18px",
+      "font-weight": { "$type": "number", "$value": 700 }
+    },
+    "body": {
+      "$type": "dimension",
+      "$value": "14px",
+      "line-height": { "$type": "number", "$value": 1.5 }
+    },
+    "button": {
+      "$type": "dimension",
+      "$value": "14px",
+      "font-weight": { "$type": "number", "$value": 600 }
+    },
+    "label": { "$type": "dimension", "$value": "13px" },
+    "caption": { "$type": "dimension", "$value": "12px" },
+    "chip": { "$type": "dimension", "$value": "11px" },
+    "micro": { "$type": "dimension", "$value": "10px" },
+    "game": {
+      "$type": "dimension",
+      "$value": "15px",
+      "font-weight": { "$type": "number", "$value": 600 }
+    },
+    "display": {
+      "$type": "dimension",
+      "$value": "22px",
+      "font-weight": { "$type": "number", "$value": 700 }
+    }
+  },
+  "radius": {
+    "panel": { "$type": "dimension", "$value": "12px" },
+    "modal": { "$type": "dimension", "$value": "10px" },
+    "game": { "$type": "dimension", "$value": "10px" },
+    "hud": { "$type": "dimension", "$value": "8px" },
+    "control": { "$type": "dimension", "$value": "6px" },
+    "focus": { "$type": "dimension", "$value": "4px" }
+  },
+  "spacing": {
+    "xs": { "$type": "dimension", "$value": "6px" },
+    "sm": { "$type": "dimension", "$value": "8px" },
+    "md": { "$type": "dimension", "$value": "10px" },
+    "lg": { "$type": "dimension", "$value": "14px" },
+    "xl": { "$type": "dimension", "$value": "16px" },
+    "xxl": { "$type": "dimension", "$value": "24px" }
+  },
+  "shadow": {
+    "table": { "$type": "css", "$value": "0 12px 40px rgb(0 0 0 / 0.6)" },
+    "hand": { "$type": "css", "$value": "0 6px 18px rgb(0 0 0 / 0.5)" },
+    "hud": { "$type": "css", "$value": "0 6px 20px rgb(0 0 0 / 0.45)" },
+    "press": {
+      "$type": "css",
+      "$value": "inset 0 1px 0 rgb(255 255 255 / 0.16), 0 6px 16px rgb(0 0 0 / 0.4)"
+    },
+    "press-active": {
+      "$type": "css",
+      "$value": "inset 0 1px 0 rgb(255 255 255 / 0.1), 0 3px 10px rgb(0 0 0 / 0.4)"
+    },
+    "glow": {
+      "$type": "css",
+      "$value": "inset 0 1px 0 rgb(255 255 255 / 0.18), 0 0 0 2px rgb(90 200 140 / 0.55), 0 6px 20px rgb(47 140 90 / 0.45)"
+    },
+    "pick": {
+      "$type": "css",
+      "$value": "0 0 0 3px #22cc44, 0 10px 24px rgb(0 0 0 / 0.6)"
+    }
+  },
+  "drop-shadow": {
+    "drag": { "$type": "css", "$value": "0 10px 24px rgb(0 0 0 / 0.6)" }
+  },
+  "ease": {
+    "state": { "$type": "css", "$value": "cubic-bezier(0.22, 1, 0.36, 1)" }
+  },
+  "animate": {
+    "stack-in": { "$type": "css", "$value": "stack-in 0.25s ease-out" },
+    "stack-return": { "$type": "css", "$value": "stack-return 0.22s ease-in" },
+    "stack-resolve": { "$type": "css", "$value": "stack-resolve 0.22s ease-out" },
+    "breathe": { "$type": "css", "$value": "breathe 1.8s ease-in-out infinite" },
+    "skeleton": { "$type": "css", "$value": "breathe 1.2s ease-in-out infinite" }
+  }
+}
