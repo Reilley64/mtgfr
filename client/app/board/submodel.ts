@@ -177,6 +177,8 @@ export type BoardModel = {
   cardNameSuggestions: { query: string; names: ReadonlyArray<string> } | null;
   /** Filter query for closed option prompts (creature types). */
   promptOptionFilter: string;
+  /** Selected row while click-to-place reordering `order_triggers` (null when idle). */
+  orderPickPos: number | null;
   /** Window-captured hand-bar drag ghost (null when idle). */
   handDrag: HandDragState | null;
   /** Hovered hand/radial action id — resolves `auto_tap` from the live action list. */
@@ -232,6 +234,7 @@ export function initialBoardModel(): BoardModel {
     promptDraft: null,
     cardNameSuggestions: null,
     promptOptionFilter: "",
+    orderPickPos: null,
     handDrag: null,
     hoverActionId: null,
   };
@@ -304,6 +307,7 @@ function syncPromptDraft(model: BoardModel, fold: BoardFold): BoardModel {
     promptDraft: pc != null && gameState != null ? initPromptDraft(pc, gameState) : null,
     cardNameSuggestions: null,
     promptOptionFilter: "",
+    orderPickPos: null,
   };
 }
 
@@ -1156,6 +1160,7 @@ function cancelAll(model: BoardModel): BoardModel {
     promptDraft: null,
     cardNameSuggestions: null,
     promptOptionFilter: "",
+    orderPickPos: null,
     handDrag: null,
     hoverActionId: null,
   };
@@ -1634,7 +1639,26 @@ export function updateBoard(
       if (target < 0 || target >= synced.promptDraft.order.length) return [synced, []];
       const order = [...synced.promptDraft.order];
       [order[message.pos], order[target]] = [order[target], order[message.pos]];
-      return [{ ...synced, promptDraft: { kind: "order", order } }, []];
+      return [{ ...synced, promptDraft: { kind: "order", order }, orderPickPos: null }, []];
+    }
+    case "PromptOrderRowClicked": {
+      const synced = syncPromptDraft(model, fold);
+      if (synced.promptDraft?.kind !== "order") return [synced, []];
+      const from = synced.orderPickPos;
+      if (from == null) {
+        return [{ ...synced, orderPickPos: message.pos }, []];
+      }
+      if (from === message.pos) {
+        return [{ ...synced, orderPickPos: null }, []];
+      }
+      const order = [...synced.promptDraft.order];
+      if (from < 0 || from >= order.length || message.pos < 0 || message.pos >= order.length) {
+        return [{ ...synced, orderPickPos: null }, []];
+      }
+      const [item] = order.splice(from, 1);
+      if (item === undefined) return [{ ...synced, orderPickPos: null }, []];
+      order.splice(message.pos, 0, item);
+      return [{ ...synced, promptDraft: { kind: "order", order }, orderPickPos: null }, []];
     }
     case "PromptDamageSet": {
       const synced = syncPromptDraft(model, fold);

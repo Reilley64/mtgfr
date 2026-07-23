@@ -119,6 +119,8 @@ export const PromptSubmitted = m("PromptSubmitted");
 export const PromptDeclined = m("PromptDeclined");
 /** Reorder stacked triggers (delta -1 = up, +1 = down). */
 export const PromptOrderMoved = m("PromptOrderMoved", { pos: S.Number, delta: S.Number });
+/** Click-to-place reorder: first click picks a row, second click inserts it at that index. */
+export const PromptOrderRowClicked = m("PromptOrderRowClicked", { pos: S.Number });
 /** Set combat damage assigned to a blocker. */
 export const PromptDamageSet = m("PromptDamageSet", { id: S.Number, amount: S.Number });
 /** Type into a free-text prompt (naming a card). */
@@ -263,6 +265,7 @@ export const Message = S.Union([
   PromptSubmitted,
   PromptDeclined,
   PromptOrderMoved,
+  PromptOrderRowClicked,
   PromptDamageSet,
   PromptStringSet,
   PromptCardFilterSet,
