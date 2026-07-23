@@ -208,17 +208,13 @@ describe("handView playable outlines", () => {
     expect(face).not.toContain("ring-playable-border");
   });
 
-  it("shows gy/exile zone auras without mint on unplayable zone cards", () => {
+  it("omits unplayable gy/exile cards from the action bar", () => {
     const gy = object(60, { zone: ZONE.Graveyard, name: "Grizzly Bears" });
     const exile = object(61, { zone: ZONE.Exile, name: "Sol Ring" });
     const tree = renderHand(state({ objects: [gy, exile], actions: [] }));
 
-    const gyFace = className(findTestId(tree, "hand-card-face-60"));
-    const exileFace = className(findTestId(tree, "hand-card-face-61"));
-    expect(gyFace).toContain("ring-graveyard-outline");
-    expect(gyFace).not.toContain("ring-playable-border");
-    expect(exileFace).toContain("ring-exile-outline");
-    expect(exileFace).not.toContain("ring-playable-border");
+    expect(findTestId(tree, "hand-card-face-60")).toBeNull();
+    expect(findTestId(tree, "hand-card-face-61")).toBeNull();
   });
 
   it("layers mint playable ring with outer commander-gold outline when castable", () => {
