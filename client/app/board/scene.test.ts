@@ -29,6 +29,7 @@ import {
   PromptSubmitted,
   RadialOptionPicked,
   StackDwellChanged,
+  TargetChosen,
 } from "./messages";
 import { BOARD_VIEWPORT, type BoardModel, initialBoardModel, updateBoard } from "./submodel";
 import { type BoardViewModel, view as boardView } from "./view";
@@ -445,6 +446,50 @@ test("Enter confirms multi on-board choose_target when draft is ready", () => {
     targets: [
       { kind: "object", id: 1 },
       { kind: "object", id: 2 },
+    ],
+  });
+});
+
+test("TargetChosen accumulates multi on-board stack targets until Confirm", () => {
+  const spellA = creature(40, 0, { name: "Spell A", zone: ZONE.Stack });
+  const spellB = creature(41, 0, { name: "Spell B", zone: ZONE.Stack });
+  const pending = {
+    kind: "choose_target" as const,
+    label: "Target spells",
+    max: 2,
+    optional: false,
+    player: 0,
+    source: 1,
+    items: [
+      { id: 40, label: "Spell A" },
+      { id: 41, label: "Spell B" },
+    ],
+  };
+  const gameFold = fold(
+    state({
+      objects: [spellA, spellB],
+      stack: [
+        { controller: 0, kind: "spell", label: "Spell A", source: 40 },
+        { controller: 0, kind: "spell", label: "Spell B", source: 41 },
+      ],
+      pending_choice: pending,
+    }),
+  );
+  let board: BoardModel = initialBoardModel();
+  let commands: ReturnType<typeof updateBoard>[1];
+  [board, commands] = updateBoard(board, TargetChosen({ target: { kind: "object", id: 40 } }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toEqual({ kind: "card-pick", picked: [40], filter: "" });
+  [board, commands] = updateBoard(board, TargetChosen({ target: { kind: "object", id: 41 } }), gameFold, "T1");
+  expect(commands).toEqual([]);
+  expect(board.promptDraft).toEqual({ kind: "card-pick", picked: [40, 41], filter: "" });
+  [, commands] = updateBoard(board, PromptSubmitted(), gameFold, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "choose_targets",
+    player: 0,
+    targets: [
+      { kind: "object", id: 40 },
+      { kind: "object", id: 41 },
     ],
   });
 });

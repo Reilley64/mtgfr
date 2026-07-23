@@ -694,26 +694,7 @@ function pointerUpModel(
           return [idle, boardIntentSubmit(tableId, choiceIntent(pc, answer))];
         }
       } else {
-        const synced = syncPromptDraft(idle, fold);
-        if (synced.promptDraft?.kind !== "card-pick") {
-          return [{ ...synced, promptDraft: { kind: "card-pick", picked: [release.card.id], filter: "" } }, []];
-        }
-        const picked = synced.promptDraft.picked;
-        const max =
-          pc.kind === "choose_target"
-            ? pc.max
-            : pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets"
-              ? pc.max
-              : undefined;
-        let next: number[];
-        if (picked.includes(release.card.id)) {
-          next = picked.filter((id) => id !== release.card.id);
-        } else if (max != null && picked.length >= max) {
-          return [synced, []];
-        } else {
-          next = [...picked, release.card.id];
-        }
-        return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter } }, []];
+        return togglePendingObjectAimPick(idle, fold, pc, release.card.id);
       }
     }
     if (
@@ -766,6 +747,36 @@ function completeStagedTarget(
     if (xPrompt != null) return [{ ...nextModel, xPrompt }, []];
   }
   return [nextModel, boardIntentSubmit(tableId, takeAction(fold, staged.action, target, 0, [], staged.picks))];
+}
+
+/** Toggle an object id into/out of the multi-aim card-pick draft (no submit). */
+function togglePendingObjectAimPick(
+  model: BoardModel,
+  fold: GameFoldState,
+  pc: NonNullable<GameFoldState["state"]>["pending_choice"],
+  objectId: number,
+): BoardReturn {
+  if (pc == null) return [model, []];
+  const synced = syncPromptDraft(model, fold);
+  if (synced.promptDraft?.kind !== "card-pick") {
+    return [{ ...synced, promptDraft: { kind: "card-pick", picked: [objectId], filter: "" } }, []];
+  }
+  const picked = synced.promptDraft.picked;
+  const max =
+    pc.kind === "choose_target"
+      ? pc.max
+      : pc.kind === "choose_spell_targets" || pc.kind === "choose_ability_targets"
+        ? pc.max
+        : undefined;
+  let next: number[];
+  if (picked.includes(objectId)) {
+    next = picked.filter((id) => id !== objectId);
+  } else if (max != null && picked.length >= max) {
+    return [synced, []];
+  } else {
+    next = [...picked, objectId];
+  }
+  return [{ ...synced, promptDraft: { kind: "card-pick", picked: next, filter: synced.promptDraft.filter } }, []];
 }
 
 function applyFlightsSynced(model: BoardModel, flightsIn: readonly CardFlight[], now: number): BoardModel {
@@ -1464,6 +1475,10 @@ export function updateBoard(
       }
       if (message.target.kind === "player" && !pendingAim.players.has(message.target.player)) {
         return [model, []];
+      }
+      if (!pendingTargetOneClick(pc)) {
+        if (message.target.kind !== "object") return [model, []];
+        return togglePendingObjectAimPick(model, fold, pc, message.target.id);
       }
       const answer = answerFromBoardTarget(pc, message.target);
       if (answer == null) return [model, []];
