@@ -30,6 +30,9 @@ function cssVarName(path) {
   return `--${path.join("-")}`;
 }
 
+// Formats render from this raw DTCG walk, not dictionary.allTokens. Style Dictionary is mostly a
+// build harness (transforms, platform wiring); SD alone omitted nested composite children such as
+// text.*.font-weight and text.*.line-height. The direct JSON walk is intentional for v1 literals.
 function collectDtcgTokens(node, path = []) {
   if (!node || typeof node !== "object" || Array.isArray(node)) {
     return [];
@@ -74,6 +77,7 @@ function buildConfig(buildPath) {
       },
       formats: {
         "mtgfr/tailwind-theme": ({ dictionary }) => {
+          // Prefer sourceTokens (see collectDtcgTokens); dictionary.allTokens is SD fallback only.
           const tokens = sourceTokens.length > 0 ? sourceTokens : dictionary.allTokens;
           const lines = tokens.map((t) => {
             const name = cssVarName(t.path);
