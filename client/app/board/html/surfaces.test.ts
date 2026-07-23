@@ -812,6 +812,31 @@ test("order_triggers prompt shows click-to-place list and arrow controls", () =>
   );
 });
 
+test("select_from_top prompt shows Take and Bottom lanes", () => {
+  overlayScene(
+    overlayModel(
+      { ...initialBoardModel(), promptDraft: { kind: "card-pick", picked: [1], filter: "" } },
+      gameState({
+        pending_choice: {
+          kind: "select_from_top",
+          up_to: 2,
+          player: 0,
+          items: [
+            { id: 1, label: "Sol Ring" },
+            { id: 2, label: "Forest" },
+            { id: 3, label: "Island" },
+          ],
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("prompt-select-top-lanes")).toExist(),
+    Scene.expect(Scene.testId("prompt-select-top-take-label")).toHaveText("Take (1 / 2)"),
+    Scene.expect(Scene.testId("prompt-select-top-rest-label")).toHaveText("Bottom of library"),
+    Scene.expect(Scene.testId("prompt-card-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
 test("non-decider sees waiting banner instead of pending-choice controls", () => {
   overlayScene(
     overlayModel(
