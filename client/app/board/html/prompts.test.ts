@@ -13,6 +13,7 @@ import {
   PromptCardToggled,
   PromptDamageSet,
   PromptNumberSet,
+  PromptOrderRowClicked,
   PromptStringSet,
   PromptSubmitted,
   XDraftSet,
@@ -161,9 +162,33 @@ test("order_triggers shows reorder controls and submit", () => {
     { update: sceneUpdate, view },
     Scene.with(viewModel(s)),
     resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-order-list")).toExist(),
     Scene.expect(Scene.testId("prompt-order-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-order-pick-0")).toHaveText("First"),
+    Scene.expect(Scene.testId("prompt-order-up-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-order-down-0")).toExist(),
     Scene.expect(Scene.testId("prompt-submit")).toBeEnabled(),
   );
+});
+
+test("order_triggers click-to-place reorders then submits choose_order", () => {
+  const s = state({
+    pending_choice: {
+      kind: "order_triggers",
+      count: 3,
+      labels: ["A", "B", "C"],
+      player: 0,
+      source: 1,
+    },
+  });
+  const gf = gameFold(s);
+  let board = updateBoard(initialBoardModel(), PromptOrderRowClicked({ pos: 0 }), gf, "T1")[0];
+  expect(board.orderPickPos).toBe(0);
+  board = updateBoard(board, PromptOrderRowClicked({ pos: 2 }), gf, "T1")[0];
+  expect(board.orderPickPos).toBeNull();
+  expect(board.promptDraft).toEqual({ kind: "order", order: [1, 2, 0] });
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({ kind: "choose_order", player: 0, order: [1, 2, 0] });
 });
 
 test("order_triggers submit emits choose_order intent", () => {

@@ -749,6 +749,28 @@ test("scry prompt shows Top and Bottom arrange lanes", () => {
   );
 });
 
+test("order_triggers prompt shows click-to-place list and arrow controls", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "order_triggers",
+          count: 2,
+          labels: ["ETB draw", "ETB treasure"],
+          player: 0,
+          source: 4,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("prompt-order-list")).toExist(),
+    Scene.expect(Scene.testId("prompt-order-pick-0")).toHaveText("ETB draw"),
+    Scene.expect(Scene.testId("prompt-order-up-0")).toExist(),
+    Scene.expect(Scene.testId("prompt-order-down-1")).toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
 test("non-decider sees waiting banner instead of pending-choice controls", () => {
   overlayScene(
     overlayModel(

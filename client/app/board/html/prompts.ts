@@ -53,6 +53,7 @@ import {
   PromptNumberSet,
   PromptOptionFilterSet,
   PromptOrderMoved,
+  PromptOrderRowClicked,
   PromptPartitionSet,
   PromptStringSet,
   PromptSubmitted,
@@ -404,13 +405,25 @@ function cardPickPrompt(
 function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers" }>, board: BoardModel): Html {
   const draft = board.promptDraft;
   const order = draft?.kind === "order" ? draft.order : pending.labels.map((_, i) => i);
-  const rows = order.map((effectIndex, pos) =>
-    h.div(
-      [h.DataAttribute("testid", `prompt-order-${pos}`), h.Class("flex items-center gap-2")],
+  const pick = board.orderPickPos;
+  const rows = order.map((effectIndex, pos) => {
+    const selected = pick === pos;
+    return h.div(
+      [
+        h.DataAttribute("testid", `prompt-order-${pos}`),
+        h.Class(
+          [
+            "flex items-center gap-2 rounded-hud border px-2 py-2 transition-colors",
+            selected ? "border-llanowar bg-llanowar/20" : "border-transparent bg-glass/50",
+          ].join(" "),
+        ),
+      ],
       [
         h.button(
           [
             h.Type("button"),
+            h.DataAttribute("testid", `prompt-order-up-${pos}`),
+            h.AriaLabel("Move up"),
             h.Disabled(pos === 0),
             h.OnClick(PromptOrderMoved({ pos, delta: -1 })),
             h.Class("rounded-hud bg-glass px-2 py-1 text-body disabled:opacity-40"),
@@ -420,18 +433,40 @@ function orderPrompt(pending: Extract<PendingChoiceView, { kind: "order_triggers
         h.button(
           [
             h.Type("button"),
+            h.DataAttribute("testid", `prompt-order-down-${pos}`),
+            h.AriaLabel("Move down"),
             h.Disabled(pos === order.length - 1),
             h.OnClick(PromptOrderMoved({ pos, delta: 1 })),
             h.Class("rounded-hud bg-glass px-2 py-1 text-body disabled:opacity-40"),
           ],
           ["↓"],
         ),
-        h.span([h.Class("text-body")], [pending.labels[effectIndex] ?? ""]),
+        h.button(
+          [
+            h.Type("button"),
+            h.DataAttribute("testid", `prompt-order-pick-${pos}`),
+            h.AriaLabel(selected ? "Cancel move" : "Pick to reorder"),
+            h.AriaPressed(selected ? "true" : "false"),
+            h.OnClick(PromptOrderRowClicked({ pos })),
+            h.Class(
+              "min-w-0 flex-1 cursor-pointer rounded-hud border-0 bg-transparent px-2 py-1 text-left text-body text-snow hover:bg-glass",
+            ),
+          ],
+          [pending.labels[effectIndex] ?? ""],
+        ),
+      ],
+    );
+  });
+  return frame("pending-choice", "Order these triggers — the last one resolves first", [
+    h.div(
+      [h.Class("shrink-0 text-caption text-mist")],
+      [
+        pick == null
+          ? "Click a trigger, then click where it should go (or use ↑↓)."
+          : "Click another row to place it there — or click it again to cancel.",
       ],
     ),
-  );
-  return frame("pending-choice", "Order these triggers — the last one resolves first", [
-    h.div([h.Class("flex flex-col gap-1")], rows),
+    h.div([h.DataAttribute("testid", "prompt-order-list"), h.Class("flex flex-col gap-1")], rows),
     submitButton("Submit", false),
   ]);
 }
