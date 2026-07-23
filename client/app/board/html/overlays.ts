@@ -6,7 +6,7 @@ import { mulliganChrome } from "~/mulligan";
 import { isActivePlayer, SPECTATOR_VIEWER } from "~/spectator";
 import type { VisibleState } from "~/wire/types";
 import type { LogLine } from "../../game/fold";
-import { pendingHandPickIds } from "../action/targeting";
+import { gyExileCostObjectIds, pendingHandPickIds } from "../action/targeting";
 import type { Message } from "../messages";
 import type { BoardModel } from "../submodel";
 import { activationRadialView } from "./activation-radial";
@@ -93,7 +93,13 @@ export function boardOverlays(
     seatedViewer && !mulliganing ? activationRadialView(board, state) : null,
     seatedViewer ? concedeButtonView() : null,
     concedeDialogView(board.confirmConcede),
-    pileOverlayView(board.pileExpand, state),
+    pileOverlayView(board.pileExpand, state, {
+      selectableIds:
+        board.gyExilePick != null
+          ? gyExileCostObjectIds(board.gyExilePick.action.graveyard_exile_choices, state)
+          : null,
+      selectedIds: board.gyExilePick?.picks.graveyard_exile ?? null,
+    }),
     resultOverlayView(state, board.resultSeen),
     // Inspect dock is topmost (layer 10) — above pile, concede dialog, and result.
     inspectView(board.inspectPin, board.inspectCard, board.inspectFace, inspectObject, state.players, state.objects),

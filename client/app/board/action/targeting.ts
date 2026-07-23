@@ -306,6 +306,35 @@ export function pendingDiscardHandIds(
   return pendingHandPickIds(pc, state);
 }
 
+/** Shared graveyard pile for on-pile gy-exile aim, or null when modal fallback is required. */
+export function gyExileCostPile(
+  choices: ReadonlyArray<number> | null | undefined,
+  state: VisibleState,
+): { zone: number; owner: number } | null {
+  if (choices == null || choices.length === 0) return null;
+  let owner: number | null = null;
+  for (const id of choices) {
+    const obj = state.objects.find((o) => o.id === id);
+    if (obj == null || obj.zone !== ZONE.Graveyard) return null;
+    if (owner == null) owner = obj.owner;
+    else if (obj.owner !== owner) return null;
+  }
+  if (owner == null) return null;
+  return { zone: ZONE.Graveyard, owner };
+}
+
+/**
+ * Legal graveyard object ids for a local pre-submit gy-exile cost when every choice shares one
+ * graveyard pile. Mixed zones/owners keep the modal cost grid.
+ */
+export function gyExileCostObjectIds(
+  choices: ReadonlyArray<number> | null | undefined,
+  state: VisibleState,
+): ReadonlySet<number> | null {
+  if (gyExileCostPile(choices, state) == null || choices == null) return null;
+  return new Set(choices);
+}
+
 /**
  * Legal permanent ids for a local pre-submit sacrifice cost when every choice is on the battlefield.
  * Off-board choices keep the modal cost grid.

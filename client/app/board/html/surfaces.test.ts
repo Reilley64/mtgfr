@@ -1248,6 +1248,48 @@ test("pending discard aim shows coach when cards are in hand", () => {
   );
 });
 
+test("gy exile cost aim shows coach when choices share a graveyard", () => {
+  const caster = card(10, {
+    name: "Caster",
+    zone: ZONE.Hand,
+    kind: { kind: "instant" },
+  });
+  const gy = card(8, {
+    name: "Fodder",
+    zone: ZONE.Graveyard,
+    kind: { kind: "creature", power: 1, toughness: 1 },
+  });
+  const castAction = action(50, {
+    kind: "cast",
+    label: "Cast",
+    graveyard_exile_choices: [8],
+    graveyard_exile_min: 1,
+    graveyard_exile_max: 1,
+    object: 10,
+    section: "hand",
+  });
+  overlayScene(
+    overlayModel(
+      {
+        ...initialBoardModel(),
+        gyExilePick: {
+          action: castAction,
+          card: caster,
+          dropSeed: { x: 0, y: 0 },
+          screenOrigin: { x: 0, y: 0 },
+          picks: emptyCostPicks(),
+        },
+        pileExpand: { zone: ZONE.Graveyard, owner: 0 },
+      },
+      gameState({ objects: [caster, gy] }),
+    ),
+    Scene.expect(Scene.testId("gy-exile-cost-aim")).toExist(),
+    Scene.expect(Scene.testId("pile-overlay")).toExist(),
+    Scene.expect(Scene.testId("pile-card-8")).toExist(),
+    Scene.expect(Scene.testId("gy-exile-pick")).toBeAbsent(),
+  );
+});
+
 test("pending put-from-hand aim shows coach when cards are in hand", () => {
   const forest = card(20, {
     name: "Forest",

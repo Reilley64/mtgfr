@@ -54,6 +54,7 @@ import {
 } from "./action/execution";
 import { advance } from "./action/modal";
 import {
+  gyExileCostPile,
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
   pendingDivideSpellObjectIndexes,
@@ -1175,6 +1176,38 @@ function runAction(
   return [model, boardIntentSubmit(tableId, takeAction(fold, action, null, 0, [], plan.picks))];
 }
 
+function settleGyExilePick(
+  model: BoardModel,
+  fold: GameFoldState,
+  tableId: string | null,
+  pick: CostPickState,
+  ids: ReadonlyArray<number>,
+): BoardReturn {
+  const picks: CostPicks = { ...pick.picks, graveyard_exile: [...ids], gy_exile_settled: true };
+  return continueAfterCostPick(
+    { ...model, gyExilePick: null, pileExpand: null },
+    fold,
+    tableId,
+    pick.action,
+    pick.card,
+    picks,
+    pick.dropSeed,
+    pick.screenOrigin,
+  );
+}
+
+/** Enter/Space confirm for multi gy-exile when min < max (exact counts auto-settle on last click). */
+function tryConfirmGyExile(model: BoardModel, fold: GameFoldState, tableId: string | null): BoardReturn | null {
+  const pick = model.gyExilePick;
+  if (pick == null) return null;
+  const min = pick.action.graveyard_exile_min ?? 0;
+  const max = pick.action.graveyard_exile_max ?? 0;
+  if (max <= 1 || min >= max) return null;
+  const selected = pick.picks.graveyard_exile;
+  if (selected.length < min || selected.length > max) return null;
+  return settleGyExilePick(model, fold, tableId, pick, selected);
+}
+
 function continueAfterCostPick(
   model: BoardModel,
   fold: GameFoldState,
@@ -1194,7 +1227,15 @@ function continueAfterCostPick(
     return [{ ...model, discardPick: { action, card, dropSeed, screenOrigin, picks } }, []];
   }
   if (plan.kind === "gy-exile-pick") {
-    return [{ ...model, gyExilePick: { action, card, dropSeed, screenOrigin, picks } }, []];
+    const pile = fold.state != null ? gyExileCostPile(action.graveyard_exile_choices, fold.state) : null;
+    return [
+      {
+        ...model,
+        gyExilePick: { action, card, dropSeed, screenOrigin, picks },
+        pileExpand: pile ?? model.pileExpand,
+      },
+      [],
+    ];
   }
   if (plan.kind === "modal") {
     return [
@@ -1301,8 +1342,13 @@ function handActivated(
     ];
   }
   if (plan.kind === "gy-exile-pick") {
+    const pile = state != null ? gyExileCostPile(plan.action.graveyard_exile_choices, state) : null;
     return [
-      { ...withHint, gyExilePick: { action: plan.action, card: plan.card, dropSeed, screenOrigin, picks: plan.picks } },
+      {
+        ...withHint,
+        gyExilePick: { action: plan.action, card: plan.card, dropSeed, screenOrigin, picks: plan.picks },
+        pileExpand: pile ?? withHint.pileExpand,
+      },
       [],
     ];
   }
@@ -1844,17 +1890,43 @@ export function updateBoard(
     case "GyExileChosen": {
       const pick = model.gyExilePick;
       if (pick == null) return [model, []];
-      const picks: CostPicks = { ...pick.picks, graveyard_exile: [...message.ids], gy_exile_settled: true };
-      return continueAfterCostPick(
-        { ...model, gyExilePick: null },
-        fold,
-        tableId,
-        pick.action,
-        pick.card,
-        picks,
-        pick.dropSeed,
-        pick.screenOrigin,
-      );
+      const choices = pick.action.graveyard_exile_choices ?? [];
+      const choiceSet = new Set(choices);
+      const min = pick.action.graveyard_exile_min ?? 0;
+      const max = pick.action.graveyard_exile_max ?? 0;
+      const objectId = message.ids[0];
+      if (objectId == null || !choiceSet.has(objectId)) return [model, []];
+      if (max <= 1) {
+        return settleGyExilePick(model, fold, tableId, pick, [objectId]);
+      }
+      const current = pick.picks.graveyard_exile;
+      let next: number[];
+      if (current.includes(objectId)) {
+        next = current.filter((id) => id !== objectId);
+      } else if (current.length >= max) {
+        return [model, []];
+      } else {
+        next = [...current, objectId];
+      }
+      if (next.length === max && max === min && max > 0) {
+        return settleGyExilePick(model, fold, tableId, pick, next);
+      }
+      return [
+        {
+          ...model,
+          gyExilePick: { ...pick, picks: { ...pick.picks, graveyard_exile: next } },
+        },
+        [],
+      ];
+    }
+    case "GyExileConfirmed": {
+      const pick = model.gyExilePick;
+      if (pick == null) return [model, []];
+      const min = pick.action.graveyard_exile_min ?? 0;
+      const max = pick.action.graveyard_exile_max ?? 0;
+      const selected = pick.picks.graveyard_exile;
+      if (selected.length < min || selected.length > max) return [model, []];
+      return settleGyExilePick(model, fold, tableId, pick, selected);
     }
     case "CombatAttackerDropped": {
       const from = fold.state?.objects.find((o) => o.id === message.attackerId) ?? null;
@@ -2228,8 +2300,14 @@ export function updateBoard(
     // ── Pile overlay ─────────────────────────────────────────────────────────
     case "PileExpanded":
       return [{ ...model, pileExpand: { zone: message.zone, owner: message.owner } }, []];
-    case "PileOverlayClosed":
+    case "PileOverlayClosed": {
+      // Keep the GY open while a pile-aim exile cost is live (Close would strand the player).
+      if (model.gyExilePick != null && fold.state != null) {
+        const pile = gyExileCostPile(model.gyExilePick.action.graveyard_exile_choices, fold.state);
+        if (pile != null) return [{ ...model, pileExpand: pile }, []];
+      }
       return [{ ...model, pileExpand: null }, []];
+    }
     // ── Concede ───────────────────────────────────────────────────────────────
     case "ConcedeClicked":
       return [{ ...model, confirmConcede: true }, []];
@@ -2270,6 +2348,8 @@ export function updateBoard(
     case "KeyboardSpacePressed": {
       // Opening mulligans own the chrome — don't pass/confirm via Space.
       if (fold.state?.mulliganing) return [model, []];
+      const gyExile = tryConfirmGyExile(model, fold, tableId);
+      if (gyExile != null) return gyExile;
       const submitted = trySubmitReadyPendingDraft(model, fold, tableId);
       if (submitted != null) return submitted;
       return primaryClickModel(model, fold, tableId);
@@ -2278,6 +2358,8 @@ export function updateBoard(
       const state = fold.state;
       if (state == null) return [model, []];
       if (state.mulliganing) return [model, []];
+      const gyExile = tryConfirmGyExile(model, fold, tableId);
+      if (gyExile != null) return gyExile;
       const submitted = trySubmitReadyPendingDraft(model, fold, tableId);
       if (submitted != null) return submitted;
       const me = state.viewer;

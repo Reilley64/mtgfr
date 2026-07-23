@@ -33,6 +33,7 @@ import type { ChoiceItem, PendingChoiceView, VisibleState, WireModeChoice, WireT
 import { clampX, costText, costWithChosenX } from "~/xCost";
 import { modeAvailable } from "../action/modal";
 import {
+  gyExileCostObjectIds,
   objectName,
   pendingBoardTargetMode,
   pendingDamageAssignBlockers,
@@ -52,6 +53,7 @@ import {
   CancelActionClicked,
   DiscardChosen,
   GyExileChosen,
+  GyExileConfirmed,
   type Message,
   ModalModesChosen,
   ModalModeToggled,
@@ -2183,12 +2185,59 @@ export function promptsView(board: BoardModel, state: VisibleState, tableId: str
     );
   }
   if (board.gyExilePick != null) {
-    return costPickPrompt(
-      "gy-exile-pick",
-      "Choose cards to exile from graveyard",
-      board.gyExilePick.action.graveyard_exile_choices ?? [],
-      state,
-      (id) => GyExileChosen({ ids: [id] }),
+    const choices = board.gyExilePick.action.graveyard_exile_choices ?? [];
+    const onPile = gyExileCostObjectIds(choices, state) != null;
+    if (onPile) {
+      const min = board.gyExilePick.action.graveyard_exile_min ?? 0;
+      const max = board.gyExilePick.action.graveyard_exile_max ?? 0;
+      const selected = board.gyExilePick.picks.graveyard_exile;
+      const oneClick = max <= 1;
+      const ready = !oneClick && selected.length >= min && selected.length <= max;
+      const countLine = !oneClick
+        ? h.div(
+            [h.DataAttribute("testid", "gy-exile-cost-count"), h.Class("pointer-events-none text-caption text-mist")],
+            [`${selected.length} / ${max} selected`],
+          )
+        : null;
+      const actions: Html[] = [cancelButton()];
+      if (!oneClick && min < max) {
+        actions.unshift(
+          h.button(
+            [
+              h.Type("button"),
+              h.DataAttribute("testid", "prompt-submit"),
+              h.OnClick(GyExileConfirmed()),
+              h.Disabled(!ready),
+              h.Class(
+                ready
+                  ? "cursor-pointer rounded-hud bg-llanowar px-3 py-1 text-body text-snow hover:bg-llanowar/90"
+                  : "cursor-not-allowed rounded-hud bg-glass px-3 py-1 text-body text-mist",
+              ),
+            ],
+            ["Exile"],
+          ),
+        );
+      }
+      return h.div(
+        [
+          h.DataAttribute("testid", "gy-exile-cost-aim"),
+          h.Style({ bottom: `${HAND_BAR_H + 12}px` }),
+          h.Class(
+            "pointer-events-auto fixed left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-xs rounded-hud border border-vine/50 bg-forest-hud px-md py-sm text-chip text-seafoam shadow-hud",
+          ),
+        ],
+        [
+          h.div(
+            [h.Class("pointer-events-none")],
+            [oneClick ? "Click a card in the graveyard to exile" : "Click cards in the graveyard to exile"],
+          ),
+          countLine,
+          h.div([h.Class("flex flex-wrap justify-center gap-2")], actions),
+        ].filter((v): v is Html => v !== null),
+      );
+    }
+    return costPickPrompt("gy-exile-pick", "Choose cards to exile from graveyard", choices, state, (id) =>
+      GyExileChosen({ ids: [id] }),
     );
   }
   if (board.staged != null) {
