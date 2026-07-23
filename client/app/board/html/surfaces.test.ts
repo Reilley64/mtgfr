@@ -585,6 +585,28 @@ test("modal mode picker renders before modes are chosen", () => {
   );
 });
 
+test("join-forces mana prompt shows a stepper instead of per-amount buttons", () => {
+  overlayScene(
+    overlayModel(
+      initialBoardModel(),
+      gameState({
+        pending_choice: {
+          kind: "pay_any_amount_of_mana",
+          max: 20,
+          player: 0,
+          source: 3,
+        },
+      }),
+    ),
+    Scene.expect(Scene.testId("pending-choice")).toExist(),
+    Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
+    Scene.expect(Scene.testId("prompt-number-min")).toExist(),
+    Scene.expect(Scene.testId("prompt-number-max")).toExist(),
+    Scene.expect(Scene.testId("prompt-number-0")).not.toExist(),
+    Scene.expect(Scene.testId("prompt-submit")).toExist(),
+  );
+});
+
 test("trample combat damage assign shows overflow to defender and enables Assign under power", () => {
   const attacker = card(9, {
     zone: ZONE.Battlefield,

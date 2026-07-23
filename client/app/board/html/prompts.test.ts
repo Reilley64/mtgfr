@@ -7,7 +7,15 @@ import type { ActionView, ObjectView, VisibleState, WireCost } from "~/wire/type
 import type { GameFoldState } from "../../game/fold";
 import { SubmitIntent } from "../../game/intents";
 import { emptyCostPicks } from "../action/execution";
-import { type Message, PromptCardToggled, PromptDamageSet, PromptSubmitted, XDraftSet, XSubmitted } from "../messages";
+import {
+  type Message,
+  PromptCardToggled,
+  PromptDamageSet,
+  PromptNumberSet,
+  PromptSubmitted,
+  XDraftSet,
+  XSubmitted,
+} from "../messages";
 import { type BoardModel, initialBoardModel, updateBoard } from "../submodel";
 import { boardOverlays } from "./overlays";
 import { resolveBoardOverlayMounts } from "./scene-helpers";
@@ -597,6 +605,37 @@ test("may_draw_up_to prompt emits choose_draw_count intent from UI", () => {
     Scene.click(Scene.testId("prompt-number-2")),
   );
   expect(intents).toEqual([{ kind: "choose_draw_count", player: 0, count: 2 }]);
+});
+
+test("pay_any_amount_of_mana uses a stepper and submits the draft amount", () => {
+  const s = state({
+    pending_choice: {
+      kind: "pay_any_amount_of_mana",
+      max: 12,
+      player: 0,
+      source: 7,
+    },
+  });
+  Scene.scene(
+    { update: sceneUpdate, view },
+    Scene.with(viewModel(s)),
+    resolveBoardOverlayMounts(),
+    Scene.expect(Scene.testId("prompt-number-value")).toHaveText("0"),
+    Scene.expect(Scene.testId("prompt-number-0")).not.toExist(),
+    Scene.expect(Scene.testId("prompt-number-dec")).toBeDisabled(),
+    Scene.click(Scene.testId("prompt-number-inc")),
+    Scene.click(Scene.testId("prompt-number-inc")),
+    Scene.expect(Scene.testId("prompt-number-value")).toHaveText("2"),
+  );
+  const gf = gameFold(s);
+  const board = updateBoard(initialBoardModel(), PromptNumberSet({ count: 2 }), gf, "T1")[0];
+  const [, commands] = updateBoard(board, PromptSubmitted(), gf, "T1");
+  expect(intentFromCommand(commands[0])).toEqual({
+    kind: "pay_optional_cost",
+    player: 0,
+    pay: true,
+    x: 2,
+  });
 });
 
 test("choose_countered_spell_destination prompt emits choose_top_or_bottom intent from UI", () => {

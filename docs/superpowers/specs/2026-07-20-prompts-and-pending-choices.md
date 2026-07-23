@@ -18,6 +18,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - As a player assigning combat damage with trample, I can leave leftover damage for the defending player and see that overflow before Assign.
 - As a player offered dredge, I can pick one dredger or decline with Draw normally.
 - As a player answering an optional-pay prompt, I see the mana cost on Pay and an outcome-specific decline label.
+- As a player joining forces (`pay_any_amount_of_mana`), I adjust a Min/−/value/+/Max stepper up to my affordable max and confirm (0 declines).
 - As a player choosing cards, prompts use the same cached card art behavior as hand and stack.
 
 ## Behavior
@@ -40,6 +41,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Trample’s prompt shows `assigned N / power` plus a `to defender: R` overflow line (`prompt-damage-overflow`). Non-trample prompts omit that line.
 - `choose_dredge` requires exactly one selected dredger to enable Dredge; `prompt-decline` (“Draw normally”) submits `dredger: null` via `declineAnswer`.
 - Optional-pay prompts (`pay_cost`, `pay_or_counter`, `pay_or_controller_draws`, `pay_echo_or_sacrifice`, `pay_recover_or_exile`, `sacrifice_unless_pay`) label the affirm button `Pay ${costText(cost)}` and use outcome-specific declines: Don’t pay / Let it be countered / Let them draw / Sacrifice / Exile.
+- `pay_any_amount_of_mana` (join forces) uses a clamped stepper over `[0, max]` with draft on `promptDraft` (`PromptNumberSet`); Confirm submits via `PromptSubmitted`. Per-N buttons (`prompt-number-N`) are not used for this kind. `may_draw_up_to` / `trade_secrets_caster_draw` keep one-click number buttons.
 
 ## Implementation Decisions
 
@@ -60,6 +62,7 @@ The board must handle both local pre-submit prompts and engine `pending_choice` 
 - Scene tests cover trample overflow copy and Assign enabled when under-assigned.
 - Scene/unit tests cover dredge decline (`Draw normally` → `dredger: null`) and single-pick readiness for Dredge.
 - Scene tests cover pay-cost button copy (`Pay {…}` and kind-specific declines).
+- Scene/unit tests cover join-forces mana stepper (no per-N buttons; draft submit).
 - CardArt tests cover skeleton-to-image and shared cache readiness.
 
 ## Out of Scope
