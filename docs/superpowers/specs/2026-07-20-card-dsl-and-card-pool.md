@@ -112,13 +112,17 @@ Each ability block has a `timing` field and one or more `[[abilities.effects]]` 
 
 The `Effect` enum grows only from real cards. Every leaf effect is authored as nested **`type` (family) + `mode` (leaf)**. Structural composers (`sequence`, `conditional`, `choose_one`) are the only effects with no `mode`. See `docs/superpowers/specs/2026-07-23-nested-effect-families-design.md` for the full family map.
 
-Top-level families: `damage`, `draw`, `life`, `destroy`, `control`, `counters`, `mana`, `mill`, `pump`, `reveal`, `token`, `zone`, `copy`, `dig`, `choice`, `static`, `misc`, plus structural `sequence` / `conditional` / `choose_one`.
+Top-level families: `damage`, `draw`, `life`, `destroy`, `exile`, `sacrifice`, `control`, `counters`, `mana`, `mill`, `pump`, `reveal`, `token`, `zone`, `copy`, `dig`, `choice`, `static`, `misc`, plus structural `sequence` / `conditional` / `choose_one`.
 
 Representative modes by family:
 
 **`damage`:** `target` (to creature/player/planeswalker), `each_creature` (mass damage), `to_self`.
 
-**`destroy` / exile / sacrifice:** `destroy_target`, `exile_target`, `destroy_all`, `exile_all`, `sacrifice` (edict shapes).
+**`destroy`:** `target`, `all`, `triggering_damaged_creature`.
+
+**`exile`:** `target`, `all`, `all_graveyards`, `graveyard`, `until_source_leaves`.
+
+**`sacrifice`:** `source`, `enchanted_creature` (plus engine-internal object sacrifice helpers).
 
 **`control`:** `tap_target`, `tap_all`, `gain_control`, `gain_control_while`.
 

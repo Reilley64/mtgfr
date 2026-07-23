@@ -144,23 +144,37 @@ Old flat TOML `type` (snake_case of today’s variant) → `(family, mode)`. Mod
 
 ### `destroy` → `DestroyEffect`
 
-Destroy, exile, and sacrifice leaves that today mint through `mint_destroy_family` (and closely related sacrifice/exile object arms):
+`DestroyEffect` now owns only the destroy leaves:
 
-| Old `type` | `mode` |
-|---|---|
-| `destroy_target` | `destroy_target` |
-| `destroy_all` | `destroy_all` |
-| `destroy_triggering_damaged_creature` | `destroy_triggering_damaged_creature` |
-| `exile_all` | `exile_all` |
-| `exile_all_graveyards` | `exile_all_graveyards` |
-| `exile_graveyard` | `exile_graveyard` |
-| `exile_object` | `exile_object` |
-| `exile_target` | `exile_target` |
-| `exile_target_minting_illusion_on_leave` | `exile_target_minting_illusion_on_leave` |
-| `exile_until_source_leaves` | `exile_until_source_leaves` |
-| `sacrifice_enchanted_creature` | `sacrifice_enchanted_creature` |
-| `sacrifice_object` | `sacrifice_object` |
-| `sacrifice_source` | `sacrifice_source` |
+| Old `type` | New `type` | `mode` |
+|---|---|---|
+| `destroy_target` | `destroy` | `target` |
+| `destroy_all` | `destroy` | `all` |
+| `destroy_triggering_damaged_creature` | `destroy` | `triggering_damaged_creature` |
+
+### `exile` → `ExileEffect`
+
+The exile leaves move out of `DestroyEffect` into their own top-level family:
+
+| Old `type` | New `type` | `mode` |
+|---|---|---|
+| `exile_all` | `exile` | `all` |
+| `exile_all_graveyards` | `exile` | `all_graveyards` |
+| `exile_graveyard` | `exile` | `graveyard` |
+| `exile_object` | `exile` | `object` |
+| `exile_target` | `exile` | `target` |
+| `exile_target_minting_illusion_on_leave` | `exile` | `target_minting_illusion_on_leave` |
+| `exile_until_source_leaves` | `exile` | `until_source_leaves` |
+
+### `sacrifice` → `SacrificeEffect`
+
+The sacrifice leaves move out of `DestroyEffect` into their own top-level family:
+
+| Old `type` | New `type` | `mode` |
+|---|---|---|
+| `sacrifice_enchanted_creature` | `sacrifice` | `enchanted_creature` |
+| `sacrifice_object` | `sacrifice` | `object` |
+| `sacrifice_source` | `sacrifice` | `source` |
 
 ### `control` → `ControlEffect`
 
