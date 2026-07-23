@@ -1,11 +1,7 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { foldkit } from "@foldkit/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
-
-const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   environments: {
@@ -17,9 +13,8 @@ export default defineConfig({
     port: 3000,
   },
   resolve: {
-    alias: {
-      "~": path.join(root, "lib"),
-    },
+    // Vite 8+: single source of truth is tsconfig.json compilerOptions.paths (`~/*` → `./lib/*`).
+    tsconfigPaths: true,
   },
   plugins: [
     foldkit({ devToolsMcpPort: 9988 }),

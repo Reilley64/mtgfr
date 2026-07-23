@@ -1,16 +1,12 @@
 /// <reference types="vitest/config" />
 
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { configDefaults, defineConfig } from "vitest/config";
-
-const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "~": path.join(root, "lib"),
-    },
+    // Match vite.config.ts — path aliases come from tsconfig.json (`~/*`).
+    // Requires root vite@8 (see package.json overrides); vitest may otherwise nest vite@6.
+    tsconfigPaths: true,
   },
   test: {
     environment: "node",
